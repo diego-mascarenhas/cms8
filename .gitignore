@@ -422,3 +422,8 @@ yarn-error.log
 Homestea
 composer.lock
 package-lock.json
+public/mix-manifest.json
+public/js/laravel-user-management.js
+public/assets/js/
+public/assets/vendor/
+public/assets/css/
