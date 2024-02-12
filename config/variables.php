@@ -1,9 +1,9 @@
 <?php
 // Variables
 return [
-  "creatorName" => "Pixinvent",
-  "creatorUrl" => "https://pixinvent.com",
-  "templateName" => "Vuexy",
+  "creatorName" => "INFOFUTURO",
+  "creatorUrl" => "https://infofuturo.com/",
+  "templateName" => "INFOFUTURO",
   "templateSuffix" => "Bootstrap Admin Template",
   "templateVersion" => "1.0.0",
   "templateFree" => false,
@@ -12,7 +12,7 @@ return [
   "licenseUrl" => "https://themeforest.net/licenses/standard",
   "livePreview" => "https://demos.pixinvent.com/vuexy-html-admin-template/landing/",
   "productPage" => "https://1.envato.market/vuexy_admin",
-  "support" => "https://pixinvent.ticksy.com/",
+  "support" => "https://infofuturo.com/contacto/",
   "moreThemes" => "https://1.envato.market/pixinvent_portfolio",
   "documentation" => "https://demos.pixinvent.com/vuexy-html-admin-template/documentation",
   "generator" => "",

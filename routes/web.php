@@ -1,4 +1,5 @@
 <?php
+use App\Http\Controllers\sys\Webhooks;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\dashboard\Analytics;
@@ -357,3 +358,6 @@ Route::get('/maps/leaflet', [Leaflet::class, 'index'])->name('maps-leaflet');
 // laravel example
 Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement'])->name('laravel-example-user-management');
 Route::resource('/user-list', UserManagement::class);
+
+// CMS8
+Route::get('/sys/webhooks', [Webhooks::class, 'index'])->name('sys-webhooks');
