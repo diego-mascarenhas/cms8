@@ -413,6 +413,7 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+yarn.lock
 .env
 .env.backup
 .env.local
