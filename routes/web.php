@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\sys\Webhooks;
+use App\Http\Controllers\sys\WebhookController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\dashboard\Analytics;
@@ -360,4 +360,5 @@ Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement']
 Route::resource('/user-list', UserManagement::class);
 
 // CMS8
-Route::get('/sys/webhooks', [Webhooks::class, 'index'])->name('sys-webhooks');
+Route::get('/sys/webhooks', [WebhookController::class, 'WebhookManagement'])->name('sys-webhooks');
+Route::resource('/webhook-list', WebhookController::class);
