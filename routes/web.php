@@ -362,3 +362,4 @@ Route::resource('/user-list', UserManagement::class);
 // CMS8
 Route::get('/sys/webhooks', [WebhookController::class, 'WebhookManagement'])->name('sys-webhooks');
 Route::resource('/webhook-list', WebhookController::class);
+Route::get('/sys/webhooks/{id}', [WebhookController::class, 'show']);

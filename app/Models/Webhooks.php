@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Webhooks extends Model
 {
-    protected $table = 'sys_requests';
+    protected $table = 'sys_webhooks';
 
     protected $casts = [
         'data' => 'array',
     ];
 
-    protected $fillable = ['data'];
+    protected $fillable = ['name', 'email', 'data'];
 }

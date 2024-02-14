@@ -6,10 +6,9 @@
 
 // Datatable (jquery)
 $(function () {
-  // Variable declaration for table
   var dt_user_table = $('.datatables-users'),
     select2 = $('.select2'),
-    userView = baseUrl + 'app/user/view/account',
+    userView = baseUrl + 'sys/webhooks/',
     offCanvasForm = $('#offcanvasAddUser');
 
   if (select2.length) {
@@ -71,6 +70,7 @@ $(function () {
           responsivePriority: 4,
           render: function (data, type, full, meta) {
             var $name = full['name'];
+            var $id = full['id'];
 
             // For Avatar badge
             var stateNum = Math.floor(Math.random() * 6);
@@ -93,6 +93,7 @@ $(function () {
               '<div class="d-flex flex-column">' +
               '<a href="' +
               userView +
+              $id +
               '" class="text-body text-truncate"><span class="fw-medium">' +
               $name +
               '</span></a>' +
@@ -138,6 +139,7 @@ $(function () {
               '<div class="dropdown-menu dropdown-menu-end m-0">' +
               '<a href="' +
               userView +
+              full['id'] +
               '" class="dropdown-item">View</a>' +
               '<a href="javascript:;" class="dropdown-item">Suspend</a>' +
               '</div>' +

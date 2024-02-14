@@ -18,15 +18,11 @@ class WebhookController extends Controller
   {
     $users = Webhooks::all();
     $userCount = $users->count();
-    //$verified = Webhooks::whereNotNull('email_verified_at')->get()->count();
-    //$notVerified = Webhooks::whereNull('email_verified_at')->get()->count();
     $usersUnique = $users->unique(['email']);
     $userDuplicates = $users->diff($usersUnique)->count();
 
     return view('cms.webhooks', [
       'totalUser' => $userCount,
-      //'verified' => $verified,
-      //'notVerified' => $notVerified,
       'userDuplicates' => $userDuplicates,
     ]);
   }
@@ -56,12 +52,15 @@ class WebhookController extends Controller
     $order = $columns[$request->input('order.0.column')];
     $dir = $request->input('order.0.dir');
 
-    if (empty($request->input('search.value'))) {
+    if (empty($request->input('search.value')))
+    {
       $users = Webhooks::offset($start)
         ->limit($limit)
         ->orderBy($order, $dir)
         ->get();
-    } else {
+    }
+    else
+    {
       $search = $request->input('search.value');
 
       $users = Webhooks::where('id', 'LIKE', "%{$search}%")
@@ -80,22 +79,23 @@ class WebhookController extends Controller
 
     $data = [];
 
-    if (!empty($users)) {
-      // providing a dummy id instead of database ids
+    if (!empty($users))
+    {
       $ids = $start;
 
-      foreach ($users as $user) {
+      foreach ($users as $user)
+      {
         $nestedData['id'] = $user->id;
         $nestedData['fake_id'] = ++$ids;
         $nestedData['name'] = $user->name;
         $nestedData['email'] = $user->email;
-        //$nestedData['email_verified_at'] = $user->email_verified_at;
 
         $data[] = $nestedData;
       }
     }
 
-    if ($data) {
+    if ($data)
+    {
       return response()->json([
         'draw' => intval($request->input('draw')),
         'recordsTotal' => intval($totalData),
@@ -103,7 +103,9 @@ class WebhookController extends Controller
         'code' => 200,
         'data' => $data,
       ]);
-    } else {
+    }
+    else
+    {
       return response()->json([
         'message' => 'Internal Server Error',
         'code' => 500,
@@ -129,22 +131,35 @@ class WebhookController extends Controller
    * @return \Illuminate\Http\Response
    */
   public function store(Request $request)
+  {
+    $name = $request->input('fields.name.value');
+    $email = $request->input('fields.email.value');
+
+    $validator = Validator::make($request->all(), [
+      'fields.name.value' => 'sometimes|required|string|max:100',
+      'fields.email.value' => 'sometimes|required|email',
+    ]);
+
+    if ($validator->fails())
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:100',
-            'email' => 'sometimes|required|email',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 400);
-        }
-
-        $sysRequest = Webhooks::create([
-            'data' => $request->all(),
-        ]);
-
-        return response()->json($sysRequest, 201);
+      return response()->json($validator->errors(), 400);
     }
+
+    $res = Webhooks::create([
+      'name' => ($name) ? $name : 'No se ha especificado',
+      'email' => ($email) ? $email : 'No se ha especificado',
+      'data' => $request->all(),
+    ]);
+
+    if ($request->input('fields.retURL.value'))
+    {
+      return redirect()->away($request->input('fields.retURL.value'));
+    }
+    else
+    {
+      return response()->json($res, 201);
+    }
+  }
 
   /**
    * Display the specified resource.
@@ -154,7 +169,11 @@ class WebhookController extends Controller
    */
   public function show($id)
   {
-    //
+    $where = ['id' => $id];
+
+    $data = Webhooks::where($where)->first();
+
+    return response()->json($data);
   }
 
   /**
