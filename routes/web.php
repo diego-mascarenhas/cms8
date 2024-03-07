@@ -1,4 +1,5 @@
 <?php
+use App\Http\Controllers\ApiAuthServiceController;
 use App\Http\Controllers\sys\WebhookController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
@@ -363,3 +364,6 @@ Route::resource('/user-list', UserManagement::class);
 Route::get('/sys/webhooks', [WebhookController::class, 'WebhookManagement'])->name('sys-webhooks');
 Route::resource('/webhook-list', WebhookController::class);
 Route::get('/sys/webhooks/{id}', [WebhookController::class, 'show']);
+
+// Bruler
+Route::get('/api/bruler/login', [ApiAuthServiceController::class, 'login']);
