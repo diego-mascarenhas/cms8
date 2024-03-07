@@ -1,5 +1,6 @@
 <?php
 use App\Http\Controllers\ApiAuthServiceController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\sys\WebhookController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
@@ -367,3 +368,5 @@ Route::get('/sys/webhooks/{id}', [WebhookController::class, 'show']);
 
 // Bruler
 Route::get('/api/bruler/login', [ApiAuthServiceController::class, 'login']);
+Route::get('/api/bruler/token', [ApiAuthServiceController::class, 'token']);
+Route::get('/api/bruler/orders', [OrderController::class, 'store']);

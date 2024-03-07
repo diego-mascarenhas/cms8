@@ -19,6 +19,6 @@ class LoginApiServiceCommand extends Command
     $service = app(ApiAuthService::class);
     $response = $service->login($usuario, $password);
 
-    $this->info('Respuesta recibida: ' . $response->body());
+    $this->info($response->body());
   }
 }
