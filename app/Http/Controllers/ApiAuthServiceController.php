@@ -6,12 +6,12 @@ use App\Services\ApiAuthService;
 
 class ApiAuthServiceController extends Controller
 {
-    public function login(ApiAuthService $apiAuthService)
-    {
-        $response = $apiAuthService->login('bruler_pedimosfacil', 'Bruler.PedimosFacil.2024');
+  public function login(ApiAuthService $apiAuthService)
+  {
+    $response = $apiAuthService->login(env('BRULER_USERNAME'), env('BRULER_PASSWORD'));
 
-        $data = $response->json();
+    $data = $response->json();
 
-        dd($data);
-    }
+    dd($data);
+  }
 }
