@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
 use Log;
@@ -22,12 +23,15 @@ class ApiAuthService
 
         if ($response->successful())
         {
-            Session::put('apiToken', $response->json()['Data']['Token']);
+            $token = $response->json()['Data']['Token'];
+
+            Session::put('apiToken', $token);
             Session::put('apiTokenExpiry', $response->json()['Data']['TokenExpira']);
+            Cache::put('apiToken', $token, 120);
 
             Log::info(print_r($response->json()['Data'], true));
 
-            return $response;
+            return $token;
         }
 
         return null;

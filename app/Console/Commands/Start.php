@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
 use App\Models\User;
+use App\Services\ApiAuthService;
 
 class Start extends Command
 {
@@ -38,7 +39,8 @@ class Start extends Command
             2 => 'Crear Servicio',
             3 => 'Crear Factura',
             4 => 'Enviar Factura',
-            5 => 'Salir'
+            5 => 'Bruler',
+            6 => 'Salir'
         ]);
 
         switch ($action)
@@ -54,6 +56,10 @@ class Start extends Command
                 break;
             case 'Emitir Factura':
                 $this->sendInvoice();
+                break;
+            case 'Bruler':
+                $this->call('api:bruler');
+                $this->call('fetch:bruler-data');
                 break;
             case 'Salir':
                 $this->warn('Se ha cancelado la acción');
@@ -82,32 +88,40 @@ class Start extends Command
 
         $user = User::where('email', $email)->first();
 
-        if ($user) {
+        if ($user)
+        {
             $this->info("Servicio creado al usuario: {$user->name}");
-        } else {
+        }
+        else
+        {
             $this->error("No se encontró un usuario con el email: $email");
-      }
+        }
     }
 
     private function createInvoice()
     {
         $users = User::all(['id', 'name']);
 
-        if ($users->isEmpty()) {
+        if ($users->isEmpty())
+        {
             $this->info('No hay usuarios disponibles.');
             return;
         }
 
-        $options = $users->mapWithKeys(function ($user) {
-          return ["{$user->id} - {$user->name}" => $user->name];
-      })->toArray();
+        $options = $users->mapWithKeys(function ($user)
+        {
+            return ["{$user->id} - {$user->name}" => $user->name];
+        })->toArray();
 
         $userId = $this->choice('Seleccione un usuario para emitir una factura', $options);
 
         $selectedUser = User::find($userId);
-        if ($selectedUser) {
+        if ($selectedUser)
+        {
             $this->info("Factura emitida al usuario: {$selectedUser->name} " . $selectedUser->id);
-        } else {
+        }
+        else
+        {
             $this->error("Usuario no encontrado.");
         }
     }
