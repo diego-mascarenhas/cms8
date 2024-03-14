@@ -403,11 +403,9 @@ FodyWeavers.xsd
 /.nova
 .DS_Store
 .editorconfig
+.prettierrc.json
 
 # Laravel
-/node_modules
-/public/hot
-/public/storage
 /storage/*.key
 /vendor
 Homestead.json
@@ -424,8 +422,12 @@ yarn.lock
 Homestea
 composer.lock
 package-lock.json
-public/mix-manifest.json
-public/js/laravel-user-management.js
-public/assets/js/
-public/assets/vendor/
-public/assets/css/
+
+# NPM Compiled
+# /public/hot
+# /public/storage
+# public/mix-manifest.json
+# public/js/laravel-user-management.js
+# public/assets/js/
+# public/assets/vendor/
+# public/assets/css/

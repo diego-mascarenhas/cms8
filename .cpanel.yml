@@ -8,6 +8,5 @@ deployment:
         - cd $DEPLOYPATH
         - /bin/scl enable ea-php82 '/opt/cpanel/composer/bin/composer install --no-interaction'
         - /bin/scl enable ea-php82 'php artisan clear-compiled'
-        - /bin/scl enable ea-php82 'php artisan optimize'
         - /bin/scl enable ea-php82 'php artisan migrate'
         - /bin/scl enable ea-php82 'php artisan db:seed'
