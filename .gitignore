@@ -402,6 +402,7 @@ FodyWeavers.xsd
 /.vscode
 /.nova
 .DS_Store
+.editorconfig
 
 # Laravel
 /node_modules
