@@ -15,6 +15,7 @@ class TradeDataController extends Controller
 
 		$validatedData = Validator::make($data, [
 			'symbol' => 'string|max:25|required',
+			'time_frame' => 'numeric',
 			'open' => 'required',
 			'close' => 'required',
 			'low' => 'required',

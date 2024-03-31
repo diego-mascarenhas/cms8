@@ -12,5 +12,5 @@ class TradeData extends Model
 		'data' => 'array',
 	];
 
-	protected $fillable = ['symbol', 'open', 'close', 'high', 'low', 'tr5', 'tr15', 'tr240', 'volume', 'volatility', 'rsi', 'macd', 'adx', 'data', 'status'];
+	protected $fillable = ['symbol', 'time_frame', 'open', 'close', 'high', 'low', 'premium', 'discount', 'tv5', 'tv15', 'tv240', 'volume', 'volatility', 'rsi', 'macd', 'adx', 'data'];
 }
