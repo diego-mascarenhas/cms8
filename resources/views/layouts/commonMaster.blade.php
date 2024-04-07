@@ -49,6 +49,10 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   <!-- $isFront is used to append the front layout scripts only on the front layout otherwise the variable will be blank -->
   @include('layouts/sections/scripts' . $isFront)
 
+// TODO : remove this when you have a real page with JS code in it (not just the layout)
+// https://dev.to/alphaolomi/how-to-get-started-with-datatables-in-laravel-9-5c39
+<script src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.min.js"></script>
+@stack('scripts')
 </body>
 
 </html>

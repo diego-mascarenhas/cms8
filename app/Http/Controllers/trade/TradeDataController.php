@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Validator;
 
 class TradeDataController extends Controller
 {
+	public function index(TradeData $dataTable)
+    {
+        return $dataTable->render('trade.index');
+    }
+
 	public function store(Request $request)
 	{
 		$data = $request->all();

@@ -2,6 +2,8 @@
 use App\Http\Controllers\ApiAuthServiceController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\sys\WebhookController;
+use App\Http\Controllers\trade\TradeDataController;
+use App\Http\Controllers\UsersController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\dashboard\Analytics;
@@ -365,6 +367,8 @@ Route::resource('/user-list', UserManagement::class);
 Route::get('/sys/webhooks', [WebhookController::class, 'WebhookManagement'])->name('sys-webhooks');
 Route::resource('/webhook-list', WebhookController::class);
 Route::get('/sys/webhooks/{id}', [WebhookController::class, 'show']);
+Route::get('/trade', [TradeDataController::class, 'index'])->name('trade.index');
+Route::get('/users', [UsersController::class, 'index'])->name('users.index');
 
 // Bruler
 Route::get('/api/bruler/login', [ApiAuthServiceController::class, 'login']);

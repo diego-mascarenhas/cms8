@@ -25,6 +25,7 @@
     "browser-sync": "2.29.3",
     "browser-sync-webpack-plugin": "2.3.0",
     "cross-env": "7.0.3",
+    "laravel-datatables-vite": "^0.5.2",
     "laravel-mix": "6.0.49",
     "lodash": "4.17.21",
     "postcss": "8.4.26",
