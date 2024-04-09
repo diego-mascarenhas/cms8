@@ -23,7 +23,7 @@ class FetchBrulerDataCommand extends Command
         $apiToken = Cache::get('apiToken');
 
         $response = Http::withHeaders([
-            'API_KEY' => 'F2PVc01qDR97hna24Lt8Bw611pfGe258',
+            'API_KEY' => env('BRULER_API_KEY'),
             'API_TOKEN' => $apiToken,
             'Content-Type' => 'application/json',
         ])->post('https://brulerapi.ar/api/pedimosfacilmdw/articulos/list', [
