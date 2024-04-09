@@ -25,12 +25,10 @@
 @endsection
 
 @section('content')
-<div class="container">
-    <div class="card">
-        <div class="card-header">Manage Users</div>
-        <div class="card-body">
-            {{ $dataTable->table() }}
-        </div>
+<div class="card">
+    <div class="card-header">Manage Users</div>
+    <div class="card-body">
+        {{ $dataTable->table() }}
     </div>
 </div>
 @endsection
@@ -43,6 +41,7 @@
 @section('vendor-script')
 <script src="{{asset('vendors/data-tables/js/jquery.dataTables.min.js')}}"></script>
 <script src="{{asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js')}}"></script>
+<script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
 <script src="{{asset('vendors/fullcalendar/lib/moment.min.js')}}"></script>
 <script src="{{asset('js/moment/' . app()->getLocale() . '.js')}}"></script>
 @endsection

@@ -1,1 +1,14827 @@
-!function(e,t){if("object"==typeof exports&&"object"==typeof module)module.exports=t();else if("function"==typeof define&&define.amd)define([],t);else{var n=t();for(var r in n)("object"==typeof exports?exports:e)[r]=n[r]}}(self,(function(){return function(){"use strict";var e={d:function(t,n){for(var r in n)e.o(n,r)&&!e.o(t,r)&&Object.defineProperty(t,r,{enumerable:!0,get:n[r]})},o:function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},r:function(e){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(e,"__esModule",{value:!0})}},t={};e.r(t),e.d(t,{Calendar:function(){return Xo},dayGridPlugin:function(){return Da},interactionPlugin:function(){return Va},listPlugin:function(){return Ka},timegridPlugin:function(){return Pl}});var n,r,i,s,o,a,l,c,d,u={},h=[],f=/acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;function g(e,t){for(var n in t)e[n]=t[n];return e}function p(e){var t=e.parentNode;t&&t.removeChild(e)}function m(e,t,r){var i,s,o,a={};for(o in t)"key"==o?i=t[o]:"ref"==o?s=t[o]:a[o]=t[o];if(arguments.length>2&&(a.children=arguments.length>3?n.call(arguments,2):r),"function"==typeof e&&null!=e.defaultProps)for(o in e.defaultProps)void 0===a[o]&&(a[o]=e.defaultProps[o]);return v(e,a,i,s,null)}function v(e,t,n,s,o){var a={type:e,props:t,key:n,ref:s,__k:null,__:null,__b:0,__e:null,__d:void 0,__c:null,__h:null,constructor:void 0,__v:null==o?++i:o};return null==o&&null!=r.vnode&&r.vnode(a),a}function y(e){return e.children}function b(e,t,n){"-"===t[0]?e.setProperty(t,null==n?"":n):e[t]=null==n?"":"number"!=typeof n||f.test(t)?n:n+"px"}function E(e,t,n,r,i){var s;e:if("style"===t)if("string"==typeof n)e.style.cssText=n;else{if("string"==typeof r&&(e.style.cssText=r=""),r)for(t in r)n&&t in n||b(e.style,t,"");if(n)for(t in n)r&&n[t]===r[t]||b(e.style,t,n[t])}else if("o"===t[0]&&"n"===t[1])s=t!==(t=t.replace(/Capture$/,"")),t=t.toLowerCase()in e?t.toLowerCase().slice(2):t.slice(2),e.l||(e.l={}),e.l[t+s]=n,n?r||e.addEventListener(t,s?S:A,s):e.removeEventListener(t,s?S:A,s);else if("dangerouslySetInnerHTML"!==t){if(i)t=t.replace(/xlink(H|:h)/,"h").replace(/sName$/,"s");else if("width"!==t&&"height"!==t&&"href"!==t&&"list"!==t&&"form"!==t&&"tabIndex"!==t&&"download"!==t&&t in e)try{e[t]=null==n?"":n;break e}catch(e){}"function"==typeof n||(null==n||!1===n&&-1==t.indexOf("-")?e.removeAttribute(t):e.setAttribute(t,n))}}function A(e){o=!0;try{return this.l[e.type+!1](r.event?r.event(e):e)}finally{o=!1}}function S(e){o=!0;try{return this.l[e.type+!0](r.event?r.event(e):e)}finally{o=!1}}function D(e,t){this.props=e,this.context=t}function w(e,t){if(null==t)return e.__?w(e.__,e.__.__k.indexOf(e)+1):null;for(var n;t<e.__k.length;t++)if(null!=(n=e.__k[t])&&null!=n.__e)return n.__e;return"function"==typeof e.type?w(e):null}function C(e){var t,n;if(null!=(e=e.__)&&null!=e.__c){for(e.__e=e.__c.base=null,t=0;t<e.__k.length;t++)if(null!=(n=e.__k[t])&&null!=n.__e){e.__e=e.__c.base=n.__e;break}return C(e)}}function R(e){o?setTimeout(e):c(e)}function _(e){(!e.__d&&(e.__d=!0)&&a.push(e)&&!x.__r++||l!==r.debounceRendering)&&((l=r.debounceRendering)||R)(x)}function x(){var e,t,n,r,i,s,o,l;for(a.sort((function(e,t){return e.__v.__b-t.__v.__b}));e=a.shift();)e.__d&&(t=a.length,r=void 0,i=void 0,o=(s=(n=e).__v).__e,(l=n.__P)&&(r=[],(i=g({},s)).__v=s.__v+1,N(l,s,i,n.__n,void 0!==l.ownerSVGElement,null!=s.__h?[o]:null,r,null==o?w(s):o,s.__h),P(r,s),s.__e!=o&&C(s)),a.length>t&&a.sort((function(e,t){return e.__v.__b-t.__v.__b})));x.__r=0}function T(e,t,n,r,i,s,o,a,l,c){var d,f,g,p,m,b,E,A=r&&r.__k||h,S=A.length;for(n.__k=[],d=0;d<t.length;d++)if(null!=(p=n.__k[d]=null==(p=t[d])||"boolean"==typeof p?null:"string"==typeof p||"number"==typeof p||"bigint"==typeof p?v(null,p,null,null,p):Array.isArray(p)?v(y,{children:p},null,null,null):p.__b>0?v(p.type,p.props,p.key,p.ref?p.ref:null,p.__v):p)){if(p.__=n,p.__b=n.__b+1,null===(g=A[d])||g&&p.key==g.key&&p.type===g.type)A[d]=void 0;else for(f=0;f<S;f++){if((g=A[f])&&p.key==g.key&&p.type===g.type){A[f]=void 0;break}g=null}N(e,p,g=g||u,i,s,o,a,l,c),m=p.__e,(f=p.ref)&&g.ref!=f&&(E||(E=[]),g.ref&&E.push(g.ref,null,p),E.push(f,p.__c||m,p)),null!=m?(null==b&&(b=m),"function"==typeof p.type&&p.__k===g.__k?p.__d=l=k(p,l,e):l=O(e,p,g,A,m,l),"function"==typeof n.type&&(n.__d=l)):l&&g.__e==l&&l.parentNode!=e&&(l=w(g))}for(n.__e=b,d=S;d--;)null!=A[d]&&("function"==typeof n.type&&null!=A[d].__e&&A[d].__e==n.__d&&(n.__d=I(r).nextSibling),j(A[d],A[d]));if(E)for(d=0;d<E.length;d++)B(E[d],E[++d],E[++d])}function k(e,t,n){for(var r,i=e.__k,s=0;i&&s<i.length;s++)(r=i[s])&&(r.__=e,t="function"==typeof r.type?k(r,t,n):O(n,r,r,i,r.__e,t));return t}function M(e,t){return t=t||[],null==e||"boolean"==typeof e||(Array.isArray(e)?e.some((function(e){M(e,t)})):t.push(e)),t}function O(e,t,n,r,i,s){var o,a,l;if(void 0!==t.__d)o=t.__d,t.__d=void 0;else if(null==n||i!=s||null==i.parentNode)e:if(null==s||s.parentNode!==e)e.appendChild(i),o=null;else{for(a=s,l=0;(a=a.nextSibling)&&l<r.length;l+=1)if(a==i)break e;e.insertBefore(i,s),o=s}return void 0!==o?o:i.nextSibling}function I(e){var t,n,r;if(null==e.type||"string"==typeof e.type)return e.__e;if(e.__k)for(t=e.__k.length-1;t>=0;t--)if((n=e.__k[t])&&(r=I(n)))return r;return null}function N(e,t,n,i,s,o,a,l,c){var d,u,h,f,p,m,v,b,E,A,S,w,C,R,_,x=t.type;if(void 0!==t.constructor)return null;null!=n.__h&&(c=n.__h,l=t.__e=n.__e,t.__h=null,o=[l]),(d=r.__b)&&d(t);try{e:if("function"==typeof x){if(b=t.props,E=(d=x.contextType)&&i[d.__c],A=d?E?E.props.value:d.__:i,n.__c?v=(u=t.__c=n.__c).__=u.__E:("prototype"in x&&x.prototype.render?t.__c=u=new x(b,A):(t.__c=u=new D(b,A),u.constructor=x,u.render=z),E&&E.sub(u),u.props=b,u.state||(u.state={}),u.context=A,u.__n=i,h=u.__d=!0,u.__h=[],u._sb=[]),null==u.__s&&(u.__s=u.state),null!=x.getDerivedStateFromProps&&(u.__s==u.state&&(u.__s=g({},u.__s)),g(u.__s,x.getDerivedStateFromProps(b,u.__s))),f=u.props,p=u.state,u.__v=t,h)null==x.getDerivedStateFromProps&&null!=u.componentWillMount&&u.componentWillMount(),null!=u.componentDidMount&&u.__h.push(u.componentDidMount);else{if(null==x.getDerivedStateFromProps&&b!==f&&null!=u.componentWillReceiveProps&&u.componentWillReceiveProps(b,A),!u.__e&&null!=u.shouldComponentUpdate&&!1===u.shouldComponentUpdate(b,u.__s,A)||t.__v===n.__v){for(t.__v!==n.__v&&(u.props=b,u.state=u.__s,u.__d=!1),t.__e=n.__e,t.__k=n.__k,t.__k.forEach((function(e){e&&(e.__=t)})),S=0;S<u._sb.length;S++)u.__h.push(u._sb[S]);u._sb=[],u.__h.length&&a.push(u);break e}null!=u.componentWillUpdate&&u.componentWillUpdate(b,u.__s,A),null!=u.componentDidUpdate&&u.__h.push((function(){u.componentDidUpdate(f,p,m)}))}if(u.context=A,u.props=b,u.__P=e,w=r.__r,C=0,"prototype"in x&&x.prototype.render){for(u.state=u.__s,u.__d=!1,w&&w(t),d=u.render(u.props,u.state,u.context),R=0;R<u._sb.length;R++)u.__h.push(u._sb[R]);u._sb=[]}else do{u.__d=!1,w&&w(t),d=u.render(u.props,u.state,u.context),u.state=u.__s}while(u.__d&&++C<25);u.state=u.__s,null!=u.getChildContext&&(i=g(g({},i),u.getChildContext())),h||null==u.getSnapshotBeforeUpdate||(m=u.getSnapshotBeforeUpdate(f,p)),_=null!=d&&d.type===y&&null==d.key?d.props.children:d,T(e,Array.isArray(_)?_:[_],t,n,i,s,o,a,l,c),u.base=t.__e,t.__h=null,u.__h.length&&a.push(u),v&&(u.__E=u.__=null),u.__e=!1}else null==o&&t.__v===n.__v?(t.__k=n.__k,t.__e=n.__e):t.__e=H(n.__e,t,n,i,s,o,a,c);(d=r.diffed)&&d(t)}catch(e){t.__v=null,(c||null!=o)&&(t.__e=l,t.__h=!!c,o[o.indexOf(l)]=null),r.__e(e,t,n)}}function P(e,t){r.__c&&r.__c(t,e),e.some((function(t){try{e=t.__h,t.__h=[],e.some((function(e){e.call(t)}))}catch(e){r.__e(e,t.__v)}}))}function H(e,t,r,i,s,o,a,l){var c,d,h,f=r.props,g=t.props,m=t.type,v=0;if("svg"===m&&(s=!0),null!=o)for(;v<o.length;v++)if((c=o[v])&&"setAttribute"in c==!!m&&(m?c.localName===m:3===c.nodeType)){e=c,o[v]=null;break}if(null==e){if(null===m)return document.createTextNode(g);e=s?document.createElementNS("http://www.w3.org/2000/svg",m):document.createElement(m,g.is&&g),o=null,l=!1}if(null===m)f===g||l&&e.data===g||(e.data=g);else{if(o=o&&n.call(e.childNodes),d=(f=r.props||u).dangerouslySetInnerHTML,h=g.dangerouslySetInnerHTML,!l){if(null!=o)for(f={},v=0;v<e.attributes.length;v++)f[e.attributes[v].name]=e.attributes[v].value;(h||d)&&(h&&(d&&h.__html==d.__html||h.__html===e.innerHTML)||(e.innerHTML=h&&h.__html||""))}if(function(e,t,n,r,i){var s;for(s in n)"children"===s||"key"===s||s in t||E(e,s,null,n[s],r);for(s in t)i&&"function"!=typeof t[s]||"children"===s||"key"===s||"value"===s||"checked"===s||n[s]===t[s]||E(e,s,t[s],n[s],r)}(e,g,f,s,l),h)t.__k=[];else if(v=t.props.children,T(e,Array.isArray(v)?v:[v],t,r,i,s&&"foreignObject"!==m,o,a,o?o[0]:r.__k&&w(r,0),l),null!=o)for(v=o.length;v--;)null!=o[v]&&p(o[v]);l||("value"in g&&void 0!==(v=g.value)&&(v!==e.value||"progress"===m&&!v||"option"===m&&v!==f.value)&&E(e,"value",v,f.value,!1),"checked"in g&&void 0!==(v=g.checked)&&v!==e.checked&&E(e,"checked",v,f.checked,!1))}return e}function B(e,t,n){try{"function"==typeof e?e(t):e.current=t}catch(e){r.__e(e,n)}}function j(e,t,n){var i,s;if(r.unmount&&r.unmount(e),(i=e.ref)&&(i.current&&i.current!==e.__e||B(i,null,t)),null!=(i=e.__c)){if(i.componentWillUnmount)try{i.componentWillUnmount()}catch(e){r.__e(e,t)}i.base=i.__P=null,e.__c=void 0}if(i=e.__k)for(s=0;s<i.length;s++)i[s]&&j(i[s],t,n||"function"!=typeof e.type);n||null==e.__e||p(e.__e),e.__=e.__e=e.__d=void 0}function z(e,t,n){return this.constructor(e,n)}function U(e,t,i){var s,o,a;r.__&&r.__(e,t),o=(s="function"==typeof i)?null:i&&i.__k||t.__k,a=[],N(t,e=(!s&&i||t).__k=m(y,null,[e]),o||u,u,void 0!==t.ownerSVGElement,!s&&i?[i]:o?null:t.firstChild?n.call(t.childNodes):null,a,!s&&i?i:o?o.__e:t.firstChild,s),P(a,e)}function L(e,t){var n={__c:t="__cC"+d++,__:e,Consumer:function(e,t){return e.children(t)},Provider:function(e){var n,r;return this.getChildContext||(n=[],(r={})[t]=this,this.getChildContext=function(){return r},this.shouldComponentUpdate=function(e){this.props.value!==e.value&&n.some((function(e){e.__e=!0,_(e)}))},this.sub=function(e){n.push(e);var t=e.componentWillUnmount;e.componentWillUnmount=function(){n.splice(n.indexOf(e),1),t&&t.call(e)}}),e.children}};return n.Provider.__=n.Consumer.contextType=n}n=h.slice,r={__e:function(e,t,n,r){for(var i,s,o;t=t.__;)if((i=t.__c)&&!i.__)try{if((s=i.constructor)&&null!=s.getDerivedStateFromError&&(i.setState(s.getDerivedStateFromError(e)),o=i.__d),null!=i.componentDidCatch&&(i.componentDidCatch(e,r||{}),o=i.__d),o)return i.__E=i}catch(t){e=t}throw e}},i=0,s=function(e){return null!=e&&void 0===e.constructor},o=!1,D.prototype.setState=function(e,t){var n;n=null!=this.__s&&this.__s!==this.state?this.__s:this.__s=g({},this.state),"function"==typeof e&&(e=e(g({},n),this.props)),e&&g(n,e),null!=e&&this.__v&&(t&&this._sb.push(t),_(this))},D.prototype.forceUpdate=function(e){this.__v&&(this.__e=!0,e&&this.__h.push(e),_(this))},D.prototype.render=y,a=[],c="function"==typeof Promise?Promise.prototype.then.bind(Promise.resolve()):setTimeout,x.__r=0,d=0;var W,F,V,G=[],Q=[],Y=r.__b,q=r.__r,Z=r.diffed,X=r.__c,$=r.unmount;function J(){for(var e;e=G.shift();)if(e.__P&&e.__H)try{e.__H.__h.forEach(te),e.__H.__h.forEach(ne),e.__H.__h=[]}catch(t){e.__H.__h=[],r.__e(t,e.__v)}}r.__b=function(e){W=null,Y&&Y(e)},r.__r=function(e){q&&q(e),0;var t=(W=e.__c).__H;t&&(F===W?(t.__h=[],W.__h=[],t.__.forEach((function(e){e.__N&&(e.__=e.__N),e.__V=Q,e.__N=e.i=void 0}))):(t.__h.forEach(te),t.__h.forEach(ne),t.__h=[])),F=W},r.diffed=function(e){Z&&Z(e);var t=e.__c;t&&t.__H&&(t.__H.__h.length&&(1!==G.push(t)&&V===r.requestAnimationFrame||((V=r.requestAnimationFrame)||ee)(J)),t.__H.__.forEach((function(e){e.i&&(e.__H=e.i),e.__V!==Q&&(e.__=e.__V),e.i=void 0,e.__V=Q}))),F=W=null},r.__c=function(e,t){t.some((function(e){try{e.__h.forEach(te),e.__h=e.__h.filter((function(e){return!e.__||ne(e)}))}catch(n){t.some((function(e){e.__h&&(e.__h=[])})),t=[],r.__e(n,e.__v)}})),X&&X(e,t)},r.unmount=function(e){$&&$(e);var t,n=e.__c;n&&n.__H&&(n.__H.__.forEach((function(e){try{te(e)}catch(e){t=e}})),n.__H=void 0,t&&r.__e(t,n.__v))};var K="function"==typeof requestAnimationFrame;function ee(e){var t,n=function(){clearTimeout(r),K&&cancelAnimationFrame(t),setTimeout(e)},r=setTimeout(n,100);K&&(t=requestAnimationFrame(n))}function te(e){var t=W,n=e.__c;"function"==typeof n&&(e.__c=void 0,n()),W=t}function ne(e){var t=W;e.__c=e.__(),W=t}function re(e,t){for(var n in t)e[n]=t[n];return e}function ie(e,t){for(var n in e)if("__source"!==n&&!(n in t))return!0;for(var r in t)if("__source"!==r&&e[r]!==t[r])return!0;return!1}function se(e){this.props=e}(se.prototype=new D).isPureReactComponent=!0,se.prototype.shouldComponentUpdate=function(e,t){return ie(this.props,e)||ie(this.state,t)};var oe=r.__b;r.__b=function(e){e.type&&e.type.__f&&e.ref&&(e.props.ref=e.ref,e.ref=null),oe&&oe(e)};"undefined"!=typeof Symbol&&Symbol.for&&Symbol.for("react.forward_ref");var ae=r.__e;r.__e=function(e,t,n,r){if(e.then)for(var i,s=t;s=s.__;)if((i=s.__c)&&i.__c)return null==t.__e&&(t.__e=n.__e,t.__k=n.__k),i.__c(e,t);ae(e,t,n,r)};var le=r.unmount;function ce(e,t,n){return e&&(e.__c&&e.__c.__H&&(e.__c.__H.__.forEach((function(e){"function"==typeof e.__c&&e.__c()})),e.__c.__H=null),null!=(e=re({},e)).__c&&(e.__c.__P===n&&(e.__c.__P=t),e.__c=null),e.__k=e.__k&&e.__k.map((function(e){return ce(e,t,n)}))),e}function de(e,t,n){return e&&(e.__v=null,e.__k=e.__k&&e.__k.map((function(e){return de(e,t,n)})),e.__c&&e.__c.__P===t&&(e.__e&&n.insertBefore(e.__e,e.__d),e.__c.__e=!0,e.__c.__P=n)),e}function ue(){this.__u=0,this.t=null,this.__b=null}function he(e){var t=e.__.__c;return t&&t.__a&&t.__a(e)}function fe(){this.u=null,this.o=null}r.unmount=function(e){var t=e.__c;t&&t.__R&&t.__R(),t&&!0===e.__h&&(e.type=null),le&&le(e)},(ue.prototype=new D).__c=function(e,t){var n=t.__c,r=this;null==r.t&&(r.t=[]),r.t.push(n);var i=he(r.__v),s=!1,o=function(){s||(s=!0,n.__R=null,i?i(a):a())};n.__R=o;var a=function(){if(! --r.__u){if(r.state.__a){var e=r.state.__a;r.__v.__k[0]=de(e,e.__c.__P,e.__c.__O)}var t;for(r.setState({__a:r.__b=null});t=r.t.pop();)t.forceUpdate()}},l=!0===t.__h;r.__u++||l||r.setState({__a:r.__b=r.__v.__k[0]}),e.then(o,o)},ue.prototype.componentWillUnmount=function(){this.t=[]},ue.prototype.render=function(e,t){if(this.__b){if(this.__v.__k){var n=document.createElement("div"),r=this.__v.__k[0].__c;this.__v.__k[0]=ce(this.__b,n,r.__O=r.__P)}this.__b=null}var i=t.__a&&m(y,null,e.fallback);return i&&(i.__h=null),[m(y,null,t.__a?null:e.children),i]};var ge=function(e,t,n){if(++n[1]===n[0]&&e.o.delete(t),e.props.revealOrder&&("t"!==e.props.revealOrder[0]||!e.o.size))for(n=e.u;n;){for(;n.length>3;)n.pop()();if(n[1]<n[0])break;e.u=n=n[2]}};function pe(e){return this.getChildContext=function(){return e.context},e.children}function me(e){var t=this,n=e.i;t.componentWillUnmount=function(){U(null,t.l),t.l=null,t.i=null},t.i&&t.i!==n&&t.componentWillUnmount(),e.__v?(t.l||(t.i=n,t.l={nodeType:1,parentNode:n,childNodes:[],appendChild:function(e){this.childNodes.push(e),t.i.appendChild(e)},insertBefore:function(e,n){this.childNodes.push(e),t.i.appendChild(e)},removeChild:function(e){this.childNodes.splice(this.childNodes.indexOf(e)>>>1,1),t.i.removeChild(e)}}),U(m(pe,{context:t.context},e.__v),t.l)):t.l&&t.componentWillUnmount()}function ve(e,t){var n=m(me,{__v:e,i:t});return n.containerInfo=t,n}(fe.prototype=new D).__a=function(e){var t=this,n=he(t.__v),r=t.o.get(e);return r[0]++,function(i){var s=function(){t.props.revealOrder?(r.push(i),ge(t,e,r)):i()};n?n(s):s()}},fe.prototype.render=function(e){this.u=null,this.o=new Map;var t=M(e.children);e.revealOrder&&"b"===e.revealOrder[0]&&t.reverse();for(var n=t.length;n--;)this.o.set(t[n],this.u=[1,0,this.u]);return e.children},fe.prototype.componentDidUpdate=fe.prototype.componentDidMount=function(){var e=this;this.o.forEach((function(t,n){ge(e,n,t)}))};var ye="undefined"!=typeof Symbol&&Symbol.for&&Symbol.for("react.element")||60103,be=/^(?:accent|alignment|arabic|baseline|cap|clip(?!PathU)|color|dominant|fill|flood|font|glyph(?!R)|horiz|image|letter|lighting|marker(?!H|W|U)|overline|paint|pointer|shape|stop|strikethrough|stroke|text(?!L)|transform|underline|unicode|units|v|vector|vert|word|writing|x(?!C))[A-Z]/,Ee="undefined"!=typeof document,Ae=function(e){return("undefined"!=typeof Symbol&&"symbol"==typeof Symbol()?/fil|che|rad/i:/fil|che|ra/i).test(e)};D.prototype.isReactComponent={},["componentWillMount","componentWillReceiveProps","componentWillUpdate"].forEach((function(e){Object.defineProperty(D.prototype,e,{configurable:!0,get:function(){return this["UNSAFE_"+e]},set:function(t){Object.defineProperty(this,e,{configurable:!0,writable:!0,value:t})}})}));var Se=r.event;function De(){}function we(){return this.cancelBubble}function Ce(){return this.defaultPrevented}r.event=function(e){return Se&&(e=Se(e)),e.persist=De,e.isPropagationStopped=we,e.isDefaultPrevented=Ce,e.nativeEvent=e};var Re={configurable:!0,get:function(){return this.class}},_e=r.vnode;r.vnode=function(e){var t=e.type,n=e.props,r=n;if("string"==typeof t){var i=-1===t.indexOf("-");for(var s in r={},n){var o=n[s];Ee&&"children"===s&&"noscript"===t||"value"===s&&"defaultValue"in n&&null==o||("defaultValue"===s&&"value"in n&&null==n.value?s="value":"download"===s&&!0===o?o="":/ondoubleclick/i.test(s)?s="ondblclick":/^onchange(textarea|input)/i.test(s+t)&&!Ae(n.type)?s="oninput":/^onfocus$/i.test(s)?s="onfocusin":/^onblur$/i.test(s)?s="onfocusout":/^on(Ani|Tra|Tou|BeforeInp|Compo)/.test(s)?s=s.toLowerCase():i&&be.test(s)?s=s.replace(/[A-Z0-9]/g,"-$&").toLowerCase():null===o&&(o=void 0),/^oninput$/i.test(s)&&(s=s.toLowerCase(),r[s]&&(s="oninputCapture")),r[s]=o)}"select"==t&&r.multiple&&Array.isArray(r.value)&&(r.value=M(n.children).forEach((function(e){e.props.selected=-1!=r.value.indexOf(e.props.value)}))),"select"==t&&null!=r.defaultValue&&(r.value=M(n.children).forEach((function(e){e.props.selected=r.multiple?-1!=r.defaultValue.indexOf(e.props.value):r.defaultValue==e.props.value}))),e.props=r,n.class!=n.className&&(Re.enumerable="className"in n,null!=n.className&&(r.class=n.className),Object.defineProperty(r,"className",Re))}e.$$typeof=ye,_e&&_e(e)};var xe=r.__r;r.__r=function(e){xe&&xe(e),e.__c};const Te=[],ke=new Map;function Me(e){Te.push(e),ke.forEach((t=>{Ie(t,e)}))}function Oe(e){let t=ke.get(e);if(!t||!t.isConnected){if(t=e.querySelector("style[data-fullcalendar]"),!t){t=document.createElement("style"),t.setAttribute("data-fullcalendar","");const n=function(){void 0===Ne&&(Ne=function(){const e=document.querySelector('meta[name="csp-nonce"]');if(e&&e.hasAttribute("content"))return e.getAttribute("content");const t=document.querySelector("script[nonce]");if(t)return t.nonce||"";return""}());return Ne}();n&&(t.nonce=n);const r=e===document?document.head:e,i=e===document?r.querySelector("script,link[rel=stylesheet],link[as=style],style"):r.firstChild;r.insertBefore(t,i)}ke.set(e,t),function(e){for(const t of Te)Ie(e,t)}(t)}}function Ie(e,t){const{sheet:n}=e,r=n.cssRules.length;t.split("}").forEach(((e,t)=>{(e=e.trim())&&n.insertRule(e+"}",r+t)}))}let Ne;"undefined"!=typeof document&&Oe(document);Me(':root{--fc-small-font-size:.85em;--fc-page-bg-color:#fff;--fc-neutral-bg-color:hsla(0,0%,82%,.3);--fc-neutral-text-color:grey;--fc-border-color:#ddd;--fc-button-text-color:#fff;--fc-button-bg-color:#2c3e50;--fc-button-border-color:#2c3e50;--fc-button-hover-bg-color:#1e2b37;--fc-button-hover-border-color:#1a252f;--fc-button-active-bg-color:#1a252f;--fc-button-active-border-color:#151e27;--fc-event-bg-color:#3788d8;--fc-event-border-color:#3788d8;--fc-event-text-color:#fff;--fc-event-selected-overlay-color:rgba(0,0,0,.25);--fc-more-link-bg-color:#d0d0d0;--fc-more-link-text-color:inherit;--fc-event-resizer-thickness:8px;--fc-event-resizer-dot-total-width:8px;--fc-event-resizer-dot-border-width:1px;--fc-non-business-color:hsla(0,0%,84%,.3);--fc-bg-event-color:#8fdf82;--fc-bg-event-opacity:0.3;--fc-highlight-color:rgba(188,232,241,.3);--fc-today-bg-color:rgba(255,220,40,.15);--fc-now-indicator-color:red}.fc-not-allowed,.fc-not-allowed .fc-event{cursor:not-allowed}.fc{display:flex;flex-direction:column;font-size:1em}.fc,.fc *,.fc :after,.fc :before{box-sizing:border-box}.fc table{border-collapse:collapse;border-spacing:0;font-size:1em}.fc th{text-align:center}.fc td,.fc th{padding:0;vertical-align:top}.fc a[data-navlink]{cursor:pointer}.fc a[data-navlink]:hover{text-decoration:underline}.fc-direction-ltr{direction:ltr;text-align:left}.fc-direction-rtl{direction:rtl;text-align:right}.fc-theme-standard td,.fc-theme-standard th{border:1px solid var(--fc-border-color)}.fc-liquid-hack td,.fc-liquid-hack th{position:relative}@font-face{font-family:fcicons;font-style:normal;font-weight:400;src:url("data:application/x-font-ttf;charset=utf-8;base64,AAEAAAALAIAAAwAwT1MvMg8SBfAAAAC8AAAAYGNtYXAXVtKNAAABHAAAAFRnYXNwAAAAEAAAAXAAAAAIZ2x5ZgYydxIAAAF4AAAFNGhlYWQUJ7cIAAAGrAAAADZoaGVhB20DzAAABuQAAAAkaG10eCIABhQAAAcIAAAALGxvY2ED4AU6AAAHNAAAABhtYXhwAA8AjAAAB0wAAAAgbmFtZXsr690AAAdsAAABhnBvc3QAAwAAAAAI9AAAACAAAwPAAZAABQAAApkCzAAAAI8CmQLMAAAB6wAzAQkAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAAAAAAAABAAADpBgPA/8AAQAPAAEAAAAABAAAAAAAAAAAAAAAgAAAAAAADAAAAAwAAABwAAQADAAAAHAADAAEAAAAcAAQAOAAAAAoACAACAAIAAQAg6Qb//f//AAAAAAAg6QD//f//AAH/4xcEAAMAAQAAAAAAAAAAAAAAAQAB//8ADwABAAAAAAAAAAAAAgAANzkBAAAAAAEAAAAAAAAAAAACAAA3OQEAAAAAAQAAAAAAAAAAAAIAADc5AQAAAAABAWIAjQKeAskAEwAAJSc3NjQnJiIHAQYUFwEWMjc2NCcCnuLiDQ0MJAz/AA0NAQAMJAwNDcni4gwjDQwM/wANIwz/AA0NDCMNAAAAAQFiAI0CngLJABMAACUBNjQnASYiBwYUHwEHBhQXFjI3AZ4BAA0N/wAMJAwNDeLiDQ0MJAyNAQAMIw0BAAwMDSMM4uINIwwNDQAAAAIA4gC3Ax4CngATACcAACUnNzY0JyYiDwEGFB8BFjI3NjQnISc3NjQnJiIPAQYUHwEWMjc2NCcB87e3DQ0MIw3VDQ3VDSMMDQ0BK7e3DQ0MJAzVDQ3VDCQMDQ3zuLcMJAwNDdUNIwzWDAwNIwy4twwkDA0N1Q0jDNYMDA0jDAAAAgDiALcDHgKeABMAJwAAJTc2NC8BJiIHBhQfAQcGFBcWMjchNzY0LwEmIgcGFB8BBwYUFxYyNwJJ1Q0N1Q0jDA0Nt7cNDQwjDf7V1Q0N1QwkDA0Nt7cNDQwkDLfWDCMN1Q0NDCQMt7gMIw0MDNYMIw3VDQ0MJAy3uAwjDQwMAAADAFUAAAOrA1UAMwBoAHcAABMiBgcOAQcOAQcOARURFBYXHgEXHgEXHgEzITI2Nz4BNz4BNz4BNRE0JicuAScuAScuASMFITIWFx4BFx4BFx4BFREUBgcOAQcOAQcOASMhIiYnLgEnLgEnLgE1ETQ2Nz4BNz4BNz4BMxMhMjY1NCYjISIGFRQWM9UNGAwLFQkJDgUFBQUFBQ4JCRULDBgNAlYNGAwLFQkJDgUFBQUFBQ4JCRULDBgN/aoCVgQIBAQHAwMFAQIBAQIBBQMDBwQECAT9qgQIBAQHAwMFAQIBAQIBBQMDBwQECASAAVYRGRkR/qoRGRkRA1UFBAUOCQkVDAsZDf2rDRkLDBUJCA4FBQUFBQUOCQgVDAsZDQJVDRkLDBUJCQ4FBAVVAgECBQMCBwQECAX9qwQJAwQHAwMFAQICAgIBBQMDBwQDCQQCVQUIBAQHAgMFAgEC/oAZEhEZGRESGQAAAAADAFUAAAOrA1UAMwBoAIkAABMiBgcOAQcOAQcOARURFBYXHgEXHgEXHgEzITI2Nz4BNz4BNz4BNRE0JicuAScuAScuASMFITIWFx4BFx4BFx4BFREUBgcOAQcOAQcOASMhIiYnLgEnLgEnLgE1ETQ2Nz4BNz4BNz4BMxMzFRQWMzI2PQEzMjY1NCYrATU0JiMiBh0BIyIGFRQWM9UNGAwLFQkJDgUFBQUFBQ4JCRULDBgNAlYNGAwLFQkJDgUFBQUFBQ4JCRULDBgN/aoCVgQIBAQHAwMFAQIBAQIBBQMDBwQECAT9qgQIBAQHAwMFAQIBAQIBBQMDBwQECASAgBkSEhmAERkZEYAZEhIZgBEZGREDVQUEBQ4JCRUMCxkN/asNGQsMFQkIDgUFBQUFBQ4JCBUMCxkNAlUNGQsMFQkJDgUEBVUCAQIFAwIHBAQIBf2rBAkDBAcDAwUBAgICAgEFAwMHBAMJBAJVBQgEBAcCAwUCAQL+gIASGRkSgBkSERmAEhkZEoAZERIZAAABAOIAjQMeAskAIAAAExcHBhQXFjI/ARcWMjc2NC8BNzY0JyYiDwEnJiIHBhQX4uLiDQ0MJAzi4gwkDA0N4uINDQwkDOLiDCQMDQ0CjeLiDSMMDQ3h4Q0NDCMN4uIMIw0MDOLiDAwNIwwAAAABAAAAAQAAa5n0y18PPPUACwQAAAAAANivOVsAAAAA2K85WwAAAAADqwNVAAAACAACAAAAAAAAAAEAAAPA/8AAAAQAAAAAAAOrAAEAAAAAAAAAAAAAAAAAAAALBAAAAAAAAAAAAAAAAgAAAAQAAWIEAAFiBAAA4gQAAOIEAABVBAAAVQQAAOIAAAAAAAoAFAAeAEQAagCqAOoBngJkApoAAQAAAAsAigADAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAA4ArgABAAAAAAABAAcAAAABAAAAAAACAAcAYAABAAAAAAADAAcANgABAAAAAAAEAAcAdQABAAAAAAAFAAsAFQABAAAAAAAGAAcASwABAAAAAAAKABoAigADAAEECQABAA4ABwADAAEECQACAA4AZwADAAEECQADAA4APQADAAEECQAEAA4AfAADAAEECQAFABYAIAADAAEECQAGAA4AUgADAAEECQAKADQApGZjaWNvbnMAZgBjAGkAYwBvAG4Ac1ZlcnNpb24gMS4wAFYAZQByAHMAaQBvAG4AIAAxAC4AMGZjaWNvbnMAZgBjAGkAYwBvAG4Ac2ZjaWNvbnMAZgBjAGkAYwBvAG4Ac1JlZ3VsYXIAUgBlAGcAdQBsAGEAcmZjaWNvbnMAZgBjAGkAYwBvAG4Ac0ZvbnQgZ2VuZXJhdGVkIGJ5IEljb01vb24uAEYAbwBuAHQAIABnAGUAbgBlAHIAYQB0AGUAZAAgAGIAeQAgAEkAYwBvAE0AbwBvAG4ALgAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") format("truetype")}.fc-icon{speak:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;display:inline-block;font-family:fcicons!important;font-style:normal;font-variant:normal;font-weight:400;height:1em;line-height:1;text-align:center;text-transform:none;-webkit-user-select:none;-moz-user-select:none;user-select:none;width:1em}.fc-icon-chevron-left:before{content:"\\e900"}.fc-icon-chevron-right:before{content:"\\e901"}.fc-icon-chevrons-left:before{content:"\\e902"}.fc-icon-chevrons-right:before{content:"\\e903"}.fc-icon-minus-square:before{content:"\\e904"}.fc-icon-plus-square:before{content:"\\e905"}.fc-icon-x:before{content:"\\e906"}.fc .fc-button{border-radius:0;font-family:inherit;font-size:inherit;line-height:inherit;margin:0;overflow:visible;text-transform:none}.fc .fc-button:focus{outline:1px dotted;outline:5px auto -webkit-focus-ring-color}.fc .fc-button{-webkit-appearance:button}.fc .fc-button:not(:disabled){cursor:pointer}.fc .fc-button{background-color:transparent;border:1px solid transparent;border-radius:.25em;display:inline-block;font-size:1em;font-weight:400;line-height:1.5;padding:.4em .65em;text-align:center;-webkit-user-select:none;-moz-user-select:none;user-select:none;vertical-align:middle}.fc .fc-button:hover{text-decoration:none}.fc .fc-button:focus{box-shadow:0 0 0 .2rem rgba(44,62,80,.25);outline:0}.fc .fc-button:disabled{opacity:.65}.fc .fc-button-primary{background-color:var(--fc-button-bg-color);border-color:var(--fc-button-border-color);color:var(--fc-button-text-color)}.fc .fc-button-primary:hover{background-color:var(--fc-button-hover-bg-color);border-color:var(--fc-button-hover-border-color);color:var(--fc-button-text-color)}.fc .fc-button-primary:disabled{background-color:var(--fc-button-bg-color);border-color:var(--fc-button-border-color);color:var(--fc-button-text-color)}.fc .fc-button-primary:focus{box-shadow:0 0 0 .2rem rgba(76,91,106,.5)}.fc .fc-button-primary:not(:disabled).fc-button-active,.fc .fc-button-primary:not(:disabled):active{background-color:var(--fc-button-active-bg-color);border-color:var(--fc-button-active-border-color);color:var(--fc-button-text-color)}.fc .fc-button-primary:not(:disabled).fc-button-active:focus,.fc .fc-button-primary:not(:disabled):active:focus{box-shadow:0 0 0 .2rem rgba(76,91,106,.5)}.fc .fc-button .fc-icon{font-size:1.5em;vertical-align:middle}.fc .fc-button-group{display:inline-flex;position:relative;vertical-align:middle}.fc .fc-button-group>.fc-button{flex:1 1 auto;position:relative}.fc .fc-button-group>.fc-button.fc-button-active,.fc .fc-button-group>.fc-button:active,.fc .fc-button-group>.fc-button:focus,.fc .fc-button-group>.fc-button:hover{z-index:1}.fc-direction-ltr .fc-button-group>.fc-button:not(:first-child){border-bottom-left-radius:0;border-top-left-radius:0;margin-left:-1px}.fc-direction-ltr .fc-button-group>.fc-button:not(:last-child){border-bottom-right-radius:0;border-top-right-radius:0}.fc-direction-rtl .fc-button-group>.fc-button:not(:first-child){border-bottom-right-radius:0;border-top-right-radius:0;margin-right:-1px}.fc-direction-rtl .fc-button-group>.fc-button:not(:last-child){border-bottom-left-radius:0;border-top-left-radius:0}.fc .fc-toolbar{align-items:center;display:flex;justify-content:space-between}.fc .fc-toolbar.fc-header-toolbar{margin-bottom:1.5em}.fc .fc-toolbar.fc-footer-toolbar{margin-top:1.5em}.fc .fc-toolbar-title{font-size:1.75em;margin:0}.fc-direction-ltr .fc-toolbar>*>:not(:first-child){margin-left:.75em}.fc-direction-rtl .fc-toolbar>*>:not(:first-child){margin-right:.75em}.fc-direction-rtl .fc-toolbar-ltr{flex-direction:row-reverse}.fc .fc-scroller{-webkit-overflow-scrolling:touch;position:relative}.fc .fc-scroller-liquid{height:100%}.fc .fc-scroller-liquid-absolute{bottom:0;left:0;position:absolute;right:0;top:0}.fc .fc-scroller-harness{direction:ltr;overflow:hidden;position:relative}.fc .fc-scroller-harness-liquid{height:100%}.fc-direction-rtl .fc-scroller-harness>.fc-scroller{direction:rtl}.fc-theme-standard .fc-scrollgrid{border:1px solid var(--fc-border-color)}.fc .fc-scrollgrid,.fc .fc-scrollgrid table{table-layout:fixed;width:100%}.fc .fc-scrollgrid table{border-left-style:hidden;border-right-style:hidden;border-top-style:hidden}.fc .fc-scrollgrid{border-bottom-width:0;border-collapse:separate;border-right-width:0}.fc .fc-scrollgrid-liquid{height:100%}.fc .fc-scrollgrid-section,.fc .fc-scrollgrid-section table,.fc .fc-scrollgrid-section>td{height:1px}.fc .fc-scrollgrid-section-liquid>td{height:100%}.fc .fc-scrollgrid-section>*{border-left-width:0;border-top-width:0}.fc .fc-scrollgrid-section-footer>*,.fc .fc-scrollgrid-section-header>*{border-bottom-width:0}.fc .fc-scrollgrid-section-body table,.fc .fc-scrollgrid-section-footer table{border-bottom-style:hidden}.fc .fc-scrollgrid-section-sticky>*{background:var(--fc-page-bg-color);position:sticky;z-index:3}.fc .fc-scrollgrid-section-header.fc-scrollgrid-section-sticky>*{top:0}.fc .fc-scrollgrid-section-footer.fc-scrollgrid-section-sticky>*{bottom:0}.fc .fc-scrollgrid-sticky-shim{height:1px;margin-bottom:-1px}.fc-sticky{position:sticky}.fc .fc-view-harness{flex-grow:1;position:relative}.fc .fc-view-harness-active>.fc-view{bottom:0;left:0;position:absolute;right:0;top:0}.fc .fc-col-header-cell-cushion{display:inline-block;padding:2px 4px}.fc .fc-bg-event,.fc .fc-highlight,.fc .fc-non-business{bottom:0;left:0;position:absolute;right:0;top:0}.fc .fc-non-business{background:var(--fc-non-business-color)}.fc .fc-bg-event{background:var(--fc-bg-event-color);opacity:var(--fc-bg-event-opacity)}.fc .fc-bg-event .fc-event-title{font-size:var(--fc-small-font-size);font-style:italic;margin:.5em}.fc .fc-highlight{background:var(--fc-highlight-color)}.fc .fc-cell-shaded,.fc .fc-day-disabled{background:var(--fc-neutral-bg-color)}a.fc-event,a.fc-event:hover{text-decoration:none}.fc-event.fc-event-draggable,.fc-event[href]{cursor:pointer}.fc-event .fc-event-main{position:relative;z-index:2}.fc-event-dragging:not(.fc-event-selected){opacity:.75}.fc-event-dragging.fc-event-selected{box-shadow:0 2px 7px rgba(0,0,0,.3)}.fc-event .fc-event-resizer{display:none;position:absolute;z-index:4}.fc-event-selected .fc-event-resizer,.fc-event:hover .fc-event-resizer{display:block}.fc-event-selected .fc-event-resizer{background:var(--fc-page-bg-color);border-color:inherit;border-radius:calc(var(--fc-event-resizer-dot-total-width)/2);border-style:solid;border-width:var(--fc-event-resizer-dot-border-width);height:var(--fc-event-resizer-dot-total-width);width:var(--fc-event-resizer-dot-total-width)}.fc-event-selected .fc-event-resizer:before{bottom:-20px;content:"";left:-20px;position:absolute;right:-20px;top:-20px}.fc-event-selected,.fc-event:focus{box-shadow:0 2px 5px rgba(0,0,0,.2)}.fc-event-selected:before,.fc-event:focus:before{bottom:0;content:"";left:0;position:absolute;right:0;top:0;z-index:3}.fc-event-selected:after,.fc-event:focus:after{background:var(--fc-event-selected-overlay-color);bottom:-1px;content:"";left:-1px;position:absolute;right:-1px;top:-1px;z-index:1}.fc-h-event{background-color:var(--fc-event-bg-color);border:1px solid var(--fc-event-border-color);display:block}.fc-h-event .fc-event-main{color:var(--fc-event-text-color)}.fc-h-event .fc-event-main-frame{display:flex}.fc-h-event .fc-event-time{max-width:100%;overflow:hidden}.fc-h-event .fc-event-title-container{flex-grow:1;flex-shrink:1;min-width:0}.fc-h-event .fc-event-title{display:inline-block;left:0;max-width:100%;overflow:hidden;right:0;vertical-align:top}.fc-h-event.fc-event-selected:before{bottom:-10px;top:-10px}.fc-direction-ltr .fc-daygrid-block-event:not(.fc-event-start),.fc-direction-rtl .fc-daygrid-block-event:not(.fc-event-end){border-bottom-left-radius:0;border-left-width:0;border-top-left-radius:0}.fc-direction-ltr .fc-daygrid-block-event:not(.fc-event-end),.fc-direction-rtl .fc-daygrid-block-event:not(.fc-event-start){border-bottom-right-radius:0;border-right-width:0;border-top-right-radius:0}.fc-h-event:not(.fc-event-selected) .fc-event-resizer{bottom:0;top:0;width:var(--fc-event-resizer-thickness)}.fc-direction-ltr .fc-h-event:not(.fc-event-selected) .fc-event-resizer-start,.fc-direction-rtl .fc-h-event:not(.fc-event-selected) .fc-event-resizer-end{cursor:w-resize;left:calc(var(--fc-event-resizer-thickness)*-.5)}.fc-direction-ltr .fc-h-event:not(.fc-event-selected) .fc-event-resizer-end,.fc-direction-rtl .fc-h-event:not(.fc-event-selected) .fc-event-resizer-start{cursor:e-resize;right:calc(var(--fc-event-resizer-thickness)*-.5)}.fc-h-event.fc-event-selected .fc-event-resizer{margin-top:calc(var(--fc-event-resizer-dot-total-width)*-.5);top:50%}.fc-direction-ltr .fc-h-event.fc-event-selected .fc-event-resizer-start,.fc-direction-rtl .fc-h-event.fc-event-selected .fc-event-resizer-end{left:calc(var(--fc-event-resizer-dot-total-width)*-.5)}.fc-direction-ltr .fc-h-event.fc-event-selected .fc-event-resizer-end,.fc-direction-rtl .fc-h-event.fc-event-selected .fc-event-resizer-start{right:calc(var(--fc-event-resizer-dot-total-width)*-.5)}.fc .fc-popover{box-shadow:0 2px 6px rgba(0,0,0,.15);position:absolute;z-index:9999}.fc .fc-popover-header{align-items:center;display:flex;flex-direction:row;justify-content:space-between;padding:3px 4px}.fc .fc-popover-title{margin:0 2px}.fc .fc-popover-close{cursor:pointer;font-size:1.1em;opacity:.65}.fc-theme-standard .fc-popover{background:var(--fc-page-bg-color);border:1px solid var(--fc-border-color)}.fc-theme-standard .fc-popover-header{background:var(--fc-neutral-bg-color)}');class Pe{constructor(e){this.drainedOption=e,this.isRunning=!1,this.isDirty=!1,this.pauseDepths={},this.timeoutId=0}request(e){this.isDirty=!0,this.isPaused()||(this.clearTimeout(),null==e?this.tryDrain():this.timeoutId=setTimeout(this.tryDrain.bind(this),e))}pause(e=""){let{pauseDepths:t}=this;t[e]=(t[e]||0)+1,this.clearTimeout()}resume(e="",t){let{pauseDepths:n}=this;if(e in n){if(t)delete n[e];else{n[e]-=1,n[e]<=0&&delete n[e]}this.tryDrain()}}isPaused(){return Object.keys(this.pauseDepths).length}tryDrain(){if(!this.isRunning&&!this.isPaused()){for(this.isRunning=!0;this.isDirty;)this.isDirty=!1,this.drained();this.isRunning=!1}}clear(){this.clearTimeout(),this.isDirty=!1,this.pauseDepths={}}clearTimeout(){this.timeoutId&&(clearTimeout(this.timeoutId),this.timeoutId=0)}drained(){this.drainedOption&&this.drainedOption()}}function He(e){e.parentNode&&e.parentNode.removeChild(e)}function Be(e,t){if(e.closest)return e.closest(t);if(!document.documentElement.contains(e))return null;do{if(je(e,t))return e;e=e.parentElement||e.parentNode}while(null!==e&&1===e.nodeType);return null}function je(e,t){return(e.matches||e.matchesSelector||e.msMatchesSelector).call(e,t)}const ze=/(top|left|right|bottom|width|height)$/i;function Ue(e,t){for(let n in t)Le(e,n,t[n])}function Le(e,t,n){null==n?e.style[t]="":"number"==typeof n&&ze.test(t)?e.style[t]=`${n}px`:e.style[t]=n}function We(e){var t,n;return null!==(n=null===(t=e.composedPath)||void 0===t?void 0:t.call(e)[0])&&void 0!==n?n:e.target}let Fe=0;function Ve(){return Fe+=1,"fc-dom-"+Fe}function Ge(e){e.preventDefault()}function Qe(e,t,n,r){let i=function(e,t){return n=>{let r=Be(n.target,e);r&&t.call(r,n,r)}}(n,r);return e.addEventListener(t,i),()=>{e.removeEventListener(t,i)}}const Ye=["webkitTransitionEnd","otransitionend","oTransitionEnd","msTransitionEnd","transitionend"];function qe(e){return Object.assign({onClick:e},Ze(e))}function Ze(e){return{tabIndex:0,onKeyDown(t){"Enter"!==t.key&&" "!==t.key||(e(t),t.preventDefault())}}}let Xe=0;function $e(){return Xe+=1,String(Xe)}function Je(){document.body.classList.add("fc-not-allowed")}function Ke(){document.body.classList.remove("fc-not-allowed")}function et(e,t,n){return n.func?n.func(e,t):function(e,t){if(!e&&!t)return 0;if(null==t)return-1;if(null==e)return 1;if("string"==typeof e||"string"==typeof t)return String(e).localeCompare(String(t));return e-t}(e[n.field],t[n.field])*(n.order||1)}function tt(e,t){let n=String(e);return"000".substr(0,t-n.length)+n}function nt(e,t,n){return"function"==typeof e?e(...t):"string"==typeof e?t.reduce(((e,t,n)=>e.replace("$"+n,t||"")),e):n}function rt(e,t){return e-t}function it(e){return e%1==0}function st(e){let t=e.querySelector(".fc-scrollgrid-shrink-frame"),n=e.querySelector(".fc-scrollgrid-shrink-cushion");if(!t)throw new Error("needs fc-scrollgrid-shrink-frame className");if(!n)throw new Error("needs fc-scrollgrid-shrink-cushion className");return e.getBoundingClientRect().width-t.getBoundingClientRect().width+n.getBoundingClientRect().width}const ot=["years","months","days","milliseconds"],at=/^(-?)(?:(\d+)\.)?(\d+):(\d\d)(?::(\d\d)(?:\.(\d\d\d))?)?/;function lt(e,t){return"string"==typeof e?function(e){let t=at.exec(e);if(t){let e=t[1]?-1:1;return{years:0,months:0,days:e*(t[2]?parseInt(t[2],10):0),milliseconds:e*(60*(t[3]?parseInt(t[3],10):0)*60*1e3+60*(t[4]?parseInt(t[4],10):0)*1e3+1e3*(t[5]?parseInt(t[5],10):0)+(t[6]?parseInt(t[6],10):0))}}return null}(e):"object"==typeof e&&e?ct(e):"number"==typeof e?ct({[t||"milliseconds"]:e}):null}function ct(e){let t={years:e.years||e.year||0,months:e.months||e.month||0,days:e.days||e.day||0,milliseconds:60*(e.hours||e.hour||0)*60*1e3+60*(e.minutes||e.minute||0)*1e3+1e3*(e.seconds||e.second||0)+(e.milliseconds||e.millisecond||e.ms||0)},n=e.weeks||e.week;return n&&(t.days+=7*n,t.specifiedWeeks=!0),t}function dt(e,t){return{years:e.years+t.years,months:e.months+t.months,days:e.days+t.days,milliseconds:e.milliseconds+t.milliseconds}}function ut(e){return ht(e)/864e5}function ht(e){return 31536e6*e.years+2592e6*e.months+864e5*e.days+e.milliseconds}function ft(e,t){let n=null;for(let r=0;r<ot.length;r+=1){let i=ot[r];if(t[i]){let r=e[i]/t[i];if(!it(r)||null!==n&&n!==r)return null;n=r}else if(e[i])return null}return n}function gt(e){let t=e.milliseconds;if(t){if(t%1e3!=0)return{unit:"millisecond",value:t};if(t%6e4!=0)return{unit:"second",value:t/1e3};if(t%36e5!=0)return{unit:"minute",value:t/6e4};if(t)return{unit:"hour",value:t/36e5}}return e.days?e.specifiedWeeks&&e.days%7==0?{unit:"week",value:e.days/7}:{unit:"day",value:e.days}:e.months?{unit:"month",value:e.months}:e.years?{unit:"year",value:e.years}:{unit:"millisecond",value:0}}function pt(e,t,n){if(e===t)return!0;let r,i=e.length;if(i!==t.length)return!1;for(r=0;r<i;r+=1)if(!(n?n(e[r],t[r]):e[r]===t[r]))return!1;return!0}const mt=["sun","mon","tue","wed","thu","fri","sat"];function vt(e,t){let n=_t(e);return n[2]+=7*t,xt(n)}function yt(e,t){let n=_t(e);return n[2]+=t,xt(n)}function bt(e,t){let n=_t(e);return n[6]+=t,xt(n)}function Et(e,t){return(t.valueOf()-e.valueOf())/864e5}function At(e,t){return kt(e)===kt(t)?Math.round(Et(e,t)):null}function St(e){return xt([e.getUTCFullYear(),e.getUTCMonth(),e.getUTCDate()])}function Dt(e,t,n,r){let i=xt([t,0,1+wt(t,n,r)]),s=St(e),o=Math.round(Et(i,s));return Math.floor(o/7)+1}function wt(e,t,n){let r=7+t-n;return-((7+xt([e,0,r]).getUTCDay()-t)%7)+r-1}function Ct(e){return[e.getFullYear(),e.getMonth(),e.getDate(),e.getHours(),e.getMinutes(),e.getSeconds(),e.getMilliseconds()]}function Rt(e){return new Date(e[0],e[1]||0,null==e[2]?1:e[2],e[3]||0,e[4]||0,e[5]||0)}function _t(e){return[e.getUTCFullYear(),e.getUTCMonth(),e.getUTCDate(),e.getUTCHours(),e.getUTCMinutes(),e.getUTCSeconds(),e.getUTCMilliseconds()]}function xt(e){return 1===e.length&&(e=e.concat([0])),new Date(Date.UTC(...e))}function Tt(e){return!isNaN(e.valueOf())}function kt(e){return 1e3*e.getUTCHours()*60*60+1e3*e.getUTCMinutes()*60+1e3*e.getUTCSeconds()+e.getUTCMilliseconds()}function Mt(e,t,n=!1){let r=e.toISOString();return r=r.replace(".000",""),n&&(r=r.replace("T00:00:00Z","")),r.length>10&&(null==t?r=r.replace("Z",""):0!==t&&(r=r.replace("Z",It(t,!0)))),r}function Ot(e){return e.toISOString().replace(/T.*$/,"")}function It(e,t=!1){let n=e<0?"-":"+",r=Math.abs(e),i=Math.floor(r/60),s=Math.round(r%60);return t?`${n+tt(i,2)}:${tt(s,2)}`:`GMT${n}${i}${s?`:${tt(s,2)}`:""}`}function Nt(e,t,n){let r,i;return function(...s){if(r){if(!pt(r,s)){n&&n(i);let r=e.apply(this,s);t&&t(r,i)||(i=r)}}else i=e.apply(this,s);return r=s,i}}function Pt(e,t,n){let r,i;return s=>{if(r){if(!gn(r,s)){n&&n(i);let r=e.call(this,s);t&&t(r,i)||(i=r)}}else i=e.call(this,s);return r=s,i}}const Ht={week:3,separator:0,omitZeroMinute:0,meridiem:0,omitCommas:0},Bt={timeZoneName:7,era:6,year:5,month:4,day:2,weekday:2,hour:1,minute:1,second:1},jt=/\s*([ap])\.?m\.?/i,zt=/,/g,Ut=/\s+/g,Lt=/\u200e/g,Wt=/UTC|GMT/;class Ft{constructor(e){let t={},n={},r=0;for(let i in e)i in Ht?(n[i]=e[i],r=Math.max(Ht[i],r)):(t[i]=e[i],i in Bt&&(r=Math.max(Bt[i],r)));this.standardDateProps=t,this.extendedSettings=n,this.severity=r,this.buildFormattingFunc=Nt(Vt)}format(e,t){return this.buildFormattingFunc(this.standardDateProps,this.extendedSettings,t)(e)}formatRange(e,t,n,r){let{standardDateProps:i,extendedSettings:s}=this,o=function(e,t,n){if(n.getMarkerYear(e)!==n.getMarkerYear(t))return 5;if(n.getMarkerMonth(e)!==n.getMarkerMonth(t))return 4;if(n.getMarkerDay(e)!==n.getMarkerDay(t))return 2;if(kt(e)!==kt(t))return 1;return 0}(e.marker,t.marker,n.calendarSystem);if(!o)return this.format(e,n);let a=o;!(a>1)||"numeric"!==i.year&&"2-digit"!==i.year||"numeric"!==i.month&&"2-digit"!==i.month||"numeric"!==i.day&&"2-digit"!==i.day||(a=1);let l=this.format(e,n),c=this.format(t,n);if(l===c)return l;let d=Vt(function(e,t){let n={};for(let r in e)(!(r in Bt)||Bt[r]<=t)&&(n[r]=e[r]);return n}(i,a),s,n),u=d(e),h=d(t),f=function(e,t,n,r){let i=0;for(;i<e.length;){let s=e.indexOf(t,i);if(-1===s)break;let o=e.substr(0,s);i=s+t.length;let a=e.substr(i),l=0;for(;l<n.length;){let e=n.indexOf(r,l);if(-1===e)break;let t=n.substr(0,e);l=e+r.length;let i=n.substr(l);if(o===t&&a===i)return{before:o,after:a}}}return null}(l,u,c,h),g=s.separator||r||n.defaultSeparator||"";return f?f.before+u+g+h+f.after:l+g+c}getLargestUnit(){switch(this.severity){case 7:case 6:case 5:return"year";case 4:return"month";case 3:return"week";case 2:return"day";default:return"time"}}}function Vt(e,t,n){let r=Object.keys(e).length;return 1===r&&"short"===e.timeZoneName?e=>It(e.timeZoneOffset):0===r&&t.week?e=>function(e,t,n,r,i){let s=[];"long"===i?s.push(n):"short"!==i&&"narrow"!==i||s.push(t);"long"!==i&&"short"!==i||s.push(" ");s.push(r.simpleNumberFormat.format(e)),"rtl"===r.options.direction&&s.reverse();return s.join("")}(n.computeWeekNumber(e.marker),n.weekText,n.weekTextLong,n.locale,t.week):function(e,t,n){e=Object.assign({},e),t=Object.assign({},t),function(e,t){e.timeZoneName&&(e.hour||(e.hour="2-digit"),e.minute||(e.minute="2-digit"));"long"===e.timeZoneName&&(e.timeZoneName="short");t.omitZeroMinute&&(e.second||e.millisecond)&&delete t.omitZeroMinute}(e,t),e.timeZone="UTC";let r,i=new Intl.DateTimeFormat(n.locale.codes,e);if(t.omitZeroMinute){let t=Object.assign({},e);delete t.minute,r=new Intl.DateTimeFormat(n.locale.codes,t)}return s=>{let o,{marker:a}=s;return o=r&&!a.getUTCMinutes()?r:i,function(e,t,n,r,i){e=e.replace(Lt,""),"short"===n.timeZoneName&&(e=function(e,t){let n=!1;e=e.replace(Wt,(()=>(n=!0,t))),n||(e+=` ${t}`);return e}(e,"UTC"===i.timeZone||null==t.timeZoneOffset?"UTC":It(t.timeZoneOffset)));r.omitCommas&&(e=e.replace(zt,"").trim());r.omitZeroMinute&&(e=e.replace(":00",""));!1===r.meridiem?e=e.replace(jt,"").trim():"narrow"===r.meridiem?e=e.replace(jt,((e,t)=>t.toLocaleLowerCase())):"short"===r.meridiem?e=e.replace(jt,((e,t)=>`${t.toLocaleLowerCase()}m`)):"lowercase"===r.meridiem&&(e=e.replace(jt,(e=>e.toLocaleLowerCase())));return e=e.replace(Ut," "),e=e.trim(),e}(o.format(a),s,e,t,n)}}(e,t,n)}function Gt(e,t){let n=t.markerToArray(e.marker);return{marker:e.marker,timeZoneOffset:e.timeZoneOffset,array:n,year:n[0],month:n[1],day:n[2],hour:n[3],minute:n[4],second:n[5],millisecond:n[6]}}function Qt(e,t,n,r){let i=Gt(e,n.calendarSystem);return{date:i,start:i,end:t?Gt(t,n.calendarSystem):null,timeZone:n.timeZone,localeCodes:n.locale.codes,defaultSeparator:r||n.defaultSeparator}}class Yt{constructor(e){this.cmdStr=e}format(e,t,n){return t.cmdFormatter(this.cmdStr,Qt(e,null,t,n))}formatRange(e,t,n,r){return n.cmdFormatter(this.cmdStr,Qt(e,t,n,r))}}class qt{constructor(e){this.func=e}format(e,t,n){return this.func(Qt(e,null,t,n))}formatRange(e,t,n,r){return this.func(Qt(e,t,n,r))}}function Zt(e){return"object"==typeof e&&e?new Ft(e):"string"==typeof e?new Yt(e):"function"==typeof e?new qt(e):null}const Xt={navLinkDayClick:an,navLinkWeekClick:an,duration:lt,bootstrapFontAwesome:an,buttonIcons:an,customButtons:an,defaultAllDayEventDuration:lt,defaultTimedEventDuration:lt,nextDayThreshold:lt,scrollTime:lt,scrollTimeReset:Boolean,slotMinTime:lt,slotMaxTime:lt,dayPopoverFormat:Zt,slotDuration:lt,snapDuration:lt,headerToolbar:an,footerToolbar:an,defaultRangeSeparator:String,titleRangeSeparator:String,forceEventDuration:Boolean,dayHeaders:Boolean,dayHeaderFormat:Zt,dayHeaderClassNames:an,dayHeaderContent:an,dayHeaderDidMount:an,dayHeaderWillUnmount:an,dayCellClassNames:an,dayCellContent:an,dayCellDidMount:an,dayCellWillUnmount:an,initialView:String,aspectRatio:Number,weekends:Boolean,weekNumberCalculation:an,weekNumbers:Boolean,weekNumberClassNames:an,weekNumberContent:an,weekNumberDidMount:an,weekNumberWillUnmount:an,editable:Boolean,viewClassNames:an,viewDidMount:an,viewWillUnmount:an,nowIndicator:Boolean,nowIndicatorClassNames:an,nowIndicatorContent:an,nowIndicatorDidMount:an,nowIndicatorWillUnmount:an,showNonCurrentDates:Boolean,lazyFetching:Boolean,startParam:String,endParam:String,timeZoneParam:String,timeZone:String,locales:an,locale:an,themeSystem:String,dragRevertDuration:Number,dragScroll:Boolean,allDayMaintainDuration:Boolean,unselectAuto:Boolean,dropAccept:an,eventOrder:function(e){let t,n,r=[],i=[];for("string"==typeof e?i=e.split(/\s*,\s*/):"function"==typeof e?i=[e]:Array.isArray(e)&&(i=e),t=0;t<i.length;t+=1)n=i[t],"string"==typeof n?r.push("-"===n.charAt(0)?{field:n.substring(1),order:-1}:{field:n,order:1}):"function"==typeof n&&r.push({func:n});return r},eventOrderStrict:Boolean,handleWindowResize:Boolean,windowResizeDelay:Number,longPressDelay:Number,eventDragMinDistance:Number,expandRows:Boolean,height:an,contentHeight:an,direction:String,weekNumberFormat:Zt,eventResizableFromStart:Boolean,displayEventTime:Boolean,displayEventEnd:Boolean,weekText:String,weekTextLong:String,progressiveEventRendering:Boolean,businessHours:an,initialDate:an,now:an,eventDataTransform:an,stickyHeaderDates:an,stickyFooterScrollbar:an,viewHeight:an,defaultAllDay:Boolean,eventSourceFailure:an,eventSourceSuccess:an,eventDisplay:String,eventStartEditable:Boolean,eventDurationEditable:Boolean,eventOverlap:an,eventConstraint:an,eventAllow:an,eventBackgroundColor:String,eventBorderColor:String,eventTextColor:String,eventColor:String,eventClassNames:an,eventContent:an,eventDidMount:an,eventWillUnmount:an,selectConstraint:an,selectOverlap:an,selectAllow:an,droppable:Boolean,unselectCancel:String,slotLabelFormat:an,slotLaneClassNames:an,slotLaneContent:an,slotLaneDidMount:an,slotLaneWillUnmount:an,slotLabelClassNames:an,slotLabelContent:an,slotLabelDidMount:an,slotLabelWillUnmount:an,dayMaxEvents:an,dayMaxEventRows:an,dayMinWidth:Number,slotLabelInterval:lt,allDayText:String,allDayClassNames:an,allDayContent:an,allDayDidMount:an,allDayWillUnmount:an,slotMinWidth:Number,navLinks:Boolean,eventTimeFormat:Zt,rerenderDelay:Number,moreLinkText:an,moreLinkHint:an,selectMinDistance:Number,selectable:Boolean,selectLongPressDelay:Number,eventLongPressDelay:Number,selectMirror:Boolean,eventMaxStack:Number,eventMinHeight:Number,eventMinWidth:Number,eventShortHeight:Number,slotEventOverlap:Boolean,plugins:an,firstDay:Number,dayCount:Number,dateAlignment:String,dateIncrement:lt,hiddenDays:an,fixedWeekCount:Boolean,validRange:an,visibleRange:an,titleFormat:an,eventInteractive:Boolean,noEventsText:String,viewHint:an,navLinkHint:an,closeHint:String,timeHint:String,eventHint:String,moreLinkClick:an,moreLinkClassNames:an,moreLinkContent:an,moreLinkDidMount:an,moreLinkWillUnmount:an,monthStartFormat:Zt,handleCustomRendering:an,customRenderingMetaMap:an},$t={eventDisplay:"auto",defaultRangeSeparator:" - ",titleRangeSeparator:" – ",defaultTimedEventDuration:"01:00:00",defaultAllDayEventDuration:{day:1},forceEventDuration:!1,nextDayThreshold:"00:00:00",dayHeaders:!0,initialView:"",aspectRatio:1.35,headerToolbar:{start:"title",center:"",end:"today prev,next"},weekends:!0,weekNumbers:!1,weekNumberCalculation:"local",editable:!1,nowIndicator:!1,scrollTime:"06:00:00",scrollTimeReset:!0,slotMinTime:"00:00:00",slotMaxTime:"24:00:00",showNonCurrentDates:!0,lazyFetching:!0,startParam:"start",endParam:"end",timeZoneParam:"timeZone",timeZone:"local",locales:[],locale:"",themeSystem:"standard",dragRevertDuration:500,dragScroll:!0,allDayMaintainDuration:!1,unselectAuto:!0,dropAccept:"*",eventOrder:"start,-duration,allDay,title",dayPopoverFormat:{month:"long",day:"numeric",year:"numeric"},handleWindowResize:!0,windowResizeDelay:100,longPressDelay:1e3,eventDragMinDistance:5,expandRows:!1,navLinks:!1,selectable:!1,eventMinHeight:15,eventMinWidth:30,eventShortHeight:30,monthStartFormat:{month:"long",day:"numeric"}},Jt={datesSet:an,eventsSet:an,eventAdd:an,eventChange:an,eventRemove:an,windowResize:an,eventClick:an,eventMouseEnter:an,eventMouseLeave:an,select:an,unselect:an,loading:an,_unmount:an,_beforeprint:an,_afterprint:an,_noEventDrop:an,_noEventResize:an,_resize:an,_scrollRequest:an},Kt={buttonText:an,buttonHints:an,views:an,plugins:an,initialEvents:an,events:an,eventSources:an},en={headerToolbar:tn,footerToolbar:tn,buttonText:tn,buttonHints:tn,buttonIcons:tn,dateIncrement:tn,plugins:nn,events:nn,eventSources:nn,resources:nn};function tn(e,t){return"object"==typeof e&&"object"==typeof t&&e&&t?gn(e,t):e===t}function nn(e,t){return Array.isArray(e)&&Array.isArray(t)?pt(e,t):e===t}const rn={type:String,component:an,buttonText:String,buttonTextKey:String,dateProfileGeneratorClass:an,usesMinMaxTime:Boolean,classNames:an,content:an,didMount:an,willUnmount:an};function sn(e){return cn(e,en)}function on(e,t){let n={},r={};for(let r in t)r in e&&(n[r]=t[r](e[r]));for(let n in e)n in t||(r[n]=e[n]);return{refined:n,extra:r}}function an(e){return e}const{hasOwnProperty:ln}=Object.prototype;function cn(e,t){let n={};if(t)for(let r in t)if(t[r]===tn){let t=[];for(let i=e.length-1;i>=0;i-=1){let s=e[i][r];if("object"==typeof s&&s)t.unshift(s);else if(void 0!==s){n[r]=s;break}}t.length&&(n[r]=cn(t))}for(let t=e.length-1;t>=0;t-=1){let r=e[t];for(let e in r)e in n||(n[e]=r[e])}return n}function dn(e,t){let n={};for(let r in e)t(e[r],r)&&(n[r]=e[r]);return n}function un(e,t){let n={};for(let r in e)n[r]=t(e[r],r);return n}function hn(e){let t={};for(let n of e)t[n]=!0;return t}function fn(e){let t=[];for(let n in e)t.push(e[n]);return t}function gn(e,t){if(e===t)return!0;for(let n in e)if(ln.call(e,n)&&!(n in t))return!1;for(let n in t)if(ln.call(t,n)&&e[n]!==t[n])return!1;return!0}const pn=/^on[A-Z]/;function mn(e,t){let n=[];for(let r in e)ln.call(e,r)&&(r in t||n.push(r));for(let r in t)ln.call(t,r)&&e[r]!==t[r]&&n.push(r);return n}function vn(e,t,n={}){if(e===t)return!0;for(let r in t)if(!(r in e)||!yn(e[r],t[r],n[r]))return!1;for(let n in e)if(!(n in t))return!1;return!0}function yn(e,t,n){return e===t||!0===n||!!n&&n(e,t)}let bn={};var En,An;En="gregory",An=class{getMarkerYear(e){return e.getUTCFullYear()}getMarkerMonth(e){return e.getUTCMonth()}getMarkerDay(e){return e.getUTCDate()}arrayToMarker(e){return xt(e)}markerToArray(e){return _t(e)}},bn[En]=An;const Sn=/^\s*(\d{4})(-?(\d{2})(-?(\d{2})([T ](\d{2}):?(\d{2})(:?(\d{2})(\.(\d+))?)?(Z|(([-+])(\d{2})(:?(\d{2}))?))?)?)?)?$/;class Dn{constructor(e){let t=this.timeZone=e.timeZone,n="local"!==t&&"UTC"!==t;e.namedTimeZoneImpl&&n&&(this.namedTimeZoneImpl=new e.namedTimeZoneImpl(t)),this.canComputeOffset=Boolean(!n||this.namedTimeZoneImpl),this.calendarSystem=function(e){return new bn[e]}(e.calendarSystem),this.locale=e.locale,this.weekDow=e.locale.week.dow,this.weekDoy=e.locale.week.doy,"ISO"===e.weekNumberCalculation&&(this.weekDow=1,this.weekDoy=4),"number"==typeof e.firstDay&&(this.weekDow=e.firstDay),"function"==typeof e.weekNumberCalculation&&(this.weekNumberFunc=e.weekNumberCalculation),this.weekText=null!=e.weekText?e.weekText:e.locale.options.weekText,this.weekTextLong=(null!=e.weekTextLong?e.weekTextLong:e.locale.options.weekTextLong)||this.weekText,this.cmdFormatter=e.cmdFormatter,this.defaultSeparator=e.defaultSeparator}createMarker(e){let t=this.createMarkerMeta(e);return null===t?null:t.marker}createNowMarker(){return this.canComputeOffset?this.timestampToMarker((new Date).valueOf()):xt(Ct(new Date))}createMarkerMeta(e){if("string"==typeof e)return this.parse(e);let t=null;return"number"==typeof e?t=this.timestampToMarker(e):e instanceof Date?(e=e.valueOf(),isNaN(e)||(t=this.timestampToMarker(e))):Array.isArray(e)&&(t=xt(e)),null!==t&&Tt(t)?{marker:t,isTimeUnspecified:!1,forcedTzo:null}:null}parse(e){let t=function(e){let t=Sn.exec(e);if(t){let e=new Date(Date.UTC(Number(t[1]),t[3]?Number(t[3])-1:0,Number(t[5]||1),Number(t[7]||0),Number(t[8]||0),Number(t[10]||0),t[12]?1e3*Number(`0.${t[12]}`):0));if(Tt(e)){let n=null;return t[13]&&(n=("-"===t[15]?-1:1)*(60*Number(t[16]||0)+Number(t[18]||0))),{marker:e,isTimeUnspecified:!t[6],timeZoneOffset:n}}}return null}(e);if(null===t)return null;let{marker:n}=t,r=null;return null!==t.timeZoneOffset&&(this.canComputeOffset?n=this.timestampToMarker(n.valueOf()-60*t.timeZoneOffset*1e3):r=t.timeZoneOffset),{marker:n,isTimeUnspecified:t.isTimeUnspecified,forcedTzo:r}}getYear(e){return this.calendarSystem.getMarkerYear(e)}getMonth(e){return this.calendarSystem.getMarkerMonth(e)}getDay(e){return this.calendarSystem.getMarkerDay(e)}add(e,t){let n=this.calendarSystem.markerToArray(e);return n[0]+=t.years,n[1]+=t.months,n[2]+=t.days,n[6]+=t.milliseconds,this.calendarSystem.arrayToMarker(n)}subtract(e,t){let n=this.calendarSystem.markerToArray(e);return n[0]-=t.years,n[1]-=t.months,n[2]-=t.days,n[6]-=t.milliseconds,this.calendarSystem.arrayToMarker(n)}addYears(e,t){let n=this.calendarSystem.markerToArray(e);return n[0]+=t,this.calendarSystem.arrayToMarker(n)}addMonths(e,t){let n=this.calendarSystem.markerToArray(e);return n[1]+=t,this.calendarSystem.arrayToMarker(n)}diffWholeYears(e,t){let{calendarSystem:n}=this;return kt(e)===kt(t)&&n.getMarkerDay(e)===n.getMarkerDay(t)&&n.getMarkerMonth(e)===n.getMarkerMonth(t)?n.getMarkerYear(t)-n.getMarkerYear(e):null}diffWholeMonths(e,t){let{calendarSystem:n}=this;return kt(e)===kt(t)&&n.getMarkerDay(e)===n.getMarkerDay(t)?n.getMarkerMonth(t)-n.getMarkerMonth(e)+12*(n.getMarkerYear(t)-n.getMarkerYear(e)):null}greatestWholeUnit(e,t){let n=this.diffWholeYears(e,t);return null!==n?{unit:"year",value:n}:(n=this.diffWholeMonths(e,t),null!==n?{unit:"month",value:n}:(n=function(e,t){let n=At(e,t);return null!==n&&n%7==0?n/7:null}(e,t),null!==n?{unit:"week",value:n}:(n=At(e,t),null!==n?{unit:"day",value:n}:(n=function(e,t){return(t.valueOf()-e.valueOf())/36e5}(e,t),it(n)?{unit:"hour",value:n}:(n=function(e,t){return(t.valueOf()-e.valueOf())/6e4}(e,t),it(n)?{unit:"minute",value:n}:(n=function(e,t){return(t.valueOf()-e.valueOf())/1e3}(e,t),it(n)?{unit:"second",value:n}:{unit:"millisecond",value:t.valueOf()-e.valueOf()}))))))}countDurationsBetween(e,t,n){let r;return n.years&&(r=this.diffWholeYears(e,t),null!==r)?r/(ut(n)/365):n.months&&(r=this.diffWholeMonths(e,t),null!==r)?r/function(e){return ut(e)/30}(n):n.days&&(r=At(e,t),null!==r)?r/ut(n):(t.valueOf()-e.valueOf())/ht(n)}startOf(e,t){return"year"===t?this.startOfYear(e):"month"===t?this.startOfMonth(e):"week"===t?this.startOfWeek(e):"day"===t?St(e):"hour"===t?function(e){return xt([e.getUTCFullYear(),e.getUTCMonth(),e.getUTCDate(),e.getUTCHours()])}(e):"minute"===t?function(e){return xt([e.getUTCFullYear(),e.getUTCMonth(),e.getUTCDate(),e.getUTCHours(),e.getUTCMinutes()])}(e):"second"===t?function(e){return xt([e.getUTCFullYear(),e.getUTCMonth(),e.getUTCDate(),e.getUTCHours(),e.getUTCMinutes(),e.getUTCSeconds()])}(e):null}startOfYear(e){return this.calendarSystem.arrayToMarker([this.calendarSystem.getMarkerYear(e)])}startOfMonth(e){return this.calendarSystem.arrayToMarker([this.calendarSystem.getMarkerYear(e),this.calendarSystem.getMarkerMonth(e)])}startOfWeek(e){return this.calendarSystem.arrayToMarker([this.calendarSystem.getMarkerYear(e),this.calendarSystem.getMarkerMonth(e),e.getUTCDate()-(e.getUTCDay()-this.weekDow+7)%7])}computeWeekNumber(e){return this.weekNumberFunc?this.weekNumberFunc(this.toDate(e)):function(e,t,n){let r=e.getUTCFullYear(),i=Dt(e,r,t,n);if(i<1)return Dt(e,r-1,t,n);let s=Dt(e,r+1,t,n);return s>=1?Math.min(i,s):i}(e,this.weekDow,this.weekDoy)}format(e,t,n={}){return t.format({marker:e,timeZoneOffset:null!=n.forcedTzo?n.forcedTzo:this.offsetForMarker(e)},this)}formatRange(e,t,n,r={}){return r.isEndExclusive&&(t=bt(t,-1)),n.formatRange({marker:e,timeZoneOffset:null!=r.forcedStartTzo?r.forcedStartTzo:this.offsetForMarker(e)},{marker:t,timeZoneOffset:null!=r.forcedEndTzo?r.forcedEndTzo:this.offsetForMarker(t)},this,r.defaultSeparator)}formatIso(e,t={}){let n=null;return t.omitTimeZoneOffset||(n=null!=t.forcedTzo?t.forcedTzo:this.offsetForMarker(e)),Mt(e,n,t.omitTime)}timestampToMarker(e){return"local"===this.timeZone?xt(Ct(new Date(e))):"UTC"!==this.timeZone&&this.namedTimeZoneImpl?xt(this.namedTimeZoneImpl.timestampToArray(e)):new Date(e)}offsetForMarker(e){return"local"===this.timeZone?-Rt(_t(e)).getTimezoneOffset():"UTC"===this.timeZone?0:this.namedTimeZoneImpl?this.namedTimeZoneImpl.offsetForArray(_t(e)):null}toDate(e,t){return"local"===this.timeZone?Rt(_t(e)):"UTC"===this.timeZone?new Date(e.valueOf()):this.namedTimeZoneImpl?new Date(e.valueOf()-1e3*this.namedTimeZoneImpl.offsetForArray(_t(e))*60):new Date(e.valueOf()-(t||0))}}class wn{constructor(e){this.iconOverrideOption&&this.setIconOverride(e[this.iconOverrideOption])}setIconOverride(e){let t,n;if("object"==typeof e&&e){for(n in t=Object.assign({},this.iconClasses),e)t[n]=this.applyIconOverridePrefix(e[n]);this.iconClasses=t}else!1===e&&(this.iconClasses={})}applyIconOverridePrefix(e){let t=this.iconOverridePrefix;return t&&0!==e.indexOf(t)&&(e=t+e),e}getClass(e){return this.classes[e]||""}getIconClass(e,t){let n;return n=t&&this.rtlIconClasses&&this.rtlIconClasses[e]||this.iconClasses[e],n?`${this.baseIconClass} ${n}`:""}getCustomButtonIconClass(e){let t;return this.iconOverrideCustomButtonOption&&(t=e[this.iconOverrideCustomButtonOption],t)?`${this.baseIconClass} ${this.applyIconOverridePrefix(t)}`:""}}function Cn(e){e();let t=r.debounceRendering,n=[];for(r.debounceRendering=function(e){n.push(e)},U(m(Rn,{}),document.createElement("div"));n.length;)n.shift()();r.debounceRendering=t}wn.prototype.classes={},wn.prototype.iconClasses={},wn.prototype.baseIconClass="",wn.prototype.iconOverridePrefix="";class Rn extends D{render(){return m("div",{})}componentDidMount(){this.setState({})}}function _n(e){let t=L(e),n=t.Provider;return t.Provider=function(){let e=!this.getChildContext,t=n.apply(this,arguments);if(e){let e=[];this.shouldComponentUpdate=t=>{this.props.value!==t.value&&e.forEach((e=>{e.context=t.value,e.forceUpdate()}))},this.sub=t=>{e.push(t);let n=t.componentWillUnmount;t.componentWillUnmount=()=>{e.splice(e.indexOf(t),1),n&&n.call(t)}}}return t},t}class xn{constructor(e,t,n,r){this.execFunc=e,this.emitter=t,this.scrollTime=n,this.scrollTimeReset=r,this.handleScrollRequest=e=>{this.queuedRequest=Object.assign({},this.queuedRequest||{},e),this.drain()},t.on("_scrollRequest",this.handleScrollRequest),this.fireInitialScroll()}detach(){this.emitter.off("_scrollRequest",this.handleScrollRequest)}update(e){e&&this.scrollTimeReset?this.fireInitialScroll():this.drain()}fireInitialScroll(){this.handleScrollRequest({time:this.scrollTime})}drain(){this.queuedRequest&&this.execFunc(this.queuedRequest)&&(this.queuedRequest=null)}}const Tn=_n({});function kn(e,t,n,r,i,s,o,a,l,c,d,u,h){return{dateEnv:i,options:n,pluginHooks:o,emitter:c,dispatch:a,getCurrentData:l,calendarApi:d,viewSpec:e,viewApi:t,dateProfileGenerator:r,theme:s,isRtl:"rtl"===n.direction,addResizeHandler(e){c.on("_resize",e)},removeResizeHandler(e){c.off("_resize",e)},createScrollResponder(e){return new xn(e,c,lt(n.scrollTime),n.scrollTimeReset)},registerInteractiveComponent:u,unregisterInteractiveComponent:h}}class Mn extends D{shouldComponentUpdate(e,t){return this.debug&&console.log(mn(e,this.props),mn(t,this.state)),!vn(this.props,e,this.propEquality)||!vn(this.state,t,this.stateEquality)}safeSetState(e){vn(this.state,Object.assign(Object.assign({},this.state),e),this.stateEquality)||this.setState(e)}}Mn.addPropsEquality=function(e){let t=Object.create(this.prototype.propEquality);Object.assign(t,e),this.prototype.propEquality=t},Mn.addStateEquality=function(e){let t=Object.create(this.prototype.stateEquality);Object.assign(t,e),this.prototype.stateEquality=t},Mn.contextType=Tn,Mn.prototype.propEquality={},Mn.prototype.stateEquality={};class On extends Mn{}function In(e,t){"function"==typeof e?e(t):e&&(e.current=t)}On.contextType=Tn;class Nn extends On{constructor(){super(...arguments),this.id=$e(),this.queuedDomNodes=[],this.currentDomNodes=[],this.handleEl=e=>{Pn(this.props.generatorName,this.context.options)||this.updateElRef(e)},this.updateElRef=e=>{this.props.elRef&&In(this.props.elRef,e)}}render(){const{props:e,context:t}=this,{options:n}=t,{customGenerator:r,defaultGenerator:i,renderProps:o}=e,a=Hn(e,[],this.handleEl);let l,c,d=!1,u=[];if(null!=r){const e="function"==typeof r?r(o,m):r;if(!0===e)d=!0;else{const t=e&&"object"==typeof e;t&&"html"in e?a.dangerouslySetInnerHTML={__html:e.html}:t&&"domNodes"in e?u=Array.prototype.slice.call(e.domNodes):(t?s(e):"function"!=typeof e)?l=e:c=e}}else d=!Pn(e.generatorName,n);return d&&i&&(l=i(o)),this.queuedDomNodes=u,this.currentGeneratorMeta=c,m(e.elTag,a,l)}componentDidMount(){this.applyQueueudDomNodes(),this.triggerCustomRendering(!0)}componentDidUpdate(){this.applyQueueudDomNodes(),this.triggerCustomRendering(!0)}componentWillUnmount(){this.triggerCustomRendering(!1)}triggerCustomRendering(e){var t;const{props:n,context:r}=this,{handleCustomRendering:i,customRenderingMetaMap:s}=r.options;if(i){const r=null!==(t=this.currentGeneratorMeta)&&void 0!==t?t:null==s?void 0:s[n.generatorName];r&&i(Object.assign(Object.assign({id:this.id,isActive:e,containerEl:this.base,reportNewContainerEl:this.updateElRef,generatorMeta:r},n),{elClasses:(n.elClasses||[]).filter(Bn)}))}}applyQueueudDomNodes(){const{queuedDomNodes:e,currentDomNodes:t}=this,n=this.base;if(!pt(e,t)){t.forEach(He);for(let t of e)n.appendChild(t);this.currentDomNodes=e}}}function Pn(e,t){var n;return Boolean(t.handleCustomRendering&&e&&(null===(n=t.customRenderingMetaMap)||void 0===n?void 0:n[e]))}function Hn(e,t,n){const r=Object.assign(Object.assign({},e.elAttrs),{ref:n});return(e.elClasses||t)&&(r.className=(e.elClasses||[]).concat(t||[]).concat(r.className||[]).filter(Boolean).join(" ")),e.elStyle&&(r.style=e.elStyle),r}function Bn(e){return Boolean(e)}Nn.addPropsEquality({elClasses:pt,elStyle:gn,elAttrs:function(e,t){const n=mn(e,t);for(let e of n)if(!pn.test(e))return!1;return!0},renderProps:gn});const jn=_n(0);class zn extends D{constructor(){super(...arguments),this.InnerContent=Un.bind(void 0,this),this.handleEl=e=>{this.el=e,this.props.elRef&&In(this.props.elRef,e)}}render(){const{props:e}=this,t=function(e,t){const n="function"==typeof e?e(t):e||[];return"string"==typeof n?[n]:n}(e.classNameGenerator,e.renderProps);if(e.children){const n=Hn(e,t,this.handleEl),r=e.children(this.InnerContent,e.renderProps,n);return e.elTag?m(e.elTag,n,r):r}return m(Nn,Object.assign(Object.assign({},e),{elRef:this.handleEl,elTag:e.elTag||"div",elClasses:(e.elClasses||[]).concat(t),renderId:this.context}))}componentDidMount(){var e,t;null===(t=(e=this.props).didMount)||void 0===t||t.call(e,Object.assign(Object.assign({},this.props.renderProps),{el:this.el}))}componentWillUnmount(){var e,t;null===(t=(e=this.props).willUnmount)||void 0===t||t.call(e,Object.assign(Object.assign({},this.props.renderProps),{el:this.el}))}}function Un(e,t){const n=e.props;return m(Nn,Object.assign({renderProps:n.renderProps,generatorName:n.generatorName,customGenerator:n.customGenerator,defaultGenerator:n.defaultGenerator,renderId:e.context},t))}zn.contextType=jn;class Ln extends On{render(){let{props:e,context:t}=this,{options:n}=t,r={view:t.viewApi};return m(zn,Object.assign({},e,{elTag:e.elTag||"div",elClasses:[...Wn(e.viewSpec),...e.elClasses||[]],renderProps:r,classNameGenerator:n.viewClassNames,generatorName:void 0,didMount:n.viewDidMount,willUnmount:n.viewWillUnmount}),(()=>e.children))}}function Wn(e){return[`fc-${e.type}-view`,"fc-view"]}function Fn(e,t){let n,r,i=[],{start:s}=t;for(e.sort(Vn),n=0;n<e.length;n+=1)r=e[n],r.start>s&&i.push({start:s,end:r.start}),r.end>s&&(s=r.end);return s<t.end&&i.push({start:s,end:t.end}),i}function Vn(e,t){return e.start.valueOf()-t.start.valueOf()}function Gn(e,t){let{start:n,end:r}=e,i=null;return null!==t.start&&(n=null===n?t.start:new Date(Math.max(n.valueOf(),t.start.valueOf()))),null!=t.end&&(r=null===r?t.end:new Date(Math.min(r.valueOf(),t.end.valueOf()))),(null===n||null===r||n<r)&&(i={start:n,end:r}),i}function Qn(e,t){return(null===e.end||null===t.start||e.end>t.start)&&(null===e.start||null===t.end||e.start<t.end)}function Yn(e,t){return(null===e.start||null!==t.start&&t.start>=e.start)&&(null===e.end||null!==t.end&&t.end<=e.end)}function qn(e,t){return(null===e.start||t>=e.start)&&(null===e.end||t<e.end)}function Zn(e){let t=Math.floor(Et(e.start,e.end))||1,n=St(e.start);return{start:n,end:yt(n,t)}}function Xn(e,t=lt(0)){let n=null,r=null;if(e.end){r=St(e.end);let n=e.end.valueOf()-r.valueOf();n&&n>=ht(t)&&(r=yt(r,1))}return e.start&&(n=St(e.start),r&&r<=n&&(r=yt(n,1))),{start:n,end:r}}function $n(e,t,n,r){return"year"===r?lt(n.diffWholeYears(e,t),"year"):"month"===r?lt(n.diffWholeMonths(e,t),"month"):function(e,t){let n=St(e),r=St(t);return{years:0,months:0,days:Math.round(Et(n,r)),milliseconds:t.valueOf()-r.valueOf()-(e.valueOf()-n.valueOf())}}(e,t)}function Jn(e,t){return"function"==typeof e&&(e=e()),null==e?t.createNowMarker():t.createMarker(e)}class Kn{constructor(e){this.props=e,this.nowDate=Jn(e.nowInput,e.dateEnv),this.initHiddenDays()}buildPrev(e,t,n){let{dateEnv:r}=this.props,i=r.subtract(r.startOf(t,e.currentRangeUnit),e.dateIncrement);return this.build(i,-1,n)}buildNext(e,t,n){let{dateEnv:r}=this.props,i=r.add(r.startOf(t,e.currentRangeUnit),e.dateIncrement);return this.build(i,1,n)}build(e,t,n=!0){let r,i,s,o,a,l,{props:c}=this;var d,u;return r=this.buildValidRange(),r=this.trimHiddenDays(r),n&&(d=e,e=null!=(u=r).start&&d<u.start?u.start:null!=u.end&&d>=u.end?new Date(u.end.valueOf()-1):d),i=this.buildCurrentRangeInfo(e,t),s=/^(year|month|week|day)$/.test(i.unit),o=this.buildRenderRange(this.trimHiddenDays(i.range),i.unit,s),o=this.trimHiddenDays(o),a=o,c.showNonCurrentDates||(a=Gn(a,i.range)),a=this.adjustActiveRange(a),a=Gn(a,r),l=Qn(i.range,r),qn(o,e)||(e=o.start),{currentDate:e,validRange:r,currentRange:i.range,currentRangeUnit:i.unit,isRangeAllDay:s,activeRange:a,renderRange:o,slotMinTime:c.slotMinTime,slotMaxTime:c.slotMaxTime,isValid:l,dateIncrement:this.buildDateIncrement(i.duration)}}buildValidRange(){let e=this.props.validRangeInput,t="function"==typeof e?e.call(this.props.calendarApi,this.nowDate):e;return this.refineRange(t)||{start:null,end:null}}buildCurrentRangeInfo(e,t){let n,{props:r}=this,i=null,s=null,o=null;return r.duration?(i=r.duration,s=r.durationUnit,o=this.buildRangeFromDuration(e,t,i,s)):(n=this.props.dayCount)?(s="day",o=this.buildRangeFromDayCount(e,t,n)):(o=this.buildCustomVisibleRange(e))?s=r.dateEnv.greatestWholeUnit(o.start,o.end).unit:(i=this.getFallbackDuration(),s=gt(i).unit,o=this.buildRangeFromDuration(e,t,i,s)),{duration:i,unit:s,range:o}}getFallbackDuration(){return lt({day:1})}adjustActiveRange(e){let{dateEnv:t,usesMinMaxTime:n,slotMinTime:r,slotMaxTime:i}=this.props,{start:s,end:o}=e;return n&&(ut(r)<0&&(s=St(s),s=t.add(s,r)),ut(i)>1&&(o=St(o),o=yt(o,-1),o=t.add(o,i))),{start:s,end:o}}buildRangeFromDuration(e,t,n,r){let i,s,o,{dateEnv:a,dateAlignment:l}=this.props;if(!l){let{dateIncrement:e}=this.props;l=e&&ht(e)<ht(n)?gt(e).unit:r}function c(){i=a.startOf(e,l),s=a.add(i,n),o={start:i,end:s}}return ut(n)<=1&&this.isHiddenDay(i)&&(i=this.skipHiddenDays(i,t),i=St(i)),c(),this.trimHiddenDays(o)||(e=this.skipHiddenDays(e,t),c()),o}buildRangeFromDayCount(e,t,n){let r,{dateEnv:i,dateAlignment:s}=this.props,o=0,a=e;s&&(a=i.startOf(a,s)),a=St(a),a=this.skipHiddenDays(a,t),r=a;do{r=yt(r,1),this.isHiddenDay(r)||(o+=1)}while(o<n);return{start:a,end:r}}buildCustomVisibleRange(e){let{props:t}=this,n=t.visibleRangeInput,r="function"==typeof n?n.call(t.calendarApi,t.dateEnv.toDate(e)):n,i=this.refineRange(r);return!i||null!=i.start&&null!=i.end?i:null}buildRenderRange(e,t,n){return e}buildDateIncrement(e){let t,{dateIncrement:n}=this.props;return n||((t=this.props.dateAlignment)?lt(1,t):e||lt({days:1}))}refineRange(e){if(e){let t=function(e,t){let n=null,r=null;return e.start&&(n=t.createMarker(e.start)),e.end&&(r=t.createMarker(e.end)),n||r?n&&r&&r<n?null:{start:n,end:r}:null}(e,this.props.dateEnv);return t&&(t=Xn(t)),t}return null}initHiddenDays(){let e,t=this.props.hiddenDays||[],n=[],r=0;for(!1===this.props.weekends&&t.push(0,6),e=0;e<7;e+=1)(n[e]=-1!==t.indexOf(e))||(r+=1);if(!r)throw new Error("invalid hiddenDays");this.isHiddenDayHash=n}trimHiddenDays(e){let{start:t,end:n}=e;return t&&(t=this.skipHiddenDays(t)),n&&(n=this.skipHiddenDays(n,-1,!0)),null==t||null==n||t<n?{start:t,end:n}:null}isHiddenDay(e){return e instanceof Date&&(e=e.getUTCDay()),this.isHiddenDayHash[e]}skipHiddenDays(e,t=1,n=!1){for(;this.isHiddenDayHash[(e.getUTCDay()+(n?t:0)+7)%7];)e=yt(e,t);return e}}function er(e,t,n,r){return{instanceId:$e(),defId:e,range:t,forcedStartTzo:null==n?null:n,forcedEndTzo:null==r?null:r}}function tr(e,t,n){let{dateEnv:r,pluginHooks:i,options:s}=n,{defs:o,instances:a}=e;a=dn(a,(e=>!o[e.defId].recurringDef));for(let e in o){let n=o[e];if(n.recurringDef){let{duration:o}=n.recurringDef;o||(o=n.allDay?s.defaultAllDayEventDuration:s.defaultTimedEventDuration);let l=nr(n,o,t,r,i.recurringTypes);for(let t of l){let n=er(e,{start:t,end:r.add(t,o)});a[n.instanceId]=n}}}return{defs:o,instances:a}}function nr(e,t,n,r,i){let s=i[e.recurringDef.typeId].expand(e.recurringDef.typeData,{start:r.subtract(n.start,t),end:n.end},r);return e.allDay&&(s=s.map(St)),s}const rr={id:String,groupId:String,title:String,url:String,interactive:Boolean},ir={start:an,end:an,date:an,allDay:Boolean},sr=Object.assign(Object.assign(Object.assign({},rr),ir),{extendedProps:an});function or(e,t,n,r,i=lr(n),s,o){let{refined:a,extra:l}=ar(e,n,i),c=function(e,t){let n=null;e&&(n=e.defaultAllDay);null==n&&(n=t.options.defaultAllDay);return n}(t,n),d=function(e,t,n,r){for(let i=0;i<r.length;i+=1){let s=r[i].parse(e,n);if(s){let{allDay:n}=e;return null==n&&(n=t,null==n&&(n=s.allDayGuess,null==n&&(n=!1))),{allDay:n,duration:s.duration,typeData:s.typeData,typeId:i}}}return null}(a,c,n.dateEnv,n.pluginHooks.recurringTypes);if(d){let e=cr(a,l,t?t.sourceId:"",d.allDay,Boolean(d.duration),n,s);return e.recurringDef={typeId:d.typeId,typeData:d.typeData,duration:d.duration},{def:e,instance:null}}let u=function(e,t,n,r){let i,s,{allDay:o}=e,a=null,l=!1,c=null,d=null!=e.start?e.start:e.date;if(i=n.dateEnv.createMarkerMeta(d),i)a=i.marker;else if(!r)return null;null!=e.end&&(s=n.dateEnv.createMarkerMeta(e.end));null==o&&(o=null!=t?t:(!i||i.isTimeUnspecified)&&(!s||s.isTimeUnspecified));o&&a&&(a=St(a));s&&(c=s.marker,o&&(c=St(c)),a&&c<=a&&(c=null));c?l=!0:r||(l=n.options.forceEventDuration||!1,c=n.dateEnv.add(a,o?n.options.defaultAllDayEventDuration:n.options.defaultTimedEventDuration));return{allDay:o,hasEnd:l,range:{start:a,end:c},forcedStartTzo:i?i.forcedTzo:null,forcedEndTzo:s?s.forcedTzo:null}}(a,c,n,r);if(u){let e=cr(a,l,t?t.sourceId:"",u.allDay,u.hasEnd,n,s),r=er(e.defId,u.range,u.forcedStartTzo,u.forcedEndTzo);return o&&e.publicId&&o[e.publicId]&&(r.instanceId=o[e.publicId]),{def:e,instance:r}}return null}function ar(e,t,n=lr(t)){return on(e,n)}function lr(e){return Object.assign(Object.assign(Object.assign({},mr),sr),e.pluginHooks.eventRefiners)}function cr(e,t,n,r,i,s,o){let a={title:e.title||"",groupId:e.groupId||"",publicId:e.id||"",url:e.url||"",recurringDef:null,defId:(o&&e.id?o[e.id]:"")||$e(),sourceId:n,allDay:r,hasEnd:i,interactive:e.interactive,ui:yr(e,s),extendedProps:Object.assign(Object.assign({},e.extendedProps||{}),t)};for(let t of s.pluginHooks.eventDefMemberAdders)Object.assign(a,t(e));return Object.freeze(a.ui.classNames),Object.freeze(a.extendedProps),a}function dr(e,t,n,r,i,s){let o={defs:{},instances:{}},a=lr(n);for(let l of e){let e=or(l,t,n,r,a,i,s);e&&ur(e,o)}return o}function ur(e,t={defs:{},instances:{}}){return t.defs[e.def.defId]=e.def,e.instance&&(t.instances[e.instance.instanceId]=e.instance),t}function hr(e,t){let n=e.instances[t];if(n){let t=e.defs[n.defId],r=gr(e,(e=>{return n=t,r=e,Boolean(n.groupId&&n.groupId===r.groupId);var n,r}));return r.defs[t.defId]=t,r.instances[n.instanceId]=n,r}return{defs:{},instances:{}}}function fr(e,t){return{defs:Object.assign(Object.assign({},e.defs),t.defs),instances:Object.assign(Object.assign({},e.instances),t.instances)}}function gr(e,t){let n=dn(e.defs,t),r=dn(e.instances,(e=>n[e.defId]));return{defs:n,instances:r}}function pr(e){return Array.isArray(e)?e:"string"==typeof e?e.split(/\s+/):[]}const mr={display:String,editable:Boolean,startEditable:Boolean,durationEditable:Boolean,constraint:an,overlap:an,allow:an,className:pr,classNames:pr,color:String,backgroundColor:String,borderColor:String,textColor:String},vr={display:null,startEditable:null,durationEditable:null,constraints:[],overlap:null,allows:[],backgroundColor:"",borderColor:"",textColor:"",classNames:[]};function yr(e,t){let n=function(e,t){return Array.isArray(e)?dr(e,null,t,!0):"object"==typeof e&&e?dr([e],null,t,!0):null!=e?String(e):null}(e.constraint,t);return{display:e.display||null,startEditable:null!=e.startEditable?e.startEditable:e.editable,durationEditable:null!=e.durationEditable?e.durationEditable:e.editable,constraints:null!=n?[n]:[],overlap:null!=e.overlap?e.overlap:null,allows:null!=e.allow?[e.allow]:[],backgroundColor:e.backgroundColor||e.color||"",borderColor:e.borderColor||e.color||"",textColor:e.textColor||"",classNames:(e.className||[]).concat(e.classNames||[])}}function br(e){return e.reduce(Er,vr)}function Er(e,t){return{display:null!=t.display?t.display:e.display,startEditable:null!=t.startEditable?t.startEditable:e.startEditable,durationEditable:null!=t.durationEditable?t.durationEditable:e.durationEditable,constraints:e.constraints.concat(t.constraints),overlap:"boolean"==typeof t.overlap?t.overlap:e.overlap,allows:e.allows.concat(t.allows),backgroundColor:t.backgroundColor||e.backgroundColor,borderColor:t.borderColor||e.borderColor,textColor:t.textColor||e.textColor,classNames:e.classNames.concat(t.classNames)}}const Ar={id:String,defaultAllDay:Boolean,url:String,format:String,events:an,eventDataTransform:an,success:an,failure:an};function Sr(e,t,n=Dr(t)){let r;if("string"==typeof e?r={url:e}:"function"==typeof e||Array.isArray(e)?r={events:e}:"object"==typeof e&&e&&(r=e),r){let{refined:i,extra:s}=on(r,n),o=function(e,t){let n=t.pluginHooks.eventSourceDefs;for(let t=n.length-1;t>=0;t-=1){let r=n[t].parseMeta(e);if(r)return{sourceDefId:t,meta:r}}return null}(i,t);if(o)return{_raw:e,isFetching:!1,latestFetchId:"",fetchRange:null,defaultAllDay:i.defaultAllDay,eventDataTransform:i.eventDataTransform,success:i.success,failure:i.failure,publicId:i.id||"",sourceId:$e(),sourceDefId:o.sourceDefId,meta:o.meta,ui:yr(i,t),extendedProps:s}}return null}function Dr(e){return Object.assign(Object.assign(Object.assign({},mr),Ar),e.pluginHooks.eventSourceRefiners)}function wr(e,t,n,r,i){switch(t.type){case"RECEIVE_EVENTS":return function(e,t,n,r,i,s){if(t&&n===t.latestFetchId){let n=dr(Cr(i,t,s),t,s);return r&&(n=tr(n,r,s)),fr(xr(e,t.sourceId),n)}return e}(e,n[t.sourceId],t.fetchId,t.fetchRange,t.rawEvents,i);case"RESET_RAW_EVENTS":return function(e,t,n,r,i){const{defIdMap:s,instanceIdMap:o}=function(e){const{defs:t,instances:n}=e,r={},i={};for(let e in t){const n=t[e],{publicId:i}=n;i&&(r[i]=e)}for(let e in n){const r=t[n[e].defId],{publicId:s}=r;s&&(i[s]=e)}return{defIdMap:r,instanceIdMap:i}}(e);let a=dr(Cr(n,t,i),t,i,!1,s,o);return tr(a,r,i)}(e,n[t.sourceId],t.rawEvents,r.activeRange,i);case"ADD_EVENTS":return function(e,t,n,r){n&&(t=tr(t,n,r));return fr(e,t)}(e,t.eventStore,r?r.activeRange:null,i);case"RESET_EVENTS":return t.eventStore;case"MERGE_EVENTS":return fr(e,t.eventStore);case"PREV":case"NEXT":case"CHANGE_DATE":case"CHANGE_VIEW_TYPE":return r?tr(e,r.activeRange,i):e;case"REMOVE_EVENTS":return function(e,t){let{defs:n,instances:r}=e,i={},s={};for(let e in n)t.defs[e]||(i[e]=n[e]);for(let e in r)!t.instances[e]&&i[r[e].defId]&&(s[e]=r[e]);return{defs:i,instances:s}}(e,t.eventStore);case"REMOVE_EVENT_SOURCE":return xr(e,t.sourceId);case"REMOVE_ALL_EVENT_SOURCES":return gr(e,(e=>!e.sourceId));case"REMOVE_ALL_EVENTS":return{defs:{},instances:{}};default:return e}}function Cr(e,t,n){let r=n.options.eventDataTransform,i=t?t.eventDataTransform:null;return i&&(e=Rr(e,i)),r&&(e=Rr(e,r)),e}function Rr(e,t){let n;if(t){n=[];for(let r of e){let e=t(r);e?n.push(e):null==e&&n.push(r)}}else n=e;return n}function _r(e,t,n){let{defs:r}=e,i=un(e.instances,(e=>r[e.defId].allDay?e:Object.assign(Object.assign({},e),{range:{start:n.createMarker(t.toDate(e.range.start,e.forcedStartTzo)),end:n.createMarker(t.toDate(e.range.end,e.forcedEndTzo))},forcedStartTzo:n.canComputeOffset?null:e.forcedStartTzo,forcedEndTzo:n.canComputeOffset?null:e.forcedEndTzo})));return{defs:r,instances:i}}function xr(e,t){return gr(e,(e=>e.sourceId!==t))}class Tr{constructor(){this.handlers={},this.thisContext=null}setThisContext(e){this.thisContext=e}setOptions(e){this.options=e}on(e,t){!function(e,t,n){(e[t]||(e[t]=[])).push(n)}(this.handlers,e,t)}off(e,t){!function(e,t,n){n?e[t]&&(e[t]=e[t].filter((e=>e!==n))):delete e[t]}(this.handlers,e,t)}trigger(e,...t){let n=this.handlers[e]||[],r=this.options&&this.options[e],i=[].concat(r||[],n);for(let e of i)e.apply(this.thisContext,t)}hasHandlers(e){return Boolean(this.handlers[e]&&this.handlers[e].length||this.options&&this.options[e])}}const kr={startTime:"09:00",endTime:"17:00",daysOfWeek:[1,2,3,4,5],display:"inverse-background",classNames:"fc-non-business",groupId:"_businessHours"};function Mr(e,t){return dr(function(e){let t;t=!0===e?[{}]:Array.isArray(e)?e.filter((e=>e.daysOfWeek)):"object"==typeof e&&e?[e]:[];return t=t.map((e=>Object.assign(Object.assign({},kr),e))),t}(e),null,t)}function Or(e,t,n){n.emitter.trigger("select",Object.assign(Object.assign({},Ir(e,n)),{jsEvent:t?t.origEvent:null,view:n.viewApi||n.calendarApi.view}))}function Ir(e,t){let n={};for(let r of t.pluginHooks.dateSpanTransforms)Object.assign(n,r(e,t));var r,i;return Object.assign(n,(r=e,i=t.dateEnv,Object.assign(Object.assign({},oi(r.range,i,r.allDay)),{allDay:r.allDay}))),n}function Nr(e,t,n){let{dateEnv:r,options:i}=n,s=t;return e?(s=St(s),s=r.add(s,i.defaultAllDayEventDuration)):s=r.add(s,i.defaultTimedEventDuration),s}function Pr(e,t,n,r){let i=Gr(e.defs,t),s={defs:{},instances:{}};for(let t in e.defs){let o=e.defs[t];s.defs[t]=Hr(o,i[t],n,r)}for(let t in e.instances){let o=e.instances[t],a=s.defs[o.defId];s.instances[t]=Br(o,a,i[o.defId],n,r)}return s}function Hr(e,t,n,r){let i=n.standardProps||{};null==i.hasEnd&&t.durationEditable&&(n.startDelta||n.endDelta)&&(i.hasEnd=!0);let s=Object.assign(Object.assign(Object.assign({},e),i),{ui:Object.assign(Object.assign({},e.ui),i.ui)});n.extendedProps&&(s.extendedProps=Object.assign(Object.assign({},s.extendedProps),n.extendedProps));for(let e of r.pluginHooks.eventDefMutationAppliers)e(s,n,r);return!s.hasEnd&&r.options.forceEventDuration&&(s.hasEnd=!0),s}function Br(e,t,n,r,i){let{dateEnv:s}=i,o=r.standardProps&&!0===r.standardProps.allDay,a=r.standardProps&&!1===r.standardProps.hasEnd,l=Object.assign({},e);return o&&(l.range=Zn(l.range)),r.datesDelta&&n.startEditable&&(l.range={start:s.add(l.range.start,r.datesDelta),end:s.add(l.range.end,r.datesDelta)}),r.startDelta&&n.durationEditable&&(l.range={start:s.add(l.range.start,r.startDelta),end:l.range.end}),r.endDelta&&n.durationEditable&&(l.range={start:l.range.start,end:s.add(l.range.end,r.endDelta)}),a&&(l.range={start:l.range.start,end:Nr(t.allDay,l.range.start,i)}),t.allDay&&(l.range={start:St(l.range.start),end:St(l.range.end)}),l.range.end<l.range.start&&(l.range.end=Nr(t.allDay,l.range.start,i)),l}class jr{constructor(e,t){this.context=e,this.internalEventSource=t}remove(){this.context.dispatch({type:"REMOVE_EVENT_SOURCE",sourceId:this.internalEventSource.sourceId})}refetch(){this.context.dispatch({type:"FETCH_EVENT_SOURCES",sourceIds:[this.internalEventSource.sourceId],isRefetch:!0})}get id(){return this.internalEventSource.publicId}get url(){return this.internalEventSource.meta.url}get format(){return this.internalEventSource.meta.format}}class zr{constructor(e,t,n){this._context=e,this._def=t,this._instance=n||null}setProp(e,t){if(e in ir)console.warn("Could not set date-related prop 'name'. Use one of the date-related methods instead.");else if("id"===e)t=rr[e](t),this.mutate({standardProps:{publicId:t}});else if(e in rr)t=rr[e](t),this.mutate({standardProps:{[e]:t}});else if(e in mr){let n=mr[e](t);n="color"===e?{backgroundColor:t,borderColor:t}:"editable"===e?{startEditable:t,durationEditable:t}:{[e]:t},this.mutate({standardProps:{ui:n}})}else console.warn(`Could not set prop '${e}'. Use setExtendedProp instead.`)}setExtendedProp(e,t){this.mutate({extendedProps:{[e]:t}})}setStart(e,t={}){let{dateEnv:n}=this._context,r=n.createMarker(e);if(r&&this._instance){let e=$n(this._instance.range.start,r,n,t.granularity);t.maintainDuration?this.mutate({datesDelta:e}):this.mutate({startDelta:e})}}setEnd(e,t={}){let n,{dateEnv:r}=this._context;if((null==e||(n=r.createMarker(e),n))&&this._instance)if(n){let e=$n(this._instance.range.end,n,r,t.granularity);this.mutate({endDelta:e})}else this.mutate({standardProps:{hasEnd:!1}})}setDates(e,t,n={}){let r,{dateEnv:i}=this._context,s={allDay:n.allDay},o=i.createMarker(e);var a,l;if(o&&((null==t||(r=i.createMarker(t),r))&&this._instance)){let e=this._instance.range;!0===n.allDay&&(e=Zn(e));let t=$n(e.start,o,i,n.granularity);if(r){let o=$n(e.end,r,i,n.granularity);l=o,(a=t).years===l.years&&a.months===l.months&&a.days===l.days&&a.milliseconds===l.milliseconds?this.mutate({datesDelta:t,standardProps:s}):this.mutate({startDelta:t,endDelta:o,standardProps:s})}else s.hasEnd=!1,this.mutate({datesDelta:t,standardProps:s})}}moveStart(e){let t=lt(e);t&&this.mutate({startDelta:t})}moveEnd(e){let t=lt(e);t&&this.mutate({endDelta:t})}moveDates(e){let t=lt(e);t&&this.mutate({datesDelta:t})}setAllDay(e,t={}){let n={allDay:e},{maintainDuration:r}=t;null==r&&(r=this._context.options.allDayMaintainDuration),this._def.allDay!==e&&(n.hasEnd=r),this.mutate({standardProps:n})}formatRange(e){let{dateEnv:t}=this._context,n=this._instance,r=Zt(e);return this._def.hasEnd?t.formatRange(n.range.start,n.range.end,r,{forcedStartTzo:n.forcedStartTzo,forcedEndTzo:n.forcedEndTzo}):t.format(n.range.start,r,{forcedTzo:n.forcedStartTzo})}mutate(e){let t=this._instance;if(t){let n=this._def,r=this._context,{eventStore:i}=r.getCurrentData(),s=hr(i,t.instanceId);s=Pr(s,{"":{display:"",startEditable:!0,durationEditable:!0,constraints:[],overlap:null,allows:[],backgroundColor:"",borderColor:"",textColor:"",classNames:[]}},e,r);let o=new zr(r,n,t);this._def=s.defs[n.defId],this._instance=s.instances[t.instanceId],r.dispatch({type:"MERGE_EVENTS",eventStore:s}),r.emitter.trigger("eventChange",{oldEvent:o,event:this,relatedEvents:Lr(s,r,t),revert(){r.dispatch({type:"RESET_EVENTS",eventStore:i})}})}}remove(){let e=this._context,t=Ur(this);e.dispatch({type:"REMOVE_EVENTS",eventStore:t}),e.emitter.trigger("eventRemove",{event:this,relatedEvents:[],revert(){e.dispatch({type:"MERGE_EVENTS",eventStore:t})}})}get source(){let{sourceId:e}=this._def;return e?new jr(this._context,this._context.getCurrentData().eventSources[e]):null}get start(){return this._instance?this._context.dateEnv.toDate(this._instance.range.start):null}get end(){return this._instance&&this._def.hasEnd?this._context.dateEnv.toDate(this._instance.range.end):null}get startStr(){let e=this._instance;return e?this._context.dateEnv.formatIso(e.range.start,{omitTime:this._def.allDay,forcedTzo:e.forcedStartTzo}):""}get endStr(){let e=this._instance;return e&&this._def.hasEnd?this._context.dateEnv.formatIso(e.range.end,{omitTime:this._def.allDay,forcedTzo:e.forcedEndTzo}):""}get id(){return this._def.publicId}get groupId(){return this._def.groupId}get allDay(){return this._def.allDay}get title(){return this._def.title}get url(){return this._def.url}get display(){return this._def.ui.display||"auto"}get startEditable(){return this._def.ui.startEditable}get durationEditable(){return this._def.ui.durationEditable}get constraint(){return this._def.ui.constraints[0]||null}get overlap(){return this._def.ui.overlap}get allow(){return this._def.ui.allows[0]||null}get backgroundColor(){return this._def.ui.backgroundColor}get borderColor(){return this._def.ui.borderColor}get textColor(){return this._def.ui.textColor}get classNames(){return this._def.ui.classNames}get extendedProps(){return this._def.extendedProps}toPlainObject(e={}){let t=this._def,{ui:n}=t,{startStr:r,endStr:i}=this,s={allDay:t.allDay};return t.title&&(s.title=t.title),r&&(s.start=r),i&&(s.end=i),t.publicId&&(s.id=t.publicId),t.groupId&&(s.groupId=t.groupId),t.url&&(s.url=t.url),n.display&&"auto"!==n.display&&(s.display=n.display),e.collapseColor&&n.backgroundColor&&n.backgroundColor===n.borderColor?s.color=n.backgroundColor:(n.backgroundColor&&(s.backgroundColor=n.backgroundColor),n.borderColor&&(s.borderColor=n.borderColor)),n.textColor&&(s.textColor=n.textColor),n.classNames.length&&(s.classNames=n.classNames),Object.keys(t.extendedProps).length&&(e.collapseExtendedProps?Object.assign(s,t.extendedProps):s.extendedProps=t.extendedProps),s}toJSON(){return this.toPlainObject()}}function Ur(e){let t=e._def,n=e._instance;return{defs:{[t.defId]:t},instances:n?{[n.instanceId]:n}:{}}}function Lr(e,t,n){let{defs:r,instances:i}=e,s=[],o=n?n.instanceId:"";for(let e in i){let n=i[e],a=r[n.defId];n.instanceId!==o&&s.push(new zr(t,a,n))}return s}function Wr(e,t,n,r){let i={},s={},o={},a=[],l=[],c=Gr(e.defs,t);for(let t in e.defs){let n=e.defs[t];"inverse-background"===c[n.defId].display&&(n.groupId?(i[n.groupId]=[],o[n.groupId]||(o[n.groupId]=n)):s[t]=[])}for(let t in e.instances){let o=e.instances[t],d=e.defs[o.defId],u=c[d.defId],h=o.range,f=!d.allDay&&r?Xn(h,r):h,g=Gn(f,n);g&&("inverse-background"===u.display?d.groupId?i[d.groupId].push(g):s[o.defId].push(g):"none"!==u.display&&("background"===u.display?a:l).push({def:d,ui:u,instance:o,range:g,isStart:f.start&&f.start.valueOf()===g.start.valueOf(),isEnd:f.end&&f.end.valueOf()===g.end.valueOf()}))}for(let e in i){let t=Fn(i[e],n);for(let n of t){let t=o[e],r=c[t.defId];a.push({def:t,ui:r,instance:null,range:n,isStart:!1,isEnd:!1})}}for(let t in s){let r=Fn(s[t],n);for(let n of r)a.push({def:e.defs[t],ui:c[t],instance:null,range:n,isStart:!1,isEnd:!1})}return{bg:a,fg:l}}function Fr(e,t){e.fcSeg=t}function Vr(e){return e.fcSeg||e.parentNode.fcSeg||null}function Gr(e,t){return un(e,(e=>Qr(e,t)))}function Qr(e,t){let n=[];return t[""]&&n.push(t[""]),t[e.defId]&&n.push(t[e.defId]),n.push(e.ui),br(n)}function Yr(e,t){let n=e.map(qr);return n.sort(((e,n)=>function(e,t,n){let r,i;for(r=0;r<n.length;r+=1)if(i=et(e,t,n[r]),i)return i;return 0}(e,n,t))),n.map((e=>e._seg))}function qr(e){let{eventRange:t}=e,n=t.def,r=t.instance?t.instance.range:t.range,i=r.start?r.start.valueOf():0,s=r.end?r.end.valueOf():0;return Object.assign(Object.assign(Object.assign({},n.extendedProps),n),{id:n.publicId,start:i,end:s,duration:s-i,allDay:Number(n.allDay),_seg:e})}function Zr(e,t){let{pluginHooks:n}=t,r=n.isDraggableTransformers,{def:i,ui:s}=e.eventRange,o=s.startEditable;for(let e of r)o=e(o,i,s,t);return o}function Xr(e,t){return e.isStart&&e.eventRange.ui.durationEditable&&t.options.eventResizableFromStart}function $r(e,t){return e.isEnd&&e.eventRange.ui.durationEditable}function Jr(e,t,n,r,i,s,o){let{dateEnv:a,options:l}=n,{displayEventTime:c,displayEventEnd:d}=l,u=e.eventRange.def,h=e.eventRange.instance;null==c&&(c=!1!==r),null==d&&(d=!1!==i);let f=h.range.start,g=h.range.end,p=s||e.start||e.eventRange.range.start,m=o||e.end||e.eventRange.range.end,v=St(f).valueOf()===St(p).valueOf(),y=St(bt(g,-1)).valueOf()===St(bt(m,-1)).valueOf();return c&&!u.allDay&&(v||y)?(p=v?f:p,m=y?g:m,d&&u.hasEnd?a.formatRange(p,m,t,{forcedStartTzo:s?null:h.forcedStartTzo,forcedEndTzo:o?null:h.forcedEndTzo}):a.format(p,t,{forcedTzo:s?null:h.forcedStartTzo})):""}function Kr(e,t,n){let r=e.eventRange.range;return{isPast:r.end<(n||t.start),isFuture:r.start>=(n||t.end),isToday:t&&qn(t,r.start)}}function ei(e){let t=["fc-event"];return e.isMirror&&t.push("fc-event-mirror"),e.isDraggable&&t.push("fc-event-draggable"),(e.isStartResizable||e.isEndResizable)&&t.push("fc-event-resizable"),e.isDragging&&t.push("fc-event-dragging"),e.isResizing&&t.push("fc-event-resizing"),e.isSelected&&t.push("fc-event-selected"),e.isStart&&t.push("fc-event-start"),e.isEnd&&t.push("fc-event-end"),e.isPast&&t.push("fc-event-past"),e.isToday&&t.push("fc-event-today"),e.isFuture&&t.push("fc-event-future"),t}function ti(e){return e.instance?e.instance.instanceId:`${e.def.defId}:${e.range.start.toISOString()}`}function ni(e,t){let{def:n,instance:r}=e.eventRange,{url:i}=n;if(i)return{href:i};let{emitter:s,options:o}=t,{eventInteractive:a}=o;return null==a&&(a=n.interactive,null==a&&(a=Boolean(s.hasHandlers("eventClick")))),a?Ze((e=>{s.trigger("eventClick",{el:e.target,event:new zr(t,n,r),jsEvent:e,view:t.viewApi})})):{}}const ri={start:an,end:an,allDay:Boolean};function ii(e,t,n){let r=function(e,t){let{refined:n,extra:r}=on(e,ri),i=n.start?t.createMarkerMeta(n.start):null,s=n.end?t.createMarkerMeta(n.end):null,{allDay:o}=n;null==o&&(o=i&&i.isTimeUnspecified&&(!s||s.isTimeUnspecified));return Object.assign({range:{start:i?i.marker:null,end:s?s.marker:null},allDay:o},r)}(e,t),{range:i}=r;if(!i.start)return null;if(!i.end){if(null==n)return null;i.end=t.add(i.start,n)}return r}function si(e,t,n){return Object.assign(Object.assign({},oi(e,t,n)),{timeZone:t.timeZone})}function oi(e,t,n){return{start:t.toDate(e.start),end:t.toDate(e.end),startStr:t.formatIso(e.start,{omitTime:n}),endStr:t.formatIso(e.end,{omitTime:n})}}class ai extends Error{constructor(e,t){super(e),this.response=t}}let li;function ci(){return null==li&&(li=function(){if("undefined"==typeof document)return!0;let e=document.createElement("div");e.style.position="absolute",e.style.top="0px",e.style.left="0px",e.innerHTML="<table><tr><td><div></div></td></tr></table>",e.querySelector("table").style.height="100px",e.querySelector("div").style.height="100%",document.body.appendChild(e);let t=e.querySelector("div").offsetHeight>0;return document.body.removeChild(e),t}()),li}class di extends On{constructor(){super(...arguments),this.state={forPrint:!1},this.handleBeforePrint=()=>{this.setState({forPrint:!0})},this.handleAfterPrint=()=>{this.setState({forPrint:!1})}}render(){let{props:e}=this,{options:t}=e,{forPrint:n}=this.state,r=n||"auto"===t.height||"auto"===t.contentHeight,i=r||null==t.height?"":t.height,s=["fc",n?"fc-media-print":"fc-media-screen",`fc-direction-${t.direction}`,e.theme.getClass("root")];return ci()||s.push("fc-liquid-hack"),e.children(s,i,r,n)}componentDidMount(){let{emitter:e}=this.props;e.on("_beforeprint",this.handleBeforePrint),e.on("_afterprint",this.handleAfterPrint)}componentWillUnmount(){let{emitter:e}=this.props;e.off("_beforeprint",this.handleBeforePrint),e.off("_afterprint",this.handleAfterPrint)}}class ui{constructor(e){this.component=e.component,this.isHitComboAllowed=e.isHitComboAllowed||null}destroy(){}}function hi(e){return{[e.component.uid]:e}}const fi={};class gi{getCurrentData(){return this.currentDataManager.getCurrentData()}dispatch(e){this.currentDataManager.dispatch(e)}get view(){return this.getCurrentData().viewApi}batchRendering(e){e()}updateSize(){this.trigger("_resize",!0)}setOption(e,t){this.dispatch({type:"SET_OPTION",optionName:e,rawOptionValue:t})}getOption(e){return this.currentDataManager.currentCalendarOptionsInput[e]}getAvailableLocaleCodes(){return Object.keys(this.getCurrentData().availableRawLocales)}on(e,t){let{currentDataManager:n}=this;n.currentCalendarOptionsRefiners[e]?n.emitter.on(e,t):console.warn(`Unknown listener name '${e}'`)}off(e,t){this.currentDataManager.emitter.off(e,t)}trigger(e,...t){this.currentDataManager.emitter.trigger(e,...t)}changeView(e,t){this.batchRendering((()=>{if(this.unselect(),t)if(t.start&&t.end)this.dispatch({type:"CHANGE_VIEW_TYPE",viewType:e}),this.dispatch({type:"SET_OPTION",optionName:"visibleRange",rawOptionValue:t});else{let{dateEnv:n}=this.getCurrentData();this.dispatch({type:"CHANGE_VIEW_TYPE",viewType:e,dateMarker:n.createMarker(t)})}else this.dispatch({type:"CHANGE_VIEW_TYPE",viewType:e})}))}zoomTo(e,t){let n;t=t||"day",n=this.getCurrentData().viewSpecs[t]||this.getUnitViewSpec(t),this.unselect(),n?this.dispatch({type:"CHANGE_VIEW_TYPE",viewType:n.type,dateMarker:e}):this.dispatch({type:"CHANGE_DATE",dateMarker:e})}getUnitViewSpec(e){let t,n,{viewSpecs:r,toolbarConfig:i}=this.getCurrentData(),s=[].concat(i.header?i.header.viewsWithButtons:[],i.footer?i.footer.viewsWithButtons:[]);for(let e in r)s.push(e);for(t=0;t<s.length;t+=1)if(n=r[s[t]],n&&n.singleUnit===e)return n;return null}prev(){this.unselect(),this.dispatch({type:"PREV"})}next(){this.unselect(),this.dispatch({type:"NEXT"})}prevYear(){let e=this.getCurrentData();this.unselect(),this.dispatch({type:"CHANGE_DATE",dateMarker:e.dateEnv.addYears(e.currentDate,-1)})}nextYear(){let e=this.getCurrentData();this.unselect(),this.dispatch({type:"CHANGE_DATE",dateMarker:e.dateEnv.addYears(e.currentDate,1)})}today(){let e=this.getCurrentData();this.unselect(),this.dispatch({type:"CHANGE_DATE",dateMarker:Jn(e.calendarOptions.now,e.dateEnv)})}gotoDate(e){let t=this.getCurrentData();this.unselect(),this.dispatch({type:"CHANGE_DATE",dateMarker:t.dateEnv.createMarker(e)})}incrementDate(e){let t=this.getCurrentData(),n=lt(e);n&&(this.unselect(),this.dispatch({type:"CHANGE_DATE",dateMarker:t.dateEnv.add(t.currentDate,n)}))}getDate(){let e=this.getCurrentData();return e.dateEnv.toDate(e.currentDate)}formatDate(e,t){let{dateEnv:n}=this.getCurrentData();return n.format(n.createMarker(e),Zt(t))}formatRange(e,t,n){let{dateEnv:r}=this.getCurrentData();return r.formatRange(r.createMarker(e),r.createMarker(t),Zt(n),n)}formatIso(e,t){let{dateEnv:n}=this.getCurrentData();return n.formatIso(n.createMarker(e),{omitTime:t})}select(e,t){let n;n=null==t?null!=e.start?e:{start:e,end:null}:{start:e,end:t};let r=this.getCurrentData(),i=ii(n,r.dateEnv,lt({days:1}));i&&(this.dispatch({type:"SELECT_DATES",selection:i}),Or(i,null,r))}unselect(e){let t=this.getCurrentData();t.dateSelection&&(this.dispatch({type:"UNSELECT_DATES"}),function(e,t){t.emitter.trigger("unselect",{jsEvent:e?e.origEvent:null,view:t.viewApi||t.calendarApi.view})}(e,t))}addEvent(e,t){if(e instanceof zr){let t=e._def,n=e._instance;return this.getCurrentData().eventStore.defs[t.defId]||(this.dispatch({type:"ADD_EVENTS",eventStore:ur({def:t,instance:n})}),this.triggerEventAdd(e)),e}let n,r=this.getCurrentData();if(t instanceof jr)n=t.internalEventSource;else if("boolean"==typeof t)t&&([n]=fn(r.eventSources));else if(null!=t){let e=this.getEventSourceById(t);if(!e)return console.warn(`Could not find an event source with ID "${t}"`),null;n=e.internalEventSource}let i=or(e,n,r,!1);if(i){let e=new zr(r,i.def,i.def.recurringDef?null:i.instance);return this.dispatch({type:"ADD_EVENTS",eventStore:ur(i)}),this.triggerEventAdd(e),e}return null}triggerEventAdd(e){let{emitter:t}=this.getCurrentData();t.trigger("eventAdd",{event:e,relatedEvents:[],revert:()=>{this.dispatch({type:"REMOVE_EVENTS",eventStore:Ur(e)})}})}getEventById(e){let t=this.getCurrentData(),{defs:n,instances:r}=t.eventStore;e=String(e);for(let i in n){let s=n[i];if(s.publicId===e){if(s.recurringDef)return new zr(t,s,null);for(let e in r){let n=r[e];if(n.defId===s.defId)return new zr(t,s,n)}}}return null}getEvents(){let e=this.getCurrentData();return Lr(e.eventStore,e)}removeAllEvents(){this.dispatch({type:"REMOVE_ALL_EVENTS"})}getEventSources(){let e=this.getCurrentData(),t=e.eventSources,n=[];for(let r in t)n.push(new jr(e,t[r]));return n}getEventSourceById(e){let t=this.getCurrentData(),n=t.eventSources;e=String(e);for(let r in n)if(n[r].publicId===e)return new jr(t,n[r]);return null}addEventSource(e){let t=this.getCurrentData();if(e instanceof jr)return t.eventSources[e.internalEventSource.sourceId]||this.dispatch({type:"ADD_EVENT_SOURCES",sources:[e.internalEventSource]}),e;let n=Sr(e,t);return n?(this.dispatch({type:"ADD_EVENT_SOURCES",sources:[n]}),new jr(t,n)):null}removeAllEventSources(){this.dispatch({type:"REMOVE_ALL_EVENT_SOURCES"})}refetchEvents(){this.dispatch({type:"FETCH_EVENT_SOURCES",isRefetch:!0})}scrollToTime(e){let t=lt(e);t&&this.trigger("_scrollRequest",{time:t})}}function pi(e,t){return e.left>=t.left&&e.left<t.right&&e.top>=t.top&&e.top<t.bottom}function mi(e,t){let n={left:Math.max(e.left,t.left),right:Math.min(e.right,t.right),top:Math.max(e.top,t.top),bottom:Math.min(e.bottom,t.bottom)};return n.left<n.right&&n.top<n.bottom&&n}const vi={defs:{},instances:{}};class yi{constructor(){this.getKeysForEventDefs=Nt(this._getKeysForEventDefs),this.splitDateSelection=Nt(this._splitDateSpan),this.splitEventStore=Nt(this._splitEventStore),this.splitIndividualUi=Nt(this._splitIndividualUi),this.splitEventDrag=Nt(this._splitInteraction),this.splitEventResize=Nt(this._splitInteraction),this.eventUiBuilders={}}splitProps(e){let t=this.getKeyInfo(e),n=this.getKeysForEventDefs(e.eventStore),r=this.splitDateSelection(e.dateSelection),i=this.splitIndividualUi(e.eventUiBases,n),s=this.splitEventStore(e.eventStore,n),o=this.splitEventDrag(e.eventDrag),a=this.splitEventResize(e.eventResize),l={};this.eventUiBuilders=un(t,((e,t)=>this.eventUiBuilders[t]||Nt(bi)));for(let n in t){let c=t[n],d=s[n]||vi,u=this.eventUiBuilders[n];l[n]={businessHours:c.businessHours||e.businessHours,dateSelection:r[n]||null,eventStore:d,eventUiBases:u(e.eventUiBases[""],c.ui,i[n]),eventSelection:d.instances[e.eventSelection]?e.eventSelection:"",eventDrag:o[n]||null,eventResize:a[n]||null}}return l}_splitDateSpan(e){let t={};if(e){let n=this.getKeysForDateSpan(e);for(let r of n)t[r]=e}return t}_getKeysForEventDefs(e){return un(e.defs,(e=>this.getKeysForEventDef(e)))}_splitEventStore(e,t){let{defs:n,instances:r}=e,i={};for(let e in n)for(let r of t[e])i[r]||(i[r]={defs:{},instances:{}}),i[r].defs[e]=n[e];for(let e in r){let n=r[e];for(let r of t[n.defId])i[r]&&(i[r].instances[e]=n)}return i}_splitIndividualUi(e,t){let n={};for(let r in e)if(r)for(let i of t[r])n[i]||(n[i]={}),n[i][r]=e[r];return n}_splitInteraction(e){let t={};if(e){let n=this._splitEventStore(e.affectedEvents,this._getKeysForEventDefs(e.affectedEvents)),r=this._getKeysForEventDefs(e.mutatedEvents),i=this._splitEventStore(e.mutatedEvents,r),s=r=>{t[r]||(t[r]={affectedEvents:n[r]||vi,mutatedEvents:i[r]||vi,isEvent:e.isEvent})};for(let e in n)s(e);for(let e in i)s(e)}return t}}function bi(e,t,n){let r=[];e&&r.push(e),t&&r.push(t);let i={"":br(r)};return n&&Object.assign(i,n),i}function Ei(e,t,n,r){return{dow:e.getUTCDay(),isDisabled:Boolean(r&&!qn(r.activeRange,e)),isOther:Boolean(r&&!qn(r.currentRange,e)),isToday:Boolean(t&&qn(t,e)),isPast:Boolean(n?e<n:!!t&&e<t.start),isFuture:Boolean(n?e>n:!!t&&e>=t.end)}}function Ai(e,t){let n=["fc-day",`fc-day-${mt[e.dow]}`];return e.isDisabled?n.push("fc-day-disabled"):(e.isToday&&(n.push("fc-day-today"),n.push(t.getClass("today"))),e.isPast&&n.push("fc-day-past"),e.isFuture&&n.push("fc-day-future"),e.isOther&&n.push("fc-day-other")),n}const Si=Zt({year:"numeric",month:"long",day:"numeric"}),Di=Zt({week:"long"});function wi(e,t,n="day",r=!0){const{dateEnv:i,options:s,calendarApi:o}=e;let a=i.format(t,"week"===n?Di:Si);if(s.navLinks){let e=i.toDate(t);const l=e=>{let r="day"===n?s.navLinkDayClick:"week"===n?s.navLinkWeekClick:null;"function"==typeof r?r.call(o,i.toDate(t),e):("string"==typeof r&&(n=r),o.zoomTo(t,n))};return Object.assign({title:nt(s.navLinkHint,[a,e],a),"data-navlink":""},r?qe(l):{onClick:l})}return{"aria-label":a}}let Ci,Ri=null;function _i(){return null===Ri&&(Ri=function(){let e=document.createElement("div");Ue(e,{position:"absolute",top:-1e3,left:0,border:0,padding:0,overflow:"scroll",direction:"rtl"}),e.innerHTML="<div></div>",document.body.appendChild(e);let t=e.firstChild.getBoundingClientRect().left>e.getBoundingClientRect().left;return He(e),t}()),Ri}function xi(){return Ci||(Ci=function(){let e=document.createElement("div");e.style.overflow="scroll",e.style.position="absolute",e.style.top="-9999px",e.style.left="-9999px",document.body.appendChild(e);let t=Ti(e);return document.body.removeChild(e),t}()),Ci}function Ti(e){return{x:e.offsetHeight-e.clientHeight,y:e.offsetWidth-e.clientWidth}}function ki(e,t=!1,n){let r=n?e.getBoundingClientRect():Mi(e),i=function(e,t=!1){let n=window.getComputedStyle(e),r=parseInt(n.borderLeftWidth,10)||0,i=parseInt(n.borderRightWidth,10)||0,s=parseInt(n.borderTopWidth,10)||0,o=parseInt(n.borderBottomWidth,10)||0,a=Ti(e),l=a.y-r-i,c={borderLeft:r,borderRight:i,borderTop:s,borderBottom:o,scrollbarBottom:a.x-s-o,scrollbarLeft:0,scrollbarRight:0};return _i()&&"rtl"===n.direction?c.scrollbarLeft=l:c.scrollbarRight=l,t&&(c.paddingLeft=parseInt(n.paddingLeft,10)||0,c.paddingRight=parseInt(n.paddingRight,10)||0,c.paddingTop=parseInt(n.paddingTop,10)||0,c.paddingBottom=parseInt(n.paddingBottom,10)||0),c}(e,t),s={left:r.left+i.borderLeft+i.scrollbarLeft,right:r.right-i.borderRight-i.scrollbarRight,top:r.top+i.borderTop,bottom:r.bottom-i.borderBottom-i.scrollbarBottom};return t&&(s.left+=i.paddingLeft,s.right-=i.paddingRight,s.top+=i.paddingTop,s.bottom-=i.paddingBottom),s}function Mi(e){let t=e.getBoundingClientRect();return{left:t.left+window.pageXOffset,top:t.top+window.pageYOffset,right:t.right+window.pageXOffset,bottom:t.bottom+window.pageYOffset}}function Oi(e){let t=[];for(;e instanceof HTMLElement;){let n=window.getComputedStyle(e);if("fixed"===n.position)break;/(auto|scroll)/.test(n.overflow+n.overflowY+n.overflowX)&&t.push(e),e=e.parentNode}return t}class Ii{constructor(e,t,n,r){this.els=t;let i=this.originClientRect=e.getBoundingClientRect();n&&this.buildElHorizontals(i.left),r&&this.buildElVerticals(i.top)}buildElHorizontals(e){let t=[],n=[];for(let r of this.els){let i=r.getBoundingClientRect();t.push(i.left-e),n.push(i.right-e)}this.lefts=t,this.rights=n}buildElVerticals(e){let t=[],n=[];for(let r of this.els){let i=r.getBoundingClientRect();t.push(i.top-e),n.push(i.bottom-e)}this.tops=t,this.bottoms=n}leftToIndex(e){let t,{lefts:n,rights:r}=this,i=n.length;for(t=0;t<i;t+=1)if(e>=n[t]&&e<r[t])return t}topToIndex(e){let t,{tops:n,bottoms:r}=this,i=n.length;for(t=0;t<i;t+=1)if(e>=n[t]&&e<r[t])return t}getWidth(e){return this.rights[e]-this.lefts[e]}getHeight(e){return this.bottoms[e]-this.tops[e]}similarTo(e){return Ni(this.tops||[],e.tops||[])&&Ni(this.bottoms||[],e.bottoms||[])&&Ni(this.lefts||[],e.lefts||[])&&Ni(this.rights||[],e.rights||[])}}function Ni(e,t){const n=e.length;if(n!==t.length)return!1;for(let r=0;r<n;r++)if(Math.round(e[r])!==Math.round(t[r]))return!1;return!0}class Pi{getMaxScrollTop(){return this.getScrollHeight()-this.getClientHeight()}getMaxScrollLeft(){return this.getScrollWidth()-this.getClientWidth()}canScrollVertically(){return this.getMaxScrollTop()>0}canScrollHorizontally(){return this.getMaxScrollLeft()>0}canScrollUp(){return this.getScrollTop()>0}canScrollDown(){return this.getScrollTop()<this.getMaxScrollTop()}canScrollLeft(){return this.getScrollLeft()>0}canScrollRight(){return this.getScrollLeft()<this.getMaxScrollLeft()}}class Hi extends Pi{constructor(e){super(),this.el=e}getScrollTop(){return this.el.scrollTop}getScrollLeft(){return this.el.scrollLeft}setScrollTop(e){this.el.scrollTop=e}setScrollLeft(e){this.el.scrollLeft=e}getScrollWidth(){return this.el.scrollWidth}getScrollHeight(){return this.el.scrollHeight}getClientHeight(){return this.el.clientHeight}getClientWidth(){return this.el.clientWidth}}class Bi extends Pi{getScrollTop(){return window.pageYOffset}getScrollLeft(){return window.pageXOffset}setScrollTop(e){window.scroll(window.pageXOffset,e)}setScrollLeft(e){window.scroll(e,window.pageYOffset)}getScrollWidth(){return document.documentElement.scrollWidth}getScrollHeight(){return document.documentElement.scrollHeight}getClientHeight(){return document.documentElement.clientHeight}getClientWidth(){return document.documentElement.clientWidth}}class ji extends On{constructor(){super(...arguments),this.uid=$e()}prepareHits(){}queryHit(e,t,n,r){return null}isValidSegDownEl(e){return!this.props.eventDrag&&!this.props.eventResize&&!Be(e,".fc-event-mirror")}isValidDateDownEl(e){return!(Be(e,".fc-event:not(.fc-bg-event)")||Be(e,".fc-more-link")||Be(e,"a[data-navlink]")||Be(e,".fc-popover"))}}class zi{constructor(e=(e=>e.thickness)){this.getEntryThickness=e,this.strictOrder=!1,this.allowReslicing=!1,this.maxCoord=-1,this.maxStackCnt=-1,this.levelCoords=[],this.entriesByLevel=[],this.stackCnts={}}addSegs(e){let t=[];for(let n of e)this.insertEntry(n,t);return t}insertEntry(e,t){let n=this.findInsertion(e);return this.isInsertionValid(n,e)?(this.insertEntryAt(e,n),1):this.handleInvalidInsertion(n,e,t)}isInsertionValid(e,t){return(-1===this.maxCoord||e.levelCoord+this.getEntryThickness(t)<=this.maxCoord)&&(-1===this.maxStackCnt||e.stackCnt<this.maxStackCnt)}handleInvalidInsertion(e,t,n){return this.allowReslicing&&e.touchingEntry?this.splitEntry(t,e.touchingEntry,n):(n.push(t),0)}splitEntry(e,t,n){let r=0,i=[],s=e.span,o=t.span;return s.start<o.start&&(r+=this.insertEntry({index:e.index,thickness:e.thickness,span:{start:s.start,end:o.start}},i)),s.end>o.end&&(r+=this.insertEntry({index:e.index,thickness:e.thickness,span:{start:o.end,end:s.end}},i)),r?(n.push({index:e.index,thickness:e.thickness,span:Wi(o,s)},...i),r):(n.push(e),0)}insertEntryAt(e,t){let{entriesByLevel:n,levelCoords:r}=this;-1===t.lateral?(Fi(r,t.level,t.levelCoord),Fi(n,t.level,[e])):Fi(n[t.level],t.lateral,e),this.stackCnts[Li(e)]=t.stackCnt}findInsertion(e){let{levelCoords:t,entriesByLevel:n,strictOrder:r,stackCnts:i}=this,s=t.length,o=0,a=-1,l=-1,c=null,d=0;for(let u=0;u<s;u+=1){let s=t[u];if(!r&&s>=o+this.getEntryThickness(e))break;let h,f=n[u],g=Vi(f,e.span.start,Ui),p=g[0]+g[1];for(;(h=f[p])&&h.span.start<e.span.end;){let e=s+this.getEntryThickness(h);e>o&&(o=e,c=h,a=u,l=p),e===o&&(d=Math.max(d,i[Li(h)]+1)),p+=1}}let u=0;if(c)for(u=a+1;u<s&&t[u]<o;)u+=1;let h=-1;return u<s&&t[u]===o&&(h=Vi(n[u],e.span.end,Ui)[0]),{touchingLevel:a,touchingLateral:l,touchingEntry:c,stackCnt:d,levelCoord:o,level:u,lateral:h}}toRects(){let{entriesByLevel:e,levelCoords:t}=this,n=e.length,r=[];for(let i=0;i<n;i+=1){let n=e[i],s=t[i];for(let e of n)r.push(Object.assign(Object.assign({},e),{thickness:this.getEntryThickness(e),levelCoord:s}))}return r}}function Ui(e){return e.span.end}function Li(e){return e.index+":"+e.span.start}function Wi(e,t){let n=Math.max(e.start,t.start),r=Math.min(e.end,t.end);return n<r?{start:n,end:r}:null}function Fi(e,t,n){e.splice(t,0,n)}function Vi(e,t,n){let r=0,i=e.length;if(!i||t<n(e[r]))return[0,0];if(t>n(e[i-1]))return[i,0];for(;r<i;){let s=Math.floor(r+(i-r)/2),o=n(e[s]);if(t<o)i=s;else{if(!(t>o))return[s,1];r=s+1}}return[r,0]}class Gi{constructor(e,t){this.emitter=new Tr}destroy(){}setMirrorIsVisible(e){}setMirrorNeedsRevert(e){}setAutoScrollEnabled(e){}}const Qi={};Boolean;const Yi="fc-col-header-cell";function qi(e){return e.text}class Zi extends On{render(){let{dateEnv:e,options:t,theme:n,viewApi:r}=this.context,{props:i}=this,{date:s,dateProfile:o}=i,a=Ei(s,i.todayRange,null,o),l=[Yi].concat(Ai(a,n)),c=e.format(s,i.dayHeaderFormat),d=!a.isDisabled&&i.colCnt>1?wi(this.context,s):{},u=Object.assign(Object.assign(Object.assign({date:e.toDate(s),view:r},i.extraRenderProps),{text:c}),a);return m(zn,{elTag:"th",elClasses:l,elAttrs:Object.assign({role:"columnheader",colSpan:i.colSpan,"data-date":a.isDisabled?void 0:Ot(s)},i.extraDataAttrs),renderProps:u,generatorName:"dayHeaderContent",customGenerator:t.dayHeaderContent,defaultGenerator:qi,classNameGenerator:t.dayHeaderClassNames,didMount:t.dayHeaderDidMount,willUnmount:t.dayHeaderWillUnmount},(e=>m("div",{className:"fc-scrollgrid-sync-inner"},!a.isDisabled&&m(e,{elTag:"a",elAttrs:d,elClasses:["fc-col-header-cell-cushion",i.isSticky&&"fc-sticky"]}))))}}const Xi=Zt({weekday:"long"});class $i extends On{render(){let{props:e}=this,{dateEnv:t,theme:n,viewApi:r,options:i}=this.context,s=yt(new Date(2592e5),e.dow),o={dow:e.dow,isDisabled:!1,isFuture:!1,isPast:!1,isToday:!1,isOther:!1},a=t.format(s,e.dayHeaderFormat),l=Object.assign(Object.assign(Object.assign(Object.assign({date:s},o),{view:r}),e.extraRenderProps),{text:a});return m(zn,{elTag:"th",elClasses:[Yi,...Ai(o,n),...e.extraClassNames||[]],elAttrs:Object.assign({role:"columnheader",colSpan:e.colSpan},e.extraDataAttrs),renderProps:l,generatorName:"dayHeaderContent",customGenerator:i.dayHeaderContent,defaultGenerator:qi,classNameGenerator:i.dayHeaderClassNames,didMount:i.dayHeaderDidMount,willUnmount:i.dayHeaderWillUnmount},(n=>m("div",{className:"fc-scrollgrid-sync-inner"},m(n,{elTag:"a",elClasses:["fc-col-header-cell-cushion",e.isSticky&&"fc-sticky"],elAttrs:{"aria-label":t.format(s,Xi)}}))))}}class Ji extends D{constructor(e,t){super(e,t),this.initialNowDate=Jn(t.options.now,t.dateEnv),this.initialNowQueriedMs=(new Date).valueOf(),this.state=this.computeTiming().currentState}render(){let{props:e,state:t}=this;return e.children(t.nowDate,t.todayRange)}componentDidMount(){this.setTimeout()}componentDidUpdate(e){e.unit!==this.props.unit&&(this.clearTimeout(),this.setTimeout())}componentWillUnmount(){this.clearTimeout()}computeTiming(){let{props:e,context:t}=this,n=bt(this.initialNowDate,(new Date).valueOf()-this.initialNowQueriedMs),r=t.dateEnv.startOf(n,e.unit),i=t.dateEnv.add(r,lt(1,e.unit)),s=i.valueOf()-n.valueOf();return s=Math.min(864e5,s),{currentState:{nowDate:r,todayRange:Ki(r)},nextState:{nowDate:i,todayRange:Ki(i)},waitMs:s}}setTimeout(){let{nextState:e,waitMs:t}=this.computeTiming();this.timeoutId=setTimeout((()=>{this.setState(e,(()=>{this.setTimeout()}))}),t)}clearTimeout(){this.timeoutId&&clearTimeout(this.timeoutId)}}function Ki(e){let t=St(e);return{start:t,end:yt(t,1)}}Ji.contextType=Tn;class es extends On{constructor(){super(...arguments),this.createDayHeaderFormatter=Nt(ts)}render(){let{context:e}=this,{dates:t,dateProfile:n,datesRepDistinctDays:r,renderIntro:i}=this.props,s=this.createDayHeaderFormatter(e.options.dayHeaderFormat,r,t.length);return m(Ji,{unit:"day"},((e,o)=>m("tr",{role:"row"},i&&i("day"),t.map((e=>r?m(Zi,{key:e.toISOString(),date:e,dateProfile:n,todayRange:o,colCnt:t.length,dayHeaderFormat:s}):m($i,{key:e.getUTCDay(),dow:e.getUTCDay(),dayHeaderFormat:s}))))))}}function ts(e,t,n){return e||function(e,t){return Zt(!e||t>10?{weekday:"short"}:t>1?{weekday:"short",month:"numeric",day:"numeric",omitCommas:!0}:{weekday:"long"})}(t,n)}class ns{constructor(e,t){let n=e.start,{end:r}=e,i=[],s=[],o=-1;for(;n<r;)t.isHiddenDay(n)?i.push(o+.5):(o+=1,i.push(o),s.push(n)),n=yt(n,1);this.dates=s,this.indices=i,this.cnt=s.length}sliceRange(e){let t=this.getDateDayIndex(e.start),n=this.getDateDayIndex(yt(e.end,-1)),r=Math.max(0,t),i=Math.min(this.cnt-1,n);return r=Math.ceil(r),i=Math.floor(i),r<=i?{firstIndex:r,lastIndex:i,isStart:t===r,isEnd:n===i}:null}getDateDayIndex(e){let{indices:t}=this,n=Math.floor(Et(this.dates[0],e));return n<0?t[0]-1:n>=t.length?t[t.length-1]+1:t[n]}}class rs{constructor(e,t){let n,r,i,{dates:s}=e;if(t){for(r=s[0].getUTCDay(),n=1;n<s.length&&s[n].getUTCDay()!==r;n+=1);i=Math.ceil(s.length/n)}else i=1,n=s.length;this.rowCnt=i,this.colCnt=n,this.daySeries=e,this.cells=this.buildCells(),this.headerDates=this.buildHeaderDates()}buildCells(){let e=[];for(let t=0;t<this.rowCnt;t+=1){let n=[];for(let e=0;e<this.colCnt;e+=1)n.push(this.buildCell(t,e));e.push(n)}return e}buildCell(e,t){let n=this.daySeries.dates[e*this.colCnt+t];return{key:n.toISOString(),date:n}}buildHeaderDates(){let e=[];for(let t=0;t<this.colCnt;t+=1)e.push(this.cells[0][t].date);return e}sliceRange(e){let{colCnt:t}=this,n=this.daySeries.sliceRange(e),r=[];if(n){let{firstIndex:e,lastIndex:i}=n,s=e;for(;s<=i;){let o=Math.floor(s/t),a=Math.min((o+1)*t,i+1);r.push({row:o,firstCol:s%t,lastCol:(a-1)%t,isStart:n.isStart&&s===e,isEnd:n.isEnd&&a-1===i}),s=a}}return r}}class is{constructor(){this.sliceBusinessHours=Nt(this._sliceBusinessHours),this.sliceDateSelection=Nt(this._sliceDateSpan),this.sliceEventStore=Nt(this._sliceEventStore),this.sliceEventDrag=Nt(this._sliceInteraction),this.sliceEventResize=Nt(this._sliceInteraction),this.forceDayIfListItem=!1}sliceProps(e,t,n,r,...i){let{eventUiBases:s}=e,o=this.sliceEventStore(e.eventStore,s,t,n,...i);return{dateSelectionSegs:this.sliceDateSelection(e.dateSelection,t,n,s,r,...i),businessHourSegs:this.sliceBusinessHours(e.businessHours,t,n,r,...i),fgEventSegs:o.fg,bgEventSegs:o.bg,eventDrag:this.sliceEventDrag(e.eventDrag,s,t,n,...i),eventResize:this.sliceEventResize(e.eventResize,s,t,n,...i),eventSelection:e.eventSelection}}sliceNowDate(e,t,n,r,...i){return this._sliceDateSpan({range:{start:e,end:bt(e,1)},allDay:!1},t,n,{},r,...i)}_sliceBusinessHours(e,t,n,r,...i){return e?this._sliceEventStore(tr(e,ss(t,Boolean(n)),r),{},t,n,...i).bg:[]}_sliceEventStore(e,t,n,r,...i){if(e){let s=Wr(e,t,ss(n,Boolean(r)),r);return{bg:this.sliceEventRanges(s.bg,i),fg:this.sliceEventRanges(s.fg,i)}}return{bg:[],fg:[]}}_sliceInteraction(e,t,n,r,...i){if(!e)return null;let s=Wr(e.mutatedEvents,t,ss(n,Boolean(r)),r);return{segs:this.sliceEventRanges(s.fg,i),affectedInstances:e.affectedEvents.instances,isEvent:e.isEvent}}_sliceDateSpan(e,t,n,r,i,...s){if(!e)return[];let o=ss(t,Boolean(n)),a=Gn(e.range,o);if(a){let t=function(e,t,n){let r=ar({editable:!1},n),i=cr(r.refined,r.extra,"",e.allDay,!0,n);return{def:i,ui:Qr(i,t),instance:er(i.defId,e.range),range:e.range,isStart:!0,isEnd:!0}}(e=Object.assign(Object.assign({},e),{range:a}),r,i),n=this.sliceRange(e.range,...s);for(let e of n)e.eventRange=t;return n}return[]}sliceEventRanges(e,t){let n=[];for(let r of e)n.push(...this.sliceEventRange(r,t));return n}sliceEventRange(e,t){let n=e.range;this.forceDayIfListItem&&"list-item"===e.ui.display&&(n={start:n.start,end:yt(n.start,1)});let r=this.sliceRange(n,...t);for(let t of r)t.eventRange=e,t.isStart=e.isStart&&t.isStart,t.isEnd=e.isEnd&&t.isEnd;return r}}function ss(e,t){let n=e.activeRange;return t?n:{start:bt(n.start,e.slotMinTime.milliseconds),end:bt(n.end,e.slotMaxTime.milliseconds-864e5)}}function os(e,t,n){let{instances:r}=e.mutatedEvents;for(let e in r)if(!Yn(t.validRange,r[e].range))return!1;return as({eventDrag:e},n)}function as(e,t){let n=t.getCurrentData(),r=Object.assign({businessHours:n.businessHours,dateSelection:"",eventStore:n.eventStore,eventUiBases:n.eventUiBases,eventSelection:"",eventDrag:null,eventResize:null},e);return(t.pluginHooks.isPropsValid||ls)(r,t)}function ls(e,t,n={},r){return!(e.eventDrag&&!function(e,t,n,r){let i=t.getCurrentData(),s=e.eventDrag,o=s.mutatedEvents,a=o.defs,l=o.instances,c=Gr(a,s.isEvent?e.eventUiBases:{"":i.selectionConfig});r&&(c=un(c,r));let d=(g=e.eventStore,p=s.affectedEvents.instances,{defs:g.defs,instances:dn(g.instances,(e=>!p[e.instanceId]))}),u=d.defs,h=d.instances,f=Gr(u,e.eventUiBases);var g,p;for(let r in l){let o=l[r],g=o.range,p=c[o.defId],m=a[o.defId];if(!cs(p.constraints,g,d,e.businessHours,t))return!1;let{eventOverlap:v}=t.options,y="function"==typeof v?v:null;for(let e in h){let n=h[e];if(Qn(g,n.range)){if(!1===f[n.defId].overlap&&s.isEvent)return!1;if(!1===p.overlap)return!1;if(y&&!y(new zr(t,u[n.defId],n),new zr(t,m,o)))return!1}}let b=i.eventStore;for(let e of p.allows){let i,s=Object.assign(Object.assign({},n),{range:o.range,allDay:m.allDay}),a=b.defs[m.defId],l=b.instances[r];if(i=a?new zr(t,a,l):new zr(t,m),!e(Ir(s,t),i))return!1}}return!0}(e,t,n,r))&&!(e.dateSelection&&!function(e,t,n,r){let i=e.eventStore,s=i.defs,o=i.instances,a=e.dateSelection,l=a.range,{selectionConfig:c}=t.getCurrentData();r&&(c=r(c));if(!cs(c.constraints,l,i,e.businessHours,t))return!1;let{selectOverlap:d}=t.options,u="function"==typeof d?d:null;for(let e in o){let n=o[e];if(Qn(l,n.range)){if(!1===c.overlap)return!1;if(u&&!u(new zr(t,s[n.defId],n),null))return!1}}for(let e of c.allows){if(!e(Ir(Object.assign(Object.assign({},n),a),t),null))return!1}return!0}(e,t,n,r))}function cs(e,t,n,r,i){for(let s of e)if(!hs(ds(s,t,n,r,i),t))return!1;return!0}function ds(e,t,n,r,i){return"businessHours"===e?us(tr(r,t,i)):"string"==typeof e?us(gr(n,(t=>t.groupId===e))):"object"==typeof e&&e?us(tr(e,t,i)):[]}function us(e){let{instances:t}=e,n=[];for(let e in t)n.push(t[e].range);return n}function hs(e,t){for(let n of e)if(Yn(n,t))return!0;return!1}const fs=/^(visible|hidden)$/;class gs extends On{constructor(){super(...arguments),this.handleEl=e=>{this.el=e,In(this.props.elRef,e)}}render(){let{props:e}=this,{liquid:t,liquidIsAbsolute:n}=e,r=t&&n,i=["fc-scroller"];return t&&(n?i.push("fc-scroller-liquid-absolute"):i.push("fc-scroller-liquid")),m("div",{ref:this.handleEl,className:i.join(" "),style:{overflowX:e.overflowX,overflowY:e.overflowY,left:r&&-(e.overcomeLeft||0)||"",right:r&&-(e.overcomeRight||0)||"",bottom:r&&-(e.overcomeBottom||0)||"",marginLeft:!r&&-(e.overcomeLeft||0)||"",marginRight:!r&&-(e.overcomeRight||0)||"",marginBottom:!r&&-(e.overcomeBottom||0)||"",maxHeight:e.maxHeight||""}},e.children)}needsXScrolling(){if(fs.test(this.props.overflowX))return!1;let{el:e}=this,t=this.el.getBoundingClientRect().width-this.getYScrollbarWidth(),{children:n}=e;for(let e=0;e<n.length;e+=1){if(n[e].getBoundingClientRect().width>t)return!0}return!1}needsYScrolling(){if(fs.test(this.props.overflowY))return!1;let{el:e}=this,t=this.el.getBoundingClientRect().height-this.getXScrollbarWidth(),{children:n}=e;for(let e=0;e<n.length;e+=1){if(n[e].getBoundingClientRect().height>t)return!0}return!1}getXScrollbarWidth(){return fs.test(this.props.overflowX)?0:this.el.offsetHeight-this.el.clientHeight}getYScrollbarWidth(){return fs.test(this.props.overflowY)?0:this.el.offsetWidth-this.el.clientWidth}}class ps{constructor(e){this.masterCallback=e,this.currentMap={},this.depths={},this.callbackMap={},this.handleValue=(e,t)=>{let{depths:n,currentMap:r}=this,i=!1,s=!1;null!==e?(i=t in r,r[t]=e,n[t]=(n[t]||0)+1,s=!0):(n[t]-=1,n[t]||(delete r[t],delete this.callbackMap[t],i=!0)),this.masterCallback&&(i&&this.masterCallback(null,String(t)),s&&this.masterCallback(e,String(t)))}}createRef(e){let t=this.callbackMap[e];return t||(t=this.callbackMap[e]=t=>{this.handleValue(t,String(e))}),t}collect(e,t,n){return function(e,t=0,n,r=1){let i=[];null==n&&(n=Object.keys(e).length);for(let s=t;s<n;s+=r){let t=e[s];void 0!==t&&i.push(t)}return i}(this.currentMap,e,t,n)}getAll(){return fn(this.currentMap)}}function ms(e){let t=function(e,t){let n=e instanceof HTMLElement?[e]:e,r=[];for(let e=0;e<n.length;e+=1){let i=n[e].querySelectorAll(t);for(let e=0;e<i.length;e+=1)r.push(i[e])}return r}(e,".fc-scrollgrid-shrink"),n=0;for(let e of t)n=Math.max(n,st(e));return Math.ceil(n)}function vs(e,t){return e.liquid&&t.liquid}function ys(e,t){return pt(e,t,gn)}function bs(e,t){let n=[];for(let r of e){let e=r.span||1;for(let i=0;i<e;i+=1)n.push(m("col",{style:{width:"shrink"===r.width?Es(t):r.width||"",minWidth:r.minWidth||""}}))}return m("colgroup",{},...n)}function Es(e){return null==e?4:e}function As(e,t){let n=["fc-scrollgrid-section",`fc-scrollgrid-section-${e.type}`,e.className];return t&&e.liquid&&null==e.maxHeight&&n.push("fc-scrollgrid-section-liquid"),e.isSticky&&n.push("fc-scrollgrid-section-sticky"),n}function Ss(e){return m("div",{className:"fc-scrollgrid-sticky-shim",style:{width:e.clientWidth,minWidth:e.tableMinWidth}})}function Ds(e){let{stickyHeaderDates:t}=e;return null!=t&&"auto"!==t||(t="auto"===e.height||"auto"===e.viewHeight),t}function ws(e){let{stickyFooterScrollbar:t}=e;return null!=t&&"auto"!==t||(t="auto"===e.height||"auto"===e.viewHeight),t}class Cs extends On{constructor(){super(...arguments),this.processCols=Nt((e=>e),ys),this.renderMicroColGroup=Nt(bs),this.scrollerRefs=new ps,this.scrollerElRefs=new ps(this._handleScrollerEl.bind(this)),this.state={shrinkWidth:null,forceYScrollbars:!1,scrollerClientWidths:{},scrollerClientHeights:{}},this.handleSizing=()=>{this.safeSetState(Object.assign({shrinkWidth:this.computeShrinkWidth()},this.computeScrollerDims()))}}render(){let{props:e,state:t,context:n}=this,r=e.sections||[],i=this.processCols(e.cols),s=this.renderMicroColGroup(i,t.shrinkWidth),o=function(e,t){let n=["fc-scrollgrid",t.theme.getClass("table")];return e&&n.push("fc-scrollgrid-liquid"),n}(e.liquid,n);e.collapsibleWidth&&o.push("fc-scrollgrid-collapsible");let a,l=r.length,c=0,d=[],u=[],h=[];for(;c<l&&"header"===(a=r[c]).type;)d.push(this.renderSection(a,s,!0)),c+=1;for(;c<l&&"body"===(a=r[c]).type;)u.push(this.renderSection(a,s,!1)),c+=1;for(;c<l&&"footer"===(a=r[c]).type;)h.push(this.renderSection(a,s,!0)),c+=1;let f=!ci();const g={role:"rowgroup"};return m("table",{role:"grid",className:o.join(" "),style:{height:e.height}},Boolean(!f&&d.length)&&m("thead",g,...d),Boolean(!f&&u.length)&&m("tbody",g,...u),Boolean(!f&&h.length)&&m("tfoot",g,...h),f&&m("tbody",g,...d,...u,...h))}renderSection(e,t,n){return"outerContent"in e?m(y,{key:e.key},e.outerContent):m("tr",{key:e.key,role:"presentation",className:As(e,this.props.liquid).join(" ")},this.renderChunkTd(e,t,e.chunk,n))}renderChunkTd(e,t,n,r){if("outerContent"in n)return n.outerContent;let{props:i}=this,{forceYScrollbars:s,scrollerClientWidths:o,scrollerClientHeights:a}=this.state,l=function(e,t){return null!=t.maxHeight||vs(e,t)}(i,e),c=vs(i,e),d=i.liquid?s?"scroll":l?"auto":"hidden":"visible",u=e.key,h=function(e,t,n,r){let{expandRows:i}=n;return"function"==typeof t.content?t.content(n):m("table",{role:"presentation",className:[t.tableClassName,e.syncRowHeights?"fc-scrollgrid-sync-table":""].join(" "),style:{minWidth:n.tableMinWidth,width:n.clientWidth,height:i?n.clientHeight:""}},n.tableColGroupNode,m(r?"thead":"tbody",{role:"presentation"},"function"==typeof t.rowContent?t.rowContent(n):t.rowContent))}(e,n,{tableColGroupNode:t,tableMinWidth:"",clientWidth:i.collapsibleWidth||void 0===o[u]?null:o[u],clientHeight:void 0!==a[u]?a[u]:null,expandRows:e.expandRows,syncRowHeights:!1,rowSyncHeights:[],reportRowHeightChange:()=>{}},r);return m(r?"th":"td",{ref:n.elRef,role:"presentation"},m("div",{className:"fc-scroller-harness"+(c?" fc-scroller-harness-liquid":"")},m(gs,{ref:this.scrollerRefs.createRef(u),elRef:this.scrollerElRefs.createRef(u),overflowY:d,overflowX:i.liquid?"hidden":"visible",maxHeight:e.maxHeight,liquid:c,liquidIsAbsolute:!0},h)))}_handleScrollerEl(e,t){let n=function(e,t){for(let n of e)if(n.key===t)return n;return null}(this.props.sections,t);n&&In(n.chunk.scrollerElRef,e)}componentDidMount(){this.handleSizing(),this.context.addResizeHandler(this.handleSizing)}componentDidUpdate(){this.handleSizing()}componentWillUnmount(){this.context.removeResizeHandler(this.handleSizing)}computeShrinkWidth(){return function(e){for(let t of e)if("shrink"===t.width)return!0;return!1}(this.props.cols)?ms(this.scrollerElRefs.getAll()):0}computeScrollerDims(){let e=xi(),{scrollerRefs:t,scrollerElRefs:n}=this,r=!1,i={},s={};for(let e in t.currentMap){let n=t.currentMap[e];if(n&&n.needsYScrolling()){r=!0;break}}for(let t of this.props.sections){let o=t.key,a=n.currentMap[o];if(a){let t=a.parentNode;i[o]=Math.floor(t.getBoundingClientRect().width-(r?e.y:0)),s[o]=Math.floor(t.getBoundingClientRect().height)}}return{forceYScrollbars:r,scrollerClientWidths:i,scrollerClientHeights:s}}}Cs.addStateEquality({scrollerClientWidths:gn,scrollerClientHeights:gn});class Rs extends On{constructor(){super(...arguments),this.handleEl=e=>{this.el=e,e&&Fr(e,this.props.seg)}}render(){const{props:e,context:t}=this,{options:n}=t,{seg:r}=e,{eventRange:i}=r,{ui:s}=i,o={event:new zr(t,i.def,i.instance),view:t.viewApi,timeText:e.timeText,textColor:s.textColor,backgroundColor:s.backgroundColor,borderColor:s.borderColor,isDraggable:!e.disableDragging&&Zr(r,t),isStartResizable:!e.disableResizing&&Xr(r,t),isEndResizable:!e.disableResizing&&$r(r),isMirror:Boolean(e.isDragging||e.isResizing||e.isDateSelecting),isStart:Boolean(r.isStart),isEnd:Boolean(r.isEnd),isPast:Boolean(e.isPast),isFuture:Boolean(e.isFuture),isToday:Boolean(e.isToday),isSelected:Boolean(e.isSelected),isDragging:Boolean(e.isDragging),isResizing:Boolean(e.isResizing)};return m(zn,Object.assign({},e,{elRef:this.handleEl,elClasses:[...ei(o),...r.eventRange.ui.classNames,...e.elClasses||[]],renderProps:o,generatorName:"eventContent",customGenerator:n.eventContent,defaultGenerator:e.defaultGenerator,classNameGenerator:n.eventClassNames,didMount:n.eventDidMount,willUnmount:n.eventWillUnmount}))}componentDidUpdate(e){this.el&&this.props.seg!==e.seg&&Fr(this.el,this.props.seg)}}class _s extends On{render(){let{props:e,context:t}=this,{options:n}=t,{seg:r}=e,{ui:i}=r.eventRange,s=Jr(r,n.eventTimeFormat||e.defaultTimeFormat,t,e.defaultDisplayEventTime,e.defaultDisplayEventEnd);return m(Rs,Object.assign({},e,{elTag:"a",elStyle:{borderColor:i.borderColor,backgroundColor:i.backgroundColor},elAttrs:ni(r,t),defaultGenerator:xs,timeText:s}),((e,t)=>m(y,null,m(e,{elTag:"div",elClasses:["fc-event-main"],elStyle:{color:t.textColor}}),Boolean(t.isStartResizable)&&m("div",{className:"fc-event-resizer fc-event-resizer-start"}),Boolean(t.isEndResizable)&&m("div",{className:"fc-event-resizer fc-event-resizer-end"}))))}}function xs(e){return m("div",{className:"fc-event-main-frame"},e.timeText&&m("div",{className:"fc-event-time"},e.timeText),m("div",{className:"fc-event-title-container"},m("div",{className:"fc-event-title fc-sticky"},e.event.title||m(y,null," "))))}const Ts=e=>m(Tn.Consumer,null,(t=>{let{options:n}=t,r={isAxis:e.isAxis,date:t.dateEnv.toDate(e.date),view:t.viewApi};return m(zn,Object.assign({},e,{elTag:e.elTag||"div",renderProps:r,generatorName:"nowIndicatorContent",customGenerator:n.nowIndicatorContent,classNameGenerator:n.nowIndicatorClassNames,didMount:n.nowIndicatorDidMount,willUnmount:n.nowIndicatorWillUnmount}))})),ks=Zt({day:"numeric"});class Ms extends On{constructor(){super(...arguments),this.refineRenderProps=Pt(Is)}render(){let{props:e,context:t}=this,{options:n}=t,r=this.refineRenderProps({date:e.date,dateProfile:e.dateProfile,todayRange:e.todayRange,isMonthStart:e.isMonthStart||!1,showDayNumber:e.showDayNumber,extraRenderProps:e.extraRenderProps,viewApi:t.viewApi,dateEnv:t.dateEnv,monthStartFormat:n.monthStartFormat});return m(zn,Object.assign({},e,{elClasses:[...Ai(r,t.theme),...e.elClasses||[]],elAttrs:Object.assign(Object.assign({},e.elAttrs),r.isDisabled?{}:{"data-date":Ot(e.date)}),renderProps:r,generatorName:"dayCellContent",customGenerator:n.dayCellContent,defaultGenerator:e.defaultGenerator,classNameGenerator:r.isDisabled?void 0:n.dayCellClassNames,didMount:n.dayCellDidMount,willUnmount:n.dayCellWillUnmount}))}}function Os(e){return Boolean(e.dayCellContent||Pn("dayCellContent",e))}function Is(e){let{date:t,dateEnv:n,dateProfile:r,isMonthStart:i}=e,s=Ei(t,e.todayRange,null,r),o=e.showDayNumber?n.format(t,i?e.monthStartFormat:ks):"";return Object.assign(Object.assign(Object.assign({date:n.toDate(t),view:e.viewApi},s),{isMonthStart:i,dayNumberText:o}),e.extraRenderProps)}class Ns extends On{render(){let{props:e}=this,{seg:t}=e;return m(Rs,{elTag:"div",elClasses:["fc-bg-event"],elStyle:{backgroundColor:t.eventRange.ui.backgroundColor},defaultGenerator:Ps,seg:t,timeText:"",isDragging:!1,isResizing:!1,isDateSelecting:!1,isSelected:!1,isPast:e.isPast,isFuture:e.isFuture,isToday:e.isToday,disableDragging:!0,disableResizing:!0})}}function Ps(e){let{title:t}=e.event;return t&&m("div",{className:"fc-event-title"},e.event.title)}function Hs(e){return m("div",{className:`fc-${e}`})}const Bs=e=>m(Tn.Consumer,null,(t=>{let{dateEnv:n,options:r}=t,{date:i}=e,s=r.weekNumberFormat||e.defaultFormat,o={num:n.computeWeekNumber(i),text:n.format(i,s),date:i};return m(zn,Object.assign({},e,{renderProps:o,generatorName:"weekNumberContent",customGenerator:r.weekNumberContent,defaultGenerator:js,classNameGenerator:r.weekNumberClassNames,didMount:r.weekNumberDidMount,willUnmount:r.weekNumberWillUnmount}))}));function js(e){return e.text}class zs extends On{constructor(){super(...arguments),this.state={titleId:Ve()},this.handleRootEl=e=>{this.rootEl=e,this.props.elRef&&In(this.props.elRef,e)},this.handleDocumentMouseDown=e=>{const t=We(e);this.rootEl.contains(t)||this.handleCloseClick()},this.handleDocumentKeyDown=e=>{"Escape"===e.key&&this.handleCloseClick()},this.handleCloseClick=()=>{let{onClose:e}=this.props;e&&e()}}render(){let{theme:e,options:t}=this.context,{props:n,state:r}=this,i=["fc-popover",e.getClass("popover")].concat(n.extraClassNames||[]);return ve(m("div",Object.assign({},n.extraAttrs,{id:n.id,className:i.join(" "),"aria-labelledby":r.titleId,ref:this.handleRootEl}),m("div",{className:"fc-popover-header "+e.getClass("popoverHeader")},m("span",{className:"fc-popover-title",id:r.titleId},n.title),m("span",{className:"fc-popover-close "+e.getIconClass("close"),title:t.closeHint,onClick:this.handleCloseClick})),m("div",{className:"fc-popover-body "+e.getClass("popoverContent")},n.children)),n.parentEl)}componentDidMount(){document.addEventListener("mousedown",this.handleDocumentMouseDown),document.addEventListener("keydown",this.handleDocumentKeyDown),this.updateSize()}componentWillUnmount(){document.removeEventListener("mousedown",this.handleDocumentMouseDown),document.removeEventListener("keydown",this.handleDocumentKeyDown)}updateSize(){let{isRtl:e}=this.context,{alignmentEl:t,alignGridTop:n}=this.props,{rootEl:r}=this,i=function(e){let t=Oi(e),n=e.getBoundingClientRect();for(let e of t){let t=mi(n,e.getBoundingClientRect());if(!t)return null;n=t}return n}(t);if(i){let s=r.getBoundingClientRect(),o=n?Be(t,".fc-scrollgrid").getBoundingClientRect().top:i.top,a=e?i.right-s.width:i.left;o=Math.max(o,10),a=Math.min(a,document.documentElement.clientWidth-10-s.width),a=Math.max(a,10);let l=r.offsetParent.getBoundingClientRect();Ue(r,{top:o-l.top,left:a-l.left})}}}class Us extends ji{constructor(){super(...arguments),this.handleRootEl=e=>{this.rootEl=e,e?this.context.registerInteractiveComponent(this,{el:e,useEventCenter:!1}):this.context.unregisterInteractiveComponent(this)}}render(){let{options:e,dateEnv:t}=this.context,{props:n}=this,{startDate:r,todayRange:i,dateProfile:s}=n,o=t.format(r,e.dayPopoverFormat);return m(Ms,{elRef:this.handleRootEl,date:r,dateProfile:s,todayRange:i},((t,r,i)=>m(zs,{elRef:i.ref,id:n.id,title:o,extraClassNames:["fc-more-popover"].concat(i.className||[]),extraAttrs:i,parentEl:n.parentEl,alignmentEl:n.alignmentEl,alignGridTop:n.alignGridTop,onClose:n.onClose},Os(e)&&m(t,{elTag:"div",elClasses:["fc-more-popover-misc"]}),n.children)))}queryHit(e,t,n,r){let{rootEl:i,props:s}=this;return e>=0&&e<n&&t>=0&&t<r?{dateProfile:s.dateProfile,dateSpan:Object.assign({allDay:!s.forceTimed,range:{start:s.startDate,end:s.endDate}},s.extraDateSpan),dayEl:i,rect:{left:0,top:0,right:n,bottom:r},layer:1}:null}}class Ls extends On{constructor(){super(...arguments),this.state={isPopoverOpen:!1,popoverId:Ve()},this.handleLinkEl=e=>{this.linkEl=e,this.props.elRef&&In(this.props.elRef,e)},this.handleClick=e=>{let{props:t,context:n}=this,{moreLinkClick:r}=n.options,i=Fs(t).start;function s(e){let{def:t,instance:r,range:i}=e.eventRange;return{event:new zr(n,t,r),start:n.dateEnv.toDate(i.start),end:n.dateEnv.toDate(i.end),isStart:e.isStart,isEnd:e.isEnd}}"function"==typeof r&&(r=r({date:i,allDay:Boolean(t.allDayDate),allSegs:t.allSegs.map(s),hiddenSegs:t.hiddenSegs.map(s),jsEvent:e,view:n.viewApi})),r&&"popover"!==r?"string"==typeof r&&n.calendarApi.zoomTo(i,r):this.setState({isPopoverOpen:!0})},this.handlePopoverClose=()=>{this.setState({isPopoverOpen:!1})}}render(){let{props:e,state:t}=this;return m(Tn.Consumer,null,(n=>{let{viewApi:r,options:i,calendarApi:s}=n,{moreLinkText:o}=i,{moreCnt:a}=e,l=Fs(e),c="function"==typeof o?o.call(s,a):`+${a} ${o}`,d=nt(i.moreLinkHint,[a],c),u={num:a,shortText:`+${a}`,text:c,view:r};return m(y,null,Boolean(e.moreCnt)&&m(zn,{elTag:e.elTag||"a",elRef:this.handleLinkEl,elClasses:[...e.elClasses||[],"fc-more-link"],elStyle:e.elStyle,elAttrs:Object.assign(Object.assign(Object.assign({},e.elAttrs),qe(this.handleClick)),{title:d,"aria-expanded":t.isPopoverOpen,"aria-controls":t.isPopoverOpen?t.popoverId:""}),renderProps:u,generatorName:"moreLinkContent",customGenerator:i.moreLinkContent,defaultGenerator:e.defaultGenerator||Ws,classNameGenerator:i.moreLinkClassNames,didMount:i.moreLinkDidMount,willUnmount:i.moreLinkWillUnmount},e.children),t.isPopoverOpen&&m(Us,{id:t.popoverId,startDate:l.start,endDate:l.end,dateProfile:e.dateProfile,todayRange:e.todayRange,extraDateSpan:e.extraDateSpan,parentEl:this.parentEl,alignmentEl:e.alignmentElRef?e.alignmentElRef.current:this.linkEl,alignGridTop:e.alignGridTop,forceTimed:e.forceTimed,onClose:this.handlePopoverClose},e.popoverContent()))}))}componentDidMount(){this.updateParentEl()}componentDidUpdate(){this.updateParentEl()}updateParentEl(){this.linkEl&&(this.parentEl=Be(this.linkEl,".fc-view-harness"))}}function Ws(e){return e.text}function Fs(e){if(e.allDayDate)return{start:e.allDayDate,end:yt(e.allDayDate,1)};let{hiddenSegs:t}=e;return{start:Vs(t),end:(n=t,n.reduce(Qs).eventRange.range.end)};var n}function Vs(e){return e.reduce(Gs).eventRange.range.start}function Gs(e,t){return e.eventRange.range.start<t.eventRange.range.start?e:t}function Qs(e,t){return e.eventRange.range.end>t.eventRange.range.end?e:t}const Ys=[],qs={code:"en",week:{dow:0,doy:4},direction:"ltr",buttonText:{prev:"prev",next:"next",prevYear:"prev year",nextYear:"next year",year:"year",today:"today",month:"month",week:"week",day:"day",list:"list"},weekText:"W",weekTextLong:"Week",closeHint:"Close",timeHint:"Time",eventHint:"Event",allDayText:"all-day",moreLinkText:"more",noEventsText:"No events to display"},Zs=Object.assign(Object.assign({},qs),{buttonHints:{prev:"Previous $0",next:"Next $0",today(e,t){return"day"===t?"Today":`This ${e}`}},viewHint:"$0 view",navLinkHint:"Go to $0",moreLinkHint(e){return`Show ${e} more event${1===e?"":"s"}`}});function Xs(e){let t=e.length>0?e[0].code:"en",n=Ys.concat(e),r={en:Zs};for(let e of n)r[e.code]=e;return{map:r,defaultCode:t}}function $s(e,t){return"object"!=typeof e||Array.isArray(e)?function(e,t){let n=[].concat(e||[]),r=function(e,t){for(let n=0;n<e.length;n+=1){let r=e[n].toLocaleLowerCase().split("-");for(let e=r.length;e>0;e-=1){let n=r.slice(0,e).join("-");if(t[n])return t[n]}}return null}(n,t)||Zs;return Js(e,n,r)}(e,t):Js(e.code,[e.code],e)}function Js(e,t,n){let r=cn([qs,n],["buttonText"]);delete r.code;let{week:i}=r;return delete r.week,{codeArg:e,codes:t,week:i,simpleNumberFormat:new Intl.NumberFormat(e),options:r}}function Ks(e){return{id:$e(),name:e.name,premiumReleaseDate:e.premiumReleaseDate?new Date(e.premiumReleaseDate):void 0,deps:e.deps||[],reducers:e.reducers||[],isLoadingFuncs:e.isLoadingFuncs||[],contextInit:[].concat(e.contextInit||[]),eventRefiners:e.eventRefiners||{},eventDefMemberAdders:e.eventDefMemberAdders||[],eventSourceRefiners:e.eventSourceRefiners||{},isDraggableTransformers:e.isDraggableTransformers||[],eventDragMutationMassagers:e.eventDragMutationMassagers||[],eventDefMutationAppliers:e.eventDefMutationAppliers||[],dateSelectionTransformers:e.dateSelectionTransformers||[],datePointTransforms:e.datePointTransforms||[],dateSpanTransforms:e.dateSpanTransforms||[],views:e.views||{},viewPropsTransformers:e.viewPropsTransformers||[],isPropsValid:e.isPropsValid||null,externalDefTransforms:e.externalDefTransforms||[],viewContainerAppends:e.viewContainerAppends||[],eventDropTransformers:e.eventDropTransformers||[],componentInteractions:e.componentInteractions||[],calendarInteractions:e.calendarInteractions||[],themeClasses:e.themeClasses||{},eventSourceDefs:e.eventSourceDefs||[],cmdFormatter:e.cmdFormatter,recurringTypes:e.recurringTypes||[],namedTimeZonedImpl:e.namedTimeZonedImpl,initialView:e.initialView||"",elementDraggingImpl:e.elementDraggingImpl,optionChangeHandlers:e.optionChangeHandlers||{},scrollGridImpl:e.scrollGridImpl||null,listenerRefiners:e.listenerRefiners||{},optionRefiners:e.optionRefiners||{},propSetHandlers:e.propSetHandlers||{}}}function eo(){let e,t=[],n=[];return(r,i)=>(e&&pt(r,t)&&pt(i,n)||(e=function(e,t){let n={},r={premiumReleaseDate:void 0,reducers:[],isLoadingFuncs:[],contextInit:[],eventRefiners:{},eventDefMemberAdders:[],eventSourceRefiners:{},isDraggableTransformers:[],eventDragMutationMassagers:[],eventDefMutationAppliers:[],dateSelectionTransformers:[],datePointTransforms:[],dateSpanTransforms:[],views:{},viewPropsTransformers:[],isPropsValid:null,externalDefTransforms:[],viewContainerAppends:[],eventDropTransformers:[],componentInteractions:[],calendarInteractions:[],themeClasses:{},eventSourceDefs:[],cmdFormatter:null,recurringTypes:[],namedTimeZonedImpl:null,initialView:"",elementDraggingImpl:null,optionChangeHandlers:{},scrollGridImpl:null,listenerRefiners:{},optionRefiners:{},propSetHandlers:{}};function i(e){for(let o of e){const e=o.name,a=n[e];void 0===a?(n[e]=o.id,i(o.deps),s=o,r={premiumReleaseDate:to((t=r).premiumReleaseDate,s.premiumReleaseDate),reducers:t.reducers.concat(s.reducers),isLoadingFuncs:t.isLoadingFuncs.concat(s.isLoadingFuncs),contextInit:t.contextInit.concat(s.contextInit),eventRefiners:Object.assign(Object.assign({},t.eventRefiners),s.eventRefiners),eventDefMemberAdders:t.eventDefMemberAdders.concat(s.eventDefMemberAdders),eventSourceRefiners:Object.assign(Object.assign({},t.eventSourceRefiners),s.eventSourceRefiners),isDraggableTransformers:t.isDraggableTransformers.concat(s.isDraggableTransformers),eventDragMutationMassagers:t.eventDragMutationMassagers.concat(s.eventDragMutationMassagers),eventDefMutationAppliers:t.eventDefMutationAppliers.concat(s.eventDefMutationAppliers),dateSelectionTransformers:t.dateSelectionTransformers.concat(s.dateSelectionTransformers),datePointTransforms:t.datePointTransforms.concat(s.datePointTransforms),dateSpanTransforms:t.dateSpanTransforms.concat(s.dateSpanTransforms),views:Object.assign(Object.assign({},t.views),s.views),viewPropsTransformers:t.viewPropsTransformers.concat(s.viewPropsTransformers),isPropsValid:s.isPropsValid||t.isPropsValid,externalDefTransforms:t.externalDefTransforms.concat(s.externalDefTransforms),viewContainerAppends:t.viewContainerAppends.concat(s.viewContainerAppends),eventDropTransformers:t.eventDropTransformers.concat(s.eventDropTransformers),calendarInteractions:t.calendarInteractions.concat(s.calendarInteractions),componentInteractions:t.componentInteractions.concat(s.componentInteractions),themeClasses:Object.assign(Object.assign({},t.themeClasses),s.themeClasses),eventSourceDefs:t.eventSourceDefs.concat(s.eventSourceDefs),cmdFormatter:s.cmdFormatter||t.cmdFormatter,recurringTypes:t.recurringTypes.concat(s.recurringTypes),namedTimeZonedImpl:s.namedTimeZonedImpl||t.namedTimeZonedImpl,initialView:t.initialView||s.initialView,elementDraggingImpl:t.elementDraggingImpl||s.elementDraggingImpl,optionChangeHandlers:Object.assign(Object.assign({},t.optionChangeHandlers),s.optionChangeHandlers),scrollGridImpl:s.scrollGridImpl||t.scrollGridImpl,listenerRefiners:Object.assign(Object.assign({},t.listenerRefiners),s.listenerRefiners),optionRefiners:Object.assign(Object.assign({},t.optionRefiners),s.optionRefiners),propSetHandlers:Object.assign(Object.assign({},t.propSetHandlers),s.propSetHandlers)}):a!==o.id&&console.warn(`Duplicate plugin '${e}'`)}var t,s}return e&&i(e),i(t),r}(r,i)),t=r,n=i,e)}function to(e,t){return void 0===e?t:void 0===t?e:new Date(Math.max(e.valueOf(),t.valueOf()))}class no extends wn{}function ro(e,t,n,r){if(t[e])return t[e];let i=function(e,t,n,r){let i=n[e],s=r[e],o=e=>i&&null!==i[e]?i[e]:s&&null!==s[e]?s[e]:null,a=o("component"),l=o("superType"),c=null;if(l){if(l===e)throw new Error("Can't have a custom view type that references itself");c=ro(l,t,n,r)}!a&&c&&(a=c.component);if(!a)return null;return{type:e,component:a,defaults:Object.assign(Object.assign({},c?c.defaults:{}),i?i.rawOptions:{}),overrides:Object.assign(Object.assign({},c?c.overrides:{}),s?s.rawOptions:{})}}(e,t,n,r);return i&&(t[e]=i),i}function io(e){return un(e,so)}function so(e){let t="function"==typeof e?{component:e}:e,{component:n}=t;return t.content?n=oo(t):!n||n.prototype instanceof On||(n=oo(Object.assign(Object.assign({},t),{content:n}))),{superType:t.type,component:n,rawOptions:t}}function oo(e){return t=>m(Tn.Consumer,null,(n=>m(zn,{elTag:"div",elClasses:Wn(n.viewSpec),renderProps:Object.assign(Object.assign({},t),{nextDayThreshold:n.options.nextDayThreshold}),generatorName:void 0,customGenerator:e.content,classNameGenerator:e.classNames,didMount:e.didMount,willUnmount:e.willUnmount})))}function ao(e,t,n,r){let i=io(e),s=io(t.views),o=function(e,t){let n,r={};for(n in e)ro(n,r,e,t);for(n in t)ro(n,r,e,t);return r}(i,s);return un(o,(e=>function(e,t,n,r,i){let s=e.overrides.duration||e.defaults.duration||r.duration||n.duration,o=null,a="",l="",c={};if(s&&(o=function(e){let t=JSON.stringify(e),n=lo[t];void 0===n&&(n=lt(e),lo[t]=n);return n}(s),o)){let e=gt(o);a=e.unit,1===e.value&&(l=a,c=t[a]?t[a].rawOptions:{})}let d=t=>{let n=t.buttonText||{},r=e.defaults.buttonTextKey;return null!=r&&null!=n[r]?n[r]:null!=n[e.type]?n[e.type]:null!=n[l]?n[l]:null},u=t=>{let n=t.buttonHints||{},r=e.defaults.buttonTextKey;return null!=r&&null!=n[r]?n[r]:null!=n[e.type]?n[e.type]:null!=n[l]?n[l]:null};return{type:e.type,component:e.component,duration:o,durationUnit:a,singleUnit:l,optionDefaults:e.defaults,optionOverrides:Object.assign(Object.assign({},c),e.overrides),buttonTextOverride:d(r)||d(n)||e.overrides.buttonText,buttonTextDefault:d(i)||e.defaults.buttonText||d($t)||e.type,buttonTitleOverride:u(r)||u(n)||e.overrides.buttonHint,buttonTitleDefault:u(i)||e.defaults.buttonHint||u($t)}}(e,s,t,n,r)))}no.prototype.classes={root:"fc-theme-standard",tableCellShaded:"fc-cell-shaded",buttonGroup:"fc-button-group",button:"fc-button fc-button-primary",buttonActive:"fc-button-active"},no.prototype.baseIconClass="fc-icon",no.prototype.iconClasses={close:"fc-icon-x",prev:"fc-icon-chevron-left",next:"fc-icon-chevron-right",prevYear:"fc-icon-chevrons-left",nextYear:"fc-icon-chevrons-right"},no.prototype.rtlIconClasses={prev:"fc-icon-chevron-right",next:"fc-icon-chevron-left",prevYear:"fc-icon-chevrons-right",nextYear:"fc-icon-chevrons-left"},no.prototype.iconOverrideOption="buttonIcons",no.prototype.iconOverrideCustomButtonOption="icon",no.prototype.iconOverridePrefix="fc-icon-";let lo={};function co(e,t,n){let r=t?t.activeRange:null;return fo({},function(e,t){let n=Dr(t),r=[].concat(e.eventSources||[]),i=[];e.initialEvents&&r.unshift(e.initialEvents);e.events&&r.unshift(e.events);for(let e of r){let r=Sr(e,t,n);r&&i.push(r)}return i}(e,n),r,n)}function uo(e,t,n,r){let i=n?n.activeRange:null;switch(t.type){case"ADD_EVENT_SOURCES":return fo(e,t.sources,i,r);case"REMOVE_EVENT_SOURCE":return s=e,o=t.sourceId,dn(s,(e=>e.sourceId!==o));case"PREV":case"NEXT":case"CHANGE_DATE":case"CHANGE_VIEW_TYPE":return n?go(e,i,r):e;case"FETCH_EVENT_SOURCES":return po(e,t.sourceIds?hn(t.sourceIds):vo(e,r),i,t.isRefetch||!1,r);case"RECEIVE_EVENTS":case"RECEIVE_EVENT_ERROR":return function(e,t,n,r){let i=e[t];if(i&&n===i.latestFetchId)return Object.assign(Object.assign({},e),{[t]:Object.assign(Object.assign({},i),{isFetching:!1,fetchRange:r})});return e}(e,t.sourceId,t.fetchId,t.fetchRange);case"REMOVE_ALL_EVENT_SOURCES":return{};default:return e}var s,o}function ho(e){for(let t in e)if(e[t].isFetching)return!0;return!1}function fo(e,t,n,r){let i={};for(let e of t)i[e.sourceId]=e;return n&&(i=go(i,n,r)),Object.assign(Object.assign({},e),i)}function go(e,t,n){return po(e,dn(e,(e=>function(e,t,n){if(!yo(e,n))return!e.latestFetchId;return!n.options.lazyFetching||!e.fetchRange||e.isFetching||t.start<e.fetchRange.start||t.end>e.fetchRange.end}(e,t,n))),t,!1,n)}function po(e,t,n,r,i){let s={};for(let o in e){let a=e[o];t[o]?s[o]=mo(a,n,r,i):s[o]=a}return s}function mo(e,t,n,r){let{options:i,calendarApi:s}=r,o=r.pluginHooks.eventSourceDefs[e.sourceDefId],a=$e();return o.fetch({eventSource:e,range:t,isRefetch:n,context:r},(n=>{let{rawEvents:o}=n;i.eventSourceSuccess&&(o=i.eventSourceSuccess.call(s,o,n.response)||o),e.success&&(o=e.success.call(s,o,n.response)||o),r.dispatch({type:"RECEIVE_EVENTS",sourceId:e.sourceId,fetchId:a,fetchRange:t,rawEvents:o})}),(n=>{let o=!1;i.eventSourceFailure&&(i.eventSourceFailure.call(s,n),o=!0),e.failure&&(e.failure(n),o=!0),o||console.warn(n.message,n),r.dispatch({type:"RECEIVE_EVENT_ERROR",sourceId:e.sourceId,fetchId:a,fetchRange:t,error:n})})),Object.assign(Object.assign({},e),{isFetching:!0,latestFetchId:a})}function vo(e,t){return dn(e,(e=>yo(e,t)))}function yo(e,t){return!t.pluginHooks.eventSourceDefs[e.sourceDefId].ignoreRange}function bo(e,t){switch(t.type){case"UNSELECT_DATES":return null;case"SELECT_DATES":return t.selection;default:return e}}function Eo(e,t){switch(t.type){case"UNSELECT_EVENT":return"";case"SELECT_EVENT":return t.eventInstanceId;default:return e}}function Ao(e,t){let n;switch(t.type){case"UNSET_EVENT_DRAG":return null;case"SET_EVENT_DRAG":return n=t.state,{affectedEvents:n.affectedEvents,mutatedEvents:n.mutatedEvents,isEvent:n.isEvent};default:return e}}function So(e,t){let n;switch(t.type){case"UNSET_EVENT_RESIZE":return null;case"SET_EVENT_RESIZE":return n=t.state,{affectedEvents:n.affectedEvents,mutatedEvents:n.mutatedEvents,isEvent:n.isEvent};default:return e}}function Do(e,t,n,r,i){return{header:e.headerToolbar?wo(e.headerToolbar,e,t,n,r,i):null,footer:e.footerToolbar?wo(e.footerToolbar,e,t,n,r,i):null}}function wo(e,t,n,r,i,s){let o={},a=[],l=!1;for(let c in e){let d=Co(e[c],t,n,r,i,s);o[c]=d.widgets,a.push(...d.viewsWithButtons),l=l||d.hasTitle}return{sectionWidgets:o,viewsWithButtons:a,hasTitle:l}}function Co(e,t,n,r,i,s){let o="rtl"===t.direction,a=t.customButtons||{},l=n.buttonText||{},c=t.buttonText||{},d=n.buttonHints||{},u=t.buttonHints||{},h=e?e.split(" "):[],f=[],g=!1;return{widgets:h.map((e=>e.split(",").map((e=>{if("title"===e)return g=!0,{buttonName:e};let n,h,p,m,v,y;if(n=a[e])p=e=>{n.click&&n.click.call(e.target,e,e.target)},(m=r.getCustomButtonIconClass(n))||(m=r.getIconClass(e,o))||(v=n.text),y=n.hint||n.text;else if(h=i[e]){f.push(e),p=()=>{s.changeView(e)},(v=h.buttonTextOverride)||(m=r.getIconClass(e,o))||(v=h.buttonTextDefault);let n=h.buttonTextOverride||h.buttonTextDefault;y=nt(h.buttonTitleOverride||h.buttonTitleDefault||t.viewHint,[n,e],n)}else if(s[e])if(p=()=>{s[e]()},(v=l[e])||(m=r.getIconClass(e,o))||(v=c[e]),"prevYear"===e||"nextYear"===e){let t="prevYear"===e?"prev":"next";y=nt(d[t]||u[t],[c.year||"year","year"],c[e])}else y=t=>nt(d[e]||u[e],[c[t]||t,t],c[e]);return{buttonName:e,buttonClick:p,buttonIcon:m,buttonText:v,buttonHint:y}})))),viewsWithButtons:f,hasTitle:g}}class Ro{constructor(e,t,n){this.type=e,this.getCurrentData=t,this.dateEnv=n}get calendar(){return this.getCurrentData().calendarApi}get title(){return this.getCurrentData().viewTitle}get activeStart(){return this.dateEnv.toDate(this.getCurrentData().dateProfile.activeRange.start)}get activeEnd(){return this.dateEnv.toDate(this.getCurrentData().dateProfile.activeRange.end)}get currentStart(){return this.dateEnv.toDate(this.getCurrentData().dateProfile.currentRange.start)}get currentEnd(){return this.dateEnv.toDate(this.getCurrentData().dateProfile.currentRange.end)}getOption(e){return this.getCurrentData().options[e]}}function _o(e,t){let n=fn(t.getCurrentData().eventSources);if(1===n.length&&1===e.length&&Array.isArray(n[0]._raw)&&Array.isArray(e[0]))return void t.dispatch({type:"RESET_RAW_EVENTS",sourceId:n[0].sourceId,rawEvents:e[0]});let r=[];for(let t of e){let e=!1;for(let r=0;r<n.length;r+=1)if(n[r]._raw===t){n.splice(r,1),e=!0;break}e||r.push(t)}for(let e of n)t.dispatch({type:"REMOVE_EVENT_SOURCE",sourceId:e.sourceId});for(let e of r)t.calendarApi.addEventSource(e)}const xo=[Ks({name:"array-event-source",eventSourceDefs:[{ignoreRange:!0,parseMeta(e){return Array.isArray(e.events)?e.events:null},fetch(e,t){t({rawEvents:e.eventSource.meta})}}]}),Ks({name:"func-event-source",eventSourceDefs:[{parseMeta(e){return"function"==typeof e.events?e.events:null},fetch(e,t,n){const{dateEnv:r}=e.context;!function(e,t,n){let r=!1,i=function(e){r||(r=!0,t(e))},s=function(e){r||(r=!0,n(e))},o=e(i,s);o&&"function"==typeof o.then&&o.then(i,s)}(e.eventSource.meta.bind(null,si(e.range,r)),(e=>t({rawEvents:e})),n)}}]}),Ks({name:"json-event-source",eventSourceRefiners:{method:String,extraParams:an,startParam:String,endParam:String,timeZoneParam:String},eventSourceDefs:[{parseMeta(e){return!e.url||"json"!==e.format&&e.format?null:{url:e.url,format:"json",method:(e.method||"GET").toUpperCase(),extraParams:e.extraParams,startParam:e.startParam,endParam:e.endParam,timeZoneParam:e.timeZoneParam}},fetch(e,t,n){const{meta:r}=e.eventSource,i=function(e,t,n){let r,i,s,o,{dateEnv:a,options:l}=n,c={};r=e.startParam,null==r&&(r=l.startParam);i=e.endParam,null==i&&(i=l.endParam);s=e.timeZoneParam,null==s&&(s=l.timeZoneParam);o="function"==typeof e.extraParams?e.extraParams():e.extraParams||{};Object.assign(c,o),c[r]=a.formatIso(t.start),c[i]=a.formatIso(t.end),"local"!==a.timeZone&&(c[s]=a.timeZone);return c}(r,e.range,e.context);(function(e,t,n){const r={method:e=e.toUpperCase()};return"GET"===e?t+=(-1===t.indexOf("?")?"?":"&")+new URLSearchParams(n):(r.body=new URLSearchParams(n),r.headers={"Content-Type":"application/x-www-form-urlencoded"}),fetch(t,r).then((e=>{if(e.ok)return e.json().then((t=>[t,e]),(()=>{throw new ai("Failure parsing JSON",e)}));throw new ai("Request failed",e)}))})(r.method,r.url,i).then((([e,n])=>{t({rawEvents:e,response:n})}),n)}}]}),Ks({name:"simple-recurring-event",recurringTypes:[{parse(e,t){if(e.daysOfWeek||e.startTime||e.endTime||e.startRecur||e.endRecur){let i,s={daysOfWeek:e.daysOfWeek||null,startTime:e.startTime||null,endTime:e.endTime||null,startRecur:e.startRecur?t.createMarker(e.startRecur):null,endRecur:e.endRecur?t.createMarker(e.endRecur):null};return e.duration&&(i=e.duration),!i&&e.startTime&&e.endTime&&(n=e.endTime,r=e.startTime,i={years:n.years-r.years,months:n.months-r.months,days:n.days-r.days,milliseconds:n.milliseconds-r.milliseconds}),{allDayGuess:Boolean(!e.startTime&&!e.endTime),duration:i,typeData:s}}var n,r;return null},expand(e,t,n){let r=Gn(t,{start:e.startRecur,end:e.endRecur});return r?function(e,t,n,r){let i=e?hn(e):null,s=St(n.start),o=n.end,a=[];for(;s<o;){let e;i&&!i[s.getUTCDay()]||(e=t?r.add(s,t):s,a.push(e)),s=yt(s,1)}return a}(e.daysOfWeek,e.startTime,r,n):[]}}],eventRefiners:{daysOfWeek:an,startTime:lt,endTime:lt,duration:lt,startRecur:an,endRecur:an}}),Ks({name:"change-handler",optionChangeHandlers:{events(e,t){_o([e],t)},eventSources:_o}}),Ks({name:"misc",isLoadingFuncs:[e=>ho(e.eventSources)],propSetHandlers:{dateProfile:function(e,t){t.emitter.trigger("datesSet",Object.assign(Object.assign({},si(e.activeRange,t.dateEnv)),{view:t.viewApi}))},eventStore:function(e,t){let{emitter:n}=t;n.hasHandlers("eventsSet")&&n.trigger("eventsSet",Lr(e,t))}}})];class To{constructor(e,t){this.runTaskOption=e,this.drainedOption=t,this.queue=[],this.delayedRunner=new Pe(this.drain.bind(this))}request(e,t){this.queue.push(e),this.delayedRunner.request(t)}pause(e){this.delayedRunner.pause(e)}resume(e,t){this.delayedRunner.resume(e,t)}drain(){let{queue:e}=this;for(;e.length;){let t,n=[];for(;t=e.shift();)this.runTask(t),n.push(t);this.drained(n)}}runTask(e){this.runTaskOption&&this.runTaskOption(e)}drained(e){this.drainedOption&&this.drainedOption(e)}}function ko(e,t,n){let r;return r=/^(year|month)$/.test(e.currentRangeUnit)?e.currentRange:e.activeRange,n.formatRange(r.start,r.end,Zt(t.titleFormat||function(e){let{currentRangeUnit:t}=e;if("year"===t)return{year:"numeric"};if("month"===t)return{year:"numeric",month:"long"};let n=At(e.currentRange.start,e.currentRange.end);if(null!==n&&n>1)return{year:"numeric",month:"short",day:"numeric"};return{year:"numeric",month:"long",day:"numeric"}}(e)),{isEndExclusive:e.isRangeAllDay,defaultSeparator:t.titleRangeSeparator})}class Mo{constructor(e){this.computeCurrentViewData=Nt(this._computeCurrentViewData),this.organizeRawLocales=Nt(Xs),this.buildLocale=Nt($s),this.buildPluginHooks=eo(),this.buildDateEnv=Nt(Oo),this.buildTheme=Nt(Io),this.parseToolbars=Nt(Do),this.buildViewSpecs=Nt(ao),this.buildDateProfileGenerator=Pt(No),this.buildViewApi=Nt(Po),this.buildViewUiProps=Pt(jo),this.buildEventUiBySource=Nt(Ho,gn),this.buildEventUiBases=Nt(Bo),this.parseContextBusinessHours=Pt(Uo),this.buildTitle=Nt(ko),this.emitter=new Tr,this.actionRunner=new To(this._handleAction.bind(this),this.updateData.bind(this)),this.currentCalendarOptionsInput={},this.currentCalendarOptionsRefined={},this.currentViewOptionsInput={},this.currentViewOptionsRefined={},this.currentCalendarOptionsRefiners={},this.optionsForRefining=[],this.optionsForHandling=[],this.getCurrentData=()=>this.data,this.dispatch=e=>{this.actionRunner.request(e)},this.props=e,this.actionRunner.pause();let t={},n=this.computeOptionsData(e.optionOverrides,t,e.calendarApi),r=n.calendarOptions.initialView||n.pluginHooks.initialView,i=this.computeCurrentViewData(r,n,e.optionOverrides,t);e.calendarApi.currentDataManager=this,this.emitter.setThisContext(e.calendarApi),this.emitter.setOptions(i.options);let s=function(e,t){let n=e.initialDate;return null!=n?t.createMarker(n):Jn(e.now,t)}(n.calendarOptions,n.dateEnv),o=i.dateProfileGenerator.build(s);qn(o.activeRange,s)||(s=o.currentRange.start);let a={dateEnv:n.dateEnv,options:n.calendarOptions,pluginHooks:n.pluginHooks,calendarApi:e.calendarApi,dispatch:this.dispatch,emitter:this.emitter,getCurrentData:this.getCurrentData};for(let e of n.pluginHooks.contextInit)e(a);let l=co(n.calendarOptions,o,a),c={dynamicOptionOverrides:t,currentViewType:r,currentDate:s,dateProfile:o,businessHours:this.parseContextBusinessHours(a),eventSources:l,eventUiBases:{},eventStore:{defs:{},instances:{}},renderableEventStore:{defs:{},instances:{}},dateSelection:null,eventSelection:"",eventDrag:null,eventResize:null,selectionConfig:this.buildViewUiProps(a).selectionConfig},d=Object.assign(Object.assign({},a),c);for(let e of n.pluginHooks.reducers)Object.assign(c,e(null,null,d));zo(c,a)&&this.emitter.trigger("loading",!0),this.state=c,this.updateData(),this.actionRunner.resume()}resetOptions(e,t){let{props:n}=this;void 0===t?n.optionOverrides=e:(n.optionOverrides=Object.assign(Object.assign({},n.optionOverrides||{}),e),this.optionsForRefining.push(...t)),(void 0===t||t.length)&&this.actionRunner.request({type:"NOTHING"})}_handleAction(e){let{props:t,state:n,emitter:r}=this,i=function(e,t){return"SET_OPTION"===t.type?Object.assign(Object.assign({},e),{[t.optionName]:t.rawOptionValue}):e}(n.dynamicOptionOverrides,e),s=this.computeOptionsData(t.optionOverrides,i,t.calendarApi),o=function(e,t){"CHANGE_VIEW_TYPE"===t.type&&(e=t.viewType);return e}(n.currentViewType,e),a=this.computeCurrentViewData(o,s,t.optionOverrides,i);t.calendarApi.currentDataManager=this,r.setThisContext(t.calendarApi),r.setOptions(a.options);let l={dateEnv:s.dateEnv,options:s.calendarOptions,pluginHooks:s.pluginHooks,calendarApi:t.calendarApi,dispatch:this.dispatch,emitter:r,getCurrentData:this.getCurrentData},{currentDate:c,dateProfile:d}=n;this.data&&this.data.dateProfileGenerator!==a.dateProfileGenerator&&(d=a.dateProfileGenerator.build(c)),c=function(e,t){return"CHANGE_DATE"===t.type?t.dateMarker:e}(c,e),d=function(e,t,n,r){let i;switch(t.type){case"CHANGE_VIEW_TYPE":return r.build(t.dateMarker||n);case"CHANGE_DATE":return r.build(t.dateMarker);case"PREV":if(i=r.buildPrev(e,n),i.isValid)return i;break;case"NEXT":if(i=r.buildNext(e,n),i.isValid)return i}return e}(d,e,c,a.dateProfileGenerator),"PREV"!==e.type&&"NEXT"!==e.type&&qn(d.currentRange,c)||(c=d.currentRange.start);let u=uo(n.eventSources,e,d,l),h=wr(n.eventStore,e,u,d,l),f=ho(u)&&!a.options.progressiveEventRendering&&n.renderableEventStore||h,{eventUiSingleBase:g,selectionConfig:p}=this.buildViewUiProps(l),m=this.buildEventUiBySource(u),v={dynamicOptionOverrides:i,currentViewType:o,currentDate:c,dateProfile:d,eventSources:u,eventStore:h,renderableEventStore:f,selectionConfig:p,eventUiBases:this.buildEventUiBases(f.defs,g,m),businessHours:this.parseContextBusinessHours(l),dateSelection:bo(n.dateSelection,e),eventSelection:Eo(n.eventSelection,e),eventDrag:Ao(n.eventDrag,e),eventResize:So(n.eventResize,e)},y=Object.assign(Object.assign({},l),v);for(let t of s.pluginHooks.reducers)Object.assign(v,t(n,e,y));let b=zo(n,l),E=zo(v,l);!b&&E?r.trigger("loading",!0):b&&!E&&r.trigger("loading",!1),this.state=v,t.onAction&&t.onAction(e)}updateData(){let{props:e,state:t}=this,n=this.data,r=this.computeOptionsData(e.optionOverrides,t.dynamicOptionOverrides,e.calendarApi),i=this.computeCurrentViewData(t.currentViewType,r,e.optionOverrides,t.dynamicOptionOverrides),s=this.data=Object.assign(Object.assign(Object.assign({viewTitle:this.buildTitle(t.dateProfile,i.options,r.dateEnv),calendarApi:e.calendarApi,dispatch:this.dispatch,emitter:this.emitter,getCurrentData:this.getCurrentData},r),i),t),o=r.pluginHooks.optionChangeHandlers,a=n&&n.calendarOptions,l=r.calendarOptions;if(a&&a!==l){a.timeZone!==l.timeZone&&(t.eventSources=s.eventSources=function(e,t,n){let r=t?t.activeRange:null;return po(e,vo(e,n),r,!0,n)}(s.eventSources,t.dateProfile,s),t.eventStore=s.eventStore=_r(s.eventStore,n.dateEnv,s.dateEnv),t.renderableEventStore=s.renderableEventStore=_r(s.renderableEventStore,n.dateEnv,s.dateEnv));for(let e in o)-1===this.optionsForHandling.indexOf(e)&&a[e]===l[e]||o[e](l[e],s)}this.optionsForHandling=[],e.onData&&e.onData(s)}computeOptionsData(e,t,n){if(!this.optionsForRefining.length&&e===this.stableOptionOverrides&&t===this.stableDynamicOptionOverrides)return this.stableCalendarOptionsData;let{refinedOptions:r,pluginHooks:i,localeDefaults:s,availableLocaleData:o,extra:a}=this.processRawCalendarOptions(e,t);Lo(a);let l=this.buildDateEnv(r.timeZone,r.locale,r.weekNumberCalculation,r.firstDay,r.weekText,i,o,r.defaultRangeSeparator),c=this.buildViewSpecs(i.views,this.stableOptionOverrides,this.stableDynamicOptionOverrides,s),d=this.buildTheme(r,i),u=this.parseToolbars(r,this.stableOptionOverrides,d,c,n);return this.stableCalendarOptionsData={calendarOptions:r,pluginHooks:i,dateEnv:l,viewSpecs:c,theme:d,toolbarConfig:u,localeDefaults:s,availableRawLocales:o.map}}processRawCalendarOptions(e,t){let{locales:n,locale:r}=sn([$t,e,t]),i=this.organizeRawLocales(n),s=i.map,o=this.buildLocale(r||i.defaultCode,s).options,a=this.buildPluginHooks(e.plugins||[],xo),l=this.currentCalendarOptionsRefiners=Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({},Xt),Jt),Kt),a.listenerRefiners),a.optionRefiners),c={},d=sn([$t,o,e,t]),u={},h=this.currentCalendarOptionsInput,f=this.currentCalendarOptionsRefined,g=!1;for(let e in d)-1===this.optionsForRefining.indexOf(e)&&(d[e]===h[e]||en[e]&&e in h&&en[e](h[e],d[e]))?u[e]=f[e]:l[e]?(u[e]=l[e](d[e]),g=!0):c[e]=h[e];return g&&(this.currentCalendarOptionsInput=d,this.currentCalendarOptionsRefined=u,this.stableOptionOverrides=e,this.stableDynamicOptionOverrides=t),this.optionsForHandling.push(...this.optionsForRefining),this.optionsForRefining=[],{rawOptions:this.currentCalendarOptionsInput,refinedOptions:this.currentCalendarOptionsRefined,pluginHooks:a,availableLocaleData:i,localeDefaults:o,extra:c}}_computeCurrentViewData(e,t,n,r){let i=t.viewSpecs[e];if(!i)throw new Error(`viewType "${e}" is not available. Please make sure you've loaded all neccessary plugins`);let{refinedOptions:s,extra:o}=this.processRawViewOptions(i,t.pluginHooks,t.localeDefaults,n,r);return Lo(o),{viewSpec:i,options:s,dateProfileGenerator:this.buildDateProfileGenerator({dateProfileGeneratorClass:i.optionDefaults.dateProfileGeneratorClass,duration:i.duration,durationUnit:i.durationUnit,usesMinMaxTime:i.optionDefaults.usesMinMaxTime,dateEnv:t.dateEnv,calendarApi:this.props.calendarApi,slotMinTime:s.slotMinTime,slotMaxTime:s.slotMaxTime,showNonCurrentDates:s.showNonCurrentDates,dayCount:s.dayCount,dateAlignment:s.dateAlignment,dateIncrement:s.dateIncrement,hiddenDays:s.hiddenDays,weekends:s.weekends,nowInput:s.now,validRangeInput:s.validRange,visibleRangeInput:s.visibleRange,fixedWeekCount:s.fixedWeekCount}),viewApi:this.buildViewApi(e,this.getCurrentData,t.dateEnv)}}processRawViewOptions(e,t,n,r,i){let s=sn([$t,e.optionDefaults,n,r,e.optionOverrides,i]),o=Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({},Xt),Jt),Kt),rn),t.listenerRefiners),t.optionRefiners),a={},l=this.currentViewOptionsInput,c=this.currentViewOptionsRefined,d=!1,u={};for(let e in s)s[e]===l[e]||en[e]&&en[e](s[e],l[e])?a[e]=c[e]:(s[e]===this.currentCalendarOptionsInput[e]||en[e]&&en[e](s[e],this.currentCalendarOptionsInput[e])?e in this.currentCalendarOptionsRefined&&(a[e]=this.currentCalendarOptionsRefined[e]):o[e]?a[e]=o[e](s[e]):u[e]=s[e],d=!0);return d&&(this.currentViewOptionsInput=s,this.currentViewOptionsRefined=a),{rawOptions:this.currentViewOptionsInput,refinedOptions:this.currentViewOptionsRefined,extra:u}}}function Oo(e,t,n,r,i,s,o,a){let l=$s(t||o.defaultCode,o.map);return new Dn({calendarSystem:"gregory",timeZone:e,namedTimeZoneImpl:s.namedTimeZonedImpl,locale:l,weekNumberCalculation:n,firstDay:r,weekText:i,cmdFormatter:s.cmdFormatter,defaultSeparator:a})}function Io(e,t){return new(t.themeClasses[e.themeSystem]||no)(e)}function No(e){return new(e.dateProfileGeneratorClass||Kn)(e)}function Po(e,t,n){return new Ro(e,t,n)}function Ho(e){return un(e,(e=>e.ui))}function Bo(e,t,n){let r={"":t};for(let t in e){let i=e[t];i.sourceId&&n[i.sourceId]&&(r[t]=n[i.sourceId])}return r}function jo(e){let{options:t}=e;return{eventUiSingleBase:yr({display:t.eventDisplay,editable:t.editable,startEditable:t.eventStartEditable,durationEditable:t.eventDurationEditable,constraint:t.eventConstraint,overlap:"boolean"==typeof t.eventOverlap?t.eventOverlap:void 0,allow:t.eventAllow,backgroundColor:t.eventBackgroundColor,borderColor:t.eventBorderColor,textColor:t.eventTextColor,color:t.eventColor},e),selectionConfig:yr({constraint:t.selectConstraint,overlap:"boolean"==typeof t.selectOverlap?t.selectOverlap:void 0,allow:t.selectAllow},e)}}function zo(e,t){for(let n of t.pluginHooks.isLoadingFuncs)if(n(e))return!0;return!1}function Uo(e){return Mr(e.options.businessHours,e)}function Lo(e,t){for(let n in e)console.warn(`Unknown option '${n}'`+(t?` for view '${t}'`:""))}class Wo extends On{render(){return m("div",{className:"fc-toolbar-chunk"},...this.props.widgetGroups.map((e=>this.renderWidgetGroup(e))))}renderWidgetGroup(e){let{props:t}=this,{theme:n}=this.context,r=[],i=!0;for(let s of e){let{buttonName:e,buttonClick:o,buttonText:a,buttonIcon:l,buttonHint:c}=s;if("title"===e)i=!1,r.push(m("h2",{className:"fc-toolbar-title",id:t.titleId},t.title));else{let i=e===t.activeButton,s=!t.isTodayEnabled&&"today"===e||!t.isPrevEnabled&&"prev"===e||!t.isNextEnabled&&"next"===e,d=[`fc-${e}-button`,n.getClass("button")];i&&d.push(n.getClass("buttonActive")),r.push(m("button",{type:"button",title:"function"==typeof c?c(t.navUnit):c,disabled:s,"aria-pressed":i,className:d.join(" "),onClick:o},a||(l?m("span",{className:l}):"")))}}if(r.length>1){return m("div",{className:i&&n.getClass("buttonGroup")||""},...r)}return r[0]}}class Fo extends On{render(){let e,t,{model:n,extraClassName:r}=this.props,i=!1,s=n.sectionWidgets,o=s.center;return s.left?(i=!0,e=s.left):e=s.start,s.right?(i=!0,t=s.right):t=s.end,m("div",{className:[r||"","fc-toolbar",i?"fc-toolbar-ltr":""].join(" ")},this.renderSection("start",e||[]),this.renderSection("center",o||[]),this.renderSection("end",t||[]))}renderSection(e,t){let{props:n}=this;return m(Wo,{key:e,widgetGroups:t,title:n.title,navUnit:n.navUnit,activeButton:n.activeButton,isTodayEnabled:n.isTodayEnabled,isPrevEnabled:n.isPrevEnabled,isNextEnabled:n.isNextEnabled,titleId:n.titleId})}}class Vo extends On{constructor(){super(...arguments),this.state={availableWidth:null},this.handleEl=e=>{this.el=e,In(this.props.elRef,e),this.updateAvailableWidth()},this.handleResize=()=>{this.updateAvailableWidth()}}render(){let{props:e,state:t}=this,{aspectRatio:n}=e,r=["fc-view-harness",n||e.liquid||e.height?"fc-view-harness-active":"fc-view-harness-passive"],i="",s="";return n?null!==t.availableWidth?i=t.availableWidth/n:s=1/n*100+"%":i=e.height||"",m("div",{"aria-labelledby":e.labeledById,ref:this.handleEl,className:r.join(" "),style:{height:i,paddingBottom:s}},e.children)}componentDidMount(){this.context.addResizeHandler(this.handleResize)}componentWillUnmount(){this.context.removeResizeHandler(this.handleResize)}updateAvailableWidth(){this.el&&this.props.aspectRatio&&this.setState({availableWidth:this.el.offsetWidth})}}class Go extends ui{constructor(e){super(e),this.handleSegClick=(e,t)=>{let{component:n}=this,{context:r}=n,i=Vr(t);if(i&&n.isValidSegDownEl(e.target)){let s=Be(e.target,".fc-event-forced-url"),o=s?s.querySelector("a[href]").href:"";r.emitter.trigger("eventClick",{el:t,event:new zr(n.context,i.eventRange.def,i.eventRange.instance),jsEvent:e,view:r.viewApi}),o&&!e.defaultPrevented&&(window.location.href=o)}},this.destroy=Qe(e.el,"click",".fc-event",this.handleSegClick)}}class Qo extends ui{constructor(e){super(e),this.handleEventElRemove=e=>{e===this.currentSegEl&&this.handleSegLeave(null,this.currentSegEl)},this.handleSegEnter=(e,t)=>{Vr(t)&&(this.currentSegEl=t,this.triggerEvent("eventMouseEnter",e,t))},this.handleSegLeave=(e,t)=>{this.currentSegEl&&(this.currentSegEl=null,this.triggerEvent("eventMouseLeave",e,t))},this.removeHoverListeners=function(e,t,n,r){let i;return Qe(e,"mouseover",t,((e,t)=>{if(t!==i){i=t,n(e,t);let s=e=>{i=null,r(e,t),t.removeEventListener("mouseleave",s)};t.addEventListener("mouseleave",s)}}))}(e.el,".fc-event",this.handleSegEnter,this.handleSegLeave)}destroy(){this.removeHoverListeners()}triggerEvent(e,t,n){let{component:r}=this,{context:i}=r,s=Vr(n);t&&!r.isValidSegDownEl(t.target)||i.emitter.trigger(e,{el:n,event:new zr(i,s.eventRange.def,s.eventRange.instance),jsEvent:t,view:i.viewApi})}}class Yo extends Mn{constructor(){super(...arguments),this.buildViewContext=Nt(kn),this.buildViewPropTransformers=Nt(Zo),this.buildToolbarProps=Nt(qo),this.headerRef={current:null},this.footerRef={current:null},this.interactionsStore={},this.state={viewLabelId:Ve()},this.registerInteractiveComponent=(e,t)=>{let n=function(e,t){return{component:e,el:t.el,useEventCenter:null==t.useEventCenter||t.useEventCenter,isHitComboAllowed:t.isHitComboAllowed||null}}(e,t),r=[Go,Qo].concat(this.props.pluginHooks.componentInteractions).map((e=>new e(n)));this.interactionsStore[e.uid]=r,fi[e.uid]=n},this.unregisterInteractiveComponent=e=>{let t=this.interactionsStore[e.uid];if(t){for(let e of t)e.destroy();delete this.interactionsStore[e.uid]}delete fi[e.uid]},this.resizeRunner=new Pe((()=>{this.props.emitter.trigger("_resize",!0),this.props.emitter.trigger("windowResize",{view:this.props.viewApi})})),this.handleWindowResize=e=>{let{options:t}=this.props;t.handleWindowResize&&e.target===window&&this.resizeRunner.request(t.windowResizeDelay)}}render(){let e,{props:t}=this,{toolbarConfig:n,options:r}=t,i=this.buildToolbarProps(t.viewSpec,t.dateProfile,t.dateProfileGenerator,t.currentDate,Jn(t.options.now,t.dateEnv),t.viewTitle),s=!1,o="";t.isHeightAuto||t.forPrint?o="":null!=r.height?s=!0:null!=r.contentHeight?o=r.contentHeight:e=Math.max(r.aspectRatio,.5);let a=this.buildViewContext(t.viewSpec,t.viewApi,t.options,t.dateProfileGenerator,t.dateEnv,t.theme,t.pluginHooks,t.dispatch,t.getCurrentData,t.emitter,t.calendarApi,this.registerInteractiveComponent,this.unregisterInteractiveComponent),l=n.header&&n.header.hasTitle?this.state.viewLabelId:"";return m(Tn.Provider,{value:a},n.header&&m(Fo,Object.assign({ref:this.headerRef,extraClassName:"fc-header-toolbar",model:n.header,titleId:l},i)),m(Vo,{liquid:s,height:o,aspectRatio:e,labeledById:l},this.renderView(t),this.buildAppendContent()),n.footer&&m(Fo,Object.assign({ref:this.footerRef,extraClassName:"fc-footer-toolbar",model:n.footer,titleId:""},i)))}componentDidMount(){let{props:e}=this;this.calendarInteractions=e.pluginHooks.calendarInteractions.map((t=>new t(e))),window.addEventListener("resize",this.handleWindowResize);let{propSetHandlers:t}=e.pluginHooks;for(let n in t)t[n](e[n],e)}componentDidUpdate(e){let{props:t}=this,{propSetHandlers:n}=t.pluginHooks;for(let r in n)t[r]!==e[r]&&n[r](t[r],t)}componentWillUnmount(){window.removeEventListener("resize",this.handleWindowResize),this.resizeRunner.clear();for(let e of this.calendarInteractions)e.destroy();this.props.emitter.trigger("_unmount")}buildAppendContent(){let{props:e}=this;return m(y,{},...e.pluginHooks.viewContainerAppends.map((t=>t(e))))}renderView(e){let{pluginHooks:t}=e,{viewSpec:n}=e,r={dateProfile:e.dateProfile,businessHours:e.businessHours,eventStore:e.renderableEventStore,eventUiBases:e.eventUiBases,dateSelection:e.dateSelection,eventSelection:e.eventSelection,eventDrag:e.eventDrag,eventResize:e.eventResize,isHeightAuto:e.isHeightAuto,forPrint:e.forPrint},i=this.buildViewPropTransformers(t.viewPropsTransformers);for(let t of i)Object.assign(r,t.transform(r,e));return m(n.component,Object.assign({},r))}}function qo(e,t,n,r,i,s){let o=n.build(i,void 0,!1),a=n.buildPrev(t,r,!1),l=n.buildNext(t,r,!1);return{title:s,activeButton:e.type,navUnit:e.singleUnit,isTodayEnabled:o.isValid&&!qn(t.currentRange,i),isPrevEnabled:a.isValid,isNextEnabled:l.isValid}}function Zo(e){return e.map((e=>new e))}class Xo extends gi{constructor(e,t={}){super(),this.isRendering=!1,this.isRendered=!1,this.currentClassNames=[],this.customContentRenderId=0,this.handleAction=e=>{switch(e.type){case"SET_EVENT_DRAG":case"SET_EVENT_RESIZE":this.renderRunner.tryDrain()}},this.handleData=e=>{this.currentData=e,this.renderRunner.request(e.calendarOptions.rerenderDelay)},this.handleRenderRequest=()=>{if(this.isRendering){this.isRendered=!0;let{currentData:e}=this;Cn((()=>{U(m(di,{options:e.calendarOptions,theme:e.theme,emitter:e.emitter},((t,n,r,i)=>(this.setClassNames(t),this.setHeight(n),m(jn.Provider,{value:this.customContentRenderId},m(Yo,Object.assign({isHeightAuto:r,forPrint:i},e)))))),this.el)}))}else this.isRendered&&(this.isRendered=!1,U(null,this.el),this.setClassNames([]),this.setHeight(""))},function(e){e.isConnected&&Oe(e.getRootNode())}(e),this.el=e,this.renderRunner=new Pe(this.handleRenderRequest),new Mo({optionOverrides:t,calendarApi:this,onAction:this.handleAction,onData:this.handleData})}render(){let e=this.isRendering;e?this.customContentRenderId+=1:this.isRendering=!0,this.renderRunner.request(),e&&this.updateSize()}destroy(){this.isRendering&&(this.isRendering=!1,this.renderRunner.request())}updateSize(){Cn((()=>{super.updateSize()}))}batchRendering(e){this.renderRunner.pause("batchRendering"),e(),this.renderRunner.resume("batchRendering")}pauseRendering(){this.renderRunner.pause("pauseRendering")}resumeRendering(){this.renderRunner.resume("pauseRendering",!0)}resetOptions(e,t){this.currentDataManager.resetOptions(e,t)}setClassNames(e){if(!pt(e,this.currentClassNames)){let{classList:t}=this.el;for(let e of this.currentClassNames)t.remove(e);for(let n of e)t.add(n);this.currentClassNames=e}}setHeight(e){Le(this.el,"height",e)}}function $o(e,t){let n=[];for(let e=0;e<t;e+=1)n[e]=[];for(let t of e)n[t.row].push(t);return n}function Jo(e,t){let n=[];for(let e=0;e<t;e+=1)n[e]=[];for(let t of e)n[t.firstCol].push(t);return n}function Ko(e,t){let n=[];if(e){for(let r=0;r<t;r+=1)n[r]={affectedInstances:e.affectedInstances,isEvent:e.isEvent,segs:[]};for(let t of e.segs)n[t.row].segs.push(t)}else for(let e=0;e<t;e+=1)n[e]=null;return n}Me(':root{--fc-daygrid-event-dot-width:8px}.fc-daygrid-day-events:after,.fc-daygrid-day-events:before,.fc-daygrid-day-frame:after,.fc-daygrid-day-frame:before,.fc-daygrid-event-harness:after,.fc-daygrid-event-harness:before{clear:both;content:"";display:table}.fc .fc-daygrid-body{position:relative;z-index:1}.fc .fc-daygrid-day.fc-day-today{background-color:var(--fc-today-bg-color)}.fc .fc-daygrid-day-frame{min-height:100%;position:relative}.fc .fc-daygrid-day-top{display:flex;flex-direction:row-reverse}.fc .fc-day-other .fc-daygrid-day-top{opacity:.3}.fc .fc-daygrid-day-number{padding:4px;position:relative;z-index:4}.fc .fc-daygrid-month-start{font-size:1.1em;font-weight:700}.fc .fc-daygrid-day-events{margin-top:1px}.fc .fc-daygrid-body-balanced .fc-daygrid-day-events{left:0;position:absolute;right:0}.fc .fc-daygrid-body-unbalanced .fc-daygrid-day-events{min-height:2em;position:relative}.fc .fc-daygrid-body-natural .fc-daygrid-day-events{margin-bottom:1em}.fc .fc-daygrid-event-harness{position:relative}.fc .fc-daygrid-event-harness-abs{left:0;position:absolute;right:0;top:0}.fc .fc-daygrid-bg-harness{bottom:0;position:absolute;top:0}.fc .fc-daygrid-day-bg .fc-non-business{z-index:1}.fc .fc-daygrid-day-bg .fc-bg-event{z-index:2}.fc .fc-daygrid-day-bg .fc-highlight{z-index:3}.fc .fc-daygrid-event{margin-top:1px;z-index:6}.fc .fc-daygrid-event.fc-event-mirror{z-index:7}.fc .fc-daygrid-day-bottom{font-size:.85em;margin:0 2px}.fc .fc-daygrid-day-bottom:after,.fc .fc-daygrid-day-bottom:before{clear:both;content:"";display:table}.fc .fc-daygrid-more-link{border-radius:3px;cursor:pointer;line-height:1;margin-top:1px;max-width:100%;overflow:hidden;padding:2px;position:relative;white-space:nowrap;z-index:4}.fc .fc-daygrid-more-link:hover{background-color:rgba(0,0,0,.1)}.fc .fc-daygrid-week-number{background-color:var(--fc-neutral-bg-color);color:var(--fc-neutral-text-color);min-width:1.5em;padding:2px;position:absolute;text-align:center;top:0;z-index:5}.fc .fc-more-popover .fc-popover-body{min-width:220px;padding:10px}.fc-direction-ltr .fc-daygrid-event.fc-event-start,.fc-direction-rtl .fc-daygrid-event.fc-event-end{margin-left:2px}.fc-direction-ltr .fc-daygrid-event.fc-event-end,.fc-direction-rtl .fc-daygrid-event.fc-event-start{margin-right:2px}.fc-direction-ltr .fc-daygrid-more-link{float:left}.fc-direction-ltr .fc-daygrid-week-number{border-radius:0 0 3px 0;left:0}.fc-direction-rtl .fc-daygrid-more-link{float:right}.fc-direction-rtl .fc-daygrid-week-number{border-radius:0 0 0 3px;right:0}.fc-liquid-hack .fc-daygrid-day-frame{position:static}.fc-daygrid-event{border-radius:3px;font-size:var(--fc-small-font-size);position:relative;white-space:nowrap}.fc-daygrid-block-event .fc-event-time{font-weight:700}.fc-daygrid-block-event .fc-event-time,.fc-daygrid-block-event .fc-event-title{padding:1px}.fc-daygrid-dot-event{align-items:center;display:flex;padding:2px 0}.fc-daygrid-dot-event .fc-event-title{flex-grow:1;flex-shrink:1;font-weight:700;min-width:0;overflow:hidden}.fc-daygrid-dot-event.fc-event-mirror,.fc-daygrid-dot-event:hover{background:rgba(0,0,0,.1)}.fc-daygrid-dot-event.fc-event-selected:before{bottom:-10px;top:-10px}.fc-daygrid-event-dot{border:calc(var(--fc-daygrid-event-dot-width)/2) solid var(--fc-event-border-color);border-radius:calc(var(--fc-daygrid-event-dot-width)/2);box-sizing:content-box;height:0;margin:0 4px;width:0}.fc-direction-ltr .fc-daygrid-event .fc-event-time{margin-right:3px}.fc-direction-rtl .fc-daygrid-event .fc-event-time{margin-left:3px}');const ea=Zt({hour:"numeric",minute:"2-digit",omitZeroMinute:!0,meridiem:"narrow"});function ta(e){let{display:t}=e.eventRange.ui;return"list-item"===t||"auto"===t&&!e.eventRange.def.allDay&&e.firstCol===e.lastCol&&e.isStart&&e.isEnd}class na extends On{render(){let{props:e}=this;return m(_s,Object.assign({},e,{elClasses:["fc-daygrid-event","fc-daygrid-block-event","fc-h-event"],defaultTimeFormat:ea,defaultDisplayEventEnd:e.defaultDisplayEventEnd,disableResizing:!e.seg.eventRange.def.allDay}))}}class ra extends On{render(){let{props:e,context:t}=this,{options:n}=t,{seg:r}=e,i=Jr(r,n.eventTimeFormat||ea,t,!0,e.defaultDisplayEventEnd);return m(Rs,Object.assign({},e,{elTag:"a",elClasses:["fc-daygrid-event","fc-daygrid-dot-event"],elAttrs:ni(e.seg,t),defaultGenerator:ia,timeText:i,isResizing:!1,isDateSelecting:!1}))}}function ia(e){return m(y,null,m("div",{className:"fc-daygrid-event-dot",style:{borderColor:e.borderColor||e.backgroundColor}}),e.timeText&&m("div",{className:"fc-event-time"},e.timeText),m("div",{className:"fc-event-title"},e.event.title||m(y,null," ")))}class sa extends On{constructor(){super(...arguments),this.compileSegs=Nt(oa)}render(){let{props:e}=this,{allSegs:t,invisibleSegs:n}=this.compileSegs(e.singlePlacements);return m(Ls,{elClasses:["fc-daygrid-more-link"],dateProfile:e.dateProfile,todayRange:e.todayRange,allDayDate:e.allDayDate,moreCnt:e.moreCnt,allSegs:t,hiddenSegs:n,alignmentElRef:e.alignmentElRef,alignGridTop:e.alignGridTop,extraDateSpan:e.extraDateSpan,popoverContent:()=>{let n=(e.eventDrag?e.eventDrag.affectedInstances:null)||(e.eventResize?e.eventResize.affectedInstances:null)||{};return m(y,null,t.map((t=>{let r=t.eventRange.instance.instanceId;return m("div",{className:"fc-daygrid-event-harness",key:r,style:{visibility:n[r]?"hidden":""}},ta(t)?m(ra,Object.assign({seg:t,isDragging:!1,isSelected:r===e.eventSelection,defaultDisplayEventEnd:!1},Kr(t,e.todayRange))):m(na,Object.assign({seg:t,isDragging:!1,isResizing:!1,isDateSelecting:!1,isSelected:r===e.eventSelection,defaultDisplayEventEnd:!1},Kr(t,e.todayRange))))})))}})}}function oa(e){let t=[],n=[];for(let r of e)t.push(r.seg),r.isVisible||n.push(r.seg);return{allSegs:t,invisibleSegs:n}}const aa=Zt({week:"narrow"});class la extends ji{constructor(){super(...arguments),this.rootElRef={current:null},this.state={dayNumberId:Ve()},this.handleRootEl=e=>{In(this.rootElRef,e),In(this.props.elRef,e)}}render(){let{context:e,props:t,state:n,rootElRef:r}=this,{options:i,dateEnv:s}=e,{date:o,dateProfile:a}=t;const l=t.showDayNumber&&function(e,t,n){const{start:r,end:i}=t,s=bt(i,-1),o=n.getYear(r),a=n.getMonth(r),l=n.getYear(s),c=n.getMonth(s);return!(o===l&&a===c)&&Boolean(e.valueOf()===r.valueOf()||1===n.getDay(e)&&e.valueOf()<i.valueOf())}(o,a.currentRange,s);return m(Ms,{elTag:"td",elRef:this.handleRootEl,elClasses:["fc-daygrid-day",...t.extraClassNames||[]],elAttrs:Object.assign(Object.assign(Object.assign({},t.extraDataAttrs),t.showDayNumber?{"aria-labelledby":n.dayNumberId}:{}),{role:"gridcell"}),defaultGenerator:ca,date:o,dateProfile:a,todayRange:t.todayRange,showDayNumber:t.showDayNumber,isMonthStart:l,extraRenderProps:t.extraRenderProps},((s,a)=>m("div",{ref:t.innerElRef,className:"fc-daygrid-day-frame fc-scrollgrid-sync-inner",style:{minHeight:t.minHeight}},t.showWeekNumber&&m(Bs,{elTag:"a",elClasses:["fc-daygrid-week-number"],elAttrs:wi(e,o,"week"),date:o,defaultFormat:aa}),!a.isDisabled&&(t.showDayNumber||Os(i)||t.forceDayTop)?m("div",{className:"fc-daygrid-day-top"},m(s,{elTag:"a",elClasses:["fc-daygrid-day-number",l&&"fc-daygrid-month-start"],elAttrs:Object.assign(Object.assign({},wi(e,o)),{id:n.dayNumberId})})):t.showDayNumber?m("div",{className:"fc-daygrid-day-top",style:{visibility:"hidden"}},m("a",{className:"fc-daygrid-day-number"}," ")):void 0,m("div",{className:"fc-daygrid-day-events",ref:t.fgContentElRef},t.fgContent,m("div",{className:"fc-daygrid-day-bottom",style:{marginTop:t.moreMarginTop}},m(sa,{allDayDate:o,singlePlacements:t.singlePlacements,moreCnt:t.moreCnt,alignmentElRef:r,alignGridTop:!t.showDayNumber,extraDateSpan:t.extraDateSpan,dateProfile:t.dateProfile,eventSelection:t.eventSelection,eventDrag:t.eventDrag,eventResize:t.eventResize,todayRange:t.todayRange}))),m("div",{className:"fc-daygrid-day-bg"},t.bgContent))))}}function ca(e){return e.dayNumberText||m(y,null," ")}function da(e){return e.eventRange.instance.instanceId+":"+e.firstCol}function ua(e){return da(e)+":"+e.lastCol}function ha(e,t,n,r,i,s,o){let a=new ga((t=>{let n=e[t.index].eventRange.instance.instanceId+":"+t.span.start+":"+(t.span.end-1);return i[n]}));a.allowReslicing=!0,a.strictOrder=r,!0===t||!0===n?(a.maxCoord=s,a.hiddenConsumes=!0):"number"==typeof t?a.maxStackCnt=t:"number"==typeof n&&(a.maxStackCnt=n,a.hiddenConsumes=!0);let l=[],c=[];for(let t=0;t<e.length;t+=1){let n=e[t],r=ua(n);null!=i[r]?l.push({index:t,span:{start:n.firstCol,end:n.lastCol+1}}):c.push(n)}let d=a.addSegs(l),u=a.toRects(),{singleColPlacements:h,multiColPlacements:f,leftoverMargins:g}=function(e,t,n){let r=function(e,t){let n=[];for(let e=0;e<t;e+=1)n.push([]);for(let t of e)for(let e=t.span.start;e<t.span.end;e+=1)n[e].push(t);return n}(e,n.length),i=[],s=[],o=[];for(let e=0;e<n.length;e+=1){let a=r[e],l=[],c=0,d=0;for(let r of a){let i=t[r.index];l.push({seg:fa(i,e,e+1,n),isVisible:!0,isAbsolute:!1,absoluteTop:r.levelCoord,marginTop:r.levelCoord-c}),c=r.levelCoord+r.thickness}let u=[];c=0,d=0;for(let r of a){let i=t[r.index],s=r.span.end-r.span.start>1,o=r.span.start===e;d+=r.levelCoord-c,c=r.levelCoord+r.thickness,s?(d+=r.thickness,o&&u.push({seg:fa(i,r.span.start,r.span.end,n),isVisible:!0,isAbsolute:!0,absoluteTop:r.levelCoord,marginTop:0})):o&&(u.push({seg:fa(i,r.span.start,r.span.end,n),isVisible:!0,isAbsolute:!1,absoluteTop:r.levelCoord,marginTop:d}),d=0)}i.push(l),s.push(u),o.push(d)}return{singleColPlacements:i,multiColPlacements:s,leftoverMargins:o}}(u,e,o),p=[],m=[];for(let e of c){f[e.firstCol].push({seg:e,isVisible:!1,isAbsolute:!0,absoluteTop:0,marginTop:0});for(let t=e.firstCol;t<=e.lastCol;t+=1)h[t].push({seg:fa(e,t,t+1,o),isVisible:!1,isAbsolute:!1,absoluteTop:0,marginTop:0})}for(let e=0;e<o.length;e+=1)p.push(0);for(let t of d){let n=e[t.index],r=t.span;f[r.start].push({seg:fa(n,r.start,r.end,o),isVisible:!1,isAbsolute:!0,absoluteTop:0,marginTop:0});for(let e=r.start;e<r.end;e+=1)p[e]+=1,h[e].push({seg:fa(n,e,e+1,o),isVisible:!1,isAbsolute:!1,absoluteTop:0,marginTop:0})}for(let e=0;e<o.length;e+=1)m.push(g[e]);return{singleColPlacements:h,multiColPlacements:f,moreCnts:p,moreMarginTops:m}}function fa(e,t,n,r){if(e.firstCol===t&&e.lastCol===n-1)return e;let i=e.eventRange,s=i.range,o=Gn(s,{start:r[t].date,end:yt(r[n-1].date,1)});return Object.assign(Object.assign({},e),{firstCol:t,lastCol:n-1,eventRange:{def:i.def,ui:Object.assign(Object.assign({},i.ui),{durationEditable:!1}),instance:i.instance,range:o},isStart:e.isStart&&o.start.valueOf()===s.start.valueOf(),isEnd:e.isEnd&&o.end.valueOf()===s.end.valueOf()})}class ga extends zi{constructor(){super(...arguments),this.hiddenConsumes=!1,this.forceHidden={}}addSegs(e){const t=super.addSegs(e),{entriesByLevel:n}=this,r=e=>!this.forceHidden[Li(e)];for(let e=0;e<n.length;e+=1)n[e]=n[e].filter(r);return t}handleInvalidInsertion(e,t,n){const{entriesByLevel:r,forceHidden:i}=this,{touchingEntry:s,touchingLevel:o,touchingLateral:a}=e;if(this.hiddenConsumes&&s){const e=Li(s);if(!i[e])if(this.allowReslicing){const e=Object.assign(Object.assign({},s),{span:Wi(s.span,t.span)});i[Li(e)]=!0,r[o][a]=e,this.splitEntry(s,t,n)}else i[e]=!0,n.push(s)}return super.handleInvalidInsertion(e,t,n)}}class pa extends ji{constructor(){super(...arguments),this.cellElRefs=new ps,this.frameElRefs=new ps,this.fgElRefs=new ps,this.segHarnessRefs=new ps,this.rootElRef={current:null},this.state={framePositions:null,maxContentHeight:null,segHeights:{}},this.handleResize=e=>{e&&this.updateSizing(!0)}}render(){let{props:e,state:t,context:n}=this,{options:r}=n,i=e.cells.length,s=Jo(e.businessHourSegs,i),o=Jo(e.bgEventSegs,i),a=Jo(this.getHighlightSegs(),i),l=Jo(this.getMirrorSegs(),i),{singleColPlacements:c,multiColPlacements:d,moreCnts:u,moreMarginTops:h}=ha(Yr(e.fgEventSegs,r.eventOrder),e.dayMaxEvents,e.dayMaxEventRows,r.eventOrderStrict,t.segHeights,t.maxContentHeight,e.cells),f=e.eventDrag&&e.eventDrag.affectedInstances||e.eventResize&&e.eventResize.affectedInstances||{};return m("tr",{ref:this.rootElRef,role:"row"},e.renderIntro&&e.renderIntro(),e.cells.map(((t,n)=>{let r=this.renderFgSegs(n,e.forPrint?c[n]:d[n],e.todayRange,f),i=this.renderFgSegs(n,function(e,t){if(!e.length)return[];let n=function(e){let t={};for(let n of e)for(let e of n)t[e.seg.eventRange.instance.instanceId]=e.absoluteTop;return t}(t);return e.map((e=>({seg:e,isVisible:!0,isAbsolute:!0,absoluteTop:n[e.eventRange.instance.instanceId],marginTop:0})))}(l[n],d),e.todayRange,{},Boolean(e.eventDrag),Boolean(e.eventResize),!1);return m(la,{key:t.key,elRef:this.cellElRefs.createRef(t.key),innerElRef:this.frameElRefs.createRef(t.key),dateProfile:e.dateProfile,date:t.date,showDayNumber:e.showDayNumbers,showWeekNumber:e.showWeekNumbers&&0===n,forceDayTop:e.showWeekNumbers,todayRange:e.todayRange,eventSelection:e.eventSelection,eventDrag:e.eventDrag,eventResize:e.eventResize,extraRenderProps:t.extraRenderProps,extraDataAttrs:t.extraDataAttrs,extraClassNames:t.extraClassNames,extraDateSpan:t.extraDateSpan,moreCnt:u[n],moreMarginTop:h[n],singlePlacements:c[n],fgContentElRef:this.fgElRefs.createRef(t.key),fgContent:m(y,null,m(y,null,r),m(y,null,i)),bgContent:m(y,null,this.renderFillSegs(a[n],"highlight"),this.renderFillSegs(s[n],"non-business"),this.renderFillSegs(o[n],"bg-event")),minHeight:e.cellMinHeight})})))}componentDidMount(){this.updateSizing(!0),this.context.addResizeHandler(this.handleResize)}componentDidUpdate(e,t){let n=this.props;this.updateSizing(!gn(e,n))}componentWillUnmount(){this.context.removeResizeHandler(this.handleResize)}getHighlightSegs(){let{props:e}=this;return e.eventDrag&&e.eventDrag.segs.length?e.eventDrag.segs:e.eventResize&&e.eventResize.segs.length?e.eventResize.segs:e.dateSelectionSegs}getMirrorSegs(){let{props:e}=this;return e.eventResize&&e.eventResize.segs.length?e.eventResize.segs:[]}renderFgSegs(e,t,n,r,i,s,o){let{context:a}=this,{eventSelection:l}=this.props,{framePositions:c}=this.state,d=1===this.props.cells.length,u=i||s||o,h=[];if(c)for(let e of t){let{seg:t}=e,{instanceId:f}=t.eventRange.instance,g=e.isVisible&&!r[f],p=e.isAbsolute,v="",y="";p&&(a.isRtl?(y=0,v=c.lefts[t.lastCol]-c.lefts[t.firstCol]):(v=0,y=c.rights[t.firstCol]-c.rights[t.lastCol])),h.push(m("div",{className:"fc-daygrid-event-harness"+(p?" fc-daygrid-event-harness-abs":""),key:da(t),ref:u?null:this.segHarnessRefs.createRef(ua(t)),style:{visibility:g?"":"hidden",marginTop:p?"":e.marginTop,top:p?e.absoluteTop:"",left:v,right:y}},ta(t)?m(ra,Object.assign({seg:t,isDragging:i,isSelected:f===l,defaultDisplayEventEnd:d},Kr(t,n))):m(na,Object.assign({seg:t,isDragging:i,isResizing:s,isDateSelecting:o,isSelected:f===l,defaultDisplayEventEnd:d},Kr(t,n)))))}return h}renderFillSegs(e,t){let{isRtl:n}=this.context,{todayRange:r}=this.props,{framePositions:i}=this.state,s=[];if(i)for(let o of e){let e=n?{right:0,left:i.lefts[o.lastCol]-i.lefts[o.firstCol]}:{left:0,right:i.rights[o.firstCol]-i.rights[o.lastCol]};s.push(m("div",{key:ti(o.eventRange),className:"fc-daygrid-bg-harness",style:e},"bg-event"===t?m(Ns,Object.assign({seg:o},Kr(o,r))):Hs(t)))}return m(y,{},...s)}updateSizing(e){let{props:t,state:n,frameElRefs:r}=this;if(!t.forPrint&&null!==t.clientWidth){if(e){let e=t.cells.map((e=>r.currentMap[e.key]));if(e.length){let t=this.rootElRef.current,r=new Ii(t,e,!0,!1);n.framePositions&&n.framePositions.similarTo(r)||this.setState({framePositions:new Ii(t,e,!0,!1)})}}const i=this.state.segHeights,s=this.querySegHeights(),o=!0===t.dayMaxEvents||!0===t.dayMaxEventRows;this.safeSetState({segHeights:Object.assign(Object.assign({},i),s),maxContentHeight:o?this.computeMaxContentHeight():null})}}querySegHeights(){let e=this.segHarnessRefs.currentMap,t={};for(let n in e){let r=Math.round(e[n].getBoundingClientRect().height);t[n]=Math.max(t[n]||0,r)}return t}computeMaxContentHeight(){let e=this.props.cells[0].key,t=this.cellElRefs.currentMap[e],n=this.fgElRefs.currentMap[e];return t.getBoundingClientRect().bottom-n.getBoundingClientRect().top}getCellEls(){let e=this.cellElRefs.currentMap;return this.props.cells.map((t=>e[t.key]))}}pa.addStateEquality({segHeights:gn});class ma extends ji{constructor(){super(...arguments),this.splitBusinessHourSegs=Nt($o),this.splitBgEventSegs=Nt($o),this.splitFgEventSegs=Nt($o),this.splitDateSelectionSegs=Nt($o),this.splitEventDrag=Nt(Ko),this.splitEventResize=Nt(Ko),this.rowRefs=new ps}render(){let{props:e,context:t}=this,n=e.cells.length,r=this.splitBusinessHourSegs(e.businessHourSegs,n),i=this.splitBgEventSegs(e.bgEventSegs,n),s=this.splitFgEventSegs(e.fgEventSegs,n),o=this.splitDateSelectionSegs(e.dateSelectionSegs,n),a=this.splitEventDrag(e.eventDrag,n),l=this.splitEventResize(e.eventResize,n),c=n>=7&&e.clientWidth?e.clientWidth/t.options.aspectRatio/6:null;return m(Ji,{unit:"day"},((t,d)=>m(y,null,e.cells.map(((t,u)=>m(pa,{ref:this.rowRefs.createRef(u),key:t.length?t[0].date.toISOString():u,showDayNumbers:n>1,showWeekNumbers:e.showWeekNumbers,todayRange:d,dateProfile:e.dateProfile,cells:t,renderIntro:e.renderRowIntro,businessHourSegs:r[u],eventSelection:e.eventSelection,bgEventSegs:i[u].filter(va),fgEventSegs:s[u],dateSelectionSegs:o[u],eventDrag:a[u],eventResize:l[u],dayMaxEvents:e.dayMaxEvents,dayMaxEventRows:e.dayMaxEventRows,clientWidth:e.clientWidth,clientHeight:e.clientHeight,cellMinHeight:c,forPrint:e.forPrint}))))))}componentDidMount(){this.registerInteractiveComponent()}componentDidUpdate(){this.registerInteractiveComponent()}registerInteractiveComponent(){if(!this.rootEl){const e=this.rowRefs.currentMap[0].getCellEls()[0],t=e?e.closest(".fc-daygrid-body"):null;t&&(this.rootEl=t,this.context.registerInteractiveComponent(this,{el:t,isHitComboAllowed:this.props.isHitComboAllowed}))}}componentWillUnmount(){this.rootEl&&(this.context.unregisterInteractiveComponent(this),this.rootEl=null)}prepareHits(){this.rowPositions=new Ii(this.rootEl,this.rowRefs.collect().map((e=>e.getCellEls()[0])),!1,!0),this.colPositions=new Ii(this.rootEl,this.rowRefs.currentMap[0].getCellEls(),!0,!1)}queryHit(e,t){let{colPositions:n,rowPositions:r}=this,i=n.leftToIndex(e),s=r.topToIndex(t);if(null!=s&&null!=i){let e=this.props.cells[s][i];return{dateProfile:this.props.dateProfile,dateSpan:Object.assign({range:this.getCellRange(s,i),allDay:!0},e.extraDateSpan),dayEl:this.getCellEl(s,i),rect:{left:n.lefts[i],right:n.rights[i],top:r.tops[s],bottom:r.bottoms[s]},layer:0}}return null}getCellEl(e,t){return this.rowRefs.currentMap[e].getCellEls()[t]}getCellRange(e,t){let n=this.props.cells[e][t].date;return{start:n,end:yt(n,1)}}}function va(e){return e.eventRange.def.allDay}class ya extends ji{constructor(){super(...arguments),this.elRef={current:null},this.needsScrollReset=!1}render(){let{props:e}=this,{dayMaxEventRows:t,dayMaxEvents:n,expandRows:r}=e,i=!0===n||!0===t;i&&!r&&(i=!1,t=null,n=null);let s=["fc-daygrid-body",i?"fc-daygrid-body-balanced":"fc-daygrid-body-unbalanced",r?"":"fc-daygrid-body-natural"];return m("div",{ref:this.elRef,className:s.join(" "),style:{width:e.clientWidth,minWidth:e.tableMinWidth}},m("table",{role:"presentation",className:"fc-scrollgrid-sync-table",style:{width:e.clientWidth,minWidth:e.tableMinWidth,height:r?e.clientHeight:""}},e.colGroupNode,m("tbody",{role:"presentation"},m(ma,{dateProfile:e.dateProfile,cells:e.cells,renderRowIntro:e.renderRowIntro,showWeekNumbers:e.showWeekNumbers,clientWidth:e.clientWidth,clientHeight:e.clientHeight,businessHourSegs:e.businessHourSegs,bgEventSegs:e.bgEventSegs,fgEventSegs:e.fgEventSegs,dateSelectionSegs:e.dateSelectionSegs,eventSelection:e.eventSelection,eventDrag:e.eventDrag,eventResize:e.eventResize,dayMaxEvents:n,dayMaxEventRows:t,forPrint:e.forPrint,isHitComboAllowed:e.isHitComboAllowed}))))}componentDidMount(){this.requestScrollReset()}componentDidUpdate(e){e.dateProfile!==this.props.dateProfile?this.requestScrollReset():this.flushScrollReset()}requestScrollReset(){this.needsScrollReset=!0,this.flushScrollReset()}flushScrollReset(){if(this.needsScrollReset&&this.props.clientWidth){const e=function(e,t){let n;t.currentRangeUnit.match(/year|month/)&&(n=e.querySelector(`[data-date="${r=t.currentDate,r.toISOString().match(/^\d{4}-\d{2}/)[0]}-01"]`));var r;n||(n=e.querySelector(`[data-date="${Ot(t.currentDate)}"]`));return n}(this.elRef.current,this.props.dateProfile);if(e){const t=e.closest(".fc-daygrid-body"),n=t.closest(".fc-scroller"),r=e.getBoundingClientRect().top-t.getBoundingClientRect().top;n.scrollTop=r?r+1:0}this.needsScrollReset=!1}}}class ba extends is{constructor(){super(...arguments),this.forceDayIfListItem=!0}sliceRange(e,t){return t.sliceRange(e)}}class Ea extends ji{constructor(){super(...arguments),this.slicer=new ba,this.tableRef={current:null}}render(){let{props:e,context:t}=this;return m(ya,Object.assign({ref:this.tableRef},this.slicer.sliceProps(e,e.dateProfile,e.nextDayThreshold,t,e.dayTableModel),{dateProfile:e.dateProfile,cells:e.dayTableModel.cells,colGroupNode:e.colGroupNode,tableMinWidth:e.tableMinWidth,renderRowIntro:e.renderRowIntro,dayMaxEvents:e.dayMaxEvents,dayMaxEventRows:e.dayMaxEventRows,showWeekNumbers:e.showWeekNumbers,expandRows:e.expandRows,headerAlignElRef:e.headerAlignElRef,clientWidth:e.clientWidth,clientHeight:e.clientHeight,forPrint:e.forPrint}))}}class Aa extends ji{constructor(){super(...arguments),this.headerElRef={current:null}}renderSimpleLayout(e,t){let{props:n,context:r}=this,i=[],s=Ds(r.options);return e&&i.push({type:"header",key:"header",isSticky:s,chunk:{elRef:this.headerElRef,tableClassName:"fc-col-header",rowContent:e}}),i.push({type:"body",key:"body",liquid:!0,chunk:{content:t}}),m(Ln,{elClasses:["fc-daygrid"],viewSpec:r.viewSpec},m(Cs,{liquid:!n.isHeightAuto&&!n.forPrint,collapsibleWidth:n.forPrint,cols:[],sections:i}))}renderHScrollLayout(e,t,n,r){let i=this.context.pluginHooks.scrollGridImpl;if(!i)throw new Error("No ScrollGrid implementation");let{props:s,context:o}=this,a=!s.forPrint&&Ds(o.options),l=!s.forPrint&&ws(o.options),c=[];return e&&c.push({type:"header",key:"header",isSticky:a,chunks:[{key:"main",elRef:this.headerElRef,tableClassName:"fc-col-header",rowContent:e}]}),c.push({type:"body",key:"body",liquid:!0,chunks:[{key:"main",content:t}]}),l&&c.push({type:"footer",key:"footer",isSticky:!0,chunks:[{key:"main",content:Ss}]}),m(Ln,{elClasses:["fc-daygrid"],viewSpec:o.viewSpec},m(i,{liquid:!s.isHeightAuto&&!s.forPrint,forPrint:s.forPrint,collapsibleWidth:s.forPrint,colGroups:[{cols:[{span:n,minWidth:r}]}],sections:c}))}}function Sa(e,t){let n=new ns(e.renderRange,t);return new rs(n,/year|month|week/.test(e.currentRangeUnit))}var Da=Ks({name:"@fullcalendar/daygrid",initialView:"dayGridMonth",views:{dayGrid:{component:class extends Aa{constructor(){super(...arguments),this.buildDayTableModel=Nt(Sa),this.headerRef={current:null},this.tableRef={current:null}}render(){let{options:e,dateProfileGenerator:t}=this.context,{props:n}=this,r=this.buildDayTableModel(n.dateProfile,t),i=e.dayHeaders&&m(es,{ref:this.headerRef,dateProfile:n.dateProfile,dates:r.headerDates,datesRepDistinctDays:1===r.rowCnt}),s=t=>m(Ea,{ref:this.tableRef,dateProfile:n.dateProfile,dayTableModel:r,businessHours:n.businessHours,dateSelection:n.dateSelection,eventStore:n.eventStore,eventUiBases:n.eventUiBases,eventSelection:n.eventSelection,eventDrag:n.eventDrag,eventResize:n.eventResize,nextDayThreshold:e.nextDayThreshold,colGroupNode:t.tableColGroupNode,tableMinWidth:t.tableMinWidth,dayMaxEvents:e.dayMaxEvents,dayMaxEventRows:e.dayMaxEventRows,showWeekNumbers:e.weekNumbers,expandRows:!n.isHeightAuto,headerAlignElRef:this.headerElRef,clientWidth:t.clientWidth,clientHeight:t.clientHeight,forPrint:n.forPrint});return e.dayMinWidth?this.renderHScrollLayout(i,s,r.colCnt,e.dayMinWidth):this.renderSimpleLayout(i,s)}},dateProfileGeneratorClass:class extends Kn{buildRenderRange(e,t,n){let r=super.buildRenderRange(e,t,n),{props:i}=this;return function(e){let t,{dateEnv:n,currentRange:r}=e,{start:i,end:s}=r;e.snapToWeek&&(i=n.startOfWeek(i),t=n.startOfWeek(s),t.valueOf()!==s.valueOf()&&(s=vt(t,1)));if(e.fixedWeekCount){let e=n.startOfWeek(n.startOfMonth(yt(r.end,-1)));s=vt(s,6-Math.ceil(Et(e,s)/7))}return{start:i,end:s}}({currentRange:r,snapToWeek:/^(year|month)$/.test(t),fixedWeekCount:i.fixedWeekCount,dateEnv:i.dateEnv})}}},dayGridDay:{type:"dayGrid",duration:{days:1}},dayGridWeek:{type:"dayGrid",duration:{weeks:1}},dayGridMonth:{type:"dayGrid",duration:{months:1},fixedWeekCount:!0},dayGridYear:{type:"dayGrid",duration:{years:1}}}});Qi.touchMouseIgnoreWait=500;let wa=0,Ca=0,Ra=!1;class _a{constructor(e){this.subjectEl=null,this.selector="",this.handleSelector="",this.shouldIgnoreMove=!1,this.shouldWatchScroll=!0,this.isDragging=!1,this.isTouchDragging=!1,this.wasTouchScroll=!1,this.handleMouseDown=e=>{if(!this.shouldIgnoreMouse()&&function(e){return 0===e.button&&!e.ctrlKey}(e)&&this.tryStart(e)){let t=this.createEventFromMouse(e,!0);this.emitter.trigger("pointerdown",t),this.initScrollWatch(t),this.shouldIgnoreMove||document.addEventListener("mousemove",this.handleMouseMove),document.addEventListener("mouseup",this.handleMouseUp)}},this.handleMouseMove=e=>{let t=this.createEventFromMouse(e);this.recordCoords(t),this.emitter.trigger("pointermove",t)},this.handleMouseUp=e=>{document.removeEventListener("mousemove",this.handleMouseMove),document.removeEventListener("mouseup",this.handleMouseUp),this.emitter.trigger("pointerup",this.createEventFromMouse(e)),this.cleanup()},this.handleTouchStart=e=>{if(this.tryStart(e)){this.isTouchDragging=!0;let t=this.createEventFromTouch(e,!0);this.emitter.trigger("pointerdown",t),this.initScrollWatch(t);let n=e.target;this.shouldIgnoreMove||n.addEventListener("touchmove",this.handleTouchMove),n.addEventListener("touchend",this.handleTouchEnd),n.addEventListener("touchcancel",this.handleTouchEnd),window.addEventListener("scroll",this.handleTouchScroll,!0)}},this.handleTouchMove=e=>{let t=this.createEventFromTouch(e);this.recordCoords(t),this.emitter.trigger("pointermove",t)},this.handleTouchEnd=e=>{if(this.isDragging){let t=e.target;t.removeEventListener("touchmove",this.handleTouchMove),t.removeEventListener("touchend",this.handleTouchEnd),t.removeEventListener("touchcancel",this.handleTouchEnd),window.removeEventListener("scroll",this.handleTouchScroll,!0),this.emitter.trigger("pointerup",this.createEventFromTouch(e)),this.cleanup(),this.isTouchDragging=!1,wa+=1,setTimeout((()=>{wa-=1}),Qi.touchMouseIgnoreWait)}},this.handleTouchScroll=()=>{this.wasTouchScroll=!0},this.handleScroll=e=>{if(!this.shouldIgnoreMove){let t=window.pageXOffset-this.prevScrollX+this.prevPageX,n=window.pageYOffset-this.prevScrollY+this.prevPageY;this.emitter.trigger("pointermove",{origEvent:e,isTouch:this.isTouchDragging,subjectEl:this.subjectEl,pageX:t,pageY:n,deltaX:t-this.origPageX,deltaY:n-this.origPageY})}},this.containerEl=e,this.emitter=new Tr,e.addEventListener("mousedown",this.handleMouseDown),e.addEventListener("touchstart",this.handleTouchStart,{passive:!0}),Ca+=1,1===Ca&&window.addEventListener("touchmove",xa,{passive:!1})}destroy(){this.containerEl.removeEventListener("mousedown",this.handleMouseDown),this.containerEl.removeEventListener("touchstart",this.handleTouchStart,{passive:!0}),Ca-=1,Ca||window.removeEventListener("touchmove",xa,{passive:!1})}tryStart(e){let t=this.querySubjectEl(e),n=e.target;return!(!t||this.handleSelector&&!Be(n,this.handleSelector))&&(this.subjectEl=t,this.isDragging=!0,this.wasTouchScroll=!1,!0)}cleanup(){Ra=!1,this.isDragging=!1,this.subjectEl=null,this.destroyScrollWatch()}querySubjectEl(e){return this.selector?Be(e.target,this.selector):this.containerEl}shouldIgnoreMouse(){return wa||this.isTouchDragging}cancelTouchScroll(){this.isDragging&&(Ra=!0)}initScrollWatch(e){this.shouldWatchScroll&&(this.recordCoords(e),window.addEventListener("scroll",this.handleScroll,!0))}recordCoords(e){this.shouldWatchScroll&&(this.prevPageX=e.pageX,this.prevPageY=e.pageY,this.prevScrollX=window.pageXOffset,this.prevScrollY=window.pageYOffset)}destroyScrollWatch(){this.shouldWatchScroll&&window.removeEventListener("scroll",this.handleScroll,!0)}createEventFromMouse(e,t){let n=0,r=0;return t?(this.origPageX=e.pageX,this.origPageY=e.pageY):(n=e.pageX-this.origPageX,r=e.pageY-this.origPageY),{origEvent:e,isTouch:!1,subjectEl:this.subjectEl,pageX:e.pageX,pageY:e.pageY,deltaX:n,deltaY:r}}createEventFromTouch(e,t){let n,r,i=e.touches,s=0,o=0;return i&&i.length?(n=i[0].pageX,r=i[0].pageY):(n=e.pageX,r=e.pageY),t?(this.origPageX=n,this.origPageY=r):(s=n-this.origPageX,o=r-this.origPageY),{origEvent:e,isTouch:!0,subjectEl:this.subjectEl,pageX:n,pageY:r,deltaX:s,deltaY:o}}}function xa(e){Ra&&e.preventDefault()}class Ta{constructor(){this.isVisible=!1,this.sourceEl=null,this.mirrorEl=null,this.sourceElRect=null,this.parentNode=document.body,this.zIndex=9999,this.revertDuration=0}start(e,t,n){this.sourceEl=e,this.sourceElRect=this.sourceEl.getBoundingClientRect(),this.origScreenX=t-window.pageXOffset,this.origScreenY=n-window.pageYOffset,this.deltaX=0,this.deltaY=0,this.updateElPosition()}handleMove(e,t){this.deltaX=e-window.pageXOffset-this.origScreenX,this.deltaY=t-window.pageYOffset-this.origScreenY,this.updateElPosition()}setIsVisible(e){e?this.isVisible||(this.mirrorEl&&(this.mirrorEl.style.display=""),this.isVisible=e,this.updateElPosition()):this.isVisible&&(this.mirrorEl&&(this.mirrorEl.style.display="none"),this.isVisible=e)}stop(e,t){let n=()=>{this.cleanup(),t()};e&&this.mirrorEl&&this.isVisible&&this.revertDuration&&(this.deltaX||this.deltaY)?this.doRevertAnimation(n,this.revertDuration):setTimeout(n,0)}doRevertAnimation(e,t){let n=this.mirrorEl,r=this.sourceEl.getBoundingClientRect();n.style.transition="top "+t+"ms,left "+t+"ms",Ue(n,{left:r.left,top:r.top}),function(e,t){let n=r=>{t(r),Ye.forEach((t=>{e.removeEventListener(t,n)}))};Ye.forEach((t=>{e.addEventListener(t,n)}))}(n,(()=>{n.style.transition="",e()}))}cleanup(){this.mirrorEl&&(He(this.mirrorEl),this.mirrorEl=null),this.sourceEl=null}updateElPosition(){this.sourceEl&&this.isVisible&&Ue(this.getMirrorEl(),{left:this.sourceElRect.left+this.deltaX,top:this.sourceElRect.top+this.deltaY})}getMirrorEl(){let e=this.sourceElRect,t=this.mirrorEl;return t||(t=this.mirrorEl=this.sourceEl.cloneNode(!0),t.style.userSelect="none",t.style.webkitUserSelect="none",t.classList.add("fc-event-dragging"),Ue(t,{position:"fixed",zIndex:this.zIndex,visibility:"",boxSizing:"border-box",width:e.right-e.left,height:e.bottom-e.top,right:"auto",bottom:"auto",margin:0}),this.parentNode.appendChild(t)),t}}class ka extends Pi{constructor(e,t){super(),this.handleScroll=()=>{this.scrollTop=this.scrollController.getScrollTop(),this.scrollLeft=this.scrollController.getScrollLeft(),this.handleScrollChange()},this.scrollController=e,this.doesListening=t,this.scrollTop=this.origScrollTop=e.getScrollTop(),this.scrollLeft=this.origScrollLeft=e.getScrollLeft(),this.scrollWidth=e.getScrollWidth(),this.scrollHeight=e.getScrollHeight(),this.clientWidth=e.getClientWidth(),this.clientHeight=e.getClientHeight(),this.clientRect=this.computeClientRect(),this.doesListening&&this.getEventTarget().addEventListener("scroll",this.handleScroll)}destroy(){this.doesListening&&this.getEventTarget().removeEventListener("scroll",this.handleScroll)}getScrollTop(){return this.scrollTop}getScrollLeft(){return this.scrollLeft}setScrollTop(e){this.scrollController.setScrollTop(e),this.doesListening||(this.scrollTop=Math.max(Math.min(e,this.getMaxScrollTop()),0),this.handleScrollChange())}setScrollLeft(e){this.scrollController.setScrollLeft(e),this.doesListening||(this.scrollLeft=Math.max(Math.min(e,this.getMaxScrollLeft()),0),this.handleScrollChange())}getClientWidth(){return this.clientWidth}getClientHeight(){return this.clientHeight}getScrollWidth(){return this.scrollWidth}getScrollHeight(){return this.scrollHeight}handleScrollChange(){}}class Ma extends ka{constructor(e,t){super(new Hi(e),t)}getEventTarget(){return this.scrollController.el}computeClientRect(){return ki(this.scrollController.el)}}class Oa extends ka{constructor(e){super(new Bi,e)}getEventTarget(){return window}computeClientRect(){return{left:this.scrollLeft,right:this.scrollLeft+this.clientWidth,top:this.scrollTop,bottom:this.scrollTop+this.clientHeight}}handleScrollChange(){this.clientRect=this.computeClientRect()}}const Ia="function"==typeof performance?performance.now:Date.now;class Na{constructor(){this.isEnabled=!0,this.scrollQuery=[window,".fc-scroller"],this.edgeThreshold=50,this.maxVelocity=300,this.pointerScreenX=null,this.pointerScreenY=null,this.isAnimating=!1,this.scrollCaches=null,this.everMovedUp=!1,this.everMovedDown=!1,this.everMovedLeft=!1,this.everMovedRight=!1,this.animate=()=>{if(this.isAnimating){let e=this.computeBestEdge(this.pointerScreenX+window.pageXOffset,this.pointerScreenY+window.pageYOffset);if(e){let t=Ia();this.handleSide(e,(t-this.msSinceRequest)/1e3),this.requestAnimation(t)}else this.isAnimating=!1}}}start(e,t,n){this.isEnabled&&(this.scrollCaches=this.buildCaches(n),this.pointerScreenX=null,this.pointerScreenY=null,this.everMovedUp=!1,this.everMovedDown=!1,this.everMovedLeft=!1,this.everMovedRight=!1,this.handleMove(e,t))}handleMove(e,t){if(this.isEnabled){let n=e-window.pageXOffset,r=t-window.pageYOffset,i=null===this.pointerScreenY?0:r-this.pointerScreenY,s=null===this.pointerScreenX?0:n-this.pointerScreenX;i<0?this.everMovedUp=!0:i>0&&(this.everMovedDown=!0),s<0?this.everMovedLeft=!0:s>0&&(this.everMovedRight=!0),this.pointerScreenX=n,this.pointerScreenY=r,this.isAnimating||(this.isAnimating=!0,this.requestAnimation(Ia()))}}stop(){if(this.isEnabled){this.isAnimating=!1;for(let e of this.scrollCaches)e.destroy();this.scrollCaches=null}}requestAnimation(e){this.msSinceRequest=e,requestAnimationFrame(this.animate)}handleSide(e,t){let{scrollCache:n}=e,{edgeThreshold:r}=this,i=r-e.distance,s=i*i/(r*r)*this.maxVelocity*t,o=1;switch(e.name){case"left":o=-1;case"right":n.setScrollLeft(n.getScrollLeft()+s*o);break;case"top":o=-1;case"bottom":n.setScrollTop(n.getScrollTop()+s*o)}}computeBestEdge(e,t){let{edgeThreshold:n}=this,r=null,i=this.scrollCaches||[];for(let s of i){let i=s.clientRect,o=e-i.left,a=i.right-e,l=t-i.top,c=i.bottom-t;o>=0&&a>=0&&l>=0&&c>=0&&(l<=n&&this.everMovedUp&&s.canScrollUp()&&(!r||r.distance>l)&&(r={scrollCache:s,name:"top",distance:l}),c<=n&&this.everMovedDown&&s.canScrollDown()&&(!r||r.distance>c)&&(r={scrollCache:s,name:"bottom",distance:c}),o<=n&&this.everMovedLeft&&s.canScrollLeft()&&(!r||r.distance>o)&&(r={scrollCache:s,name:"left",distance:o}),a<=n&&this.everMovedRight&&s.canScrollRight()&&(!r||r.distance>a)&&(r={scrollCache:s,name:"right",distance:a}))}return r}buildCaches(e){return this.queryScrollEls(e).map((e=>e===window?new Oa(!1):new Ma(e,!1)))}queryScrollEls(e){let t=[];for(let n of this.scrollQuery)"object"==typeof n?t.push(n):t.push(...Array.prototype.slice.call(e.getRootNode().querySelectorAll(n)));return t}}class Pa extends Gi{constructor(e,t){super(e),this.containerEl=e,this.delay=null,this.minDistance=0,this.touchScrollAllowed=!0,this.mirrorNeedsRevert=!1,this.isInteracting=!1,this.isDragging=!1,this.isDelayEnded=!1,this.isDistanceSurpassed=!1,this.delayTimeoutId=null,this.onPointerDown=e=>{var t;this.isDragging||(this.isInteracting=!0,this.isDelayEnded=!1,this.isDistanceSurpassed=!1,(t=document.body).style.userSelect="none",t.style.webkitUserSelect="none",t.addEventListener("selectstart",Ge),function(e){e.addEventListener("contextmenu",Ge)}(document.body),e.isTouch||e.origEvent.preventDefault(),this.emitter.trigger("pointerdown",e),this.isInteracting&&!this.pointer.shouldIgnoreMove&&(this.mirror.setIsVisible(!1),this.mirror.start(e.subjectEl,e.pageX,e.pageY),this.startDelay(e),this.minDistance||this.handleDistanceSurpassed(e)))},this.onPointerMove=e=>{if(this.isInteracting){if(this.emitter.trigger("pointermove",e),!this.isDistanceSurpassed){let t,n=this.minDistance,{deltaX:r,deltaY:i}=e;t=r*r+i*i,t>=n*n&&this.handleDistanceSurpassed(e)}this.isDragging&&("scroll"!==e.origEvent.type&&(this.mirror.handleMove(e.pageX,e.pageY),this.autoScroller.handleMove(e.pageX,e.pageY)),this.emitter.trigger("dragmove",e))}},this.onPointerUp=e=>{var t;this.isInteracting&&(this.isInteracting=!1,(t=document.body).style.userSelect="",t.style.webkitUserSelect="",t.removeEventListener("selectstart",Ge),function(e){e.removeEventListener("contextmenu",Ge)}(document.body),this.emitter.trigger("pointerup",e),this.isDragging&&(this.autoScroller.stop(),this.tryStopDrag(e)),this.delayTimeoutId&&(clearTimeout(this.delayTimeoutId),this.delayTimeoutId=null))};let n=this.pointer=new _a(e);n.emitter.on("pointerdown",this.onPointerDown),n.emitter.on("pointermove",this.onPointerMove),n.emitter.on("pointerup",this.onPointerUp),t&&(n.selector=t),this.mirror=new Ta,this.autoScroller=new Na}destroy(){this.pointer.destroy(),this.onPointerUp({})}startDelay(e){"number"==typeof this.delay?this.delayTimeoutId=setTimeout((()=>{this.delayTimeoutId=null,this.handleDelayEnd(e)}),this.delay):this.handleDelayEnd(e)}handleDelayEnd(e){this.isDelayEnded=!0,this.tryStartDrag(e)}handleDistanceSurpassed(e){this.isDistanceSurpassed=!0,this.tryStartDrag(e)}tryStartDrag(e){this.isDelayEnded&&this.isDistanceSurpassed&&(this.pointer.wasTouchScroll&&!this.touchScrollAllowed||(this.isDragging=!0,this.mirrorNeedsRevert=!1,this.autoScroller.start(e.pageX,e.pageY,this.containerEl),this.emitter.trigger("dragstart",e),!1===this.touchScrollAllowed&&this.pointer.cancelTouchScroll()))}tryStopDrag(e){this.mirror.stop(this.mirrorNeedsRevert,this.stopDrag.bind(this,e))}stopDrag(e){this.isDragging=!1,this.emitter.trigger("dragend",e)}setIgnoreMove(e){this.pointer.shouldIgnoreMove=e}setMirrorIsVisible(e){this.mirror.setIsVisible(e)}setMirrorNeedsRevert(e){this.mirrorNeedsRevert=e}setAutoScrollEnabled(e){this.autoScroller.isEnabled=e}}class Ha{constructor(e){this.origRect=Mi(e),this.scrollCaches=Oi(e).map((e=>new Ma(e,!0)))}destroy(){for(let e of this.scrollCaches)e.destroy()}computeLeft(){let e=this.origRect.left;for(let t of this.scrollCaches)e+=t.origScrollLeft-t.getScrollLeft();return e}computeTop(){let e=this.origRect.top;for(let t of this.scrollCaches)e+=t.origScrollTop-t.getScrollTop();return e}isWithinClipping(e,t){let n={left:e,top:t};for(let e of this.scrollCaches)if(!Ba(e.getEventTarget())&&!pi(n,e.clientRect))return!1;return!0}}function Ba(e){let t=e.tagName;return"HTML"===t||"BODY"===t}class ja{constructor(e,t){this.useSubjectCenter=!1,this.requireInitial=!0,this.initialHit=null,this.movingHit=null,this.finalHit=null,this.handlePointerDown=e=>{let{dragging:t}=this;this.initialHit=null,this.movingHit=null,this.finalHit=null,this.prepareHits(),this.processFirstCoord(e),this.initialHit||!this.requireInitial?(t.setIgnoreMove(!1),this.emitter.trigger("pointerdown",e)):t.setIgnoreMove(!0)},this.handleDragStart=e=>{this.emitter.trigger("dragstart",e),this.handleMove(e,!0)},this.handleDragMove=e=>{this.emitter.trigger("dragmove",e),this.handleMove(e)},this.handlePointerUp=e=>{this.releaseHits(),this.emitter.trigger("pointerup",e)},this.handleDragEnd=e=>{this.movingHit&&this.emitter.trigger("hitupdate",null,!0,e),this.finalHit=this.movingHit,this.movingHit=null,this.emitter.trigger("dragend",e)},this.droppableStore=t,e.emitter.on("pointerdown",this.handlePointerDown),e.emitter.on("dragstart",this.handleDragStart),e.emitter.on("dragmove",this.handleDragMove),e.emitter.on("pointerup",this.handlePointerUp),e.emitter.on("dragend",this.handleDragEnd),this.dragging=e,this.emitter=new Tr}processFirstCoord(e){let t,n={left:e.pageX,top:e.pageY},r=n,i=e.subjectEl;var s,o;i instanceof HTMLElement&&(t=Mi(i),s=r,o=t,r={left:Math.min(Math.max(s.left,o.left),o.right),top:Math.min(Math.max(s.top,o.top),o.bottom)});let a=this.initialHit=this.queryHitForOffset(r.left,r.top);if(a){if(this.useSubjectCenter&&t){let e=mi(t,a.rect);e&&(r=function(e){return{left:(e.left+e.right)/2,top:(e.top+e.bottom)/2}}(e))}this.coordAdjust=(c=n,{left:(l=r).left-c.left,top:l.top-c.top})}else this.coordAdjust={left:0,top:0};var l,c}handleMove(e,t){let n=this.queryHitForOffset(e.pageX+this.coordAdjust.left,e.pageY+this.coordAdjust.top);!t&&za(this.movingHit,n)||(this.movingHit=n,this.emitter.trigger("hitupdate",n,!1,e))}prepareHits(){this.offsetTrackers=un(this.droppableStore,(e=>(e.component.prepareHits(),new Ha(e.el))))}releaseHits(){let{offsetTrackers:e}=this;for(let t in e)e[t].destroy();this.offsetTrackers={}}queryHitForOffset(e,t){let{droppableStore:n,offsetTrackers:r}=this,i=null;for(let s in n){let o=n[s].component,a=r[s];if(a&&a.isWithinClipping(e,t)){let n=a.computeLeft(),r=a.computeTop(),l=e-n,c=t-r,{origRect:d}=a,u=d.right-d.left,h=d.bottom-d.top;if(l>=0&&l<u&&c>=0&&c<h){let e=o.queryHit(l,c,u,h);e&&Yn(e.dateProfile.activeRange,e.dateSpan.range)&&(!i||e.layer>i.layer)&&(e.componentId=s,e.context=o.context,e.rect.left+=n,e.rect.right+=n,e.rect.top+=r,e.rect.bottom+=r,i=e)}}}return i}}function za(e,t){return!e&&!t||Boolean(e)===Boolean(t)&&(n=e.dateSpan,r=t.dateSpan,i=n.range,s=r.range,(null===i.start?null:i.start.valueOf())===(null===s.start?null:s.start.valueOf())&&(null===i.end?null:i.end.valueOf())===(null===s.end?null:s.end.valueOf())&&n.allDay===r.allDay&&function(e,t){for(let n in t)if("range"!==n&&"allDay"!==n&&e[n]!==t[n])return!1;for(let n in e)if(!(n in t))return!1;return!0}(n,r));var n,r,i,s}function Ua(e,t){let n={};for(let r of t.pluginHooks.datePointTransforms)Object.assign(n,r(e,t));var r,i;return Object.assign(n,(r=e,{date:(i=t.dateEnv).toDate(r.range.start),dateStr:i.formatIso(r.range.start,{omitTime:r.allDay}),allDay:r.allDay})),n}class La extends ui{constructor(e){super(e),this.subjectEl=null,this.subjectSeg=null,this.isDragging=!1,this.eventRange=null,this.relevantEvents=null,this.receivingContext=null,this.validMutation=null,this.mutatedRelevantEvents=null,this.handlePointerDown=e=>{let t=e.origEvent.target,{component:n,dragging:r}=this,{mirror:i}=r,{options:s}=n.context,o=n.context;this.subjectEl=e.subjectEl;let a=this.subjectSeg=Vr(e.subjectEl),l=(this.eventRange=a.eventRange).instance.instanceId;this.relevantEvents=hr(o.getCurrentData().eventStore,l),r.minDistance=e.isTouch?0:s.eventDragMinDistance,r.delay=e.isTouch&&l!==n.props.eventSelection?function(e){let{options:t}=e.context,n=t.eventLongPressDelay;null==n&&(n=t.longPressDelay);return n}(n):null,s.fixedMirrorParent?i.parentNode=s.fixedMirrorParent:i.parentNode=Be(t,".fc"),i.revertDuration=s.dragRevertDuration;let c=n.isValidSegDownEl(t)&&!Be(t,".fc-event-resizer");r.setIgnoreMove(!c),this.isDragging=c&&e.subjectEl.classList.contains("fc-event-draggable")},this.handleDragStart=e=>{let t=this.component.context,n=this.eventRange,r=n.instance.instanceId;e.isTouch?r!==this.component.props.eventSelection&&t.dispatch({type:"SELECT_EVENT",eventInstanceId:r}):t.dispatch({type:"UNSELECT_EVENT"}),this.isDragging&&(t.calendarApi.unselect(e),t.emitter.trigger("eventDragStart",{el:this.subjectEl,event:new zr(t,n.def,n.instance),jsEvent:e.origEvent,view:t.viewApi}))},this.handleHitUpdate=(e,t)=>{if(!this.isDragging)return;let n=this.relevantEvents,r=this.hitDragging.initialHit,i=this.component.context,s=null,o=null,a=null,l=!1,c={affectedEvents:n,mutatedEvents:{defs:{},instances:{}},isEvent:!0};if(e){s=e.context;let t=s.options;i===s||t.editable&&t.droppable?(o=function(e,t,n){let r=e.dateSpan,i=t.dateSpan,s=r.range.start,o=i.range.start,a={};r.allDay!==i.allDay&&(a.allDay=i.allDay,a.hasEnd=t.context.options.allDayMaintainDuration,i.allDay&&(s=St(s)));let l=$n(s,o,e.context.dateEnv,e.componentId===t.componentId?e.largeUnit:null);l.milliseconds&&(a.allDay=!1);let c={datesDelta:l,standardProps:a};for(let r of n)r(c,e,t);return c}(r,e,s.getCurrentData().pluginHooks.eventDragMutationMassagers),o&&(a=Pr(n,s.getCurrentData().eventUiBases,o,s),c.mutatedEvents=a,os(c,e.dateProfile,s)||(l=!0,o=null,a=null,c.mutatedEvents={defs:{},instances:{}}))):s=null}this.displayDrag(s,c),l?Je():Ke(),t||(i===s&&za(r,e)&&(o=null),this.dragging.setMirrorNeedsRevert(!o),this.dragging.setMirrorIsVisible(!e||!this.subjectEl.getRootNode().querySelector(".fc-event-mirror")),this.receivingContext=s,this.validMutation=o,this.mutatedRelevantEvents=a)},this.handlePointerUp=()=>{this.isDragging||this.cleanup()},this.handleDragEnd=e=>{if(this.isDragging){let t=this.component.context,n=t.viewApi,{receivingContext:r,validMutation:i}=this,s=this.eventRange.def,o=this.eventRange.instance,a=new zr(t,s,o),l=this.relevantEvents,c=this.mutatedRelevantEvents,{finalHit:d}=this.hitDragging;if(this.clearDrag(),t.emitter.trigger("eventDragStop",{el:this.subjectEl,event:a,jsEvent:e.origEvent,view:n}),i){if(r===t){let r=new zr(t,c.defs[s.defId],o?c.instances[o.instanceId]:null);t.dispatch({type:"MERGE_EVENTS",eventStore:c});let d={oldEvent:a,event:r,relatedEvents:Lr(c,t,o),revert(){t.dispatch({type:"MERGE_EVENTS",eventStore:l})}},u={};for(let e of t.getCurrentData().pluginHooks.eventDropTransformers)Object.assign(u,e(i,t));t.emitter.trigger("eventDrop",Object.assign(Object.assign(Object.assign({},d),u),{el:e.subjectEl,delta:i.datesDelta,jsEvent:e.origEvent,view:n})),t.emitter.trigger("eventChange",d)}else if(r){let i={event:a,relatedEvents:Lr(l,t,o),revert(){t.dispatch({type:"MERGE_EVENTS",eventStore:l})}};t.emitter.trigger("eventLeave",Object.assign(Object.assign({},i),{draggedEl:e.subjectEl,view:n})),t.dispatch({type:"REMOVE_EVENTS",eventStore:l}),t.emitter.trigger("eventRemove",i);let u=c.defs[s.defId],h=c.instances[o.instanceId],f=new zr(r,u,h);r.dispatch({type:"MERGE_EVENTS",eventStore:c});let g={event:f,relatedEvents:Lr(c,r,h),revert(){r.dispatch({type:"REMOVE_EVENTS",eventStore:c})}};r.emitter.trigger("eventAdd",g),e.isTouch&&r.dispatch({type:"SELECT_EVENT",eventInstanceId:o.instanceId}),r.emitter.trigger("drop",Object.assign(Object.assign({},Ua(d.dateSpan,r)),{draggedEl:e.subjectEl,jsEvent:e.origEvent,view:d.context.viewApi})),r.emitter.trigger("eventReceive",Object.assign(Object.assign({},g),{draggedEl:e.subjectEl,view:d.context.viewApi}))}}else t.emitter.trigger("_noEventDrop")}this.cleanup()};let{component:t}=this,{options:n}=t.context,r=this.dragging=new Pa(e.el);r.pointer.selector=La.SELECTOR,r.touchScrollAllowed=!1,r.autoScroller.isEnabled=n.dragScroll;let i=this.hitDragging=new ja(this.dragging,fi);i.useSubjectCenter=e.useEventCenter,i.emitter.on("pointerdown",this.handlePointerDown),i.emitter.on("dragstart",this.handleDragStart),i.emitter.on("hitupdate",this.handleHitUpdate),i.emitter.on("pointerup",this.handlePointerUp),i.emitter.on("dragend",this.handleDragEnd)}destroy(){this.dragging.destroy()}displayDrag(e,t){let n=this.component.context,r=this.receivingContext;r&&r!==e&&(r===n?r.dispatch({type:"SET_EVENT_DRAG",state:{affectedEvents:t.affectedEvents,mutatedEvents:{defs:{},instances:{}},isEvent:!0}}):r.dispatch({type:"UNSET_EVENT_DRAG"})),e&&e.dispatch({type:"SET_EVENT_DRAG",state:t})}clearDrag(){let e=this.component.context,{receivingContext:t}=this;t&&t.dispatch({type:"UNSET_EVENT_DRAG"}),e!==t&&e.dispatch({type:"UNSET_EVENT_DRAG"})}cleanup(){this.subjectSeg=null,this.isDragging=!1,this.eventRange=null,this.relevantEvents=null,this.receivingContext=null,this.validMutation=null,this.mutatedRelevantEvents=null}}La.SELECTOR=".fc-event-draggable, .fc-event-resizable";const Wa={fixedMirrorParent:an},Fa={dateClick:an,eventDragStart:an,eventDragStop:an,eventDrop:an,eventResizeStart:an,eventResizeStop:an,eventResize:an,drop:an,eventReceive:an,eventLeave:an};Qi.dataAttrPrefix="";var Va=Ks({name:"@fullcalendar/interaction",componentInteractions:[class extends ui{constructor(e){super(e),this.handlePointerDown=e=>{let{dragging:t}=this,n=e.origEvent.target;t.setIgnoreMove(!this.component.isValidDateDownEl(n))},this.handleDragEnd=e=>{let{component:t}=this,{pointer:n}=this.dragging;if(!n.wasTouchScroll){let{initialHit:n,finalHit:r}=this.hitDragging;if(n&&r&&za(n,r)){let{context:r}=t,i=Object.assign(Object.assign({},Ua(n.dateSpan,r)),{dayEl:n.dayEl,jsEvent:e.origEvent,view:r.viewApi||r.calendarApi.view});r.emitter.trigger("dateClick",i)}}},this.dragging=new Pa(e.el),this.dragging.autoScroller.isEnabled=!1;let t=this.hitDragging=new ja(this.dragging,hi(e));t.emitter.on("pointerdown",this.handlePointerDown),t.emitter.on("dragend",this.handleDragEnd)}destroy(){this.dragging.destroy()}},class extends ui{constructor(e){super(e),this.dragSelection=null,this.handlePointerDown=e=>{let{component:t,dragging:n}=this,{options:r}=t.context,i=r.selectable&&t.isValidDateDownEl(e.origEvent.target);n.setIgnoreMove(!i),n.delay=e.isTouch?function(e){let{options:t}=e.context,n=t.selectLongPressDelay;null==n&&(n=t.longPressDelay);return n}(t):null},this.handleDragStart=e=>{this.component.context.calendarApi.unselect(e)},this.handleHitUpdate=(e,t)=>{let{context:n}=this.component,r=null,i=!1;if(e){let t=this.hitDragging.initialHit;e.componentId===t.componentId&&this.isHitComboAllowed&&!this.isHitComboAllowed(t,e)||(r=function(e,t,n){let r=e.dateSpan,i=t.dateSpan,s=[r.range.start,r.range.end,i.range.start,i.range.end];s.sort(rt);let o={};for(let r of n){let n=r(e,t);if(!1===n)return null;n&&Object.assign(o,n)}return o.range={start:s[0],end:s[3]},o.allDay=r.allDay,o}(t,e,n.pluginHooks.dateSelectionTransformers)),r&&function(e,t,n){return!!Yn(t.validRange,e.range)&&as({dateSelection:e},n)}(r,e.dateProfile,n)||(i=!0,r=null)}r?n.dispatch({type:"SELECT_DATES",selection:r}):t||n.dispatch({type:"UNSELECT_DATES"}),i?Je():Ke(),t||(this.dragSelection=r)},this.handlePointerUp=e=>{this.dragSelection&&(Or(this.dragSelection,e,this.component.context),this.dragSelection=null)};let{component:t}=e,{options:n}=t.context,r=this.dragging=new Pa(e.el);r.touchScrollAllowed=!1,r.minDistance=n.selectMinDistance||0,r.autoScroller.isEnabled=n.dragScroll;let i=this.hitDragging=new ja(this.dragging,hi(e));i.emitter.on("pointerdown",this.handlePointerDown),i.emitter.on("dragstart",this.handleDragStart),i.emitter.on("hitupdate",this.handleHitUpdate),i.emitter.on("pointerup",this.handlePointerUp)}destroy(){this.dragging.destroy()}},La,class extends ui{constructor(e){super(e),this.draggingSegEl=null,this.draggingSeg=null,this.eventRange=null,this.relevantEvents=null,this.validMutation=null,this.mutatedRelevantEvents=null,this.handlePointerDown=e=>{let{component:t}=this,n=Vr(this.querySegEl(e)),r=this.eventRange=n.eventRange;this.dragging.minDistance=t.context.options.eventDragMinDistance,this.dragging.setIgnoreMove(!this.component.isValidSegDownEl(e.origEvent.target)||e.isTouch&&this.component.props.eventSelection!==r.instance.instanceId)},this.handleDragStart=e=>{let{context:t}=this.component,n=this.eventRange;this.relevantEvents=hr(t.getCurrentData().eventStore,this.eventRange.instance.instanceId);let r=this.querySegEl(e);this.draggingSegEl=r,this.draggingSeg=Vr(r),t.calendarApi.unselect(),t.emitter.trigger("eventResizeStart",{el:r,event:new zr(t,n.def,n.instance),jsEvent:e.origEvent,view:t.viewApi})},this.handleHitUpdate=(e,t,n)=>{let{context:r}=this.component,i=this.relevantEvents,s=this.hitDragging.initialHit,o=this.eventRange.instance,a=null,l=null,c=!1,d={affectedEvents:i,mutatedEvents:{defs:{},instances:{}},isEvent:!0};if(e){e.componentId===s.componentId&&this.isHitComboAllowed&&!this.isHitComboAllowed(s,e)||(a=function(e,t,n,r){let i=e.context.dateEnv,s=e.dateSpan.range.start,o=t.dateSpan.range.start,a=$n(s,o,i,e.largeUnit);if(n){if(i.add(r.start,a)<r.end)return{startDelta:a}}else if(i.add(r.end,a)>r.start)return{endDelta:a};return null}(s,e,n.subjectEl.classList.contains("fc-event-resizer-start"),o.range))}a&&(l=Pr(i,r.getCurrentData().eventUiBases,a,r),d.mutatedEvents=l,os(d,e.dateProfile,r)||(c=!0,a=null,l=null,d.mutatedEvents=null)),l?r.dispatch({type:"SET_EVENT_RESIZE",state:d}):r.dispatch({type:"UNSET_EVENT_RESIZE"}),c?Je():Ke(),t||(a&&za(s,e)&&(a=null),this.validMutation=a,this.mutatedRelevantEvents=l)},this.handleDragEnd=e=>{let{context:t}=this.component,n=this.eventRange.def,r=this.eventRange.instance,i=new zr(t,n,r),s=this.relevantEvents,o=this.mutatedRelevantEvents;if(t.emitter.trigger("eventResizeStop",{el:this.draggingSegEl,event:i,jsEvent:e.origEvent,view:t.viewApi}),this.validMutation){let a=new zr(t,o.defs[n.defId],r?o.instances[r.instanceId]:null);t.dispatch({type:"MERGE_EVENTS",eventStore:o});let l={oldEvent:i,event:a,relatedEvents:Lr(o,t,r),revert(){t.dispatch({type:"MERGE_EVENTS",eventStore:s})}};t.emitter.trigger("eventResize",Object.assign(Object.assign({},l),{el:this.draggingSegEl,startDelta:this.validMutation.startDelta||lt(0),endDelta:this.validMutation.endDelta||lt(0),jsEvent:e.origEvent,view:t.viewApi})),t.emitter.trigger("eventChange",l)}else t.emitter.trigger("_noEventResize");this.draggingSeg=null,this.relevantEvents=null,this.validMutation=null};let{component:t}=e,n=this.dragging=new Pa(e.el);n.pointer.selector=".fc-event-resizer",n.touchScrollAllowed=!1,n.autoScroller.isEnabled=t.context.options.dragScroll;let r=this.hitDragging=new ja(this.dragging,hi(e));r.emitter.on("pointerdown",this.handlePointerDown),r.emitter.on("dragstart",this.handleDragStart),r.emitter.on("hitupdate",this.handleHitUpdate),r.emitter.on("dragend",this.handleDragEnd)}destroy(){this.dragging.destroy()}querySegEl(e){return Be(e.subjectEl,".fc-event")}}],calendarInteractions:[class{constructor(e){this.context=e,this.isRecentPointerDateSelect=!1,this.matchesCancel=!1,this.matchesEvent=!1,this.onSelect=e=>{e.jsEvent&&(this.isRecentPointerDateSelect=!0)},this.onDocumentPointerDown=e=>{let t=this.context.options.unselectCancel,n=We(e.origEvent);this.matchesCancel=!!Be(n,t),this.matchesEvent=!!Be(n,La.SELECTOR)},this.onDocumentPointerUp=e=>{let{context:t}=this,{documentPointer:n}=this,r=t.getCurrentData();if(!n.wasTouchScroll){if(r.dateSelection&&!this.isRecentPointerDateSelect){let n=t.options.unselectAuto;!n||n&&this.matchesCancel||t.calendarApi.unselect(e)}r.eventSelection&&!this.matchesEvent&&t.dispatch({type:"UNSELECT_EVENT"})}this.isRecentPointerDateSelect=!1};let t=this.documentPointer=new _a(document);t.shouldIgnoreMove=!0,t.shouldWatchScroll=!1,t.emitter.on("pointerdown",this.onDocumentPointerDown),t.emitter.on("pointerup",this.onDocumentPointerUp),e.emitter.on("select",this.onSelect)}destroy(){this.context.emitter.off("select",this.onSelect),this.documentPointer.destroy()}}],elementDraggingImpl:Pa,optionRefiners:Wa,listenerRefiners:Fa});class Ga extends On{constructor(){super(...arguments),this.state={textId:Ve()}}render(){let{theme:e,dateEnv:t,options:n,viewApi:r}=this.context,{cellId:i,dayDate:s,todayRange:o}=this.props,{textId:a}=this.state,l=Ei(s,o),c=n.listDayFormat?t.format(s,n.listDayFormat):"",d=n.listDaySideFormat?t.format(s,n.listDaySideFormat):"",u=Object.assign({date:t.toDate(s),view:r,textId:a,text:c,sideText:d,navLinkAttrs:wi(this.context,s),sideNavLinkAttrs:wi(this.context,s,"day",!1)},l);return m(zn,{elTag:"tr",elClasses:["fc-list-day",...Ai(l,e)],elAttrs:{"data-date":Ot(s)},renderProps:u,generatorName:"dayHeaderContent",customGenerator:n.dayHeaderContent,defaultGenerator:Qa,classNameGenerator:n.dayHeaderClassNames,didMount:n.dayHeaderDidMount,willUnmount:n.dayHeaderWillUnmount},(t=>m("th",{scope:"colgroup",colSpan:3,id:i,"aria-labelledby":a},m(t,{elTag:"div",elClasses:["fc-list-day-cushion",e.getClass("tableCellShaded")]}))))}}function Qa(e){return m(y,null,e.text&&m("a",Object.assign({id:e.textId,className:"fc-list-day-text"},e.navLinkAttrs),e.text),e.sideText&&m("a",Object.assign({"aria-hidden":!0,className:"fc-list-day-side-text"},e.sideNavLinkAttrs),e.sideText))}const Ya=Zt({hour:"numeric",minute:"2-digit",meridiem:"short"});class qa extends On{render(){let{props:e,context:t}=this,{options:n}=t,{seg:r,timeHeaderId:i,eventHeaderId:s,dateHeaderId:o}=e,a=n.eventTimeFormat||Ya;return m(Rs,Object.assign({},e,{elTag:"tr",elClasses:["fc-list-event",r.eventRange.def.url&&"fc-event-forced-url"],defaultGenerator:()=>function(e,t){let n=ni(e,t);return m("a",Object.assign({},n),e.eventRange.def.title)}(r,t),seg:r,timeText:"",disableDragging:!0,disableResizing:!0}),((e,n)=>m(y,null,function(e,t,n,r,i){let{options:s}=n;if(!1!==s.displayEventTime){let o,a=e.eventRange.def,l=e.eventRange.instance,c=!1;if(a.allDay?c=!0:!function(e){let t=Xn(e);return Et(t.start,t.end)>1}(e.eventRange.range)?o=Jr(e,t,n):e.isStart?o=Jr(e,t,n,null,null,l.range.start,e.end):e.isEnd?o=Jr(e,t,n,null,null,e.start,l.range.end):c=!0,c){let e={text:n.options.allDayText,view:n.viewApi};return m(zn,{elTag:"td",elClasses:["fc-list-event-time"],elAttrs:{headers:`${r} ${i}`},renderProps:e,generatorName:"allDayContent",customGenerator:s.allDayContent,defaultGenerator:Za,classNameGenerator:s.allDayClassNames,didMount:s.allDayDidMount,willUnmount:s.allDayWillUnmount})}return m("td",{className:"fc-list-event-time"},o)}return null}(r,a,t,i,o),m("td",{"aria-hidden":!0,className:"fc-list-event-graphic"},m("span",{className:"fc-list-event-dot",style:{borderColor:n.borderColor||n.backgroundColor}})),m(e,{elTag:"td",elClasses:["fc-list-event-title"],elAttrs:{headers:`${s} ${o}`}}))))}}function Za(e){return e.text}function Xa(e){return e.text}function $a(e){let t=St(e.renderRange.start),n=e.renderRange.end,r=[],i=[];for(;t<n;)r.push(t),i.push({start:t,end:yt(t,1)}),t=yt(t,1);return{dayDates:r,dayRanges:i}}Me(':root{--fc-list-event-dot-width:10px;--fc-list-event-hover-bg-color:#f5f5f5}.fc-theme-standard .fc-list{border:1px solid var(--fc-border-color)}.fc .fc-list-empty{align-items:center;background-color:var(--fc-neutral-bg-color);display:flex;height:100%;justify-content:center}.fc .fc-list-empty-cushion{margin:5em 0}.fc .fc-list-table{border-style:hidden;width:100%}.fc .fc-list-table tr>*{border-left:0;border-right:0}.fc .fc-list-sticky .fc-list-day>*{background:var(--fc-page-bg-color);position:sticky;top:0}.fc .fc-list-table thead{left:-10000px;position:absolute}.fc .fc-list-table tbody>tr:first-child th{border-top:0}.fc .fc-list-table th{padding:0}.fc .fc-list-day-cushion,.fc .fc-list-table td{padding:8px 14px}.fc .fc-list-day-cushion:after{clear:both;content:"";display:table}.fc-theme-standard .fc-list-day-cushion{background-color:var(--fc-neutral-bg-color)}.fc-direction-ltr .fc-list-day-text,.fc-direction-rtl .fc-list-day-side-text{float:left}.fc-direction-ltr .fc-list-day-side-text,.fc-direction-rtl .fc-list-day-text{float:right}.fc-direction-ltr .fc-list-table .fc-list-event-graphic{padding-right:0}.fc-direction-rtl .fc-list-table .fc-list-event-graphic{padding-left:0}.fc .fc-list-event.fc-event-forced-url{cursor:pointer}.fc .fc-list-event:hover td{background-color:var(--fc-list-event-hover-bg-color)}.fc .fc-list-event-graphic,.fc .fc-list-event-time{white-space:nowrap;width:1px}.fc .fc-list-event-dot{border:calc(var(--fc-list-event-dot-width)/2) solid var(--fc-event-border-color);border-radius:calc(var(--fc-list-event-dot-width)/2);box-sizing:content-box;display:inline-block;height:0;width:0}.fc .fc-list-event-title a{color:inherit;text-decoration:none}.fc .fc-list-event.fc-event-forced-url:hover a{text-decoration:underline}');function Ja(e){return!1===e?null:Zt(e)}var Ka=Ks({name:"@fullcalendar/list",optionRefiners:{listDayFormat:Ja,listDaySideFormat:Ja,noEventsClassNames:an,noEventsContent:an,noEventsDidMount:an,noEventsWillUnmount:an},views:{list:{component:class extends ji{constructor(){super(...arguments),this.computeDateVars=Nt($a),this.eventStoreToSegs=Nt(this._eventStoreToSegs),this.state={timeHeaderId:Ve(),eventHeaderId:Ve(),dateHeaderIdRoot:Ve()},this.setRootEl=e=>{e?this.context.registerInteractiveComponent(this,{el:e}):this.context.unregisterInteractiveComponent(this)}}render(){let{props:e,context:t}=this,{dayDates:n,dayRanges:r}=this.computeDateVars(e.dateProfile),i=this.eventStoreToSegs(e.eventStore,e.eventUiBases,r);return m(Ln,{elRef:this.setRootEl,elClasses:["fc-list",t.theme.getClass("table"),!1!==t.options.stickyHeaderDates?"fc-list-sticky":""],viewSpec:t.viewSpec},m(gs,{liquid:!e.isHeightAuto,overflowX:e.isHeightAuto?"visible":"hidden",overflowY:e.isHeightAuto?"visible":"auto"},i.length>0?this.renderSegList(i,n):this.renderEmptyMessage()))}renderEmptyMessage(){let{options:e,viewApi:t}=this.context,n={text:e.noEventsText,view:t};return m(zn,{elTag:"div",elClasses:["fc-list-empty"],renderProps:n,generatorName:"noEventsContent",customGenerator:e.noEventsContent,defaultGenerator:Xa,classNameGenerator:e.noEventsClassNames,didMount:e.noEventsDidMount,willUnmount:e.noEventsWillUnmount},(e=>m(e,{elTag:"div",elClasses:["fc-list-empty-cushion"]})))}renderSegList(e,t){let{theme:n,options:r}=this.context,{timeHeaderId:i,eventHeaderId:s,dateHeaderIdRoot:o}=this.state,a=function(e){let t,n,r=[];for(t=0;t<e.length;t+=1)n=e[t],(r[n.dayIndex]||(r[n.dayIndex]=[])).push(n);return r}(e);return m(Ji,{unit:"day"},((e,l)=>{let c=[];for(let n=0;n<a.length;n+=1){let d=a[n];if(d){let a=Ot(t[n]),u=o+"-"+a;c.push(m(Ga,{key:a,cellId:u,dayDate:t[n],todayRange:l})),d=Yr(d,r.eventOrder);for(let t of d)c.push(m(qa,Object.assign({key:a+":"+t.eventRange.instance.instanceId,seg:t,isDragging:!1,isResizing:!1,isDateSelecting:!1,isSelected:!1,timeHeaderId:i,eventHeaderId:s,dateHeaderId:u},Kr(t,l,e))))}}return m("table",{className:"fc-list-table "+n.getClass("table")},m("thead",null,m("tr",null,m("th",{scope:"col",id:i},r.timeHint),m("th",{scope:"col","aria-hidden":!0}),m("th",{scope:"col",id:s},r.eventHint))),m("tbody",null,c))}))}_eventStoreToSegs(e,t,n){return this.eventRangesToSegs(Wr(e,t,this.props.dateProfile.activeRange,this.context.options.nextDayThreshold).fg,n)}eventRangesToSegs(e,t){let n=[];for(let r of e)n.push(...this.eventRangeToSegs(r,t));return n}eventRangeToSegs(e,t){let n,r,i,{dateEnv:s}=this.context,{nextDayThreshold:o}=this.context.options,a=e.range,l=e.def.allDay,c=[];for(n=0;n<t.length;n+=1)if(r=Gn(a,t[n]),r&&(i={component:this,eventRange:e,start:r.start,end:r.end,isStart:e.isStart&&r.start.valueOf()===a.start.valueOf(),isEnd:e.isEnd&&r.end.valueOf()===a.end.valueOf(),dayIndex:n},c.push(i),!i.isEnd&&!l&&n+1<t.length&&a.end<s.add(t[n+1].start,o))){i.end=a.end,i.isEnd=!0;break}return c}},buttonTextKey:"list",listDayFormat:{month:"long",day:"numeric",year:"numeric"}},listDay:{type:"list",duration:{days:1},listDayFormat:{weekday:"long"}},listWeek:{type:"list",duration:{weeks:1},listDayFormat:{weekday:"long"},listDaySideFormat:{month:"long",day:"numeric",year:"numeric"}},listMonth:{type:"list",duration:{month:1},listDaySideFormat:{weekday:"long"}},listYear:{type:"list",duration:{year:1},listDaySideFormat:{weekday:"long"}}}});Me('.fc-v-event{background-color:var(--fc-event-bg-color);border:1px solid var(--fc-event-border-color);display:block}.fc-v-event .fc-event-main{color:var(--fc-event-text-color);height:100%}.fc-v-event .fc-event-main-frame{display:flex;flex-direction:column;height:100%}.fc-v-event .fc-event-time{flex-grow:0;flex-shrink:0;max-height:100%;overflow:hidden}.fc-v-event .fc-event-title-container{flex-grow:1;flex-shrink:1;min-height:0}.fc-v-event .fc-event-title{bottom:0;max-height:100%;overflow:hidden;top:0}.fc-v-event:not(.fc-event-start){border-top-left-radius:0;border-top-right-radius:0;border-top-width:0}.fc-v-event:not(.fc-event-end){border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-width:0}.fc-v-event.fc-event-selected:before{left:-10px;right:-10px}.fc-v-event .fc-event-resizer-start{cursor:n-resize}.fc-v-event .fc-event-resizer-end{cursor:s-resize}.fc-v-event:not(.fc-event-selected) .fc-event-resizer{height:var(--fc-event-resizer-thickness);left:0;right:0}.fc-v-event:not(.fc-event-selected) .fc-event-resizer-start{top:calc(var(--fc-event-resizer-thickness)/-2)}.fc-v-event:not(.fc-event-selected) .fc-event-resizer-end{bottom:calc(var(--fc-event-resizer-thickness)/-2)}.fc-v-event.fc-event-selected .fc-event-resizer{left:50%;margin-left:calc(var(--fc-event-resizer-dot-total-width)/-2)}.fc-v-event.fc-event-selected .fc-event-resizer-start{top:calc(var(--fc-event-resizer-dot-total-width)/-2)}.fc-v-event.fc-event-selected .fc-event-resizer-end{bottom:calc(var(--fc-event-resizer-dot-total-width)/-2)}.fc .fc-timegrid .fc-daygrid-body{z-index:2}.fc .fc-timegrid-divider{padding:0 0 2px}.fc .fc-timegrid-body{min-height:100%;position:relative;z-index:1}.fc .fc-timegrid-axis-chunk{position:relative}.fc .fc-timegrid-axis-chunk>table,.fc .fc-timegrid-slots{position:relative;z-index:1}.fc .fc-timegrid-slot{border-bottom:0;height:1.5em}.fc .fc-timegrid-slot:empty:before{content:"\\00a0"}.fc .fc-timegrid-slot-minor{border-top-style:dotted}.fc .fc-timegrid-slot-label-cushion{display:inline-block;white-space:nowrap}.fc .fc-timegrid-slot-label{vertical-align:middle}.fc .fc-timegrid-axis-cushion,.fc .fc-timegrid-slot-label-cushion{padding:0 4px}.fc .fc-timegrid-axis-frame-liquid{height:100%}.fc .fc-timegrid-axis-frame{align-items:center;display:flex;justify-content:flex-end;overflow:hidden}.fc .fc-timegrid-axis-cushion{flex-shrink:0;max-width:60px}.fc-direction-ltr .fc-timegrid-slot-label-frame{text-align:right}.fc-direction-rtl .fc-timegrid-slot-label-frame{text-align:left}.fc-liquid-hack .fc-timegrid-axis-frame-liquid{bottom:0;height:auto;left:0;position:absolute;right:0;top:0}.fc .fc-timegrid-col.fc-day-today{background-color:var(--fc-today-bg-color)}.fc .fc-timegrid-col-frame{min-height:100%;position:relative}.fc-media-screen.fc-liquid-hack .fc-timegrid-col-frame{bottom:0;height:auto;left:0;position:absolute;right:0;top:0}.fc-media-screen .fc-timegrid-cols{bottom:0;left:0;position:absolute;right:0;top:0}.fc-media-screen .fc-timegrid-cols>table{height:100%}.fc-media-screen .fc-timegrid-col-bg,.fc-media-screen .fc-timegrid-col-events,.fc-media-screen .fc-timegrid-now-indicator-container{left:0;position:absolute;right:0;top:0}.fc .fc-timegrid-col-bg{z-index:2}.fc .fc-timegrid-col-bg .fc-non-business{z-index:1}.fc .fc-timegrid-col-bg .fc-bg-event{z-index:2}.fc .fc-timegrid-col-bg .fc-highlight{z-index:3}.fc .fc-timegrid-bg-harness{left:0;position:absolute;right:0}.fc .fc-timegrid-col-events{z-index:3}.fc .fc-timegrid-now-indicator-container{bottom:0;overflow:hidden}.fc-direction-ltr .fc-timegrid-col-events{margin:0 2.5% 0 2px}.fc-direction-rtl .fc-timegrid-col-events{margin:0 2px 0 2.5%}.fc-timegrid-event-harness{position:absolute}.fc-timegrid-event-harness>.fc-timegrid-event{bottom:0;left:0;position:absolute;right:0;top:0}.fc-timegrid-event-harness-inset .fc-timegrid-event,.fc-timegrid-event.fc-event-mirror,.fc-timegrid-more-link{box-shadow:0 0 0 1px var(--fc-page-bg-color)}.fc-timegrid-event,.fc-timegrid-more-link{border-radius:3px;font-size:var(--fc-small-font-size)}.fc-timegrid-event{margin-bottom:1px}.fc-timegrid-event .fc-event-main{padding:1px 1px 0}.fc-timegrid-event .fc-event-time{font-size:var(--fc-small-font-size);margin-bottom:1px;white-space:nowrap}.fc-timegrid-event-short .fc-event-main-frame{flex-direction:row;overflow:hidden}.fc-timegrid-event-short .fc-event-time:after{content:"\\00a0-\\00a0"}.fc-timegrid-event-short .fc-event-title{font-size:var(--fc-small-font-size)}.fc-timegrid-more-link{background:var(--fc-more-link-bg-color);color:var(--fc-more-link-text-color);cursor:pointer;margin-bottom:1px;position:absolute;z-index:9999}.fc-timegrid-more-link-inner{padding:3px 2px;top:0}.fc-direction-ltr .fc-timegrid-more-link{right:0}.fc-direction-rtl .fc-timegrid-more-link{left:0}.fc .fc-timegrid-now-indicator-line{border-color:var(--fc-now-indicator-color);border-style:solid;border-width:1px 0 0;left:0;position:absolute;right:0;z-index:4}.fc .fc-timegrid-now-indicator-arrow{border-color:var(--fc-now-indicator-color);border-style:solid;margin-top:-5px;position:absolute;z-index:4}.fc-direction-ltr .fc-timegrid-now-indicator-arrow{border-bottom-color:transparent;border-top-color:transparent;border-width:5px 0 5px 6px;left:0}.fc-direction-rtl .fc-timegrid-now-indicator-arrow{border-bottom-color:transparent;border-top-color:transparent;border-width:5px 6px 5px 0;right:0}');class el extends yi{getKeyInfo(){return{allDay:{},timed:{}}}getKeysForDateSpan(e){return e.allDay?["allDay"]:["timed"]}getKeysForEventDef(e){return e.allDay?"background"===(t=e).ui.display||"inverse-background"===t.ui.display?["timed","allDay"]:["allDay"]:["timed"];var t}}const tl=Zt({hour:"numeric",minute:"2-digit",omitZeroMinute:!0,meridiem:"short"});function nl(e){let t=["fc-timegrid-slot","fc-timegrid-slot-label",e.isLabeled?"fc-scrollgrid-shrink":"fc-timegrid-slot-minor"];return m(Tn.Consumer,null,(n=>{if(!e.isLabeled)return m("td",{className:t.join(" "),"data-time":e.isoTimeStr});let{dateEnv:r,options:i,viewApi:s}=n,o=null==i.slotLabelFormat?tl:Array.isArray(i.slotLabelFormat)?Zt(i.slotLabelFormat[0]):Zt(i.slotLabelFormat),a={level:0,time:e.time,date:r.toDate(e.date),view:s,text:r.format(e.date,o)};return m(zn,{elTag:"td",elClasses:t,elAttrs:{"data-time":e.isoTimeStr},renderProps:a,generatorName:"slotLabelContent",customGenerator:i.slotLabelContent,defaultGenerator:rl,classNameGenerator:i.slotLabelClassNames,didMount:i.slotLabelDidMount,willUnmount:i.slotLabelWillUnmount},(e=>m("div",{className:"fc-timegrid-slot-label-frame fc-scrollgrid-shrink-frame"},m(e,{elTag:"div",elClasses:["fc-timegrid-slot-label-cushion","fc-scrollgrid-shrink-cushion"]}))))}))}function rl(e){return e.text}class il extends On{render(){return this.props.slatMetas.map((e=>m("tr",{key:e.key},m(nl,Object.assign({},e)))))}}const sl=Zt({week:"short"});class ol extends ji{constructor(){super(...arguments),this.allDaySplitter=new el,this.headerElRef={current:null},this.rootElRef={current:null},this.scrollerElRef={current:null},this.state={slatCoords:null},this.handleScrollTopRequest=e=>{let t=this.scrollerElRef.current;t&&(t.scrollTop=e)},this.renderHeadAxis=(e,t="")=>{let{options:n}=this.context,{dateProfile:r}=this.props,i=r.renderRange,s=1===Et(i.start,i.end)?wi(this.context,i.start,"week"):{};return n.weekNumbers&&"day"===e?m(Bs,{elTag:"th",elClasses:["fc-timegrid-axis","fc-scrollgrid-shrink"],elAttrs:{"aria-hidden":!0},date:i.start,defaultFormat:sl},(e=>m("div",{className:["fc-timegrid-axis-frame","fc-scrollgrid-shrink-frame","fc-timegrid-axis-frame-liquid"].join(" "),style:{height:t}},m(e,{elTag:"a",elClasses:["fc-timegrid-axis-cushion","fc-scrollgrid-shrink-cushion","fc-scrollgrid-sync-inner"],elAttrs:s})))):m("th",{"aria-hidden":!0,className:"fc-timegrid-axis"},m("div",{className:"fc-timegrid-axis-frame",style:{height:t}}))},this.renderTableRowAxis=e=>{let{options:t,viewApi:n}=this.context,r={text:t.allDayText,view:n};return m(zn,{elTag:"td",elClasses:["fc-timegrid-axis","fc-scrollgrid-shrink"],elAttrs:{"aria-hidden":!0},renderProps:r,generatorName:"allDayContent",customGenerator:t.allDayContent,defaultGenerator:al,classNameGenerator:t.allDayClassNames,didMount:t.allDayDidMount,willUnmount:t.allDayWillUnmount},(t=>m("div",{className:["fc-timegrid-axis-frame","fc-scrollgrid-shrink-frame",null==e?" fc-timegrid-axis-frame-liquid":""].join(" "),style:{height:e}},m(t,{elTag:"span",elClasses:["fc-timegrid-axis-cushion","fc-scrollgrid-shrink-cushion","fc-scrollgrid-sync-inner"]}))))},this.handleSlatCoords=e=>{this.setState({slatCoords:e})}}renderSimpleLayout(e,t,n){let{context:r,props:i}=this,s=[],o=Ds(r.options);return e&&s.push({type:"header",key:"header",isSticky:o,chunk:{elRef:this.headerElRef,tableClassName:"fc-col-header",rowContent:e}}),t&&(s.push({type:"body",key:"all-day",chunk:{content:t}}),s.push({type:"body",key:"all-day-divider",outerContent:m("tr",{role:"presentation",className:"fc-scrollgrid-section"},m("td",{className:"fc-timegrid-divider "+r.theme.getClass("tableCellShaded")}))})),s.push({type:"body",key:"body",liquid:!0,expandRows:Boolean(r.options.expandRows),chunk:{scrollerElRef:this.scrollerElRef,content:n}}),m(Ln,{elRef:this.rootElRef,elClasses:["fc-timegrid"],viewSpec:r.viewSpec},m(Cs,{liquid:!i.isHeightAuto&&!i.forPrint,collapsibleWidth:i.forPrint,cols:[{width:"shrink"}],sections:s}))}renderHScrollLayout(e,t,n,r,i,s,o){let a=this.context.pluginHooks.scrollGridImpl;if(!a)throw new Error("No ScrollGrid implementation");let{context:l,props:c}=this,d=!c.forPrint&&Ds(l.options),u=!c.forPrint&&ws(l.options),h=[];e&&h.push({type:"header",key:"header",isSticky:d,syncRowHeights:!0,chunks:[{key:"axis",rowContent:e=>m("tr",{role:"presentation"},this.renderHeadAxis("day",e.rowSyncHeights[0]))},{key:"cols",elRef:this.headerElRef,tableClassName:"fc-col-header",rowContent:e}]}),t&&(h.push({type:"body",key:"all-day",syncRowHeights:!0,chunks:[{key:"axis",rowContent:e=>m("tr",{role:"presentation"},this.renderTableRowAxis(e.rowSyncHeights[0]))},{key:"cols",content:t}]}),h.push({key:"all-day-divider",type:"body",outerContent:m("tr",{role:"presentation",className:"fc-scrollgrid-section"},m("td",{colSpan:2,className:"fc-timegrid-divider "+l.theme.getClass("tableCellShaded")}))}));let f=l.options.nowIndicator;return h.push({type:"body",key:"body",liquid:!0,expandRows:Boolean(l.options.expandRows),chunks:[{key:"axis",content:e=>m("div",{className:"fc-timegrid-axis-chunk"},m("table",{"aria-hidden":!0,style:{height:e.expandRows?e.clientHeight:""}},e.tableColGroupNode,m("tbody",null,m(il,{slatMetas:s}))),m("div",{className:"fc-timegrid-now-indicator-container"},m(Ji,{unit:f?"minute":"day"},(e=>{let t=f&&o&&o.safeComputeTop(e);return"number"==typeof t?m(Ts,{elClasses:["fc-timegrid-now-indicator-arrow"],elStyle:{top:t},isAxis:!0,date:e}):null}))))},{key:"cols",scrollerElRef:this.scrollerElRef,content:n}]}),u&&h.push({key:"footer",type:"footer",isSticky:!0,chunks:[{key:"axis",content:Ss},{key:"cols",content:Ss}]}),m(Ln,{elRef:this.rootElRef,elClasses:["fc-timegrid"],viewSpec:l.viewSpec},m(a,{liquid:!c.isHeightAuto&&!c.forPrint,forPrint:c.forPrint,collapsibleWidth:!1,colGroups:[{width:"shrink",cols:[{width:"shrink"}]},{cols:[{span:r,minWidth:i}]}],sections:h}))}getAllDayMaxEventProps(){let{dayMaxEvents:e,dayMaxEventRows:t}=this.context.options;return!0!==e&&!0!==t||(e=void 0,t=5),{dayMaxEvents:e,dayMaxEventRows:t}}}function al(e){return e.text}class ll{constructor(e,t,n){this.positions=e,this.dateProfile=t,this.slotDuration=n}safeComputeTop(e){let{dateProfile:t}=this;if(qn(t.currentRange,e)){let n=St(e),r=e.valueOf()-n.valueOf();if(r>=ht(t.slotMinTime)&&r<ht(t.slotMaxTime))return this.computeTimeTop(lt(r))}return null}computeDateTop(e,t){return t||(t=St(e)),this.computeTimeTop(lt(e.valueOf()-t.valueOf()))}computeTimeTop(e){let t,n,{positions:r,dateProfile:i}=this,s=r.els.length,o=(e.milliseconds-ht(i.slotMinTime))/ht(this.slotDuration);return o=Math.max(0,o),o=Math.min(s,o),t=Math.floor(o),t=Math.min(t,s-1),n=o-t,r.tops[t]+r.getHeight(t)*n}}class cl extends On{render(){let{props:e,context:t}=this,{options:n}=t,{slatElRefs:r}=e;return m("tbody",null,e.slatMetas.map(((i,s)=>{let o={time:i.time,date:t.dateEnv.toDate(i.date),view:t.viewApi};return m("tr",{key:i.key,ref:r.createRef(i.key)},e.axis&&m(nl,Object.assign({},i)),m(zn,{elTag:"td",elClasses:["fc-timegrid-slot","fc-timegrid-slot-lane",!i.isLabeled&&"fc-timegrid-slot-minor"],elAttrs:{"data-time":i.isoTimeStr},renderProps:o,generatorName:"slotLaneContent",customGenerator:n.slotLaneContent,classNameGenerator:n.slotLaneClassNames,didMount:n.slotLaneDidMount,willUnmount:n.slotLaneWillUnmount}))})))}}class dl extends On{constructor(){super(...arguments),this.rootElRef={current:null},this.slatElRefs=new ps}render(){let{props:e,context:t}=this;return m("div",{ref:this.rootElRef,className:"fc-timegrid-slots"},m("table",{"aria-hidden":!0,className:t.theme.getClass("table"),style:{minWidth:e.tableMinWidth,width:e.clientWidth,height:e.minHeight}},e.tableColGroupNode,m(cl,{slatElRefs:this.slatElRefs,axis:e.axis,slatMetas:e.slatMetas})))}componentDidMount(){this.updateSizing()}componentDidUpdate(){this.updateSizing()}componentWillUnmount(){this.props.onCoords&&this.props.onCoords(null)}updateSizing(){let{context:e,props:t}=this;if(t.onCoords&&null!==t.clientWidth){this.rootElRef.current.offsetHeight&&t.onCoords(new ll(new Ii(this.rootElRef.current,(n=this.slatElRefs.currentMap,t.slatMetas.map((e=>n[e.key]))),!1,!0),this.props.dateProfile,e.options.slotDuration))}var n}}function ul(e,t){let n,r=[];for(n=0;n<t;n+=1)r.push([]);if(e)for(n=0;n<e.length;n+=1)r[e[n].col].push(e[n]);return r}function hl(e,t){let n=[];if(e){for(let r=0;r<t;r+=1)n[r]={affectedInstances:e.affectedInstances,isEvent:e.isEvent,segs:[]};for(let t of e.segs)n[t.col].segs.push(t)}else for(let e=0;e<t;e+=1)n[e]=null;return n}class fl extends On{render(){let{props:e}=this;return m(Ls,{elClasses:["fc-timegrid-more-link"],elStyle:{top:e.top,bottom:e.bottom},allDayDate:null,moreCnt:e.hiddenSegs.length,allSegs:e.hiddenSegs,hiddenSegs:e.hiddenSegs,extraDateSpan:e.extraDateSpan,dateProfile:e.dateProfile,todayRange:e.todayRange,popoverContent:()=>wl(e.hiddenSegs,e),defaultGenerator:gl,forceTimed:!0},(e=>m(e,{elTag:"div",elClasses:["fc-timegrid-more-link-inner","fc-sticky"]})))}}function gl(e){return e.shortText}function pl(e,t,n){let r=new zi;null!=t&&(r.strictOrder=t),null!=n&&(r.maxStackCnt=n);let i=function(e){let t=[];for(let i of e){let e=[],s={span:i.span,entries:[i]};for(let i of t)Wi(i.span,s.span)?s={entries:i.entries.concat(s.entries),span:(n=i.span,r=s.span,{start:Math.min(n.start,r.start),end:Math.max(n.end,r.end)})}:e.push(i);e.push(s),t=e}var n,r;return t}(r.addSegs(e)),s=function(e){const{entriesByLevel:t}=e,n=bl(((e,t)=>e+":"+t),((r,i)=>{let s=function(e,t,n){let{levelCoords:r,entriesByLevel:i}=e,s=i[t][n],o=r[t]+s.thickness,a=r.length,l=t;for(;l<a&&r[l]<o;l+=1);for(;l<a;l+=1){let e,t=i[l],n=Vi(t,s.span.start,Ui),r=n[0]+n[1],o=r;for(;(e=t[o])&&e.span.start<s.span.end;)o+=1;if(r<o)return{level:l,lateralStart:r,lateralEnd:o}}return null}(e,r,i),o=ml(s,n),a=t[r][i];return[Object.assign(Object.assign({},a),{nextLevelNodes:o[0]}),a.thickness+o[1]]}));return ml(t.length?{level:0,lateralStart:0,lateralEnd:t[0].length}:null,n)[0]}(r);return s=function(e,t){const n=bl(((e,t,n)=>Li(e)),((e,r,i)=>{let s,{nextLevelNodes:o,thickness:a}=e,l=a+i,c=a/l,d=[];if(o.length)for(let e of o)if(void 0===s){let t=n(e,r,l);s=t[0],d.push(t[1])}else{let t=n(e,s,0);d.push(t[1])}else s=t;let u=(s-r)*c;return[s-u,Object.assign(Object.assign({},e),{thickness:u,nextLevelNodes:d})]}));return e.map((e=>n(e,0,0)[1]))}(s,1),{segRects:function(e){let t=[];const n=bl(((e,t,n)=>Li(e)),((e,n,i)=>{let s=Object.assign(Object.assign({},e),{levelCoord:n,stackDepth:i,stackForward:0});return t.push(s),s.stackForward=r(e.nextLevelNodes,n+e.thickness,i+1)+1}));function r(e,t,r){let i=0;for(let s of e)i=Math.max(n(s,t,r),i);return i}return r(e,0,0),t}(s),hiddenGroups:i}}function ml(e,t){if(!e)return[[],0];let{level:n,lateralStart:r,lateralEnd:i}=e,s=r,o=[];for(;s<i;)o.push(t(n,s)),s+=1;return o.sort(vl),[o.map(yl),o[0][1]]}function vl(e,t){return t[1]-e[1]}function yl(e){return e[0]}function bl(e,t){const n={};return(...r)=>{let i=e(...r);return i in n?n[i]:n[i]=t(...r)}}function El(e,t,n=null,r=0){let i=[];if(n)for(let s=0;s<e.length;s+=1){let o=e[s],a=n.computeDateTop(o.start,t),l=Math.max(a+(r||0),n.computeDateTop(o.end,t));i.push({start:Math.round(a),end:Math.round(l)})}return i}const Al=Zt({hour:"numeric",minute:"2-digit",meridiem:!1});class Sl extends On{render(){return m(_s,Object.assign({},this.props,{elClasses:["fc-timegrid-event","fc-v-event",this.props.isShort&&"fc-timegrid-event-short"],defaultTimeFormat:Al}))}}class Dl extends On{constructor(){super(...arguments),this.sortEventSegs=Nt(Yr)}render(){let{props:e,context:t}=this,{options:n}=t,r=n.selectMirror,i=e.eventDrag&&e.eventDrag.segs||e.eventResize&&e.eventResize.segs||r&&e.dateSelectionSegs||[],s=e.eventDrag&&e.eventDrag.affectedInstances||e.eventResize&&e.eventResize.affectedInstances||{},o=this.sortEventSegs(e.fgEventSegs,n.eventOrder);return m(Ms,{elTag:"td",elRef:e.elRef,elClasses:["fc-timegrid-col",...e.extraClassNames||[]],elAttrs:Object.assign({role:"gridcell"},e.extraDataAttrs),date:e.date,dateProfile:e.dateProfile,todayRange:e.todayRange,extraRenderProps:e.extraRenderProps},(t=>m("div",{className:"fc-timegrid-col-frame"},m("div",{className:"fc-timegrid-col-bg"},this.renderFillSegs(e.businessHourSegs,"non-business"),this.renderFillSegs(e.bgEventSegs,"bg-event"),this.renderFillSegs(e.dateSelectionSegs,"highlight")),m("div",{className:"fc-timegrid-col-events"},this.renderFgSegs(o,s,!1,!1,!1)),m("div",{className:"fc-timegrid-col-events"},this.renderFgSegs(i,{},Boolean(e.eventDrag),Boolean(e.eventResize),Boolean(r),"mirror")),m("div",{className:"fc-timegrid-now-indicator-container"},this.renderNowIndicator(e.nowIndicatorSegs)),Os(n)&&m(t,{elTag:"div",elClasses:["fc-timegrid-col-misc"]}))))}renderFgSegs(e,t,n,r,i,s){let{props:o}=this;return o.forPrint?wl(e,o):this.renderPositionedFgSegs(e,t,n,r,i,s)}renderPositionedFgSegs(e,t,n,r,i,s){let{eventMaxStack:o,eventShortHeight:a,eventOrderStrict:l,eventMinHeight:c}=this.context.options,{date:d,slatCoords:u,eventSelection:h,todayRange:f,nowDate:g}=this.props,p=n||r||i,v=El(e,d,u,c),{segPlacements:b,hiddenGroups:E}=function(e,t,n,r){let i=[],s=[];for(let n=0;n<e.length;n+=1){let r=t[n];r?i.push({index:n,thickness:1,span:r}):s.push(e[n])}let{segRects:o,hiddenGroups:a}=pl(i,n,r),l=[];for(let t of o)l.push({seg:e[t.index],rect:t});for(let e of s)l.push({seg:e,rect:null});return{segPlacements:l,hiddenGroups:a}}(e,v,l,o);return m(y,null,this.renderHiddenGroups(E,e),b.map((e=>{let{seg:o,rect:l}=e,c=o.eventRange.instance.instanceId,d=p||Boolean(!t[c]&&l),u=Cl(l&&l.span),v=!p&&l?this.computeSegHStyle(l):{left:0,right:0},y=Boolean(l)&&l.stackForward>0,b=Boolean(l)&&l.span.end-l.span.start<a;return m("div",{className:"fc-timegrid-event-harness"+(y?" fc-timegrid-event-harness-inset":""),key:s||c,style:Object.assign(Object.assign({visibility:d?"":"hidden"},u),v)},m(Sl,Object.assign({seg:o,isDragging:n,isResizing:r,isDateSelecting:i,isSelected:c===h,isShort:b},Kr(o,f,g))))})))}renderHiddenGroups(e,t){let{extraDateSpan:n,dateProfile:r,todayRange:i,nowDate:s,eventSelection:o,eventDrag:a,eventResize:l}=this.props;return m(y,null,e.map((e=>{let c=Cl(e.span),d=(u=e.entries,h=t,u.map((e=>h[e.index])));var u,h;return m(fl,{key:Mt(Vs(d)),hiddenSegs:d,top:c.top,bottom:c.bottom,extraDateSpan:n,dateProfile:r,todayRange:i,nowDate:s,eventSelection:o,eventDrag:a,eventResize:l})})))}renderFillSegs(e,t){let{props:n,context:r}=this,i=El(e,n.date,n.slatCoords,r.options.eventMinHeight).map(((r,i)=>{let s=e[i];return m("div",{key:ti(s.eventRange),className:"fc-timegrid-bg-harness",style:Cl(r)},"bg-event"===t?m(Ns,Object.assign({seg:s},Kr(s,n.todayRange,n.nowDate))):Hs(t))}));return m(y,null,i)}renderNowIndicator(e){let{slatCoords:t,date:n}=this.props;return t?e.map(((e,r)=>m(Ts,{key:r,elClasses:["fc-timegrid-now-indicator-line"],elStyle:{top:t.computeDateTop(e.start,n)},isAxis:!1,date:n}))):null}computeSegHStyle(e){let t,n,{isRtl:r,options:i}=this.context,s=i.slotEventOverlap,o=e.levelCoord,a=e.levelCoord+e.thickness;s&&(a=Math.min(1,o+2*(a-o))),r?(t=1-a,n=o):(t=o,n=1-a);let l={zIndex:e.stackDepth+1,left:100*t+"%",right:100*n+"%"};return s&&!e.stackForward&&(l[r?"marginLeft":"marginRight"]=20),l}}function wl(e,{todayRange:t,nowDate:n,eventSelection:r,eventDrag:i,eventResize:s}){let o=(i?i.affectedInstances:null)||(s?s.affectedInstances:null)||{};return m(y,null,e.map((e=>{let i=e.eventRange.instance.instanceId;return m("div",{key:i,style:{visibility:o[i]?"hidden":""}},m(Sl,Object.assign({seg:e,isDragging:!1,isResizing:!1,isDateSelecting:!1,isSelected:i===r,isShort:!1},Kr(e,t,n))))})))}function Cl(e){return e?{top:e.start,bottom:-e.end}:{top:"",bottom:""}}class Rl extends On{constructor(){super(...arguments),this.splitFgEventSegs=Nt(ul),this.splitBgEventSegs=Nt(ul),this.splitBusinessHourSegs=Nt(ul),this.splitNowIndicatorSegs=Nt(ul),this.splitDateSelectionSegs=Nt(ul),this.splitEventDrag=Nt(hl),this.splitEventResize=Nt(hl),this.rootElRef={current:null},this.cellElRefs=new ps}render(){let{props:e,context:t}=this,n=t.options.nowIndicator&&e.slatCoords&&e.slatCoords.safeComputeTop(e.nowDate),r=e.cells.length,i=this.splitFgEventSegs(e.fgEventSegs,r),s=this.splitBgEventSegs(e.bgEventSegs,r),o=this.splitBusinessHourSegs(e.businessHourSegs,r),a=this.splitNowIndicatorSegs(e.nowIndicatorSegs,r),l=this.splitDateSelectionSegs(e.dateSelectionSegs,r),c=this.splitEventDrag(e.eventDrag,r),d=this.splitEventResize(e.eventResize,r);return m("div",{className:"fc-timegrid-cols",ref:this.rootElRef},m("table",{role:"presentation",style:{minWidth:e.tableMinWidth,width:e.clientWidth}},e.tableColGroupNode,m("tbody",{role:"presentation"},m("tr",{role:"row"},e.axis&&m("td",{"aria-hidden":!0,className:"fc-timegrid-col fc-timegrid-axis"},m("div",{className:"fc-timegrid-col-frame"},m("div",{className:"fc-timegrid-now-indicator-container"},"number"==typeof n&&m(Ts,{elClasses:["fc-timegrid-now-indicator-arrow"],elStyle:{top:n},isAxis:!0,date:e.nowDate})))),e.cells.map(((t,n)=>m(Dl,{key:t.key,elRef:this.cellElRefs.createRef(t.key),dateProfile:e.dateProfile,date:t.date,nowDate:e.nowDate,todayRange:e.todayRange,extraRenderProps:t.extraRenderProps,extraDataAttrs:t.extraDataAttrs,extraClassNames:t.extraClassNames,extraDateSpan:t.extraDateSpan,fgEventSegs:i[n],bgEventSegs:s[n],businessHourSegs:o[n],nowIndicatorSegs:a[n],dateSelectionSegs:l[n],eventDrag:c[n],eventResize:d[n],slatCoords:e.slatCoords,eventSelection:e.eventSelection,forPrint:e.forPrint})))))))}componentDidMount(){this.updateCoords()}componentDidUpdate(){this.updateCoords()}updateCoords(){let{props:e}=this;var t;e.onColCoords&&null!==e.clientWidth&&e.onColCoords(new Ii(this.rootElRef.current,(t=this.cellElRefs.currentMap,e.cells.map((e=>t[e.key]))),!0,!1))}}class _l extends ji{constructor(){super(...arguments),this.processSlotOptions=Nt(xl),this.state={slatCoords:null},this.handleRootEl=e=>{e?this.context.registerInteractiveComponent(this,{el:e,isHitComboAllowed:this.props.isHitComboAllowed}):this.context.unregisterInteractiveComponent(this)},this.handleScrollRequest=e=>{let{onScrollTopRequest:t}=this.props,{slatCoords:n}=this.state;if(t&&n){if(e.time){let r=n.computeTimeTop(e.time);r=Math.ceil(r),r&&(r+=1),t(r)}return!0}return!1},this.handleColCoords=e=>{this.colCoords=e},this.handleSlatCoords=e=>{this.setState({slatCoords:e}),this.props.onSlatCoords&&this.props.onSlatCoords(e)}}render(){let{props:e,state:t}=this;return m("div",{className:"fc-timegrid-body",ref:this.handleRootEl,style:{width:e.clientWidth,minWidth:e.tableMinWidth}},m(dl,{axis:e.axis,dateProfile:e.dateProfile,slatMetas:e.slatMetas,clientWidth:e.clientWidth,minHeight:e.expandRows?e.clientHeight:"",tableMinWidth:e.tableMinWidth,tableColGroupNode:e.axis?e.tableColGroupNode:null,onCoords:this.handleSlatCoords}),m(Rl,{cells:e.cells,axis:e.axis,dateProfile:e.dateProfile,businessHourSegs:e.businessHourSegs,bgEventSegs:e.bgEventSegs,fgEventSegs:e.fgEventSegs,dateSelectionSegs:e.dateSelectionSegs,eventSelection:e.eventSelection,eventDrag:e.eventDrag,eventResize:e.eventResize,todayRange:e.todayRange,nowDate:e.nowDate,nowIndicatorSegs:e.nowIndicatorSegs,clientWidth:e.clientWidth,tableMinWidth:e.tableMinWidth,tableColGroupNode:e.tableColGroupNode,slatCoords:t.slatCoords,onColCoords:this.handleColCoords,forPrint:e.forPrint}))}componentDidMount(){this.scrollResponder=this.context.createScrollResponder(this.handleScrollRequest)}componentDidUpdate(e){this.scrollResponder.update(e.dateProfile!==this.props.dateProfile)}componentWillUnmount(){this.scrollResponder.detach()}queryHit(e,t){let{dateEnv:n,options:r}=this.context,{colCoords:i}=this,{dateProfile:s}=this.props,{slatCoords:o}=this.state,{snapDuration:a,snapsPerSlot:l}=this.processSlotOptions(this.props.slotDuration,r.snapDuration),c=i.leftToIndex(e),d=o.positions.topToIndex(t);if(null!=c&&null!=d){let e=this.props.cells[c],r=o.positions.tops[d],u=o.positions.getHeight(d),h=(t-r)/u,f=d*l+Math.floor(h*l),g=this.props.cells[c].date,p=dt(s.slotMinTime,function(e,t){return{years:e.years*t,months:e.months*t,days:e.days*t,milliseconds:e.milliseconds*t}}(a,f)),m=n.add(g,p),v=n.add(m,a);return{dateProfile:s,dateSpan:Object.assign({range:{start:m,end:v},allDay:!1},e.extraDateSpan),dayEl:i.els[c],rect:{left:i.lefts[c],right:i.rights[c],top:r,bottom:r+u},layer:0}}return null}}function xl(e,t){let n=t||e,r=ft(e,n);return null===r&&(n=e,r=1),{snapDuration:n,snapsPerSlot:r}}class Tl extends is{sliceRange(e,t){let n=[];for(let r=0;r<t.length;r+=1){let i=Gn(e,t[r]);i&&n.push({start:i.start,end:i.end,isStart:i.start.valueOf()===e.start.valueOf(),isEnd:i.end.valueOf()===e.end.valueOf(),col:r})}return n}}class kl extends ji{constructor(){super(...arguments),this.buildDayRanges=Nt(Ml),this.slicer=new Tl,this.timeColsRef={current:null}}render(){let{props:e,context:t}=this,{dateProfile:n,dayTableModel:r}=e,{nowIndicator:i,nextDayThreshold:s}=t.options,o=this.buildDayRanges(r,n,t.dateEnv);return m(Ji,{unit:i?"minute":"day"},((a,l)=>m(_l,Object.assign({ref:this.timeColsRef},this.slicer.sliceProps(e,n,null,t,o),{forPrint:e.forPrint,axis:e.axis,dateProfile:n,slatMetas:e.slatMetas,slotDuration:e.slotDuration,cells:r.cells[0],tableColGroupNode:e.tableColGroupNode,tableMinWidth:e.tableMinWidth,clientWidth:e.clientWidth,clientHeight:e.clientHeight,expandRows:e.expandRows,nowDate:a,nowIndicatorSegs:i&&this.slicer.sliceNowDate(a,n,s,t,o),todayRange:l,onScrollTopRequest:e.onScrollTopRequest,onSlatCoords:e.onSlatCoords}))))}}function Ml(e,t,n){let r=[];for(let i of e.headerDates)r.push({start:n.add(i,t.slotMinTime),end:n.add(i,t.slotMaxTime)});return r}const Ol=[{hours:1},{minutes:30},{minutes:15},{seconds:30},{seconds:15}];function Il(e,t,n,r,i){let s=new Date(0),o=e,a=lt(0),l=n||function(e){let t,n,r;for(t=Ol.length-1;t>=0;t-=1)if(n=lt(Ol[t]),r=ft(n,e),null!==r&&r>1)return n;return e}(r),c=[];for(;ht(o)<ht(t);){let e=i.add(s,o),t=null!==ft(a,l);c.push({date:e,time:o,key:e.toISOString(),isoTimeStr:(d=e,tt(d.getUTCHours(),2)+":"+tt(d.getUTCMinutes(),2)+":"+tt(d.getUTCSeconds(),2)),isLabeled:t}),o=dt(o,r),a=dt(a,r)}var d;return c}function Nl(e,t){let n=new ns(e.renderRange,t);return new rs(n,!1)}var Pl=Ks({name:"@fullcalendar/timegrid",initialView:"timeGridWeek",optionRefiners:{allDaySlot:Boolean},views:{timeGrid:{component:class extends ol{constructor(){super(...arguments),this.buildTimeColsModel=Nt(Nl),this.buildSlatMetas=Nt(Il)}render(){let{options:e,dateEnv:t,dateProfileGenerator:n}=this.context,{props:r}=this,{dateProfile:i}=r,s=this.buildTimeColsModel(i,n),o=this.allDaySplitter.splitProps(r),a=this.buildSlatMetas(i.slotMinTime,i.slotMaxTime,e.slotLabelInterval,e.slotDuration,t),{dayMinWidth:l}=e,c=!l,d=l,u=e.dayHeaders&&m(es,{dates:s.headerDates,dateProfile:i,datesRepDistinctDays:!0,renderIntro:c?this.renderHeadAxis:null}),h=!1!==e.allDaySlot&&(t=>m(Ea,Object.assign({},o.allDay,{dateProfile:i,dayTableModel:s,nextDayThreshold:e.nextDayThreshold,tableMinWidth:t.tableMinWidth,colGroupNode:t.tableColGroupNode,renderRowIntro:c?this.renderTableRowAxis:null,showWeekNumbers:!1,expandRows:!1,headerAlignElRef:this.headerElRef,clientWidth:t.clientWidth,clientHeight:t.clientHeight,forPrint:r.forPrint},this.getAllDayMaxEventProps()))),f=t=>m(kl,Object.assign({},o.timed,{dayTableModel:s,dateProfile:i,axis:c,slotDuration:e.slotDuration,slatMetas:a,forPrint:r.forPrint,tableColGroupNode:t.tableColGroupNode,tableMinWidth:t.tableMinWidth,clientWidth:t.clientWidth,clientHeight:t.clientHeight,onSlatCoords:this.handleSlatCoords,expandRows:t.expandRows,onScrollTopRequest:this.handleScrollTopRequest}));return d?this.renderHScrollLayout(u,h,f,s.colCnt,l,a,this.state.slatCoords):this.renderSimpleLayout(u,h,f)}},usesMinMaxTime:!0,allDaySlot:!0,slotDuration:"00:30:00",slotEventOverlap:!0},timeGridDay:{type:"timeGrid",duration:{days:1}},timeGridWeek:{type:"timeGrid",duration:{weeks:1}}}});return t}()}));
+(function webpackUniversalModuleDefinition(root, factory) {
+	if(typeof exports === 'object' && typeof module === 'object')
+		module.exports = factory();
+	else if(typeof define === 'function' && define.amd)
+		define([], factory);
+	else {
+		var a = factory();
+		for(var i in a) (typeof exports === 'object' ? exports : root)[i] = a[i];
+	}
+})(self, function() {
+return /******/ (function() { // webpackBootstrap
+/******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "./node_modules/preact/compat/dist/compat.module.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/preact/compat/dist/compat.module.js ***!
+  \**********************************************************/
+/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Children: function() { return /* binding */ O; },
+/* harmony export */   Component: function() { return /* reexport safe */ preact__WEBPACK_IMPORTED_MODULE_0__.Component; },
+/* harmony export */   Fragment: function() { return /* reexport safe */ preact__WEBPACK_IMPORTED_MODULE_0__.Fragment; },
+/* harmony export */   PureComponent: function() { return /* binding */ w; },
+/* harmony export */   StrictMode: function() { return /* binding */ vn; },
+/* harmony export */   Suspense: function() { return /* binding */ D; },
+/* harmony export */   SuspenseList: function() { return /* binding */ V; },
+/* harmony export */   __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED: function() { return /* binding */ rn; },
+/* harmony export */   cloneElement: function() { return /* binding */ cn; },
+/* harmony export */   createContext: function() { return /* reexport safe */ preact__WEBPACK_IMPORTED_MODULE_0__.createContext; },
+/* harmony export */   createElement: function() { return /* reexport safe */ preact__WEBPACK_IMPORTED_MODULE_0__.createElement; },
+/* harmony export */   createFactory: function() { return /* binding */ on; },
+/* harmony export */   createPortal: function() { return /* binding */ j; },
+/* harmony export */   createRef: function() { return /* reexport safe */ preact__WEBPACK_IMPORTED_MODULE_0__.createRef; },
+/* harmony export */   "default": function() { return /* binding */ bn; },
+/* harmony export */   findDOMNode: function() { return /* binding */ an; },
+/* harmony export */   flushSync: function() { return /* binding */ hn; },
+/* harmony export */   forwardRef: function() { return /* binding */ k; },
+/* harmony export */   hydrate: function() { return /* binding */ q; },
+/* harmony export */   isValidElement: function() { return /* binding */ ln; },
+/* harmony export */   lazy: function() { return /* binding */ M; },
+/* harmony export */   memo: function() { return /* binding */ R; },
+/* harmony export */   render: function() { return /* binding */ Y; },
+/* harmony export */   startTransition: function() { return /* binding */ dn; },
+/* harmony export */   unmountComponentAtNode: function() { return /* binding */ fn; },
+/* harmony export */   unstable_batchedUpdates: function() { return /* binding */ sn; },
+/* harmony export */   useCallback: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useCallback; },
+/* harmony export */   useContext: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useContext; },
+/* harmony export */   useDebugValue: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useDebugValue; },
+/* harmony export */   useDeferredValue: function() { return /* binding */ pn; },
+/* harmony export */   useEffect: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useEffect; },
+/* harmony export */   useErrorBoundary: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useErrorBoundary; },
+/* harmony export */   useId: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useId; },
+/* harmony export */   useImperativeHandle: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useImperativeHandle; },
+/* harmony export */   useInsertionEffect: function() { return /* binding */ yn; },
+/* harmony export */   useLayoutEffect: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useLayoutEffect; },
+/* harmony export */   useMemo: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useMemo; },
+/* harmony export */   useReducer: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useReducer; },
+/* harmony export */   useRef: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useRef; },
+/* harmony export */   useState: function() { return /* reexport safe */ preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useState; },
+/* harmony export */   useSyncExternalStore: function() { return /* binding */ _n; },
+/* harmony export */   useTransition: function() { return /* binding */ mn; },
+/* harmony export */   version: function() { return /* binding */ un; }
+/* harmony export */ });
+/* harmony import */ var preact__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! preact */ "./node_modules/preact/dist/preact.module.js");
+/* harmony import */ var preact_hooks__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! preact/hooks */ "./node_modules/preact/hooks/dist/hooks.module.js");
+function g(n,t){for(var e in t)n[e]=t[e];return n}function C(n,t){for(var e in n)if("__source"!==e&&!(e in t))return!0;for(var r in t)if("__source"!==r&&n[r]!==t[r])return!0;return!1}function E(n,t){return n===t&&(0!==n||1/n==1/t)||n!=n&&t!=t}function w(n){this.props=n}function R(n,e){function r(n){var t=this.props.ref,r=t==n.ref;return!r&&t&&(t.call?t(null):t.current=null),e?!e(this.props,n)||!r:C(this.props,n)}function u(e){return this.shouldComponentUpdate=r,(0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(n,e)}return u.displayName="Memo("+(n.displayName||n.name)+")",u.prototype.isReactComponent=!0,u.__f=!0,u}(w.prototype=new preact__WEBPACK_IMPORTED_MODULE_0__.Component).isPureReactComponent=!0,w.prototype.shouldComponentUpdate=function(n,t){return C(this.props,n)||C(this.state,t)};var x=preact__WEBPACK_IMPORTED_MODULE_0__.options.__b;preact__WEBPACK_IMPORTED_MODULE_0__.options.__b=function(n){n.type&&n.type.__f&&n.ref&&(n.props.ref=n.ref,n.ref=null),x&&x(n)};var N="undefined"!=typeof Symbol&&Symbol.for&&Symbol.for("react.forward_ref")||3911;function k(n){function t(t){var e=g({},t);return delete e.ref,n(e,t.ref||null)}return t.$$typeof=N,t.render=t,t.prototype.isReactComponent=t.__f=!0,t.displayName="ForwardRef("+(n.displayName||n.name)+")",t}var A=function(n,t){return null==n?null:(0,preact__WEBPACK_IMPORTED_MODULE_0__.toChildArray)((0,preact__WEBPACK_IMPORTED_MODULE_0__.toChildArray)(n).map(t))},O={map:A,forEach:A,count:function(n){return n?(0,preact__WEBPACK_IMPORTED_MODULE_0__.toChildArray)(n).length:0},only:function(n){var t=(0,preact__WEBPACK_IMPORTED_MODULE_0__.toChildArray)(n);if(1!==t.length)throw"Children.only";return t[0]},toArray:preact__WEBPACK_IMPORTED_MODULE_0__.toChildArray},T=preact__WEBPACK_IMPORTED_MODULE_0__.options.__e;preact__WEBPACK_IMPORTED_MODULE_0__.options.__e=function(n,t,e,r){if(n.then)for(var u,o=t;o=o.__;)if((u=o.__c)&&u.__c)return null==t.__e&&(t.__e=e.__e,t.__k=e.__k),u.__c(n,t);T(n,t,e,r)};var I=preact__WEBPACK_IMPORTED_MODULE_0__.options.unmount;function L(n,t,e){return n&&(n.__c&&n.__c.__H&&(n.__c.__H.__.forEach(function(n){"function"==typeof n.__c&&n.__c()}),n.__c.__H=null),null!=(n=g({},n)).__c&&(n.__c.__P===e&&(n.__c.__P=t),n.__c=null),n.__k=n.__k&&n.__k.map(function(n){return L(n,t,e)})),n}function U(n,t,e){return n&&(n.__v=null,n.__k=n.__k&&n.__k.map(function(n){return U(n,t,e)}),n.__c&&n.__c.__P===t&&(n.__e&&e.insertBefore(n.__e,n.__d),n.__c.__e=!0,n.__c.__P=e)),n}function D(){this.__u=0,this.t=null,this.__b=null}function F(n){var t=n.__.__c;return t&&t.__a&&t.__a(n)}function M(n){var e,r,u;function o(o){if(e||(e=n()).then(function(n){r=n.default||n},function(n){u=n}),u)throw u;if(!r)throw e;return (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(r,o)}return o.displayName="Lazy",o.__f=!0,o}function V(){this.u=null,this.o=null}preact__WEBPACK_IMPORTED_MODULE_0__.options.unmount=function(n){var t=n.__c;t&&t.__R&&t.__R(),t&&!0===n.__h&&(n.type=null),I&&I(n)},(D.prototype=new preact__WEBPACK_IMPORTED_MODULE_0__.Component).__c=function(n,t){var e=t.__c,r=this;null==r.t&&(r.t=[]),r.t.push(e);var u=F(r.__v),o=!1,i=function(){o||(o=!0,e.__R=null,u?u(l):l())};e.__R=i;var l=function(){if(!--r.__u){if(r.state.__a){var n=r.state.__a;r.__v.__k[0]=U(n,n.__c.__P,n.__c.__O)}var t;for(r.setState({__a:r.__b=null});t=r.t.pop();)t.forceUpdate()}},c=!0===t.__h;r.__u++||c||r.setState({__a:r.__b=r.__v.__k[0]}),n.then(i,i)},D.prototype.componentWillUnmount=function(){this.t=[]},D.prototype.render=function(n,e){if(this.__b){if(this.__v.__k){var r=document.createElement("div"),o=this.__v.__k[0].__c;this.__v.__k[0]=L(this.__b,r,o.__O=o.__P)}this.__b=null}var i=e.__a&&(0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(preact__WEBPACK_IMPORTED_MODULE_0__.Fragment,null,n.fallback);return i&&(i.__h=null),[(0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(preact__WEBPACK_IMPORTED_MODULE_0__.Fragment,null,e.__a?null:n.children),i]};var W=function(n,t,e){if(++e[1]===e[0]&&n.o.delete(t),n.props.revealOrder&&("t"!==n.props.revealOrder[0]||!n.o.size))for(e=n.u;e;){for(;e.length>3;)e.pop()();if(e[1]<e[0])break;n.u=e=e[2]}};function P(n){return this.getChildContext=function(){return n.context},n.children}function $(n){var e=this,r=n.i;e.componentWillUnmount=function(){(0,preact__WEBPACK_IMPORTED_MODULE_0__.render)(null,e.l),e.l=null,e.i=null},e.i&&e.i!==r&&e.componentWillUnmount(),n.__v?(e.l||(e.i=r,e.l={nodeType:1,parentNode:r,childNodes:[],appendChild:function(n){this.childNodes.push(n),e.i.appendChild(n)},insertBefore:function(n,t){this.childNodes.push(n),e.i.appendChild(n)},removeChild:function(n){this.childNodes.splice(this.childNodes.indexOf(n)>>>1,1),e.i.removeChild(n)}}),(0,preact__WEBPACK_IMPORTED_MODULE_0__.render)((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(P,{context:e.context},n.__v),e.l)):e.l&&e.componentWillUnmount()}function j(n,e){var r=(0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)($,{__v:n,i:e});return r.containerInfo=e,r}(V.prototype=new preact__WEBPACK_IMPORTED_MODULE_0__.Component).__a=function(n){var t=this,e=F(t.__v),r=t.o.get(n);return r[0]++,function(u){var o=function(){t.props.revealOrder?(r.push(u),W(t,n,r)):u()};e?e(o):o()}},V.prototype.render=function(n){this.u=null,this.o=new Map;var t=(0,preact__WEBPACK_IMPORTED_MODULE_0__.toChildArray)(n.children);n.revealOrder&&"b"===n.revealOrder[0]&&t.reverse();for(var e=t.length;e--;)this.o.set(t[e],this.u=[1,0,this.u]);return n.children},V.prototype.componentDidUpdate=V.prototype.componentDidMount=function(){var n=this;this.o.forEach(function(t,e){W(n,e,t)})};var z="undefined"!=typeof Symbol&&Symbol.for&&Symbol.for("react.element")||60103,B=/^(?:accent|alignment|arabic|baseline|cap|clip(?!PathU)|color|dominant|fill|flood|font|glyph(?!R)|horiz|image|letter|lighting|marker(?!H|W|U)|overline|paint|pointer|shape|stop|strikethrough|stroke|text(?!L)|transform|underline|unicode|units|v|vector|vert|word|writing|x(?!C))[A-Z]/,H="undefined"!=typeof document,Z=function(n){return("undefined"!=typeof Symbol&&"symbol"==typeof Symbol()?/fil|che|rad/i:/fil|che|ra/i).test(n)};function Y(n,t,e){return null==t.__k&&(t.textContent=""),(0,preact__WEBPACK_IMPORTED_MODULE_0__.render)(n,t),"function"==typeof e&&e(),n?n.__c:null}function q(n,t,e){return (0,preact__WEBPACK_IMPORTED_MODULE_0__.hydrate)(n,t),"function"==typeof e&&e(),n?n.__c:null}preact__WEBPACK_IMPORTED_MODULE_0__.Component.prototype.isReactComponent={},["componentWillMount","componentWillReceiveProps","componentWillUpdate"].forEach(function(t){Object.defineProperty(preact__WEBPACK_IMPORTED_MODULE_0__.Component.prototype,t,{configurable:!0,get:function(){return this["UNSAFE_"+t]},set:function(n){Object.defineProperty(this,t,{configurable:!0,writable:!0,value:n})}})});var G=preact__WEBPACK_IMPORTED_MODULE_0__.options.event;function J(){}function K(){return this.cancelBubble}function Q(){return this.defaultPrevented}preact__WEBPACK_IMPORTED_MODULE_0__.options.event=function(n){return G&&(n=G(n)),n.persist=J,n.isPropagationStopped=K,n.isDefaultPrevented=Q,n.nativeEvent=n};var X,nn={configurable:!0,get:function(){return this.class}},tn=preact__WEBPACK_IMPORTED_MODULE_0__.options.vnode;preact__WEBPACK_IMPORTED_MODULE_0__.options.vnode=function(n){var t=n.type,e=n.props,u=e;if("string"==typeof t){var o=-1===t.indexOf("-");for(var i in u={},e){var l=e[i];H&&"children"===i&&"noscript"===t||"value"===i&&"defaultValue"in e&&null==l||("defaultValue"===i&&"value"in e&&null==e.value?i="value":"download"===i&&!0===l?l="":/ondoubleclick/i.test(i)?i="ondblclick":/^onchange(textarea|input)/i.test(i+t)&&!Z(e.type)?i="oninput":/^onfocus$/i.test(i)?i="onfocusin":/^onblur$/i.test(i)?i="onfocusout":/^on(Ani|Tra|Tou|BeforeInp|Compo)/.test(i)?i=i.toLowerCase():o&&B.test(i)?i=i.replace(/[A-Z0-9]/g,"-$&").toLowerCase():null===l&&(l=void 0),/^oninput$/i.test(i)&&(i=i.toLowerCase(),u[i]&&(i="oninputCapture")),u[i]=l)}"select"==t&&u.multiple&&Array.isArray(u.value)&&(u.value=(0,preact__WEBPACK_IMPORTED_MODULE_0__.toChildArray)(e.children).forEach(function(n){n.props.selected=-1!=u.value.indexOf(n.props.value)})),"select"==t&&null!=u.defaultValue&&(u.value=(0,preact__WEBPACK_IMPORTED_MODULE_0__.toChildArray)(e.children).forEach(function(n){n.props.selected=u.multiple?-1!=u.defaultValue.indexOf(n.props.value):u.defaultValue==n.props.value})),n.props=u,e.class!=e.className&&(nn.enumerable="className"in e,null!=e.className&&(u.class=e.className),Object.defineProperty(u,"className",nn))}n.$$typeof=z,tn&&tn(n)};var en=preact__WEBPACK_IMPORTED_MODULE_0__.options.__r;preact__WEBPACK_IMPORTED_MODULE_0__.options.__r=function(n){en&&en(n),X=n.__c};var rn={ReactCurrentDispatcher:{current:{readContext:function(n){return X.__n[n.__c].props.value}}}},un="17.0.2";function on(n){return preact__WEBPACK_IMPORTED_MODULE_0__.createElement.bind(null,n)}function ln(n){return!!n&&n.$$typeof===z}function cn(n){return ln(n)?preact__WEBPACK_IMPORTED_MODULE_0__.cloneElement.apply(null,arguments):n}function fn(n){return!!n.__k&&((0,preact__WEBPACK_IMPORTED_MODULE_0__.render)(null,n),!0)}function an(n){return n&&(n.base||1===n.nodeType&&n)||null}var sn=function(n,t){return n(t)},hn=function(n,t){return n(t)},vn=preact__WEBPACK_IMPORTED_MODULE_0__.Fragment;function dn(n){n()}function pn(n){return n}function mn(){return[!1,dn]}var yn=preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useLayoutEffect;function _n(n,t){var e=t(),r=(0,preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useState)({h:{__:e,v:t}}),u=r[0].h,o=r[1];return (0,preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useLayoutEffect)(function(){u.__=e,u.v=t,E(u.__,t())||o({h:u})},[n,e,t]),(0,preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useEffect)(function(){return E(u.__,u.v())||o({h:u}),n(function(){E(u.__,u.v())||o({h:u})})},[n]),e}var bn={useState:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useState,useId:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useId,useReducer:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useReducer,useEffect:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useEffect,useLayoutEffect:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useLayoutEffect,useInsertionEffect:yn,useTransition:mn,useDeferredValue:pn,useSyncExternalStore:_n,startTransition:dn,useRef:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useRef,useImperativeHandle:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useImperativeHandle,useMemo:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useMemo,useCallback:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useCallback,useContext:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useContext,useDebugValue:preact_hooks__WEBPACK_IMPORTED_MODULE_1__.useDebugValue,version:"17.0.2",Children:O,render:Y,hydrate:q,unmountComponentAtNode:fn,createPortal:j,createElement:preact__WEBPACK_IMPORTED_MODULE_0__.createElement,createContext:preact__WEBPACK_IMPORTED_MODULE_0__.createContext,createFactory:on,cloneElement:cn,createRef:preact__WEBPACK_IMPORTED_MODULE_0__.createRef,Fragment:preact__WEBPACK_IMPORTED_MODULE_0__.Fragment,isValidElement:ln,findDOMNode:an,Component:preact__WEBPACK_IMPORTED_MODULE_0__.Component,PureComponent:w,memo:R,forwardRef:k,flushSync:hn,unstable_batchedUpdates:sn,StrictMode:vn,Suspense:D,SuspenseList:V,lazy:M,__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED:rn};
+//# sourceMappingURL=compat.module.js.map
+
+
+/***/ }),
+
+/***/ "./node_modules/preact/dist/preact.module.js":
+/*!***************************************************!*\
+  !*** ./node_modules/preact/dist/preact.module.js ***!
+  \***************************************************/
+/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Component: function() { return /* binding */ x; },
+/* harmony export */   Fragment: function() { return /* binding */ _; },
+/* harmony export */   cloneElement: function() { return /* binding */ F; },
+/* harmony export */   createContext: function() { return /* binding */ G; },
+/* harmony export */   createElement: function() { return /* binding */ y; },
+/* harmony export */   createRef: function() { return /* binding */ d; },
+/* harmony export */   h: function() { return /* binding */ y; },
+/* harmony export */   hydrate: function() { return /* binding */ E; },
+/* harmony export */   isValidElement: function() { return /* binding */ i; },
+/* harmony export */   options: function() { return /* binding */ l; },
+/* harmony export */   render: function() { return /* binding */ D; },
+/* harmony export */   toChildArray: function() { return /* binding */ j; }
+/* harmony export */ });
+var n,l,u,i,t,r,o,f,e,c={},s=[],a=/acit|ex(?:s|g|n|p|$)|rph|grid|ows|mnc|ntw|ine[ch]|zoo|^ord|itera/i;function h(n,l){for(var u in l)n[u]=l[u];return n}function v(n){var l=n.parentNode;l&&l.removeChild(n)}function y(l,u,i){var t,r,o,f={};for(o in u)"key"==o?t=u[o]:"ref"==o?r=u[o]:f[o]=u[o];if(arguments.length>2&&(f.children=arguments.length>3?n.call(arguments,2):i),"function"==typeof l&&null!=l.defaultProps)for(o in l.defaultProps)void 0===f[o]&&(f[o]=l.defaultProps[o]);return p(l,f,t,r,null)}function p(n,i,t,r,o){var f={type:n,props:i,key:t,ref:r,__k:null,__:null,__b:0,__e:null,__d:void 0,__c:null,__h:null,constructor:void 0,__v:null==o?++u:o};return null==o&&null!=l.vnode&&l.vnode(f),f}function d(){return{current:null}}function _(n){return n.children}function k(n,l,u,i,t){var r;for(r in u)"children"===r||"key"===r||r in l||g(n,r,null,u[r],i);for(r in l)t&&"function"!=typeof l[r]||"children"===r||"key"===r||"value"===r||"checked"===r||u[r]===l[r]||g(n,r,l[r],u[r],i)}function b(n,l,u){"-"===l[0]?n.setProperty(l,null==u?"":u):n[l]=null==u?"":"number"!=typeof u||a.test(l)?u:u+"px"}function g(n,l,u,i,t){var r;n:if("style"===l)if("string"==typeof u)n.style.cssText=u;else{if("string"==typeof i&&(n.style.cssText=i=""),i)for(l in i)u&&l in u||b(n.style,l,"");if(u)for(l in u)i&&u[l]===i[l]||b(n.style,l,u[l])}else if("o"===l[0]&&"n"===l[1])r=l!==(l=l.replace(/Capture$/,"")),l=l.toLowerCase()in n?l.toLowerCase().slice(2):l.slice(2),n.l||(n.l={}),n.l[l+r]=u,u?i||n.addEventListener(l,r?w:m,r):n.removeEventListener(l,r?w:m,r);else if("dangerouslySetInnerHTML"!==l){if(t)l=l.replace(/xlink(H|:h)/,"h").replace(/sName$/,"s");else if("width"!==l&&"height"!==l&&"href"!==l&&"list"!==l&&"form"!==l&&"tabIndex"!==l&&"download"!==l&&l in n)try{n[l]=null==u?"":u;break n}catch(n){}"function"==typeof u||(null==u||!1===u&&-1==l.indexOf("-")?n.removeAttribute(l):n.setAttribute(l,u))}}function m(n){t=!0;try{return this.l[n.type+!1](l.event?l.event(n):n)}finally{t=!1}}function w(n){t=!0;try{return this.l[n.type+!0](l.event?l.event(n):n)}finally{t=!1}}function x(n,l){this.props=n,this.context=l}function A(n,l){if(null==l)return n.__?A(n.__,n.__.__k.indexOf(n)+1):null;for(var u;l<n.__k.length;l++)if(null!=(u=n.__k[l])&&null!=u.__e)return u.__e;return"function"==typeof n.type?A(n):null}function P(n){var l,u;if(null!=(n=n.__)&&null!=n.__c){for(n.__e=n.__c.base=null,l=0;l<n.__k.length;l++)if(null!=(u=n.__k[l])&&null!=u.__e){n.__e=n.__c.base=u.__e;break}return P(n)}}function C(n){t?setTimeout(n):f(n)}function T(n){(!n.__d&&(n.__d=!0)&&r.push(n)&&!$.__r++||o!==l.debounceRendering)&&((o=l.debounceRendering)||C)($)}function $(){var n,l,u,i,t,o,f,e;for(r.sort(function(n,l){return n.__v.__b-l.__v.__b});n=r.shift();)n.__d&&(l=r.length,i=void 0,t=void 0,f=(o=(u=n).__v).__e,(e=u.__P)&&(i=[],(t=h({},o)).__v=o.__v+1,M(e,o,t,u.__n,void 0!==e.ownerSVGElement,null!=o.__h?[f]:null,i,null==f?A(o):f,o.__h),N(i,o),o.__e!=f&&P(o)),r.length>l&&r.sort(function(n,l){return n.__v.__b-l.__v.__b}));$.__r=0}function H(n,l,u,i,t,r,o,f,e,a){var h,v,y,d,k,b,g,m=i&&i.__k||s,w=m.length;for(u.__k=[],h=0;h<l.length;h++)if(null!=(d=u.__k[h]=null==(d=l[h])||"boolean"==typeof d?null:"string"==typeof d||"number"==typeof d||"bigint"==typeof d?p(null,d,null,null,d):Array.isArray(d)?p(_,{children:d},null,null,null):d.__b>0?p(d.type,d.props,d.key,d.ref?d.ref:null,d.__v):d)){if(d.__=u,d.__b=u.__b+1,null===(y=m[h])||y&&d.key==y.key&&d.type===y.type)m[h]=void 0;else for(v=0;v<w;v++){if((y=m[v])&&d.key==y.key&&d.type===y.type){m[v]=void 0;break}y=null}M(n,d,y=y||c,t,r,o,f,e,a),k=d.__e,(v=d.ref)&&y.ref!=v&&(g||(g=[]),y.ref&&g.push(y.ref,null,d),g.push(v,d.__c||k,d)),null!=k?(null==b&&(b=k),"function"==typeof d.type&&d.__k===y.__k?d.__d=e=I(d,e,n):e=z(n,d,y,m,k,e),"function"==typeof u.type&&(u.__d=e)):e&&y.__e==e&&e.parentNode!=n&&(e=A(y))}for(u.__e=b,h=w;h--;)null!=m[h]&&("function"==typeof u.type&&null!=m[h].__e&&m[h].__e==u.__d&&(u.__d=L(i).nextSibling),q(m[h],m[h]));if(g)for(h=0;h<g.length;h++)S(g[h],g[++h],g[++h])}function I(n,l,u){for(var i,t=n.__k,r=0;t&&r<t.length;r++)(i=t[r])&&(i.__=n,l="function"==typeof i.type?I(i,l,u):z(u,i,i,t,i.__e,l));return l}function j(n,l){return l=l||[],null==n||"boolean"==typeof n||(Array.isArray(n)?n.some(function(n){j(n,l)}):l.push(n)),l}function z(n,l,u,i,t,r){var o,f,e;if(void 0!==l.__d)o=l.__d,l.__d=void 0;else if(null==u||t!=r||null==t.parentNode)n:if(null==r||r.parentNode!==n)n.appendChild(t),o=null;else{for(f=r,e=0;(f=f.nextSibling)&&e<i.length;e+=1)if(f==t)break n;n.insertBefore(t,r),o=r}return void 0!==o?o:t.nextSibling}function L(n){var l,u,i;if(null==n.type||"string"==typeof n.type)return n.__e;if(n.__k)for(l=n.__k.length-1;l>=0;l--)if((u=n.__k[l])&&(i=L(u)))return i;return null}function M(n,u,i,t,r,o,f,e,c){var s,a,v,y,p,d,k,b,g,m,w,A,P,C,T,$=u.type;if(void 0!==u.constructor)return null;null!=i.__h&&(c=i.__h,e=u.__e=i.__e,u.__h=null,o=[e]),(s=l.__b)&&s(u);try{n:if("function"==typeof $){if(b=u.props,g=(s=$.contextType)&&t[s.__c],m=s?g?g.props.value:s.__:t,i.__c?k=(a=u.__c=i.__c).__=a.__E:("prototype"in $&&$.prototype.render?u.__c=a=new $(b,m):(u.__c=a=new x(b,m),a.constructor=$,a.render=B),g&&g.sub(a),a.props=b,a.state||(a.state={}),a.context=m,a.__n=t,v=a.__d=!0,a.__h=[],a._sb=[]),null==a.__s&&(a.__s=a.state),null!=$.getDerivedStateFromProps&&(a.__s==a.state&&(a.__s=h({},a.__s)),h(a.__s,$.getDerivedStateFromProps(b,a.__s))),y=a.props,p=a.state,a.__v=u,v)null==$.getDerivedStateFromProps&&null!=a.componentWillMount&&a.componentWillMount(),null!=a.componentDidMount&&a.__h.push(a.componentDidMount);else{if(null==$.getDerivedStateFromProps&&b!==y&&null!=a.componentWillReceiveProps&&a.componentWillReceiveProps(b,m),!a.__e&&null!=a.shouldComponentUpdate&&!1===a.shouldComponentUpdate(b,a.__s,m)||u.__v===i.__v){for(u.__v!==i.__v&&(a.props=b,a.state=a.__s,a.__d=!1),u.__e=i.__e,u.__k=i.__k,u.__k.forEach(function(n){n&&(n.__=u)}),w=0;w<a._sb.length;w++)a.__h.push(a._sb[w]);a._sb=[],a.__h.length&&f.push(a);break n}null!=a.componentWillUpdate&&a.componentWillUpdate(b,a.__s,m),null!=a.componentDidUpdate&&a.__h.push(function(){a.componentDidUpdate(y,p,d)})}if(a.context=m,a.props=b,a.__P=n,A=l.__r,P=0,"prototype"in $&&$.prototype.render){for(a.state=a.__s,a.__d=!1,A&&A(u),s=a.render(a.props,a.state,a.context),C=0;C<a._sb.length;C++)a.__h.push(a._sb[C]);a._sb=[]}else do{a.__d=!1,A&&A(u),s=a.render(a.props,a.state,a.context),a.state=a.__s}while(a.__d&&++P<25);a.state=a.__s,null!=a.getChildContext&&(t=h(h({},t),a.getChildContext())),v||null==a.getSnapshotBeforeUpdate||(d=a.getSnapshotBeforeUpdate(y,p)),T=null!=s&&s.type===_&&null==s.key?s.props.children:s,H(n,Array.isArray(T)?T:[T],u,i,t,r,o,f,e,c),a.base=u.__e,u.__h=null,a.__h.length&&f.push(a),k&&(a.__E=a.__=null),a.__e=!1}else null==o&&u.__v===i.__v?(u.__k=i.__k,u.__e=i.__e):u.__e=O(i.__e,u,i,t,r,o,f,c);(s=l.diffed)&&s(u)}catch(n){u.__v=null,(c||null!=o)&&(u.__e=e,u.__h=!!c,o[o.indexOf(e)]=null),l.__e(n,u,i)}}function N(n,u){l.__c&&l.__c(u,n),n.some(function(u){try{n=u.__h,u.__h=[],n.some(function(n){n.call(u)})}catch(n){l.__e(n,u.__v)}})}function O(l,u,i,t,r,o,f,e){var s,a,h,y=i.props,p=u.props,d=u.type,_=0;if("svg"===d&&(r=!0),null!=o)for(;_<o.length;_++)if((s=o[_])&&"setAttribute"in s==!!d&&(d?s.localName===d:3===s.nodeType)){l=s,o[_]=null;break}if(null==l){if(null===d)return document.createTextNode(p);l=r?document.createElementNS("http://www.w3.org/2000/svg",d):document.createElement(d,p.is&&p),o=null,e=!1}if(null===d)y===p||e&&l.data===p||(l.data=p);else{if(o=o&&n.call(l.childNodes),a=(y=i.props||c).dangerouslySetInnerHTML,h=p.dangerouslySetInnerHTML,!e){if(null!=o)for(y={},_=0;_<l.attributes.length;_++)y[l.attributes[_].name]=l.attributes[_].value;(h||a)&&(h&&(a&&h.__html==a.__html||h.__html===l.innerHTML)||(l.innerHTML=h&&h.__html||""))}if(k(l,p,y,r,e),h)u.__k=[];else if(_=u.props.children,H(l,Array.isArray(_)?_:[_],u,i,t,r&&"foreignObject"!==d,o,f,o?o[0]:i.__k&&A(i,0),e),null!=o)for(_=o.length;_--;)null!=o[_]&&v(o[_]);e||("value"in p&&void 0!==(_=p.value)&&(_!==l.value||"progress"===d&&!_||"option"===d&&_!==y.value)&&g(l,"value",_,y.value,!1),"checked"in p&&void 0!==(_=p.checked)&&_!==l.checked&&g(l,"checked",_,y.checked,!1))}return l}function S(n,u,i){try{"function"==typeof n?n(u):n.current=u}catch(n){l.__e(n,i)}}function q(n,u,i){var t,r;if(l.unmount&&l.unmount(n),(t=n.ref)&&(t.current&&t.current!==n.__e||S(t,null,u)),null!=(t=n.__c)){if(t.componentWillUnmount)try{t.componentWillUnmount()}catch(n){l.__e(n,u)}t.base=t.__P=null,n.__c=void 0}if(t=n.__k)for(r=0;r<t.length;r++)t[r]&&q(t[r],u,i||"function"!=typeof n.type);i||null==n.__e||v(n.__e),n.__=n.__e=n.__d=void 0}function B(n,l,u){return this.constructor(n,u)}function D(u,i,t){var r,o,f;l.__&&l.__(u,i),o=(r="function"==typeof t)?null:t&&t.__k||i.__k,f=[],M(i,u=(!r&&t||i).__k=y(_,null,[u]),o||c,c,void 0!==i.ownerSVGElement,!r&&t?[t]:o?null:i.firstChild?n.call(i.childNodes):null,f,!r&&t?t:o?o.__e:i.firstChild,r),N(f,u)}function E(n,l){D(n,l,E)}function F(l,u,i){var t,r,o,f=h({},l.props);for(o in u)"key"==o?t=u[o]:"ref"==o?r=u[o]:f[o]=u[o];return arguments.length>2&&(f.children=arguments.length>3?n.call(arguments,2):i),p(l.type,f,t||l.key,r||l.ref,null)}function G(n,l){var u={__c:l="__cC"+e++,__:n,Consumer:function(n,l){return n.children(l)},Provider:function(n){var u,i;return this.getChildContext||(u=[],(i={})[l]=this,this.getChildContext=function(){return i},this.shouldComponentUpdate=function(n){this.props.value!==n.value&&u.some(function(n){n.__e=!0,T(n)})},this.sub=function(n){u.push(n);var l=n.componentWillUnmount;n.componentWillUnmount=function(){u.splice(u.indexOf(n),1),l&&l.call(n)}}),n.children}};return u.Provider.__=u.Consumer.contextType=u}n=s.slice,l={__e:function(n,l,u,i){for(var t,r,o;l=l.__;)if((t=l.__c)&&!t.__)try{if((r=t.constructor)&&null!=r.getDerivedStateFromError&&(t.setState(r.getDerivedStateFromError(n)),o=t.__d),null!=t.componentDidCatch&&(t.componentDidCatch(n,i||{}),o=t.__d),o)return t.__E=t}catch(l){n=l}throw n}},u=0,i=function(n){return null!=n&&void 0===n.constructor},t=!1,x.prototype.setState=function(n,l){var u;u=null!=this.__s&&this.__s!==this.state?this.__s:this.__s=h({},this.state),"function"==typeof n&&(n=n(h({},u),this.props)),n&&h(u,n),null!=n&&this.__v&&(l&&this._sb.push(l),T(this))},x.prototype.forceUpdate=function(n){this.__v&&(this.__e=!0,n&&this.__h.push(n),T(this))},x.prototype.render=_,r=[],f="function"==typeof Promise?Promise.prototype.then.bind(Promise.resolve()):setTimeout,$.__r=0,e=0;
+//# sourceMappingURL=preact.module.js.map
+
+
+/***/ }),
+
+/***/ "./node_modules/preact/hooks/dist/hooks.module.js":
+/*!********************************************************!*\
+  !*** ./node_modules/preact/hooks/dist/hooks.module.js ***!
+  \********************************************************/
+/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   useCallback: function() { return /* binding */ T; },
+/* harmony export */   useContext: function() { return /* binding */ q; },
+/* harmony export */   useDebugValue: function() { return /* binding */ x; },
+/* harmony export */   useEffect: function() { return /* binding */ h; },
+/* harmony export */   useErrorBoundary: function() { return /* binding */ P; },
+/* harmony export */   useId: function() { return /* binding */ V; },
+/* harmony export */   useImperativeHandle: function() { return /* binding */ A; },
+/* harmony export */   useLayoutEffect: function() { return /* binding */ s; },
+/* harmony export */   useMemo: function() { return /* binding */ F; },
+/* harmony export */   useReducer: function() { return /* binding */ y; },
+/* harmony export */   useRef: function() { return /* binding */ _; },
+/* harmony export */   useState: function() { return /* binding */ p; }
+/* harmony export */ });
+/* harmony import */ var preact__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! preact */ "./node_modules/preact/dist/preact.module.js");
+var t,r,u,i,o=0,f=[],c=[],e=preact__WEBPACK_IMPORTED_MODULE_0__.options.__b,a=preact__WEBPACK_IMPORTED_MODULE_0__.options.__r,v=preact__WEBPACK_IMPORTED_MODULE_0__.options.diffed,l=preact__WEBPACK_IMPORTED_MODULE_0__.options.__c,m=preact__WEBPACK_IMPORTED_MODULE_0__.options.unmount;function d(t,u){preact__WEBPACK_IMPORTED_MODULE_0__.options.__h&&preact__WEBPACK_IMPORTED_MODULE_0__.options.__h(r,t,o||u),o=0;var i=r.__H||(r.__H={__:[],__h:[]});return t>=i.__.length&&i.__.push({__V:c}),i.__[t]}function p(n){return o=1,y(B,n)}function y(n,u,i){var o=d(t++,2);if(o.t=n,!o.__c&&(o.__=[i?i(u):B(void 0,u),function(n){var t=o.__N?o.__N[0]:o.__[0],r=o.t(t,n);t!==r&&(o.__N=[r,o.__[1]],o.__c.setState({}))}],o.__c=r,!r.u)){r.u=!0;var f=r.shouldComponentUpdate;r.shouldComponentUpdate=function(n,t,r){if(!o.__c.__H)return!0;var u=o.__c.__H.__.filter(function(n){return n.__c});if(u.every(function(n){return!n.__N}))return!f||f.call(this,n,t,r);var i=!1;return u.forEach(function(n){if(n.__N){var t=n.__[0];n.__=n.__N,n.__N=void 0,t!==n.__[0]&&(i=!0)}}),!(!i&&o.__c.props===n)&&(!f||f.call(this,n,t,r))}}return o.__N||o.__}function h(u,i){var o=d(t++,3);!preact__WEBPACK_IMPORTED_MODULE_0__.options.__s&&z(o.__H,i)&&(o.__=u,o.i=i,r.__H.__h.push(o))}function s(u,i){var o=d(t++,4);!preact__WEBPACK_IMPORTED_MODULE_0__.options.__s&&z(o.__H,i)&&(o.__=u,o.i=i,r.__h.push(o))}function _(n){return o=5,F(function(){return{current:n}},[])}function A(n,t,r){o=6,s(function(){return"function"==typeof n?(n(t()),function(){return n(null)}):n?(n.current=t(),function(){return n.current=null}):void 0},null==r?r:r.concat(n))}function F(n,r){var u=d(t++,7);return z(u.__H,r)?(u.__V=n(),u.i=r,u.__h=n,u.__V):u.__}function T(n,t){return o=8,F(function(){return n},t)}function q(n){var u=r.context[n.__c],i=d(t++,9);return i.c=n,u?(null==i.__&&(i.__=!0,u.sub(r)),u.props.value):n.__}function x(t,r){preact__WEBPACK_IMPORTED_MODULE_0__.options.useDebugValue&&preact__WEBPACK_IMPORTED_MODULE_0__.options.useDebugValue(r?r(t):t)}function P(n){var u=d(t++,10),i=p();return u.__=n,r.componentDidCatch||(r.componentDidCatch=function(n,t){u.__&&u.__(n,t),i[1](n)}),[i[0],function(){i[1](void 0)}]}function V(){var n=d(t++,11);if(!n.__){for(var u=r.__v;null!==u&&!u.__m&&null!==u.__;)u=u.__;var i=u.__m||(u.__m=[0,0]);n.__="P"+i[0]+"-"+i[1]++}return n.__}function b(){for(var t;t=f.shift();)if(t.__P&&t.__H)try{t.__H.__h.forEach(k),t.__H.__h.forEach(w),t.__H.__h=[]}catch(r){t.__H.__h=[],preact__WEBPACK_IMPORTED_MODULE_0__.options.__e(r,t.__v)}}preact__WEBPACK_IMPORTED_MODULE_0__.options.__b=function(n){r=null,e&&e(n)},preact__WEBPACK_IMPORTED_MODULE_0__.options.__r=function(n){a&&a(n),t=0;var i=(r=n.__c).__H;i&&(u===r?(i.__h=[],r.__h=[],i.__.forEach(function(n){n.__N&&(n.__=n.__N),n.__V=c,n.__N=n.i=void 0})):(i.__h.forEach(k),i.__h.forEach(w),i.__h=[])),u=r},preact__WEBPACK_IMPORTED_MODULE_0__.options.diffed=function(t){v&&v(t);var o=t.__c;o&&o.__H&&(o.__H.__h.length&&(1!==f.push(o)&&i===preact__WEBPACK_IMPORTED_MODULE_0__.options.requestAnimationFrame||((i=preact__WEBPACK_IMPORTED_MODULE_0__.options.requestAnimationFrame)||j)(b)),o.__H.__.forEach(function(n){n.i&&(n.__H=n.i),n.__V!==c&&(n.__=n.__V),n.i=void 0,n.__V=c})),u=r=null},preact__WEBPACK_IMPORTED_MODULE_0__.options.__c=function(t,r){r.some(function(t){try{t.__h.forEach(k),t.__h=t.__h.filter(function(n){return!n.__||w(n)})}catch(u){r.some(function(n){n.__h&&(n.__h=[])}),r=[],preact__WEBPACK_IMPORTED_MODULE_0__.options.__e(u,t.__v)}}),l&&l(t,r)},preact__WEBPACK_IMPORTED_MODULE_0__.options.unmount=function(t){m&&m(t);var r,u=t.__c;u&&u.__H&&(u.__H.__.forEach(function(n){try{k(n)}catch(n){r=n}}),u.__H=void 0,r&&preact__WEBPACK_IMPORTED_MODULE_0__.options.__e(r,u.__v))};var g="function"==typeof requestAnimationFrame;function j(n){var t,r=function(){clearTimeout(u),g&&cancelAnimationFrame(t),setTimeout(n)},u=setTimeout(r,100);g&&(t=requestAnimationFrame(r))}function k(n){var t=r,u=n.__c;"function"==typeof u&&(n.__c=void 0,u()),r=t}function w(n){var t=r;n.__c=n.__(),r=t}function z(n,t){return!n||n.length!==t.length||t.some(function(t,r){return t!==n[r]})}function B(n,t){return"function"==typeof t?t(n):t}
+//# sourceMappingURL=hooks.module.js.map
+
+
+/***/ }),
+
+/***/ "./node_modules/@fullcalendar/core/index.js":
+/*!**************************************************!*\
+  !*** ./node_modules/@fullcalendar/core/index.js ***!
+  \**************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Calendar: function() { return /* binding */ Calendar; },
+/* harmony export */   JsonRequestError: function() { return /* reexport safe */ _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.ag; },
+/* harmony export */   createPlugin: function() { return /* binding */ createPlugin; },
+/* harmony export */   formatDate: function() { return /* binding */ formatDate; },
+/* harmony export */   formatRange: function() { return /* binding */ formatRange; },
+/* harmony export */   globalLocales: function() { return /* binding */ globalLocales; },
+/* harmony export */   globalPlugins: function() { return /* binding */ globalPlugins; },
+/* harmony export */   sliceEvents: function() { return /* binding */ sliceEvents; },
+/* harmony export */   version: function() { return /* binding */ version; }
+/* harmony export */ });
+/* harmony import */ var _internal_common_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./internal-common.js */ "./node_modules/@fullcalendar/core/internal-common.js");
+/* harmony import */ var preact__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! preact */ "./node_modules/preact/dist/preact.module.js");
+/* harmony import */ var preact_compat__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! preact/compat */ "./node_modules/preact/compat/dist/compat.module.js");
+
+
+
+
+
+const globalLocales = [];
+
+const MINIMAL_RAW_EN_LOCALE = {
+    code: 'en',
+    week: {
+        dow: 0,
+        doy: 4, // 4 days need to be within the year to be considered the first week
+    },
+    direction: 'ltr',
+    buttonText: {
+        prev: 'prev',
+        next: 'next',
+        prevYear: 'prev year',
+        nextYear: 'next year',
+        year: 'year',
+        today: 'today',
+        month: 'month',
+        week: 'week',
+        day: 'day',
+        list: 'list',
+    },
+    weekText: 'W',
+    weekTextLong: 'Week',
+    closeHint: 'Close',
+    timeHint: 'Time',
+    eventHint: 'Event',
+    allDayText: 'all-day',
+    moreLinkText: 'more',
+    noEventsText: 'No events to display',
+};
+const RAW_EN_LOCALE = Object.assign(Object.assign({}, MINIMAL_RAW_EN_LOCALE), { 
+    // Includes things we don't want other locales to inherit,
+    // things that derive from other translatable strings.
+    buttonHints: {
+        prev: 'Previous $0',
+        next: 'Next $0',
+        today(buttonText, unit) {
+            return (unit === 'day')
+                ? 'Today'
+                : `This ${buttonText}`;
+        },
+    }, viewHint: '$0 view', navLinkHint: 'Go to $0', moreLinkHint(eventCnt) {
+        return `Show ${eventCnt} more event${eventCnt === 1 ? '' : 's'}`;
+    } });
+function organizeRawLocales(explicitRawLocales) {
+    let defaultCode = explicitRawLocales.length > 0 ? explicitRawLocales[0].code : 'en';
+    let allRawLocales = globalLocales.concat(explicitRawLocales);
+    let rawLocaleMap = {
+        en: RAW_EN_LOCALE,
+    };
+    for (let rawLocale of allRawLocales) {
+        rawLocaleMap[rawLocale.code] = rawLocale;
+    }
+    return {
+        map: rawLocaleMap,
+        defaultCode,
+    };
+}
+function buildLocale(inputSingular, available) {
+    if (typeof inputSingular === 'object' && !Array.isArray(inputSingular)) {
+        return parseLocale(inputSingular.code, [inputSingular.code], inputSingular);
+    }
+    return queryLocale(inputSingular, available);
+}
+function queryLocale(codeArg, available) {
+    let codes = [].concat(codeArg || []); // will convert to array
+    let raw = queryRawLocale(codes, available) || RAW_EN_LOCALE;
+    return parseLocale(codeArg, codes, raw);
+}
+function queryRawLocale(codes, available) {
+    for (let i = 0; i < codes.length; i += 1) {
+        let parts = codes[i].toLocaleLowerCase().split('-');
+        for (let j = parts.length; j > 0; j -= 1) {
+            let simpleId = parts.slice(0, j).join('-');
+            if (available[simpleId]) {
+                return available[simpleId];
+            }
+        }
+    }
+    return null;
+}
+function parseLocale(codeArg, codes, raw) {
+    let merged = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.m)([MINIMAL_RAW_EN_LOCALE, raw], ['buttonText']);
+    delete merged.code; // don't want this part of the options
+    let { week } = merged;
+    delete merged.week;
+    return {
+        codeArg,
+        codes,
+        week,
+        simpleNumberFormat: new Intl.NumberFormat(codeArg),
+        options: merged,
+    };
+}
+
+// TODO: easier way to add new hooks? need to update a million things
+function createPlugin(input) {
+    return {
+        id: (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.g)(),
+        name: input.name,
+        premiumReleaseDate: input.premiumReleaseDate ? new Date(input.premiumReleaseDate) : undefined,
+        deps: input.deps || [],
+        reducers: input.reducers || [],
+        isLoadingFuncs: input.isLoadingFuncs || [],
+        contextInit: [].concat(input.contextInit || []),
+        eventRefiners: input.eventRefiners || {},
+        eventDefMemberAdders: input.eventDefMemberAdders || [],
+        eventSourceRefiners: input.eventSourceRefiners || {},
+        isDraggableTransformers: input.isDraggableTransformers || [],
+        eventDragMutationMassagers: input.eventDragMutationMassagers || [],
+        eventDefMutationAppliers: input.eventDefMutationAppliers || [],
+        dateSelectionTransformers: input.dateSelectionTransformers || [],
+        datePointTransforms: input.datePointTransforms || [],
+        dateSpanTransforms: input.dateSpanTransforms || [],
+        views: input.views || {},
+        viewPropsTransformers: input.viewPropsTransformers || [],
+        isPropsValid: input.isPropsValid || null,
+        externalDefTransforms: input.externalDefTransforms || [],
+        viewContainerAppends: input.viewContainerAppends || [],
+        eventDropTransformers: input.eventDropTransformers || [],
+        componentInteractions: input.componentInteractions || [],
+        calendarInteractions: input.calendarInteractions || [],
+        themeClasses: input.themeClasses || {},
+        eventSourceDefs: input.eventSourceDefs || [],
+        cmdFormatter: input.cmdFormatter,
+        recurringTypes: input.recurringTypes || [],
+        namedTimeZonedImpl: input.namedTimeZonedImpl,
+        initialView: input.initialView || '',
+        elementDraggingImpl: input.elementDraggingImpl,
+        optionChangeHandlers: input.optionChangeHandlers || {},
+        scrollGridImpl: input.scrollGridImpl || null,
+        listenerRefiners: input.listenerRefiners || {},
+        optionRefiners: input.optionRefiners || {},
+        propSetHandlers: input.propSetHandlers || {},
+    };
+}
+function buildPluginHooks(pluginDefs, globalDefs) {
+    let currentPluginIds = {};
+    let hooks = {
+        premiumReleaseDate: undefined,
+        reducers: [],
+        isLoadingFuncs: [],
+        contextInit: [],
+        eventRefiners: {},
+        eventDefMemberAdders: [],
+        eventSourceRefiners: {},
+        isDraggableTransformers: [],
+        eventDragMutationMassagers: [],
+        eventDefMutationAppliers: [],
+        dateSelectionTransformers: [],
+        datePointTransforms: [],
+        dateSpanTransforms: [],
+        views: {},
+        viewPropsTransformers: [],
+        isPropsValid: null,
+        externalDefTransforms: [],
+        viewContainerAppends: [],
+        eventDropTransformers: [],
+        componentInteractions: [],
+        calendarInteractions: [],
+        themeClasses: {},
+        eventSourceDefs: [],
+        cmdFormatter: null,
+        recurringTypes: [],
+        namedTimeZonedImpl: null,
+        initialView: '',
+        elementDraggingImpl: null,
+        optionChangeHandlers: {},
+        scrollGridImpl: null,
+        listenerRefiners: {},
+        optionRefiners: {},
+        propSetHandlers: {},
+    };
+    function addDefs(defs) {
+        for (let def of defs) {
+            const pluginName = def.name;
+            const currentId = currentPluginIds[pluginName];
+            if (currentId === undefined) {
+                currentPluginIds[pluginName] = def.id;
+                addDefs(def.deps);
+                hooks = combineHooks(hooks, def);
+            }
+            else if (currentId !== def.id) {
+                // different ID than the one already added
+                console.warn(`Duplicate plugin '${pluginName}'`);
+            }
+        }
+    }
+    if (pluginDefs) {
+        addDefs(pluginDefs);
+    }
+    addDefs(globalDefs);
+    return hooks;
+}
+function buildBuildPluginHooks() {
+    let currentOverrideDefs = [];
+    let currentGlobalDefs = [];
+    let currentHooks;
+    return (overrideDefs, globalDefs) => {
+        if (!currentHooks || !(0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.i)(overrideDefs, currentOverrideDefs) || !(0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.i)(globalDefs, currentGlobalDefs)) {
+            currentHooks = buildPluginHooks(overrideDefs, globalDefs);
+        }
+        currentOverrideDefs = overrideDefs;
+        currentGlobalDefs = globalDefs;
+        return currentHooks;
+    };
+}
+function combineHooks(hooks0, hooks1) {
+    return {
+        premiumReleaseDate: compareOptionalDates(hooks0.premiumReleaseDate, hooks1.premiumReleaseDate),
+        reducers: hooks0.reducers.concat(hooks1.reducers),
+        isLoadingFuncs: hooks0.isLoadingFuncs.concat(hooks1.isLoadingFuncs),
+        contextInit: hooks0.contextInit.concat(hooks1.contextInit),
+        eventRefiners: Object.assign(Object.assign({}, hooks0.eventRefiners), hooks1.eventRefiners),
+        eventDefMemberAdders: hooks0.eventDefMemberAdders.concat(hooks1.eventDefMemberAdders),
+        eventSourceRefiners: Object.assign(Object.assign({}, hooks0.eventSourceRefiners), hooks1.eventSourceRefiners),
+        isDraggableTransformers: hooks0.isDraggableTransformers.concat(hooks1.isDraggableTransformers),
+        eventDragMutationMassagers: hooks0.eventDragMutationMassagers.concat(hooks1.eventDragMutationMassagers),
+        eventDefMutationAppliers: hooks0.eventDefMutationAppliers.concat(hooks1.eventDefMutationAppliers),
+        dateSelectionTransformers: hooks0.dateSelectionTransformers.concat(hooks1.dateSelectionTransformers),
+        datePointTransforms: hooks0.datePointTransforms.concat(hooks1.datePointTransforms),
+        dateSpanTransforms: hooks0.dateSpanTransforms.concat(hooks1.dateSpanTransforms),
+        views: Object.assign(Object.assign({}, hooks0.views), hooks1.views),
+        viewPropsTransformers: hooks0.viewPropsTransformers.concat(hooks1.viewPropsTransformers),
+        isPropsValid: hooks1.isPropsValid || hooks0.isPropsValid,
+        externalDefTransforms: hooks0.externalDefTransforms.concat(hooks1.externalDefTransforms),
+        viewContainerAppends: hooks0.viewContainerAppends.concat(hooks1.viewContainerAppends),
+        eventDropTransformers: hooks0.eventDropTransformers.concat(hooks1.eventDropTransformers),
+        calendarInteractions: hooks0.calendarInteractions.concat(hooks1.calendarInteractions),
+        componentInteractions: hooks0.componentInteractions.concat(hooks1.componentInteractions),
+        themeClasses: Object.assign(Object.assign({}, hooks0.themeClasses), hooks1.themeClasses),
+        eventSourceDefs: hooks0.eventSourceDefs.concat(hooks1.eventSourceDefs),
+        cmdFormatter: hooks1.cmdFormatter || hooks0.cmdFormatter,
+        recurringTypes: hooks0.recurringTypes.concat(hooks1.recurringTypes),
+        namedTimeZonedImpl: hooks1.namedTimeZonedImpl || hooks0.namedTimeZonedImpl,
+        initialView: hooks0.initialView || hooks1.initialView,
+        elementDraggingImpl: hooks0.elementDraggingImpl || hooks1.elementDraggingImpl,
+        optionChangeHandlers: Object.assign(Object.assign({}, hooks0.optionChangeHandlers), hooks1.optionChangeHandlers),
+        scrollGridImpl: hooks1.scrollGridImpl || hooks0.scrollGridImpl,
+        listenerRefiners: Object.assign(Object.assign({}, hooks0.listenerRefiners), hooks1.listenerRefiners),
+        optionRefiners: Object.assign(Object.assign({}, hooks0.optionRefiners), hooks1.optionRefiners),
+        propSetHandlers: Object.assign(Object.assign({}, hooks0.propSetHandlers), hooks1.propSetHandlers),
+    };
+}
+function compareOptionalDates(date0, date1) {
+    if (date0 === undefined) {
+        return date1;
+    }
+    if (date1 === undefined) {
+        return date0;
+    }
+    return new Date(Math.max(date0.valueOf(), date1.valueOf()));
+}
+
+class StandardTheme extends _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.T {
+}
+StandardTheme.prototype.classes = {
+    root: 'fc-theme-standard',
+    tableCellShaded: 'fc-cell-shaded',
+    buttonGroup: 'fc-button-group',
+    button: 'fc-button fc-button-primary',
+    buttonActive: 'fc-button-active',
+};
+StandardTheme.prototype.baseIconClass = 'fc-icon';
+StandardTheme.prototype.iconClasses = {
+    close: 'fc-icon-x',
+    prev: 'fc-icon-chevron-left',
+    next: 'fc-icon-chevron-right',
+    prevYear: 'fc-icon-chevrons-left',
+    nextYear: 'fc-icon-chevrons-right',
+};
+StandardTheme.prototype.rtlIconClasses = {
+    prev: 'fc-icon-chevron-right',
+    next: 'fc-icon-chevron-left',
+    prevYear: 'fc-icon-chevrons-right',
+    nextYear: 'fc-icon-chevrons-left',
+};
+StandardTheme.prototype.iconOverrideOption = 'buttonIcons'; // TODO: make TS-friendly
+StandardTheme.prototype.iconOverrideCustomButtonOption = 'icon';
+StandardTheme.prototype.iconOverridePrefix = 'fc-icon-';
+
+function compileViewDefs(defaultConfigs, overrideConfigs) {
+    let hash = {};
+    let viewType;
+    for (viewType in defaultConfigs) {
+        ensureViewDef(viewType, hash, defaultConfigs, overrideConfigs);
+    }
+    for (viewType in overrideConfigs) {
+        ensureViewDef(viewType, hash, defaultConfigs, overrideConfigs);
+    }
+    return hash;
+}
+function ensureViewDef(viewType, hash, defaultConfigs, overrideConfigs) {
+    if (hash[viewType]) {
+        return hash[viewType];
+    }
+    let viewDef = buildViewDef(viewType, hash, defaultConfigs, overrideConfigs);
+    if (viewDef) {
+        hash[viewType] = viewDef;
+    }
+    return viewDef;
+}
+function buildViewDef(viewType, hash, defaultConfigs, overrideConfigs) {
+    let defaultConfig = defaultConfigs[viewType];
+    let overrideConfig = overrideConfigs[viewType];
+    let queryProp = (name) => ((defaultConfig && defaultConfig[name] !== null) ? defaultConfig[name] :
+        ((overrideConfig && overrideConfig[name] !== null) ? overrideConfig[name] : null));
+    let theComponent = queryProp('component');
+    let superType = queryProp('superType');
+    let superDef = null;
+    if (superType) {
+        if (superType === viewType) {
+            throw new Error('Can\'t have a custom view type that references itself');
+        }
+        superDef = ensureViewDef(superType, hash, defaultConfigs, overrideConfigs);
+    }
+    if (!theComponent && superDef) {
+        theComponent = superDef.component;
+    }
+    if (!theComponent) {
+        return null; // don't throw a warning, might be settings for a single-unit view
+    }
+    return {
+        type: viewType,
+        component: theComponent,
+        defaults: Object.assign(Object.assign({}, (superDef ? superDef.defaults : {})), (defaultConfig ? defaultConfig.rawOptions : {})),
+        overrides: Object.assign(Object.assign({}, (superDef ? superDef.overrides : {})), (overrideConfig ? overrideConfig.rawOptions : {})),
+    };
+}
+
+function parseViewConfigs(inputs) {
+    return (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a)(inputs, parseViewConfig);
+}
+function parseViewConfig(input) {
+    let rawOptions = typeof input === 'function' ?
+        { component: input } :
+        input;
+    let { component } = rawOptions;
+    if (rawOptions.content) {
+        // TODO: remove content/classNames/didMount/etc from options?
+        component = createViewHookComponent(rawOptions);
+    }
+    else if (component && !(component.prototype instanceof _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.B)) {
+        // WHY?: people were using `component` property for `content`
+        // TODO: converge on one setting name
+        component = createViewHookComponent(Object.assign(Object.assign({}, rawOptions), { content: component }));
+    }
+    return {
+        superType: rawOptions.type,
+        component: component,
+        rawOptions, // includes type and component too :(
+    };
+}
+function createViewHookComponent(options) {
+    return (viewProps) => ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.V.Consumer, null, (context) => ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.C, { elTag: "div", elClasses: (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.b)(context.viewSpec), renderProps: Object.assign(Object.assign({}, viewProps), { nextDayThreshold: context.options.nextDayThreshold }), generatorName: undefined, customGenerator: options.content, classNameGenerator: options.classNames, didMount: options.didMount, willUnmount: options.willUnmount }))));
+}
+
+function buildViewSpecs(defaultInputs, optionOverrides, dynamicOptionOverrides, localeDefaults) {
+    let defaultConfigs = parseViewConfigs(defaultInputs);
+    let overrideConfigs = parseViewConfigs(optionOverrides.views);
+    let viewDefs = compileViewDefs(defaultConfigs, overrideConfigs);
+    return (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a)(viewDefs, (viewDef) => buildViewSpec(viewDef, overrideConfigs, optionOverrides, dynamicOptionOverrides, localeDefaults));
+}
+function buildViewSpec(viewDef, overrideConfigs, optionOverrides, dynamicOptionOverrides, localeDefaults) {
+    let durationInput = viewDef.overrides.duration ||
+        viewDef.defaults.duration ||
+        dynamicOptionOverrides.duration ||
+        optionOverrides.duration;
+    let duration = null;
+    let durationUnit = '';
+    let singleUnit = '';
+    let singleUnitOverrides = {};
+    if (durationInput) {
+        duration = createDurationCached(durationInput);
+        if (duration) { // valid?
+            let denom = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.c)(duration);
+            durationUnit = denom.unit;
+            if (denom.value === 1) {
+                singleUnit = durationUnit;
+                singleUnitOverrides = overrideConfigs[durationUnit] ? overrideConfigs[durationUnit].rawOptions : {};
+            }
+        }
+    }
+    let queryButtonText = (optionsSubset) => {
+        let buttonTextMap = optionsSubset.buttonText || {};
+        let buttonTextKey = viewDef.defaults.buttonTextKey;
+        if (buttonTextKey != null && buttonTextMap[buttonTextKey] != null) {
+            return buttonTextMap[buttonTextKey];
+        }
+        if (buttonTextMap[viewDef.type] != null) {
+            return buttonTextMap[viewDef.type];
+        }
+        if (buttonTextMap[singleUnit] != null) {
+            return buttonTextMap[singleUnit];
+        }
+        return null;
+    };
+    let queryButtonTitle = (optionsSubset) => {
+        let buttonHints = optionsSubset.buttonHints || {};
+        let buttonKey = viewDef.defaults.buttonTextKey; // use same key as text
+        if (buttonKey != null && buttonHints[buttonKey] != null) {
+            return buttonHints[buttonKey];
+        }
+        if (buttonHints[viewDef.type] != null) {
+            return buttonHints[viewDef.type];
+        }
+        if (buttonHints[singleUnit] != null) {
+            return buttonHints[singleUnit];
+        }
+        return null;
+    };
+    return {
+        type: viewDef.type,
+        component: viewDef.component,
+        duration,
+        durationUnit,
+        singleUnit,
+        optionDefaults: viewDef.defaults,
+        optionOverrides: Object.assign(Object.assign({}, singleUnitOverrides), viewDef.overrides),
+        buttonTextOverride: queryButtonText(dynamicOptionOverrides) ||
+            queryButtonText(optionOverrides) || // constructor-specified buttonText lookup hash takes precedence
+            viewDef.overrides.buttonText,
+        buttonTextDefault: queryButtonText(localeDefaults) ||
+            viewDef.defaults.buttonText ||
+            queryButtonText(_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.e) ||
+            viewDef.type,
+        // not DRY
+        buttonTitleOverride: queryButtonTitle(dynamicOptionOverrides) ||
+            queryButtonTitle(optionOverrides) ||
+            viewDef.overrides.buttonHint,
+        buttonTitleDefault: queryButtonTitle(localeDefaults) ||
+            viewDef.defaults.buttonHint ||
+            queryButtonTitle(_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.e),
+        // will eventually fall back to buttonText
+    };
+}
+// hack to get memoization working
+let durationInputMap = {};
+function createDurationCached(durationInput) {
+    let json = JSON.stringify(durationInput);
+    let res = durationInputMap[json];
+    if (res === undefined) {
+        res = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.d)(durationInput);
+        durationInputMap[json] = res;
+    }
+    return res;
+}
+
+function reduceViewType(viewType, action) {
+    switch (action.type) {
+        case 'CHANGE_VIEW_TYPE':
+            viewType = action.viewType;
+    }
+    return viewType;
+}
+
+function reduceDynamicOptionOverrides(dynamicOptionOverrides, action) {
+    switch (action.type) {
+        case 'SET_OPTION':
+            return Object.assign(Object.assign({}, dynamicOptionOverrides), { [action.optionName]: action.rawOptionValue });
+        default:
+            return dynamicOptionOverrides;
+    }
+}
+
+function reduceDateProfile(currentDateProfile, action, currentDate, dateProfileGenerator) {
+    let dp;
+    switch (action.type) {
+        case 'CHANGE_VIEW_TYPE':
+            return dateProfileGenerator.build(action.dateMarker || currentDate);
+        case 'CHANGE_DATE':
+            return dateProfileGenerator.build(action.dateMarker);
+        case 'PREV':
+            dp = dateProfileGenerator.buildPrev(currentDateProfile, currentDate);
+            if (dp.isValid) {
+                return dp;
+            }
+            break;
+        case 'NEXT':
+            dp = dateProfileGenerator.buildNext(currentDateProfile, currentDate);
+            if (dp.isValid) {
+                return dp;
+            }
+            break;
+    }
+    return currentDateProfile;
+}
+
+function initEventSources(calendarOptions, dateProfile, context) {
+    let activeRange = dateProfile ? dateProfile.activeRange : null;
+    return addSources({}, parseInitialSources(calendarOptions, context), activeRange, context);
+}
+function reduceEventSources(eventSources, action, dateProfile, context) {
+    let activeRange = dateProfile ? dateProfile.activeRange : null; // need this check?
+    switch (action.type) {
+        case 'ADD_EVENT_SOURCES': // already parsed
+            return addSources(eventSources, action.sources, activeRange, context);
+        case 'REMOVE_EVENT_SOURCE':
+            return removeSource(eventSources, action.sourceId);
+        case 'PREV': // TODO: how do we track all actions that affect dateProfile :(
+        case 'NEXT':
+        case 'CHANGE_DATE':
+        case 'CHANGE_VIEW_TYPE':
+            if (dateProfile) {
+                return fetchDirtySources(eventSources, activeRange, context);
+            }
+            return eventSources;
+        case 'FETCH_EVENT_SOURCES':
+            return fetchSourcesByIds(eventSources, action.sourceIds ? // why no type?
+                (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.f)(action.sourceIds) :
+                excludeStaticSources(eventSources, context), activeRange, action.isRefetch || false, context);
+        case 'RECEIVE_EVENTS':
+        case 'RECEIVE_EVENT_ERROR':
+            return receiveResponse(eventSources, action.sourceId, action.fetchId, action.fetchRange);
+        case 'REMOVE_ALL_EVENT_SOURCES':
+            return {};
+        default:
+            return eventSources;
+    }
+}
+function reduceEventSourcesNewTimeZone(eventSources, dateProfile, context) {
+    let activeRange = dateProfile ? dateProfile.activeRange : null; // need this check?
+    return fetchSourcesByIds(eventSources, excludeStaticSources(eventSources, context), activeRange, true, context);
+}
+function computeEventSourcesLoading(eventSources) {
+    for (let sourceId in eventSources) {
+        if (eventSources[sourceId].isFetching) {
+            return true;
+        }
+    }
+    return false;
+}
+function addSources(eventSourceHash, sources, fetchRange, context) {
+    let hash = {};
+    for (let source of sources) {
+        hash[source.sourceId] = source;
+    }
+    if (fetchRange) {
+        hash = fetchDirtySources(hash, fetchRange, context);
+    }
+    return Object.assign(Object.assign({}, eventSourceHash), hash);
+}
+function removeSource(eventSourceHash, sourceId) {
+    return (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.h)(eventSourceHash, (eventSource) => eventSource.sourceId !== sourceId);
+}
+function fetchDirtySources(sourceHash, fetchRange, context) {
+    return fetchSourcesByIds(sourceHash, (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.h)(sourceHash, (eventSource) => isSourceDirty(eventSource, fetchRange, context)), fetchRange, false, context);
+}
+function isSourceDirty(eventSource, fetchRange, context) {
+    if (!doesSourceNeedRange(eventSource, context)) {
+        return !eventSource.latestFetchId;
+    }
+    return !context.options.lazyFetching ||
+        !eventSource.fetchRange ||
+        eventSource.isFetching || // always cancel outdated in-progress fetches
+        fetchRange.start < eventSource.fetchRange.start ||
+        fetchRange.end > eventSource.fetchRange.end;
+}
+function fetchSourcesByIds(prevSources, sourceIdHash, fetchRange, isRefetch, context) {
+    let nextSources = {};
+    for (let sourceId in prevSources) {
+        let source = prevSources[sourceId];
+        if (sourceIdHash[sourceId]) {
+            nextSources[sourceId] = fetchSource(source, fetchRange, isRefetch, context);
+        }
+        else {
+            nextSources[sourceId] = source;
+        }
+    }
+    return nextSources;
+}
+function fetchSource(eventSource, fetchRange, isRefetch, context) {
+    let { options, calendarApi } = context;
+    let sourceDef = context.pluginHooks.eventSourceDefs[eventSource.sourceDefId];
+    let fetchId = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.g)();
+    sourceDef.fetch({
+        eventSource,
+        range: fetchRange,
+        isRefetch,
+        context,
+    }, (res) => {
+        let { rawEvents } = res;
+        if (options.eventSourceSuccess) {
+            rawEvents = options.eventSourceSuccess.call(calendarApi, rawEvents, res.response) || rawEvents;
+        }
+        if (eventSource.success) {
+            rawEvents = eventSource.success.call(calendarApi, rawEvents, res.response) || rawEvents;
+        }
+        context.dispatch({
+            type: 'RECEIVE_EVENTS',
+            sourceId: eventSource.sourceId,
+            fetchId,
+            fetchRange,
+            rawEvents,
+        });
+    }, (error) => {
+        let errorHandled = false;
+        if (options.eventSourceFailure) {
+            options.eventSourceFailure.call(calendarApi, error);
+            errorHandled = true;
+        }
+        if (eventSource.failure) {
+            eventSource.failure(error);
+            errorHandled = true;
+        }
+        if (!errorHandled) {
+            console.warn(error.message, error);
+        }
+        context.dispatch({
+            type: 'RECEIVE_EVENT_ERROR',
+            sourceId: eventSource.sourceId,
+            fetchId,
+            fetchRange,
+            error,
+        });
+    });
+    return Object.assign(Object.assign({}, eventSource), { isFetching: true, latestFetchId: fetchId });
+}
+function receiveResponse(sourceHash, sourceId, fetchId, fetchRange) {
+    let eventSource = sourceHash[sourceId];
+    if (eventSource && // not already removed
+        fetchId === eventSource.latestFetchId) {
+        return Object.assign(Object.assign({}, sourceHash), { [sourceId]: Object.assign(Object.assign({}, eventSource), { isFetching: false, fetchRange }) });
+    }
+    return sourceHash;
+}
+function excludeStaticSources(eventSources, context) {
+    return (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.h)(eventSources, (eventSource) => doesSourceNeedRange(eventSource, context));
+}
+function parseInitialSources(rawOptions, context) {
+    let refiners = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.j)(context);
+    let rawSources = [].concat(rawOptions.eventSources || []);
+    let sources = []; // parsed
+    if (rawOptions.initialEvents) {
+        rawSources.unshift(rawOptions.initialEvents);
+    }
+    if (rawOptions.events) {
+        rawSources.unshift(rawOptions.events);
+    }
+    for (let rawSource of rawSources) {
+        let source = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.p)(rawSource, context, refiners);
+        if (source) {
+            sources.push(source);
+        }
+    }
+    return sources;
+}
+function doesSourceNeedRange(eventSource, context) {
+    let defs = context.pluginHooks.eventSourceDefs;
+    return !defs[eventSource.sourceDefId].ignoreRange;
+}
+
+function reduceDateSelection(currentSelection, action) {
+    switch (action.type) {
+        case 'UNSELECT_DATES':
+            return null;
+        case 'SELECT_DATES':
+            return action.selection;
+        default:
+            return currentSelection;
+    }
+}
+
+function reduceSelectedEvent(currentInstanceId, action) {
+    switch (action.type) {
+        case 'UNSELECT_EVENT':
+            return '';
+        case 'SELECT_EVENT':
+            return action.eventInstanceId;
+        default:
+            return currentInstanceId;
+    }
+}
+
+function reduceEventDrag(currentDrag, action) {
+    let newDrag;
+    switch (action.type) {
+        case 'UNSET_EVENT_DRAG':
+            return null;
+        case 'SET_EVENT_DRAG':
+            newDrag = action.state;
+            return {
+                affectedEvents: newDrag.affectedEvents,
+                mutatedEvents: newDrag.mutatedEvents,
+                isEvent: newDrag.isEvent,
+            };
+        default:
+            return currentDrag;
+    }
+}
+
+function reduceEventResize(currentResize, action) {
+    let newResize;
+    switch (action.type) {
+        case 'UNSET_EVENT_RESIZE':
+            return null;
+        case 'SET_EVENT_RESIZE':
+            newResize = action.state;
+            return {
+                affectedEvents: newResize.affectedEvents,
+                mutatedEvents: newResize.mutatedEvents,
+                isEvent: newResize.isEvent,
+            };
+        default:
+            return currentResize;
+    }
+}
+
+function parseToolbars(calendarOptions, calendarOptionOverrides, theme, viewSpecs, calendarApi) {
+    let header = calendarOptions.headerToolbar ? parseToolbar(calendarOptions.headerToolbar, calendarOptions, calendarOptionOverrides, theme, viewSpecs, calendarApi) : null;
+    let footer = calendarOptions.footerToolbar ? parseToolbar(calendarOptions.footerToolbar, calendarOptions, calendarOptionOverrides, theme, viewSpecs, calendarApi) : null;
+    return { header, footer };
+}
+function parseToolbar(sectionStrHash, calendarOptions, calendarOptionOverrides, theme, viewSpecs, calendarApi) {
+    let sectionWidgets = {};
+    let viewsWithButtons = [];
+    let hasTitle = false;
+    for (let sectionName in sectionStrHash) {
+        let sectionStr = sectionStrHash[sectionName];
+        let sectionRes = parseSection(sectionStr, calendarOptions, calendarOptionOverrides, theme, viewSpecs, calendarApi);
+        sectionWidgets[sectionName] = sectionRes.widgets;
+        viewsWithButtons.push(...sectionRes.viewsWithButtons);
+        hasTitle = hasTitle || sectionRes.hasTitle;
+    }
+    return { sectionWidgets, viewsWithButtons, hasTitle };
+}
+/*
+BAD: querying icons and text here. should be done at render time
+*/
+function parseSection(sectionStr, calendarOptions, // defaults+overrides, then refined
+calendarOptionOverrides, // overrides only!, unrefined :(
+theme, viewSpecs, calendarApi) {
+    let isRtl = calendarOptions.direction === 'rtl';
+    let calendarCustomButtons = calendarOptions.customButtons || {};
+    let calendarButtonTextOverrides = calendarOptionOverrides.buttonText || {};
+    let calendarButtonText = calendarOptions.buttonText || {};
+    let calendarButtonHintOverrides = calendarOptionOverrides.buttonHints || {};
+    let calendarButtonHints = calendarOptions.buttonHints || {};
+    let sectionSubstrs = sectionStr ? sectionStr.split(' ') : [];
+    let viewsWithButtons = [];
+    let hasTitle = false;
+    let widgets = sectionSubstrs.map((buttonGroupStr) => (buttonGroupStr.split(',').map((buttonName) => {
+        if (buttonName === 'title') {
+            hasTitle = true;
+            return { buttonName };
+        }
+        let customButtonProps;
+        let viewSpec;
+        let buttonClick;
+        let buttonIcon; // only one of these will be set
+        let buttonText; // "
+        let buttonHint;
+        // ^ for the title="" attribute, for accessibility
+        if ((customButtonProps = calendarCustomButtons[buttonName])) {
+            buttonClick = (ev) => {
+                if (customButtonProps.click) {
+                    customButtonProps.click.call(ev.target, ev, ev.target); // TODO: use Calendar this context?
+                }
+            };
+            (buttonIcon = theme.getCustomButtonIconClass(customButtonProps)) ||
+                (buttonIcon = theme.getIconClass(buttonName, isRtl)) ||
+                (buttonText = customButtonProps.text);
+            buttonHint = customButtonProps.hint || customButtonProps.text;
+        }
+        else if ((viewSpec = viewSpecs[buttonName])) {
+            viewsWithButtons.push(buttonName);
+            buttonClick = () => {
+                calendarApi.changeView(buttonName);
+            };
+            (buttonText = viewSpec.buttonTextOverride) ||
+                (buttonIcon = theme.getIconClass(buttonName, isRtl)) ||
+                (buttonText = viewSpec.buttonTextDefault);
+            let textFallback = viewSpec.buttonTextOverride ||
+                viewSpec.buttonTextDefault;
+            buttonHint = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.k)(viewSpec.buttonTitleOverride ||
+                viewSpec.buttonTitleDefault ||
+                calendarOptions.viewHint, [textFallback, buttonName], // view-name = buttonName
+            textFallback);
+        }
+        else if (calendarApi[buttonName]) { // a calendarApi method
+            buttonClick = () => {
+                calendarApi[buttonName]();
+            };
+            (buttonText = calendarButtonTextOverrides[buttonName]) ||
+                (buttonIcon = theme.getIconClass(buttonName, isRtl)) ||
+                (buttonText = calendarButtonText[buttonName]); // everything else is considered default
+            if (buttonName === 'prevYear' || buttonName === 'nextYear') {
+                let prevOrNext = buttonName === 'prevYear' ? 'prev' : 'next';
+                buttonHint = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.k)(calendarButtonHintOverrides[prevOrNext] ||
+                    calendarButtonHints[prevOrNext], [
+                    calendarButtonText.year || 'year',
+                    'year',
+                ], calendarButtonText[buttonName]);
+            }
+            else {
+                buttonHint = (navUnit) => (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.k)(calendarButtonHintOverrides[buttonName] ||
+                    calendarButtonHints[buttonName], [
+                    calendarButtonText[navUnit] || navUnit,
+                    navUnit,
+                ], calendarButtonText[buttonName]);
+            }
+        }
+        return { buttonName, buttonClick, buttonIcon, buttonText, buttonHint };
+    })));
+    return { widgets, viewsWithButtons, hasTitle };
+}
+
+// always represents the current view. otherwise, it'd need to change value every time date changes
+class ViewImpl {
+    constructor(type, getCurrentData, dateEnv) {
+        this.type = type;
+        this.getCurrentData = getCurrentData;
+        this.dateEnv = dateEnv;
+    }
+    get calendar() {
+        return this.getCurrentData().calendarApi;
+    }
+    get title() {
+        return this.getCurrentData().viewTitle;
+    }
+    get activeStart() {
+        return this.dateEnv.toDate(this.getCurrentData().dateProfile.activeRange.start);
+    }
+    get activeEnd() {
+        return this.dateEnv.toDate(this.getCurrentData().dateProfile.activeRange.end);
+    }
+    get currentStart() {
+        return this.dateEnv.toDate(this.getCurrentData().dateProfile.currentRange.start);
+    }
+    get currentEnd() {
+        return this.dateEnv.toDate(this.getCurrentData().dateProfile.currentRange.end);
+    }
+    getOption(name) {
+        return this.getCurrentData().options[name]; // are the view-specific options
+    }
+}
+
+let eventSourceDef$2 = {
+    ignoreRange: true,
+    parseMeta(refined) {
+        if (Array.isArray(refined.events)) {
+            return refined.events;
+        }
+        return null;
+    },
+    fetch(arg, successCallback) {
+        successCallback({
+            rawEvents: arg.eventSource.meta,
+        });
+    },
+};
+const arrayEventSourcePlugin = createPlugin({
+    name: 'array-event-source',
+    eventSourceDefs: [eventSourceDef$2],
+});
+
+let eventSourceDef$1 = {
+    parseMeta(refined) {
+        if (typeof refined.events === 'function') {
+            return refined.events;
+        }
+        return null;
+    },
+    fetch(arg, successCallback, errorCallback) {
+        const { dateEnv } = arg.context;
+        const func = arg.eventSource.meta;
+        (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.u)(func.bind(null, (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.l)(arg.range, dateEnv)), (rawEvents) => successCallback({ rawEvents }), errorCallback);
+    },
+};
+const funcEventSourcePlugin = createPlugin({
+    name: 'func-event-source',
+    eventSourceDefs: [eventSourceDef$1],
+});
+
+const JSON_FEED_EVENT_SOURCE_REFINERS = {
+    method: String,
+    extraParams: _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    startParam: String,
+    endParam: String,
+    timeZoneParam: String,
+};
+
+let eventSourceDef = {
+    parseMeta(refined) {
+        if (refined.url && (refined.format === 'json' || !refined.format)) {
+            return {
+                url: refined.url,
+                format: 'json',
+                method: (refined.method || 'GET').toUpperCase(),
+                extraParams: refined.extraParams,
+                startParam: refined.startParam,
+                endParam: refined.endParam,
+                timeZoneParam: refined.timeZoneParam,
+            };
+        }
+        return null;
+    },
+    fetch(arg, successCallback, errorCallback) {
+        const { meta } = arg.eventSource;
+        const requestParams = buildRequestParams(meta, arg.range, arg.context);
+        (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.r)(meta.method, meta.url, requestParams).then(([rawEvents, response]) => {
+            successCallback({ rawEvents, response });
+        }, errorCallback);
+    },
+};
+const jsonFeedEventSourcePlugin = createPlugin({
+    name: 'json-event-source',
+    eventSourceRefiners: JSON_FEED_EVENT_SOURCE_REFINERS,
+    eventSourceDefs: [eventSourceDef],
+});
+function buildRequestParams(meta, range, context) {
+    let { dateEnv, options } = context;
+    let startParam;
+    let endParam;
+    let timeZoneParam;
+    let customRequestParams;
+    let params = {};
+    startParam = meta.startParam;
+    if (startParam == null) {
+        startParam = options.startParam;
+    }
+    endParam = meta.endParam;
+    if (endParam == null) {
+        endParam = options.endParam;
+    }
+    timeZoneParam = meta.timeZoneParam;
+    if (timeZoneParam == null) {
+        timeZoneParam = options.timeZoneParam;
+    }
+    // retrieve any outbound GET/POST data from the options
+    if (typeof meta.extraParams === 'function') {
+        // supplied as a function that returns a key/value object
+        customRequestParams = meta.extraParams();
+    }
+    else {
+        // probably supplied as a straight key/value object
+        customRequestParams = meta.extraParams || {};
+    }
+    Object.assign(params, customRequestParams);
+    params[startParam] = dateEnv.formatIso(range.start);
+    params[endParam] = dateEnv.formatIso(range.end);
+    if (dateEnv.timeZone !== 'local') {
+        params[timeZoneParam] = dateEnv.timeZone;
+    }
+    return params;
+}
+
+const SIMPLE_RECURRING_REFINERS = {
+    daysOfWeek: _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    startTime: _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.d,
+    endTime: _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.d,
+    duration: _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.d,
+    startRecur: _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    endRecur: _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.n,
+};
+
+let recurring = {
+    parse(refined, dateEnv) {
+        if (refined.daysOfWeek || refined.startTime || refined.endTime || refined.startRecur || refined.endRecur) {
+            let recurringData = {
+                daysOfWeek: refined.daysOfWeek || null,
+                startTime: refined.startTime || null,
+                endTime: refined.endTime || null,
+                startRecur: refined.startRecur ? dateEnv.createMarker(refined.startRecur) : null,
+                endRecur: refined.endRecur ? dateEnv.createMarker(refined.endRecur) : null,
+            };
+            let duration;
+            if (refined.duration) {
+                duration = refined.duration;
+            }
+            if (!duration && refined.startTime && refined.endTime) {
+                duration = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.s)(refined.endTime, refined.startTime);
+            }
+            return {
+                allDayGuess: Boolean(!refined.startTime && !refined.endTime),
+                duration,
+                typeData: recurringData, // doesn't need endTime anymore but oh well
+            };
+        }
+        return null;
+    },
+    expand(typeData, framingRange, dateEnv) {
+        let clippedFramingRange = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.o)(framingRange, { start: typeData.startRecur, end: typeData.endRecur });
+        if (clippedFramingRange) {
+            return expandRanges(typeData.daysOfWeek, typeData.startTime, clippedFramingRange, dateEnv);
+        }
+        return [];
+    },
+};
+const simpleRecurringEventsPlugin = createPlugin({
+    name: 'simple-recurring-event',
+    recurringTypes: [recurring],
+    eventRefiners: SIMPLE_RECURRING_REFINERS,
+});
+function expandRanges(daysOfWeek, startTime, framingRange, dateEnv) {
+    let dowHash = daysOfWeek ? (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.f)(daysOfWeek) : null;
+    let dayMarker = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.q)(framingRange.start);
+    let endMarker = framingRange.end;
+    let instanceStarts = [];
+    while (dayMarker < endMarker) {
+        let instanceStart;
+        // if everyday, or this particular day-of-week
+        if (!dowHash || dowHash[dayMarker.getUTCDay()]) {
+            if (startTime) {
+                instanceStart = dateEnv.add(dayMarker, startTime);
+            }
+            else {
+                instanceStart = dayMarker;
+            }
+            instanceStarts.push(instanceStart);
+        }
+        dayMarker = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.t)(dayMarker, 1);
+    }
+    return instanceStarts;
+}
+
+const changeHandlerPlugin = createPlugin({
+    name: 'change-handler',
+    optionChangeHandlers: {
+        events(events, context) {
+            handleEventSources([events], context);
+        },
+        eventSources: handleEventSources,
+    },
+});
+/*
+BUG: if `event` was supplied, all previously-given `eventSources` will be wiped out
+*/
+function handleEventSources(inputs, context) {
+    let unfoundSources = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.v)(context.getCurrentData().eventSources);
+    if (unfoundSources.length === 1 &&
+        inputs.length === 1 &&
+        Array.isArray(unfoundSources[0]._raw) &&
+        Array.isArray(inputs[0])) {
+        context.dispatch({
+            type: 'RESET_RAW_EVENTS',
+            sourceId: unfoundSources[0].sourceId,
+            rawEvents: inputs[0],
+        });
+        return;
+    }
+    let newInputs = [];
+    for (let input of inputs) {
+        let inputFound = false;
+        for (let i = 0; i < unfoundSources.length; i += 1) {
+            if (unfoundSources[i]._raw === input) {
+                unfoundSources.splice(i, 1); // delete
+                inputFound = true;
+                break;
+            }
+        }
+        if (!inputFound) {
+            newInputs.push(input);
+        }
+    }
+    for (let unfoundSource of unfoundSources) {
+        context.dispatch({
+            type: 'REMOVE_EVENT_SOURCE',
+            sourceId: unfoundSource.sourceId,
+        });
+    }
+    for (let newInput of newInputs) {
+        context.calendarApi.addEventSource(newInput);
+    }
+}
+
+function handleDateProfile(dateProfile, context) {
+    context.emitter.trigger('datesSet', Object.assign(Object.assign({}, (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.l)(dateProfile.activeRange, context.dateEnv)), { view: context.viewApi }));
+}
+
+function handleEventStore(eventStore, context) {
+    let { emitter } = context;
+    if (emitter.hasHandlers('eventsSet')) {
+        emitter.trigger('eventsSet', (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.w)(eventStore, context));
+    }
+}
+
+/*
+this array is exposed on the root namespace so that UMD plugins can add to it.
+see the rollup-bundles script.
+*/
+const globalPlugins = [
+    arrayEventSourcePlugin,
+    funcEventSourcePlugin,
+    jsonFeedEventSourcePlugin,
+    simpleRecurringEventsPlugin,
+    changeHandlerPlugin,
+    createPlugin({
+        name: 'misc',
+        isLoadingFuncs: [
+            (state) => computeEventSourcesLoading(state.eventSources),
+        ],
+        propSetHandlers: {
+            dateProfile: handleDateProfile,
+            eventStore: handleEventStore,
+        },
+    }),
+];
+
+class TaskRunner {
+    constructor(runTaskOption, drainedOption) {
+        this.runTaskOption = runTaskOption;
+        this.drainedOption = drainedOption;
+        this.queue = [];
+        this.delayedRunner = new _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.D(this.drain.bind(this));
+    }
+    request(task, delay) {
+        this.queue.push(task);
+        this.delayedRunner.request(delay);
+    }
+    pause(scope) {
+        this.delayedRunner.pause(scope);
+    }
+    resume(scope, force) {
+        this.delayedRunner.resume(scope, force);
+    }
+    drain() {
+        let { queue } = this;
+        while (queue.length) {
+            let completedTasks = [];
+            let task;
+            while ((task = queue.shift())) {
+                this.runTask(task);
+                completedTasks.push(task);
+            }
+            this.drained(completedTasks);
+        } // keep going, in case new tasks were added in the drained handler
+    }
+    runTask(task) {
+        if (this.runTaskOption) {
+            this.runTaskOption(task);
+        }
+    }
+    drained(completedTasks) {
+        if (this.drainedOption) {
+            this.drainedOption(completedTasks);
+        }
+    }
+}
+
+// Computes what the title at the top of the calendarApi should be for this view
+function buildTitle(dateProfile, viewOptions, dateEnv) {
+    let range;
+    // for views that span a large unit of time, show the proper interval, ignoring stray days before and after
+    if (/^(year|month)$/.test(dateProfile.currentRangeUnit)) {
+        range = dateProfile.currentRange;
+    }
+    else { // for day units or smaller, use the actual day range
+        range = dateProfile.activeRange;
+    }
+    return dateEnv.formatRange(range.start, range.end, (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.x)(viewOptions.titleFormat || buildTitleFormat(dateProfile)), {
+        isEndExclusive: dateProfile.isRangeAllDay,
+        defaultSeparator: viewOptions.titleRangeSeparator,
+    });
+}
+// Generates the format string that should be used to generate the title for the current date range.
+// Attempts to compute the most appropriate format if not explicitly specified with `titleFormat`.
+function buildTitleFormat(dateProfile) {
+    let { currentRangeUnit } = dateProfile;
+    if (currentRangeUnit === 'year') {
+        return { year: 'numeric' };
+    }
+    if (currentRangeUnit === 'month') {
+        return { year: 'numeric', month: 'long' }; // like "September 2014"
+    }
+    let days = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.y)(dateProfile.currentRange.start, dateProfile.currentRange.end);
+    if (days !== null && days > 1) {
+        // multi-day range. shorter, like "Sep 9 - 10 2014"
+        return { year: 'numeric', month: 'short', day: 'numeric' };
+    }
+    // one day. longer, like "September 9 2014"
+    return { year: 'numeric', month: 'long', day: 'numeric' };
+}
+
+// in future refactor, do the redux-style function(state=initial) for initial-state
+// also, whatever is happening in constructor, have it happen in action queue too
+class CalendarDataManager {
+    constructor(props) {
+        this.computeCurrentViewData = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(this._computeCurrentViewData);
+        this.organizeRawLocales = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(organizeRawLocales);
+        this.buildLocale = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildLocale);
+        this.buildPluginHooks = buildBuildPluginHooks();
+        this.buildDateEnv = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildDateEnv$1);
+        this.buildTheme = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildTheme);
+        this.parseToolbars = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(parseToolbars);
+        this.buildViewSpecs = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildViewSpecs);
+        this.buildDateProfileGenerator = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.A)(buildDateProfileGenerator);
+        this.buildViewApi = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildViewApi);
+        this.buildViewUiProps = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.A)(buildViewUiProps);
+        this.buildEventUiBySource = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildEventUiBySource, _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.E);
+        this.buildEventUiBases = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildEventUiBases);
+        this.parseContextBusinessHours = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.A)(parseContextBusinessHours);
+        this.buildTitle = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildTitle);
+        this.emitter = new _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.F();
+        this.actionRunner = new TaskRunner(this._handleAction.bind(this), this.updateData.bind(this));
+        this.currentCalendarOptionsInput = {};
+        this.currentCalendarOptionsRefined = {};
+        this.currentViewOptionsInput = {};
+        this.currentViewOptionsRefined = {};
+        this.currentCalendarOptionsRefiners = {};
+        this.optionsForRefining = [];
+        this.optionsForHandling = [];
+        this.getCurrentData = () => this.data;
+        this.dispatch = (action) => {
+            this.actionRunner.request(action); // protects against recursive calls to _handleAction
+        };
+        this.props = props;
+        this.actionRunner.pause();
+        let dynamicOptionOverrides = {};
+        let optionsData = this.computeOptionsData(props.optionOverrides, dynamicOptionOverrides, props.calendarApi);
+        let currentViewType = optionsData.calendarOptions.initialView || optionsData.pluginHooks.initialView;
+        let currentViewData = this.computeCurrentViewData(currentViewType, optionsData, props.optionOverrides, dynamicOptionOverrides);
+        // wire things up
+        // TODO: not DRY
+        props.calendarApi.currentDataManager = this;
+        this.emitter.setThisContext(props.calendarApi);
+        this.emitter.setOptions(currentViewData.options);
+        let currentDate = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.G)(optionsData.calendarOptions, optionsData.dateEnv);
+        let dateProfile = currentViewData.dateProfileGenerator.build(currentDate);
+        if (!(0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.H)(dateProfile.activeRange, currentDate)) {
+            currentDate = dateProfile.currentRange.start;
+        }
+        let calendarContext = {
+            dateEnv: optionsData.dateEnv,
+            options: optionsData.calendarOptions,
+            pluginHooks: optionsData.pluginHooks,
+            calendarApi: props.calendarApi,
+            dispatch: this.dispatch,
+            emitter: this.emitter,
+            getCurrentData: this.getCurrentData,
+        };
+        // needs to be after setThisContext
+        for (let callback of optionsData.pluginHooks.contextInit) {
+            callback(calendarContext);
+        }
+        // NOT DRY
+        let eventSources = initEventSources(optionsData.calendarOptions, dateProfile, calendarContext);
+        let initialState = {
+            dynamicOptionOverrides,
+            currentViewType,
+            currentDate,
+            dateProfile,
+            businessHours: this.parseContextBusinessHours(calendarContext),
+            eventSources,
+            eventUiBases: {},
+            eventStore: (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.I)(),
+            renderableEventStore: (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.I)(),
+            dateSelection: null,
+            eventSelection: '',
+            eventDrag: null,
+            eventResize: null,
+            selectionConfig: this.buildViewUiProps(calendarContext).selectionConfig,
+        };
+        let contextAndState = Object.assign(Object.assign({}, calendarContext), initialState);
+        for (let reducer of optionsData.pluginHooks.reducers) {
+            Object.assign(initialState, reducer(null, null, contextAndState));
+        }
+        if (computeIsLoading(initialState, calendarContext)) {
+            this.emitter.trigger('loading', true); // NOT DRY
+        }
+        this.state = initialState;
+        this.updateData();
+        this.actionRunner.resume();
+    }
+    resetOptions(optionOverrides, changedOptionNames) {
+        let { props } = this;
+        if (changedOptionNames === undefined) {
+            props.optionOverrides = optionOverrides;
+        }
+        else {
+            props.optionOverrides = Object.assign(Object.assign({}, (props.optionOverrides || {})), optionOverrides);
+            this.optionsForRefining.push(...changedOptionNames);
+        }
+        if (changedOptionNames === undefined || changedOptionNames.length) {
+            this.actionRunner.request({
+                type: 'NOTHING',
+            });
+        }
+    }
+    _handleAction(action) {
+        let { props, state, emitter } = this;
+        let dynamicOptionOverrides = reduceDynamicOptionOverrides(state.dynamicOptionOverrides, action);
+        let optionsData = this.computeOptionsData(props.optionOverrides, dynamicOptionOverrides, props.calendarApi);
+        let currentViewType = reduceViewType(state.currentViewType, action);
+        let currentViewData = this.computeCurrentViewData(currentViewType, optionsData, props.optionOverrides, dynamicOptionOverrides);
+        // wire things up
+        // TODO: not DRY
+        props.calendarApi.currentDataManager = this;
+        emitter.setThisContext(props.calendarApi);
+        emitter.setOptions(currentViewData.options);
+        let calendarContext = {
+            dateEnv: optionsData.dateEnv,
+            options: optionsData.calendarOptions,
+            pluginHooks: optionsData.pluginHooks,
+            calendarApi: props.calendarApi,
+            dispatch: this.dispatch,
+            emitter,
+            getCurrentData: this.getCurrentData,
+        };
+        let { currentDate, dateProfile } = state;
+        if (this.data && this.data.dateProfileGenerator !== currentViewData.dateProfileGenerator) { // hack
+            dateProfile = currentViewData.dateProfileGenerator.build(currentDate);
+        }
+        currentDate = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.J)(currentDate, action);
+        dateProfile = reduceDateProfile(dateProfile, action, currentDate, currentViewData.dateProfileGenerator);
+        if (action.type === 'PREV' || // TODO: move this logic into DateProfileGenerator
+            action.type === 'NEXT' || // "
+            !(0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.H)(dateProfile.currentRange, currentDate)) {
+            currentDate = dateProfile.currentRange.start;
+        }
+        let eventSources = reduceEventSources(state.eventSources, action, dateProfile, calendarContext);
+        let eventStore = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.K)(state.eventStore, action, eventSources, dateProfile, calendarContext);
+        let isEventsLoading = computeEventSourcesLoading(eventSources); // BAD. also called in this func in computeIsLoading
+        let renderableEventStore = (isEventsLoading && !currentViewData.options.progressiveEventRendering) ?
+            (state.renderableEventStore || eventStore) : // try from previous state
+            eventStore;
+        let { eventUiSingleBase, selectionConfig } = this.buildViewUiProps(calendarContext); // will memoize obj
+        let eventUiBySource = this.buildEventUiBySource(eventSources);
+        let eventUiBases = this.buildEventUiBases(renderableEventStore.defs, eventUiSingleBase, eventUiBySource);
+        let newState = {
+            dynamicOptionOverrides,
+            currentViewType,
+            currentDate,
+            dateProfile,
+            eventSources,
+            eventStore,
+            renderableEventStore,
+            selectionConfig,
+            eventUiBases,
+            businessHours: this.parseContextBusinessHours(calendarContext),
+            dateSelection: reduceDateSelection(state.dateSelection, action),
+            eventSelection: reduceSelectedEvent(state.eventSelection, action),
+            eventDrag: reduceEventDrag(state.eventDrag, action),
+            eventResize: reduceEventResize(state.eventResize, action),
+        };
+        let contextAndState = Object.assign(Object.assign({}, calendarContext), newState);
+        for (let reducer of optionsData.pluginHooks.reducers) {
+            Object.assign(newState, reducer(state, action, contextAndState)); // give the OLD state, for old value
+        }
+        let wasLoading = computeIsLoading(state, calendarContext);
+        let isLoading = computeIsLoading(newState, calendarContext);
+        // TODO: use propSetHandlers in plugin system
+        if (!wasLoading && isLoading) {
+            emitter.trigger('loading', true);
+        }
+        else if (wasLoading && !isLoading) {
+            emitter.trigger('loading', false);
+        }
+        this.state = newState;
+        if (props.onAction) {
+            props.onAction(action);
+        }
+    }
+    updateData() {
+        let { props, state } = this;
+        let oldData = this.data;
+        let optionsData = this.computeOptionsData(props.optionOverrides, state.dynamicOptionOverrides, props.calendarApi);
+        let currentViewData = this.computeCurrentViewData(state.currentViewType, optionsData, props.optionOverrides, state.dynamicOptionOverrides);
+        let data = this.data = Object.assign(Object.assign(Object.assign({ viewTitle: this.buildTitle(state.dateProfile, currentViewData.options, optionsData.dateEnv), calendarApi: props.calendarApi, dispatch: this.dispatch, emitter: this.emitter, getCurrentData: this.getCurrentData }, optionsData), currentViewData), state);
+        let changeHandlers = optionsData.pluginHooks.optionChangeHandlers;
+        let oldCalendarOptions = oldData && oldData.calendarOptions;
+        let newCalendarOptions = optionsData.calendarOptions;
+        if (oldCalendarOptions && oldCalendarOptions !== newCalendarOptions) {
+            if (oldCalendarOptions.timeZone !== newCalendarOptions.timeZone) {
+                // hack
+                state.eventSources = data.eventSources = reduceEventSourcesNewTimeZone(data.eventSources, state.dateProfile, data);
+                state.eventStore = data.eventStore = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.L)(data.eventStore, oldData.dateEnv, data.dateEnv);
+                state.renderableEventStore = data.renderableEventStore = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.L)(data.renderableEventStore, oldData.dateEnv, data.dateEnv);
+            }
+            for (let optionName in changeHandlers) {
+                if (this.optionsForHandling.indexOf(optionName) !== -1 ||
+                    oldCalendarOptions[optionName] !== newCalendarOptions[optionName]) {
+                    changeHandlers[optionName](newCalendarOptions[optionName], data);
+                }
+            }
+        }
+        this.optionsForHandling = [];
+        if (props.onData) {
+            props.onData(data);
+        }
+    }
+    computeOptionsData(optionOverrides, dynamicOptionOverrides, calendarApi) {
+        // TODO: blacklist options that are handled by optionChangeHandlers
+        if (!this.optionsForRefining.length &&
+            optionOverrides === this.stableOptionOverrides &&
+            dynamicOptionOverrides === this.stableDynamicOptionOverrides) {
+            return this.stableCalendarOptionsData;
+        }
+        let { refinedOptions, pluginHooks, localeDefaults, availableLocaleData, extra, } = this.processRawCalendarOptions(optionOverrides, dynamicOptionOverrides);
+        warnUnknownOptions(extra);
+        let dateEnv = this.buildDateEnv(refinedOptions.timeZone, refinedOptions.locale, refinedOptions.weekNumberCalculation, refinedOptions.firstDay, refinedOptions.weekText, pluginHooks, availableLocaleData, refinedOptions.defaultRangeSeparator);
+        let viewSpecs = this.buildViewSpecs(pluginHooks.views, this.stableOptionOverrides, this.stableDynamicOptionOverrides, localeDefaults);
+        let theme = this.buildTheme(refinedOptions, pluginHooks);
+        let toolbarConfig = this.parseToolbars(refinedOptions, this.stableOptionOverrides, theme, viewSpecs, calendarApi);
+        return this.stableCalendarOptionsData = {
+            calendarOptions: refinedOptions,
+            pluginHooks,
+            dateEnv,
+            viewSpecs,
+            theme,
+            toolbarConfig,
+            localeDefaults,
+            availableRawLocales: availableLocaleData.map,
+        };
+    }
+    // always called from behind a memoizer
+    processRawCalendarOptions(optionOverrides, dynamicOptionOverrides) {
+        let { locales, locale } = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.M)([
+            _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.e,
+            optionOverrides,
+            dynamicOptionOverrides,
+        ]);
+        let availableLocaleData = this.organizeRawLocales(locales);
+        let availableRawLocales = availableLocaleData.map;
+        let localeDefaults = this.buildLocale(locale || availableLocaleData.defaultCode, availableRawLocales).options;
+        let pluginHooks = this.buildPluginHooks(optionOverrides.plugins || [], globalPlugins);
+        let refiners = this.currentCalendarOptionsRefiners = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.N), _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.O), _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.P), pluginHooks.listenerRefiners), pluginHooks.optionRefiners);
+        let extra = {};
+        let raw = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.M)([
+            _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.e,
+            localeDefaults,
+            optionOverrides,
+            dynamicOptionOverrides,
+        ]);
+        let refined = {};
+        let currentRaw = this.currentCalendarOptionsInput;
+        let currentRefined = this.currentCalendarOptionsRefined;
+        let anyChanges = false;
+        for (let optionName in raw) {
+            if (this.optionsForRefining.indexOf(optionName) === -1 && (raw[optionName] === currentRaw[optionName] || (_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.Q[optionName] &&
+                (optionName in currentRaw) &&
+                _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.Q[optionName](currentRaw[optionName], raw[optionName])))) {
+                refined[optionName] = currentRefined[optionName];
+            }
+            else if (refiners[optionName]) {
+                refined[optionName] = refiners[optionName](raw[optionName]);
+                anyChanges = true;
+            }
+            else {
+                extra[optionName] = currentRaw[optionName];
+            }
+        }
+        if (anyChanges) {
+            this.currentCalendarOptionsInput = raw;
+            this.currentCalendarOptionsRefined = refined;
+            this.stableOptionOverrides = optionOverrides;
+            this.stableDynamicOptionOverrides = dynamicOptionOverrides;
+        }
+        this.optionsForHandling.push(...this.optionsForRefining);
+        this.optionsForRefining = [];
+        return {
+            rawOptions: this.currentCalendarOptionsInput,
+            refinedOptions: this.currentCalendarOptionsRefined,
+            pluginHooks,
+            availableLocaleData,
+            localeDefaults,
+            extra,
+        };
+    }
+    _computeCurrentViewData(viewType, optionsData, optionOverrides, dynamicOptionOverrides) {
+        let viewSpec = optionsData.viewSpecs[viewType];
+        if (!viewSpec) {
+            throw new Error(`viewType "${viewType}" is not available. Please make sure you've loaded all neccessary plugins`);
+        }
+        let { refinedOptions, extra } = this.processRawViewOptions(viewSpec, optionsData.pluginHooks, optionsData.localeDefaults, optionOverrides, dynamicOptionOverrides);
+        warnUnknownOptions(extra);
+        let dateProfileGenerator = this.buildDateProfileGenerator({
+            dateProfileGeneratorClass: viewSpec.optionDefaults.dateProfileGeneratorClass,
+            duration: viewSpec.duration,
+            durationUnit: viewSpec.durationUnit,
+            usesMinMaxTime: viewSpec.optionDefaults.usesMinMaxTime,
+            dateEnv: optionsData.dateEnv,
+            calendarApi: this.props.calendarApi,
+            slotMinTime: refinedOptions.slotMinTime,
+            slotMaxTime: refinedOptions.slotMaxTime,
+            showNonCurrentDates: refinedOptions.showNonCurrentDates,
+            dayCount: refinedOptions.dayCount,
+            dateAlignment: refinedOptions.dateAlignment,
+            dateIncrement: refinedOptions.dateIncrement,
+            hiddenDays: refinedOptions.hiddenDays,
+            weekends: refinedOptions.weekends,
+            nowInput: refinedOptions.now,
+            validRangeInput: refinedOptions.validRange,
+            visibleRangeInput: refinedOptions.visibleRange,
+            fixedWeekCount: refinedOptions.fixedWeekCount,
+        });
+        let viewApi = this.buildViewApi(viewType, this.getCurrentData, optionsData.dateEnv);
+        return { viewSpec, options: refinedOptions, dateProfileGenerator, viewApi };
+    }
+    processRawViewOptions(viewSpec, pluginHooks, localeDefaults, optionOverrides, dynamicOptionOverrides) {
+        let raw = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.M)([
+            _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.e,
+            viewSpec.optionDefaults,
+            localeDefaults,
+            optionOverrides,
+            viewSpec.optionOverrides,
+            dynamicOptionOverrides,
+        ]);
+        let refiners = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.N), _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.O), _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.P), _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.R), pluginHooks.listenerRefiners), pluginHooks.optionRefiners);
+        let refined = {};
+        let currentRaw = this.currentViewOptionsInput;
+        let currentRefined = this.currentViewOptionsRefined;
+        let anyChanges = false;
+        let extra = {};
+        for (let optionName in raw) {
+            if (raw[optionName] === currentRaw[optionName] ||
+                (_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.Q[optionName] &&
+                    _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.Q[optionName](raw[optionName], currentRaw[optionName]))) {
+                refined[optionName] = currentRefined[optionName];
+            }
+            else {
+                if (raw[optionName] === this.currentCalendarOptionsInput[optionName] ||
+                    (_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.Q[optionName] &&
+                        _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.Q[optionName](raw[optionName], this.currentCalendarOptionsInput[optionName]))) {
+                    if (optionName in this.currentCalendarOptionsRefined) { // might be an "extra" prop
+                        refined[optionName] = this.currentCalendarOptionsRefined[optionName];
+                    }
+                }
+                else if (refiners[optionName]) {
+                    refined[optionName] = refiners[optionName](raw[optionName]);
+                }
+                else {
+                    extra[optionName] = raw[optionName];
+                }
+                anyChanges = true;
+            }
+        }
+        if (anyChanges) {
+            this.currentViewOptionsInput = raw;
+            this.currentViewOptionsRefined = refined;
+        }
+        return {
+            rawOptions: this.currentViewOptionsInput,
+            refinedOptions: this.currentViewOptionsRefined,
+            extra,
+        };
+    }
+}
+function buildDateEnv$1(timeZone, explicitLocale, weekNumberCalculation, firstDay, weekText, pluginHooks, availableLocaleData, defaultSeparator) {
+    let locale = buildLocale(explicitLocale || availableLocaleData.defaultCode, availableLocaleData.map);
+    return new _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.S({
+        calendarSystem: 'gregory',
+        timeZone,
+        namedTimeZoneImpl: pluginHooks.namedTimeZonedImpl,
+        locale,
+        weekNumberCalculation,
+        firstDay,
+        weekText,
+        cmdFormatter: pluginHooks.cmdFormatter,
+        defaultSeparator,
+    });
+}
+function buildTheme(options, pluginHooks) {
+    let ThemeClass = pluginHooks.themeClasses[options.themeSystem] || StandardTheme;
+    return new ThemeClass(options);
+}
+function buildDateProfileGenerator(props) {
+    let DateProfileGeneratorClass = props.dateProfileGeneratorClass || _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.U;
+    return new DateProfileGeneratorClass(props);
+}
+function buildViewApi(type, getCurrentData, dateEnv) {
+    return new ViewImpl(type, getCurrentData, dateEnv);
+}
+function buildEventUiBySource(eventSources) {
+    return (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a)(eventSources, (eventSource) => eventSource.ui);
+}
+function buildEventUiBases(eventDefs, eventUiSingleBase, eventUiBySource) {
+    let eventUiBases = { '': eventUiSingleBase };
+    for (let defId in eventDefs) {
+        let def = eventDefs[defId];
+        if (def.sourceId && eventUiBySource[def.sourceId]) {
+            eventUiBases[defId] = eventUiBySource[def.sourceId];
+        }
+    }
+    return eventUiBases;
+}
+function buildViewUiProps(calendarContext) {
+    let { options } = calendarContext;
+    return {
+        eventUiSingleBase: (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.W)({
+            display: options.eventDisplay,
+            editable: options.editable,
+            startEditable: options.eventStartEditable,
+            durationEditable: options.eventDurationEditable,
+            constraint: options.eventConstraint,
+            overlap: typeof options.eventOverlap === 'boolean' ? options.eventOverlap : undefined,
+            allow: options.eventAllow,
+            backgroundColor: options.eventBackgroundColor,
+            borderColor: options.eventBorderColor,
+            textColor: options.eventTextColor,
+            color: options.eventColor,
+            // classNames: options.eventClassNames // render hook will handle this
+        }, calendarContext),
+        selectionConfig: (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.W)({
+            constraint: options.selectConstraint,
+            overlap: typeof options.selectOverlap === 'boolean' ? options.selectOverlap : undefined,
+            allow: options.selectAllow,
+        }, calendarContext),
+    };
+}
+function computeIsLoading(state, context) {
+    for (let isLoadingFunc of context.pluginHooks.isLoadingFuncs) {
+        if (isLoadingFunc(state)) {
+            return true;
+        }
+    }
+    return false;
+}
+function parseContextBusinessHours(calendarContext) {
+    return (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.X)(calendarContext.options.businessHours, calendarContext);
+}
+function warnUnknownOptions(options, viewName) {
+    for (let optionName in options) {
+        console.warn(`Unknown option '${optionName}'` +
+            (viewName ? ` for view '${viewName}'` : ''));
+    }
+}
+
+class ToolbarSection extends _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    render() {
+        let children = this.props.widgetGroups.map((widgetGroup) => this.renderWidgetGroup(widgetGroup));
+        return (0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)('div', { className: 'fc-toolbar-chunk' }, ...children);
+    }
+    renderWidgetGroup(widgetGroup) {
+        let { props } = this;
+        let { theme } = this.context;
+        let children = [];
+        let isOnlyButtons = true;
+        for (let widget of widgetGroup) {
+            let { buttonName, buttonClick, buttonText, buttonIcon, buttonHint } = widget;
+            if (buttonName === 'title') {
+                isOnlyButtons = false;
+                children.push((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)("h2", { className: "fc-toolbar-title", id: props.titleId }, props.title));
+            }
+            else {
+                let isPressed = buttonName === props.activeButton;
+                let isDisabled = (!props.isTodayEnabled && buttonName === 'today') ||
+                    (!props.isPrevEnabled && buttonName === 'prev') ||
+                    (!props.isNextEnabled && buttonName === 'next');
+                let buttonClasses = [`fc-${buttonName}-button`, theme.getClass('button')];
+                if (isPressed) {
+                    buttonClasses.push(theme.getClass('buttonActive'));
+                }
+                children.push((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)("button", { type: "button", title: typeof buttonHint === 'function' ? buttonHint(props.navUnit) : buttonHint, disabled: isDisabled, "aria-pressed": isPressed, className: buttonClasses.join(' '), onClick: buttonClick }, buttonText || (buttonIcon ? (0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)("span", { className: buttonIcon }) : '')));
+            }
+        }
+        if (children.length > 1) {
+            let groupClassName = (isOnlyButtons && theme.getClass('buttonGroup')) || '';
+            return (0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)('div', { className: groupClassName }, ...children);
+        }
+        return children[0];
+    }
+}
+
+class Toolbar extends _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    render() {
+        let { model, extraClassName } = this.props;
+        let forceLtr = false;
+        let startContent;
+        let endContent;
+        let sectionWidgets = model.sectionWidgets;
+        let centerContent = sectionWidgets.center;
+        if (sectionWidgets.left) {
+            forceLtr = true;
+            startContent = sectionWidgets.left;
+        }
+        else {
+            startContent = sectionWidgets.start;
+        }
+        if (sectionWidgets.right) {
+            forceLtr = true;
+            endContent = sectionWidgets.right;
+        }
+        else {
+            endContent = sectionWidgets.end;
+        }
+        let classNames = [
+            extraClassName || '',
+            'fc-toolbar',
+            forceLtr ? 'fc-toolbar-ltr' : '',
+        ];
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: classNames.join(' ') },
+            this.renderSection('start', startContent || []),
+            this.renderSection('center', centerContent || []),
+            this.renderSection('end', endContent || [])));
+    }
+    renderSection(key, widgetGroups) {
+        let { props } = this;
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(ToolbarSection, { key: key, widgetGroups: widgetGroups, title: props.title, navUnit: props.navUnit, activeButton: props.activeButton, isTodayEnabled: props.isTodayEnabled, isPrevEnabled: props.isPrevEnabled, isNextEnabled: props.isNextEnabled, titleId: props.titleId }));
+    }
+}
+
+class ViewHarness extends _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    constructor() {
+        super(...arguments);
+        this.state = {
+            availableWidth: null,
+        };
+        this.handleEl = (el) => {
+            this.el = el;
+            (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.Y)(this.props.elRef, el);
+            this.updateAvailableWidth();
+        };
+        this.handleResize = () => {
+            this.updateAvailableWidth();
+        };
+    }
+    render() {
+        let { props, state } = this;
+        let { aspectRatio } = props;
+        let classNames = [
+            'fc-view-harness',
+            (aspectRatio || props.liquid || props.height)
+                ? 'fc-view-harness-active' // harness controls the height
+                : 'fc-view-harness-passive', // let the view do the height
+        ];
+        let height = '';
+        let paddingBottom = '';
+        if (aspectRatio) {
+            if (state.availableWidth !== null) {
+                height = state.availableWidth / aspectRatio;
+            }
+            else {
+                // while waiting to know availableWidth, we can't set height to *zero*
+                // because will cause lots of unnecessary scrollbars within scrollgrid.
+                // BETTER: don't start rendering ANYTHING yet until we know container width
+                // NOTE: why not always use paddingBottom? Causes height oscillation (issue 5606)
+                paddingBottom = `${(1 / aspectRatio) * 100}%`;
+            }
+        }
+        else {
+            height = props.height || '';
+        }
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { "aria-labelledby": props.labeledById, ref: this.handleEl, className: classNames.join(' '), style: { height, paddingBottom } }, props.children));
+    }
+    componentDidMount() {
+        this.context.addResizeHandler(this.handleResize);
+    }
+    componentWillUnmount() {
+        this.context.removeResizeHandler(this.handleResize);
+    }
+    updateAvailableWidth() {
+        if (this.el && // needed. but why?
+            this.props.aspectRatio // aspectRatio is the only height setting that needs availableWidth
+        ) {
+            this.setState({ availableWidth: this.el.offsetWidth });
+        }
+    }
+}
+
+/*
+Detects when the user clicks on an event within a DateComponent
+*/
+class EventClicking extends _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.Z {
+    constructor(settings) {
+        super(settings);
+        this.handleSegClick = (ev, segEl) => {
+            let { component } = this;
+            let { context } = component;
+            let seg = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__._)(segEl);
+            if (seg && // might be the <div> surrounding the more link
+                component.isValidSegDownEl(ev.target)) {
+                // our way to simulate a link click for elements that can't be <a> tags
+                // grab before trigger fired in case trigger trashes DOM thru rerendering
+                let hasUrlContainer = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.$)(ev.target, '.fc-event-forced-url');
+                let url = hasUrlContainer ? hasUrlContainer.querySelector('a[href]').href : '';
+                context.emitter.trigger('eventClick', {
+                    el: segEl,
+                    event: new _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a0(component.context, seg.eventRange.def, seg.eventRange.instance),
+                    jsEvent: ev,
+                    view: context.viewApi,
+                });
+                if (url && !ev.defaultPrevented) {
+                    window.location.href = url;
+                }
+            }
+        };
+        this.destroy = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a1)(settings.el, 'click', '.fc-event', // on both fg and bg events
+        this.handleSegClick);
+    }
+}
+
+/*
+Triggers events and adds/removes core classNames when the user's pointer
+enters/leaves event-elements of a component.
+*/
+class EventHovering extends _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.Z {
+    constructor(settings) {
+        super(settings);
+        // for simulating an eventMouseLeave when the event el is destroyed while mouse is over it
+        this.handleEventElRemove = (el) => {
+            if (el === this.currentSegEl) {
+                this.handleSegLeave(null, this.currentSegEl);
+            }
+        };
+        this.handleSegEnter = (ev, segEl) => {
+            if ((0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__._)(segEl)) { // TODO: better way to make sure not hovering over more+ link or its wrapper
+                this.currentSegEl = segEl;
+                this.triggerEvent('eventMouseEnter', ev, segEl);
+            }
+        };
+        this.handleSegLeave = (ev, segEl) => {
+            if (this.currentSegEl) {
+                this.currentSegEl = null;
+                this.triggerEvent('eventMouseLeave', ev, segEl);
+            }
+        };
+        this.removeHoverListeners = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a2)(settings.el, '.fc-event', // on both fg and bg events
+        this.handleSegEnter, this.handleSegLeave);
+    }
+    destroy() {
+        this.removeHoverListeners();
+    }
+    triggerEvent(publicEvName, ev, segEl) {
+        let { component } = this;
+        let { context } = component;
+        let seg = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__._)(segEl);
+        if (!ev || component.isValidSegDownEl(ev.target)) {
+            context.emitter.trigger(publicEvName, {
+                el: segEl,
+                event: new _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a0(context, seg.eventRange.def, seg.eventRange.instance),
+                jsEvent: ev,
+                view: context.viewApi,
+            });
+        }
+    }
+}
+
+class CalendarContent extends _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a3 {
+    constructor() {
+        super(...arguments);
+        this.buildViewContext = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a4);
+        this.buildViewPropTransformers = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildViewPropTransformers);
+        this.buildToolbarProps = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildToolbarProps);
+        this.headerRef = (0,preact__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.footerRef = (0,preact__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.interactionsStore = {};
+        // eslint-disable-next-line
+        this.state = {
+            viewLabelId: (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a5)(),
+        };
+        // Component Registration
+        // -----------------------------------------------------------------------------------------------------------------
+        this.registerInteractiveComponent = (component, settingsInput) => {
+            let settings = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a6)(component, settingsInput);
+            let DEFAULT_INTERACTIONS = [
+                EventClicking,
+                EventHovering,
+            ];
+            let interactionClasses = DEFAULT_INTERACTIONS.concat(this.props.pluginHooks.componentInteractions);
+            let interactions = interactionClasses.map((TheInteractionClass) => new TheInteractionClass(settings));
+            this.interactionsStore[component.uid] = interactions;
+            _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a7[component.uid] = settings;
+        };
+        this.unregisterInteractiveComponent = (component) => {
+            let listeners = this.interactionsStore[component.uid];
+            if (listeners) {
+                for (let listener of listeners) {
+                    listener.destroy();
+                }
+                delete this.interactionsStore[component.uid];
+            }
+            delete _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a7[component.uid];
+        };
+        // Resizing
+        // -----------------------------------------------------------------------------------------------------------------
+        this.resizeRunner = new _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.D(() => {
+            this.props.emitter.trigger('_resize', true); // should window resizes be considered "forced" ?
+            this.props.emitter.trigger('windowResize', { view: this.props.viewApi });
+        });
+        this.handleWindowResize = (ev) => {
+            let { options } = this.props;
+            if (options.handleWindowResize &&
+                ev.target === window // avoid jqui events
+            ) {
+                this.resizeRunner.request(options.windowResizeDelay);
+            }
+        };
+    }
+    /*
+    renders INSIDE of an outer div
+    */
+    render() {
+        let { props } = this;
+        let { toolbarConfig, options } = props;
+        let toolbarProps = this.buildToolbarProps(props.viewSpec, props.dateProfile, props.dateProfileGenerator, props.currentDate, (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a8)(props.options.now, props.dateEnv), // TODO: use NowTimer????
+        props.viewTitle);
+        let viewVGrow = false;
+        let viewHeight = '';
+        let viewAspectRatio;
+        if (props.isHeightAuto || props.forPrint) {
+            viewHeight = '';
+        }
+        else if (options.height != null) {
+            viewVGrow = true;
+        }
+        else if (options.contentHeight != null) {
+            viewHeight = options.contentHeight;
+        }
+        else {
+            viewAspectRatio = Math.max(options.aspectRatio, 0.5); // prevent from getting too tall
+        }
+        let viewContext = this.buildViewContext(props.viewSpec, props.viewApi, props.options, props.dateProfileGenerator, props.dateEnv, props.theme, props.pluginHooks, props.dispatch, props.getCurrentData, props.emitter, props.calendarApi, this.registerInteractiveComponent, this.unregisterInteractiveComponent);
+        let viewLabelId = (toolbarConfig.header && toolbarConfig.header.hasTitle)
+            ? this.state.viewLabelId
+            : '';
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.V.Provider, { value: viewContext },
+            toolbarConfig.header && ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(Toolbar, Object.assign({ ref: this.headerRef, extraClassName: "fc-header-toolbar", model: toolbarConfig.header, titleId: viewLabelId }, toolbarProps))),
+            (0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(ViewHarness, { liquid: viewVGrow, height: viewHeight, aspectRatio: viewAspectRatio, labeledById: viewLabelId },
+                this.renderView(props),
+                this.buildAppendContent()),
+            toolbarConfig.footer && ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(Toolbar, Object.assign({ ref: this.footerRef, extraClassName: "fc-footer-toolbar", model: toolbarConfig.footer, titleId: "" }, toolbarProps)))));
+    }
+    componentDidMount() {
+        let { props } = this;
+        this.calendarInteractions = props.pluginHooks.calendarInteractions
+            .map((CalendarInteractionClass) => new CalendarInteractionClass(props));
+        window.addEventListener('resize', this.handleWindowResize);
+        let { propSetHandlers } = props.pluginHooks;
+        for (let propName in propSetHandlers) {
+            propSetHandlers[propName](props[propName], props);
+        }
+    }
+    componentDidUpdate(prevProps) {
+        let { props } = this;
+        let { propSetHandlers } = props.pluginHooks;
+        for (let propName in propSetHandlers) {
+            if (props[propName] !== prevProps[propName]) {
+                propSetHandlers[propName](props[propName], props);
+            }
+        }
+    }
+    componentWillUnmount() {
+        window.removeEventListener('resize', this.handleWindowResize);
+        this.resizeRunner.clear();
+        for (let interaction of this.calendarInteractions) {
+            interaction.destroy();
+        }
+        this.props.emitter.trigger('_unmount');
+    }
+    buildAppendContent() {
+        let { props } = this;
+        let children = props.pluginHooks.viewContainerAppends.map((buildAppendContent) => buildAppendContent(props));
+        return (0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(preact__WEBPACK_IMPORTED_MODULE_1__.Fragment, {}, ...children);
+    }
+    renderView(props) {
+        let { pluginHooks } = props;
+        let { viewSpec } = props;
+        let viewProps = {
+            dateProfile: props.dateProfile,
+            businessHours: props.businessHours,
+            eventStore: props.renderableEventStore,
+            eventUiBases: props.eventUiBases,
+            dateSelection: props.dateSelection,
+            eventSelection: props.eventSelection,
+            eventDrag: props.eventDrag,
+            eventResize: props.eventResize,
+            isHeightAuto: props.isHeightAuto,
+            forPrint: props.forPrint,
+        };
+        let transformers = this.buildViewPropTransformers(pluginHooks.viewPropsTransformers);
+        for (let transformer of transformers) {
+            Object.assign(viewProps, transformer.transform(viewProps, props));
+        }
+        let ViewComponent = viewSpec.component;
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(ViewComponent, Object.assign({}, viewProps)));
+    }
+}
+function buildToolbarProps(viewSpec, dateProfile, dateProfileGenerator, currentDate, now, title) {
+    // don't force any date-profiles to valid date profiles (the `false`) so that we can tell if it's invalid
+    let todayInfo = dateProfileGenerator.build(now, undefined, false); // TODO: need `undefined` or else INFINITE LOOP for some reason
+    let prevInfo = dateProfileGenerator.buildPrev(dateProfile, currentDate, false);
+    let nextInfo = dateProfileGenerator.buildNext(dateProfile, currentDate, false);
+    return {
+        title,
+        activeButton: viewSpec.type,
+        navUnit: viewSpec.singleUnit,
+        isTodayEnabled: todayInfo.isValid && !(0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.H)(dateProfile.currentRange, now),
+        isPrevEnabled: prevInfo.isValid,
+        isNextEnabled: nextInfo.isValid,
+    };
+}
+// Plugin
+// -----------------------------------------------------------------------------------------------------------------
+function buildViewPropTransformers(theClasses) {
+    return theClasses.map((TheClass) => new TheClass());
+}
+
+class Calendar extends _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.a9 {
+    constructor(el, optionOverrides = {}) {
+        super();
+        this.isRendering = false;
+        this.isRendered = false;
+        this.currentClassNames = [];
+        this.customContentRenderId = 0;
+        this.handleAction = (action) => {
+            // actions we know we want to render immediately
+            switch (action.type) {
+                case 'SET_EVENT_DRAG':
+                case 'SET_EVENT_RESIZE':
+                    this.renderRunner.tryDrain();
+            }
+        };
+        this.handleData = (data) => {
+            this.currentData = data;
+            this.renderRunner.request(data.calendarOptions.rerenderDelay);
+        };
+        this.handleRenderRequest = () => {
+            if (this.isRendering) {
+                this.isRendered = true;
+                let { currentData } = this;
+                (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.aa)(() => {
+                    (0,preact__WEBPACK_IMPORTED_MODULE_1__.render)((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.ab, { options: currentData.calendarOptions, theme: currentData.theme, emitter: currentData.emitter }, (classNames, height, isHeightAuto, forPrint) => {
+                        this.setClassNames(classNames);
+                        this.setHeight(height);
+                        return ((0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.ac.Provider, { value: this.customContentRenderId },
+                            (0,preact__WEBPACK_IMPORTED_MODULE_1__.createElement)(CalendarContent, Object.assign({ isHeightAuto: isHeightAuto, forPrint: forPrint }, currentData))));
+                    }), this.el);
+                });
+            }
+            else if (this.isRendered) {
+                this.isRendered = false;
+                (0,preact__WEBPACK_IMPORTED_MODULE_1__.render)(null, this.el);
+                this.setClassNames([]);
+                this.setHeight('');
+            }
+        };
+        (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.ad)(el);
+        this.el = el;
+        this.renderRunner = new _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.D(this.handleRenderRequest);
+        new CalendarDataManager({
+            optionOverrides,
+            calendarApi: this,
+            onAction: this.handleAction,
+            onData: this.handleData,
+        });
+    }
+    render() {
+        let wasRendering = this.isRendering;
+        if (!wasRendering) {
+            this.isRendering = true;
+        }
+        else {
+            this.customContentRenderId += 1;
+        }
+        this.renderRunner.request();
+        if (wasRendering) {
+            this.updateSize();
+        }
+    }
+    destroy() {
+        if (this.isRendering) {
+            this.isRendering = false;
+            this.renderRunner.request();
+        }
+    }
+    updateSize() {
+        (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.aa)(() => {
+            super.updateSize();
+        });
+    }
+    batchRendering(func) {
+        this.renderRunner.pause('batchRendering');
+        func();
+        this.renderRunner.resume('batchRendering');
+    }
+    pauseRendering() {
+        this.renderRunner.pause('pauseRendering');
+    }
+    resumeRendering() {
+        this.renderRunner.resume('pauseRendering', true);
+    }
+    resetOptions(optionOverrides, changedOptionNames) {
+        this.currentDataManager.resetOptions(optionOverrides, changedOptionNames);
+    }
+    setClassNames(classNames) {
+        if (!(0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.i)(classNames, this.currentClassNames)) {
+            let { classList } = this.el;
+            for (let className of this.currentClassNames) {
+                classList.remove(className);
+            }
+            for (let className of classNames) {
+                classList.add(className);
+            }
+            this.currentClassNames = classNames;
+        }
+    }
+    setHeight(height) {
+        (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.ae)(this.el, 'height', height);
+    }
+}
+
+function formatDate(dateInput, options = {}) {
+    let dateEnv = buildDateEnv(options);
+    let formatter = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.x)(options);
+    let dateMeta = dateEnv.createMarkerMeta(dateInput);
+    if (!dateMeta) { // TODO: warning?
+        return '';
+    }
+    return dateEnv.format(dateMeta.marker, formatter, {
+        forcedTzo: dateMeta.forcedTzo,
+    });
+}
+function formatRange(startInput, endInput, options) {
+    let dateEnv = buildDateEnv(typeof options === 'object' && options ? options : {}); // pass in if non-null object
+    let formatter = (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.x)(options);
+    let startMeta = dateEnv.createMarkerMeta(startInput);
+    let endMeta = dateEnv.createMarkerMeta(endInput);
+    if (!startMeta || !endMeta) { // TODO: warning?
+        return '';
+    }
+    return dateEnv.formatRange(startMeta.marker, endMeta.marker, formatter, {
+        forcedStartTzo: startMeta.forcedTzo,
+        forcedEndTzo: endMeta.forcedTzo,
+        isEndExclusive: options.isEndExclusive,
+        defaultSeparator: _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.e.defaultRangeSeparator,
+    });
+}
+// TODO: more DRY and optimized
+function buildDateEnv(settings) {
+    let locale = buildLocale(settings.locale || 'en', organizeRawLocales([]).map); // TODO: don't hardcode 'en' everywhere
+    return new _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.S(Object.assign(Object.assign({ timeZone: _internal_common_js__WEBPACK_IMPORTED_MODULE_0__.e.timeZone, calendarSystem: 'gregory' }, settings), { locale }));
+}
+
+// HELPERS
+/*
+if nextDayThreshold is specified, slicing is done in an all-day fashion.
+you can get nextDayThreshold from context.nextDayThreshold
+*/
+function sliceEvents(props, allDay) {
+    return (0,_internal_common_js__WEBPACK_IMPORTED_MODULE_0__.af)(props.eventStore, props.eventUiBases, props.dateProfile.activeRange, allDay ? props.nextDayThreshold : null).fg;
+}
+
+const version = '6.1.9';
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/@fullcalendar/core/internal-common.js":
+/*!************************************************************!*\
+  !*** ./node_modules/@fullcalendar/core/internal-common.js ***!
+  \************************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   $: function() { return /* binding */ elementClosest; },
+/* harmony export */   A: function() { return /* binding */ memoizeObjArg; },
+/* harmony export */   B: function() { return /* binding */ BaseComponent; },
+/* harmony export */   C: function() { return /* binding */ ContentContainer; },
+/* harmony export */   D: function() { return /* binding */ DelayedRunner; },
+/* harmony export */   E: function() { return /* binding */ isPropsEqual; },
+/* harmony export */   F: function() { return /* binding */ Emitter; },
+/* harmony export */   G: function() { return /* binding */ getInitialDate; },
+/* harmony export */   H: function() { return /* binding */ rangeContainsMarker; },
+/* harmony export */   I: function() { return /* binding */ createEmptyEventStore; },
+/* harmony export */   J: function() { return /* binding */ reduceCurrentDate; },
+/* harmony export */   K: function() { return /* binding */ reduceEventStore; },
+/* harmony export */   L: function() { return /* binding */ rezoneEventStoreDates; },
+/* harmony export */   M: function() { return /* binding */ mergeRawOptions; },
+/* harmony export */   N: function() { return /* binding */ BASE_OPTION_REFINERS; },
+/* harmony export */   O: function() { return /* binding */ CALENDAR_LISTENER_REFINERS; },
+/* harmony export */   P: function() { return /* binding */ CALENDAR_OPTION_REFINERS; },
+/* harmony export */   Q: function() { return /* binding */ COMPLEX_OPTION_COMPARATORS; },
+/* harmony export */   R: function() { return /* binding */ VIEW_OPTION_REFINERS; },
+/* harmony export */   S: function() { return /* binding */ DateEnv; },
+/* harmony export */   T: function() { return /* binding */ Theme; },
+/* harmony export */   U: function() { return /* binding */ DateProfileGenerator; },
+/* harmony export */   V: function() { return /* binding */ ViewContextType; },
+/* harmony export */   W: function() { return /* binding */ createEventUi; },
+/* harmony export */   X: function() { return /* binding */ parseBusinessHours; },
+/* harmony export */   Y: function() { return /* binding */ setRef; },
+/* harmony export */   Z: function() { return /* binding */ Interaction; },
+/* harmony export */   _: function() { return /* binding */ getElSeg; },
+/* harmony export */   a: function() { return /* binding */ mapHash; },
+/* harmony export */   a$: function() { return /* binding */ getSlotClassNames; },
+/* harmony export */   a0: function() { return /* binding */ EventImpl; },
+/* harmony export */   a1: function() { return /* binding */ listenBySelector; },
+/* harmony export */   a2: function() { return /* binding */ listenToHoverBySelector; },
+/* harmony export */   a3: function() { return /* binding */ PureComponent; },
+/* harmony export */   a4: function() { return /* binding */ buildViewContext; },
+/* harmony export */   a5: function() { return /* binding */ getUniqueDomId; },
+/* harmony export */   a6: function() { return /* binding */ parseInteractionSettings; },
+/* harmony export */   a7: function() { return /* binding */ interactionSettingsStore; },
+/* harmony export */   a8: function() { return /* binding */ getNow; },
+/* harmony export */   a9: function() { return /* binding */ CalendarImpl; },
+/* harmony export */   aA: function() { return /* binding */ diffDates; },
+/* harmony export */   aB: function() { return /* binding */ removeExact; },
+/* harmony export */   aC: function() { return /* binding */ memoizeArraylike; },
+/* harmony export */   aD: function() { return /* binding */ memoizeHashlike; },
+/* harmony export */   aE: function() { return /* binding */ intersectRects; },
+/* harmony export */   aF: function() { return /* binding */ pointInsideRect; },
+/* harmony export */   aG: function() { return /* binding */ constrainPoint; },
+/* harmony export */   aH: function() { return /* binding */ getRectCenter; },
+/* harmony export */   aI: function() { return /* binding */ diffPoints; },
+/* harmony export */   aJ: function() { return /* binding */ translateRect; },
+/* harmony export */   aK: function() { return /* binding */ compareObjs; },
+/* harmony export */   aL: function() { return /* binding */ collectFromHash; },
+/* harmony export */   aM: function() { return /* binding */ findElements; },
+/* harmony export */   aN: function() { return /* binding */ findDirectChildren; },
+/* harmony export */   aO: function() { return /* binding */ removeElement; },
+/* harmony export */   aP: function() { return /* binding */ applyStyle; },
+/* harmony export */   aQ: function() { return /* binding */ elementMatches; },
+/* harmony export */   aR: function() { return /* binding */ getEventTargetViaRoot; },
+/* harmony export */   aS: function() { return /* binding */ parseClassNames; },
+/* harmony export */   aT: function() { return /* binding */ getCanVGrowWithinCell; },
+/* harmony export */   aU: function() { return /* binding */ mergeEventStores; },
+/* harmony export */   aV: function() { return /* binding */ getRelevantEvents; },
+/* harmony export */   aW: function() { return /* binding */ eventTupleToStore; },
+/* harmony export */   aX: function() { return /* binding */ combineEventUis; },
+/* harmony export */   aY: function() { return /* binding */ Splitter; },
+/* harmony export */   aZ: function() { return /* binding */ getDayClassNames; },
+/* harmony export */   a_: function() { return /* binding */ getDateMeta; },
+/* harmony export */   aa: function() { return /* binding */ flushSync; },
+/* harmony export */   ab: function() { return /* binding */ CalendarRoot; },
+/* harmony export */   ac: function() { return /* binding */ RenderId; },
+/* harmony export */   ad: function() { return /* binding */ ensureElHasStyles; },
+/* harmony export */   ae: function() { return /* binding */ applyStyleProp; },
+/* harmony export */   af: function() { return /* binding */ sliceEventStore; },
+/* harmony export */   ag: function() { return /* binding */ JsonRequestError; },
+/* harmony export */   ah: function() { return /* binding */ createContext; },
+/* harmony export */   ai: function() { return /* binding */ refineProps; },
+/* harmony export */   aj: function() { return /* binding */ createEventInstance; },
+/* harmony export */   ak: function() { return /* binding */ parseEventDef; },
+/* harmony export */   al: function() { return /* binding */ refineEventDef; },
+/* harmony export */   am: function() { return /* binding */ padStart; },
+/* harmony export */   an: function() { return /* binding */ isInt; },
+/* harmony export */   ao: function() { return /* binding */ parseFieldSpecs; },
+/* harmony export */   ap: function() { return /* binding */ compareByFieldSpecs; },
+/* harmony export */   aq: function() { return /* binding */ flexibleCompare; },
+/* harmony export */   ar: function() { return /* binding */ preventSelection; },
+/* harmony export */   as: function() { return /* binding */ allowSelection; },
+/* harmony export */   at: function() { return /* binding */ preventContextMenu; },
+/* harmony export */   au: function() { return /* binding */ allowContextMenu; },
+/* harmony export */   av: function() { return /* binding */ compareNumbers; },
+/* harmony export */   aw: function() { return /* binding */ enableCursor; },
+/* harmony export */   ax: function() { return /* binding */ disableCursor; },
+/* harmony export */   ay: function() { return /* binding */ computeVisibleDayRange; },
+/* harmony export */   az: function() { return /* binding */ isMultiDayRange; },
+/* harmony export */   b: function() { return /* binding */ buildViewClassNames; },
+/* harmony export */   b$: function() { return /* binding */ SimpleScrollGrid; },
+/* harmony export */   b0: function() { return /* binding */ buildNavLinkAttrs; },
+/* harmony export */   b1: function() { return /* binding */ preventDefault; },
+/* harmony export */   b2: function() { return /* binding */ whenTransitionDone; },
+/* harmony export */   b3: function() { return /* binding */ computeInnerRect; },
+/* harmony export */   b4: function() { return /* binding */ computeEdges; },
+/* harmony export */   b5: function() { return /* binding */ getClippingParents; },
+/* harmony export */   b6: function() { return /* binding */ computeRect; },
+/* harmony export */   b7: function() { return /* binding */ rangesEqual; },
+/* harmony export */   b8: function() { return /* binding */ rangesIntersect; },
+/* harmony export */   b9: function() { return /* binding */ rangeContainsRange; },
+/* harmony export */   bA: function() { return /* binding */ SegHierarchy; },
+/* harmony export */   bB: function() { return /* binding */ buildEntryKey; },
+/* harmony export */   bC: function() { return /* binding */ getEntrySpanEnd; },
+/* harmony export */   bD: function() { return /* binding */ binarySearch; },
+/* harmony export */   bE: function() { return /* binding */ groupIntersectingEntries; },
+/* harmony export */   bF: function() { return /* binding */ intersectSpans; },
+/* harmony export */   bG: function() { return /* binding */ interactionSettingsToStore; },
+/* harmony export */   bH: function() { return /* binding */ ElementDragging; },
+/* harmony export */   bI: function() { return /* binding */ config; },
+/* harmony export */   bJ: function() { return /* binding */ parseDragMeta; },
+/* harmony export */   bK: function() { return /* binding */ DayHeader; },
+/* harmony export */   bL: function() { return /* binding */ computeFallbackHeaderFormat; },
+/* harmony export */   bM: function() { return /* binding */ TableDateCell; },
+/* harmony export */   bN: function() { return /* binding */ TableDowCell; },
+/* harmony export */   bO: function() { return /* binding */ DaySeriesModel; },
+/* harmony export */   bP: function() { return /* binding */ hasBgRendering; },
+/* harmony export */   bQ: function() { return /* binding */ buildSegTimeText; },
+/* harmony export */   bR: function() { return /* binding */ sortEventSegs; },
+/* harmony export */   bS: function() { return /* binding */ getSegMeta; },
+/* harmony export */   bT: function() { return /* binding */ buildEventRangeKey; },
+/* harmony export */   bU: function() { return /* binding */ getSegAnchorAttrs; },
+/* harmony export */   bV: function() { return /* binding */ DayTableModel; },
+/* harmony export */   bW: function() { return /* binding */ Slicer; },
+/* harmony export */   bX: function() { return /* binding */ applyMutationToEventStore; },
+/* harmony export */   bY: function() { return /* binding */ isPropsValid; },
+/* harmony export */   bZ: function() { return /* binding */ isInteractionValid; },
+/* harmony export */   b_: function() { return /* binding */ isDateSelectionValid; },
+/* harmony export */   ba: function() { return /* binding */ PositionCache; },
+/* harmony export */   bb: function() { return /* binding */ ScrollController; },
+/* harmony export */   bc: function() { return /* binding */ ElementScrollController; },
+/* harmony export */   bd: function() { return /* binding */ WindowScrollController; },
+/* harmony export */   be: function() { return /* binding */ DateComponent; },
+/* harmony export */   bf: function() { return /* binding */ isDateSpansEqual; },
+/* harmony export */   bg: function() { return /* binding */ addMs; },
+/* harmony export */   bh: function() { return /* binding */ addWeeks; },
+/* harmony export */   bi: function() { return /* binding */ diffWeeks; },
+/* harmony export */   bj: function() { return /* binding */ diffWholeWeeks; },
+/* harmony export */   bk: function() { return /* binding */ diffDayAndTime; },
+/* harmony export */   bl: function() { return /* binding */ diffDays; },
+/* harmony export */   bm: function() { return /* binding */ isValidDate; },
+/* harmony export */   bn: function() { return /* binding */ asCleanDays; },
+/* harmony export */   bo: function() { return /* binding */ multiplyDuration; },
+/* harmony export */   bp: function() { return /* binding */ addDurations; },
+/* harmony export */   bq: function() { return /* binding */ asRoughMinutes; },
+/* harmony export */   br: function() { return /* binding */ asRoughSeconds; },
+/* harmony export */   bs: function() { return /* binding */ asRoughMs; },
+/* harmony export */   bt: function() { return /* binding */ wholeDivideDurations; },
+/* harmony export */   bu: function() { return /* binding */ formatIsoTimeString; },
+/* harmony export */   bv: function() { return /* binding */ formatDayString; },
+/* harmony export */   bw: function() { return /* binding */ buildIsoString; },
+/* harmony export */   bx: function() { return /* binding */ formatIsoMonthStr; },
+/* harmony export */   by: function() { return /* binding */ NamedTimeZoneImpl; },
+/* harmony export */   bz: function() { return /* binding */ parse; },
+/* harmony export */   c: function() { return /* binding */ greatestDurationDenominator; },
+/* harmony export */   c0: function() { return /* binding */ hasShrinkWidth; },
+/* harmony export */   c1: function() { return /* binding */ renderMicroColGroup; },
+/* harmony export */   c2: function() { return /* binding */ getScrollGridClassNames; },
+/* harmony export */   c3: function() { return /* binding */ getSectionClassNames; },
+/* harmony export */   c4: function() { return /* binding */ getSectionHasLiquidHeight; },
+/* harmony export */   c5: function() { return /* binding */ getAllowYScrolling; },
+/* harmony export */   c6: function() { return /* binding */ renderChunkContent; },
+/* harmony export */   c7: function() { return /* binding */ computeShrinkWidth; },
+/* harmony export */   c8: function() { return /* binding */ sanitizeShrinkWidth; },
+/* harmony export */   c9: function() { return /* binding */ isColPropsEqual; },
+/* harmony export */   ca: function() { return /* binding */ renderScrollShim; },
+/* harmony export */   cb: function() { return /* binding */ getStickyFooterScrollbar; },
+/* harmony export */   cc: function() { return /* binding */ getStickyHeaderDates; },
+/* harmony export */   cd: function() { return /* binding */ Scroller; },
+/* harmony export */   ce: function() { return /* binding */ getScrollbarWidths; },
+/* harmony export */   cf: function() { return /* binding */ RefMap; },
+/* harmony export */   cg: function() { return /* binding */ getIsRtlScrollbarOnLeft; },
+/* harmony export */   ch: function() { return /* binding */ NowTimer; },
+/* harmony export */   ci: function() { return /* binding */ ScrollResponder; },
+/* harmony export */   cj: function() { return /* binding */ StandardEvent; },
+/* harmony export */   ck: function() { return /* binding */ NowIndicatorContainer; },
+/* harmony export */   cl: function() { return /* binding */ DayCellContainer; },
+/* harmony export */   cm: function() { return /* binding */ hasCustomDayCellContent; },
+/* harmony export */   cn: function() { return /* binding */ EventContainer; },
+/* harmony export */   co: function() { return /* binding */ renderFill; },
+/* harmony export */   cp: function() { return /* binding */ BgEvent; },
+/* harmony export */   cq: function() { return /* binding */ WeekNumberContainer; },
+/* harmony export */   cr: function() { return /* binding */ MoreLinkContainer; },
+/* harmony export */   cs: function() { return /* binding */ computeEarliestSegStart; },
+/* harmony export */   ct: function() { return /* binding */ ViewContainer; },
+/* harmony export */   cu: function() { return /* binding */ triggerDateSelect; },
+/* harmony export */   cv: function() { return /* binding */ getDefaultEventEnd; },
+/* harmony export */   cw: function() { return /* binding */ injectStyles; },
+/* harmony export */   cx: function() { return /* binding */ buildElAttrs; },
+/* harmony export */   cy: function() { return /* binding */ CustomRenderingStore; },
+/* harmony export */   d: function() { return /* binding */ createDuration; },
+/* harmony export */   e: function() { return /* binding */ BASE_OPTION_DEFAULTS; },
+/* harmony export */   f: function() { return /* binding */ arrayToHash; },
+/* harmony export */   g: function() { return /* binding */ guid; },
+/* harmony export */   h: function() { return /* binding */ filterHash; },
+/* harmony export */   i: function() { return /* binding */ isArraysEqual; },
+/* harmony export */   j: function() { return /* binding */ buildEventSourceRefiners; },
+/* harmony export */   k: function() { return /* binding */ formatWithOrdinals; },
+/* harmony export */   l: function() { return /* binding */ buildRangeApiWithTimeZone; },
+/* harmony export */   m: function() { return /* binding */ mergeProps; },
+/* harmony export */   n: function() { return /* binding */ identity; },
+/* harmony export */   o: function() { return /* binding */ intersectRanges; },
+/* harmony export */   p: function() { return /* binding */ parseEventSource; },
+/* harmony export */   q: function() { return /* binding */ startOfDay; },
+/* harmony export */   r: function() { return /* binding */ requestJson; },
+/* harmony export */   s: function() { return /* binding */ subtractDurations; },
+/* harmony export */   t: function() { return /* binding */ addDays; },
+/* harmony export */   u: function() { return /* binding */ unpromisify; },
+/* harmony export */   v: function() { return /* binding */ hashValuesToArray; },
+/* harmony export */   w: function() { return /* binding */ buildEventApis; },
+/* harmony export */   x: function() { return /* binding */ createFormatter; },
+/* harmony export */   y: function() { return /* binding */ diffWholeDays; },
+/* harmony export */   z: function() { return /* binding */ memoize; }
+/* harmony export */ });
+/* harmony import */ var preact__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! preact */ "./node_modules/preact/dist/preact.module.js");
+/* harmony import */ var preact_compat__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! preact/compat */ "./node_modules/preact/compat/dist/compat.module.js");
+
+
+
+
+const styleTexts = [];
+const styleEls = new Map();
+function injectStyles(styleText) {
+    styleTexts.push(styleText);
+    styleEls.forEach((styleEl) => {
+        appendStylesTo(styleEl, styleText);
+    });
+}
+function ensureElHasStyles(el) {
+    if (el.isConnected) {
+        registerStylesRoot(el.getRootNode());
+    }
+}
+function registerStylesRoot(rootNode) {
+    let styleEl = styleEls.get(rootNode);
+    if (!styleEl || !styleEl.isConnected) {
+        styleEl = rootNode.querySelector('style[data-fullcalendar]');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.setAttribute('data-fullcalendar', '');
+            const nonce = getNonceValue();
+            if (nonce) {
+                styleEl.nonce = nonce;
+            }
+            const parentEl = rootNode === document ? document.head : rootNode;
+            const insertBefore = rootNode === document
+                ? parentEl.querySelector('script,link[rel=stylesheet],link[as=style],style')
+                : parentEl.firstChild;
+            parentEl.insertBefore(styleEl, insertBefore);
+        }
+        styleEls.set(rootNode, styleEl);
+        hydrateStylesRoot(styleEl);
+    }
+}
+function hydrateStylesRoot(styleEl) {
+    for (const styleText of styleTexts) {
+        appendStylesTo(styleEl, styleText);
+    }
+}
+function appendStylesTo(styleEl, styleText) {
+    const { sheet } = styleEl;
+    const ruleCnt = sheet.cssRules.length;
+    styleText.split('}').forEach((styleStr, i) => {
+        styleStr = styleStr.trim();
+        if (styleStr) {
+            sheet.insertRule(styleStr + '}', ruleCnt + i);
+        }
+    });
+}
+// nonce
+// -------------------------------------------------------------------------------------------------
+let queriedNonceValue;
+function getNonceValue() {
+    if (queriedNonceValue === undefined) {
+        queriedNonceValue = queryNonceValue();
+    }
+    return queriedNonceValue;
+}
+/*
+TODO: discourage meta tag and instead put nonce attribute on placeholder <style> tag
+*/
+function queryNonceValue() {
+    const metaWithNonce = document.querySelector('meta[name="csp-nonce"]');
+    if (metaWithNonce && metaWithNonce.hasAttribute('content')) {
+        return metaWithNonce.getAttribute('content');
+    }
+    const elWithNonce = document.querySelector('script[nonce]');
+    if (elWithNonce) {
+        return elWithNonce.nonce || '';
+    }
+    return '';
+}
+// main
+// -------------------------------------------------------------------------------------------------
+if (typeof document !== 'undefined') {
+    registerStylesRoot(document);
+}
+
+var css_248z = ":root{--fc-small-font-size:.85em;--fc-page-bg-color:#fff;--fc-neutral-bg-color:hsla(0,0%,82%,.3);--fc-neutral-text-color:grey;--fc-border-color:#ddd;--fc-button-text-color:#fff;--fc-button-bg-color:#2c3e50;--fc-button-border-color:#2c3e50;--fc-button-hover-bg-color:#1e2b37;--fc-button-hover-border-color:#1a252f;--fc-button-active-bg-color:#1a252f;--fc-button-active-border-color:#151e27;--fc-event-bg-color:#3788d8;--fc-event-border-color:#3788d8;--fc-event-text-color:#fff;--fc-event-selected-overlay-color:rgba(0,0,0,.25);--fc-more-link-bg-color:#d0d0d0;--fc-more-link-text-color:inherit;--fc-event-resizer-thickness:8px;--fc-event-resizer-dot-total-width:8px;--fc-event-resizer-dot-border-width:1px;--fc-non-business-color:hsla(0,0%,84%,.3);--fc-bg-event-color:#8fdf82;--fc-bg-event-opacity:0.3;--fc-highlight-color:rgba(188,232,241,.3);--fc-today-bg-color:rgba(255,220,40,.15);--fc-now-indicator-color:red}.fc-not-allowed,.fc-not-allowed .fc-event{cursor:not-allowed}.fc{display:flex;flex-direction:column;font-size:1em}.fc,.fc *,.fc :after,.fc :before{box-sizing:border-box}.fc table{border-collapse:collapse;border-spacing:0;font-size:1em}.fc th{text-align:center}.fc td,.fc th{padding:0;vertical-align:top}.fc a[data-navlink]{cursor:pointer}.fc a[data-navlink]:hover{text-decoration:underline}.fc-direction-ltr{direction:ltr;text-align:left}.fc-direction-rtl{direction:rtl;text-align:right}.fc-theme-standard td,.fc-theme-standard th{border:1px solid var(--fc-border-color)}.fc-liquid-hack td,.fc-liquid-hack th{position:relative}@font-face{font-family:fcicons;font-style:normal;font-weight:400;src:url(\"data:application/x-font-ttf;charset=utf-8;base64,AAEAAAALAIAAAwAwT1MvMg8SBfAAAAC8AAAAYGNtYXAXVtKNAAABHAAAAFRnYXNwAAAAEAAAAXAAAAAIZ2x5ZgYydxIAAAF4AAAFNGhlYWQUJ7cIAAAGrAAAADZoaGVhB20DzAAABuQAAAAkaG10eCIABhQAAAcIAAAALGxvY2ED4AU6AAAHNAAAABhtYXhwAA8AjAAAB0wAAAAgbmFtZXsr690AAAdsAAABhnBvc3QAAwAAAAAI9AAAACAAAwPAAZAABQAAApkCzAAAAI8CmQLMAAAB6wAzAQkAAAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAAAAAAAABAAADpBgPA/8AAQAPAAEAAAAABAAAAAAAAAAAAAAAgAAAAAAADAAAAAwAAABwAAQADAAAAHAADAAEAAAAcAAQAOAAAAAoACAACAAIAAQAg6Qb//f//AAAAAAAg6QD//f//AAH/4xcEAAMAAQAAAAAAAAAAAAAAAQAB//8ADwABAAAAAAAAAAAAAgAANzkBAAAAAAEAAAAAAAAAAAACAAA3OQEAAAAAAQAAAAAAAAAAAAIAADc5AQAAAAABAWIAjQKeAskAEwAAJSc3NjQnJiIHAQYUFwEWMjc2NCcCnuLiDQ0MJAz/AA0NAQAMJAwNDcni4gwjDQwM/wANIwz/AA0NDCMNAAAAAQFiAI0CngLJABMAACUBNjQnASYiBwYUHwEHBhQXFjI3AZ4BAA0N/wAMJAwNDeLiDQ0MJAyNAQAMIw0BAAwMDSMM4uINIwwNDQAAAAIA4gC3Ax4CngATACcAACUnNzY0JyYiDwEGFB8BFjI3NjQnISc3NjQnJiIPAQYUHwEWMjc2NCcB87e3DQ0MIw3VDQ3VDSMMDQ0BK7e3DQ0MJAzVDQ3VDCQMDQ3zuLcMJAwNDdUNIwzWDAwNIwy4twwkDA0N1Q0jDNYMDA0jDAAAAgDiALcDHgKeABMAJwAAJTc2NC8BJiIHBhQfAQcGFBcWMjchNzY0LwEmIgcGFB8BBwYUFxYyNwJJ1Q0N1Q0jDA0Nt7cNDQwjDf7V1Q0N1QwkDA0Nt7cNDQwkDLfWDCMN1Q0NDCQMt7gMIw0MDNYMIw3VDQ0MJAy3uAwjDQwMAAADAFUAAAOrA1UAMwBoAHcAABMiBgcOAQcOAQcOARURFBYXHgEXHgEXHgEzITI2Nz4BNz4BNz4BNRE0JicuAScuAScuASMFITIWFx4BFx4BFx4BFREUBgcOAQcOAQcOASMhIiYnLgEnLgEnLgE1ETQ2Nz4BNz4BNz4BMxMhMjY1NCYjISIGFRQWM9UNGAwLFQkJDgUFBQUFBQ4JCRULDBgNAlYNGAwLFQkJDgUFBQUFBQ4JCRULDBgN/aoCVgQIBAQHAwMFAQIBAQIBBQMDBwQECAT9qgQIBAQHAwMFAQIBAQIBBQMDBwQECASAAVYRGRkR/qoRGRkRA1UFBAUOCQkVDAsZDf2rDRkLDBUJCA4FBQUFBQUOCQgVDAsZDQJVDRkLDBUJCQ4FBAVVAgECBQMCBwQECAX9qwQJAwQHAwMFAQICAgIBBQMDBwQDCQQCVQUIBAQHAgMFAgEC/oAZEhEZGRESGQAAAAADAFUAAAOrA1UAMwBoAIkAABMiBgcOAQcOAQcOARURFBYXHgEXHgEXHgEzITI2Nz4BNz4BNz4BNRE0JicuAScuAScuASMFITIWFx4BFx4BFx4BFREUBgcOAQcOAQcOASMhIiYnLgEnLgEnLgE1ETQ2Nz4BNz4BNz4BMxMzFRQWMzI2PQEzMjY1NCYrATU0JiMiBh0BIyIGFRQWM9UNGAwLFQkJDgUFBQUFBQ4JCRULDBgNAlYNGAwLFQkJDgUFBQUFBQ4JCRULDBgN/aoCVgQIBAQHAwMFAQIBAQIBBQMDBwQECAT9qgQIBAQHAwMFAQIBAQIBBQMDBwQECASAgBkSEhmAERkZEYAZEhIZgBEZGREDVQUEBQ4JCRUMCxkN/asNGQsMFQkIDgUFBQUFBQ4JCBUMCxkNAlUNGQsMFQkJDgUEBVUCAQIFAwIHBAQIBf2rBAkDBAcDAwUBAgICAgEFAwMHBAMJBAJVBQgEBAcCAwUCAQL+gIASGRkSgBkSERmAEhkZEoAZERIZAAABAOIAjQMeAskAIAAAExcHBhQXFjI/ARcWMjc2NC8BNzY0JyYiDwEnJiIHBhQX4uLiDQ0MJAzi4gwkDA0N4uINDQwkDOLiDCQMDQ0CjeLiDSMMDQ3h4Q0NDCMN4uIMIw0MDOLiDAwNIwwAAAABAAAAAQAAa5n0y18PPPUACwQAAAAAANivOVsAAAAA2K85WwAAAAADqwNVAAAACAACAAAAAAAAAAEAAAPA/8AAAAQAAAAAAAOrAAEAAAAAAAAAAAAAAAAAAAALBAAAAAAAAAAAAAAAAgAAAAQAAWIEAAFiBAAA4gQAAOIEAABVBAAAVQQAAOIAAAAAAAoAFAAeAEQAagCqAOoBngJkApoAAQAAAAsAigADAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAA4ArgABAAAAAAABAAcAAAABAAAAAAACAAcAYAABAAAAAAADAAcANgABAAAAAAAEAAcAdQABAAAAAAAFAAsAFQABAAAAAAAGAAcASwABAAAAAAAKABoAigADAAEECQABAA4ABwADAAEECQACAA4AZwADAAEECQADAA4APQADAAEECQAEAA4AfAADAAEECQAFABYAIAADAAEECQAGAA4AUgADAAEECQAKADQApGZjaWNvbnMAZgBjAGkAYwBvAG4Ac1ZlcnNpb24gMS4wAFYAZQByAHMAaQBvAG4AIAAxAC4AMGZjaWNvbnMAZgBjAGkAYwBvAG4Ac2ZjaWNvbnMAZgBjAGkAYwBvAG4Ac1JlZ3VsYXIAUgBlAGcAdQBsAGEAcmZjaWNvbnMAZgBjAGkAYwBvAG4Ac0ZvbnQgZ2VuZXJhdGVkIGJ5IEljb01vb24uAEYAbwBuAHQAIABnAGUAbgBlAHIAYQB0AGUAZAAgAGIAeQAgAEkAYwBvAE0AbwBvAG4ALgAAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\") format(\"truetype\")}.fc-icon{speak:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;display:inline-block;font-family:fcicons!important;font-style:normal;font-variant:normal;font-weight:400;height:1em;line-height:1;text-align:center;text-transform:none;-webkit-user-select:none;-moz-user-select:none;user-select:none;width:1em}.fc-icon-chevron-left:before{content:\"\\e900\"}.fc-icon-chevron-right:before{content:\"\\e901\"}.fc-icon-chevrons-left:before{content:\"\\e902\"}.fc-icon-chevrons-right:before{content:\"\\e903\"}.fc-icon-minus-square:before{content:\"\\e904\"}.fc-icon-plus-square:before{content:\"\\e905\"}.fc-icon-x:before{content:\"\\e906\"}.fc .fc-button{border-radius:0;font-family:inherit;font-size:inherit;line-height:inherit;margin:0;overflow:visible;text-transform:none}.fc .fc-button:focus{outline:1px dotted;outline:5px auto -webkit-focus-ring-color}.fc .fc-button{-webkit-appearance:button}.fc .fc-button:not(:disabled){cursor:pointer}.fc .fc-button{background-color:transparent;border:1px solid transparent;border-radius:.25em;display:inline-block;font-size:1em;font-weight:400;line-height:1.5;padding:.4em .65em;text-align:center;-webkit-user-select:none;-moz-user-select:none;user-select:none;vertical-align:middle}.fc .fc-button:hover{text-decoration:none}.fc .fc-button:focus{box-shadow:0 0 0 .2rem rgba(44,62,80,.25);outline:0}.fc .fc-button:disabled{opacity:.65}.fc .fc-button-primary{background-color:var(--fc-button-bg-color);border-color:var(--fc-button-border-color);color:var(--fc-button-text-color)}.fc .fc-button-primary:hover{background-color:var(--fc-button-hover-bg-color);border-color:var(--fc-button-hover-border-color);color:var(--fc-button-text-color)}.fc .fc-button-primary:disabled{background-color:var(--fc-button-bg-color);border-color:var(--fc-button-border-color);color:var(--fc-button-text-color)}.fc .fc-button-primary:focus{box-shadow:0 0 0 .2rem rgba(76,91,106,.5)}.fc .fc-button-primary:not(:disabled).fc-button-active,.fc .fc-button-primary:not(:disabled):active{background-color:var(--fc-button-active-bg-color);border-color:var(--fc-button-active-border-color);color:var(--fc-button-text-color)}.fc .fc-button-primary:not(:disabled).fc-button-active:focus,.fc .fc-button-primary:not(:disabled):active:focus{box-shadow:0 0 0 .2rem rgba(76,91,106,.5)}.fc .fc-button .fc-icon{font-size:1.5em;vertical-align:middle}.fc .fc-button-group{display:inline-flex;position:relative;vertical-align:middle}.fc .fc-button-group>.fc-button{flex:1 1 auto;position:relative}.fc .fc-button-group>.fc-button.fc-button-active,.fc .fc-button-group>.fc-button:active,.fc .fc-button-group>.fc-button:focus,.fc .fc-button-group>.fc-button:hover{z-index:1}.fc-direction-ltr .fc-button-group>.fc-button:not(:first-child){border-bottom-left-radius:0;border-top-left-radius:0;margin-left:-1px}.fc-direction-ltr .fc-button-group>.fc-button:not(:last-child){border-bottom-right-radius:0;border-top-right-radius:0}.fc-direction-rtl .fc-button-group>.fc-button:not(:first-child){border-bottom-right-radius:0;border-top-right-radius:0;margin-right:-1px}.fc-direction-rtl .fc-button-group>.fc-button:not(:last-child){border-bottom-left-radius:0;border-top-left-radius:0}.fc .fc-toolbar{align-items:center;display:flex;justify-content:space-between}.fc .fc-toolbar.fc-header-toolbar{margin-bottom:1.5em}.fc .fc-toolbar.fc-footer-toolbar{margin-top:1.5em}.fc .fc-toolbar-title{font-size:1.75em;margin:0}.fc-direction-ltr .fc-toolbar>*>:not(:first-child){margin-left:.75em}.fc-direction-rtl .fc-toolbar>*>:not(:first-child){margin-right:.75em}.fc-direction-rtl .fc-toolbar-ltr{flex-direction:row-reverse}.fc .fc-scroller{-webkit-overflow-scrolling:touch;position:relative}.fc .fc-scroller-liquid{height:100%}.fc .fc-scroller-liquid-absolute{bottom:0;left:0;position:absolute;right:0;top:0}.fc .fc-scroller-harness{direction:ltr;overflow:hidden;position:relative}.fc .fc-scroller-harness-liquid{height:100%}.fc-direction-rtl .fc-scroller-harness>.fc-scroller{direction:rtl}.fc-theme-standard .fc-scrollgrid{border:1px solid var(--fc-border-color)}.fc .fc-scrollgrid,.fc .fc-scrollgrid table{table-layout:fixed;width:100%}.fc .fc-scrollgrid table{border-left-style:hidden;border-right-style:hidden;border-top-style:hidden}.fc .fc-scrollgrid{border-bottom-width:0;border-collapse:separate;border-right-width:0}.fc .fc-scrollgrid-liquid{height:100%}.fc .fc-scrollgrid-section,.fc .fc-scrollgrid-section table,.fc .fc-scrollgrid-section>td{height:1px}.fc .fc-scrollgrid-section-liquid>td{height:100%}.fc .fc-scrollgrid-section>*{border-left-width:0;border-top-width:0}.fc .fc-scrollgrid-section-footer>*,.fc .fc-scrollgrid-section-header>*{border-bottom-width:0}.fc .fc-scrollgrid-section-body table,.fc .fc-scrollgrid-section-footer table{border-bottom-style:hidden}.fc .fc-scrollgrid-section-sticky>*{background:var(--fc-page-bg-color);position:sticky;z-index:3}.fc .fc-scrollgrid-section-header.fc-scrollgrid-section-sticky>*{top:0}.fc .fc-scrollgrid-section-footer.fc-scrollgrid-section-sticky>*{bottom:0}.fc .fc-scrollgrid-sticky-shim{height:1px;margin-bottom:-1px}.fc-sticky{position:sticky}.fc .fc-view-harness{flex-grow:1;position:relative}.fc .fc-view-harness-active>.fc-view{bottom:0;left:0;position:absolute;right:0;top:0}.fc .fc-col-header-cell-cushion{display:inline-block;padding:2px 4px}.fc .fc-bg-event,.fc .fc-highlight,.fc .fc-non-business{bottom:0;left:0;position:absolute;right:0;top:0}.fc .fc-non-business{background:var(--fc-non-business-color)}.fc .fc-bg-event{background:var(--fc-bg-event-color);opacity:var(--fc-bg-event-opacity)}.fc .fc-bg-event .fc-event-title{font-size:var(--fc-small-font-size);font-style:italic;margin:.5em}.fc .fc-highlight{background:var(--fc-highlight-color)}.fc .fc-cell-shaded,.fc .fc-day-disabled{background:var(--fc-neutral-bg-color)}a.fc-event,a.fc-event:hover{text-decoration:none}.fc-event.fc-event-draggable,.fc-event[href]{cursor:pointer}.fc-event .fc-event-main{position:relative;z-index:2}.fc-event-dragging:not(.fc-event-selected){opacity:.75}.fc-event-dragging.fc-event-selected{box-shadow:0 2px 7px rgba(0,0,0,.3)}.fc-event .fc-event-resizer{display:none;position:absolute;z-index:4}.fc-event-selected .fc-event-resizer,.fc-event:hover .fc-event-resizer{display:block}.fc-event-selected .fc-event-resizer{background:var(--fc-page-bg-color);border-color:inherit;border-radius:calc(var(--fc-event-resizer-dot-total-width)/2);border-style:solid;border-width:var(--fc-event-resizer-dot-border-width);height:var(--fc-event-resizer-dot-total-width);width:var(--fc-event-resizer-dot-total-width)}.fc-event-selected .fc-event-resizer:before{bottom:-20px;content:\"\";left:-20px;position:absolute;right:-20px;top:-20px}.fc-event-selected,.fc-event:focus{box-shadow:0 2px 5px rgba(0,0,0,.2)}.fc-event-selected:before,.fc-event:focus:before{bottom:0;content:\"\";left:0;position:absolute;right:0;top:0;z-index:3}.fc-event-selected:after,.fc-event:focus:after{background:var(--fc-event-selected-overlay-color);bottom:-1px;content:\"\";left:-1px;position:absolute;right:-1px;top:-1px;z-index:1}.fc-h-event{background-color:var(--fc-event-bg-color);border:1px solid var(--fc-event-border-color);display:block}.fc-h-event .fc-event-main{color:var(--fc-event-text-color)}.fc-h-event .fc-event-main-frame{display:flex}.fc-h-event .fc-event-time{max-width:100%;overflow:hidden}.fc-h-event .fc-event-title-container{flex-grow:1;flex-shrink:1;min-width:0}.fc-h-event .fc-event-title{display:inline-block;left:0;max-width:100%;overflow:hidden;right:0;vertical-align:top}.fc-h-event.fc-event-selected:before{bottom:-10px;top:-10px}.fc-direction-ltr .fc-daygrid-block-event:not(.fc-event-start),.fc-direction-rtl .fc-daygrid-block-event:not(.fc-event-end){border-bottom-left-radius:0;border-left-width:0;border-top-left-radius:0}.fc-direction-ltr .fc-daygrid-block-event:not(.fc-event-end),.fc-direction-rtl .fc-daygrid-block-event:not(.fc-event-start){border-bottom-right-radius:0;border-right-width:0;border-top-right-radius:0}.fc-h-event:not(.fc-event-selected) .fc-event-resizer{bottom:0;top:0;width:var(--fc-event-resizer-thickness)}.fc-direction-ltr .fc-h-event:not(.fc-event-selected) .fc-event-resizer-start,.fc-direction-rtl .fc-h-event:not(.fc-event-selected) .fc-event-resizer-end{cursor:w-resize;left:calc(var(--fc-event-resizer-thickness)*-.5)}.fc-direction-ltr .fc-h-event:not(.fc-event-selected) .fc-event-resizer-end,.fc-direction-rtl .fc-h-event:not(.fc-event-selected) .fc-event-resizer-start{cursor:e-resize;right:calc(var(--fc-event-resizer-thickness)*-.5)}.fc-h-event.fc-event-selected .fc-event-resizer{margin-top:calc(var(--fc-event-resizer-dot-total-width)*-.5);top:50%}.fc-direction-ltr .fc-h-event.fc-event-selected .fc-event-resizer-start,.fc-direction-rtl .fc-h-event.fc-event-selected .fc-event-resizer-end{left:calc(var(--fc-event-resizer-dot-total-width)*-.5)}.fc-direction-ltr .fc-h-event.fc-event-selected .fc-event-resizer-end,.fc-direction-rtl .fc-h-event.fc-event-selected .fc-event-resizer-start{right:calc(var(--fc-event-resizer-dot-total-width)*-.5)}.fc .fc-popover{box-shadow:0 2px 6px rgba(0,0,0,.15);position:absolute;z-index:9999}.fc .fc-popover-header{align-items:center;display:flex;flex-direction:row;justify-content:space-between;padding:3px 4px}.fc .fc-popover-title{margin:0 2px}.fc .fc-popover-close{cursor:pointer;font-size:1.1em;opacity:.65}.fc-theme-standard .fc-popover{background:var(--fc-page-bg-color);border:1px solid var(--fc-border-color)}.fc-theme-standard .fc-popover-header{background:var(--fc-neutral-bg-color)}";
+injectStyles(css_248z);
+
+class DelayedRunner {
+    constructor(drainedOption) {
+        this.drainedOption = drainedOption;
+        this.isRunning = false;
+        this.isDirty = false;
+        this.pauseDepths = {};
+        this.timeoutId = 0;
+    }
+    request(delay) {
+        this.isDirty = true;
+        if (!this.isPaused()) {
+            this.clearTimeout();
+            if (delay == null) {
+                this.tryDrain();
+            }
+            else {
+                this.timeoutId = setTimeout(// NOT OPTIMAL! TODO: look at debounce
+                this.tryDrain.bind(this), delay);
+            }
+        }
+    }
+    pause(scope = '') {
+        let { pauseDepths } = this;
+        pauseDepths[scope] = (pauseDepths[scope] || 0) + 1;
+        this.clearTimeout();
+    }
+    resume(scope = '', force) {
+        let { pauseDepths } = this;
+        if (scope in pauseDepths) {
+            if (force) {
+                delete pauseDepths[scope];
+            }
+            else {
+                pauseDepths[scope] -= 1;
+                let depth = pauseDepths[scope];
+                if (depth <= 0) {
+                    delete pauseDepths[scope];
+                }
+            }
+            this.tryDrain();
+        }
+    }
+    isPaused() {
+        return Object.keys(this.pauseDepths).length;
+    }
+    tryDrain() {
+        if (!this.isRunning && !this.isPaused()) {
+            this.isRunning = true;
+            while (this.isDirty) {
+                this.isDirty = false;
+                this.drained(); // might set isDirty to true again
+            }
+            this.isRunning = false;
+        }
+    }
+    clear() {
+        this.clearTimeout();
+        this.isDirty = false;
+        this.pauseDepths = {};
+    }
+    clearTimeout() {
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = 0;
+        }
+    }
+    drained() {
+        if (this.drainedOption) {
+            this.drainedOption();
+        }
+    }
+}
+
+function removeElement(el) {
+    if (el.parentNode) {
+        el.parentNode.removeChild(el);
+    }
+}
+// Querying
+// ----------------------------------------------------------------------------------------------------------------
+function elementClosest(el, selector) {
+    if (el.closest) {
+        return el.closest(selector);
+        // really bad fallback for IE
+        // from https://developer.mozilla.org/en-US/docs/Web/API/Element/closest
+    }
+    if (!document.documentElement.contains(el)) {
+        return null;
+    }
+    do {
+        if (elementMatches(el, selector)) {
+            return el;
+        }
+        el = (el.parentElement || el.parentNode);
+    } while (el !== null && el.nodeType === 1);
+    return null;
+}
+function elementMatches(el, selector) {
+    let method = el.matches || el.matchesSelector || el.msMatchesSelector;
+    return method.call(el, selector);
+}
+// accepts multiple subject els
+// returns a real array. good for methods like forEach
+// TODO: accept the document
+function findElements(container, selector) {
+    let containers = container instanceof HTMLElement ? [container] : container;
+    let allMatches = [];
+    for (let i = 0; i < containers.length; i += 1) {
+        let matches = containers[i].querySelectorAll(selector);
+        for (let j = 0; j < matches.length; j += 1) {
+            allMatches.push(matches[j]);
+        }
+    }
+    return allMatches;
+}
+// accepts multiple subject els
+// only queries direct child elements // TODO: rename to findDirectChildren!
+function findDirectChildren(parent, selector) {
+    let parents = parent instanceof HTMLElement ? [parent] : parent;
+    let allMatches = [];
+    for (let i = 0; i < parents.length; i += 1) {
+        let childNodes = parents[i].children; // only ever elements
+        for (let j = 0; j < childNodes.length; j += 1) {
+            let childNode = childNodes[j];
+            if (!selector || elementMatches(childNode, selector)) {
+                allMatches.push(childNode);
+            }
+        }
+    }
+    return allMatches;
+}
+// Style
+// ----------------------------------------------------------------------------------------------------------------
+const PIXEL_PROP_RE = /(top|left|right|bottom|width|height)$/i;
+function applyStyle(el, props) {
+    for (let propName in props) {
+        applyStyleProp(el, propName, props[propName]);
+    }
+}
+function applyStyleProp(el, name, val) {
+    if (val == null) {
+        el.style[name] = '';
+    }
+    else if (typeof val === 'number' && PIXEL_PROP_RE.test(name)) {
+        el.style[name] = `${val}px`;
+    }
+    else {
+        el.style[name] = val;
+    }
+}
+// Event Handling
+// ----------------------------------------------------------------------------------------------------------------
+// if intercepting bubbled events at the document/window/body level,
+// and want to see originating element (the 'target'), use this util instead
+// of `ev.target` because it goes within web-component boundaries.
+function getEventTargetViaRoot(ev) {
+    var _a, _b;
+    return (_b = (_a = ev.composedPath) === null || _a === void 0 ? void 0 : _a.call(ev)[0]) !== null && _b !== void 0 ? _b : ev.target;
+}
+// Unique ID for DOM attribute
+let guid$1 = 0;
+function getUniqueDomId() {
+    guid$1 += 1;
+    return 'fc-dom-' + guid$1;
+}
+
+// Stops a mouse/touch event from doing it's native browser action
+function preventDefault(ev) {
+    ev.preventDefault();
+}
+// Event Delegation
+// ----------------------------------------------------------------------------------------------------------------
+function buildDelegationHandler(selector, handler) {
+    return (ev) => {
+        let matchedChild = elementClosest(ev.target, selector);
+        if (matchedChild) {
+            handler.call(matchedChild, ev, matchedChild);
+        }
+    };
+}
+function listenBySelector(container, eventType, selector, handler) {
+    let attachedHandler = buildDelegationHandler(selector, handler);
+    container.addEventListener(eventType, attachedHandler);
+    return () => {
+        container.removeEventListener(eventType, attachedHandler);
+    };
+}
+function listenToHoverBySelector(container, selector, onMouseEnter, onMouseLeave) {
+    let currentMatchedChild;
+    return listenBySelector(container, 'mouseover', selector, (mouseOverEv, matchedChild) => {
+        if (matchedChild !== currentMatchedChild) {
+            currentMatchedChild = matchedChild;
+            onMouseEnter(mouseOverEv, matchedChild);
+            let realOnMouseLeave = (mouseLeaveEv) => {
+                currentMatchedChild = null;
+                onMouseLeave(mouseLeaveEv, matchedChild);
+                matchedChild.removeEventListener('mouseleave', realOnMouseLeave);
+            };
+            // listen to the next mouseleave, and then unattach
+            matchedChild.addEventListener('mouseleave', realOnMouseLeave);
+        }
+    });
+}
+// Animation
+// ----------------------------------------------------------------------------------------------------------------
+const transitionEventNames = [
+    'webkitTransitionEnd',
+    'otransitionend',
+    'oTransitionEnd',
+    'msTransitionEnd',
+    'transitionend',
+];
+// triggered only when the next single subsequent transition finishes
+function whenTransitionDone(el, callback) {
+    let realCallback = (ev) => {
+        callback(ev);
+        transitionEventNames.forEach((eventName) => {
+            el.removeEventListener(eventName, realCallback);
+        });
+    };
+    transitionEventNames.forEach((eventName) => {
+        el.addEventListener(eventName, realCallback); // cross-browser way to determine when the transition finishes
+    });
+}
+// ARIA workarounds
+// ----------------------------------------------------------------------------------------------------------------
+function createAriaClickAttrs(handler) {
+    return Object.assign({ onClick: handler }, createAriaKeyboardAttrs(handler));
+}
+function createAriaKeyboardAttrs(handler) {
+    return {
+        tabIndex: 0,
+        onKeyDown(ev) {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+                handler(ev);
+                ev.preventDefault(); // if space, don't scroll down page
+            }
+        },
+    };
+}
+
+let guidNumber = 0;
+function guid() {
+    guidNumber += 1;
+    return String(guidNumber);
+}
+/* FullCalendar-specific DOM Utilities
+----------------------------------------------------------------------------------------------------------------------*/
+// Make the mouse cursor express that an event is not allowed in the current area
+function disableCursor() {
+    document.body.classList.add('fc-not-allowed');
+}
+// Returns the mouse cursor to its original look
+function enableCursor() {
+    document.body.classList.remove('fc-not-allowed');
+}
+/* Selection
+----------------------------------------------------------------------------------------------------------------------*/
+function preventSelection(el) {
+    el.style.userSelect = 'none';
+    el.style.webkitUserSelect = 'none';
+    el.addEventListener('selectstart', preventDefault);
+}
+function allowSelection(el) {
+    el.style.userSelect = '';
+    el.style.webkitUserSelect = '';
+    el.removeEventListener('selectstart', preventDefault);
+}
+/* Context Menu
+----------------------------------------------------------------------------------------------------------------------*/
+function preventContextMenu(el) {
+    el.addEventListener('contextmenu', preventDefault);
+}
+function allowContextMenu(el) {
+    el.removeEventListener('contextmenu', preventDefault);
+}
+function parseFieldSpecs(input) {
+    let specs = [];
+    let tokens = [];
+    let i;
+    let token;
+    if (typeof input === 'string') {
+        tokens = input.split(/\s*,\s*/);
+    }
+    else if (typeof input === 'function') {
+        tokens = [input];
+    }
+    else if (Array.isArray(input)) {
+        tokens = input;
+    }
+    for (i = 0; i < tokens.length; i += 1) {
+        token = tokens[i];
+        if (typeof token === 'string') {
+            specs.push(token.charAt(0) === '-' ?
+                { field: token.substring(1), order: -1 } :
+                { field: token, order: 1 });
+        }
+        else if (typeof token === 'function') {
+            specs.push({ func: token });
+        }
+    }
+    return specs;
+}
+function compareByFieldSpecs(obj0, obj1, fieldSpecs) {
+    let i;
+    let cmp;
+    for (i = 0; i < fieldSpecs.length; i += 1) {
+        cmp = compareByFieldSpec(obj0, obj1, fieldSpecs[i]);
+        if (cmp) {
+            return cmp;
+        }
+    }
+    return 0;
+}
+function compareByFieldSpec(obj0, obj1, fieldSpec) {
+    if (fieldSpec.func) {
+        return fieldSpec.func(obj0, obj1);
+    }
+    return flexibleCompare(obj0[fieldSpec.field], obj1[fieldSpec.field])
+        * (fieldSpec.order || 1);
+}
+function flexibleCompare(a, b) {
+    if (!a && !b) {
+        return 0;
+    }
+    if (b == null) {
+        return -1;
+    }
+    if (a == null) {
+        return 1;
+    }
+    if (typeof a === 'string' || typeof b === 'string') {
+        return String(a).localeCompare(String(b));
+    }
+    return a - b;
+}
+/* String Utilities
+----------------------------------------------------------------------------------------------------------------------*/
+function padStart(val, len) {
+    let s = String(val);
+    return '000'.substr(0, len - s.length) + s;
+}
+function formatWithOrdinals(formatter, args, fallbackText) {
+    if (typeof formatter === 'function') {
+        return formatter(...args);
+    }
+    if (typeof formatter === 'string') { // non-blank string
+        return args.reduce((str, arg, index) => (str.replace('$' + index, arg || '')), formatter);
+    }
+    return fallbackText;
+}
+/* Number Utilities
+----------------------------------------------------------------------------------------------------------------------*/
+function compareNumbers(a, b) {
+    return a - b;
+}
+function isInt(n) {
+    return n % 1 === 0;
+}
+/* FC-specific DOM dimension stuff
+----------------------------------------------------------------------------------------------------------------------*/
+function computeSmallestCellWidth(cellEl) {
+    let allWidthEl = cellEl.querySelector('.fc-scrollgrid-shrink-frame');
+    let contentWidthEl = cellEl.querySelector('.fc-scrollgrid-shrink-cushion');
+    if (!allWidthEl) {
+        throw new Error('needs fc-scrollgrid-shrink-frame className'); // TODO: use const
+    }
+    if (!contentWidthEl) {
+        throw new Error('needs fc-scrollgrid-shrink-cushion className');
+    }
+    return cellEl.getBoundingClientRect().width - allWidthEl.getBoundingClientRect().width + // the cell padding+border
+        contentWidthEl.getBoundingClientRect().width;
+}
+
+const INTERNAL_UNITS = ['years', 'months', 'days', 'milliseconds'];
+const PARSE_RE = /^(-?)(?:(\d+)\.)?(\d+):(\d\d)(?::(\d\d)(?:\.(\d\d\d))?)?/;
+// Parsing and Creation
+function createDuration(input, unit) {
+    if (typeof input === 'string') {
+        return parseString(input);
+    }
+    if (typeof input === 'object' && input) { // non-null object
+        return parseObject(input);
+    }
+    if (typeof input === 'number') {
+        return parseObject({ [unit || 'milliseconds']: input });
+    }
+    return null;
+}
+function parseString(s) {
+    let m = PARSE_RE.exec(s);
+    if (m) {
+        let sign = m[1] ? -1 : 1;
+        return {
+            years: 0,
+            months: 0,
+            days: sign * (m[2] ? parseInt(m[2], 10) : 0),
+            milliseconds: sign * ((m[3] ? parseInt(m[3], 10) : 0) * 60 * 60 * 1000 + // hours
+                (m[4] ? parseInt(m[4], 10) : 0) * 60 * 1000 + // minutes
+                (m[5] ? parseInt(m[5], 10) : 0) * 1000 + // seconds
+                (m[6] ? parseInt(m[6], 10) : 0) // ms
+            ),
+        };
+    }
+    return null;
+}
+function parseObject(obj) {
+    let duration = {
+        years: obj.years || obj.year || 0,
+        months: obj.months || obj.month || 0,
+        days: obj.days || obj.day || 0,
+        milliseconds: (obj.hours || obj.hour || 0) * 60 * 60 * 1000 + // hours
+            (obj.minutes || obj.minute || 0) * 60 * 1000 + // minutes
+            (obj.seconds || obj.second || 0) * 1000 + // seconds
+            (obj.milliseconds || obj.millisecond || obj.ms || 0), // ms
+    };
+    let weeks = obj.weeks || obj.week;
+    if (weeks) {
+        duration.days += weeks * 7;
+        duration.specifiedWeeks = true;
+    }
+    return duration;
+}
+// Equality
+function durationsEqual(d0, d1) {
+    return d0.years === d1.years &&
+        d0.months === d1.months &&
+        d0.days === d1.days &&
+        d0.milliseconds === d1.milliseconds;
+}
+function asCleanDays(dur) {
+    if (!dur.years && !dur.months && !dur.milliseconds) {
+        return dur.days;
+    }
+    return 0;
+}
+// Simple Math
+function addDurations(d0, d1) {
+    return {
+        years: d0.years + d1.years,
+        months: d0.months + d1.months,
+        days: d0.days + d1.days,
+        milliseconds: d0.milliseconds + d1.milliseconds,
+    };
+}
+function subtractDurations(d1, d0) {
+    return {
+        years: d1.years - d0.years,
+        months: d1.months - d0.months,
+        days: d1.days - d0.days,
+        milliseconds: d1.milliseconds - d0.milliseconds,
+    };
+}
+function multiplyDuration(d, n) {
+    return {
+        years: d.years * n,
+        months: d.months * n,
+        days: d.days * n,
+        milliseconds: d.milliseconds * n,
+    };
+}
+// Conversions
+// "Rough" because they are based on average-case Gregorian months/years
+function asRoughYears(dur) {
+    return asRoughDays(dur) / 365;
+}
+function asRoughMonths(dur) {
+    return asRoughDays(dur) / 30;
+}
+function asRoughDays(dur) {
+    return asRoughMs(dur) / 864e5;
+}
+function asRoughMinutes(dur) {
+    return asRoughMs(dur) / (1000 * 60);
+}
+function asRoughSeconds(dur) {
+    return asRoughMs(dur) / 1000;
+}
+function asRoughMs(dur) {
+    return dur.years * (365 * 864e5) +
+        dur.months * (30 * 864e5) +
+        dur.days * 864e5 +
+        dur.milliseconds;
+}
+// Advanced Math
+function wholeDivideDurations(numerator, denominator) {
+    let res = null;
+    for (let i = 0; i < INTERNAL_UNITS.length; i += 1) {
+        let unit = INTERNAL_UNITS[i];
+        if (denominator[unit]) {
+            let localRes = numerator[unit] / denominator[unit];
+            if (!isInt(localRes) || (res !== null && res !== localRes)) {
+                return null;
+            }
+            res = localRes;
+        }
+        else if (numerator[unit]) {
+            // needs to divide by something but can't!
+            return null;
+        }
+    }
+    return res;
+}
+function greatestDurationDenominator(dur) {
+    let ms = dur.milliseconds;
+    if (ms) {
+        if (ms % 1000 !== 0) {
+            return { unit: 'millisecond', value: ms };
+        }
+        if (ms % (1000 * 60) !== 0) {
+            return { unit: 'second', value: ms / 1000 };
+        }
+        if (ms % (1000 * 60 * 60) !== 0) {
+            return { unit: 'minute', value: ms / (1000 * 60) };
+        }
+        if (ms) {
+            return { unit: 'hour', value: ms / (1000 * 60 * 60) };
+        }
+    }
+    if (dur.days) {
+        if (dur.specifiedWeeks && dur.days % 7 === 0) {
+            return { unit: 'week', value: dur.days / 7 };
+        }
+        return { unit: 'day', value: dur.days };
+    }
+    if (dur.months) {
+        return { unit: 'month', value: dur.months };
+    }
+    if (dur.years) {
+        return { unit: 'year', value: dur.years };
+    }
+    return { unit: 'millisecond', value: 0 };
+}
+
+// TODO: new util arrayify?
+function removeExact(array, exactVal) {
+    let removeCnt = 0;
+    let i = 0;
+    while (i < array.length) {
+        if (array[i] === exactVal) {
+            array.splice(i, 1);
+            removeCnt += 1;
+        }
+        else {
+            i += 1;
+        }
+    }
+    return removeCnt;
+}
+function isArraysEqual(a0, a1, equalityFunc) {
+    if (a0 === a1) {
+        return true;
+    }
+    let len = a0.length;
+    let i;
+    if (len !== a1.length) { // not array? or not same length?
+        return false;
+    }
+    for (i = 0; i < len; i += 1) {
+        if (!(equalityFunc ? equalityFunc(a0[i], a1[i]) : a0[i] === a1[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+const DAY_IDS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+// Adding
+function addWeeks(m, n) {
+    let a = dateToUtcArray(m);
+    a[2] += n * 7;
+    return arrayToUtcDate(a);
+}
+function addDays(m, n) {
+    let a = dateToUtcArray(m);
+    a[2] += n;
+    return arrayToUtcDate(a);
+}
+function addMs(m, n) {
+    let a = dateToUtcArray(m);
+    a[6] += n;
+    return arrayToUtcDate(a);
+}
+// Diffing (all return floats)
+// TODO: why not use ranges?
+function diffWeeks(m0, m1) {
+    return diffDays(m0, m1) / 7;
+}
+function diffDays(m0, m1) {
+    return (m1.valueOf() - m0.valueOf()) / (1000 * 60 * 60 * 24);
+}
+function diffHours(m0, m1) {
+    return (m1.valueOf() - m0.valueOf()) / (1000 * 60 * 60);
+}
+function diffMinutes(m0, m1) {
+    return (m1.valueOf() - m0.valueOf()) / (1000 * 60);
+}
+function diffSeconds(m0, m1) {
+    return (m1.valueOf() - m0.valueOf()) / 1000;
+}
+function diffDayAndTime(m0, m1) {
+    let m0day = startOfDay(m0);
+    let m1day = startOfDay(m1);
+    return {
+        years: 0,
+        months: 0,
+        days: Math.round(diffDays(m0day, m1day)),
+        milliseconds: (m1.valueOf() - m1day.valueOf()) - (m0.valueOf() - m0day.valueOf()),
+    };
+}
+// Diffing Whole Units
+function diffWholeWeeks(m0, m1) {
+    let d = diffWholeDays(m0, m1);
+    if (d !== null && d % 7 === 0) {
+        return d / 7;
+    }
+    return null;
+}
+function diffWholeDays(m0, m1) {
+    if (timeAsMs(m0) === timeAsMs(m1)) {
+        return Math.round(diffDays(m0, m1));
+    }
+    return null;
+}
+// Start-Of
+function startOfDay(m) {
+    return arrayToUtcDate([
+        m.getUTCFullYear(),
+        m.getUTCMonth(),
+        m.getUTCDate(),
+    ]);
+}
+function startOfHour(m) {
+    return arrayToUtcDate([
+        m.getUTCFullYear(),
+        m.getUTCMonth(),
+        m.getUTCDate(),
+        m.getUTCHours(),
+    ]);
+}
+function startOfMinute(m) {
+    return arrayToUtcDate([
+        m.getUTCFullYear(),
+        m.getUTCMonth(),
+        m.getUTCDate(),
+        m.getUTCHours(),
+        m.getUTCMinutes(),
+    ]);
+}
+function startOfSecond(m) {
+    return arrayToUtcDate([
+        m.getUTCFullYear(),
+        m.getUTCMonth(),
+        m.getUTCDate(),
+        m.getUTCHours(),
+        m.getUTCMinutes(),
+        m.getUTCSeconds(),
+    ]);
+}
+// Week Computation
+function weekOfYear(marker, dow, doy) {
+    let y = marker.getUTCFullYear();
+    let w = weekOfGivenYear(marker, y, dow, doy);
+    if (w < 1) {
+        return weekOfGivenYear(marker, y - 1, dow, doy);
+    }
+    let nextW = weekOfGivenYear(marker, y + 1, dow, doy);
+    if (nextW >= 1) {
+        return Math.min(w, nextW);
+    }
+    return w;
+}
+function weekOfGivenYear(marker, year, dow, doy) {
+    let firstWeekStart = arrayToUtcDate([year, 0, 1 + firstWeekOffset(year, dow, doy)]);
+    let dayStart = startOfDay(marker);
+    let days = Math.round(diffDays(firstWeekStart, dayStart));
+    return Math.floor(days / 7) + 1; // zero-indexed
+}
+// start-of-first-week - start-of-year
+function firstWeekOffset(year, dow, doy) {
+    // first-week day -- which january is always in the first week (4 for iso, 1 for other)
+    let fwd = 7 + dow - doy;
+    // first-week day local weekday -- which local weekday is fwd
+    let fwdlw = (7 + arrayToUtcDate([year, 0, fwd]).getUTCDay() - dow) % 7;
+    return -fwdlw + fwd - 1;
+}
+// Array Conversion
+function dateToLocalArray(date) {
+    return [
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        date.getHours(),
+        date.getMinutes(),
+        date.getSeconds(),
+        date.getMilliseconds(),
+    ];
+}
+function arrayToLocalDate(a) {
+    return new Date(a[0], a[1] || 0, a[2] == null ? 1 : a[2], // day of month
+    a[3] || 0, a[4] || 0, a[5] || 0);
+}
+function dateToUtcArray(date) {
+    return [
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate(),
+        date.getUTCHours(),
+        date.getUTCMinutes(),
+        date.getUTCSeconds(),
+        date.getUTCMilliseconds(),
+    ];
+}
+function arrayToUtcDate(a) {
+    // according to web standards (and Safari), a month index is required.
+    // massage if only given a year.
+    if (a.length === 1) {
+        a = a.concat([0]);
+    }
+    return new Date(Date.UTC(...a));
+}
+// Other Utils
+function isValidDate(m) {
+    return !isNaN(m.valueOf());
+}
+function timeAsMs(m) {
+    return m.getUTCHours() * 1000 * 60 * 60 +
+        m.getUTCMinutes() * 1000 * 60 +
+        m.getUTCSeconds() * 1000 +
+        m.getUTCMilliseconds();
+}
+
+// timeZoneOffset is in minutes
+function buildIsoString(marker, timeZoneOffset, stripZeroTime = false) {
+    let s = marker.toISOString();
+    s = s.replace('.000', '');
+    if (stripZeroTime) {
+        s = s.replace('T00:00:00Z', '');
+    }
+    if (s.length > 10) { // time part wasn't stripped, can add timezone info
+        if (timeZoneOffset == null) {
+            s = s.replace('Z', '');
+        }
+        else if (timeZoneOffset !== 0) {
+            s = s.replace('Z', formatTimeZoneOffset(timeZoneOffset, true));
+        }
+        // otherwise, its UTC-0 and we want to keep the Z
+    }
+    return s;
+}
+// formats the date, but with no time part
+// TODO: somehow merge with buildIsoString and stripZeroTime
+// TODO: rename. omit "string"
+function formatDayString(marker) {
+    return marker.toISOString().replace(/T.*$/, '');
+}
+function formatIsoMonthStr(marker) {
+    return marker.toISOString().match(/^\d{4}-\d{2}/)[0];
+}
+// TODO: use Date::toISOString and use everything after the T?
+function formatIsoTimeString(marker) {
+    return padStart(marker.getUTCHours(), 2) + ':' +
+        padStart(marker.getUTCMinutes(), 2) + ':' +
+        padStart(marker.getUTCSeconds(), 2);
+}
+function formatTimeZoneOffset(minutes, doIso = false) {
+    let sign = minutes < 0 ? '-' : '+';
+    let abs = Math.abs(minutes);
+    let hours = Math.floor(abs / 60);
+    let mins = Math.round(abs % 60);
+    if (doIso) {
+        return `${sign + padStart(hours, 2)}:${padStart(mins, 2)}`;
+    }
+    return `GMT${sign}${hours}${mins ? `:${padStart(mins, 2)}` : ''}`;
+}
+
+function memoize(workerFunc, resEquality, teardownFunc) {
+    let currentArgs;
+    let currentRes;
+    return function (...newArgs) {
+        if (!currentArgs) {
+            currentRes = workerFunc.apply(this, newArgs);
+        }
+        else if (!isArraysEqual(currentArgs, newArgs)) {
+            if (teardownFunc) {
+                teardownFunc(currentRes);
+            }
+            let res = workerFunc.apply(this, newArgs);
+            if (!resEquality || !resEquality(res, currentRes)) {
+                currentRes = res;
+            }
+        }
+        currentArgs = newArgs;
+        return currentRes;
+    };
+}
+function memoizeObjArg(workerFunc, resEquality, teardownFunc) {
+    let currentArg;
+    let currentRes;
+    return (newArg) => {
+        if (!currentArg) {
+            currentRes = workerFunc.call(this, newArg);
+        }
+        else if (!isPropsEqual(currentArg, newArg)) {
+            if (teardownFunc) {
+                teardownFunc(currentRes);
+            }
+            let res = workerFunc.call(this, newArg);
+            if (!resEquality || !resEquality(res, currentRes)) {
+                currentRes = res;
+            }
+        }
+        currentArg = newArg;
+        return currentRes;
+    };
+}
+function memoizeArraylike(// used at all?
+workerFunc, resEquality, teardownFunc) {
+    let currentArgSets = [];
+    let currentResults = [];
+    return (newArgSets) => {
+        let currentLen = currentArgSets.length;
+        let newLen = newArgSets.length;
+        let i = 0;
+        for (; i < currentLen; i += 1) {
+            if (!newArgSets[i]) { // one of the old sets no longer exists
+                if (teardownFunc) {
+                    teardownFunc(currentResults[i]);
+                }
+            }
+            else if (!isArraysEqual(currentArgSets[i], newArgSets[i])) {
+                if (teardownFunc) {
+                    teardownFunc(currentResults[i]);
+                }
+                let res = workerFunc.apply(this, newArgSets[i]);
+                if (!resEquality || !resEquality(res, currentResults[i])) {
+                    currentResults[i] = res;
+                }
+            }
+        }
+        for (; i < newLen; i += 1) {
+            currentResults[i] = workerFunc.apply(this, newArgSets[i]);
+        }
+        currentArgSets = newArgSets;
+        currentResults.splice(newLen); // remove excess
+        return currentResults;
+    };
+}
+function memoizeHashlike(workerFunc, resEquality, teardownFunc) {
+    let currentArgHash = {};
+    let currentResHash = {};
+    return (newArgHash) => {
+        let newResHash = {};
+        for (let key in newArgHash) {
+            if (!currentResHash[key]) {
+                newResHash[key] = workerFunc.apply(this, newArgHash[key]);
+            }
+            else if (!isArraysEqual(currentArgHash[key], newArgHash[key])) {
+                if (teardownFunc) {
+                    teardownFunc(currentResHash[key]);
+                }
+                let res = workerFunc.apply(this, newArgHash[key]);
+                newResHash[key] = (resEquality && resEquality(res, currentResHash[key]))
+                    ? currentResHash[key]
+                    : res;
+            }
+            else {
+                newResHash[key] = currentResHash[key];
+            }
+        }
+        currentArgHash = newArgHash;
+        currentResHash = newResHash;
+        return newResHash;
+    };
+}
+
+const EXTENDED_SETTINGS_AND_SEVERITIES = {
+    week: 3,
+    separator: 0,
+    omitZeroMinute: 0,
+    meridiem: 0,
+    omitCommas: 0,
+};
+const STANDARD_DATE_PROP_SEVERITIES = {
+    timeZoneName: 7,
+    era: 6,
+    year: 5,
+    month: 4,
+    day: 2,
+    weekday: 2,
+    hour: 1,
+    minute: 1,
+    second: 1,
+};
+const MERIDIEM_RE = /\s*([ap])\.?m\.?/i; // eats up leading spaces too
+const COMMA_RE = /,/g; // we need re for globalness
+const MULTI_SPACE_RE = /\s+/g;
+const LTR_RE = /\u200e/g; // control character
+const UTC_RE = /UTC|GMT/;
+class NativeFormatter {
+    constructor(formatSettings) {
+        let standardDateProps = {};
+        let extendedSettings = {};
+        let severity = 0;
+        for (let name in formatSettings) {
+            if (name in EXTENDED_SETTINGS_AND_SEVERITIES) {
+                extendedSettings[name] = formatSettings[name];
+                severity = Math.max(EXTENDED_SETTINGS_AND_SEVERITIES[name], severity);
+            }
+            else {
+                standardDateProps[name] = formatSettings[name];
+                if (name in STANDARD_DATE_PROP_SEVERITIES) { // TODO: what about hour12? no severity
+                    severity = Math.max(STANDARD_DATE_PROP_SEVERITIES[name], severity);
+                }
+            }
+        }
+        this.standardDateProps = standardDateProps;
+        this.extendedSettings = extendedSettings;
+        this.severity = severity;
+        this.buildFormattingFunc = memoize(buildFormattingFunc);
+    }
+    format(date, context) {
+        return this.buildFormattingFunc(this.standardDateProps, this.extendedSettings, context)(date);
+    }
+    formatRange(start, end, context, betterDefaultSeparator) {
+        let { standardDateProps, extendedSettings } = this;
+        let diffSeverity = computeMarkerDiffSeverity(start.marker, end.marker, context.calendarSystem);
+        if (!diffSeverity) {
+            return this.format(start, context);
+        }
+        let biggestUnitForPartial = diffSeverity;
+        if (biggestUnitForPartial > 1 && // the two dates are different in a way that's larger scale than time
+            (standardDateProps.year === 'numeric' || standardDateProps.year === '2-digit') &&
+            (standardDateProps.month === 'numeric' || standardDateProps.month === '2-digit') &&
+            (standardDateProps.day === 'numeric' || standardDateProps.day === '2-digit')) {
+            biggestUnitForPartial = 1; // make it look like the dates are only different in terms of time
+        }
+        let full0 = this.format(start, context);
+        let full1 = this.format(end, context);
+        if (full0 === full1) {
+            return full0;
+        }
+        let partialDateProps = computePartialFormattingOptions(standardDateProps, biggestUnitForPartial);
+        let partialFormattingFunc = buildFormattingFunc(partialDateProps, extendedSettings, context);
+        let partial0 = partialFormattingFunc(start);
+        let partial1 = partialFormattingFunc(end);
+        let insertion = findCommonInsertion(full0, partial0, full1, partial1);
+        let separator = extendedSettings.separator || betterDefaultSeparator || context.defaultSeparator || '';
+        if (insertion) {
+            return insertion.before + partial0 + separator + partial1 + insertion.after;
+        }
+        return full0 + separator + full1;
+    }
+    getLargestUnit() {
+        switch (this.severity) {
+            case 7:
+            case 6:
+            case 5:
+                return 'year';
+            case 4:
+                return 'month';
+            case 3:
+                return 'week';
+            case 2:
+                return 'day';
+            default:
+                return 'time'; // really?
+        }
+    }
+}
+function buildFormattingFunc(standardDateProps, extendedSettings, context) {
+    let standardDatePropCnt = Object.keys(standardDateProps).length;
+    if (standardDatePropCnt === 1 && standardDateProps.timeZoneName === 'short') {
+        return (date) => (formatTimeZoneOffset(date.timeZoneOffset));
+    }
+    if (standardDatePropCnt === 0 && extendedSettings.week) {
+        return (date) => (formatWeekNumber(context.computeWeekNumber(date.marker), context.weekText, context.weekTextLong, context.locale, extendedSettings.week));
+    }
+    return buildNativeFormattingFunc(standardDateProps, extendedSettings, context);
+}
+function buildNativeFormattingFunc(standardDateProps, extendedSettings, context) {
+    standardDateProps = Object.assign({}, standardDateProps); // copy
+    extendedSettings = Object.assign({}, extendedSettings); // copy
+    sanitizeSettings(standardDateProps, extendedSettings);
+    standardDateProps.timeZone = 'UTC'; // we leverage the only guaranteed timeZone for our UTC markers
+    let normalFormat = new Intl.DateTimeFormat(context.locale.codes, standardDateProps);
+    let zeroFormat; // needed?
+    if (extendedSettings.omitZeroMinute) {
+        let zeroProps = Object.assign({}, standardDateProps);
+        delete zeroProps.minute; // seconds and ms were already considered in sanitizeSettings
+        zeroFormat = new Intl.DateTimeFormat(context.locale.codes, zeroProps);
+    }
+    return (date) => {
+        let { marker } = date;
+        let format;
+        if (zeroFormat && !marker.getUTCMinutes()) {
+            format = zeroFormat;
+        }
+        else {
+            format = normalFormat;
+        }
+        let s = format.format(marker);
+        return postProcess(s, date, standardDateProps, extendedSettings, context);
+    };
+}
+function sanitizeSettings(standardDateProps, extendedSettings) {
+    // deal with a browser inconsistency where formatting the timezone
+    // requires that the hour/minute be present.
+    if (standardDateProps.timeZoneName) {
+        if (!standardDateProps.hour) {
+            standardDateProps.hour = '2-digit';
+        }
+        if (!standardDateProps.minute) {
+            standardDateProps.minute = '2-digit';
+        }
+    }
+    // only support short timezone names
+    if (standardDateProps.timeZoneName === 'long') {
+        standardDateProps.timeZoneName = 'short';
+    }
+    // if requesting to display seconds, MUST display minutes
+    if (extendedSettings.omitZeroMinute && (standardDateProps.second || standardDateProps.millisecond)) {
+        delete extendedSettings.omitZeroMinute;
+    }
+}
+function postProcess(s, date, standardDateProps, extendedSettings, context) {
+    s = s.replace(LTR_RE, ''); // remove left-to-right control chars. do first. good for other regexes
+    if (standardDateProps.timeZoneName === 'short') {
+        s = injectTzoStr(s, (context.timeZone === 'UTC' || date.timeZoneOffset == null) ?
+            'UTC' : // important to normalize for IE, which does "GMT"
+            formatTimeZoneOffset(date.timeZoneOffset));
+    }
+    if (extendedSettings.omitCommas) {
+        s = s.replace(COMMA_RE, '').trim();
+    }
+    if (extendedSettings.omitZeroMinute) {
+        s = s.replace(':00', ''); // zeroFormat doesn't always achieve this
+    }
+    // ^ do anything that might create adjacent spaces before this point,
+    // because MERIDIEM_RE likes to eat up loading spaces
+    if (extendedSettings.meridiem === false) {
+        s = s.replace(MERIDIEM_RE, '').trim();
+    }
+    else if (extendedSettings.meridiem === 'narrow') { // a/p
+        s = s.replace(MERIDIEM_RE, (m0, m1) => m1.toLocaleLowerCase());
+    }
+    else if (extendedSettings.meridiem === 'short') { // am/pm
+        s = s.replace(MERIDIEM_RE, (m0, m1) => `${m1.toLocaleLowerCase()}m`);
+    }
+    else if (extendedSettings.meridiem === 'lowercase') { // other meridiem transformers already converted to lowercase
+        s = s.replace(MERIDIEM_RE, (m0) => m0.toLocaleLowerCase());
+    }
+    s = s.replace(MULTI_SPACE_RE, ' ');
+    s = s.trim();
+    return s;
+}
+function injectTzoStr(s, tzoStr) {
+    let replaced = false;
+    s = s.replace(UTC_RE, () => {
+        replaced = true;
+        return tzoStr;
+    });
+    // IE11 doesn't include UTC/GMT in the original string, so append to end
+    if (!replaced) {
+        s += ` ${tzoStr}`;
+    }
+    return s;
+}
+function formatWeekNumber(num, weekText, weekTextLong, locale, display) {
+    let parts = [];
+    if (display === 'long') {
+        parts.push(weekTextLong);
+    }
+    else if (display === 'short' || display === 'narrow') {
+        parts.push(weekText);
+    }
+    if (display === 'long' || display === 'short') {
+        parts.push(' ');
+    }
+    parts.push(locale.simpleNumberFormat.format(num));
+    if (locale.options.direction === 'rtl') { // TODO: use control characters instead?
+        parts.reverse();
+    }
+    return parts.join('');
+}
+// Range Formatting Utils
+// 0 = exactly the same
+// 1 = different by time
+// and bigger
+function computeMarkerDiffSeverity(d0, d1, ca) {
+    if (ca.getMarkerYear(d0) !== ca.getMarkerYear(d1)) {
+        return 5;
+    }
+    if (ca.getMarkerMonth(d0) !== ca.getMarkerMonth(d1)) {
+        return 4;
+    }
+    if (ca.getMarkerDay(d0) !== ca.getMarkerDay(d1)) {
+        return 2;
+    }
+    if (timeAsMs(d0) !== timeAsMs(d1)) {
+        return 1;
+    }
+    return 0;
+}
+function computePartialFormattingOptions(options, biggestUnit) {
+    let partialOptions = {};
+    for (let name in options) {
+        if (!(name in STANDARD_DATE_PROP_SEVERITIES) || // not a date part prop (like timeZone)
+            STANDARD_DATE_PROP_SEVERITIES[name] <= biggestUnit) {
+            partialOptions[name] = options[name];
+        }
+    }
+    return partialOptions;
+}
+function findCommonInsertion(full0, partial0, full1, partial1) {
+    let i0 = 0;
+    while (i0 < full0.length) {
+        let found0 = full0.indexOf(partial0, i0);
+        if (found0 === -1) {
+            break;
+        }
+        let before0 = full0.substr(0, found0);
+        i0 = found0 + partial0.length;
+        let after0 = full0.substr(i0);
+        let i1 = 0;
+        while (i1 < full1.length) {
+            let found1 = full1.indexOf(partial1, i1);
+            if (found1 === -1) {
+                break;
+            }
+            let before1 = full1.substr(0, found1);
+            i1 = found1 + partial1.length;
+            let after1 = full1.substr(i1);
+            if (before0 === before1 && after0 === after1) {
+                return {
+                    before: before0,
+                    after: after0,
+                };
+            }
+        }
+    }
+    return null;
+}
+
+function expandZonedMarker(dateInfo, calendarSystem) {
+    let a = calendarSystem.markerToArray(dateInfo.marker);
+    return {
+        marker: dateInfo.marker,
+        timeZoneOffset: dateInfo.timeZoneOffset,
+        array: a,
+        year: a[0],
+        month: a[1],
+        day: a[2],
+        hour: a[3],
+        minute: a[4],
+        second: a[5],
+        millisecond: a[6],
+    };
+}
+
+function createVerboseFormattingArg(start, end, context, betterDefaultSeparator) {
+    let startInfo = expandZonedMarker(start, context.calendarSystem);
+    let endInfo = end ? expandZonedMarker(end, context.calendarSystem) : null;
+    return {
+        date: startInfo,
+        start: startInfo,
+        end: endInfo,
+        timeZone: context.timeZone,
+        localeCodes: context.locale.codes,
+        defaultSeparator: betterDefaultSeparator || context.defaultSeparator,
+    };
+}
+
+/*
+TODO: fix the terminology of "formatter" vs "formatting func"
+*/
+/*
+At the time of instantiation, this object does not know which cmd-formatting system it will use.
+It receives this at the time of formatting, as a setting.
+*/
+class CmdFormatter {
+    constructor(cmdStr) {
+        this.cmdStr = cmdStr;
+    }
+    format(date, context, betterDefaultSeparator) {
+        return context.cmdFormatter(this.cmdStr, createVerboseFormattingArg(date, null, context, betterDefaultSeparator));
+    }
+    formatRange(start, end, context, betterDefaultSeparator) {
+        return context.cmdFormatter(this.cmdStr, createVerboseFormattingArg(start, end, context, betterDefaultSeparator));
+    }
+}
+
+class FuncFormatter {
+    constructor(func) {
+        this.func = func;
+    }
+    format(date, context, betterDefaultSeparator) {
+        return this.func(createVerboseFormattingArg(date, null, context, betterDefaultSeparator));
+    }
+    formatRange(start, end, context, betterDefaultSeparator) {
+        return this.func(createVerboseFormattingArg(start, end, context, betterDefaultSeparator));
+    }
+}
+
+function createFormatter(input) {
+    if (typeof input === 'object' && input) { // non-null object
+        return new NativeFormatter(input);
+    }
+    if (typeof input === 'string') {
+        return new CmdFormatter(input);
+    }
+    if (typeof input === 'function') {
+        return new FuncFormatter(input);
+    }
+    return null;
+}
+
+// base options
+// ------------
+const BASE_OPTION_REFINERS = {
+    navLinkDayClick: identity,
+    navLinkWeekClick: identity,
+    duration: createDuration,
+    bootstrapFontAwesome: identity,
+    buttonIcons: identity,
+    customButtons: identity,
+    defaultAllDayEventDuration: createDuration,
+    defaultTimedEventDuration: createDuration,
+    nextDayThreshold: createDuration,
+    scrollTime: createDuration,
+    scrollTimeReset: Boolean,
+    slotMinTime: createDuration,
+    slotMaxTime: createDuration,
+    dayPopoverFormat: createFormatter,
+    slotDuration: createDuration,
+    snapDuration: createDuration,
+    headerToolbar: identity,
+    footerToolbar: identity,
+    defaultRangeSeparator: String,
+    titleRangeSeparator: String,
+    forceEventDuration: Boolean,
+    dayHeaders: Boolean,
+    dayHeaderFormat: createFormatter,
+    dayHeaderClassNames: identity,
+    dayHeaderContent: identity,
+    dayHeaderDidMount: identity,
+    dayHeaderWillUnmount: identity,
+    dayCellClassNames: identity,
+    dayCellContent: identity,
+    dayCellDidMount: identity,
+    dayCellWillUnmount: identity,
+    initialView: String,
+    aspectRatio: Number,
+    weekends: Boolean,
+    weekNumberCalculation: identity,
+    weekNumbers: Boolean,
+    weekNumberClassNames: identity,
+    weekNumberContent: identity,
+    weekNumberDidMount: identity,
+    weekNumberWillUnmount: identity,
+    editable: Boolean,
+    viewClassNames: identity,
+    viewDidMount: identity,
+    viewWillUnmount: identity,
+    nowIndicator: Boolean,
+    nowIndicatorClassNames: identity,
+    nowIndicatorContent: identity,
+    nowIndicatorDidMount: identity,
+    nowIndicatorWillUnmount: identity,
+    showNonCurrentDates: Boolean,
+    lazyFetching: Boolean,
+    startParam: String,
+    endParam: String,
+    timeZoneParam: String,
+    timeZone: String,
+    locales: identity,
+    locale: identity,
+    themeSystem: String,
+    dragRevertDuration: Number,
+    dragScroll: Boolean,
+    allDayMaintainDuration: Boolean,
+    unselectAuto: Boolean,
+    dropAccept: identity,
+    eventOrder: parseFieldSpecs,
+    eventOrderStrict: Boolean,
+    handleWindowResize: Boolean,
+    windowResizeDelay: Number,
+    longPressDelay: Number,
+    eventDragMinDistance: Number,
+    expandRows: Boolean,
+    height: identity,
+    contentHeight: identity,
+    direction: String,
+    weekNumberFormat: createFormatter,
+    eventResizableFromStart: Boolean,
+    displayEventTime: Boolean,
+    displayEventEnd: Boolean,
+    weekText: String,
+    weekTextLong: String,
+    progressiveEventRendering: Boolean,
+    businessHours: identity,
+    initialDate: identity,
+    now: identity,
+    eventDataTransform: identity,
+    stickyHeaderDates: identity,
+    stickyFooterScrollbar: identity,
+    viewHeight: identity,
+    defaultAllDay: Boolean,
+    eventSourceFailure: identity,
+    eventSourceSuccess: identity,
+    eventDisplay: String,
+    eventStartEditable: Boolean,
+    eventDurationEditable: Boolean,
+    eventOverlap: identity,
+    eventConstraint: identity,
+    eventAllow: identity,
+    eventBackgroundColor: String,
+    eventBorderColor: String,
+    eventTextColor: String,
+    eventColor: String,
+    eventClassNames: identity,
+    eventContent: identity,
+    eventDidMount: identity,
+    eventWillUnmount: identity,
+    selectConstraint: identity,
+    selectOverlap: identity,
+    selectAllow: identity,
+    droppable: Boolean,
+    unselectCancel: String,
+    slotLabelFormat: identity,
+    slotLaneClassNames: identity,
+    slotLaneContent: identity,
+    slotLaneDidMount: identity,
+    slotLaneWillUnmount: identity,
+    slotLabelClassNames: identity,
+    slotLabelContent: identity,
+    slotLabelDidMount: identity,
+    slotLabelWillUnmount: identity,
+    dayMaxEvents: identity,
+    dayMaxEventRows: identity,
+    dayMinWidth: Number,
+    slotLabelInterval: createDuration,
+    allDayText: String,
+    allDayClassNames: identity,
+    allDayContent: identity,
+    allDayDidMount: identity,
+    allDayWillUnmount: identity,
+    slotMinWidth: Number,
+    navLinks: Boolean,
+    eventTimeFormat: createFormatter,
+    rerenderDelay: Number,
+    moreLinkText: identity,
+    moreLinkHint: identity,
+    selectMinDistance: Number,
+    selectable: Boolean,
+    selectLongPressDelay: Number,
+    eventLongPressDelay: Number,
+    selectMirror: Boolean,
+    eventMaxStack: Number,
+    eventMinHeight: Number,
+    eventMinWidth: Number,
+    eventShortHeight: Number,
+    slotEventOverlap: Boolean,
+    plugins: identity,
+    firstDay: Number,
+    dayCount: Number,
+    dateAlignment: String,
+    dateIncrement: createDuration,
+    hiddenDays: identity,
+    fixedWeekCount: Boolean,
+    validRange: identity,
+    visibleRange: identity,
+    titleFormat: identity,
+    eventInteractive: Boolean,
+    // only used by list-view, but languages define the value, so we need it in base options
+    noEventsText: String,
+    viewHint: identity,
+    navLinkHint: identity,
+    closeHint: String,
+    timeHint: String,
+    eventHint: String,
+    moreLinkClick: identity,
+    moreLinkClassNames: identity,
+    moreLinkContent: identity,
+    moreLinkDidMount: identity,
+    moreLinkWillUnmount: identity,
+    monthStartFormat: createFormatter,
+    // for connectors
+    // (can't be part of plugin system b/c must be provided at runtime)
+    handleCustomRendering: identity,
+    customRenderingMetaMap: identity,
+};
+// do NOT give a type here. need `typeof BASE_OPTION_DEFAULTS` to give real results.
+// raw values.
+const BASE_OPTION_DEFAULTS = {
+    eventDisplay: 'auto',
+    defaultRangeSeparator: ' - ',
+    titleRangeSeparator: ' \u2013 ',
+    defaultTimedEventDuration: '01:00:00',
+    defaultAllDayEventDuration: { day: 1 },
+    forceEventDuration: false,
+    nextDayThreshold: '00:00:00',
+    dayHeaders: true,
+    initialView: '',
+    aspectRatio: 1.35,
+    headerToolbar: {
+        start: 'title',
+        center: '',
+        end: 'today prev,next',
+    },
+    weekends: true,
+    weekNumbers: false,
+    weekNumberCalculation: 'local',
+    editable: false,
+    nowIndicator: false,
+    scrollTime: '06:00:00',
+    scrollTimeReset: true,
+    slotMinTime: '00:00:00',
+    slotMaxTime: '24:00:00',
+    showNonCurrentDates: true,
+    lazyFetching: true,
+    startParam: 'start',
+    endParam: 'end',
+    timeZoneParam: 'timeZone',
+    timeZone: 'local',
+    locales: [],
+    locale: '',
+    themeSystem: 'standard',
+    dragRevertDuration: 500,
+    dragScroll: true,
+    allDayMaintainDuration: false,
+    unselectAuto: true,
+    dropAccept: '*',
+    eventOrder: 'start,-duration,allDay,title',
+    dayPopoverFormat: { month: 'long', day: 'numeric', year: 'numeric' },
+    handleWindowResize: true,
+    windowResizeDelay: 100,
+    longPressDelay: 1000,
+    eventDragMinDistance: 5,
+    expandRows: false,
+    navLinks: false,
+    selectable: false,
+    eventMinHeight: 15,
+    eventMinWidth: 30,
+    eventShortHeight: 30,
+    monthStartFormat: { month: 'long', day: 'numeric' },
+};
+// calendar listeners
+// ------------------
+const CALENDAR_LISTENER_REFINERS = {
+    datesSet: identity,
+    eventsSet: identity,
+    eventAdd: identity,
+    eventChange: identity,
+    eventRemove: identity,
+    windowResize: identity,
+    eventClick: identity,
+    eventMouseEnter: identity,
+    eventMouseLeave: identity,
+    select: identity,
+    unselect: identity,
+    loading: identity,
+    // internal
+    _unmount: identity,
+    _beforeprint: identity,
+    _afterprint: identity,
+    _noEventDrop: identity,
+    _noEventResize: identity,
+    _resize: identity,
+    _scrollRequest: identity,
+};
+// calendar-specific options
+// -------------------------
+const CALENDAR_OPTION_REFINERS = {
+    buttonText: identity,
+    buttonHints: identity,
+    views: identity,
+    plugins: identity,
+    initialEvents: identity,
+    events: identity,
+    eventSources: identity,
+};
+const COMPLEX_OPTION_COMPARATORS = {
+    headerToolbar: isMaybeObjectsEqual,
+    footerToolbar: isMaybeObjectsEqual,
+    buttonText: isMaybeObjectsEqual,
+    buttonHints: isMaybeObjectsEqual,
+    buttonIcons: isMaybeObjectsEqual,
+    dateIncrement: isMaybeObjectsEqual,
+    plugins: isMaybeArraysEqual,
+    events: isMaybeArraysEqual,
+    eventSources: isMaybeArraysEqual,
+    ['resources']: isMaybeArraysEqual,
+};
+function isMaybeObjectsEqual(a, b) {
+    if (typeof a === 'object' && typeof b === 'object' && a && b) { // both non-null objects
+        return isPropsEqual(a, b);
+    }
+    return a === b;
+}
+function isMaybeArraysEqual(a, b) {
+    if (Array.isArray(a) && Array.isArray(b)) {
+        return isArraysEqual(a, b);
+    }
+    return a === b;
+}
+// view-specific options
+// ---------------------
+const VIEW_OPTION_REFINERS = {
+    type: String,
+    component: identity,
+    buttonText: String,
+    buttonTextKey: String,
+    dateProfileGeneratorClass: identity,
+    usesMinMaxTime: Boolean,
+    classNames: identity,
+    content: identity,
+    didMount: identity,
+    willUnmount: identity,
+};
+// util funcs
+// ----------------------------------------------------------------------------------------------------
+function mergeRawOptions(optionSets) {
+    return mergeProps(optionSets, COMPLEX_OPTION_COMPARATORS);
+}
+function refineProps(input, refiners) {
+    let refined = {};
+    let extra = {};
+    for (let propName in refiners) {
+        if (propName in input) {
+            refined[propName] = refiners[propName](input[propName]);
+        }
+    }
+    for (let propName in input) {
+        if (!(propName in refiners)) {
+            extra[propName] = input[propName];
+        }
+    }
+    return { refined, extra };
+}
+function identity(raw) {
+    return raw;
+}
+
+const { hasOwnProperty } = Object.prototype;
+// Merges an array of objects into a single object.
+// The second argument allows for an array of property names who's object values will be merged together.
+function mergeProps(propObjs, complexPropsMap) {
+    let dest = {};
+    if (complexPropsMap) {
+        for (let name in complexPropsMap) {
+            if (complexPropsMap[name] === isMaybeObjectsEqual) { // implies that it's object-mergeable
+                let complexObjs = [];
+                // collect the trailing object values, stopping when a non-object is discovered
+                for (let i = propObjs.length - 1; i >= 0; i -= 1) {
+                    let val = propObjs[i][name];
+                    if (typeof val === 'object' && val) { // non-null object
+                        complexObjs.unshift(val);
+                    }
+                    else if (val !== undefined) {
+                        dest[name] = val; // if there were no objects, this value will be used
+                        break;
+                    }
+                }
+                // if the trailing values were objects, use the merged value
+                if (complexObjs.length) {
+                    dest[name] = mergeProps(complexObjs);
+                }
+            }
+        }
+    }
+    // copy values into the destination, going from last to first
+    for (let i = propObjs.length - 1; i >= 0; i -= 1) {
+        let props = propObjs[i];
+        for (let name in props) {
+            if (!(name in dest)) { // if already assigned by previous props or complex props, don't reassign
+                dest[name] = props[name];
+            }
+        }
+    }
+    return dest;
+}
+function filterHash(hash, func) {
+    let filtered = {};
+    for (let key in hash) {
+        if (func(hash[key], key)) {
+            filtered[key] = hash[key];
+        }
+    }
+    return filtered;
+}
+function mapHash(hash, func) {
+    let newHash = {};
+    for (let key in hash) {
+        newHash[key] = func(hash[key], key);
+    }
+    return newHash;
+}
+function arrayToHash(a) {
+    let hash = {};
+    for (let item of a) {
+        hash[item] = true;
+    }
+    return hash;
+}
+// TODO: reassess browser support
+// https://caniuse.com/?search=object.values
+function hashValuesToArray(obj) {
+    let a = [];
+    for (let key in obj) {
+        a.push(obj[key]);
+    }
+    return a;
+}
+function isPropsEqual(obj0, obj1) {
+    if (obj0 === obj1) {
+        return true;
+    }
+    for (let key in obj0) {
+        if (hasOwnProperty.call(obj0, key)) {
+            if (!(key in obj1)) {
+                return false;
+            }
+        }
+    }
+    for (let key in obj1) {
+        if (hasOwnProperty.call(obj1, key)) {
+            if (obj0[key] !== obj1[key]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+const HANDLER_RE = /^on[A-Z]/;
+function isNonHandlerPropsEqual(obj0, obj1) {
+    const keys = getUnequalProps(obj0, obj1);
+    for (let key of keys) {
+        if (!HANDLER_RE.test(key)) {
+            return false;
+        }
+    }
+    return true;
+}
+function getUnequalProps(obj0, obj1) {
+    let keys = [];
+    for (let key in obj0) {
+        if (hasOwnProperty.call(obj0, key)) {
+            if (!(key in obj1)) {
+                keys.push(key);
+            }
+        }
+    }
+    for (let key in obj1) {
+        if (hasOwnProperty.call(obj1, key)) {
+            if (obj0[key] !== obj1[key]) {
+                keys.push(key);
+            }
+        }
+    }
+    return keys;
+}
+function compareObjs(oldProps, newProps, equalityFuncs = {}) {
+    if (oldProps === newProps) {
+        return true;
+    }
+    for (let key in newProps) {
+        if (key in oldProps && isObjValsEqual(oldProps[key], newProps[key], equalityFuncs[key])) ;
+        else {
+            return false;
+        }
+    }
+    // check for props that were omitted in the new
+    for (let key in oldProps) {
+        if (!(key in newProps)) {
+            return false;
+        }
+    }
+    return true;
+}
+/*
+assumed "true" equality for handler names like "onReceiveSomething"
+*/
+function isObjValsEqual(val0, val1, comparator) {
+    if (val0 === val1 || comparator === true) {
+        return true;
+    }
+    if (comparator) {
+        return comparator(val0, val1);
+    }
+    return false;
+}
+function collectFromHash(hash, startIndex = 0, endIndex, step = 1) {
+    let res = [];
+    if (endIndex == null) {
+        endIndex = Object.keys(hash).length;
+    }
+    for (let i = startIndex; i < endIndex; i += step) {
+        let val = hash[i];
+        if (val !== undefined) { // will disregard undefined for sparse arrays
+            res.push(val);
+        }
+    }
+    return res;
+}
+
+let calendarSystemClassMap = {};
+function registerCalendarSystem(name, theClass) {
+    calendarSystemClassMap[name] = theClass;
+}
+function createCalendarSystem(name) {
+    return new calendarSystemClassMap[name]();
+}
+class GregorianCalendarSystem {
+    getMarkerYear(d) {
+        return d.getUTCFullYear();
+    }
+    getMarkerMonth(d) {
+        return d.getUTCMonth();
+    }
+    getMarkerDay(d) {
+        return d.getUTCDate();
+    }
+    arrayToMarker(arr) {
+        return arrayToUtcDate(arr);
+    }
+    markerToArray(marker) {
+        return dateToUtcArray(marker);
+    }
+}
+registerCalendarSystem('gregory', GregorianCalendarSystem);
+
+const ISO_RE = /^\s*(\d{4})(-?(\d{2})(-?(\d{2})([T ](\d{2}):?(\d{2})(:?(\d{2})(\.(\d+))?)?(Z|(([-+])(\d{2})(:?(\d{2}))?))?)?)?)?$/;
+function parse(str) {
+    let m = ISO_RE.exec(str);
+    if (m) {
+        let marker = new Date(Date.UTC(Number(m[1]), m[3] ? Number(m[3]) - 1 : 0, Number(m[5] || 1), Number(m[7] || 0), Number(m[8] || 0), Number(m[10] || 0), m[12] ? Number(`0.${m[12]}`) * 1000 : 0));
+        if (isValidDate(marker)) {
+            let timeZoneOffset = null;
+            if (m[13]) {
+                timeZoneOffset = (m[15] === '-' ? -1 : 1) * (Number(m[16] || 0) * 60 +
+                    Number(m[18] || 0));
+            }
+            return {
+                marker,
+                isTimeUnspecified: !m[6],
+                timeZoneOffset,
+            };
+        }
+    }
+    return null;
+}
+
+class DateEnv {
+    constructor(settings) {
+        let timeZone = this.timeZone = settings.timeZone;
+        let isNamedTimeZone = timeZone !== 'local' && timeZone !== 'UTC';
+        if (settings.namedTimeZoneImpl && isNamedTimeZone) {
+            this.namedTimeZoneImpl = new settings.namedTimeZoneImpl(timeZone);
+        }
+        this.canComputeOffset = Boolean(!isNamedTimeZone || this.namedTimeZoneImpl);
+        this.calendarSystem = createCalendarSystem(settings.calendarSystem);
+        this.locale = settings.locale;
+        this.weekDow = settings.locale.week.dow;
+        this.weekDoy = settings.locale.week.doy;
+        if (settings.weekNumberCalculation === 'ISO') {
+            this.weekDow = 1;
+            this.weekDoy = 4;
+        }
+        if (typeof settings.firstDay === 'number') {
+            this.weekDow = settings.firstDay;
+        }
+        if (typeof settings.weekNumberCalculation === 'function') {
+            this.weekNumberFunc = settings.weekNumberCalculation;
+        }
+        this.weekText = settings.weekText != null ? settings.weekText : settings.locale.options.weekText;
+        this.weekTextLong = (settings.weekTextLong != null ? settings.weekTextLong : settings.locale.options.weekTextLong) || this.weekText;
+        this.cmdFormatter = settings.cmdFormatter;
+        this.defaultSeparator = settings.defaultSeparator;
+    }
+    // Creating / Parsing
+    createMarker(input) {
+        let meta = this.createMarkerMeta(input);
+        if (meta === null) {
+            return null;
+        }
+        return meta.marker;
+    }
+    createNowMarker() {
+        if (this.canComputeOffset) {
+            return this.timestampToMarker(new Date().valueOf());
+        }
+        // if we can't compute the current date val for a timezone,
+        // better to give the current local date vals than UTC
+        return arrayToUtcDate(dateToLocalArray(new Date()));
+    }
+    createMarkerMeta(input) {
+        if (typeof input === 'string') {
+            return this.parse(input);
+        }
+        let marker = null;
+        if (typeof input === 'number') {
+            marker = this.timestampToMarker(input);
+        }
+        else if (input instanceof Date) {
+            input = input.valueOf();
+            if (!isNaN(input)) {
+                marker = this.timestampToMarker(input);
+            }
+        }
+        else if (Array.isArray(input)) {
+            marker = arrayToUtcDate(input);
+        }
+        if (marker === null || !isValidDate(marker)) {
+            return null;
+        }
+        return { marker, isTimeUnspecified: false, forcedTzo: null };
+    }
+    parse(s) {
+        let parts = parse(s);
+        if (parts === null) {
+            return null;
+        }
+        let { marker } = parts;
+        let forcedTzo = null;
+        if (parts.timeZoneOffset !== null) {
+            if (this.canComputeOffset) {
+                marker = this.timestampToMarker(marker.valueOf() - parts.timeZoneOffset * 60 * 1000);
+            }
+            else {
+                forcedTzo = parts.timeZoneOffset;
+            }
+        }
+        return { marker, isTimeUnspecified: parts.isTimeUnspecified, forcedTzo };
+    }
+    // Accessors
+    getYear(marker) {
+        return this.calendarSystem.getMarkerYear(marker);
+    }
+    getMonth(marker) {
+        return this.calendarSystem.getMarkerMonth(marker);
+    }
+    getDay(marker) {
+        return this.calendarSystem.getMarkerDay(marker);
+    }
+    // Adding / Subtracting
+    add(marker, dur) {
+        let a = this.calendarSystem.markerToArray(marker);
+        a[0] += dur.years;
+        a[1] += dur.months;
+        a[2] += dur.days;
+        a[6] += dur.milliseconds;
+        return this.calendarSystem.arrayToMarker(a);
+    }
+    subtract(marker, dur) {
+        let a = this.calendarSystem.markerToArray(marker);
+        a[0] -= dur.years;
+        a[1] -= dur.months;
+        a[2] -= dur.days;
+        a[6] -= dur.milliseconds;
+        return this.calendarSystem.arrayToMarker(a);
+    }
+    addYears(marker, n) {
+        let a = this.calendarSystem.markerToArray(marker);
+        a[0] += n;
+        return this.calendarSystem.arrayToMarker(a);
+    }
+    addMonths(marker, n) {
+        let a = this.calendarSystem.markerToArray(marker);
+        a[1] += n;
+        return this.calendarSystem.arrayToMarker(a);
+    }
+    // Diffing Whole Units
+    diffWholeYears(m0, m1) {
+        let { calendarSystem } = this;
+        if (timeAsMs(m0) === timeAsMs(m1) &&
+            calendarSystem.getMarkerDay(m0) === calendarSystem.getMarkerDay(m1) &&
+            calendarSystem.getMarkerMonth(m0) === calendarSystem.getMarkerMonth(m1)) {
+            return calendarSystem.getMarkerYear(m1) - calendarSystem.getMarkerYear(m0);
+        }
+        return null;
+    }
+    diffWholeMonths(m0, m1) {
+        let { calendarSystem } = this;
+        if (timeAsMs(m0) === timeAsMs(m1) &&
+            calendarSystem.getMarkerDay(m0) === calendarSystem.getMarkerDay(m1)) {
+            return (calendarSystem.getMarkerMonth(m1) - calendarSystem.getMarkerMonth(m0)) +
+                (calendarSystem.getMarkerYear(m1) - calendarSystem.getMarkerYear(m0)) * 12;
+        }
+        return null;
+    }
+    // Range / Duration
+    greatestWholeUnit(m0, m1) {
+        let n = this.diffWholeYears(m0, m1);
+        if (n !== null) {
+            return { unit: 'year', value: n };
+        }
+        n = this.diffWholeMonths(m0, m1);
+        if (n !== null) {
+            return { unit: 'month', value: n };
+        }
+        n = diffWholeWeeks(m0, m1);
+        if (n !== null) {
+            return { unit: 'week', value: n };
+        }
+        n = diffWholeDays(m0, m1);
+        if (n !== null) {
+            return { unit: 'day', value: n };
+        }
+        n = diffHours(m0, m1);
+        if (isInt(n)) {
+            return { unit: 'hour', value: n };
+        }
+        n = diffMinutes(m0, m1);
+        if (isInt(n)) {
+            return { unit: 'minute', value: n };
+        }
+        n = diffSeconds(m0, m1);
+        if (isInt(n)) {
+            return { unit: 'second', value: n };
+        }
+        return { unit: 'millisecond', value: m1.valueOf() - m0.valueOf() };
+    }
+    countDurationsBetween(m0, m1, d) {
+        // TODO: can use greatestWholeUnit
+        let diff;
+        if (d.years) {
+            diff = this.diffWholeYears(m0, m1);
+            if (diff !== null) {
+                return diff / asRoughYears(d);
+            }
+        }
+        if (d.months) {
+            diff = this.diffWholeMonths(m0, m1);
+            if (diff !== null) {
+                return diff / asRoughMonths(d);
+            }
+        }
+        if (d.days) {
+            diff = diffWholeDays(m0, m1);
+            if (diff !== null) {
+                return diff / asRoughDays(d);
+            }
+        }
+        return (m1.valueOf() - m0.valueOf()) / asRoughMs(d);
+    }
+    // Start-Of
+    // these DON'T return zoned-dates. only UTC start-of dates
+    startOf(m, unit) {
+        if (unit === 'year') {
+            return this.startOfYear(m);
+        }
+        if (unit === 'month') {
+            return this.startOfMonth(m);
+        }
+        if (unit === 'week') {
+            return this.startOfWeek(m);
+        }
+        if (unit === 'day') {
+            return startOfDay(m);
+        }
+        if (unit === 'hour') {
+            return startOfHour(m);
+        }
+        if (unit === 'minute') {
+            return startOfMinute(m);
+        }
+        if (unit === 'second') {
+            return startOfSecond(m);
+        }
+        return null;
+    }
+    startOfYear(m) {
+        return this.calendarSystem.arrayToMarker([
+            this.calendarSystem.getMarkerYear(m),
+        ]);
+    }
+    startOfMonth(m) {
+        return this.calendarSystem.arrayToMarker([
+            this.calendarSystem.getMarkerYear(m),
+            this.calendarSystem.getMarkerMonth(m),
+        ]);
+    }
+    startOfWeek(m) {
+        return this.calendarSystem.arrayToMarker([
+            this.calendarSystem.getMarkerYear(m),
+            this.calendarSystem.getMarkerMonth(m),
+            m.getUTCDate() - ((m.getUTCDay() - this.weekDow + 7) % 7),
+        ]);
+    }
+    // Week Number
+    computeWeekNumber(marker) {
+        if (this.weekNumberFunc) {
+            return this.weekNumberFunc(this.toDate(marker));
+        }
+        return weekOfYear(marker, this.weekDow, this.weekDoy);
+    }
+    // TODO: choke on timeZoneName: long
+    format(marker, formatter, dateOptions = {}) {
+        return formatter.format({
+            marker,
+            timeZoneOffset: dateOptions.forcedTzo != null ?
+                dateOptions.forcedTzo :
+                this.offsetForMarker(marker),
+        }, this);
+    }
+    formatRange(start, end, formatter, dateOptions = {}) {
+        if (dateOptions.isEndExclusive) {
+            end = addMs(end, -1);
+        }
+        return formatter.formatRange({
+            marker: start,
+            timeZoneOffset: dateOptions.forcedStartTzo != null ?
+                dateOptions.forcedStartTzo :
+                this.offsetForMarker(start),
+        }, {
+            marker: end,
+            timeZoneOffset: dateOptions.forcedEndTzo != null ?
+                dateOptions.forcedEndTzo :
+                this.offsetForMarker(end),
+        }, this, dateOptions.defaultSeparator);
+    }
+    /*
+    DUMB: the omitTime arg is dumb. if we omit the time, we want to omit the timezone offset. and if we do that,
+    might as well use buildIsoString or some other util directly
+    */
+    formatIso(marker, extraOptions = {}) {
+        let timeZoneOffset = null;
+        if (!extraOptions.omitTimeZoneOffset) {
+            if (extraOptions.forcedTzo != null) {
+                timeZoneOffset = extraOptions.forcedTzo;
+            }
+            else {
+                timeZoneOffset = this.offsetForMarker(marker);
+            }
+        }
+        return buildIsoString(marker, timeZoneOffset, extraOptions.omitTime);
+    }
+    // TimeZone
+    timestampToMarker(ms) {
+        if (this.timeZone === 'local') {
+            return arrayToUtcDate(dateToLocalArray(new Date(ms)));
+        }
+        if (this.timeZone === 'UTC' || !this.namedTimeZoneImpl) {
+            return new Date(ms);
+        }
+        return arrayToUtcDate(this.namedTimeZoneImpl.timestampToArray(ms));
+    }
+    offsetForMarker(m) {
+        if (this.timeZone === 'local') {
+            return -arrayToLocalDate(dateToUtcArray(m)).getTimezoneOffset(); // convert "inverse" offset to "normal" offset
+        }
+        if (this.timeZone === 'UTC') {
+            return 0;
+        }
+        if (this.namedTimeZoneImpl) {
+            return this.namedTimeZoneImpl.offsetForArray(dateToUtcArray(m));
+        }
+        return null;
+    }
+    // Conversion
+    toDate(m, forcedTzo) {
+        if (this.timeZone === 'local') {
+            return arrayToLocalDate(dateToUtcArray(m));
+        }
+        if (this.timeZone === 'UTC') {
+            return new Date(m.valueOf()); // make sure it's a copy
+        }
+        if (!this.namedTimeZoneImpl) {
+            return new Date(m.valueOf() - (forcedTzo || 0));
+        }
+        return new Date(m.valueOf() -
+            this.namedTimeZoneImpl.offsetForArray(dateToUtcArray(m)) * 1000 * 60);
+    }
+}
+
+class Theme {
+    constructor(calendarOptions) {
+        if (this.iconOverrideOption) {
+            this.setIconOverride(calendarOptions[this.iconOverrideOption]);
+        }
+    }
+    setIconOverride(iconOverrideHash) {
+        let iconClassesCopy;
+        let buttonName;
+        if (typeof iconOverrideHash === 'object' && iconOverrideHash) { // non-null object
+            iconClassesCopy = Object.assign({}, this.iconClasses);
+            for (buttonName in iconOverrideHash) {
+                iconClassesCopy[buttonName] = this.applyIconOverridePrefix(iconOverrideHash[buttonName]);
+            }
+            this.iconClasses = iconClassesCopy;
+        }
+        else if (iconOverrideHash === false) {
+            this.iconClasses = {};
+        }
+    }
+    applyIconOverridePrefix(className) {
+        let prefix = this.iconOverridePrefix;
+        if (prefix && className.indexOf(prefix) !== 0) { // if not already present
+            className = prefix + className;
+        }
+        return className;
+    }
+    getClass(key) {
+        return this.classes[key] || '';
+    }
+    getIconClass(buttonName, isRtl) {
+        let className;
+        if (isRtl && this.rtlIconClasses) {
+            className = this.rtlIconClasses[buttonName] || this.iconClasses[buttonName];
+        }
+        else {
+            className = this.iconClasses[buttonName];
+        }
+        if (className) {
+            return `${this.baseIconClass} ${className}`;
+        }
+        return '';
+    }
+    getCustomButtonIconClass(customButtonProps) {
+        let className;
+        if (this.iconOverrideCustomButtonOption) {
+            className = customButtonProps[this.iconOverrideCustomButtonOption];
+            if (className) {
+                return `${this.baseIconClass} ${this.applyIconOverridePrefix(className)}`;
+            }
+        }
+        return '';
+    }
+}
+Theme.prototype.classes = {};
+Theme.prototype.iconClasses = {};
+Theme.prototype.baseIconClass = '';
+Theme.prototype.iconOverridePrefix = '';
+
+/*
+NOTE: this can be a public API, especially createElement for hooks.
+See examples/typescript-scheduler/src/index.ts
+*/
+function flushSync(runBeforeFlush) {
+    runBeforeFlush();
+    let oldDebounceRendering = preact__WEBPACK_IMPORTED_MODULE_0__.options.debounceRendering; // orig
+    let callbackQ = [];
+    function execCallbackSync(callback) {
+        callbackQ.push(callback);
+    }
+    preact__WEBPACK_IMPORTED_MODULE_0__.options.debounceRendering = execCallbackSync;
+    preact__WEBPACK_IMPORTED_MODULE_0__.render(preact__WEBPACK_IMPORTED_MODULE_0__.createElement(FakeComponent, {}), document.createElement('div'));
+    while (callbackQ.length) {
+        callbackQ.shift()();
+    }
+    preact__WEBPACK_IMPORTED_MODULE_0__.options.debounceRendering = oldDebounceRendering;
+}
+class FakeComponent extends preact__WEBPACK_IMPORTED_MODULE_0__.Component {
+    render() { return preact__WEBPACK_IMPORTED_MODULE_0__.createElement('div', {}); }
+    componentDidMount() { this.setState({}); }
+}
+// TODO: use preact/compat instead?
+function createContext(defaultValue) {
+    let ContextType = preact__WEBPACK_IMPORTED_MODULE_0__.createContext(defaultValue);
+    let origProvider = ContextType.Provider;
+    ContextType.Provider = function () {
+        let isNew = !this.getChildContext;
+        let children = origProvider.apply(this, arguments); // eslint-disable-line prefer-rest-params
+        if (isNew) {
+            let subs = [];
+            this.shouldComponentUpdate = (_props) => {
+                if (this.props.value !== _props.value) {
+                    subs.forEach((c) => {
+                        c.context = _props.value;
+                        c.forceUpdate();
+                    });
+                }
+            };
+            this.sub = (c) => {
+                subs.push(c);
+                let old = c.componentWillUnmount;
+                c.componentWillUnmount = () => {
+                    subs.splice(subs.indexOf(c), 1);
+                    old && old.call(c);
+                };
+            };
+        }
+        return children;
+    };
+    return ContextType;
+}
+
+class ScrollResponder {
+    constructor(execFunc, emitter, scrollTime, scrollTimeReset) {
+        this.execFunc = execFunc;
+        this.emitter = emitter;
+        this.scrollTime = scrollTime;
+        this.scrollTimeReset = scrollTimeReset;
+        this.handleScrollRequest = (request) => {
+            this.queuedRequest = Object.assign({}, this.queuedRequest || {}, request);
+            this.drain();
+        };
+        emitter.on('_scrollRequest', this.handleScrollRequest);
+        this.fireInitialScroll();
+    }
+    detach() {
+        this.emitter.off('_scrollRequest', this.handleScrollRequest);
+    }
+    update(isDatesNew) {
+        if (isDatesNew && this.scrollTimeReset) {
+            this.fireInitialScroll(); // will drain
+        }
+        else {
+            this.drain();
+        }
+    }
+    fireInitialScroll() {
+        this.handleScrollRequest({
+            time: this.scrollTime,
+        });
+    }
+    drain() {
+        if (this.queuedRequest && this.execFunc(this.queuedRequest)) {
+            this.queuedRequest = null;
+        }
+    }
+}
+
+const ViewContextType = createContext({}); // for Components
+function buildViewContext(viewSpec, viewApi, viewOptions, dateProfileGenerator, dateEnv, theme, pluginHooks, dispatch, getCurrentData, emitter, calendarApi, registerInteractiveComponent, unregisterInteractiveComponent) {
+    return {
+        dateEnv,
+        options: viewOptions,
+        pluginHooks,
+        emitter,
+        dispatch,
+        getCurrentData,
+        calendarApi,
+        viewSpec,
+        viewApi,
+        dateProfileGenerator,
+        theme,
+        isRtl: viewOptions.direction === 'rtl',
+        addResizeHandler(handler) {
+            emitter.on('_resize', handler);
+        },
+        removeResizeHandler(handler) {
+            emitter.off('_resize', handler);
+        },
+        createScrollResponder(execFunc) {
+            return new ScrollResponder(execFunc, emitter, createDuration(viewOptions.scrollTime), viewOptions.scrollTimeReset);
+        },
+        registerInteractiveComponent,
+        unregisterInteractiveComponent,
+    };
+}
+
+/* eslint max-classes-per-file: off */
+class PureComponent extends preact__WEBPACK_IMPORTED_MODULE_0__.Component {
+    shouldComponentUpdate(nextProps, nextState) {
+        if (this.debug) {
+            // eslint-disable-next-line no-console
+            console.log(getUnequalProps(nextProps, this.props), getUnequalProps(nextState, this.state));
+        }
+        return !compareObjs(this.props, nextProps, this.propEquality) ||
+            !compareObjs(this.state, nextState, this.stateEquality);
+    }
+    // HACK for freakin' React StrictMode
+    safeSetState(newState) {
+        if (!compareObjs(this.state, Object.assign(Object.assign({}, this.state), newState), this.stateEquality)) {
+            this.setState(newState);
+        }
+    }
+}
+PureComponent.addPropsEquality = addPropsEquality;
+PureComponent.addStateEquality = addStateEquality;
+PureComponent.contextType = ViewContextType;
+PureComponent.prototype.propEquality = {};
+PureComponent.prototype.stateEquality = {};
+class BaseComponent extends PureComponent {
+}
+BaseComponent.contextType = ViewContextType;
+function addPropsEquality(propEquality) {
+    let hash = Object.create(this.prototype.propEquality);
+    Object.assign(hash, propEquality);
+    this.prototype.propEquality = hash;
+}
+function addStateEquality(stateEquality) {
+    let hash = Object.create(this.prototype.stateEquality);
+    Object.assign(hash, stateEquality);
+    this.prototype.stateEquality = hash;
+}
+// use other one
+function setRef(ref, current) {
+    if (typeof ref === 'function') {
+        ref(current);
+    }
+    else if (ref) {
+        // see https://github.com/facebook/react/issues/13029
+        ref.current = current;
+    }
+}
+
+class ContentInjector extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.id = guid();
+        this.queuedDomNodes = [];
+        this.currentDomNodes = [];
+        this.handleEl = (el) => {
+            if (!hasCustomRenderingHandler(this.props.generatorName, this.context.options)) {
+                this.updateElRef(el);
+            }
+        };
+        this.updateElRef = (el) => {
+            if (this.props.elRef) {
+                setRef(this.props.elRef, el);
+            }
+        };
+    }
+    render() {
+        const { props, context } = this;
+        const { options } = context;
+        const { customGenerator, defaultGenerator, renderProps } = props;
+        const attrs = buildElAttrs(props, [], this.handleEl);
+        let useDefault = false;
+        let innerContent;
+        let queuedDomNodes = [];
+        let currentGeneratorMeta;
+        if (customGenerator != null) {
+            const customGeneratorRes = typeof customGenerator === 'function' ?
+                customGenerator(renderProps, preact__WEBPACK_IMPORTED_MODULE_0__.createElement) :
+                customGenerator;
+            if (customGeneratorRes === true) {
+                useDefault = true;
+            }
+            else {
+                const isObject = customGeneratorRes && typeof customGeneratorRes === 'object'; // non-null
+                if (isObject && ('html' in customGeneratorRes)) {
+                    attrs.dangerouslySetInnerHTML = { __html: customGeneratorRes.html };
+                }
+                else if (isObject && ('domNodes' in customGeneratorRes)) {
+                    queuedDomNodes = Array.prototype.slice.call(customGeneratorRes.domNodes);
+                }
+                else if (isObject
+                    ? (0,preact__WEBPACK_IMPORTED_MODULE_0__.isValidElement)(customGeneratorRes) // vdom node
+                    : typeof customGeneratorRes !== 'function' // primitive value (like string or number)
+                ) {
+                    // use in vdom
+                    innerContent = customGeneratorRes;
+                }
+                else {
+                    // an exotic object for handleCustomRendering
+                    currentGeneratorMeta = customGeneratorRes;
+                }
+            }
+        }
+        else {
+            useDefault = !hasCustomRenderingHandler(props.generatorName, options);
+        }
+        if (useDefault && defaultGenerator) {
+            innerContent = defaultGenerator(renderProps);
+        }
+        this.queuedDomNodes = queuedDomNodes;
+        this.currentGeneratorMeta = currentGeneratorMeta;
+        return (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(props.elTag, attrs, innerContent);
+    }
+    componentDidMount() {
+        this.applyQueueudDomNodes();
+        this.triggerCustomRendering(true);
+    }
+    componentDidUpdate() {
+        this.applyQueueudDomNodes();
+        this.triggerCustomRendering(true);
+    }
+    componentWillUnmount() {
+        this.triggerCustomRendering(false); // TODO: different API for removal?
+    }
+    triggerCustomRendering(isActive) {
+        var _a;
+        const { props, context } = this;
+        const { handleCustomRendering, customRenderingMetaMap } = context.options;
+        if (handleCustomRendering) {
+            const generatorMeta = (_a = this.currentGeneratorMeta) !== null && _a !== void 0 ? _a : customRenderingMetaMap === null || customRenderingMetaMap === void 0 ? void 0 : customRenderingMetaMap[props.generatorName];
+            if (generatorMeta) {
+                handleCustomRendering(Object.assign(Object.assign({ id: this.id, isActive, containerEl: this.base, reportNewContainerEl: this.updateElRef, // front-end framework tells us about new container els
+                    generatorMeta }, props), { elClasses: (props.elClasses || []).filter(isTruthy) }));
+            }
+        }
+    }
+    applyQueueudDomNodes() {
+        const { queuedDomNodes, currentDomNodes } = this;
+        const el = this.base;
+        if (!isArraysEqual(queuedDomNodes, currentDomNodes)) {
+            currentDomNodes.forEach(removeElement);
+            for (let newNode of queuedDomNodes) {
+                el.appendChild(newNode);
+            }
+            this.currentDomNodes = queuedDomNodes;
+        }
+    }
+}
+ContentInjector.addPropsEquality({
+    elClasses: isArraysEqual,
+    elStyle: isPropsEqual,
+    elAttrs: isNonHandlerPropsEqual,
+    renderProps: isPropsEqual,
+});
+// Util
+/*
+Does UI-framework provide custom way of rendering?
+*/
+function hasCustomRenderingHandler(generatorName, options) {
+    var _a;
+    return Boolean(options.handleCustomRendering &&
+        generatorName &&
+        ((_a = options.customRenderingMetaMap) === null || _a === void 0 ? void 0 : _a[generatorName]));
+}
+function buildElAttrs(props, extraClassNames, elRef) {
+    const attrs = Object.assign(Object.assign({}, props.elAttrs), { ref: elRef });
+    if (props.elClasses || extraClassNames) {
+        attrs.className = (props.elClasses || [])
+            .concat(extraClassNames || [])
+            .concat(attrs.className || [])
+            .filter(Boolean)
+            .join(' ');
+    }
+    if (props.elStyle) {
+        attrs.style = props.elStyle;
+    }
+    return attrs;
+}
+function isTruthy(val) {
+    return Boolean(val);
+}
+
+const RenderId = createContext(0);
+
+class ContentContainer extends preact__WEBPACK_IMPORTED_MODULE_0__.Component {
+    constructor() {
+        super(...arguments);
+        this.InnerContent = InnerContentInjector.bind(undefined, this);
+        this.handleEl = (el) => {
+            this.el = el;
+            if (this.props.elRef) {
+                setRef(this.props.elRef, el);
+            }
+        };
+    }
+    render() {
+        const { props } = this;
+        const generatedClassNames = generateClassNames(props.classNameGenerator, props.renderProps);
+        if (props.children) {
+            const elAttrs = buildElAttrs(props, generatedClassNames, this.handleEl);
+            const children = props.children(this.InnerContent, props.renderProps, elAttrs);
+            if (props.elTag) {
+                return (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(props.elTag, elAttrs, children);
+            }
+            else {
+                return children;
+            }
+        }
+        else {
+            return (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)((ContentInjector), Object.assign(Object.assign({}, props), { elRef: this.handleEl, elTag: props.elTag || 'div', elClasses: (props.elClasses || []).concat(generatedClassNames), renderId: this.context }));
+        }
+    }
+    componentDidMount() {
+        var _a, _b;
+        (_b = (_a = this.props).didMount) === null || _b === void 0 ? void 0 : _b.call(_a, Object.assign(Object.assign({}, this.props.renderProps), { el: this.el }));
+    }
+    componentWillUnmount() {
+        var _a, _b;
+        (_b = (_a = this.props).willUnmount) === null || _b === void 0 ? void 0 : _b.call(_a, Object.assign(Object.assign({}, this.props.renderProps), { el: this.el }));
+    }
+}
+ContentContainer.contextType = RenderId;
+function InnerContentInjector(containerComponent, props) {
+    const parentProps = containerComponent.props;
+    return (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)((ContentInjector), Object.assign({ renderProps: parentProps.renderProps, generatorName: parentProps.generatorName, customGenerator: parentProps.customGenerator, defaultGenerator: parentProps.defaultGenerator, renderId: containerComponent.context }, props));
+}
+// Utils
+function generateClassNames(classNameGenerator, renderProps) {
+    const classNames = typeof classNameGenerator === 'function' ?
+        classNameGenerator(renderProps) :
+        classNameGenerator || [];
+    return typeof classNames === 'string' ? [classNames] : classNames;
+}
+
+class ViewContainer extends BaseComponent {
+    render() {
+        let { props, context } = this;
+        let { options } = context;
+        let renderProps = { view: context.viewApi };
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ContentContainer, Object.assign({}, props, { elTag: props.elTag || 'div', elClasses: [
+                ...buildViewClassNames(props.viewSpec),
+                ...(props.elClasses || []),
+            ], renderProps: renderProps, classNameGenerator: options.viewClassNames, generatorName: undefined, didMount: options.viewDidMount, willUnmount: options.viewWillUnmount }), () => props.children));
+    }
+}
+function buildViewClassNames(viewSpec) {
+    return [
+        `fc-${viewSpec.type}-view`,
+        'fc-view',
+    ];
+}
+
+function parseRange(input, dateEnv) {
+    let start = null;
+    let end = null;
+    if (input.start) {
+        start = dateEnv.createMarker(input.start);
+    }
+    if (input.end) {
+        end = dateEnv.createMarker(input.end);
+    }
+    if (!start && !end) {
+        return null;
+    }
+    if (start && end && end < start) {
+        return null;
+    }
+    return { start, end };
+}
+// SIDE-EFFECT: will mutate ranges.
+// Will return a new array result.
+function invertRanges(ranges, constraintRange) {
+    let invertedRanges = [];
+    let { start } = constraintRange; // the end of the previous range. the start of the new range
+    let i;
+    let dateRange;
+    // ranges need to be in order. required for our date-walking algorithm
+    ranges.sort(compareRanges);
+    for (i = 0; i < ranges.length; i += 1) {
+        dateRange = ranges[i];
+        // add the span of time before the event (if there is any)
+        if (dateRange.start > start) { // compare millisecond time (skip any ambig logic)
+            invertedRanges.push({ start, end: dateRange.start });
+        }
+        if (dateRange.end > start) {
+            start = dateRange.end;
+        }
+    }
+    // add the span of time after the last event (if there is any)
+    if (start < constraintRange.end) { // compare millisecond time (skip any ambig logic)
+        invertedRanges.push({ start, end: constraintRange.end });
+    }
+    return invertedRanges;
+}
+function compareRanges(range0, range1) {
+    return range0.start.valueOf() - range1.start.valueOf(); // earlier ranges go first
+}
+function intersectRanges(range0, range1) {
+    let { start, end } = range0;
+    let newRange = null;
+    if (range1.start !== null) {
+        if (start === null) {
+            start = range1.start;
+        }
+        else {
+            start = new Date(Math.max(start.valueOf(), range1.start.valueOf()));
+        }
+    }
+    if (range1.end != null) {
+        if (end === null) {
+            end = range1.end;
+        }
+        else {
+            end = new Date(Math.min(end.valueOf(), range1.end.valueOf()));
+        }
+    }
+    if (start === null || end === null || start < end) {
+        newRange = { start, end };
+    }
+    return newRange;
+}
+function rangesEqual(range0, range1) {
+    return (range0.start === null ? null : range0.start.valueOf()) === (range1.start === null ? null : range1.start.valueOf()) &&
+        (range0.end === null ? null : range0.end.valueOf()) === (range1.end === null ? null : range1.end.valueOf());
+}
+function rangesIntersect(range0, range1) {
+    return (range0.end === null || range1.start === null || range0.end > range1.start) &&
+        (range0.start === null || range1.end === null || range0.start < range1.end);
+}
+function rangeContainsRange(outerRange, innerRange) {
+    return (outerRange.start === null || (innerRange.start !== null && innerRange.start >= outerRange.start)) &&
+        (outerRange.end === null || (innerRange.end !== null && innerRange.end <= outerRange.end));
+}
+function rangeContainsMarker(range, date) {
+    return (range.start === null || date >= range.start) &&
+        (range.end === null || date < range.end);
+}
+// If the given date is not within the given range, move it inside.
+// (If it's past the end, make it one millisecond before the end).
+function constrainMarkerToRange(date, range) {
+    if (range.start != null && date < range.start) {
+        return range.start;
+    }
+    if (range.end != null && date >= range.end) {
+        return new Date(range.end.valueOf() - 1);
+    }
+    return date;
+}
+
+/* Date stuff that doesn't belong in datelib core
+----------------------------------------------------------------------------------------------------------------------*/
+// given a timed range, computes an all-day range that has the same exact duration,
+// but whose start time is aligned with the start of the day.
+function computeAlignedDayRange(timedRange) {
+    let dayCnt = Math.floor(diffDays(timedRange.start, timedRange.end)) || 1;
+    let start = startOfDay(timedRange.start);
+    let end = addDays(start, dayCnt);
+    return { start, end };
+}
+// given a timed range, computes an all-day range based on how for the end date bleeds into the next day
+// TODO: give nextDayThreshold a default arg
+function computeVisibleDayRange(timedRange, nextDayThreshold = createDuration(0)) {
+    let startDay = null;
+    let endDay = null;
+    if (timedRange.end) {
+        endDay = startOfDay(timedRange.end);
+        let endTimeMS = timedRange.end.valueOf() - endDay.valueOf(); // # of milliseconds into `endDay`
+        // If the end time is actually inclusively part of the next day and is equal to or
+        // beyond the next day threshold, adjust the end to be the exclusive end of `endDay`.
+        // Otherwise, leaving it as inclusive will cause it to exclude `endDay`.
+        if (endTimeMS && endTimeMS >= asRoughMs(nextDayThreshold)) {
+            endDay = addDays(endDay, 1);
+        }
+    }
+    if (timedRange.start) {
+        startDay = startOfDay(timedRange.start); // the beginning of the day the range starts
+        // If end is within `startDay` but not past nextDayThreshold, assign the default duration of one day.
+        if (endDay && endDay <= startDay) {
+            endDay = addDays(startDay, 1);
+        }
+    }
+    return { start: startDay, end: endDay };
+}
+// spans from one day into another?
+function isMultiDayRange(range) {
+    let visibleRange = computeVisibleDayRange(range);
+    return diffDays(visibleRange.start, visibleRange.end) > 1;
+}
+function diffDates(date0, date1, dateEnv, largeUnit) {
+    if (largeUnit === 'year') {
+        return createDuration(dateEnv.diffWholeYears(date0, date1), 'year');
+    }
+    if (largeUnit === 'month') {
+        return createDuration(dateEnv.diffWholeMonths(date0, date1), 'month');
+    }
+    return diffDayAndTime(date0, date1); // returns a duration
+}
+
+function reduceCurrentDate(currentDate, action) {
+    switch (action.type) {
+        case 'CHANGE_DATE':
+            return action.dateMarker;
+        default:
+            return currentDate;
+    }
+}
+function getInitialDate(options, dateEnv) {
+    let initialDateInput = options.initialDate;
+    // compute the initial ambig-timezone date
+    if (initialDateInput != null) {
+        return dateEnv.createMarker(initialDateInput);
+    }
+    return getNow(options.now, dateEnv); // getNow already returns unzoned
+}
+function getNow(nowInput, dateEnv) {
+    if (typeof nowInput === 'function') {
+        nowInput = nowInput();
+    }
+    if (nowInput == null) {
+        return dateEnv.createNowMarker();
+    }
+    return dateEnv.createMarker(nowInput);
+}
+
+class DateProfileGenerator {
+    constructor(props) {
+        this.props = props;
+        this.nowDate = getNow(props.nowInput, props.dateEnv);
+        this.initHiddenDays();
+    }
+    /* Date Range Computation
+    ------------------------------------------------------------------------------------------------------------------*/
+    // Builds a structure with info about what the dates/ranges will be for the "prev" view.
+    buildPrev(currentDateProfile, currentDate, forceToValid) {
+        let { dateEnv } = this.props;
+        let prevDate = dateEnv.subtract(dateEnv.startOf(currentDate, currentDateProfile.currentRangeUnit), // important for start-of-month
+        currentDateProfile.dateIncrement);
+        return this.build(prevDate, -1, forceToValid);
+    }
+    // Builds a structure with info about what the dates/ranges will be for the "next" view.
+    buildNext(currentDateProfile, currentDate, forceToValid) {
+        let { dateEnv } = this.props;
+        let nextDate = dateEnv.add(dateEnv.startOf(currentDate, currentDateProfile.currentRangeUnit), // important for start-of-month
+        currentDateProfile.dateIncrement);
+        return this.build(nextDate, 1, forceToValid);
+    }
+    // Builds a structure holding dates/ranges for rendering around the given date.
+    // Optional direction param indicates whether the date is being incremented/decremented
+    // from its previous value. decremented = -1, incremented = 1 (default).
+    build(currentDate, direction, forceToValid = true) {
+        let { props } = this;
+        let validRange;
+        let currentInfo;
+        let isRangeAllDay;
+        let renderRange;
+        let activeRange;
+        let isValid;
+        validRange = this.buildValidRange();
+        validRange = this.trimHiddenDays(validRange);
+        if (forceToValid) {
+            currentDate = constrainMarkerToRange(currentDate, validRange);
+        }
+        currentInfo = this.buildCurrentRangeInfo(currentDate, direction);
+        isRangeAllDay = /^(year|month|week|day)$/.test(currentInfo.unit);
+        renderRange = this.buildRenderRange(this.trimHiddenDays(currentInfo.range), currentInfo.unit, isRangeAllDay);
+        renderRange = this.trimHiddenDays(renderRange);
+        activeRange = renderRange;
+        if (!props.showNonCurrentDates) {
+            activeRange = intersectRanges(activeRange, currentInfo.range);
+        }
+        activeRange = this.adjustActiveRange(activeRange);
+        activeRange = intersectRanges(activeRange, validRange); // might return null
+        // it's invalid if the originally requested date is not contained,
+        // or if the range is completely outside of the valid range.
+        isValid = rangesIntersect(currentInfo.range, validRange);
+        // HACK: constrain to render-range so `currentDate` is more useful to view rendering
+        if (!rangeContainsMarker(renderRange, currentDate)) {
+            currentDate = renderRange.start;
+        }
+        return {
+            currentDate,
+            // constraint for where prev/next operations can go and where events can be dragged/resized to.
+            // an object with optional start and end properties.
+            validRange,
+            // range the view is formally responsible for.
+            // for example, a month view might have 1st-31st, excluding padded dates
+            currentRange: currentInfo.range,
+            // name of largest unit being displayed, like "month" or "week"
+            currentRangeUnit: currentInfo.unit,
+            isRangeAllDay,
+            // dates that display events and accept drag-n-drop
+            // will be `null` if no dates accept events
+            activeRange,
+            // date range with a rendered skeleton
+            // includes not-active days that need some sort of DOM
+            renderRange,
+            // Duration object that denotes the first visible time of any given day
+            slotMinTime: props.slotMinTime,
+            // Duration object that denotes the exclusive visible end time of any given day
+            slotMaxTime: props.slotMaxTime,
+            isValid,
+            // how far the current date will move for a prev/next operation
+            dateIncrement: this.buildDateIncrement(currentInfo.duration),
+            // pass a fallback (might be null) ^
+        };
+    }
+    // Builds an object with optional start/end properties.
+    // Indicates the minimum/maximum dates to display.
+    // not responsible for trimming hidden days.
+    buildValidRange() {
+        let input = this.props.validRangeInput;
+        let simpleInput = typeof input === 'function'
+            ? input.call(this.props.calendarApi, this.nowDate)
+            : input;
+        return this.refineRange(simpleInput) ||
+            { start: null, end: null }; // completely open-ended
+    }
+    // Builds a structure with info about the "current" range, the range that is
+    // highlighted as being the current month for example.
+    // See build() for a description of `direction`.
+    // Guaranteed to have `range` and `unit` properties. `duration` is optional.
+    buildCurrentRangeInfo(date, direction) {
+        let { props } = this;
+        let duration = null;
+        let unit = null;
+        let range = null;
+        let dayCount;
+        if (props.duration) {
+            duration = props.duration;
+            unit = props.durationUnit;
+            range = this.buildRangeFromDuration(date, direction, duration, unit);
+        }
+        else if ((dayCount = this.props.dayCount)) {
+            unit = 'day';
+            range = this.buildRangeFromDayCount(date, direction, dayCount);
+        }
+        else if ((range = this.buildCustomVisibleRange(date))) {
+            unit = props.dateEnv.greatestWholeUnit(range.start, range.end).unit;
+        }
+        else {
+            duration = this.getFallbackDuration();
+            unit = greatestDurationDenominator(duration).unit;
+            range = this.buildRangeFromDuration(date, direction, duration, unit);
+        }
+        return { duration, unit, range };
+    }
+    getFallbackDuration() {
+        return createDuration({ day: 1 });
+    }
+    // Returns a new activeRange to have time values (un-ambiguate)
+    // slotMinTime or slotMaxTime causes the range to expand.
+    adjustActiveRange(range) {
+        let { dateEnv, usesMinMaxTime, slotMinTime, slotMaxTime } = this.props;
+        let { start, end } = range;
+        if (usesMinMaxTime) {
+            // expand active range if slotMinTime is negative (why not when positive?)
+            if (asRoughDays(slotMinTime) < 0) {
+                start = startOfDay(start); // necessary?
+                start = dateEnv.add(start, slotMinTime);
+            }
+            // expand active range if slotMaxTime is beyond one day (why not when negative?)
+            if (asRoughDays(slotMaxTime) > 1) {
+                end = startOfDay(end); // necessary?
+                end = addDays(end, -1);
+                end = dateEnv.add(end, slotMaxTime);
+            }
+        }
+        return { start, end };
+    }
+    // Builds the "current" range when it is specified as an explicit duration.
+    // `unit` is the already-computed greatestDurationDenominator unit of duration.
+    buildRangeFromDuration(date, direction, duration, unit) {
+        let { dateEnv, dateAlignment } = this.props;
+        let start;
+        let end;
+        let res;
+        // compute what the alignment should be
+        if (!dateAlignment) {
+            let { dateIncrement } = this.props;
+            if (dateIncrement) {
+                // use the smaller of the two units
+                if (asRoughMs(dateIncrement) < asRoughMs(duration)) {
+                    dateAlignment = greatestDurationDenominator(dateIncrement).unit;
+                }
+                else {
+                    dateAlignment = unit;
+                }
+            }
+            else {
+                dateAlignment = unit;
+            }
+        }
+        // if the view displays a single day or smaller
+        if (asRoughDays(duration) <= 1) {
+            if (this.isHiddenDay(start)) {
+                start = this.skipHiddenDays(start, direction);
+                start = startOfDay(start);
+            }
+        }
+        function computeRes() {
+            start = dateEnv.startOf(date, dateAlignment);
+            end = dateEnv.add(start, duration);
+            res = { start, end };
+        }
+        computeRes();
+        // if range is completely enveloped by hidden days, go past the hidden days
+        if (!this.trimHiddenDays(res)) {
+            date = this.skipHiddenDays(date, direction);
+            computeRes();
+        }
+        return res;
+    }
+    // Builds the "current" range when a dayCount is specified.
+    buildRangeFromDayCount(date, direction, dayCount) {
+        let { dateEnv, dateAlignment } = this.props;
+        let runningCount = 0;
+        let start = date;
+        let end;
+        if (dateAlignment) {
+            start = dateEnv.startOf(start, dateAlignment);
+        }
+        start = startOfDay(start);
+        start = this.skipHiddenDays(start, direction);
+        end = start;
+        do {
+            end = addDays(end, 1);
+            if (!this.isHiddenDay(end)) {
+                runningCount += 1;
+            }
+        } while (runningCount < dayCount);
+        return { start, end };
+    }
+    // Builds a normalized range object for the "visible" range,
+    // which is a way to define the currentRange and activeRange at the same time.
+    buildCustomVisibleRange(date) {
+        let { props } = this;
+        let input = props.visibleRangeInput;
+        let simpleInput = typeof input === 'function'
+            ? input.call(props.calendarApi, props.dateEnv.toDate(date))
+            : input;
+        let range = this.refineRange(simpleInput);
+        if (range && (range.start == null || range.end == null)) {
+            return null;
+        }
+        return range;
+    }
+    // Computes the range that will represent the element/cells for *rendering*,
+    // but which may have voided days/times.
+    // not responsible for trimming hidden days.
+    buildRenderRange(currentRange, currentRangeUnit, isRangeAllDay) {
+        return currentRange;
+    }
+    // Compute the duration value that should be added/substracted to the current date
+    // when a prev/next operation happens.
+    buildDateIncrement(fallback) {
+        let { dateIncrement } = this.props;
+        let customAlignment;
+        if (dateIncrement) {
+            return dateIncrement;
+        }
+        if ((customAlignment = this.props.dateAlignment)) {
+            return createDuration(1, customAlignment);
+        }
+        if (fallback) {
+            return fallback;
+        }
+        return createDuration({ days: 1 });
+    }
+    refineRange(rangeInput) {
+        if (rangeInput) {
+            let range = parseRange(rangeInput, this.props.dateEnv);
+            if (range) {
+                range = computeVisibleDayRange(range);
+            }
+            return range;
+        }
+        return null;
+    }
+    /* Hidden Days
+    ------------------------------------------------------------------------------------------------------------------*/
+    // Initializes internal variables related to calculating hidden days-of-week
+    initHiddenDays() {
+        let hiddenDays = this.props.hiddenDays || []; // array of day-of-week indices that are hidden
+        let isHiddenDayHash = []; // is the day-of-week hidden? (hash with day-of-week-index -> bool)
+        let dayCnt = 0;
+        let i;
+        if (this.props.weekends === false) {
+            hiddenDays.push(0, 6); // 0=sunday, 6=saturday
+        }
+        for (i = 0; i < 7; i += 1) {
+            if (!(isHiddenDayHash[i] = hiddenDays.indexOf(i) !== -1)) {
+                dayCnt += 1;
+            }
+        }
+        if (!dayCnt) {
+            throw new Error('invalid hiddenDays'); // all days were hidden? bad.
+        }
+        this.isHiddenDayHash = isHiddenDayHash;
+    }
+    // Remove days from the beginning and end of the range that are computed as hidden.
+    // If the whole range is trimmed off, returns null
+    trimHiddenDays(range) {
+        let { start, end } = range;
+        if (start) {
+            start = this.skipHiddenDays(start);
+        }
+        if (end) {
+            end = this.skipHiddenDays(end, -1, true);
+        }
+        if (start == null || end == null || start < end) {
+            return { start, end };
+        }
+        return null;
+    }
+    // Is the current day hidden?
+    // `day` is a day-of-week index (0-6), or a Date (used for UTC)
+    isHiddenDay(day) {
+        if (day instanceof Date) {
+            day = day.getUTCDay();
+        }
+        return this.isHiddenDayHash[day];
+    }
+    // Incrementing the current day until it is no longer a hidden day, returning a copy.
+    // DOES NOT CONSIDER validRange!
+    // If the initial value of `date` is not a hidden day, don't do anything.
+    // Pass `isExclusive` as `true` if you are dealing with an end date.
+    // `inc` defaults to `1` (increment one day forward each time)
+    skipHiddenDays(date, inc = 1, isExclusive = false) {
+        while (this.isHiddenDayHash[(date.getUTCDay() + (isExclusive ? inc : 0) + 7) % 7]) {
+            date = addDays(date, inc);
+        }
+        return date;
+    }
+}
+
+function createEventInstance(defId, range, forcedStartTzo, forcedEndTzo) {
+    return {
+        instanceId: guid(),
+        defId,
+        range,
+        forcedStartTzo: forcedStartTzo == null ? null : forcedStartTzo,
+        forcedEndTzo: forcedEndTzo == null ? null : forcedEndTzo,
+    };
+}
+
+function parseRecurring(refined, defaultAllDay, dateEnv, recurringTypes) {
+    for (let i = 0; i < recurringTypes.length; i += 1) {
+        let parsed = recurringTypes[i].parse(refined, dateEnv);
+        if (parsed) {
+            let { allDay } = refined;
+            if (allDay == null) {
+                allDay = defaultAllDay;
+                if (allDay == null) {
+                    allDay = parsed.allDayGuess;
+                    if (allDay == null) {
+                        allDay = false;
+                    }
+                }
+            }
+            return {
+                allDay,
+                duration: parsed.duration,
+                typeData: parsed.typeData,
+                typeId: i,
+            };
+        }
+    }
+    return null;
+}
+function expandRecurring(eventStore, framingRange, context) {
+    let { dateEnv, pluginHooks, options } = context;
+    let { defs, instances } = eventStore;
+    // remove existing recurring instances
+    // TODO: bad. always expand events as a second step
+    instances = filterHash(instances, (instance) => !defs[instance.defId].recurringDef);
+    for (let defId in defs) {
+        let def = defs[defId];
+        if (def.recurringDef) {
+            let { duration } = def.recurringDef;
+            if (!duration) {
+                duration = def.allDay ?
+                    options.defaultAllDayEventDuration :
+                    options.defaultTimedEventDuration;
+            }
+            let starts = expandRecurringRanges(def, duration, framingRange, dateEnv, pluginHooks.recurringTypes);
+            for (let start of starts) {
+                let instance = createEventInstance(defId, {
+                    start,
+                    end: dateEnv.add(start, duration),
+                });
+                instances[instance.instanceId] = instance;
+            }
+        }
+    }
+    return { defs, instances };
+}
+/*
+Event MUST have a recurringDef
+*/
+function expandRecurringRanges(eventDef, duration, framingRange, dateEnv, recurringTypes) {
+    let typeDef = recurringTypes[eventDef.recurringDef.typeId];
+    let markers = typeDef.expand(eventDef.recurringDef.typeData, {
+        start: dateEnv.subtract(framingRange.start, duration),
+        end: framingRange.end,
+    }, dateEnv);
+    // the recurrence plugins don't guarantee that all-day events are start-of-day, so we have to
+    if (eventDef.allDay) {
+        markers = markers.map(startOfDay);
+    }
+    return markers;
+}
+
+const EVENT_NON_DATE_REFINERS = {
+    id: String,
+    groupId: String,
+    title: String,
+    url: String,
+    interactive: Boolean,
+};
+const EVENT_DATE_REFINERS = {
+    start: identity,
+    end: identity,
+    date: identity,
+    allDay: Boolean,
+};
+const EVENT_REFINERS = Object.assign(Object.assign(Object.assign({}, EVENT_NON_DATE_REFINERS), EVENT_DATE_REFINERS), { extendedProps: identity });
+function parseEvent(raw, eventSource, context, allowOpenRange, refiners = buildEventRefiners(context), defIdMap, instanceIdMap) {
+    let { refined, extra } = refineEventDef(raw, context, refiners);
+    let defaultAllDay = computeIsDefaultAllDay(eventSource, context);
+    let recurringRes = parseRecurring(refined, defaultAllDay, context.dateEnv, context.pluginHooks.recurringTypes);
+    if (recurringRes) {
+        let def = parseEventDef(refined, extra, eventSource ? eventSource.sourceId : '', recurringRes.allDay, Boolean(recurringRes.duration), context, defIdMap);
+        def.recurringDef = {
+            typeId: recurringRes.typeId,
+            typeData: recurringRes.typeData,
+            duration: recurringRes.duration,
+        };
+        return { def, instance: null };
+    }
+    let singleRes = parseSingle(refined, defaultAllDay, context, allowOpenRange);
+    if (singleRes) {
+        let def = parseEventDef(refined, extra, eventSource ? eventSource.sourceId : '', singleRes.allDay, singleRes.hasEnd, context, defIdMap);
+        let instance = createEventInstance(def.defId, singleRes.range, singleRes.forcedStartTzo, singleRes.forcedEndTzo);
+        if (instanceIdMap && def.publicId && instanceIdMap[def.publicId]) {
+            instance.instanceId = instanceIdMap[def.publicId];
+        }
+        return { def, instance };
+    }
+    return null;
+}
+function refineEventDef(raw, context, refiners = buildEventRefiners(context)) {
+    return refineProps(raw, refiners);
+}
+function buildEventRefiners(context) {
+    return Object.assign(Object.assign(Object.assign({}, EVENT_UI_REFINERS), EVENT_REFINERS), context.pluginHooks.eventRefiners);
+}
+/*
+Will NOT populate extendedProps with the leftover properties.
+Will NOT populate date-related props.
+*/
+function parseEventDef(refined, extra, sourceId, allDay, hasEnd, context, defIdMap) {
+    let def = {
+        title: refined.title || '',
+        groupId: refined.groupId || '',
+        publicId: refined.id || '',
+        url: refined.url || '',
+        recurringDef: null,
+        defId: ((defIdMap && refined.id) ? defIdMap[refined.id] : '') || guid(),
+        sourceId,
+        allDay,
+        hasEnd,
+        interactive: refined.interactive,
+        ui: createEventUi(refined, context),
+        extendedProps: Object.assign(Object.assign({}, (refined.extendedProps || {})), extra),
+    };
+    for (let memberAdder of context.pluginHooks.eventDefMemberAdders) {
+        Object.assign(def, memberAdder(refined));
+    }
+    // help out EventImpl from having user modify props
+    Object.freeze(def.ui.classNames);
+    Object.freeze(def.extendedProps);
+    return def;
+}
+function parseSingle(refined, defaultAllDay, context, allowOpenRange) {
+    let { allDay } = refined;
+    let startMeta;
+    let startMarker = null;
+    let hasEnd = false;
+    let endMeta;
+    let endMarker = null;
+    let startInput = refined.start != null ? refined.start : refined.date;
+    startMeta = context.dateEnv.createMarkerMeta(startInput);
+    if (startMeta) {
+        startMarker = startMeta.marker;
+    }
+    else if (!allowOpenRange) {
+        return null;
+    }
+    if (refined.end != null) {
+        endMeta = context.dateEnv.createMarkerMeta(refined.end);
+    }
+    if (allDay == null) {
+        if (defaultAllDay != null) {
+            allDay = defaultAllDay;
+        }
+        else {
+            // fall back to the date props LAST
+            allDay = (!startMeta || startMeta.isTimeUnspecified) &&
+                (!endMeta || endMeta.isTimeUnspecified);
+        }
+    }
+    if (allDay && startMarker) {
+        startMarker = startOfDay(startMarker);
+    }
+    if (endMeta) {
+        endMarker = endMeta.marker;
+        if (allDay) {
+            endMarker = startOfDay(endMarker);
+        }
+        if (startMarker && endMarker <= startMarker) {
+            endMarker = null;
+        }
+    }
+    if (endMarker) {
+        hasEnd = true;
+    }
+    else if (!allowOpenRange) {
+        hasEnd = context.options.forceEventDuration || false;
+        endMarker = context.dateEnv.add(startMarker, allDay ?
+            context.options.defaultAllDayEventDuration :
+            context.options.defaultTimedEventDuration);
+    }
+    return {
+        allDay,
+        hasEnd,
+        range: { start: startMarker, end: endMarker },
+        forcedStartTzo: startMeta ? startMeta.forcedTzo : null,
+        forcedEndTzo: endMeta ? endMeta.forcedTzo : null,
+    };
+}
+function computeIsDefaultAllDay(eventSource, context) {
+    let res = null;
+    if (eventSource) {
+        res = eventSource.defaultAllDay;
+    }
+    if (res == null) {
+        res = context.options.defaultAllDay;
+    }
+    return res;
+}
+
+function parseEvents(rawEvents, eventSource, context, allowOpenRange, defIdMap, instanceIdMap) {
+    let eventStore = createEmptyEventStore();
+    let eventRefiners = buildEventRefiners(context);
+    for (let rawEvent of rawEvents) {
+        let tuple = parseEvent(rawEvent, eventSource, context, allowOpenRange, eventRefiners, defIdMap, instanceIdMap);
+        if (tuple) {
+            eventTupleToStore(tuple, eventStore);
+        }
+    }
+    return eventStore;
+}
+function eventTupleToStore(tuple, eventStore = createEmptyEventStore()) {
+    eventStore.defs[tuple.def.defId] = tuple.def;
+    if (tuple.instance) {
+        eventStore.instances[tuple.instance.instanceId] = tuple.instance;
+    }
+    return eventStore;
+}
+// retrieves events that have the same groupId as the instance specified by `instanceId`
+// or they are the same as the instance.
+// why might instanceId not be in the store? an event from another calendar?
+function getRelevantEvents(eventStore, instanceId) {
+    let instance = eventStore.instances[instanceId];
+    if (instance) {
+        let def = eventStore.defs[instance.defId];
+        // get events/instances with same group
+        let newStore = filterEventStoreDefs(eventStore, (lookDef) => isEventDefsGrouped(def, lookDef));
+        // add the original
+        // TODO: wish we could use eventTupleToStore or something like it
+        newStore.defs[def.defId] = def;
+        newStore.instances[instance.instanceId] = instance;
+        return newStore;
+    }
+    return createEmptyEventStore();
+}
+function isEventDefsGrouped(def0, def1) {
+    return Boolean(def0.groupId && def0.groupId === def1.groupId);
+}
+function createEmptyEventStore() {
+    return { defs: {}, instances: {} };
+}
+function mergeEventStores(store0, store1) {
+    return {
+        defs: Object.assign(Object.assign({}, store0.defs), store1.defs),
+        instances: Object.assign(Object.assign({}, store0.instances), store1.instances),
+    };
+}
+function filterEventStoreDefs(eventStore, filterFunc) {
+    let defs = filterHash(eventStore.defs, filterFunc);
+    let instances = filterHash(eventStore.instances, (instance) => (defs[instance.defId] // still exists?
+    ));
+    return { defs, instances };
+}
+function excludeSubEventStore(master, sub) {
+    let { defs, instances } = master;
+    let filteredDefs = {};
+    let filteredInstances = {};
+    for (let defId in defs) {
+        if (!sub.defs[defId]) { // not explicitly excluded
+            filteredDefs[defId] = defs[defId];
+        }
+    }
+    for (let instanceId in instances) {
+        if (!sub.instances[instanceId] && // not explicitly excluded
+            filteredDefs[instances[instanceId].defId] // def wasn't filtered away
+        ) {
+            filteredInstances[instanceId] = instances[instanceId];
+        }
+    }
+    return {
+        defs: filteredDefs,
+        instances: filteredInstances,
+    };
+}
+
+function normalizeConstraint(input, context) {
+    if (Array.isArray(input)) {
+        return parseEvents(input, null, context, true); // allowOpenRange=true
+    }
+    if (typeof input === 'object' && input) { // non-null object
+        return parseEvents([input], null, context, true); // allowOpenRange=true
+    }
+    if (input != null) {
+        return String(input);
+    }
+    return null;
+}
+
+function parseClassNames(raw) {
+    if (Array.isArray(raw)) {
+        return raw;
+    }
+    if (typeof raw === 'string') {
+        return raw.split(/\s+/);
+    }
+    return [];
+}
+
+// TODO: better called "EventSettings" or "EventConfig"
+// TODO: move this file into structs
+// TODO: separate constraint/overlap/allow, because selection uses only that, not other props
+const EVENT_UI_REFINERS = {
+    display: String,
+    editable: Boolean,
+    startEditable: Boolean,
+    durationEditable: Boolean,
+    constraint: identity,
+    overlap: identity,
+    allow: identity,
+    className: parseClassNames,
+    classNames: parseClassNames,
+    color: String,
+    backgroundColor: String,
+    borderColor: String,
+    textColor: String,
+};
+const EMPTY_EVENT_UI = {
+    display: null,
+    startEditable: null,
+    durationEditable: null,
+    constraints: [],
+    overlap: null,
+    allows: [],
+    backgroundColor: '',
+    borderColor: '',
+    textColor: '',
+    classNames: [],
+};
+function createEventUi(refined, context) {
+    let constraint = normalizeConstraint(refined.constraint, context);
+    return {
+        display: refined.display || null,
+        startEditable: refined.startEditable != null ? refined.startEditable : refined.editable,
+        durationEditable: refined.durationEditable != null ? refined.durationEditable : refined.editable,
+        constraints: constraint != null ? [constraint] : [],
+        overlap: refined.overlap != null ? refined.overlap : null,
+        allows: refined.allow != null ? [refined.allow] : [],
+        backgroundColor: refined.backgroundColor || refined.color || '',
+        borderColor: refined.borderColor || refined.color || '',
+        textColor: refined.textColor || '',
+        classNames: (refined.className || []).concat(refined.classNames || []), // join singular and plural
+    };
+}
+// TODO: prevent against problems with <2 args!
+function combineEventUis(uis) {
+    return uis.reduce(combineTwoEventUis, EMPTY_EVENT_UI);
+}
+function combineTwoEventUis(item0, item1) {
+    return {
+        display: item1.display != null ? item1.display : item0.display,
+        startEditable: item1.startEditable != null ? item1.startEditable : item0.startEditable,
+        durationEditable: item1.durationEditable != null ? item1.durationEditable : item0.durationEditable,
+        constraints: item0.constraints.concat(item1.constraints),
+        overlap: typeof item1.overlap === 'boolean' ? item1.overlap : item0.overlap,
+        allows: item0.allows.concat(item1.allows),
+        backgroundColor: item1.backgroundColor || item0.backgroundColor,
+        borderColor: item1.borderColor || item0.borderColor,
+        textColor: item1.textColor || item0.textColor,
+        classNames: item0.classNames.concat(item1.classNames),
+    };
+}
+
+const EVENT_SOURCE_REFINERS = {
+    id: String,
+    defaultAllDay: Boolean,
+    url: String,
+    format: String,
+    events: identity,
+    eventDataTransform: identity,
+    // for any network-related sources
+    success: identity,
+    failure: identity,
+};
+function parseEventSource(raw, context, refiners = buildEventSourceRefiners(context)) {
+    let rawObj;
+    if (typeof raw === 'string') {
+        rawObj = { url: raw };
+    }
+    else if (typeof raw === 'function' || Array.isArray(raw)) {
+        rawObj = { events: raw };
+    }
+    else if (typeof raw === 'object' && raw) { // not null
+        rawObj = raw;
+    }
+    if (rawObj) {
+        let { refined, extra } = refineProps(rawObj, refiners);
+        let metaRes = buildEventSourceMeta(refined, context);
+        if (metaRes) {
+            return {
+                _raw: raw,
+                isFetching: false,
+                latestFetchId: '',
+                fetchRange: null,
+                defaultAllDay: refined.defaultAllDay,
+                eventDataTransform: refined.eventDataTransform,
+                success: refined.success,
+                failure: refined.failure,
+                publicId: refined.id || '',
+                sourceId: guid(),
+                sourceDefId: metaRes.sourceDefId,
+                meta: metaRes.meta,
+                ui: createEventUi(refined, context),
+                extendedProps: extra,
+            };
+        }
+    }
+    return null;
+}
+function buildEventSourceRefiners(context) {
+    return Object.assign(Object.assign(Object.assign({}, EVENT_UI_REFINERS), EVENT_SOURCE_REFINERS), context.pluginHooks.eventSourceRefiners);
+}
+function buildEventSourceMeta(raw, context) {
+    let defs = context.pluginHooks.eventSourceDefs;
+    for (let i = defs.length - 1; i >= 0; i -= 1) { // later-added plugins take precedence
+        let def = defs[i];
+        let meta = def.parseMeta(raw);
+        if (meta) {
+            return { sourceDefId: i, meta };
+        }
+    }
+    return null;
+}
+
+function reduceEventStore(eventStore, action, eventSources, dateProfile, context) {
+    switch (action.type) {
+        case 'RECEIVE_EVENTS': // raw
+            return receiveRawEvents(eventStore, eventSources[action.sourceId], action.fetchId, action.fetchRange, action.rawEvents, context);
+        case 'RESET_RAW_EVENTS':
+            return resetRawEvents(eventStore, eventSources[action.sourceId], action.rawEvents, dateProfile.activeRange, context);
+        case 'ADD_EVENTS': // already parsed, but not expanded
+            return addEvent(eventStore, action.eventStore, // new ones
+            dateProfile ? dateProfile.activeRange : null, context);
+        case 'RESET_EVENTS':
+            return action.eventStore;
+        case 'MERGE_EVENTS': // already parsed and expanded
+            return mergeEventStores(eventStore, action.eventStore);
+        case 'PREV': // TODO: how do we track all actions that affect dateProfile :(
+        case 'NEXT':
+        case 'CHANGE_DATE':
+        case 'CHANGE_VIEW_TYPE':
+            if (dateProfile) {
+                return expandRecurring(eventStore, dateProfile.activeRange, context);
+            }
+            return eventStore;
+        case 'REMOVE_EVENTS':
+            return excludeSubEventStore(eventStore, action.eventStore);
+        case 'REMOVE_EVENT_SOURCE':
+            return excludeEventsBySourceId(eventStore, action.sourceId);
+        case 'REMOVE_ALL_EVENT_SOURCES':
+            return filterEventStoreDefs(eventStore, (eventDef) => (!eventDef.sourceId // only keep events with no source id
+            ));
+        case 'REMOVE_ALL_EVENTS':
+            return createEmptyEventStore();
+        default:
+            return eventStore;
+    }
+}
+function receiveRawEvents(eventStore, eventSource, fetchId, fetchRange, rawEvents, context) {
+    if (eventSource && // not already removed
+        fetchId === eventSource.latestFetchId // TODO: wish this logic was always in event-sources
+    ) {
+        let subset = parseEvents(transformRawEvents(rawEvents, eventSource, context), eventSource, context);
+        if (fetchRange) {
+            subset = expandRecurring(subset, fetchRange, context);
+        }
+        return mergeEventStores(excludeEventsBySourceId(eventStore, eventSource.sourceId), subset);
+    }
+    return eventStore;
+}
+function resetRawEvents(existingEventStore, eventSource, rawEvents, activeRange, context) {
+    const { defIdMap, instanceIdMap } = buildPublicIdMaps(existingEventStore);
+    let newEventStore = parseEvents(transformRawEvents(rawEvents, eventSource, context), eventSource, context, false, defIdMap, instanceIdMap);
+    return expandRecurring(newEventStore, activeRange, context);
+}
+function transformRawEvents(rawEvents, eventSource, context) {
+    let calEachTransform = context.options.eventDataTransform;
+    let sourceEachTransform = eventSource ? eventSource.eventDataTransform : null;
+    if (sourceEachTransform) {
+        rawEvents = transformEachRawEvent(rawEvents, sourceEachTransform);
+    }
+    if (calEachTransform) {
+        rawEvents = transformEachRawEvent(rawEvents, calEachTransform);
+    }
+    return rawEvents;
+}
+function transformEachRawEvent(rawEvents, func) {
+    let refinedEvents;
+    if (!func) {
+        refinedEvents = rawEvents;
+    }
+    else {
+        refinedEvents = [];
+        for (let rawEvent of rawEvents) {
+            let refinedEvent = func(rawEvent);
+            if (refinedEvent) {
+                refinedEvents.push(refinedEvent);
+            }
+            else if (refinedEvent == null) {
+                refinedEvents.push(rawEvent);
+            } // if a different falsy value, do nothing
+        }
+    }
+    return refinedEvents;
+}
+function addEvent(eventStore, subset, expandRange, context) {
+    if (expandRange) {
+        subset = expandRecurring(subset, expandRange, context);
+    }
+    return mergeEventStores(eventStore, subset);
+}
+function rezoneEventStoreDates(eventStore, oldDateEnv, newDateEnv) {
+    let { defs } = eventStore;
+    let instances = mapHash(eventStore.instances, (instance) => {
+        let def = defs[instance.defId];
+        if (def.allDay) {
+            return instance; // isn't dependent on timezone
+        }
+        return Object.assign(Object.assign({}, instance), { range: {
+                start: newDateEnv.createMarker(oldDateEnv.toDate(instance.range.start, instance.forcedStartTzo)),
+                end: newDateEnv.createMarker(oldDateEnv.toDate(instance.range.end, instance.forcedEndTzo)),
+            }, forcedStartTzo: newDateEnv.canComputeOffset ? null : instance.forcedStartTzo, forcedEndTzo: newDateEnv.canComputeOffset ? null : instance.forcedEndTzo });
+    });
+    return { defs, instances };
+}
+function excludeEventsBySourceId(eventStore, sourceId) {
+    return filterEventStoreDefs(eventStore, (eventDef) => eventDef.sourceId !== sourceId);
+}
+// QUESTION: why not just return instances? do a general object-property-exclusion util
+function excludeInstances(eventStore, removals) {
+    return {
+        defs: eventStore.defs,
+        instances: filterHash(eventStore.instances, (instance) => !removals[instance.instanceId]),
+    };
+}
+function buildPublicIdMaps(eventStore) {
+    const { defs, instances } = eventStore;
+    const defIdMap = {};
+    const instanceIdMap = {};
+    for (let defId in defs) {
+        const def = defs[defId];
+        const { publicId } = def;
+        if (publicId) {
+            defIdMap[publicId] = defId;
+        }
+    }
+    for (let instanceId in instances) {
+        const instance = instances[instanceId];
+        const def = defs[instance.defId];
+        const { publicId } = def;
+        if (publicId) {
+            instanceIdMap[publicId] = instanceId;
+        }
+    }
+    return { defIdMap, instanceIdMap };
+}
+
+class Emitter {
+    constructor() {
+        this.handlers = {};
+        this.thisContext = null;
+    }
+    setThisContext(thisContext) {
+        this.thisContext = thisContext;
+    }
+    setOptions(options) {
+        this.options = options;
+    }
+    on(type, handler) {
+        addToHash(this.handlers, type, handler);
+    }
+    off(type, handler) {
+        removeFromHash(this.handlers, type, handler);
+    }
+    trigger(type, ...args) {
+        let attachedHandlers = this.handlers[type] || [];
+        let optionHandler = this.options && this.options[type];
+        let handlers = [].concat(optionHandler || [], attachedHandlers);
+        for (let handler of handlers) {
+            handler.apply(this.thisContext, args);
+        }
+    }
+    hasHandlers(type) {
+        return Boolean((this.handlers[type] && this.handlers[type].length) ||
+            (this.options && this.options[type]));
+    }
+}
+function addToHash(hash, type, handler) {
+    (hash[type] || (hash[type] = []))
+        .push(handler);
+}
+function removeFromHash(hash, type, handler) {
+    if (handler) {
+        if (hash[type]) {
+            hash[type] = hash[type].filter((func) => func !== handler);
+        }
+    }
+    else {
+        delete hash[type]; // remove all handler funcs for this type
+    }
+}
+
+const DEF_DEFAULTS = {
+    startTime: '09:00',
+    endTime: '17:00',
+    daysOfWeek: [1, 2, 3, 4, 5],
+    display: 'inverse-background',
+    classNames: 'fc-non-business',
+    groupId: '_businessHours', // so multiple defs get grouped
+};
+/*
+TODO: pass around as EventDefHash!!!
+*/
+function parseBusinessHours(input, context) {
+    return parseEvents(refineInputs(input), null, context);
+}
+function refineInputs(input) {
+    let rawDefs;
+    if (input === true) {
+        rawDefs = [{}]; // will get DEF_DEFAULTS verbatim
+    }
+    else if (Array.isArray(input)) {
+        // if specifying an array, every sub-definition NEEDS a day-of-week
+        rawDefs = input.filter((rawDef) => rawDef.daysOfWeek);
+    }
+    else if (typeof input === 'object' && input) { // non-null object
+        rawDefs = [input];
+    }
+    else { // is probably false
+        rawDefs = [];
+    }
+    rawDefs = rawDefs.map((rawDef) => (Object.assign(Object.assign({}, DEF_DEFAULTS), rawDef)));
+    return rawDefs;
+}
+
+function triggerDateSelect(selection, pev, context) {
+    context.emitter.trigger('select', Object.assign(Object.assign({}, buildDateSpanApiWithContext(selection, context)), { jsEvent: pev ? pev.origEvent : null, view: context.viewApi || context.calendarApi.view }));
+}
+function triggerDateUnselect(pev, context) {
+    context.emitter.trigger('unselect', {
+        jsEvent: pev ? pev.origEvent : null,
+        view: context.viewApi || context.calendarApi.view,
+    });
+}
+function buildDateSpanApiWithContext(dateSpan, context) {
+    let props = {};
+    for (let transform of context.pluginHooks.dateSpanTransforms) {
+        Object.assign(props, transform(dateSpan, context));
+    }
+    Object.assign(props, buildDateSpanApi(dateSpan, context.dateEnv));
+    return props;
+}
+// Given an event's allDay status and start date, return what its fallback end date should be.
+// TODO: rename to computeDefaultEventEnd
+function getDefaultEventEnd(allDay, marker, context) {
+    let { dateEnv, options } = context;
+    let end = marker;
+    if (allDay) {
+        end = startOfDay(end);
+        end = dateEnv.add(end, options.defaultAllDayEventDuration);
+    }
+    else {
+        end = dateEnv.add(end, options.defaultTimedEventDuration);
+    }
+    return end;
+}
+
+// applies the mutation to ALL defs/instances within the event store
+function applyMutationToEventStore(eventStore, eventConfigBase, mutation, context) {
+    let eventConfigs = compileEventUis(eventStore.defs, eventConfigBase);
+    let dest = createEmptyEventStore();
+    for (let defId in eventStore.defs) {
+        let def = eventStore.defs[defId];
+        dest.defs[defId] = applyMutationToEventDef(def, eventConfigs[defId], mutation, context);
+    }
+    for (let instanceId in eventStore.instances) {
+        let instance = eventStore.instances[instanceId];
+        let def = dest.defs[instance.defId]; // important to grab the newly modified def
+        dest.instances[instanceId] = applyMutationToEventInstance(instance, def, eventConfigs[instance.defId], mutation, context);
+    }
+    return dest;
+}
+function applyMutationToEventDef(eventDef, eventConfig, mutation, context) {
+    let standardProps = mutation.standardProps || {};
+    // if hasEnd has not been specified, guess a good value based on deltas.
+    // if duration will change, there's no way the default duration will persist,
+    // and thus, we need to mark the event as having a real end
+    if (standardProps.hasEnd == null &&
+        eventConfig.durationEditable &&
+        (mutation.startDelta || mutation.endDelta)) {
+        standardProps.hasEnd = true; // TODO: is this mutation okay?
+    }
+    let copy = Object.assign(Object.assign(Object.assign({}, eventDef), standardProps), { ui: Object.assign(Object.assign({}, eventDef.ui), standardProps.ui) });
+    if (mutation.extendedProps) {
+        copy.extendedProps = Object.assign(Object.assign({}, copy.extendedProps), mutation.extendedProps);
+    }
+    for (let applier of context.pluginHooks.eventDefMutationAppliers) {
+        applier(copy, mutation, context);
+    }
+    if (!copy.hasEnd && context.options.forceEventDuration) {
+        copy.hasEnd = true;
+    }
+    return copy;
+}
+function applyMutationToEventInstance(eventInstance, eventDef, // must first be modified by applyMutationToEventDef
+eventConfig, mutation, context) {
+    let { dateEnv } = context;
+    let forceAllDay = mutation.standardProps && mutation.standardProps.allDay === true;
+    let clearEnd = mutation.standardProps && mutation.standardProps.hasEnd === false;
+    let copy = Object.assign({}, eventInstance);
+    if (forceAllDay) {
+        copy.range = computeAlignedDayRange(copy.range);
+    }
+    if (mutation.datesDelta && eventConfig.startEditable) {
+        copy.range = {
+            start: dateEnv.add(copy.range.start, mutation.datesDelta),
+            end: dateEnv.add(copy.range.end, mutation.datesDelta),
+        };
+    }
+    if (mutation.startDelta && eventConfig.durationEditable) {
+        copy.range = {
+            start: dateEnv.add(copy.range.start, mutation.startDelta),
+            end: copy.range.end,
+        };
+    }
+    if (mutation.endDelta && eventConfig.durationEditable) {
+        copy.range = {
+            start: copy.range.start,
+            end: dateEnv.add(copy.range.end, mutation.endDelta),
+        };
+    }
+    if (clearEnd) {
+        copy.range = {
+            start: copy.range.start,
+            end: getDefaultEventEnd(eventDef.allDay, copy.range.start, context),
+        };
+    }
+    // in case event was all-day but the supplied deltas were not
+    // better util for this?
+    if (eventDef.allDay) {
+        copy.range = {
+            start: startOfDay(copy.range.start),
+            end: startOfDay(copy.range.end),
+        };
+    }
+    // handle invalid durations
+    if (copy.range.end < copy.range.start) {
+        copy.range.end = getDefaultEventEnd(eventDef.allDay, copy.range.start, context);
+    }
+    return copy;
+}
+
+class EventSourceImpl {
+    constructor(context, internalEventSource) {
+        this.context = context;
+        this.internalEventSource = internalEventSource;
+    }
+    remove() {
+        this.context.dispatch({
+            type: 'REMOVE_EVENT_SOURCE',
+            sourceId: this.internalEventSource.sourceId,
+        });
+    }
+    refetch() {
+        this.context.dispatch({
+            type: 'FETCH_EVENT_SOURCES',
+            sourceIds: [this.internalEventSource.sourceId],
+            isRefetch: true,
+        });
+    }
+    get id() {
+        return this.internalEventSource.publicId;
+    }
+    get url() {
+        return this.internalEventSource.meta.url;
+    }
+    get format() {
+        return this.internalEventSource.meta.format; // TODO: bad. not guaranteed
+    }
+}
+
+class EventImpl {
+    // instance will be null if expressing a recurring event that has no current instances,
+    // OR if trying to validate an incoming external event that has no dates assigned
+    constructor(context, def, instance) {
+        this._context = context;
+        this._def = def;
+        this._instance = instance || null;
+    }
+    /*
+    TODO: make event struct more responsible for this
+    */
+    setProp(name, val) {
+        if (name in EVENT_DATE_REFINERS) {
+            console.warn('Could not set date-related prop \'name\'. Use one of the date-related methods instead.');
+            // TODO: make proper aliasing system?
+        }
+        else if (name === 'id') {
+            val = EVENT_NON_DATE_REFINERS[name](val);
+            this.mutate({
+                standardProps: { publicId: val }, // hardcoded internal name
+            });
+        }
+        else if (name in EVENT_NON_DATE_REFINERS) {
+            val = EVENT_NON_DATE_REFINERS[name](val);
+            this.mutate({
+                standardProps: { [name]: val },
+            });
+        }
+        else if (name in EVENT_UI_REFINERS) {
+            let ui = EVENT_UI_REFINERS[name](val);
+            if (name === 'color') {
+                ui = { backgroundColor: val, borderColor: val };
+            }
+            else if (name === 'editable') {
+                ui = { startEditable: val, durationEditable: val };
+            }
+            else {
+                ui = { [name]: val };
+            }
+            this.mutate({
+                standardProps: { ui },
+            });
+        }
+        else {
+            console.warn(`Could not set prop '${name}'. Use setExtendedProp instead.`);
+        }
+    }
+    setExtendedProp(name, val) {
+        this.mutate({
+            extendedProps: { [name]: val },
+        });
+    }
+    setStart(startInput, options = {}) {
+        let { dateEnv } = this._context;
+        let start = dateEnv.createMarker(startInput);
+        if (start && this._instance) { // TODO: warning if parsed bad
+            let instanceRange = this._instance.range;
+            let startDelta = diffDates(instanceRange.start, start, dateEnv, options.granularity); // what if parsed bad!?
+            if (options.maintainDuration) {
+                this.mutate({ datesDelta: startDelta });
+            }
+            else {
+                this.mutate({ startDelta });
+            }
+        }
+    }
+    setEnd(endInput, options = {}) {
+        let { dateEnv } = this._context;
+        let end;
+        if (endInput != null) {
+            end = dateEnv.createMarker(endInput);
+            if (!end) {
+                return; // TODO: warning if parsed bad
+            }
+        }
+        if (this._instance) {
+            if (end) {
+                let endDelta = diffDates(this._instance.range.end, end, dateEnv, options.granularity);
+                this.mutate({ endDelta });
+            }
+            else {
+                this.mutate({ standardProps: { hasEnd: false } });
+            }
+        }
+    }
+    setDates(startInput, endInput, options = {}) {
+        let { dateEnv } = this._context;
+        let standardProps = { allDay: options.allDay };
+        let start = dateEnv.createMarker(startInput);
+        let end;
+        if (!start) {
+            return; // TODO: warning if parsed bad
+        }
+        if (endInput != null) {
+            end = dateEnv.createMarker(endInput);
+            if (!end) { // TODO: warning if parsed bad
+                return;
+            }
+        }
+        if (this._instance) {
+            let instanceRange = this._instance.range;
+            // when computing the diff for an event being converted to all-day,
+            // compute diff off of the all-day values the way event-mutation does.
+            if (options.allDay === true) {
+                instanceRange = computeAlignedDayRange(instanceRange);
+            }
+            let startDelta = diffDates(instanceRange.start, start, dateEnv, options.granularity);
+            if (end) {
+                let endDelta = diffDates(instanceRange.end, end, dateEnv, options.granularity);
+                if (durationsEqual(startDelta, endDelta)) {
+                    this.mutate({ datesDelta: startDelta, standardProps });
+                }
+                else {
+                    this.mutate({ startDelta, endDelta, standardProps });
+                }
+            }
+            else { // means "clear the end"
+                standardProps.hasEnd = false;
+                this.mutate({ datesDelta: startDelta, standardProps });
+            }
+        }
+    }
+    moveStart(deltaInput) {
+        let delta = createDuration(deltaInput);
+        if (delta) { // TODO: warning if parsed bad
+            this.mutate({ startDelta: delta });
+        }
+    }
+    moveEnd(deltaInput) {
+        let delta = createDuration(deltaInput);
+        if (delta) { // TODO: warning if parsed bad
+            this.mutate({ endDelta: delta });
+        }
+    }
+    moveDates(deltaInput) {
+        let delta = createDuration(deltaInput);
+        if (delta) { // TODO: warning if parsed bad
+            this.mutate({ datesDelta: delta });
+        }
+    }
+    setAllDay(allDay, options = {}) {
+        let standardProps = { allDay };
+        let { maintainDuration } = options;
+        if (maintainDuration == null) {
+            maintainDuration = this._context.options.allDayMaintainDuration;
+        }
+        if (this._def.allDay !== allDay) {
+            standardProps.hasEnd = maintainDuration;
+        }
+        this.mutate({ standardProps });
+    }
+    formatRange(formatInput) {
+        let { dateEnv } = this._context;
+        let instance = this._instance;
+        let formatter = createFormatter(formatInput);
+        if (this._def.hasEnd) {
+            return dateEnv.formatRange(instance.range.start, instance.range.end, formatter, {
+                forcedStartTzo: instance.forcedStartTzo,
+                forcedEndTzo: instance.forcedEndTzo,
+            });
+        }
+        return dateEnv.format(instance.range.start, formatter, {
+            forcedTzo: instance.forcedStartTzo,
+        });
+    }
+    mutate(mutation) {
+        let instance = this._instance;
+        if (instance) {
+            let def = this._def;
+            let context = this._context;
+            let { eventStore } = context.getCurrentData();
+            let relevantEvents = getRelevantEvents(eventStore, instance.instanceId);
+            let eventConfigBase = {
+                '': {
+                    display: '',
+                    startEditable: true,
+                    durationEditable: true,
+                    constraints: [],
+                    overlap: null,
+                    allows: [],
+                    backgroundColor: '',
+                    borderColor: '',
+                    textColor: '',
+                    classNames: [],
+                },
+            };
+            relevantEvents = applyMutationToEventStore(relevantEvents, eventConfigBase, mutation, context);
+            let oldEvent = new EventImpl(context, def, instance); // snapshot
+            this._def = relevantEvents.defs[def.defId];
+            this._instance = relevantEvents.instances[instance.instanceId];
+            context.dispatch({
+                type: 'MERGE_EVENTS',
+                eventStore: relevantEvents,
+            });
+            context.emitter.trigger('eventChange', {
+                oldEvent,
+                event: this,
+                relatedEvents: buildEventApis(relevantEvents, context, instance),
+                revert() {
+                    context.dispatch({
+                        type: 'RESET_EVENTS',
+                        eventStore, // the ORIGINAL store
+                    });
+                },
+            });
+        }
+    }
+    remove() {
+        let context = this._context;
+        let asStore = eventApiToStore(this);
+        context.dispatch({
+            type: 'REMOVE_EVENTS',
+            eventStore: asStore,
+        });
+        context.emitter.trigger('eventRemove', {
+            event: this,
+            relatedEvents: [],
+            revert() {
+                context.dispatch({
+                    type: 'MERGE_EVENTS',
+                    eventStore: asStore,
+                });
+            },
+        });
+    }
+    get source() {
+        let { sourceId } = this._def;
+        if (sourceId) {
+            return new EventSourceImpl(this._context, this._context.getCurrentData().eventSources[sourceId]);
+        }
+        return null;
+    }
+    get start() {
+        return this._instance ?
+            this._context.dateEnv.toDate(this._instance.range.start) :
+            null;
+    }
+    get end() {
+        return (this._instance && this._def.hasEnd) ?
+            this._context.dateEnv.toDate(this._instance.range.end) :
+            null;
+    }
+    get startStr() {
+        let instance = this._instance;
+        if (instance) {
+            return this._context.dateEnv.formatIso(instance.range.start, {
+                omitTime: this._def.allDay,
+                forcedTzo: instance.forcedStartTzo,
+            });
+        }
+        return '';
+    }
+    get endStr() {
+        let instance = this._instance;
+        if (instance && this._def.hasEnd) {
+            return this._context.dateEnv.formatIso(instance.range.end, {
+                omitTime: this._def.allDay,
+                forcedTzo: instance.forcedEndTzo,
+            });
+        }
+        return '';
+    }
+    // computable props that all access the def
+    // TODO: find a TypeScript-compatible way to do this at scale
+    get id() { return this._def.publicId; }
+    get groupId() { return this._def.groupId; }
+    get allDay() { return this._def.allDay; }
+    get title() { return this._def.title; }
+    get url() { return this._def.url; }
+    get display() { return this._def.ui.display || 'auto'; } // bad. just normalize the type earlier
+    get startEditable() { return this._def.ui.startEditable; }
+    get durationEditable() { return this._def.ui.durationEditable; }
+    get constraint() { return this._def.ui.constraints[0] || null; }
+    get overlap() { return this._def.ui.overlap; }
+    get allow() { return this._def.ui.allows[0] || null; }
+    get backgroundColor() { return this._def.ui.backgroundColor; }
+    get borderColor() { return this._def.ui.borderColor; }
+    get textColor() { return this._def.ui.textColor; }
+    // NOTE: user can't modify these because Object.freeze was called in event-def parsing
+    get classNames() { return this._def.ui.classNames; }
+    get extendedProps() { return this._def.extendedProps; }
+    toPlainObject(settings = {}) {
+        let def = this._def;
+        let { ui } = def;
+        let { startStr, endStr } = this;
+        let res = {
+            allDay: def.allDay,
+        };
+        if (def.title) {
+            res.title = def.title;
+        }
+        if (startStr) {
+            res.start = startStr;
+        }
+        if (endStr) {
+            res.end = endStr;
+        }
+        if (def.publicId) {
+            res.id = def.publicId;
+        }
+        if (def.groupId) {
+            res.groupId = def.groupId;
+        }
+        if (def.url) {
+            res.url = def.url;
+        }
+        if (ui.display && ui.display !== 'auto') {
+            res.display = ui.display;
+        }
+        // TODO: what about recurring-event properties???
+        // TODO: include startEditable/durationEditable/constraint/overlap/allow
+        if (settings.collapseColor && ui.backgroundColor && ui.backgroundColor === ui.borderColor) {
+            res.color = ui.backgroundColor;
+        }
+        else {
+            if (ui.backgroundColor) {
+                res.backgroundColor = ui.backgroundColor;
+            }
+            if (ui.borderColor) {
+                res.borderColor = ui.borderColor;
+            }
+        }
+        if (ui.textColor) {
+            res.textColor = ui.textColor;
+        }
+        if (ui.classNames.length) {
+            res.classNames = ui.classNames;
+        }
+        if (Object.keys(def.extendedProps).length) {
+            if (settings.collapseExtendedProps) {
+                Object.assign(res, def.extendedProps);
+            }
+            else {
+                res.extendedProps = def.extendedProps;
+            }
+        }
+        return res;
+    }
+    toJSON() {
+        return this.toPlainObject();
+    }
+}
+function eventApiToStore(eventApi) {
+    let def = eventApi._def;
+    let instance = eventApi._instance;
+    return {
+        defs: { [def.defId]: def },
+        instances: instance
+            ? { [instance.instanceId]: instance }
+            : {},
+    };
+}
+function buildEventApis(eventStore, context, excludeInstance) {
+    let { defs, instances } = eventStore;
+    let eventApis = [];
+    let excludeInstanceId = excludeInstance ? excludeInstance.instanceId : '';
+    for (let id in instances) {
+        let instance = instances[id];
+        let def = defs[instance.defId];
+        if (instance.instanceId !== excludeInstanceId) {
+            eventApis.push(new EventImpl(context, def, instance));
+        }
+    }
+    return eventApis;
+}
+
+/*
+Specifying nextDayThreshold signals that all-day ranges should be sliced.
+*/
+function sliceEventStore(eventStore, eventUiBases, framingRange, nextDayThreshold) {
+    let inverseBgByGroupId = {};
+    let inverseBgByDefId = {};
+    let defByGroupId = {};
+    let bgRanges = [];
+    let fgRanges = [];
+    let eventUis = compileEventUis(eventStore.defs, eventUiBases);
+    for (let defId in eventStore.defs) {
+        let def = eventStore.defs[defId];
+        let ui = eventUis[def.defId];
+        if (ui.display === 'inverse-background') {
+            if (def.groupId) {
+                inverseBgByGroupId[def.groupId] = [];
+                if (!defByGroupId[def.groupId]) {
+                    defByGroupId[def.groupId] = def;
+                }
+            }
+            else {
+                inverseBgByDefId[defId] = [];
+            }
+        }
+    }
+    for (let instanceId in eventStore.instances) {
+        let instance = eventStore.instances[instanceId];
+        let def = eventStore.defs[instance.defId];
+        let ui = eventUis[def.defId];
+        let origRange = instance.range;
+        let normalRange = (!def.allDay && nextDayThreshold) ?
+            computeVisibleDayRange(origRange, nextDayThreshold) :
+            origRange;
+        let slicedRange = intersectRanges(normalRange, framingRange);
+        if (slicedRange) {
+            if (ui.display === 'inverse-background') {
+                if (def.groupId) {
+                    inverseBgByGroupId[def.groupId].push(slicedRange);
+                }
+                else {
+                    inverseBgByDefId[instance.defId].push(slicedRange);
+                }
+            }
+            else if (ui.display !== 'none') {
+                (ui.display === 'background' ? bgRanges : fgRanges).push({
+                    def,
+                    ui,
+                    instance,
+                    range: slicedRange,
+                    isStart: normalRange.start && normalRange.start.valueOf() === slicedRange.start.valueOf(),
+                    isEnd: normalRange.end && normalRange.end.valueOf() === slicedRange.end.valueOf(),
+                });
+            }
+        }
+    }
+    for (let groupId in inverseBgByGroupId) { // BY GROUP
+        let ranges = inverseBgByGroupId[groupId];
+        let invertedRanges = invertRanges(ranges, framingRange);
+        for (let invertedRange of invertedRanges) {
+            let def = defByGroupId[groupId];
+            let ui = eventUis[def.defId];
+            bgRanges.push({
+                def,
+                ui,
+                instance: null,
+                range: invertedRange,
+                isStart: false,
+                isEnd: false,
+            });
+        }
+    }
+    for (let defId in inverseBgByDefId) {
+        let ranges = inverseBgByDefId[defId];
+        let invertedRanges = invertRanges(ranges, framingRange);
+        for (let invertedRange of invertedRanges) {
+            bgRanges.push({
+                def: eventStore.defs[defId],
+                ui: eventUis[defId],
+                instance: null,
+                range: invertedRange,
+                isStart: false,
+                isEnd: false,
+            });
+        }
+    }
+    return { bg: bgRanges, fg: fgRanges };
+}
+function hasBgRendering(def) {
+    return def.ui.display === 'background' || def.ui.display === 'inverse-background';
+}
+function setElSeg(el, seg) {
+    el.fcSeg = seg;
+}
+function getElSeg(el) {
+    return el.fcSeg ||
+        el.parentNode.fcSeg || // for the harness
+        null;
+}
+// event ui computation
+function compileEventUis(eventDefs, eventUiBases) {
+    return mapHash(eventDefs, (eventDef) => compileEventUi(eventDef, eventUiBases));
+}
+function compileEventUi(eventDef, eventUiBases) {
+    let uis = [];
+    if (eventUiBases['']) {
+        uis.push(eventUiBases['']);
+    }
+    if (eventUiBases[eventDef.defId]) {
+        uis.push(eventUiBases[eventDef.defId]);
+    }
+    uis.push(eventDef.ui);
+    return combineEventUis(uis);
+}
+function sortEventSegs(segs, eventOrderSpecs) {
+    let objs = segs.map(buildSegCompareObj);
+    objs.sort((obj0, obj1) => compareByFieldSpecs(obj0, obj1, eventOrderSpecs));
+    return objs.map((c) => c._seg);
+}
+// returns a object with all primitive props that can be compared
+function buildSegCompareObj(seg) {
+    let { eventRange } = seg;
+    let eventDef = eventRange.def;
+    let range = eventRange.instance ? eventRange.instance.range : eventRange.range;
+    let start = range.start ? range.start.valueOf() : 0; // TODO: better support for open-range events
+    let end = range.end ? range.end.valueOf() : 0; // "
+    return Object.assign(Object.assign(Object.assign({}, eventDef.extendedProps), eventDef), { id: eventDef.publicId, start,
+        end, duration: end - start, allDay: Number(eventDef.allDay), _seg: seg });
+}
+function computeSegDraggable(seg, context) {
+    let { pluginHooks } = context;
+    let transformers = pluginHooks.isDraggableTransformers;
+    let { def, ui } = seg.eventRange;
+    let val = ui.startEditable;
+    for (let transformer of transformers) {
+        val = transformer(val, def, ui, context);
+    }
+    return val;
+}
+function computeSegStartResizable(seg, context) {
+    return seg.isStart && seg.eventRange.ui.durationEditable && context.options.eventResizableFromStart;
+}
+function computeSegEndResizable(seg, context) {
+    return seg.isEnd && seg.eventRange.ui.durationEditable;
+}
+function buildSegTimeText(seg, timeFormat, context, defaultDisplayEventTime, // defaults to true
+defaultDisplayEventEnd, // defaults to true
+startOverride, endOverride) {
+    let { dateEnv, options } = context;
+    let { displayEventTime, displayEventEnd } = options;
+    let eventDef = seg.eventRange.def;
+    let eventInstance = seg.eventRange.instance;
+    if (displayEventTime == null) {
+        displayEventTime = defaultDisplayEventTime !== false;
+    }
+    if (displayEventEnd == null) {
+        displayEventEnd = defaultDisplayEventEnd !== false;
+    }
+    let wholeEventStart = eventInstance.range.start;
+    let wholeEventEnd = eventInstance.range.end;
+    let segStart = startOverride || seg.start || seg.eventRange.range.start;
+    let segEnd = endOverride || seg.end || seg.eventRange.range.end;
+    let isStartDay = startOfDay(wholeEventStart).valueOf() === startOfDay(segStart).valueOf();
+    let isEndDay = startOfDay(addMs(wholeEventEnd, -1)).valueOf() === startOfDay(addMs(segEnd, -1)).valueOf();
+    if (displayEventTime && !eventDef.allDay && (isStartDay || isEndDay)) {
+        segStart = isStartDay ? wholeEventStart : segStart;
+        segEnd = isEndDay ? wholeEventEnd : segEnd;
+        if (displayEventEnd && eventDef.hasEnd) {
+            return dateEnv.formatRange(segStart, segEnd, timeFormat, {
+                forcedStartTzo: startOverride ? null : eventInstance.forcedStartTzo,
+                forcedEndTzo: endOverride ? null : eventInstance.forcedEndTzo,
+            });
+        }
+        return dateEnv.format(segStart, timeFormat, {
+            forcedTzo: startOverride ? null : eventInstance.forcedStartTzo, // nooooo, same
+        });
+    }
+    return '';
+}
+function getSegMeta(seg, todayRange, nowDate) {
+    let segRange = seg.eventRange.range;
+    return {
+        isPast: segRange.end < (nowDate || todayRange.start),
+        isFuture: segRange.start >= (nowDate || todayRange.end),
+        isToday: todayRange && rangeContainsMarker(todayRange, segRange.start),
+    };
+}
+function getEventClassNames(props) {
+    let classNames = ['fc-event'];
+    if (props.isMirror) {
+        classNames.push('fc-event-mirror');
+    }
+    if (props.isDraggable) {
+        classNames.push('fc-event-draggable');
+    }
+    if (props.isStartResizable || props.isEndResizable) {
+        classNames.push('fc-event-resizable');
+    }
+    if (props.isDragging) {
+        classNames.push('fc-event-dragging');
+    }
+    if (props.isResizing) {
+        classNames.push('fc-event-resizing');
+    }
+    if (props.isSelected) {
+        classNames.push('fc-event-selected');
+    }
+    if (props.isStart) {
+        classNames.push('fc-event-start');
+    }
+    if (props.isEnd) {
+        classNames.push('fc-event-end');
+    }
+    if (props.isPast) {
+        classNames.push('fc-event-past');
+    }
+    if (props.isToday) {
+        classNames.push('fc-event-today');
+    }
+    if (props.isFuture) {
+        classNames.push('fc-event-future');
+    }
+    return classNames;
+}
+function buildEventRangeKey(eventRange) {
+    return eventRange.instance
+        ? eventRange.instance.instanceId
+        : `${eventRange.def.defId}:${eventRange.range.start.toISOString()}`;
+    // inverse-background events don't have specific instances. TODO: better solution
+}
+function getSegAnchorAttrs(seg, context) {
+    let { def, instance } = seg.eventRange;
+    let { url } = def;
+    if (url) {
+        return { href: url };
+    }
+    let { emitter, options } = context;
+    let { eventInteractive } = options;
+    if (eventInteractive == null) {
+        eventInteractive = def.interactive;
+        if (eventInteractive == null) {
+            eventInteractive = Boolean(emitter.hasHandlers('eventClick'));
+        }
+    }
+    // mock what happens in EventClicking
+    if (eventInteractive) {
+        // only attach keyboard-related handlers because click handler is already done in EventClicking
+        return createAriaKeyboardAttrs((ev) => {
+            emitter.trigger('eventClick', {
+                el: ev.target,
+                event: new EventImpl(context, def, instance),
+                jsEvent: ev,
+                view: context.viewApi,
+            });
+        });
+    }
+    return {};
+}
+
+const STANDARD_PROPS = {
+    start: identity,
+    end: identity,
+    allDay: Boolean,
+};
+function parseDateSpan(raw, dateEnv, defaultDuration) {
+    let span = parseOpenDateSpan(raw, dateEnv);
+    let { range } = span;
+    if (!range.start) {
+        return null;
+    }
+    if (!range.end) {
+        if (defaultDuration == null) {
+            return null;
+        }
+        range.end = dateEnv.add(range.start, defaultDuration);
+    }
+    return span;
+}
+/*
+TODO: somehow combine with parseRange?
+Will return null if the start/end props were present but parsed invalidly.
+*/
+function parseOpenDateSpan(raw, dateEnv) {
+    let { refined: standardProps, extra } = refineProps(raw, STANDARD_PROPS);
+    let startMeta = standardProps.start ? dateEnv.createMarkerMeta(standardProps.start) : null;
+    let endMeta = standardProps.end ? dateEnv.createMarkerMeta(standardProps.end) : null;
+    let { allDay } = standardProps;
+    if (allDay == null) {
+        allDay = (startMeta && startMeta.isTimeUnspecified) &&
+            (!endMeta || endMeta.isTimeUnspecified);
+    }
+    return Object.assign({ range: {
+            start: startMeta ? startMeta.marker : null,
+            end: endMeta ? endMeta.marker : null,
+        }, allDay }, extra);
+}
+function isDateSpansEqual(span0, span1) {
+    return rangesEqual(span0.range, span1.range) &&
+        span0.allDay === span1.allDay &&
+        isSpanPropsEqual(span0, span1);
+}
+// the NON-DATE-RELATED props
+function isSpanPropsEqual(span0, span1) {
+    for (let propName in span1) {
+        if (propName !== 'range' && propName !== 'allDay') {
+            if (span0[propName] !== span1[propName]) {
+                return false;
+            }
+        }
+    }
+    // are there any props that span0 has that span1 DOESN'T have?
+    // both have range/allDay, so no need to special-case.
+    for (let propName in span0) {
+        if (!(propName in span1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function buildDateSpanApi(span, dateEnv) {
+    return Object.assign(Object.assign({}, buildRangeApi(span.range, dateEnv, span.allDay)), { allDay: span.allDay });
+}
+function buildRangeApiWithTimeZone(range, dateEnv, omitTime) {
+    return Object.assign(Object.assign({}, buildRangeApi(range, dateEnv, omitTime)), { timeZone: dateEnv.timeZone });
+}
+function buildRangeApi(range, dateEnv, omitTime) {
+    return {
+        start: dateEnv.toDate(range.start),
+        end: dateEnv.toDate(range.end),
+        startStr: dateEnv.formatIso(range.start, { omitTime }),
+        endStr: dateEnv.formatIso(range.end, { omitTime }),
+    };
+}
+function fabricateEventRange(dateSpan, eventUiBases, context) {
+    let res = refineEventDef({ editable: false }, context);
+    let def = parseEventDef(res.refined, res.extra, '', // sourceId
+    dateSpan.allDay, true, // hasEnd
+    context);
+    return {
+        def,
+        ui: compileEventUi(def, eventUiBases),
+        instance: createEventInstance(def.defId, dateSpan.range),
+        range: dateSpan.range,
+        isStart: true,
+        isEnd: true,
+    };
+}
+
+/*
+given a function that resolves a result asynchronously.
+the function can either call passed-in success and failure callbacks,
+or it can return a promise.
+if you need to pass additional params to func, bind them first.
+*/
+function unpromisify(func, normalizedSuccessCallback, normalizedFailureCallback) {
+    // guard against success/failure callbacks being called more than once
+    // and guard against a promise AND callback being used together.
+    let isResolved = false;
+    let wrappedSuccess = function (res) {
+        if (!isResolved) {
+            isResolved = true;
+            normalizedSuccessCallback(res);
+        }
+    };
+    let wrappedFailure = function (error) {
+        if (!isResolved) {
+            isResolved = true;
+            normalizedFailureCallback(error);
+        }
+    };
+    let res = func(wrappedSuccess, wrappedFailure);
+    if (res && typeof res.then === 'function') {
+        res.then(wrappedSuccess, wrappedFailure);
+    }
+}
+
+class JsonRequestError extends Error {
+    constructor(message, response) {
+        super(message);
+        this.response = response;
+    }
+}
+function requestJson(method, url, params) {
+    method = method.toUpperCase();
+    const fetchOptions = {
+        method,
+    };
+    if (method === 'GET') {
+        url += (url.indexOf('?') === -1 ? '?' : '&') +
+            new URLSearchParams(params);
+    }
+    else {
+        fetchOptions.body = new URLSearchParams(params);
+        fetchOptions.headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        };
+    }
+    return fetch(url, fetchOptions).then((fetchRes) => {
+        if (fetchRes.ok) {
+            return fetchRes.json().then((parsedResponse) => {
+                return [parsedResponse, fetchRes];
+            }, () => {
+                throw new JsonRequestError('Failure parsing JSON', fetchRes);
+            });
+        }
+        else {
+            throw new JsonRequestError('Request failed', fetchRes);
+        }
+    });
+}
+
+let canVGrowWithinCell;
+function getCanVGrowWithinCell() {
+    if (canVGrowWithinCell == null) {
+        canVGrowWithinCell = computeCanVGrowWithinCell();
+    }
+    return canVGrowWithinCell;
+}
+function computeCanVGrowWithinCell() {
+    // for SSR, because this function is call immediately at top-level
+    // TODO: just make this logic execute top-level, immediately, instead of doing lazily
+    if (typeof document === 'undefined') {
+        return true;
+    }
+    let el = document.createElement('div');
+    el.style.position = 'absolute';
+    el.style.top = '0px';
+    el.style.left = '0px';
+    el.innerHTML = '<table><tr><td><div></div></td></tr></table>';
+    el.querySelector('table').style.height = '100px';
+    el.querySelector('div').style.height = '100%';
+    document.body.appendChild(el);
+    let div = el.querySelector('div');
+    let possible = div.offsetHeight > 0;
+    document.body.removeChild(el);
+    return possible;
+}
+
+class CalendarRoot extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.state = {
+            forPrint: false,
+        };
+        this.handleBeforePrint = () => {
+            this.setState({ forPrint: true });
+        };
+        this.handleAfterPrint = () => {
+            this.setState({ forPrint: false });
+        };
+    }
+    render() {
+        let { props } = this;
+        let { options } = props;
+        let { forPrint } = this.state;
+        let isHeightAuto = forPrint || options.height === 'auto' || options.contentHeight === 'auto';
+        let height = (!isHeightAuto && options.height != null) ? options.height : '';
+        let classNames = [
+            'fc',
+            forPrint ? 'fc-media-print' : 'fc-media-screen',
+            `fc-direction-${options.direction}`,
+            props.theme.getClass('root'),
+        ];
+        if (!getCanVGrowWithinCell()) {
+            classNames.push('fc-liquid-hack');
+        }
+        return props.children(classNames, height, isHeightAuto, forPrint);
+    }
+    componentDidMount() {
+        let { emitter } = this.props;
+        emitter.on('_beforeprint', this.handleBeforePrint);
+        emitter.on('_afterprint', this.handleAfterPrint);
+    }
+    componentWillUnmount() {
+        let { emitter } = this.props;
+        emitter.off('_beforeprint', this.handleBeforePrint);
+        emitter.off('_afterprint', this.handleAfterPrint);
+    }
+}
+
+class Interaction {
+    constructor(settings) {
+        this.component = settings.component;
+        this.isHitComboAllowed = settings.isHitComboAllowed || null;
+    }
+    destroy() {
+    }
+}
+function parseInteractionSettings(component, input) {
+    return {
+        component,
+        el: input.el,
+        useEventCenter: input.useEventCenter != null ? input.useEventCenter : true,
+        isHitComboAllowed: input.isHitComboAllowed || null,
+    };
+}
+function interactionSettingsToStore(settings) {
+    return {
+        [settings.component.uid]: settings,
+    };
+}
+// global state
+const interactionSettingsStore = {};
+
+class CalendarImpl {
+    getCurrentData() {
+        return this.currentDataManager.getCurrentData();
+    }
+    dispatch(action) {
+        this.currentDataManager.dispatch(action);
+    }
+    get view() { return this.getCurrentData().viewApi; }
+    batchRendering(callback) {
+        callback();
+    }
+    updateSize() {
+        this.trigger('_resize', true);
+    }
+    // Options
+    // -----------------------------------------------------------------------------------------------------------------
+    setOption(name, val) {
+        this.dispatch({
+            type: 'SET_OPTION',
+            optionName: name,
+            rawOptionValue: val,
+        });
+    }
+    getOption(name) {
+        return this.currentDataManager.currentCalendarOptionsInput[name];
+    }
+    getAvailableLocaleCodes() {
+        return Object.keys(this.getCurrentData().availableRawLocales);
+    }
+    // Trigger
+    // -----------------------------------------------------------------------------------------------------------------
+    on(handlerName, handler) {
+        let { currentDataManager } = this;
+        if (currentDataManager.currentCalendarOptionsRefiners[handlerName]) {
+            currentDataManager.emitter.on(handlerName, handler);
+        }
+        else {
+            console.warn(`Unknown listener name '${handlerName}'`);
+        }
+    }
+    off(handlerName, handler) {
+        this.currentDataManager.emitter.off(handlerName, handler);
+    }
+    // not meant for public use
+    trigger(handlerName, ...args) {
+        this.currentDataManager.emitter.trigger(handlerName, ...args);
+    }
+    // View
+    // -----------------------------------------------------------------------------------------------------------------
+    changeView(viewType, dateOrRange) {
+        this.batchRendering(() => {
+            this.unselect();
+            if (dateOrRange) {
+                if (dateOrRange.start && dateOrRange.end) { // a range
+                    this.dispatch({
+                        type: 'CHANGE_VIEW_TYPE',
+                        viewType,
+                    });
+                    this.dispatch({
+                        type: 'SET_OPTION',
+                        optionName: 'visibleRange',
+                        rawOptionValue: dateOrRange,
+                    });
+                }
+                else {
+                    let { dateEnv } = this.getCurrentData();
+                    this.dispatch({
+                        type: 'CHANGE_VIEW_TYPE',
+                        viewType,
+                        dateMarker: dateEnv.createMarker(dateOrRange),
+                    });
+                }
+            }
+            else {
+                this.dispatch({
+                    type: 'CHANGE_VIEW_TYPE',
+                    viewType,
+                });
+            }
+        });
+    }
+    // Forces navigation to a view for the given date.
+    // `viewType` can be a specific view name or a generic one like "week" or "day".
+    // needs to change
+    zoomTo(dateMarker, viewType) {
+        let state = this.getCurrentData();
+        let spec;
+        viewType = viewType || 'day'; // day is default zoom
+        spec = state.viewSpecs[viewType] || this.getUnitViewSpec(viewType);
+        this.unselect();
+        if (spec) {
+            this.dispatch({
+                type: 'CHANGE_VIEW_TYPE',
+                viewType: spec.type,
+                dateMarker,
+            });
+        }
+        else {
+            this.dispatch({
+                type: 'CHANGE_DATE',
+                dateMarker,
+            });
+        }
+    }
+    // Given a duration singular unit, like "week" or "day", finds a matching view spec.
+    // Preference is given to views that have corresponding buttons.
+    getUnitViewSpec(unit) {
+        let { viewSpecs, toolbarConfig } = this.getCurrentData();
+        let viewTypes = [].concat(toolbarConfig.header ? toolbarConfig.header.viewsWithButtons : [], toolbarConfig.footer ? toolbarConfig.footer.viewsWithButtons : []);
+        let i;
+        let spec;
+        for (let viewType in viewSpecs) {
+            viewTypes.push(viewType);
+        }
+        for (i = 0; i < viewTypes.length; i += 1) {
+            spec = viewSpecs[viewTypes[i]];
+            if (spec) {
+                if (spec.singleUnit === unit) {
+                    return spec;
+                }
+            }
+        }
+        return null;
+    }
+    // Current Date
+    // -----------------------------------------------------------------------------------------------------------------
+    prev() {
+        this.unselect();
+        this.dispatch({ type: 'PREV' });
+    }
+    next() {
+        this.unselect();
+        this.dispatch({ type: 'NEXT' });
+    }
+    prevYear() {
+        let state = this.getCurrentData();
+        this.unselect();
+        this.dispatch({
+            type: 'CHANGE_DATE',
+            dateMarker: state.dateEnv.addYears(state.currentDate, -1),
+        });
+    }
+    nextYear() {
+        let state = this.getCurrentData();
+        this.unselect();
+        this.dispatch({
+            type: 'CHANGE_DATE',
+            dateMarker: state.dateEnv.addYears(state.currentDate, 1),
+        });
+    }
+    today() {
+        let state = this.getCurrentData();
+        this.unselect();
+        this.dispatch({
+            type: 'CHANGE_DATE',
+            dateMarker: getNow(state.calendarOptions.now, state.dateEnv),
+        });
+    }
+    gotoDate(zonedDateInput) {
+        let state = this.getCurrentData();
+        this.unselect();
+        this.dispatch({
+            type: 'CHANGE_DATE',
+            dateMarker: state.dateEnv.createMarker(zonedDateInput),
+        });
+    }
+    incrementDate(deltaInput) {
+        let state = this.getCurrentData();
+        let delta = createDuration(deltaInput);
+        if (delta) { // else, warn about invalid input?
+            this.unselect();
+            this.dispatch({
+                type: 'CHANGE_DATE',
+                dateMarker: state.dateEnv.add(state.currentDate, delta),
+            });
+        }
+    }
+    getDate() {
+        let state = this.getCurrentData();
+        return state.dateEnv.toDate(state.currentDate);
+    }
+    // Date Formatting Utils
+    // -----------------------------------------------------------------------------------------------------------------
+    formatDate(d, formatter) {
+        let { dateEnv } = this.getCurrentData();
+        return dateEnv.format(dateEnv.createMarker(d), createFormatter(formatter));
+    }
+    // `settings` is for formatter AND isEndExclusive
+    formatRange(d0, d1, settings) {
+        let { dateEnv } = this.getCurrentData();
+        return dateEnv.formatRange(dateEnv.createMarker(d0), dateEnv.createMarker(d1), createFormatter(settings), settings);
+    }
+    formatIso(d, omitTime) {
+        let { dateEnv } = this.getCurrentData();
+        return dateEnv.formatIso(dateEnv.createMarker(d), { omitTime });
+    }
+    // Date Selection / Event Selection / DayClick
+    // -----------------------------------------------------------------------------------------------------------------
+    select(dateOrObj, endDate) {
+        let selectionInput;
+        if (endDate == null) {
+            if (dateOrObj.start != null) {
+                selectionInput = dateOrObj;
+            }
+            else {
+                selectionInput = {
+                    start: dateOrObj,
+                    end: null,
+                };
+            }
+        }
+        else {
+            selectionInput = {
+                start: dateOrObj,
+                end: endDate,
+            };
+        }
+        let state = this.getCurrentData();
+        let selection = parseDateSpan(selectionInput, state.dateEnv, createDuration({ days: 1 }));
+        if (selection) { // throw parse error otherwise?
+            this.dispatch({ type: 'SELECT_DATES', selection });
+            triggerDateSelect(selection, null, state);
+        }
+    }
+    unselect(pev) {
+        let state = this.getCurrentData();
+        if (state.dateSelection) {
+            this.dispatch({ type: 'UNSELECT_DATES' });
+            triggerDateUnselect(pev, state);
+        }
+    }
+    // Public Events API
+    // -----------------------------------------------------------------------------------------------------------------
+    addEvent(eventInput, sourceInput) {
+        if (eventInput instanceof EventImpl) {
+            let def = eventInput._def;
+            let instance = eventInput._instance;
+            let currentData = this.getCurrentData();
+            // not already present? don't want to add an old snapshot
+            if (!currentData.eventStore.defs[def.defId]) {
+                this.dispatch({
+                    type: 'ADD_EVENTS',
+                    eventStore: eventTupleToStore({ def, instance }), // TODO: better util for two args?
+                });
+                this.triggerEventAdd(eventInput);
+            }
+            return eventInput;
+        }
+        let state = this.getCurrentData();
+        let eventSource;
+        if (sourceInput instanceof EventSourceImpl) {
+            eventSource = sourceInput.internalEventSource;
+        }
+        else if (typeof sourceInput === 'boolean') {
+            if (sourceInput) { // true. part of the first event source
+                [eventSource] = hashValuesToArray(state.eventSources);
+            }
+        }
+        else if (sourceInput != null) { // an ID. accepts a number too
+            let sourceApi = this.getEventSourceById(sourceInput); // TODO: use an internal function
+            if (!sourceApi) {
+                console.warn(`Could not find an event source with ID "${sourceInput}"`); // TODO: test
+                return null;
+            }
+            eventSource = sourceApi.internalEventSource;
+        }
+        let tuple = parseEvent(eventInput, eventSource, state, false);
+        if (tuple) {
+            let newEventApi = new EventImpl(state, tuple.def, tuple.def.recurringDef ? null : tuple.instance);
+            this.dispatch({
+                type: 'ADD_EVENTS',
+                eventStore: eventTupleToStore(tuple),
+            });
+            this.triggerEventAdd(newEventApi);
+            return newEventApi;
+        }
+        return null;
+    }
+    triggerEventAdd(eventApi) {
+        let { emitter } = this.getCurrentData();
+        emitter.trigger('eventAdd', {
+            event: eventApi,
+            relatedEvents: [],
+            revert: () => {
+                this.dispatch({
+                    type: 'REMOVE_EVENTS',
+                    eventStore: eventApiToStore(eventApi),
+                });
+            },
+        });
+    }
+    // TODO: optimize
+    getEventById(id) {
+        let state = this.getCurrentData();
+        let { defs, instances } = state.eventStore;
+        id = String(id);
+        for (let defId in defs) {
+            let def = defs[defId];
+            if (def.publicId === id) {
+                if (def.recurringDef) {
+                    return new EventImpl(state, def, null);
+                }
+                for (let instanceId in instances) {
+                    let instance = instances[instanceId];
+                    if (instance.defId === def.defId) {
+                        return new EventImpl(state, def, instance);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+    getEvents() {
+        let currentData = this.getCurrentData();
+        return buildEventApis(currentData.eventStore, currentData);
+    }
+    removeAllEvents() {
+        this.dispatch({ type: 'REMOVE_ALL_EVENTS' });
+    }
+    // Public Event Sources API
+    // -----------------------------------------------------------------------------------------------------------------
+    getEventSources() {
+        let state = this.getCurrentData();
+        let sourceHash = state.eventSources;
+        let sourceApis = [];
+        for (let internalId in sourceHash) {
+            sourceApis.push(new EventSourceImpl(state, sourceHash[internalId]));
+        }
+        return sourceApis;
+    }
+    getEventSourceById(id) {
+        let state = this.getCurrentData();
+        let sourceHash = state.eventSources;
+        id = String(id);
+        for (let sourceId in sourceHash) {
+            if (sourceHash[sourceId].publicId === id) {
+                return new EventSourceImpl(state, sourceHash[sourceId]);
+            }
+        }
+        return null;
+    }
+    addEventSource(sourceInput) {
+        let state = this.getCurrentData();
+        if (sourceInput instanceof EventSourceImpl) {
+            // not already present? don't want to add an old snapshot
+            if (!state.eventSources[sourceInput.internalEventSource.sourceId]) {
+                this.dispatch({
+                    type: 'ADD_EVENT_SOURCES',
+                    sources: [sourceInput.internalEventSource],
+                });
+            }
+            return sourceInput;
+        }
+        let eventSource = parseEventSource(sourceInput, state);
+        if (eventSource) { // TODO: error otherwise?
+            this.dispatch({ type: 'ADD_EVENT_SOURCES', sources: [eventSource] });
+            return new EventSourceImpl(state, eventSource);
+        }
+        return null;
+    }
+    removeAllEventSources() {
+        this.dispatch({ type: 'REMOVE_ALL_EVENT_SOURCES' });
+    }
+    refetchEvents() {
+        this.dispatch({ type: 'FETCH_EVENT_SOURCES', isRefetch: true });
+    }
+    // Scroll
+    // -----------------------------------------------------------------------------------------------------------------
+    scrollToTime(timeInput) {
+        let time = createDuration(timeInput);
+        if (time) {
+            this.trigger('_scrollRequest', { time });
+        }
+    }
+}
+
+function pointInsideRect(point, rect) {
+    return point.left >= rect.left &&
+        point.left < rect.right &&
+        point.top >= rect.top &&
+        point.top < rect.bottom;
+}
+// Returns a new rectangle that is the intersection of the two rectangles. If they don't intersect, returns false
+function intersectRects(rect1, rect2) {
+    let res = {
+        left: Math.max(rect1.left, rect2.left),
+        right: Math.min(rect1.right, rect2.right),
+        top: Math.max(rect1.top, rect2.top),
+        bottom: Math.min(rect1.bottom, rect2.bottom),
+    };
+    if (res.left < res.right && res.top < res.bottom) {
+        return res;
+    }
+    return false;
+}
+function translateRect(rect, deltaX, deltaY) {
+    return {
+        left: rect.left + deltaX,
+        right: rect.right + deltaX,
+        top: rect.top + deltaY,
+        bottom: rect.bottom + deltaY,
+    };
+}
+// Returns a new point that will have been moved to reside within the given rectangle
+function constrainPoint(point, rect) {
+    return {
+        left: Math.min(Math.max(point.left, rect.left), rect.right),
+        top: Math.min(Math.max(point.top, rect.top), rect.bottom),
+    };
+}
+// Returns a point that is the center of the given rectangle
+function getRectCenter(rect) {
+    return {
+        left: (rect.left + rect.right) / 2,
+        top: (rect.top + rect.bottom) / 2,
+    };
+}
+// Subtracts point2's coordinates from point1's coordinates, returning a delta
+function diffPoints(point1, point2) {
+    return {
+        left: point1.left - point2.left,
+        top: point1.top - point2.top,
+    };
+}
+
+const EMPTY_EVENT_STORE = createEmptyEventStore(); // for purecomponents. TODO: keep elsewhere
+class Splitter {
+    constructor() {
+        this.getKeysForEventDefs = memoize(this._getKeysForEventDefs);
+        this.splitDateSelection = memoize(this._splitDateSpan);
+        this.splitEventStore = memoize(this._splitEventStore);
+        this.splitIndividualUi = memoize(this._splitIndividualUi);
+        this.splitEventDrag = memoize(this._splitInteraction);
+        this.splitEventResize = memoize(this._splitInteraction);
+        this.eventUiBuilders = {}; // TODO: typescript protection
+    }
+    splitProps(props) {
+        let keyInfos = this.getKeyInfo(props);
+        let defKeys = this.getKeysForEventDefs(props.eventStore);
+        let dateSelections = this.splitDateSelection(props.dateSelection);
+        let individualUi = this.splitIndividualUi(props.eventUiBases, defKeys); // the individual *bases*
+        let eventStores = this.splitEventStore(props.eventStore, defKeys);
+        let eventDrags = this.splitEventDrag(props.eventDrag);
+        let eventResizes = this.splitEventResize(props.eventResize);
+        let splitProps = {};
+        this.eventUiBuilders = mapHash(keyInfos, (info, key) => this.eventUiBuilders[key] || memoize(buildEventUiForKey));
+        for (let key in keyInfos) {
+            let keyInfo = keyInfos[key];
+            let eventStore = eventStores[key] || EMPTY_EVENT_STORE;
+            let buildEventUi = this.eventUiBuilders[key];
+            splitProps[key] = {
+                businessHours: keyInfo.businessHours || props.businessHours,
+                dateSelection: dateSelections[key] || null,
+                eventStore,
+                eventUiBases: buildEventUi(props.eventUiBases[''], keyInfo.ui, individualUi[key]),
+                eventSelection: eventStore.instances[props.eventSelection] ? props.eventSelection : '',
+                eventDrag: eventDrags[key] || null,
+                eventResize: eventResizes[key] || null,
+            };
+        }
+        return splitProps;
+    }
+    _splitDateSpan(dateSpan) {
+        let dateSpans = {};
+        if (dateSpan) {
+            let keys = this.getKeysForDateSpan(dateSpan);
+            for (let key of keys) {
+                dateSpans[key] = dateSpan;
+            }
+        }
+        return dateSpans;
+    }
+    _getKeysForEventDefs(eventStore) {
+        return mapHash(eventStore.defs, (eventDef) => this.getKeysForEventDef(eventDef));
+    }
+    _splitEventStore(eventStore, defKeys) {
+        let { defs, instances } = eventStore;
+        let splitStores = {};
+        for (let defId in defs) {
+            for (let key of defKeys[defId]) {
+                if (!splitStores[key]) {
+                    splitStores[key] = createEmptyEventStore();
+                }
+                splitStores[key].defs[defId] = defs[defId];
+            }
+        }
+        for (let instanceId in instances) {
+            let instance = instances[instanceId];
+            for (let key of defKeys[instance.defId]) {
+                if (splitStores[key]) { // must have already been created
+                    splitStores[key].instances[instanceId] = instance;
+                }
+            }
+        }
+        return splitStores;
+    }
+    _splitIndividualUi(eventUiBases, defKeys) {
+        let splitHashes = {};
+        for (let defId in eventUiBases) {
+            if (defId) { // not the '' key
+                for (let key of defKeys[defId]) {
+                    if (!splitHashes[key]) {
+                        splitHashes[key] = {};
+                    }
+                    splitHashes[key][defId] = eventUiBases[defId];
+                }
+            }
+        }
+        return splitHashes;
+    }
+    _splitInteraction(interaction) {
+        let splitStates = {};
+        if (interaction) {
+            let affectedStores = this._splitEventStore(interaction.affectedEvents, this._getKeysForEventDefs(interaction.affectedEvents));
+            // can't rely on defKeys because event data is mutated
+            let mutatedKeysByDefId = this._getKeysForEventDefs(interaction.mutatedEvents);
+            let mutatedStores = this._splitEventStore(interaction.mutatedEvents, mutatedKeysByDefId);
+            let populate = (key) => {
+                if (!splitStates[key]) {
+                    splitStates[key] = {
+                        affectedEvents: affectedStores[key] || EMPTY_EVENT_STORE,
+                        mutatedEvents: mutatedStores[key] || EMPTY_EVENT_STORE,
+                        isEvent: interaction.isEvent,
+                    };
+                }
+            };
+            for (let key in affectedStores) {
+                populate(key);
+            }
+            for (let key in mutatedStores) {
+                populate(key);
+            }
+        }
+        return splitStates;
+    }
+}
+function buildEventUiForKey(allUi, eventUiForKey, individualUi) {
+    let baseParts = [];
+    if (allUi) {
+        baseParts.push(allUi);
+    }
+    if (eventUiForKey) {
+        baseParts.push(eventUiForKey);
+    }
+    let stuff = {
+        '': combineEventUis(baseParts),
+    };
+    if (individualUi) {
+        Object.assign(stuff, individualUi);
+    }
+    return stuff;
+}
+
+function getDateMeta(date, todayRange, nowDate, dateProfile) {
+    return {
+        dow: date.getUTCDay(),
+        isDisabled: Boolean(dateProfile && !rangeContainsMarker(dateProfile.activeRange, date)),
+        isOther: Boolean(dateProfile && !rangeContainsMarker(dateProfile.currentRange, date)),
+        isToday: Boolean(todayRange && rangeContainsMarker(todayRange, date)),
+        isPast: Boolean(nowDate ? (date < nowDate) : todayRange ? (date < todayRange.start) : false),
+        isFuture: Boolean(nowDate ? (date > nowDate) : todayRange ? (date >= todayRange.end) : false),
+    };
+}
+function getDayClassNames(meta, theme) {
+    let classNames = [
+        'fc-day',
+        `fc-day-${DAY_IDS[meta.dow]}`,
+    ];
+    if (meta.isDisabled) {
+        classNames.push('fc-day-disabled');
+    }
+    else {
+        if (meta.isToday) {
+            classNames.push('fc-day-today');
+            classNames.push(theme.getClass('today'));
+        }
+        if (meta.isPast) {
+            classNames.push('fc-day-past');
+        }
+        if (meta.isFuture) {
+            classNames.push('fc-day-future');
+        }
+        if (meta.isOther) {
+            classNames.push('fc-day-other');
+        }
+    }
+    return classNames;
+}
+function getSlotClassNames(meta, theme) {
+    let classNames = [
+        'fc-slot',
+        `fc-slot-${DAY_IDS[meta.dow]}`,
+    ];
+    if (meta.isDisabled) {
+        classNames.push('fc-slot-disabled');
+    }
+    else {
+        if (meta.isToday) {
+            classNames.push('fc-slot-today');
+            classNames.push(theme.getClass('today'));
+        }
+        if (meta.isPast) {
+            classNames.push('fc-slot-past');
+        }
+        if (meta.isFuture) {
+            classNames.push('fc-slot-future');
+        }
+    }
+    return classNames;
+}
+
+const DAY_FORMAT = createFormatter({ year: 'numeric', month: 'long', day: 'numeric' });
+const WEEK_FORMAT = createFormatter({ week: 'long' });
+function buildNavLinkAttrs(context, dateMarker, viewType = 'day', isTabbable = true) {
+    const { dateEnv, options, calendarApi } = context;
+    let dateStr = dateEnv.format(dateMarker, viewType === 'week' ? WEEK_FORMAT : DAY_FORMAT);
+    if (options.navLinks) {
+        let zonedDate = dateEnv.toDate(dateMarker);
+        const handleInteraction = (ev) => {
+            let customAction = viewType === 'day' ? options.navLinkDayClick :
+                viewType === 'week' ? options.navLinkWeekClick : null;
+            if (typeof customAction === 'function') {
+                customAction.call(calendarApi, dateEnv.toDate(dateMarker), ev);
+            }
+            else {
+                if (typeof customAction === 'string') {
+                    viewType = customAction;
+                }
+                calendarApi.zoomTo(dateMarker, viewType);
+            }
+        };
+        return Object.assign({ title: formatWithOrdinals(options.navLinkHint, [dateStr, zonedDate], dateStr), 'data-navlink': '' }, (isTabbable
+            ? createAriaClickAttrs(handleInteraction)
+            : { onClick: handleInteraction }));
+    }
+    return { 'aria-label': dateStr };
+}
+
+let _isRtlScrollbarOnLeft = null;
+function getIsRtlScrollbarOnLeft() {
+    if (_isRtlScrollbarOnLeft === null) {
+        _isRtlScrollbarOnLeft = computeIsRtlScrollbarOnLeft();
+    }
+    return _isRtlScrollbarOnLeft;
+}
+function computeIsRtlScrollbarOnLeft() {
+    let outerEl = document.createElement('div');
+    applyStyle(outerEl, {
+        position: 'absolute',
+        top: -1000,
+        left: 0,
+        border: 0,
+        padding: 0,
+        overflow: 'scroll',
+        direction: 'rtl',
+    });
+    outerEl.innerHTML = '<div></div>';
+    document.body.appendChild(outerEl);
+    let innerEl = outerEl.firstChild;
+    let res = innerEl.getBoundingClientRect().left > outerEl.getBoundingClientRect().left;
+    removeElement(outerEl);
+    return res;
+}
+
+let _scrollbarWidths;
+function getScrollbarWidths() {
+    if (!_scrollbarWidths) {
+        _scrollbarWidths = computeScrollbarWidths();
+    }
+    return _scrollbarWidths;
+}
+function computeScrollbarWidths() {
+    let el = document.createElement('div');
+    el.style.overflow = 'scroll';
+    el.style.position = 'absolute';
+    el.style.top = '-9999px';
+    el.style.left = '-9999px';
+    document.body.appendChild(el);
+    let res = computeScrollbarWidthsForEl(el);
+    document.body.removeChild(el);
+    return res;
+}
+// WARNING: will include border
+function computeScrollbarWidthsForEl(el) {
+    return {
+        x: el.offsetHeight - el.clientHeight,
+        y: el.offsetWidth - el.clientWidth,
+    };
+}
+
+function computeEdges(el, getPadding = false) {
+    let computedStyle = window.getComputedStyle(el);
+    let borderLeft = parseInt(computedStyle.borderLeftWidth, 10) || 0;
+    let borderRight = parseInt(computedStyle.borderRightWidth, 10) || 0;
+    let borderTop = parseInt(computedStyle.borderTopWidth, 10) || 0;
+    let borderBottom = parseInt(computedStyle.borderBottomWidth, 10) || 0;
+    let badScrollbarWidths = computeScrollbarWidthsForEl(el); // includes border!
+    let scrollbarLeftRight = badScrollbarWidths.y - borderLeft - borderRight;
+    let scrollbarBottom = badScrollbarWidths.x - borderTop - borderBottom;
+    let res = {
+        borderLeft,
+        borderRight,
+        borderTop,
+        borderBottom,
+        scrollbarBottom,
+        scrollbarLeft: 0,
+        scrollbarRight: 0,
+    };
+    if (getIsRtlScrollbarOnLeft() && computedStyle.direction === 'rtl') { // is the scrollbar on the left side?
+        res.scrollbarLeft = scrollbarLeftRight;
+    }
+    else {
+        res.scrollbarRight = scrollbarLeftRight;
+    }
+    if (getPadding) {
+        res.paddingLeft = parseInt(computedStyle.paddingLeft, 10) || 0;
+        res.paddingRight = parseInt(computedStyle.paddingRight, 10) || 0;
+        res.paddingTop = parseInt(computedStyle.paddingTop, 10) || 0;
+        res.paddingBottom = parseInt(computedStyle.paddingBottom, 10) || 0;
+    }
+    return res;
+}
+function computeInnerRect(el, goWithinPadding = false, doFromWindowViewport) {
+    let outerRect = doFromWindowViewport ? el.getBoundingClientRect() : computeRect(el);
+    let edges = computeEdges(el, goWithinPadding);
+    let res = {
+        left: outerRect.left + edges.borderLeft + edges.scrollbarLeft,
+        right: outerRect.right - edges.borderRight - edges.scrollbarRight,
+        top: outerRect.top + edges.borderTop,
+        bottom: outerRect.bottom - edges.borderBottom - edges.scrollbarBottom,
+    };
+    if (goWithinPadding) {
+        res.left += edges.paddingLeft;
+        res.right -= edges.paddingRight;
+        res.top += edges.paddingTop;
+        res.bottom -= edges.paddingBottom;
+    }
+    return res;
+}
+function computeRect(el) {
+    let rect = el.getBoundingClientRect();
+    return {
+        left: rect.left + window.pageXOffset,
+        top: rect.top + window.pageYOffset,
+        right: rect.right + window.pageXOffset,
+        bottom: rect.bottom + window.pageYOffset,
+    };
+}
+function computeClippedClientRect(el) {
+    let clippingParents = getClippingParents(el);
+    let rect = el.getBoundingClientRect();
+    for (let clippingParent of clippingParents) {
+        let intersection = intersectRects(rect, clippingParent.getBoundingClientRect());
+        if (intersection) {
+            rect = intersection;
+        }
+        else {
+            return null;
+        }
+    }
+    return rect;
+}
+// does not return window
+function getClippingParents(el) {
+    let parents = [];
+    while (el instanceof HTMLElement) { // will stop when gets to document or null
+        let computedStyle = window.getComputedStyle(el);
+        if (computedStyle.position === 'fixed') {
+            break;
+        }
+        if ((/(auto|scroll)/).test(computedStyle.overflow + computedStyle.overflowY + computedStyle.overflowX)) {
+            parents.push(el);
+        }
+        el = el.parentNode;
+    }
+    return parents;
+}
+
+/*
+Records offset information for a set of elements, relative to an origin element.
+Can record the left/right OR the top/bottom OR both.
+Provides methods for querying the cache by position.
+*/
+class PositionCache {
+    constructor(originEl, els, isHorizontal, isVertical) {
+        this.els = els;
+        let originClientRect = this.originClientRect = originEl.getBoundingClientRect(); // relative to viewport top-left
+        if (isHorizontal) {
+            this.buildElHorizontals(originClientRect.left);
+        }
+        if (isVertical) {
+            this.buildElVerticals(originClientRect.top);
+        }
+    }
+    // Populates the left/right internal coordinate arrays
+    buildElHorizontals(originClientLeft) {
+        let lefts = [];
+        let rights = [];
+        for (let el of this.els) {
+            let rect = el.getBoundingClientRect();
+            lefts.push(rect.left - originClientLeft);
+            rights.push(rect.right - originClientLeft);
+        }
+        this.lefts = lefts;
+        this.rights = rights;
+    }
+    // Populates the top/bottom internal coordinate arrays
+    buildElVerticals(originClientTop) {
+        let tops = [];
+        let bottoms = [];
+        for (let el of this.els) {
+            let rect = el.getBoundingClientRect();
+            tops.push(rect.top - originClientTop);
+            bottoms.push(rect.bottom - originClientTop);
+        }
+        this.tops = tops;
+        this.bottoms = bottoms;
+    }
+    // Given a left offset (from document left), returns the index of the el that it horizontally intersects.
+    // If no intersection is made, returns undefined.
+    leftToIndex(leftPosition) {
+        let { lefts, rights } = this;
+        let len = lefts.length;
+        let i;
+        for (i = 0; i < len; i += 1) {
+            if (leftPosition >= lefts[i] && leftPosition < rights[i]) {
+                return i;
+            }
+        }
+        return undefined; // TODO: better
+    }
+    // Given a top offset (from document top), returns the index of the el that it vertically intersects.
+    // If no intersection is made, returns undefined.
+    topToIndex(topPosition) {
+        let { tops, bottoms } = this;
+        let len = tops.length;
+        let i;
+        for (i = 0; i < len; i += 1) {
+            if (topPosition >= tops[i] && topPosition < bottoms[i]) {
+                return i;
+            }
+        }
+        return undefined; // TODO: better
+    }
+    // Gets the width of the element at the given index
+    getWidth(leftIndex) {
+        return this.rights[leftIndex] - this.lefts[leftIndex];
+    }
+    // Gets the height of the element at the given index
+    getHeight(topIndex) {
+        return this.bottoms[topIndex] - this.tops[topIndex];
+    }
+    similarTo(otherCache) {
+        return similarNumArrays(this.tops || [], otherCache.tops || []) &&
+            similarNumArrays(this.bottoms || [], otherCache.bottoms || []) &&
+            similarNumArrays(this.lefts || [], otherCache.lefts || []) &&
+            similarNumArrays(this.rights || [], otherCache.rights || []);
+    }
+}
+function similarNumArrays(a, b) {
+    const len = a.length;
+    if (len !== b.length) {
+        return false;
+    }
+    for (let i = 0; i < len; i++) {
+        if (Math.round(a[i]) !== Math.round(b[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* eslint max-classes-per-file: "off" */
+/*
+An object for getting/setting scroll-related information for an element.
+Internally, this is done very differently for window versus DOM element,
+so this object serves as a common interface.
+*/
+class ScrollController {
+    getMaxScrollTop() {
+        return this.getScrollHeight() - this.getClientHeight();
+    }
+    getMaxScrollLeft() {
+        return this.getScrollWidth() - this.getClientWidth();
+    }
+    canScrollVertically() {
+        return this.getMaxScrollTop() > 0;
+    }
+    canScrollHorizontally() {
+        return this.getMaxScrollLeft() > 0;
+    }
+    canScrollUp() {
+        return this.getScrollTop() > 0;
+    }
+    canScrollDown() {
+        return this.getScrollTop() < this.getMaxScrollTop();
+    }
+    canScrollLeft() {
+        return this.getScrollLeft() > 0;
+    }
+    canScrollRight() {
+        return this.getScrollLeft() < this.getMaxScrollLeft();
+    }
+}
+class ElementScrollController extends ScrollController {
+    constructor(el) {
+        super();
+        this.el = el;
+    }
+    getScrollTop() {
+        return this.el.scrollTop;
+    }
+    getScrollLeft() {
+        return this.el.scrollLeft;
+    }
+    setScrollTop(top) {
+        this.el.scrollTop = top;
+    }
+    setScrollLeft(left) {
+        this.el.scrollLeft = left;
+    }
+    getScrollWidth() {
+        return this.el.scrollWidth;
+    }
+    getScrollHeight() {
+        return this.el.scrollHeight;
+    }
+    getClientHeight() {
+        return this.el.clientHeight;
+    }
+    getClientWidth() {
+        return this.el.clientWidth;
+    }
+}
+class WindowScrollController extends ScrollController {
+    getScrollTop() {
+        return window.pageYOffset;
+    }
+    getScrollLeft() {
+        return window.pageXOffset;
+    }
+    setScrollTop(n) {
+        window.scroll(window.pageXOffset, n);
+    }
+    setScrollLeft(n) {
+        window.scroll(n, window.pageYOffset);
+    }
+    getScrollWidth() {
+        return document.documentElement.scrollWidth;
+    }
+    getScrollHeight() {
+        return document.documentElement.scrollHeight;
+    }
+    getClientHeight() {
+        return document.documentElement.clientHeight;
+    }
+    getClientWidth() {
+        return document.documentElement.clientWidth;
+    }
+}
+
+/*
+an INTERACTABLE date component
+
+PURPOSES:
+- hook up to fg, fill, and mirror renderers
+- interface for dragging and hits
+*/
+class DateComponent extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.uid = guid();
+    }
+    // Hit System
+    // -----------------------------------------------------------------------------------------------------------------
+    prepareHits() {
+    }
+    queryHit(positionLeft, positionTop, elWidth, elHeight) {
+        return null; // this should be abstract
+    }
+    // Pointer Interaction Utils
+    // -----------------------------------------------------------------------------------------------------------------
+    isValidSegDownEl(el) {
+        return !this.props.eventDrag && // HACK
+            !this.props.eventResize && // HACK
+            !elementClosest(el, '.fc-event-mirror');
+    }
+    isValidDateDownEl(el) {
+        return !elementClosest(el, '.fc-event:not(.fc-bg-event)') &&
+            !elementClosest(el, '.fc-more-link') && // a "more.." link
+            !elementClosest(el, 'a[data-navlink]') && // a clickable nav link
+            !elementClosest(el, '.fc-popover'); // hack
+    }
+}
+
+class NamedTimeZoneImpl {
+    constructor(timeZoneName) {
+        this.timeZoneName = timeZoneName;
+    }
+}
+
+class SegHierarchy {
+    constructor(getEntryThickness = (entry) => {
+        // should return an integer
+        return entry.thickness;
+    }) {
+        this.getEntryThickness = getEntryThickness;
+        // settings
+        this.strictOrder = false;
+        this.allowReslicing = false;
+        this.maxCoord = -1; // -1 means no max
+        this.maxStackCnt = -1; // -1 means no max
+        this.levelCoords = []; // ordered
+        this.entriesByLevel = []; // parallel with levelCoords
+        this.stackCnts = {}; // TODO: use better technique!?
+    }
+    addSegs(inputs) {
+        let hiddenEntries = [];
+        for (let input of inputs) {
+            this.insertEntry(input, hiddenEntries);
+        }
+        return hiddenEntries;
+    }
+    insertEntry(entry, hiddenEntries) {
+        let insertion = this.findInsertion(entry);
+        if (this.isInsertionValid(insertion, entry)) {
+            this.insertEntryAt(entry, insertion);
+            return 1;
+        }
+        return this.handleInvalidInsertion(insertion, entry, hiddenEntries);
+    }
+    isInsertionValid(insertion, entry) {
+        return (this.maxCoord === -1 || insertion.levelCoord + this.getEntryThickness(entry) <= this.maxCoord) &&
+            (this.maxStackCnt === -1 || insertion.stackCnt < this.maxStackCnt);
+    }
+    // returns number of new entries inserted
+    handleInvalidInsertion(insertion, entry, hiddenEntries) {
+        if (this.allowReslicing && insertion.touchingEntry) {
+            return this.splitEntry(entry, insertion.touchingEntry, hiddenEntries);
+        }
+        hiddenEntries.push(entry);
+        return 0;
+    }
+    splitEntry(entry, barrier, hiddenEntries) {
+        let partCnt = 0;
+        let splitHiddenEntries = [];
+        let entrySpan = entry.span;
+        let barrierSpan = barrier.span;
+        if (entrySpan.start < barrierSpan.start) {
+            partCnt += this.insertEntry({
+                index: entry.index,
+                thickness: entry.thickness,
+                span: { start: entrySpan.start, end: barrierSpan.start },
+            }, splitHiddenEntries);
+        }
+        if (entrySpan.end > barrierSpan.end) {
+            partCnt += this.insertEntry({
+                index: entry.index,
+                thickness: entry.thickness,
+                span: { start: barrierSpan.end, end: entrySpan.end },
+            }, splitHiddenEntries);
+        }
+        if (partCnt) {
+            hiddenEntries.push({
+                index: entry.index,
+                thickness: entry.thickness,
+                span: intersectSpans(barrierSpan, entrySpan), // guaranteed to intersect
+            }, ...splitHiddenEntries);
+            return partCnt;
+        }
+        hiddenEntries.push(entry);
+        return 0;
+    }
+    insertEntryAt(entry, insertion) {
+        let { entriesByLevel, levelCoords } = this;
+        if (insertion.lateral === -1) {
+            // create a new level
+            insertAt(levelCoords, insertion.level, insertion.levelCoord);
+            insertAt(entriesByLevel, insertion.level, [entry]);
+        }
+        else {
+            // insert into existing level
+            insertAt(entriesByLevel[insertion.level], insertion.lateral, entry);
+        }
+        this.stackCnts[buildEntryKey(entry)] = insertion.stackCnt;
+    }
+    findInsertion(newEntry) {
+        let { levelCoords, entriesByLevel, strictOrder, stackCnts } = this;
+        let levelCnt = levelCoords.length;
+        let candidateCoord = 0;
+        let touchingLevel = -1;
+        let touchingLateral = -1;
+        let touchingEntry = null;
+        let stackCnt = 0;
+        for (let trackingLevel = 0; trackingLevel < levelCnt; trackingLevel += 1) {
+            let trackingCoord = levelCoords[trackingLevel];
+            // if the current level is past the placed entry, we have found a good empty space and can stop.
+            // if strictOrder, keep finding more lateral intersections.
+            if (!strictOrder && trackingCoord >= candidateCoord + this.getEntryThickness(newEntry)) {
+                break;
+            }
+            let trackingEntries = entriesByLevel[trackingLevel];
+            let trackingEntry;
+            let searchRes = binarySearch(trackingEntries, newEntry.span.start, getEntrySpanEnd); // find first entry after newEntry's end
+            let lateralIndex = searchRes[0] + searchRes[1]; // if exact match (which doesn't collide), go to next one
+            while ( // loop through entries that horizontally intersect
+            (trackingEntry = trackingEntries[lateralIndex]) && // but not past the whole entry list
+                trackingEntry.span.start < newEntry.span.end // and not entirely past newEntry
+            ) {
+                let trackingEntryBottom = trackingCoord + this.getEntryThickness(trackingEntry);
+                // intersects into the top of the candidate?
+                if (trackingEntryBottom > candidateCoord) {
+                    candidateCoord = trackingEntryBottom;
+                    touchingEntry = trackingEntry;
+                    touchingLevel = trackingLevel;
+                    touchingLateral = lateralIndex;
+                }
+                // butts up against top of candidate? (will happen if just intersected as well)
+                if (trackingEntryBottom === candidateCoord) {
+                    // accumulate the highest possible stackCnt of the trackingEntries that butt up
+                    stackCnt = Math.max(stackCnt, stackCnts[buildEntryKey(trackingEntry)] + 1);
+                }
+                lateralIndex += 1;
+            }
+        }
+        // the destination level will be after touchingEntry's level. find it
+        let destLevel = 0;
+        if (touchingEntry) {
+            destLevel = touchingLevel + 1;
+            while (destLevel < levelCnt && levelCoords[destLevel] < candidateCoord) {
+                destLevel += 1;
+            }
+        }
+        // if adding to an existing level, find where to insert
+        let destLateral = -1;
+        if (destLevel < levelCnt && levelCoords[destLevel] === candidateCoord) {
+            destLateral = binarySearch(entriesByLevel[destLevel], newEntry.span.end, getEntrySpanEnd)[0];
+        }
+        return {
+            touchingLevel,
+            touchingLateral,
+            touchingEntry,
+            stackCnt,
+            levelCoord: candidateCoord,
+            level: destLevel,
+            lateral: destLateral,
+        };
+    }
+    // sorted by levelCoord (lowest to highest)
+    toRects() {
+        let { entriesByLevel, levelCoords } = this;
+        let levelCnt = entriesByLevel.length;
+        let rects = [];
+        for (let level = 0; level < levelCnt; level += 1) {
+            let entries = entriesByLevel[level];
+            let levelCoord = levelCoords[level];
+            for (let entry of entries) {
+                rects.push(Object.assign(Object.assign({}, entry), { thickness: this.getEntryThickness(entry), levelCoord }));
+            }
+        }
+        return rects;
+    }
+}
+function getEntrySpanEnd(entry) {
+    return entry.span.end;
+}
+function buildEntryKey(entry) {
+    return entry.index + ':' + entry.span.start;
+}
+// returns groups with entries sorted by input order
+function groupIntersectingEntries(entries) {
+    let merges = [];
+    for (let entry of entries) {
+        let filteredMerges = [];
+        let hungryMerge = {
+            span: entry.span,
+            entries: [entry],
+        };
+        for (let merge of merges) {
+            if (intersectSpans(merge.span, hungryMerge.span)) {
+                hungryMerge = {
+                    entries: merge.entries.concat(hungryMerge.entries),
+                    span: joinSpans(merge.span, hungryMerge.span),
+                };
+            }
+            else {
+                filteredMerges.push(merge);
+            }
+        }
+        filteredMerges.push(hungryMerge);
+        merges = filteredMerges;
+    }
+    return merges;
+}
+function joinSpans(span0, span1) {
+    return {
+        start: Math.min(span0.start, span1.start),
+        end: Math.max(span0.end, span1.end),
+    };
+}
+function intersectSpans(span0, span1) {
+    let start = Math.max(span0.start, span1.start);
+    let end = Math.min(span0.end, span1.end);
+    if (start < end) {
+        return { start, end };
+    }
+    return null;
+}
+// general util
+// ---------------------------------------------------------------------------------------------------------------------
+function insertAt(arr, index, item) {
+    arr.splice(index, 0, item);
+}
+function binarySearch(a, searchVal, getItemVal) {
+    let startIndex = 0;
+    let endIndex = a.length; // exclusive
+    if (!endIndex || searchVal < getItemVal(a[startIndex])) { // no items OR before first item
+        return [0, 0];
+    }
+    if (searchVal > getItemVal(a[endIndex - 1])) { // after last item
+        return [endIndex, 0];
+    }
+    while (startIndex < endIndex) {
+        let middleIndex = Math.floor(startIndex + (endIndex - startIndex) / 2);
+        let middleVal = getItemVal(a[middleIndex]);
+        if (searchVal < middleVal) {
+            endIndex = middleIndex;
+        }
+        else if (searchVal > middleVal) {
+            startIndex = middleIndex + 1;
+        }
+        else { // equal!
+            return [middleIndex, 1];
+        }
+    }
+    return [startIndex, 0];
+}
+
+/*
+An abstraction for a dragging interaction originating on an event.
+Does higher-level things than PointerDragger, such as possibly:
+- a "mirror" that moves with the pointer
+- a minimum number of pixels or other criteria for a true drag to begin
+
+subclasses must emit:
+- pointerdown
+- dragstart
+- dragmove
+- pointerup
+- dragend
+*/
+class ElementDragging {
+    constructor(el, selector) {
+        this.emitter = new Emitter();
+    }
+    destroy() {
+    }
+    setMirrorIsVisible(bool) {
+        // optional if subclass doesn't want to support a mirror
+    }
+    setMirrorNeedsRevert(bool) {
+        // optional if subclass doesn't want to support a mirror
+    }
+    setAutoScrollEnabled(bool) {
+        // optional
+    }
+}
+
+// TODO: get rid of this in favor of options system,
+// tho it's really easy to access this globally rather than pass thru options.
+const config = {};
+
+/*
+Information about what will happen when an external element is dragged-and-dropped
+onto a calendar. Contains information for creating an event.
+*/
+const DRAG_META_REFINERS = {
+    startTime: createDuration,
+    duration: createDuration,
+    create: Boolean,
+    sourceId: String,
+};
+function parseDragMeta(raw) {
+    let { refined, extra } = refineProps(raw, DRAG_META_REFINERS);
+    return {
+        startTime: refined.startTime || null,
+        duration: refined.duration || null,
+        create: refined.create != null ? refined.create : true,
+        sourceId: refined.sourceId,
+        leftoverProps: extra,
+    };
+}
+
+// Computes a default column header formatting string if `colFormat` is not explicitly defined
+function computeFallbackHeaderFormat(datesRepDistinctDays, dayCnt) {
+    // if more than one week row, or if there are a lot of columns with not much space,
+    // put just the day numbers will be in each cell
+    if (!datesRepDistinctDays || dayCnt > 10) {
+        return createFormatter({ weekday: 'short' }); // "Sat"
+    }
+    if (dayCnt > 1) {
+        return createFormatter({ weekday: 'short', month: 'numeric', day: 'numeric', omitCommas: true }); // "Sat 11/12"
+    }
+    return createFormatter({ weekday: 'long' }); // "Saturday"
+}
+
+const CLASS_NAME = 'fc-col-header-cell'; // do the cushion too? no
+function renderInner$1(renderProps) {
+    return renderProps.text;
+}
+
+// BAD name for this class now. used in the Header
+class TableDateCell extends BaseComponent {
+    render() {
+        let { dateEnv, options, theme, viewApi } = this.context;
+        let { props } = this;
+        let { date, dateProfile } = props;
+        let dayMeta = getDateMeta(date, props.todayRange, null, dateProfile);
+        let classNames = [CLASS_NAME].concat(getDayClassNames(dayMeta, theme));
+        let text = dateEnv.format(date, props.dayHeaderFormat);
+        // if colCnt is 1, we are already in a day-view and don't need a navlink
+        let navLinkAttrs = (!dayMeta.isDisabled && props.colCnt > 1)
+            ? buildNavLinkAttrs(this.context, date)
+            : {};
+        let renderProps = Object.assign(Object.assign(Object.assign({ date: dateEnv.toDate(date), view: viewApi }, props.extraRenderProps), { text }), dayMeta);
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ContentContainer, { elTag: "th", elClasses: classNames, elAttrs: Object.assign({ role: 'columnheader', colSpan: props.colSpan, 'data-date': !dayMeta.isDisabled ? formatDayString(date) : undefined }, props.extraDataAttrs), renderProps: renderProps, generatorName: "dayHeaderContent", customGenerator: options.dayHeaderContent, defaultGenerator: renderInner$1, classNameGenerator: options.dayHeaderClassNames, didMount: options.dayHeaderDidMount, willUnmount: options.dayHeaderWillUnmount }, (InnerContainer) => ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-scrollgrid-sync-inner" }, !dayMeta.isDisabled && ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(InnerContainer, { elTag: "a", elAttrs: navLinkAttrs, elClasses: [
+                'fc-col-header-cell-cushion',
+                props.isSticky && 'fc-sticky',
+            ] }))))));
+    }
+}
+
+const WEEKDAY_FORMAT = createFormatter({ weekday: 'long' });
+class TableDowCell extends BaseComponent {
+    render() {
+        let { props } = this;
+        let { dateEnv, theme, viewApi, options } = this.context;
+        let date = addDays(new Date(259200000), props.dow); // start with Sun, 04 Jan 1970 00:00:00 GMT
+        let dateMeta = {
+            dow: props.dow,
+            isDisabled: false,
+            isFuture: false,
+            isPast: false,
+            isToday: false,
+            isOther: false,
+        };
+        let text = dateEnv.format(date, props.dayHeaderFormat);
+        let renderProps = Object.assign(Object.assign(Object.assign(Object.assign({ // TODO: make this public?
+            date }, dateMeta), { view: viewApi }), props.extraRenderProps), { text });
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ContentContainer, { elTag: "th", elClasses: [
+                CLASS_NAME,
+                ...getDayClassNames(dateMeta, theme),
+                ...(props.extraClassNames || []),
+            ], elAttrs: Object.assign({ role: 'columnheader', colSpan: props.colSpan }, props.extraDataAttrs), renderProps: renderProps, generatorName: "dayHeaderContent", customGenerator: options.dayHeaderContent, defaultGenerator: renderInner$1, classNameGenerator: options.dayHeaderClassNames, didMount: options.dayHeaderDidMount, willUnmount: options.dayHeaderWillUnmount }, (InnerContent) => ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-scrollgrid-sync-inner" },
+            (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(InnerContent, { elTag: "a", elClasses: [
+                    'fc-col-header-cell-cushion',
+                    props.isSticky && 'fc-sticky',
+                ], elAttrs: {
+                    'aria-label': dateEnv.format(date, WEEKDAY_FORMAT),
+                } })))));
+    }
+}
+
+class NowTimer extends preact__WEBPACK_IMPORTED_MODULE_0__.Component {
+    constructor(props, context) {
+        super(props, context);
+        this.initialNowDate = getNow(context.options.now, context.dateEnv);
+        this.initialNowQueriedMs = new Date().valueOf();
+        this.state = this.computeTiming().currentState;
+    }
+    render() {
+        let { props, state } = this;
+        return props.children(state.nowDate, state.todayRange);
+    }
+    componentDidMount() {
+        this.setTimeout();
+    }
+    componentDidUpdate(prevProps) {
+        if (prevProps.unit !== this.props.unit) {
+            this.clearTimeout();
+            this.setTimeout();
+        }
+    }
+    componentWillUnmount() {
+        this.clearTimeout();
+    }
+    computeTiming() {
+        let { props, context } = this;
+        let unroundedNow = addMs(this.initialNowDate, new Date().valueOf() - this.initialNowQueriedMs);
+        let currentUnitStart = context.dateEnv.startOf(unroundedNow, props.unit);
+        let nextUnitStart = context.dateEnv.add(currentUnitStart, createDuration(1, props.unit));
+        let waitMs = nextUnitStart.valueOf() - unroundedNow.valueOf();
+        // there is a max setTimeout ms value (https://stackoverflow.com/a/3468650/96342)
+        // ensure no longer than a day
+        waitMs = Math.min(1000 * 60 * 60 * 24, waitMs);
+        return {
+            currentState: { nowDate: currentUnitStart, todayRange: buildDayRange(currentUnitStart) },
+            nextState: { nowDate: nextUnitStart, todayRange: buildDayRange(nextUnitStart) },
+            waitMs,
+        };
+    }
+    setTimeout() {
+        let { nextState, waitMs } = this.computeTiming();
+        this.timeoutId = setTimeout(() => {
+            this.setState(nextState, () => {
+                this.setTimeout();
+            });
+        }, waitMs);
+    }
+    clearTimeout() {
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+        }
+    }
+}
+NowTimer.contextType = ViewContextType;
+function buildDayRange(date) {
+    let start = startOfDay(date);
+    let end = addDays(start, 1);
+    return { start, end };
+}
+
+class DayHeader extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.createDayHeaderFormatter = memoize(createDayHeaderFormatter);
+    }
+    render() {
+        let { context } = this;
+        let { dates, dateProfile, datesRepDistinctDays, renderIntro } = this.props;
+        let dayHeaderFormat = this.createDayHeaderFormatter(context.options.dayHeaderFormat, datesRepDistinctDays, dates.length);
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(NowTimer, { unit: "day" }, (nowDate, todayRange) => ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("tr", { role: "row" },
+            renderIntro && renderIntro('day'),
+            dates.map((date) => (datesRepDistinctDays ? ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(TableDateCell, { key: date.toISOString(), date: date, dateProfile: dateProfile, todayRange: todayRange, colCnt: dates.length, dayHeaderFormat: dayHeaderFormat })) : ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(TableDowCell, { key: date.getUTCDay(), dow: date.getUTCDay(), dayHeaderFormat: dayHeaderFormat }))))))));
+    }
+}
+function createDayHeaderFormatter(explicitFormat, datesRepDistinctDays, dateCnt) {
+    return explicitFormat || computeFallbackHeaderFormat(datesRepDistinctDays, dateCnt);
+}
+
+class DaySeriesModel {
+    constructor(range, dateProfileGenerator) {
+        let date = range.start;
+        let { end } = range;
+        let indices = [];
+        let dates = [];
+        let dayIndex = -1;
+        while (date < end) { // loop each day from start to end
+            if (dateProfileGenerator.isHiddenDay(date)) {
+                indices.push(dayIndex + 0.5); // mark that it's between indices
+            }
+            else {
+                dayIndex += 1;
+                indices.push(dayIndex);
+                dates.push(date);
+            }
+            date = addDays(date, 1);
+        }
+        this.dates = dates;
+        this.indices = indices;
+        this.cnt = dates.length;
+    }
+    sliceRange(range) {
+        let firstIndex = this.getDateDayIndex(range.start); // inclusive first index
+        let lastIndex = this.getDateDayIndex(addDays(range.end, -1)); // inclusive last index
+        let clippedFirstIndex = Math.max(0, firstIndex);
+        let clippedLastIndex = Math.min(this.cnt - 1, lastIndex);
+        // deal with in-between indices
+        clippedFirstIndex = Math.ceil(clippedFirstIndex); // in-between starts round to next cell
+        clippedLastIndex = Math.floor(clippedLastIndex); // in-between ends round to prev cell
+        if (clippedFirstIndex <= clippedLastIndex) {
+            return {
+                firstIndex: clippedFirstIndex,
+                lastIndex: clippedLastIndex,
+                isStart: firstIndex === clippedFirstIndex,
+                isEnd: lastIndex === clippedLastIndex,
+            };
+        }
+        return null;
+    }
+    // Given a date, returns its chronolocial cell-index from the first cell of the grid.
+    // If the date lies between cells (because of hiddenDays), returns a floating-point value between offsets.
+    // If before the first offset, returns a negative number.
+    // If after the last offset, returns an offset past the last cell offset.
+    // Only works for *start* dates of cells. Will not work for exclusive end dates for cells.
+    getDateDayIndex(date) {
+        let { indices } = this;
+        let dayOffset = Math.floor(diffDays(this.dates[0], date));
+        if (dayOffset < 0) {
+            return indices[0] - 1;
+        }
+        if (dayOffset >= indices.length) {
+            return indices[indices.length - 1] + 1;
+        }
+        return indices[dayOffset];
+    }
+}
+
+class DayTableModel {
+    constructor(daySeries, breakOnWeeks) {
+        let { dates } = daySeries;
+        let daysPerRow;
+        let firstDay;
+        let rowCnt;
+        if (breakOnWeeks) {
+            // count columns until the day-of-week repeats
+            firstDay = dates[0].getUTCDay();
+            for (daysPerRow = 1; daysPerRow < dates.length; daysPerRow += 1) {
+                if (dates[daysPerRow].getUTCDay() === firstDay) {
+                    break;
+                }
+            }
+            rowCnt = Math.ceil(dates.length / daysPerRow);
+        }
+        else {
+            rowCnt = 1;
+            daysPerRow = dates.length;
+        }
+        this.rowCnt = rowCnt;
+        this.colCnt = daysPerRow;
+        this.daySeries = daySeries;
+        this.cells = this.buildCells();
+        this.headerDates = this.buildHeaderDates();
+    }
+    buildCells() {
+        let rows = [];
+        for (let row = 0; row < this.rowCnt; row += 1) {
+            let cells = [];
+            for (let col = 0; col < this.colCnt; col += 1) {
+                cells.push(this.buildCell(row, col));
+            }
+            rows.push(cells);
+        }
+        return rows;
+    }
+    buildCell(row, col) {
+        let date = this.daySeries.dates[row * this.colCnt + col];
+        return {
+            key: date.toISOString(),
+            date,
+        };
+    }
+    buildHeaderDates() {
+        let dates = [];
+        for (let col = 0; col < this.colCnt; col += 1) {
+            dates.push(this.cells[0][col].date);
+        }
+        return dates;
+    }
+    sliceRange(range) {
+        let { colCnt } = this;
+        let seriesSeg = this.daySeries.sliceRange(range);
+        let segs = [];
+        if (seriesSeg) {
+            let { firstIndex, lastIndex } = seriesSeg;
+            let index = firstIndex;
+            while (index <= lastIndex) {
+                let row = Math.floor(index / colCnt);
+                let nextIndex = Math.min((row + 1) * colCnt, lastIndex + 1);
+                segs.push({
+                    row,
+                    firstCol: index % colCnt,
+                    lastCol: (nextIndex - 1) % colCnt,
+                    isStart: seriesSeg.isStart && index === firstIndex,
+                    isEnd: seriesSeg.isEnd && (nextIndex - 1) === lastIndex,
+                });
+                index = nextIndex;
+            }
+        }
+        return segs;
+    }
+}
+
+class Slicer {
+    constructor() {
+        this.sliceBusinessHours = memoize(this._sliceBusinessHours);
+        this.sliceDateSelection = memoize(this._sliceDateSpan);
+        this.sliceEventStore = memoize(this._sliceEventStore);
+        this.sliceEventDrag = memoize(this._sliceInteraction);
+        this.sliceEventResize = memoize(this._sliceInteraction);
+        this.forceDayIfListItem = false; // hack
+    }
+    sliceProps(props, dateProfile, nextDayThreshold, context, ...extraArgs) {
+        let { eventUiBases } = props;
+        let eventSegs = this.sliceEventStore(props.eventStore, eventUiBases, dateProfile, nextDayThreshold, ...extraArgs);
+        return {
+            dateSelectionSegs: this.sliceDateSelection(props.dateSelection, dateProfile, nextDayThreshold, eventUiBases, context, ...extraArgs),
+            businessHourSegs: this.sliceBusinessHours(props.businessHours, dateProfile, nextDayThreshold, context, ...extraArgs),
+            fgEventSegs: eventSegs.fg,
+            bgEventSegs: eventSegs.bg,
+            eventDrag: this.sliceEventDrag(props.eventDrag, eventUiBases, dateProfile, nextDayThreshold, ...extraArgs),
+            eventResize: this.sliceEventResize(props.eventResize, eventUiBases, dateProfile, nextDayThreshold, ...extraArgs),
+            eventSelection: props.eventSelection,
+        }; // TODO: give interactionSegs?
+    }
+    sliceNowDate(// does not memoize
+    date, dateProfile, nextDayThreshold, context, ...extraArgs) {
+        return this._sliceDateSpan({ range: { start: date, end: addMs(date, 1) }, allDay: false }, // add 1 ms, protect against null range
+        dateProfile, nextDayThreshold, {}, context, ...extraArgs);
+    }
+    _sliceBusinessHours(businessHours, dateProfile, nextDayThreshold, context, ...extraArgs) {
+        if (!businessHours) {
+            return [];
+        }
+        return this._sliceEventStore(expandRecurring(businessHours, computeActiveRange(dateProfile, Boolean(nextDayThreshold)), context), {}, dateProfile, nextDayThreshold, ...extraArgs).bg;
+    }
+    _sliceEventStore(eventStore, eventUiBases, dateProfile, nextDayThreshold, ...extraArgs) {
+        if (eventStore) {
+            let rangeRes = sliceEventStore(eventStore, eventUiBases, computeActiveRange(dateProfile, Boolean(nextDayThreshold)), nextDayThreshold);
+            return {
+                bg: this.sliceEventRanges(rangeRes.bg, extraArgs),
+                fg: this.sliceEventRanges(rangeRes.fg, extraArgs),
+            };
+        }
+        return { bg: [], fg: [] };
+    }
+    _sliceInteraction(interaction, eventUiBases, dateProfile, nextDayThreshold, ...extraArgs) {
+        if (!interaction) {
+            return null;
+        }
+        let rangeRes = sliceEventStore(interaction.mutatedEvents, eventUiBases, computeActiveRange(dateProfile, Boolean(nextDayThreshold)), nextDayThreshold);
+        return {
+            segs: this.sliceEventRanges(rangeRes.fg, extraArgs),
+            affectedInstances: interaction.affectedEvents.instances,
+            isEvent: interaction.isEvent,
+        };
+    }
+    _sliceDateSpan(dateSpan, dateProfile, nextDayThreshold, eventUiBases, context, ...extraArgs) {
+        if (!dateSpan) {
+            return [];
+        }
+        let activeRange = computeActiveRange(dateProfile, Boolean(nextDayThreshold));
+        let activeDateSpanRange = intersectRanges(dateSpan.range, activeRange);
+        if (activeDateSpanRange) {
+            dateSpan = Object.assign(Object.assign({}, dateSpan), { range: activeDateSpanRange });
+            let eventRange = fabricateEventRange(dateSpan, eventUiBases, context);
+            let segs = this.sliceRange(dateSpan.range, ...extraArgs);
+            for (let seg of segs) {
+                seg.eventRange = eventRange;
+            }
+            return segs;
+        }
+        return [];
+    }
+    /*
+    "complete" seg means it has component and eventRange
+    */
+    sliceEventRanges(eventRanges, extraArgs) {
+        let segs = [];
+        for (let eventRange of eventRanges) {
+            segs.push(...this.sliceEventRange(eventRange, extraArgs));
+        }
+        return segs;
+    }
+    /*
+    "complete" seg means it has component and eventRange
+    */
+    sliceEventRange(eventRange, extraArgs) {
+        let dateRange = eventRange.range;
+        // hack to make multi-day events that are being force-displayed as list-items to take up only one day
+        if (this.forceDayIfListItem && eventRange.ui.display === 'list-item') {
+            dateRange = {
+                start: dateRange.start,
+                end: addDays(dateRange.start, 1),
+            };
+        }
+        let segs = this.sliceRange(dateRange, ...extraArgs);
+        for (let seg of segs) {
+            seg.eventRange = eventRange;
+            seg.isStart = eventRange.isStart && seg.isStart;
+            seg.isEnd = eventRange.isEnd && seg.isEnd;
+        }
+        return segs;
+    }
+}
+/*
+for incorporating slotMinTime/slotMaxTime if appropriate
+TODO: should be part of DateProfile!
+TimelineDateProfile already does this btw
+*/
+function computeActiveRange(dateProfile, isComponentAllDay) {
+    let range = dateProfile.activeRange;
+    if (isComponentAllDay) {
+        return range;
+    }
+    return {
+        start: addMs(range.start, dateProfile.slotMinTime.milliseconds),
+        end: addMs(range.end, dateProfile.slotMaxTime.milliseconds - 864e5), // 864e5 = ms in a day
+    };
+}
+
+// high-level segmenting-aware tester functions
+// ------------------------------------------------------------------------------------------------------------------------
+function isInteractionValid(interaction, dateProfile, context) {
+    let { instances } = interaction.mutatedEvents;
+    for (let instanceId in instances) {
+        if (!rangeContainsRange(dateProfile.validRange, instances[instanceId].range)) {
+            return false;
+        }
+    }
+    return isNewPropsValid({ eventDrag: interaction }, context); // HACK: the eventDrag props is used for ALL interactions
+}
+function isDateSelectionValid(dateSelection, dateProfile, context) {
+    if (!rangeContainsRange(dateProfile.validRange, dateSelection.range)) {
+        return false;
+    }
+    return isNewPropsValid({ dateSelection }, context);
+}
+function isNewPropsValid(newProps, context) {
+    let calendarState = context.getCurrentData();
+    let props = Object.assign({ businessHours: calendarState.businessHours, dateSelection: '', eventStore: calendarState.eventStore, eventUiBases: calendarState.eventUiBases, eventSelection: '', eventDrag: null, eventResize: null }, newProps);
+    return (context.pluginHooks.isPropsValid || isPropsValid)(props, context);
+}
+function isPropsValid(state, context, dateSpanMeta = {}, filterConfig) {
+    if (state.eventDrag && !isInteractionPropsValid(state, context, dateSpanMeta, filterConfig)) {
+        return false;
+    }
+    if (state.dateSelection && !isDateSelectionPropsValid(state, context, dateSpanMeta, filterConfig)) {
+        return false;
+    }
+    return true;
+}
+// Moving Event Validation
+// ------------------------------------------------------------------------------------------------------------------------
+function isInteractionPropsValid(state, context, dateSpanMeta, filterConfig) {
+    let currentState = context.getCurrentData();
+    let interaction = state.eventDrag; // HACK: the eventDrag props is used for ALL interactions
+    let subjectEventStore = interaction.mutatedEvents;
+    let subjectDefs = subjectEventStore.defs;
+    let subjectInstances = subjectEventStore.instances;
+    let subjectConfigs = compileEventUis(subjectDefs, interaction.isEvent ?
+        state.eventUiBases :
+        { '': currentState.selectionConfig });
+    if (filterConfig) {
+        subjectConfigs = mapHash(subjectConfigs, filterConfig);
+    }
+    // exclude the subject events. TODO: exclude defs too?
+    let otherEventStore = excludeInstances(state.eventStore, interaction.affectedEvents.instances);
+    let otherDefs = otherEventStore.defs;
+    let otherInstances = otherEventStore.instances;
+    let otherConfigs = compileEventUis(otherDefs, state.eventUiBases);
+    for (let subjectInstanceId in subjectInstances) {
+        let subjectInstance = subjectInstances[subjectInstanceId];
+        let subjectRange = subjectInstance.range;
+        let subjectConfig = subjectConfigs[subjectInstance.defId];
+        let subjectDef = subjectDefs[subjectInstance.defId];
+        // constraint
+        if (!allConstraintsPass(subjectConfig.constraints, subjectRange, otherEventStore, state.businessHours, context)) {
+            return false;
+        }
+        // overlap
+        let { eventOverlap } = context.options;
+        let eventOverlapFunc = typeof eventOverlap === 'function' ? eventOverlap : null;
+        for (let otherInstanceId in otherInstances) {
+            let otherInstance = otherInstances[otherInstanceId];
+            // intersect! evaluate
+            if (rangesIntersect(subjectRange, otherInstance.range)) {
+                let otherOverlap = otherConfigs[otherInstance.defId].overlap;
+                // consider the other event's overlap. only do this if the subject event is a "real" event
+                if (otherOverlap === false && interaction.isEvent) {
+                    return false;
+                }
+                if (subjectConfig.overlap === false) {
+                    return false;
+                }
+                if (eventOverlapFunc && !eventOverlapFunc(new EventImpl(context, otherDefs[otherInstance.defId], otherInstance), // still event
+                new EventImpl(context, subjectDef, subjectInstance))) {
+                    return false;
+                }
+            }
+        }
+        // allow (a function)
+        let calendarEventStore = currentState.eventStore; // need global-to-calendar, not local to component (splittable)state
+        for (let subjectAllow of subjectConfig.allows) {
+            let subjectDateSpan = Object.assign(Object.assign({}, dateSpanMeta), { range: subjectInstance.range, allDay: subjectDef.allDay });
+            let origDef = calendarEventStore.defs[subjectDef.defId];
+            let origInstance = calendarEventStore.instances[subjectInstanceId];
+            let eventApi;
+            if (origDef) { // was previously in the calendar
+                eventApi = new EventImpl(context, origDef, origInstance);
+            }
+            else { // was an external event
+                eventApi = new EventImpl(context, subjectDef); // no instance, because had no dates
+            }
+            if (!subjectAllow(buildDateSpanApiWithContext(subjectDateSpan, context), eventApi)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+// Date Selection Validation
+// ------------------------------------------------------------------------------------------------------------------------
+function isDateSelectionPropsValid(state, context, dateSpanMeta, filterConfig) {
+    let relevantEventStore = state.eventStore;
+    let relevantDefs = relevantEventStore.defs;
+    let relevantInstances = relevantEventStore.instances;
+    let selection = state.dateSelection;
+    let selectionRange = selection.range;
+    let { selectionConfig } = context.getCurrentData();
+    if (filterConfig) {
+        selectionConfig = filterConfig(selectionConfig);
+    }
+    // constraint
+    if (!allConstraintsPass(selectionConfig.constraints, selectionRange, relevantEventStore, state.businessHours, context)) {
+        return false;
+    }
+    // overlap
+    let { selectOverlap } = context.options;
+    let selectOverlapFunc = typeof selectOverlap === 'function' ? selectOverlap : null;
+    for (let relevantInstanceId in relevantInstances) {
+        let relevantInstance = relevantInstances[relevantInstanceId];
+        // intersect! evaluate
+        if (rangesIntersect(selectionRange, relevantInstance.range)) {
+            if (selectionConfig.overlap === false) {
+                return false;
+            }
+            if (selectOverlapFunc && !selectOverlapFunc(new EventImpl(context, relevantDefs[relevantInstance.defId], relevantInstance), null)) {
+                return false;
+            }
+        }
+    }
+    // allow (a function)
+    for (let selectionAllow of selectionConfig.allows) {
+        let fullDateSpan = Object.assign(Object.assign({}, dateSpanMeta), selection);
+        if (!selectionAllow(buildDateSpanApiWithContext(fullDateSpan, context), null)) {
+            return false;
+        }
+    }
+    return true;
+}
+// Constraint Utils
+// ------------------------------------------------------------------------------------------------------------------------
+function allConstraintsPass(constraints, subjectRange, otherEventStore, businessHoursUnexpanded, context) {
+    for (let constraint of constraints) {
+        if (!anyRangesContainRange(constraintToRanges(constraint, subjectRange, otherEventStore, businessHoursUnexpanded, context), subjectRange)) {
+            return false;
+        }
+    }
+    return true;
+}
+function constraintToRanges(constraint, subjectRange, // for expanding a recurring constraint, or expanding business hours
+otherEventStore, // for if constraint is an even group ID
+businessHoursUnexpanded, // for if constraint is 'businessHours'
+context) {
+    if (constraint === 'businessHours') {
+        return eventStoreToRanges(expandRecurring(businessHoursUnexpanded, subjectRange, context));
+    }
+    if (typeof constraint === 'string') { // an group ID
+        return eventStoreToRanges(filterEventStoreDefs(otherEventStore, (eventDef) => eventDef.groupId === constraint));
+    }
+    if (typeof constraint === 'object' && constraint) { // non-null object
+        return eventStoreToRanges(expandRecurring(constraint, subjectRange, context));
+    }
+    return []; // if it's false
+}
+// TODO: move to event-store file?
+function eventStoreToRanges(eventStore) {
+    let { instances } = eventStore;
+    let ranges = [];
+    for (let instanceId in instances) {
+        ranges.push(instances[instanceId].range);
+    }
+    return ranges;
+}
+// TODO: move to geom file?
+function anyRangesContainRange(outerRanges, innerRange) {
+    for (let outerRange of outerRanges) {
+        if (rangeContainsRange(outerRange, innerRange)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+const VISIBLE_HIDDEN_RE = /^(visible|hidden)$/;
+class Scroller extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.handleEl = (el) => {
+            this.el = el;
+            setRef(this.props.elRef, el);
+        };
+    }
+    render() {
+        let { props } = this;
+        let { liquid, liquidIsAbsolute } = props;
+        let isAbsolute = liquid && liquidIsAbsolute;
+        let className = ['fc-scroller'];
+        if (liquid) {
+            if (liquidIsAbsolute) {
+                className.push('fc-scroller-liquid-absolute');
+            }
+            else {
+                className.push('fc-scroller-liquid');
+            }
+        }
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { ref: this.handleEl, className: className.join(' '), style: {
+                overflowX: props.overflowX,
+                overflowY: props.overflowY,
+                left: (isAbsolute && -(props.overcomeLeft || 0)) || '',
+                right: (isAbsolute && -(props.overcomeRight || 0)) || '',
+                bottom: (isAbsolute && -(props.overcomeBottom || 0)) || '',
+                marginLeft: (!isAbsolute && -(props.overcomeLeft || 0)) || '',
+                marginRight: (!isAbsolute && -(props.overcomeRight || 0)) || '',
+                marginBottom: (!isAbsolute && -(props.overcomeBottom || 0)) || '',
+                maxHeight: props.maxHeight || '',
+            } }, props.children));
+    }
+    needsXScrolling() {
+        if (VISIBLE_HIDDEN_RE.test(this.props.overflowX)) {
+            return false;
+        }
+        // testing scrollWidth>clientWidth is unreliable cross-browser when pixel heights aren't integers.
+        // much more reliable to see if children are taller than the scroller, even tho doesn't account for
+        // inner-child margins and absolute positioning
+        let { el } = this;
+        let realClientWidth = this.el.getBoundingClientRect().width - this.getYScrollbarWidth();
+        let { children } = el;
+        for (let i = 0; i < children.length; i += 1) {
+            let childEl = children[i];
+            if (childEl.getBoundingClientRect().width > realClientWidth) {
+                return true;
+            }
+        }
+        return false;
+    }
+    needsYScrolling() {
+        if (VISIBLE_HIDDEN_RE.test(this.props.overflowY)) {
+            return false;
+        }
+        // testing scrollHeight>clientHeight is unreliable cross-browser when pixel heights aren't integers.
+        // much more reliable to see if children are taller than the scroller, even tho doesn't account for
+        // inner-child margins and absolute positioning
+        let { el } = this;
+        let realClientHeight = this.el.getBoundingClientRect().height - this.getXScrollbarWidth();
+        let { children } = el;
+        for (let i = 0; i < children.length; i += 1) {
+            let childEl = children[i];
+            if (childEl.getBoundingClientRect().height > realClientHeight) {
+                return true;
+            }
+        }
+        return false;
+    }
+    getXScrollbarWidth() {
+        if (VISIBLE_HIDDEN_RE.test(this.props.overflowX)) {
+            return 0;
+        }
+        return this.el.offsetHeight - this.el.clientHeight; // only works because we guarantee no borders. TODO: add to CSS with important?
+    }
+    getYScrollbarWidth() {
+        if (VISIBLE_HIDDEN_RE.test(this.props.overflowY)) {
+            return 0;
+        }
+        return this.el.offsetWidth - this.el.clientWidth; // only works because we guarantee no borders. TODO: add to CSS with important?
+    }
+}
+
+/*
+TODO: somehow infer OtherArgs from masterCallback?
+TODO: infer RefType from masterCallback if provided
+*/
+class RefMap {
+    constructor(masterCallback) {
+        this.masterCallback = masterCallback;
+        this.currentMap = {};
+        this.depths = {};
+        this.callbackMap = {};
+        this.handleValue = (val, key) => {
+            let { depths, currentMap } = this;
+            let removed = false;
+            let added = false;
+            if (val !== null) {
+                // for bug... ACTUALLY: can probably do away with this now that callers don't share numeric indices anymore
+                removed = (key in currentMap);
+                currentMap[key] = val;
+                depths[key] = (depths[key] || 0) + 1;
+                added = true;
+            }
+            else {
+                depths[key] -= 1;
+                if (!depths[key]) {
+                    delete currentMap[key];
+                    delete this.callbackMap[key];
+                    removed = true;
+                }
+            }
+            if (this.masterCallback) {
+                if (removed) {
+                    this.masterCallback(null, String(key));
+                }
+                if (added) {
+                    this.masterCallback(val, String(key));
+                }
+            }
+        };
+    }
+    createRef(key) {
+        let refCallback = this.callbackMap[key];
+        if (!refCallback) {
+            refCallback = this.callbackMap[key] = (val) => {
+                this.handleValue(val, String(key));
+            };
+        }
+        return refCallback;
+    }
+    // TODO: check callers that don't care about order. should use getAll instead
+    // NOTE: this method has become less valuable now that we are encouraged to map order by some other index
+    // TODO: provide ONE array-export function, buildArray, which fails on non-numeric indexes. caller can manipulate and "collect"
+    collect(startIndex, endIndex, step) {
+        return collectFromHash(this.currentMap, startIndex, endIndex, step);
+    }
+    getAll() {
+        return hashValuesToArray(this.currentMap);
+    }
+}
+
+function computeShrinkWidth(chunkEls) {
+    let shrinkCells = findElements(chunkEls, '.fc-scrollgrid-shrink');
+    let largestWidth = 0;
+    for (let shrinkCell of shrinkCells) {
+        largestWidth = Math.max(largestWidth, computeSmallestCellWidth(shrinkCell));
+    }
+    return Math.ceil(largestWidth); // <table> elements work best with integers. round up to ensure contents fits
+}
+function getSectionHasLiquidHeight(props, sectionConfig) {
+    return props.liquid && sectionConfig.liquid; // does the section do liquid-height? (need to have whole scrollgrid liquid-height as well)
+}
+function getAllowYScrolling(props, sectionConfig) {
+    return sectionConfig.maxHeight != null || // if its possible for the height to max out, we might need scrollbars
+        getSectionHasLiquidHeight(props, sectionConfig); // if the section is liquid height, it might condense enough to require scrollbars
+}
+// TODO: ONLY use `arg`. force out internal function to use same API
+function renderChunkContent(sectionConfig, chunkConfig, arg, isHeader) {
+    let { expandRows } = arg;
+    let content = typeof chunkConfig.content === 'function' ?
+        chunkConfig.content(arg) :
+        (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)('table', {
+            role: 'presentation',
+            className: [
+                chunkConfig.tableClassName,
+                sectionConfig.syncRowHeights ? 'fc-scrollgrid-sync-table' : '',
+            ].join(' '),
+            style: {
+                minWidth: arg.tableMinWidth,
+                width: arg.clientWidth,
+                height: expandRows ? arg.clientHeight : '', // css `height` on a <table> serves as a min-height
+            },
+        }, arg.tableColGroupNode, (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(isHeader ? 'thead' : 'tbody', {
+            role: 'presentation',
+        }, typeof chunkConfig.rowContent === 'function'
+            ? chunkConfig.rowContent(arg)
+            : chunkConfig.rowContent));
+    return content;
+}
+function isColPropsEqual(cols0, cols1) {
+    return isArraysEqual(cols0, cols1, isPropsEqual);
+}
+function renderMicroColGroup(cols, shrinkWidth) {
+    let colNodes = [];
+    /*
+    for ColProps with spans, it would have been great to make a single <col span="">
+    HOWEVER, Chrome was getting messing up distributing the width to <td>/<th> elements with colspans.
+    SOLUTION: making individual <col> elements makes Chrome behave.
+    */
+    for (let colProps of cols) {
+        let span = colProps.span || 1;
+        for (let i = 0; i < span; i += 1) {
+            colNodes.push((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("col", { style: {
+                    width: colProps.width === 'shrink' ? sanitizeShrinkWidth(shrinkWidth) : (colProps.width || ''),
+                    minWidth: colProps.minWidth || '',
+                } }));
+        }
+    }
+    return (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)('colgroup', {}, ...colNodes);
+}
+function sanitizeShrinkWidth(shrinkWidth) {
+    /* why 4? if we do 0, it will kill any border, which are needed for computeSmallestCellWidth
+    4 accounts for 2 2-pixel borders. TODO: better solution? */
+    return shrinkWidth == null ? 4 : shrinkWidth;
+}
+function hasShrinkWidth(cols) {
+    for (let col of cols) {
+        if (col.width === 'shrink') {
+            return true;
+        }
+    }
+    return false;
+}
+function getScrollGridClassNames(liquid, context) {
+    let classNames = [
+        'fc-scrollgrid',
+        context.theme.getClass('table'),
+    ];
+    if (liquid) {
+        classNames.push('fc-scrollgrid-liquid');
+    }
+    return classNames;
+}
+function getSectionClassNames(sectionConfig, wholeTableVGrow) {
+    let classNames = [
+        'fc-scrollgrid-section',
+        `fc-scrollgrid-section-${sectionConfig.type}`,
+        sectionConfig.className, // used?
+    ];
+    if (wholeTableVGrow && sectionConfig.liquid && sectionConfig.maxHeight == null) {
+        classNames.push('fc-scrollgrid-section-liquid');
+    }
+    if (sectionConfig.isSticky) {
+        classNames.push('fc-scrollgrid-section-sticky');
+    }
+    return classNames;
+}
+function renderScrollShim(arg) {
+    return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-scrollgrid-sticky-shim", style: {
+            width: arg.clientWidth,
+            minWidth: arg.tableMinWidth,
+        } }));
+}
+function getStickyHeaderDates(options) {
+    let { stickyHeaderDates } = options;
+    if (stickyHeaderDates == null || stickyHeaderDates === 'auto') {
+        stickyHeaderDates = options.height === 'auto' || options.viewHeight === 'auto';
+    }
+    return stickyHeaderDates;
+}
+function getStickyFooterScrollbar(options) {
+    let { stickyFooterScrollbar } = options;
+    if (stickyFooterScrollbar == null || stickyFooterScrollbar === 'auto') {
+        stickyFooterScrollbar = options.height === 'auto' || options.viewHeight === 'auto';
+    }
+    return stickyFooterScrollbar;
+}
+
+class SimpleScrollGrid extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.processCols = memoize((a) => a, isColPropsEqual); // so we get same `cols` props every time
+        // yucky to memoize VNodes, but much more efficient for consumers
+        this.renderMicroColGroup = memoize(renderMicroColGroup);
+        this.scrollerRefs = new RefMap();
+        this.scrollerElRefs = new RefMap(this._handleScrollerEl.bind(this));
+        this.state = {
+            shrinkWidth: null,
+            forceYScrollbars: false,
+            scrollerClientWidths: {},
+            scrollerClientHeights: {},
+        };
+        // TODO: can do a really simple print-view. dont need to join rows
+        this.handleSizing = () => {
+            this.safeSetState(Object.assign({ shrinkWidth: this.computeShrinkWidth() }, this.computeScrollerDims()));
+        };
+    }
+    render() {
+        let { props, state, context } = this;
+        let sectionConfigs = props.sections || [];
+        let cols = this.processCols(props.cols);
+        let microColGroupNode = this.renderMicroColGroup(cols, state.shrinkWidth);
+        let classNames = getScrollGridClassNames(props.liquid, context);
+        if (props.collapsibleWidth) {
+            classNames.push('fc-scrollgrid-collapsible');
+        }
+        // TODO: make DRY
+        let configCnt = sectionConfigs.length;
+        let configI = 0;
+        let currentConfig;
+        let headSectionNodes = [];
+        let bodySectionNodes = [];
+        let footSectionNodes = [];
+        while (configI < configCnt && (currentConfig = sectionConfigs[configI]).type === 'header') {
+            headSectionNodes.push(this.renderSection(currentConfig, microColGroupNode, true));
+            configI += 1;
+        }
+        while (configI < configCnt && (currentConfig = sectionConfigs[configI]).type === 'body') {
+            bodySectionNodes.push(this.renderSection(currentConfig, microColGroupNode, false));
+            configI += 1;
+        }
+        while (configI < configCnt && (currentConfig = sectionConfigs[configI]).type === 'footer') {
+            footSectionNodes.push(this.renderSection(currentConfig, microColGroupNode, true));
+            configI += 1;
+        }
+        // firefox bug: when setting height on table and there is a thead or tfoot,
+        // the necessary height:100% on the liquid-height body section forces the *whole* table to be taller. (bug #5524)
+        // use getCanVGrowWithinCell as a way to detect table-stupid firefox.
+        // if so, use a simpler dom structure, jam everything into a lone tbody.
+        let isBuggy = !getCanVGrowWithinCell();
+        const roleAttrs = { role: 'rowgroup' };
+        return (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)('table', {
+            role: 'grid',
+            className: classNames.join(' '),
+            style: { height: props.height },
+        }, Boolean(!isBuggy && headSectionNodes.length) && (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)('thead', roleAttrs, ...headSectionNodes), Boolean(!isBuggy && bodySectionNodes.length) && (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)('tbody', roleAttrs, ...bodySectionNodes), Boolean(!isBuggy && footSectionNodes.length) && (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)('tfoot', roleAttrs, ...footSectionNodes), isBuggy && (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)('tbody', roleAttrs, ...headSectionNodes, ...bodySectionNodes, ...footSectionNodes));
+    }
+    renderSection(sectionConfig, microColGroupNode, isHeader) {
+        if ('outerContent' in sectionConfig) {
+            return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(preact__WEBPACK_IMPORTED_MODULE_0__.Fragment, { key: sectionConfig.key }, sectionConfig.outerContent));
+        }
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("tr", { key: sectionConfig.key, role: "presentation", className: getSectionClassNames(sectionConfig, this.props.liquid).join(' ') }, this.renderChunkTd(sectionConfig, microColGroupNode, sectionConfig.chunk, isHeader)));
+    }
+    renderChunkTd(sectionConfig, microColGroupNode, chunkConfig, isHeader) {
+        if ('outerContent' in chunkConfig) {
+            return chunkConfig.outerContent;
+        }
+        let { props } = this;
+        let { forceYScrollbars, scrollerClientWidths, scrollerClientHeights } = this.state;
+        let needsYScrolling = getAllowYScrolling(props, sectionConfig); // TODO: do lazily. do in section config?
+        let isLiquid = getSectionHasLiquidHeight(props, sectionConfig);
+        // for `!props.liquid` - is WHOLE scrollgrid natural height?
+        // TODO: do same thing in advanced scrollgrid? prolly not b/c always has horizontal scrollbars
+        let overflowY = !props.liquid ? 'visible' :
+            forceYScrollbars ? 'scroll' :
+                !needsYScrolling ? 'hidden' :
+                    'auto';
+        let sectionKey = sectionConfig.key;
+        let content = renderChunkContent(sectionConfig, chunkConfig, {
+            tableColGroupNode: microColGroupNode,
+            tableMinWidth: '',
+            clientWidth: (!props.collapsibleWidth && scrollerClientWidths[sectionKey] !== undefined) ? scrollerClientWidths[sectionKey] : null,
+            clientHeight: scrollerClientHeights[sectionKey] !== undefined ? scrollerClientHeights[sectionKey] : null,
+            expandRows: sectionConfig.expandRows,
+            syncRowHeights: false,
+            rowSyncHeights: [],
+            reportRowHeightChange: () => { },
+        }, isHeader);
+        return (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(isHeader ? 'th' : 'td', {
+            ref: chunkConfig.elRef,
+            role: 'presentation',
+        }, (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: `fc-scroller-harness${isLiquid ? ' fc-scroller-harness-liquid' : ''}` },
+            (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(Scroller, { ref: this.scrollerRefs.createRef(sectionKey), elRef: this.scrollerElRefs.createRef(sectionKey), overflowY: overflowY, overflowX: !props.liquid ? 'visible' : 'hidden' /* natural height? */, maxHeight: sectionConfig.maxHeight, liquid: isLiquid, liquidIsAbsolute // because its within a harness
+                : true }, content)));
+    }
+    _handleScrollerEl(scrollerEl, key) {
+        let section = getSectionByKey(this.props.sections, key);
+        if (section) {
+            setRef(section.chunk.scrollerElRef, scrollerEl);
+        }
+    }
+    componentDidMount() {
+        this.handleSizing();
+        this.context.addResizeHandler(this.handleSizing);
+    }
+    componentDidUpdate() {
+        // TODO: need better solution when state contains non-sizing things
+        this.handleSizing();
+    }
+    componentWillUnmount() {
+        this.context.removeResizeHandler(this.handleSizing);
+    }
+    computeShrinkWidth() {
+        return hasShrinkWidth(this.props.cols)
+            ? computeShrinkWidth(this.scrollerElRefs.getAll())
+            : 0;
+    }
+    computeScrollerDims() {
+        let scrollbarWidth = getScrollbarWidths();
+        let { scrollerRefs, scrollerElRefs } = this;
+        let forceYScrollbars = false;
+        let scrollerClientWidths = {};
+        let scrollerClientHeights = {};
+        for (let sectionKey in scrollerRefs.currentMap) {
+            let scroller = scrollerRefs.currentMap[sectionKey];
+            if (scroller && scroller.needsYScrolling()) {
+                forceYScrollbars = true;
+                break;
+            }
+        }
+        for (let section of this.props.sections) {
+            let sectionKey = section.key;
+            let scrollerEl = scrollerElRefs.currentMap[sectionKey];
+            if (scrollerEl) {
+                let harnessEl = scrollerEl.parentNode; // TODO: weird way to get this. need harness b/c doesn't include table borders
+                scrollerClientWidths[sectionKey] = Math.floor(harnessEl.getBoundingClientRect().width - (forceYScrollbars
+                    ? scrollbarWidth.y // use global because scroller might not have scrollbars yet but will need them in future
+                    : 0));
+                scrollerClientHeights[sectionKey] = Math.floor(harnessEl.getBoundingClientRect().height);
+            }
+        }
+        return { forceYScrollbars, scrollerClientWidths, scrollerClientHeights };
+    }
+}
+SimpleScrollGrid.addStateEquality({
+    scrollerClientWidths: isPropsEqual,
+    scrollerClientHeights: isPropsEqual,
+});
+function getSectionByKey(sections, key) {
+    for (let section of sections) {
+        if (section.key === key) {
+            return section;
+        }
+    }
+    return null;
+}
+
+class EventContainer extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.handleEl = (el) => {
+            this.el = el;
+            if (el) {
+                setElSeg(el, this.props.seg);
+            }
+        };
+    }
+    render() {
+        const { props, context } = this;
+        const { options } = context;
+        const { seg } = props;
+        const { eventRange } = seg;
+        const { ui } = eventRange;
+        const renderProps = {
+            event: new EventImpl(context, eventRange.def, eventRange.instance),
+            view: context.viewApi,
+            timeText: props.timeText,
+            textColor: ui.textColor,
+            backgroundColor: ui.backgroundColor,
+            borderColor: ui.borderColor,
+            isDraggable: !props.disableDragging && computeSegDraggable(seg, context),
+            isStartResizable: !props.disableResizing && computeSegStartResizable(seg, context),
+            isEndResizable: !props.disableResizing && computeSegEndResizable(seg),
+            isMirror: Boolean(props.isDragging || props.isResizing || props.isDateSelecting),
+            isStart: Boolean(seg.isStart),
+            isEnd: Boolean(seg.isEnd),
+            isPast: Boolean(props.isPast),
+            isFuture: Boolean(props.isFuture),
+            isToday: Boolean(props.isToday),
+            isSelected: Boolean(props.isSelected),
+            isDragging: Boolean(props.isDragging),
+            isResizing: Boolean(props.isResizing),
+        };
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ContentContainer, Object.assign({}, props /* contains children */, { elRef: this.handleEl, elClasses: [
+                ...getEventClassNames(renderProps),
+                ...seg.eventRange.ui.classNames,
+                ...(props.elClasses || []),
+            ], renderProps: renderProps, generatorName: "eventContent", customGenerator: options.eventContent, defaultGenerator: props.defaultGenerator, classNameGenerator: options.eventClassNames, didMount: options.eventDidMount, willUnmount: options.eventWillUnmount })));
+    }
+    componentDidUpdate(prevProps) {
+        if (this.el && this.props.seg !== prevProps.seg) {
+            setElSeg(this.el, this.props.seg);
+        }
+    }
+}
+
+// should not be a purecomponent
+class StandardEvent extends BaseComponent {
+    render() {
+        let { props, context } = this;
+        let { options } = context;
+        let { seg } = props;
+        let { ui } = seg.eventRange;
+        let timeFormat = options.eventTimeFormat || props.defaultTimeFormat;
+        let timeText = buildSegTimeText(seg, timeFormat, context, props.defaultDisplayEventTime, props.defaultDisplayEventEnd);
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(EventContainer, Object.assign({}, props /* includes elRef */, { elTag: "a", elStyle: {
+                borderColor: ui.borderColor,
+                backgroundColor: ui.backgroundColor,
+            }, elAttrs: getSegAnchorAttrs(seg, context), defaultGenerator: renderInnerContent$1, timeText: timeText }), (InnerContent, eventContentArg) => ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(preact__WEBPACK_IMPORTED_MODULE_0__.Fragment, null,
+            (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(InnerContent, { elTag: "div", elClasses: ['fc-event-main'], elStyle: { color: eventContentArg.textColor } }),
+            Boolean(eventContentArg.isStartResizable) && ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-event-resizer fc-event-resizer-start" })),
+            Boolean(eventContentArg.isEndResizable) && ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-event-resizer fc-event-resizer-end" }))))));
+    }
+}
+function renderInnerContent$1(innerProps) {
+    return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-event-main-frame" },
+        innerProps.timeText && ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-event-time" }, innerProps.timeText)),
+        (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-event-title-container" },
+            (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-event-title fc-sticky" }, innerProps.event.title || (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(preact__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, "\u00A0")))));
+}
+
+const NowIndicatorContainer = (props) => ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ViewContextType.Consumer, null, (context) => {
+    let { options } = context;
+    let renderProps = {
+        isAxis: props.isAxis,
+        date: context.dateEnv.toDate(props.date),
+        view: context.viewApi,
+    };
+    return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ContentContainer, Object.assign({}, props /* includes children */, { elTag: props.elTag || 'div', renderProps: renderProps, generatorName: "nowIndicatorContent", customGenerator: options.nowIndicatorContent, classNameGenerator: options.nowIndicatorClassNames, didMount: options.nowIndicatorDidMount, willUnmount: options.nowIndicatorWillUnmount })));
+}));
+
+const DAY_NUM_FORMAT = createFormatter({ day: 'numeric' });
+class DayCellContainer extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.refineRenderProps = memoizeObjArg(refineRenderProps);
+    }
+    render() {
+        let { props, context } = this;
+        let { options } = context;
+        let renderProps = this.refineRenderProps({
+            date: props.date,
+            dateProfile: props.dateProfile,
+            todayRange: props.todayRange,
+            isMonthStart: props.isMonthStart || false,
+            showDayNumber: props.showDayNumber,
+            extraRenderProps: props.extraRenderProps,
+            viewApi: context.viewApi,
+            dateEnv: context.dateEnv,
+            monthStartFormat: options.monthStartFormat,
+        });
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ContentContainer, Object.assign({}, props /* includes children */, { elClasses: [
+                ...getDayClassNames(renderProps, context.theme),
+                ...(props.elClasses || []),
+            ], elAttrs: Object.assign(Object.assign({}, props.elAttrs), (renderProps.isDisabled ? {} : { 'data-date': formatDayString(props.date) })), renderProps: renderProps, generatorName: "dayCellContent", customGenerator: options.dayCellContent, defaultGenerator: props.defaultGenerator, classNameGenerator: 
+            // don't use custom classNames if disabled
+            renderProps.isDisabled ? undefined : options.dayCellClassNames, didMount: options.dayCellDidMount, willUnmount: options.dayCellWillUnmount })));
+    }
+}
+function hasCustomDayCellContent(options) {
+    return Boolean(options.dayCellContent || hasCustomRenderingHandler('dayCellContent', options));
+}
+function refineRenderProps(raw) {
+    let { date, dateEnv, dateProfile, isMonthStart } = raw;
+    let dayMeta = getDateMeta(date, raw.todayRange, null, dateProfile);
+    let dayNumberText = raw.showDayNumber ? (dateEnv.format(date, isMonthStart ? raw.monthStartFormat : DAY_NUM_FORMAT)) : '';
+    return Object.assign(Object.assign(Object.assign({ date: dateEnv.toDate(date), view: raw.viewApi }, dayMeta), { isMonthStart,
+        dayNumberText }), raw.extraRenderProps);
+}
+
+class BgEvent extends BaseComponent {
+    render() {
+        let { props } = this;
+        let { seg } = props;
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(EventContainer, { elTag: "div", elClasses: ['fc-bg-event'], elStyle: { backgroundColor: seg.eventRange.ui.backgroundColor }, defaultGenerator: renderInnerContent, seg: seg, timeText: "", isDragging: false, isResizing: false, isDateSelecting: false, isSelected: false, isPast: props.isPast, isFuture: props.isFuture, isToday: props.isToday, disableDragging: true, disableResizing: true }));
+    }
+}
+function renderInnerContent(props) {
+    let { title } = props.event;
+    return title && ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: "fc-event-title" }, props.event.title));
+}
+function renderFill(fillType) {
+    return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: `fc-${fillType}` }));
+}
+
+const WeekNumberContainer = (props) => ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ViewContextType.Consumer, null, (context) => {
+    let { dateEnv, options } = context;
+    let { date } = props;
+    let format = options.weekNumberFormat || props.defaultFormat;
+    let num = dateEnv.computeWeekNumber(date); // TODO: somehow use for formatting as well?
+    let text = dateEnv.format(date, format);
+    let renderProps = { num, text, date };
+    return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ContentContainer // why isn't WeekNumberContentArg being auto-detected?
+    , Object.assign({}, props /* includes children */, { renderProps: renderProps, generatorName: "weekNumberContent", customGenerator: options.weekNumberContent, defaultGenerator: renderInner, classNameGenerator: options.weekNumberClassNames, didMount: options.weekNumberDidMount, willUnmount: options.weekNumberWillUnmount })));
+}));
+function renderInner(innerProps) {
+    return innerProps.text;
+}
+
+const PADDING_FROM_VIEWPORT = 10;
+class Popover extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.state = {
+            titleId: getUniqueDomId(),
+        };
+        this.handleRootEl = (el) => {
+            this.rootEl = el;
+            if (this.props.elRef) {
+                setRef(this.props.elRef, el);
+            }
+        };
+        // Triggered when the user clicks *anywhere* in the document, for the autoHide feature
+        this.handleDocumentMouseDown = (ev) => {
+            // only hide the popover if the click happened outside the popover
+            const target = getEventTargetViaRoot(ev);
+            if (!this.rootEl.contains(target)) {
+                this.handleCloseClick();
+            }
+        };
+        this.handleDocumentKeyDown = (ev) => {
+            if (ev.key === 'Escape') {
+                this.handleCloseClick();
+            }
+        };
+        this.handleCloseClick = () => {
+            let { onClose } = this.props;
+            if (onClose) {
+                onClose();
+            }
+        };
+    }
+    render() {
+        let { theme, options } = this.context;
+        let { props, state } = this;
+        let classNames = [
+            'fc-popover',
+            theme.getClass('popover'),
+        ].concat(props.extraClassNames || []);
+        return (0,preact_compat__WEBPACK_IMPORTED_MODULE_1__.createPortal)((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", Object.assign({}, props.extraAttrs, { id: props.id, className: classNames.join(' '), "aria-labelledby": state.titleId, ref: this.handleRootEl }),
+            (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: 'fc-popover-header ' + theme.getClass('popoverHeader') },
+                (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("span", { className: "fc-popover-title", id: state.titleId }, props.title),
+                (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("span", { className: 'fc-popover-close ' + theme.getIconClass('close'), title: options.closeHint, onClick: this.handleCloseClick })),
+            (0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)("div", { className: 'fc-popover-body ' + theme.getClass('popoverContent') }, props.children)), props.parentEl);
+    }
+    componentDidMount() {
+        document.addEventListener('mousedown', this.handleDocumentMouseDown);
+        document.addEventListener('keydown', this.handleDocumentKeyDown);
+        this.updateSize();
+    }
+    componentWillUnmount() {
+        document.removeEventListener('mousedown', this.handleDocumentMouseDown);
+        document.removeEventListener('keydown', this.handleDocumentKeyDown);
+    }
+    updateSize() {
+        let { isRtl } = this.context;
+        let { alignmentEl, alignGridTop } = this.props;
+        let { rootEl } = this;
+        let alignmentRect = computeClippedClientRect(alignmentEl);
+        if (alignmentRect) {
+            let popoverDims = rootEl.getBoundingClientRect();
+            // position relative to viewport
+            let popoverTop = alignGridTop
+                ? elementClosest(alignmentEl, '.fc-scrollgrid').getBoundingClientRect().top
+                : alignmentRect.top;
+            let popoverLeft = isRtl ? alignmentRect.right - popoverDims.width : alignmentRect.left;
+            // constrain
+            popoverTop = Math.max(popoverTop, PADDING_FROM_VIEWPORT);
+            popoverLeft = Math.min(popoverLeft, document.documentElement.clientWidth - PADDING_FROM_VIEWPORT - popoverDims.width);
+            popoverLeft = Math.max(popoverLeft, PADDING_FROM_VIEWPORT);
+            let origin = rootEl.offsetParent.getBoundingClientRect();
+            applyStyle(rootEl, {
+                top: popoverTop - origin.top,
+                left: popoverLeft - origin.left,
+            });
+        }
+    }
+}
+
+class MorePopover extends DateComponent {
+    constructor() {
+        super(...arguments);
+        this.handleRootEl = (rootEl) => {
+            this.rootEl = rootEl;
+            if (rootEl) {
+                this.context.registerInteractiveComponent(this, {
+                    el: rootEl,
+                    useEventCenter: false,
+                });
+            }
+            else {
+                this.context.unregisterInteractiveComponent(this);
+            }
+        };
+    }
+    render() {
+        let { options, dateEnv } = this.context;
+        let { props } = this;
+        let { startDate, todayRange, dateProfile } = props;
+        let title = dateEnv.format(startDate, options.dayPopoverFormat);
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(DayCellContainer, { elRef: this.handleRootEl, date: startDate, dateProfile: dateProfile, todayRange: todayRange }, (InnerContent, renderProps, elAttrs) => ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(Popover, { elRef: elAttrs.ref, id: props.id, title: title, extraClassNames: ['fc-more-popover'].concat(elAttrs.className || []), extraAttrs: elAttrs /* TODO: make these time-based when not whole-day? */, parentEl: props.parentEl, alignmentEl: props.alignmentEl, alignGridTop: props.alignGridTop, onClose: props.onClose },
+            hasCustomDayCellContent(options) && ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(InnerContent, { elTag: "div", elClasses: ['fc-more-popover-misc'] })),
+            props.children))));
+    }
+    queryHit(positionLeft, positionTop, elWidth, elHeight) {
+        let { rootEl, props } = this;
+        if (positionLeft >= 0 && positionLeft < elWidth &&
+            positionTop >= 0 && positionTop < elHeight) {
+            return {
+                dateProfile: props.dateProfile,
+                dateSpan: Object.assign({ allDay: !props.forceTimed, range: {
+                        start: props.startDate,
+                        end: props.endDate,
+                    } }, props.extraDateSpan),
+                dayEl: rootEl,
+                rect: {
+                    left: 0,
+                    top: 0,
+                    right: elWidth,
+                    bottom: elHeight,
+                },
+                layer: 1, // important when comparing with hits from other components
+            };
+        }
+        return null;
+    }
+}
+
+class MoreLinkContainer extends BaseComponent {
+    constructor() {
+        super(...arguments);
+        this.state = {
+            isPopoverOpen: false,
+            popoverId: getUniqueDomId(),
+        };
+        this.handleLinkEl = (linkEl) => {
+            this.linkEl = linkEl;
+            if (this.props.elRef) {
+                setRef(this.props.elRef, linkEl);
+            }
+        };
+        this.handleClick = (ev) => {
+            let { props, context } = this;
+            let { moreLinkClick } = context.options;
+            let date = computeRange(props).start;
+            function buildPublicSeg(seg) {
+                let { def, instance, range } = seg.eventRange;
+                return {
+                    event: new EventImpl(context, def, instance),
+                    start: context.dateEnv.toDate(range.start),
+                    end: context.dateEnv.toDate(range.end),
+                    isStart: seg.isStart,
+                    isEnd: seg.isEnd,
+                };
+            }
+            if (typeof moreLinkClick === 'function') {
+                moreLinkClick = moreLinkClick({
+                    date,
+                    allDay: Boolean(props.allDayDate),
+                    allSegs: props.allSegs.map(buildPublicSeg),
+                    hiddenSegs: props.hiddenSegs.map(buildPublicSeg),
+                    jsEvent: ev,
+                    view: context.viewApi,
+                });
+            }
+            if (!moreLinkClick || moreLinkClick === 'popover') {
+                this.setState({ isPopoverOpen: true });
+            }
+            else if (typeof moreLinkClick === 'string') { // a view name
+                context.calendarApi.zoomTo(date, moreLinkClick);
+            }
+        };
+        this.handlePopoverClose = () => {
+            this.setState({ isPopoverOpen: false });
+        };
+    }
+    render() {
+        let { props, state } = this;
+        return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ViewContextType.Consumer, null, (context) => {
+            let { viewApi, options, calendarApi } = context;
+            let { moreLinkText } = options;
+            let { moreCnt } = props;
+            let range = computeRange(props);
+            let text = typeof moreLinkText === 'function' // TODO: eventually use formatWithOrdinals
+                ? moreLinkText.call(calendarApi, moreCnt)
+                : `+${moreCnt} ${moreLinkText}`;
+            let hint = formatWithOrdinals(options.moreLinkHint, [moreCnt], text);
+            let renderProps = {
+                num: moreCnt,
+                shortText: `+${moreCnt}`,
+                text,
+                view: viewApi,
+            };
+            return ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(preact__WEBPACK_IMPORTED_MODULE_0__.Fragment, null,
+                Boolean(props.moreCnt) && ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(ContentContainer, { elTag: props.elTag || 'a', elRef: this.handleLinkEl, elClasses: [
+                        ...(props.elClasses || []),
+                        'fc-more-link',
+                    ], elStyle: props.elStyle, elAttrs: Object.assign(Object.assign(Object.assign({}, props.elAttrs), createAriaClickAttrs(this.handleClick)), { title: hint, 'aria-expanded': state.isPopoverOpen, 'aria-controls': state.isPopoverOpen ? state.popoverId : '' }), renderProps: renderProps, generatorName: "moreLinkContent", customGenerator: options.moreLinkContent, defaultGenerator: props.defaultGenerator || renderMoreLinkInner, classNameGenerator: options.moreLinkClassNames, didMount: options.moreLinkDidMount, willUnmount: options.moreLinkWillUnmount }, props.children)),
+                state.isPopoverOpen && ((0,preact__WEBPACK_IMPORTED_MODULE_0__.createElement)(MorePopover, { id: state.popoverId, startDate: range.start, endDate: range.end, dateProfile: props.dateProfile, todayRange: props.todayRange, extraDateSpan: props.extraDateSpan, parentEl: this.parentEl, alignmentEl: props.alignmentElRef ?
+                        props.alignmentElRef.current :
+                        this.linkEl, alignGridTop: props.alignGridTop, forceTimed: props.forceTimed, onClose: this.handlePopoverClose }, props.popoverContent()))));
+        }));
+    }
+    componentDidMount() {
+        this.updateParentEl();
+    }
+    componentDidUpdate() {
+        this.updateParentEl();
+    }
+    updateParentEl() {
+        if (this.linkEl) {
+            this.parentEl = elementClosest(this.linkEl, '.fc-view-harness');
+        }
+    }
+}
+function renderMoreLinkInner(props) {
+    return props.text;
+}
+function computeRange(props) {
+    if (props.allDayDate) {
+        return {
+            start: props.allDayDate,
+            end: addDays(props.allDayDate, 1),
+        };
+    }
+    let { hiddenSegs } = props;
+    return {
+        start: computeEarliestSegStart(hiddenSegs),
+        end: computeLatestSegEnd(hiddenSegs),
+    };
+}
+function computeEarliestSegStart(segs) {
+    return segs.reduce(pickEarliestStart).eventRange.range.start;
+}
+function pickEarliestStart(seg0, seg1) {
+    return seg0.eventRange.range.start < seg1.eventRange.range.start ? seg0 : seg1;
+}
+function computeLatestSegEnd(segs) {
+    return segs.reduce(pickLatestEnd).eventRange.range.end;
+}
+function pickLatestEnd(seg0, seg1) {
+    return seg0.eventRange.range.end > seg1.eventRange.range.end ? seg0 : seg1;
+}
+
+class Store {
+    constructor() {
+        this.handlers = [];
+    }
+    set(value) {
+        this.currentValue = value;
+        for (let handler of this.handlers) {
+            handler(value);
+        }
+    }
+    subscribe(handler) {
+        this.handlers.push(handler);
+        if (this.currentValue !== undefined) {
+            handler(this.currentValue);
+        }
+    }
+}
+
+/*
+Subscribers will get a LIST of CustomRenderings
+*/
+class CustomRenderingStore extends Store {
+    constructor() {
+        super(...arguments);
+        this.map = new Map();
+    }
+    // for consistent order
+    handle(customRendering) {
+        const { map } = this;
+        let updated = false;
+        if (customRendering.isActive) {
+            map.set(customRendering.id, customRendering);
+            updated = true;
+        }
+        else if (map.has(customRendering.id)) {
+            map.delete(customRendering.id);
+            updated = true;
+        }
+        if (updated) {
+            this.set(map);
+        }
+    }
+}
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/@fullcalendar/daygrid/index.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/@fullcalendar/daygrid/index.js ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": function() { return /* binding */ index; }
+/* harmony export */ });
+/* harmony import */ var _fullcalendar_core_index_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @fullcalendar/core/index.js */ "./node_modules/@fullcalendar/core/index.js");
+/* harmony import */ var _internal_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./internal.js */ "./node_modules/@fullcalendar/daygrid/internal.js");
+
+
+
+
+
+var index = (0,_fullcalendar_core_index_js__WEBPACK_IMPORTED_MODULE_0__.createPlugin)({
+    name: '@fullcalendar/daygrid',
+    initialView: 'dayGridMonth',
+    views: {
+        dayGrid: {
+            component: _internal_js__WEBPACK_IMPORTED_MODULE_1__.DayGridView,
+            dateProfileGeneratorClass: _internal_js__WEBPACK_IMPORTED_MODULE_1__.TableDateProfileGenerator,
+        },
+        dayGridDay: {
+            type: 'dayGrid',
+            duration: { days: 1 },
+        },
+        dayGridWeek: {
+            type: 'dayGrid',
+            duration: { weeks: 1 },
+        },
+        dayGridMonth: {
+            type: 'dayGrid',
+            duration: { months: 1 },
+            fixedWeekCount: true,
+        },
+        dayGridYear: {
+            type: 'dayGrid',
+            duration: { years: 1 },
+        },
+    },
+});
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/@fullcalendar/daygrid/internal.js":
+/*!********************************************************!*\
+  !*** ./node_modules/@fullcalendar/daygrid/internal.js ***!
+  \********************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   DayGridView: function() { return /* binding */ DayTableView; },
+/* harmony export */   DayTable: function() { return /* binding */ DayTable; },
+/* harmony export */   DayTableSlicer: function() { return /* binding */ DayTableSlicer; },
+/* harmony export */   Table: function() { return /* binding */ Table; },
+/* harmony export */   TableDateProfileGenerator: function() { return /* binding */ TableDateProfileGenerator; },
+/* harmony export */   TableRows: function() { return /* binding */ TableRows; },
+/* harmony export */   TableView: function() { return /* binding */ TableView; },
+/* harmony export */   buildDayTableModel: function() { return /* binding */ buildDayTableModel; },
+/* harmony export */   buildDayTableRenderRange: function() { return /* binding */ buildDayTableRenderRange; }
+/* harmony export */ });
+/* harmony import */ var _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @fullcalendar/core/internal.js */ "./node_modules/@fullcalendar/core/internal-common.js");
+/* harmony import */ var _fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @fullcalendar/core/preact.js */ "./node_modules/preact/dist/preact.module.js");
+
+
+
+var css_248z = ":root{--fc-daygrid-event-dot-width:8px}.fc-daygrid-day-events:after,.fc-daygrid-day-events:before,.fc-daygrid-day-frame:after,.fc-daygrid-day-frame:before,.fc-daygrid-event-harness:after,.fc-daygrid-event-harness:before{clear:both;content:\"\";display:table}.fc .fc-daygrid-body{position:relative;z-index:1}.fc .fc-daygrid-day.fc-day-today{background-color:var(--fc-today-bg-color)}.fc .fc-daygrid-day-frame{min-height:100%;position:relative}.fc .fc-daygrid-day-top{display:flex;flex-direction:row-reverse}.fc .fc-day-other .fc-daygrid-day-top{opacity:.3}.fc .fc-daygrid-day-number{padding:4px;position:relative;z-index:4}.fc .fc-daygrid-month-start{font-size:1.1em;font-weight:700}.fc .fc-daygrid-day-events{margin-top:1px}.fc .fc-daygrid-body-balanced .fc-daygrid-day-events{left:0;position:absolute;right:0}.fc .fc-daygrid-body-unbalanced .fc-daygrid-day-events{min-height:2em;position:relative}.fc .fc-daygrid-body-natural .fc-daygrid-day-events{margin-bottom:1em}.fc .fc-daygrid-event-harness{position:relative}.fc .fc-daygrid-event-harness-abs{left:0;position:absolute;right:0;top:0}.fc .fc-daygrid-bg-harness{bottom:0;position:absolute;top:0}.fc .fc-daygrid-day-bg .fc-non-business{z-index:1}.fc .fc-daygrid-day-bg .fc-bg-event{z-index:2}.fc .fc-daygrid-day-bg .fc-highlight{z-index:3}.fc .fc-daygrid-event{margin-top:1px;z-index:6}.fc .fc-daygrid-event.fc-event-mirror{z-index:7}.fc .fc-daygrid-day-bottom{font-size:.85em;margin:0 2px}.fc .fc-daygrid-day-bottom:after,.fc .fc-daygrid-day-bottom:before{clear:both;content:\"\";display:table}.fc .fc-daygrid-more-link{border-radius:3px;cursor:pointer;line-height:1;margin-top:1px;max-width:100%;overflow:hidden;padding:2px;position:relative;white-space:nowrap;z-index:4}.fc .fc-daygrid-more-link:hover{background-color:rgba(0,0,0,.1)}.fc .fc-daygrid-week-number{background-color:var(--fc-neutral-bg-color);color:var(--fc-neutral-text-color);min-width:1.5em;padding:2px;position:absolute;text-align:center;top:0;z-index:5}.fc .fc-more-popover .fc-popover-body{min-width:220px;padding:10px}.fc-direction-ltr .fc-daygrid-event.fc-event-start,.fc-direction-rtl .fc-daygrid-event.fc-event-end{margin-left:2px}.fc-direction-ltr .fc-daygrid-event.fc-event-end,.fc-direction-rtl .fc-daygrid-event.fc-event-start{margin-right:2px}.fc-direction-ltr .fc-daygrid-more-link{float:left}.fc-direction-ltr .fc-daygrid-week-number{border-radius:0 0 3px 0;left:0}.fc-direction-rtl .fc-daygrid-more-link{float:right}.fc-direction-rtl .fc-daygrid-week-number{border-radius:0 0 0 3px;right:0}.fc-liquid-hack .fc-daygrid-day-frame{position:static}.fc-daygrid-event{border-radius:3px;font-size:var(--fc-small-font-size);position:relative;white-space:nowrap}.fc-daygrid-block-event .fc-event-time{font-weight:700}.fc-daygrid-block-event .fc-event-time,.fc-daygrid-block-event .fc-event-title{padding:1px}.fc-daygrid-dot-event{align-items:center;display:flex;padding:2px 0}.fc-daygrid-dot-event .fc-event-title{flex-grow:1;flex-shrink:1;font-weight:700;min-width:0;overflow:hidden}.fc-daygrid-dot-event.fc-event-mirror,.fc-daygrid-dot-event:hover{background:rgba(0,0,0,.1)}.fc-daygrid-dot-event.fc-event-selected:before{bottom:-10px;top:-10px}.fc-daygrid-event-dot{border:calc(var(--fc-daygrid-event-dot-width)/2) solid var(--fc-event-border-color);border-radius:calc(var(--fc-daygrid-event-dot-width)/2);box-sizing:content-box;height:0;margin:0 4px;width:0}.fc-direction-ltr .fc-daygrid-event .fc-event-time{margin-right:3px}.fc-direction-rtl .fc-daygrid-event .fc-event-time{margin-left:3px}";
+(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cw)(css_248z);
+
+function splitSegsByRow(segs, rowCnt) {
+    let byRow = [];
+    for (let i = 0; i < rowCnt; i += 1) {
+        byRow[i] = [];
+    }
+    for (let seg of segs) {
+        byRow[seg.row].push(seg);
+    }
+    return byRow;
+}
+function splitSegsByFirstCol(segs, colCnt) {
+    let byCol = [];
+    for (let i = 0; i < colCnt; i += 1) {
+        byCol[i] = [];
+    }
+    for (let seg of segs) {
+        byCol[seg.firstCol].push(seg);
+    }
+    return byCol;
+}
+function splitInteractionByRow(ui, rowCnt) {
+    let byRow = [];
+    if (!ui) {
+        for (let i = 0; i < rowCnt; i += 1) {
+            byRow[i] = null;
+        }
+    }
+    else {
+        for (let i = 0; i < rowCnt; i += 1) {
+            byRow[i] = {
+                affectedInstances: ui.affectedInstances,
+                isEvent: ui.isEvent,
+                segs: [],
+            };
+        }
+        for (let seg of ui.segs) {
+            byRow[seg.row].segs.push(seg);
+        }
+    }
+    return byRow;
+}
+
+const DEFAULT_TABLE_EVENT_TIME_FORMAT = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.x)({
+    hour: 'numeric',
+    minute: '2-digit',
+    omitZeroMinute: true,
+    meridiem: 'narrow',
+});
+function hasListItemDisplay(seg) {
+    let { display } = seg.eventRange.ui;
+    return display === 'list-item' || (display === 'auto' &&
+        !seg.eventRange.def.allDay &&
+        seg.firstCol === seg.lastCol && // can't be multi-day
+        seg.isStart && // "
+        seg.isEnd // "
+    );
+}
+
+class TableBlockEvent extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    render() {
+        let { props } = this;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cj, Object.assign({}, props, { elClasses: ['fc-daygrid-event', 'fc-daygrid-block-event', 'fc-h-event'], defaultTimeFormat: DEFAULT_TABLE_EVENT_TIME_FORMAT, defaultDisplayEventEnd: props.defaultDisplayEventEnd, disableResizing: !props.seg.eventRange.def.allDay })));
+    }
+}
+
+class TableListItemEvent extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    render() {
+        let { props, context } = this;
+        let { options } = context;
+        let { seg } = props;
+        let timeFormat = options.eventTimeFormat || DEFAULT_TABLE_EVENT_TIME_FORMAT;
+        let timeText = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bQ)(seg, timeFormat, context, true, props.defaultDisplayEventEnd);
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cn, Object.assign({}, props, { elTag: "a", elClasses: ['fc-daygrid-event', 'fc-daygrid-dot-event'], elAttrs: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bU)(props.seg, context), defaultGenerator: renderInnerContent, timeText: timeText, isResizing: false, isDateSelecting: false })));
+    }
+}
+function renderInnerContent(renderProps) {
+    return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null,
+        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-daygrid-event-dot", style: { borderColor: renderProps.borderColor || renderProps.backgroundColor } }),
+        renderProps.timeText && ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-event-time" }, renderProps.timeText)),
+        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-event-title" }, renderProps.event.title || (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null, "\u00A0"))));
+}
+
+class TableCellMoreLink extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    constructor() {
+        super(...arguments);
+        this.compileSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(compileSegs);
+    }
+    render() {
+        let { props } = this;
+        let { allSegs, invisibleSegs } = this.compileSegs(props.singlePlacements);
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cr, { elClasses: ['fc-daygrid-more-link'], dateProfile: props.dateProfile, todayRange: props.todayRange, allDayDate: props.allDayDate, moreCnt: props.moreCnt, allSegs: allSegs, hiddenSegs: invisibleSegs, alignmentElRef: props.alignmentElRef, alignGridTop: props.alignGridTop, extraDateSpan: props.extraDateSpan, popoverContent: () => {
+                let isForcedInvisible = (props.eventDrag ? props.eventDrag.affectedInstances : null) ||
+                    (props.eventResize ? props.eventResize.affectedInstances : null) ||
+                    {};
+                return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null, allSegs.map((seg) => {
+                    let instanceId = seg.eventRange.instance.instanceId;
+                    return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-daygrid-event-harness", key: instanceId, style: {
+                            visibility: isForcedInvisible[instanceId] ? 'hidden' : '',
+                        } }, hasListItemDisplay(seg) ? ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TableListItemEvent, Object.assign({ seg: seg, isDragging: false, isSelected: instanceId === props.eventSelection, defaultDisplayEventEnd: false }, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bS)(seg, props.todayRange)))) : ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TableBlockEvent, Object.assign({ seg: seg, isDragging: false, isResizing: false, isDateSelecting: false, isSelected: instanceId === props.eventSelection, defaultDisplayEventEnd: false }, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bS)(seg, props.todayRange))))));
+                })));
+            } }));
+    }
+}
+function compileSegs(singlePlacements) {
+    let allSegs = [];
+    let invisibleSegs = [];
+    for (let placement of singlePlacements) {
+        allSegs.push(placement.seg);
+        if (!placement.isVisible) {
+            invisibleSegs.push(placement.seg);
+        }
+    }
+    return { allSegs, invisibleSegs };
+}
+
+const DEFAULT_WEEK_NUM_FORMAT = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.x)({ week: 'narrow' });
+class TableCell extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.rootElRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.state = {
+            dayNumberId: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a5)(),
+        };
+        this.handleRootEl = (el) => {
+            (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.Y)(this.rootElRef, el);
+            (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.Y)(this.props.elRef, el);
+        };
+    }
+    render() {
+        let { context, props, state, rootElRef } = this;
+        let { options, dateEnv } = context;
+        let { date, dateProfile } = props;
+        // TODO: memoize this?
+        const isMonthStart = props.showDayNumber &&
+            shouldDisplayMonthStart(date, dateProfile.currentRange, dateEnv);
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cl, { elTag: "td", elRef: this.handleRootEl, elClasses: [
+                'fc-daygrid-day',
+                ...(props.extraClassNames || []),
+            ], elAttrs: Object.assign(Object.assign(Object.assign({}, props.extraDataAttrs), (props.showDayNumber ? { 'aria-labelledby': state.dayNumberId } : {})), { role: 'gridcell' }), defaultGenerator: renderTopInner, date: date, dateProfile: dateProfile, todayRange: props.todayRange, showDayNumber: props.showDayNumber, isMonthStart: isMonthStart, extraRenderProps: props.extraRenderProps }, (InnerContent, renderProps) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { ref: props.innerElRef, className: "fc-daygrid-day-frame fc-scrollgrid-sync-inner", style: { minHeight: props.minHeight } },
+            props.showWeekNumber && ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cq, { elTag: "a", elClasses: ['fc-daygrid-week-number'], elAttrs: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b0)(context, date, 'week'), date: date, defaultFormat: DEFAULT_WEEK_NUM_FORMAT })),
+            !renderProps.isDisabled &&
+                (props.showDayNumber || (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cm)(options) || props.forceDayTop) ? ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-daygrid-day-top" },
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerContent, { elTag: "a", elClasses: [
+                        'fc-daygrid-day-number',
+                        isMonthStart && 'fc-daygrid-month-start',
+                    ], elAttrs: Object.assign(Object.assign({}, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b0)(context, date)), { id: state.dayNumberId }) }))) : props.showDayNumber ? (
+            // for creating correct amount of space (see issue #7162)
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-daygrid-day-top", style: { visibility: 'hidden' } },
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("a", { className: "fc-daygrid-day-number" }, "\u00A0"))) : undefined,
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-daygrid-day-events", ref: props.fgContentElRef },
+                props.fgContent,
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-daygrid-day-bottom", style: { marginTop: props.moreMarginTop } },
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TableCellMoreLink, { allDayDate: date, singlePlacements: props.singlePlacements, moreCnt: props.moreCnt, alignmentElRef: rootElRef, alignGridTop: !props.showDayNumber, extraDateSpan: props.extraDateSpan, dateProfile: props.dateProfile, eventSelection: props.eventSelection, eventDrag: props.eventDrag, eventResize: props.eventResize, todayRange: props.todayRange }))),
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-daygrid-day-bg" }, props.bgContent)))));
+    }
+}
+function renderTopInner(props) {
+    return props.dayNumberText || (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null, "\u00A0");
+}
+function shouldDisplayMonthStart(date, currentRange, dateEnv) {
+    const { start: currentStart, end: currentEnd } = currentRange;
+    const currentEndIncl = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bg)(currentEnd, -1);
+    const currentFirstYear = dateEnv.getYear(currentStart);
+    const currentFirstMonth = dateEnv.getMonth(currentStart);
+    const currentLastYear = dateEnv.getYear(currentEndIncl);
+    const currentLastMonth = dateEnv.getMonth(currentEndIncl);
+    // spans more than one month?
+    return !(currentFirstYear === currentLastYear && currentFirstMonth === currentLastMonth) &&
+        Boolean(
+        // first date in current view?
+        date.valueOf() === currentStart.valueOf() ||
+            // a month-start that's within the current range?
+            (dateEnv.getDay(date) === 1 && date.valueOf() < currentEnd.valueOf()));
+}
+
+function generateSegKey(seg) {
+    return seg.eventRange.instance.instanceId + ':' + seg.firstCol;
+}
+function generateSegUid(seg) {
+    return generateSegKey(seg) + ':' + seg.lastCol;
+}
+function computeFgSegPlacement(segs, // assumed already sorted
+dayMaxEvents, dayMaxEventRows, strictOrder, segHeights, maxContentHeight, cells) {
+    let hierarchy = new DayGridSegHierarchy((segEntry) => {
+        // TODO: more DRY with generateSegUid
+        let segUid = segs[segEntry.index].eventRange.instance.instanceId +
+            ':' + segEntry.span.start +
+            ':' + (segEntry.span.end - 1);
+        return segHeights[segUid];
+    });
+    hierarchy.allowReslicing = true;
+    hierarchy.strictOrder = strictOrder;
+    if (dayMaxEvents === true || dayMaxEventRows === true) {
+        hierarchy.maxCoord = maxContentHeight;
+        hierarchy.hiddenConsumes = true;
+    }
+    else if (typeof dayMaxEvents === 'number') {
+        hierarchy.maxStackCnt = dayMaxEvents;
+    }
+    else if (typeof dayMaxEventRows === 'number') {
+        hierarchy.maxStackCnt = dayMaxEventRows;
+        hierarchy.hiddenConsumes = true;
+    }
+    // create segInputs only for segs with known heights
+    let segInputs = [];
+    let unknownHeightSegs = [];
+    for (let i = 0; i < segs.length; i += 1) {
+        let seg = segs[i];
+        let segUid = generateSegUid(seg);
+        let eventHeight = segHeights[segUid];
+        if (eventHeight != null) {
+            segInputs.push({
+                index: i,
+                span: {
+                    start: seg.firstCol,
+                    end: seg.lastCol + 1,
+                },
+            });
+        }
+        else {
+            unknownHeightSegs.push(seg);
+        }
+    }
+    let hiddenEntries = hierarchy.addSegs(segInputs);
+    let segRects = hierarchy.toRects();
+    let { singleColPlacements, multiColPlacements, leftoverMargins } = placeRects(segRects, segs, cells);
+    let moreCnts = [];
+    let moreMarginTops = [];
+    // add segs with unknown heights
+    for (let seg of unknownHeightSegs) {
+        multiColPlacements[seg.firstCol].push({
+            seg,
+            isVisible: false,
+            isAbsolute: true,
+            absoluteTop: 0,
+            marginTop: 0,
+        });
+        for (let col = seg.firstCol; col <= seg.lastCol; col += 1) {
+            singleColPlacements[col].push({
+                seg: resliceSeg(seg, col, col + 1, cells),
+                isVisible: false,
+                isAbsolute: false,
+                absoluteTop: 0,
+                marginTop: 0,
+            });
+        }
+    }
+    // add the hidden entries
+    for (let col = 0; col < cells.length; col += 1) {
+        moreCnts.push(0);
+    }
+    for (let hiddenEntry of hiddenEntries) {
+        let seg = segs[hiddenEntry.index];
+        let hiddenSpan = hiddenEntry.span;
+        multiColPlacements[hiddenSpan.start].push({
+            seg: resliceSeg(seg, hiddenSpan.start, hiddenSpan.end, cells),
+            isVisible: false,
+            isAbsolute: true,
+            absoluteTop: 0,
+            marginTop: 0,
+        });
+        for (let col = hiddenSpan.start; col < hiddenSpan.end; col += 1) {
+            moreCnts[col] += 1;
+            singleColPlacements[col].push({
+                seg: resliceSeg(seg, col, col + 1, cells),
+                isVisible: false,
+                isAbsolute: false,
+                absoluteTop: 0,
+                marginTop: 0,
+            });
+        }
+    }
+    // deal with leftover margins
+    for (let col = 0; col < cells.length; col += 1) {
+        moreMarginTops.push(leftoverMargins[col]);
+    }
+    return { singleColPlacements, multiColPlacements, moreCnts, moreMarginTops };
+}
+// rects ordered by top coord, then left
+function placeRects(allRects, segs, cells) {
+    let rectsByEachCol = groupRectsByEachCol(allRects, cells.length);
+    let singleColPlacements = [];
+    let multiColPlacements = [];
+    let leftoverMargins = [];
+    for (let col = 0; col < cells.length; col += 1) {
+        let rects = rectsByEachCol[col];
+        // compute all static segs in singlePlacements
+        let singlePlacements = [];
+        let currentHeight = 0;
+        let currentMarginTop = 0;
+        for (let rect of rects) {
+            let seg = segs[rect.index];
+            singlePlacements.push({
+                seg: resliceSeg(seg, col, col + 1, cells),
+                isVisible: true,
+                isAbsolute: false,
+                absoluteTop: rect.levelCoord,
+                marginTop: rect.levelCoord - currentHeight,
+            });
+            currentHeight = rect.levelCoord + rect.thickness;
+        }
+        // compute mixed static/absolute segs in multiPlacements
+        let multiPlacements = [];
+        currentHeight = 0;
+        currentMarginTop = 0;
+        for (let rect of rects) {
+            let seg = segs[rect.index];
+            let isAbsolute = rect.span.end - rect.span.start > 1; // multi-column?
+            let isFirstCol = rect.span.start === col;
+            currentMarginTop += rect.levelCoord - currentHeight; // amount of space since bottom of previous seg
+            currentHeight = rect.levelCoord + rect.thickness; // height will now be bottom of current seg
+            if (isAbsolute) {
+                currentMarginTop += rect.thickness;
+                if (isFirstCol) {
+                    multiPlacements.push({
+                        seg: resliceSeg(seg, rect.span.start, rect.span.end, cells),
+                        isVisible: true,
+                        isAbsolute: true,
+                        absoluteTop: rect.levelCoord,
+                        marginTop: 0,
+                    });
+                }
+            }
+            else if (isFirstCol) {
+                multiPlacements.push({
+                    seg: resliceSeg(seg, rect.span.start, rect.span.end, cells),
+                    isVisible: true,
+                    isAbsolute: false,
+                    absoluteTop: rect.levelCoord,
+                    marginTop: currentMarginTop, // claim the margin
+                });
+                currentMarginTop = 0;
+            }
+        }
+        singleColPlacements.push(singlePlacements);
+        multiColPlacements.push(multiPlacements);
+        leftoverMargins.push(currentMarginTop);
+    }
+    return { singleColPlacements, multiColPlacements, leftoverMargins };
+}
+function groupRectsByEachCol(rects, colCnt) {
+    let rectsByEachCol = [];
+    for (let col = 0; col < colCnt; col += 1) {
+        rectsByEachCol.push([]);
+    }
+    for (let rect of rects) {
+        for (let col = rect.span.start; col < rect.span.end; col += 1) {
+            rectsByEachCol[col].push(rect);
+        }
+    }
+    return rectsByEachCol;
+}
+function resliceSeg(seg, spanStart, spanEnd, cells) {
+    if (seg.firstCol === spanStart && seg.lastCol === spanEnd - 1) {
+        return seg;
+    }
+    let eventRange = seg.eventRange;
+    let origRange = eventRange.range;
+    let slicedRange = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.o)(origRange, {
+        start: cells[spanStart].date,
+        end: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.t)(cells[spanEnd - 1].date, 1),
+    });
+    return Object.assign(Object.assign({}, seg), { firstCol: spanStart, lastCol: spanEnd - 1, eventRange: {
+            def: eventRange.def,
+            ui: Object.assign(Object.assign({}, eventRange.ui), { durationEditable: false }),
+            instance: eventRange.instance,
+            range: slicedRange,
+        }, isStart: seg.isStart && slicedRange.start.valueOf() === origRange.start.valueOf(), isEnd: seg.isEnd && slicedRange.end.valueOf() === origRange.end.valueOf() });
+}
+class DayGridSegHierarchy extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bA {
+    constructor() {
+        super(...arguments);
+        // config
+        this.hiddenConsumes = false;
+        // allows us to keep hidden entries in the hierarchy so they take up space
+        this.forceHidden = {};
+    }
+    addSegs(segInputs) {
+        const hiddenSegs = super.addSegs(segInputs);
+        const { entriesByLevel } = this;
+        const excludeHidden = (entry) => !this.forceHidden[(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bB)(entry)];
+        // remove the forced-hidden segs
+        for (let level = 0; level < entriesByLevel.length; level += 1) {
+            entriesByLevel[level] = entriesByLevel[level].filter(excludeHidden);
+        }
+        return hiddenSegs;
+    }
+    handleInvalidInsertion(insertion, entry, hiddenEntries) {
+        const { entriesByLevel, forceHidden } = this;
+        const { touchingEntry, touchingLevel, touchingLateral } = insertion;
+        if (this.hiddenConsumes && touchingEntry) {
+            const touchingEntryId = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bB)(touchingEntry);
+            // if not already hidden
+            if (!forceHidden[touchingEntryId]) {
+                if (this.allowReslicing) {
+                    const placeholderEntry = Object.assign(Object.assign({}, touchingEntry), { span: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bF)(touchingEntry.span, entry.span) });
+                    const placeholderEntryId = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bB)(placeholderEntry);
+                    forceHidden[placeholderEntryId] = true;
+                    entriesByLevel[touchingLevel][touchingLateral] = placeholderEntry; // replace touchingEntry with our placeholder
+                    this.splitEntry(touchingEntry, entry, hiddenEntries); // split up the touchingEntry, reinsert it
+                }
+                else {
+                    forceHidden[touchingEntryId] = true;
+                    hiddenEntries.push(touchingEntry);
+                }
+            }
+        }
+        return super.handleInvalidInsertion(insertion, entry, hiddenEntries);
+    }
+}
+
+class TableRow extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.cellElRefs = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cf(); // the <td>
+        this.frameElRefs = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cf(); // the fc-daygrid-day-frame
+        this.fgElRefs = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cf(); // the fc-daygrid-day-events
+        this.segHarnessRefs = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cf(); // indexed by "instanceId:firstCol"
+        this.rootElRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.state = {
+            framePositions: null,
+            maxContentHeight: null,
+            segHeights: {},
+        };
+        this.handleResize = (isForced) => {
+            if (isForced) {
+                this.updateSizing(true); // isExternal=true
+            }
+        };
+    }
+    render() {
+        let { props, state, context } = this;
+        let { options } = context;
+        let colCnt = props.cells.length;
+        let businessHoursByCol = splitSegsByFirstCol(props.businessHourSegs, colCnt);
+        let bgEventSegsByCol = splitSegsByFirstCol(props.bgEventSegs, colCnt);
+        let highlightSegsByCol = splitSegsByFirstCol(this.getHighlightSegs(), colCnt);
+        let mirrorSegsByCol = splitSegsByFirstCol(this.getMirrorSegs(), colCnt);
+        let { singleColPlacements, multiColPlacements, moreCnts, moreMarginTops } = computeFgSegPlacement((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bR)(props.fgEventSegs, options.eventOrder), props.dayMaxEvents, props.dayMaxEventRows, options.eventOrderStrict, state.segHeights, state.maxContentHeight, props.cells);
+        let isForcedInvisible = // TODO: messy way to compute this
+         (props.eventDrag && props.eventDrag.affectedInstances) ||
+            (props.eventResize && props.eventResize.affectedInstances) ||
+            {};
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tr", { ref: this.rootElRef, role: "row" },
+            props.renderIntro && props.renderIntro(),
+            props.cells.map((cell, col) => {
+                let normalFgNodes = this.renderFgSegs(col, props.forPrint ? singleColPlacements[col] : multiColPlacements[col], props.todayRange, isForcedInvisible);
+                let mirrorFgNodes = this.renderFgSegs(col, buildMirrorPlacements(mirrorSegsByCol[col], multiColPlacements), props.todayRange, {}, Boolean(props.eventDrag), Boolean(props.eventResize), false);
+                return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TableCell, { key: cell.key, elRef: this.cellElRefs.createRef(cell.key), innerElRef: this.frameElRefs.createRef(cell.key) /* FF <td> problem, but okay to use for left/right. TODO: rename prop */, dateProfile: props.dateProfile, date: cell.date, showDayNumber: props.showDayNumbers, showWeekNumber: props.showWeekNumbers && col === 0, forceDayTop: props.showWeekNumbers /* even displaying weeknum for row, not necessarily day */, todayRange: props.todayRange, eventSelection: props.eventSelection, eventDrag: props.eventDrag, eventResize: props.eventResize, extraRenderProps: cell.extraRenderProps, extraDataAttrs: cell.extraDataAttrs, extraClassNames: cell.extraClassNames, extraDateSpan: cell.extraDateSpan, moreCnt: moreCnts[col], moreMarginTop: moreMarginTops[col], singlePlacements: singleColPlacements[col], fgContentElRef: this.fgElRefs.createRef(cell.key), fgContent: ( // Fragment scopes the keys
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null,
+                        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null, normalFgNodes),
+                        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null, mirrorFgNodes))), bgContent: ( // Fragment scopes the keys
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null,
+                        this.renderFillSegs(highlightSegsByCol[col], 'highlight'),
+                        this.renderFillSegs(businessHoursByCol[col], 'non-business'),
+                        this.renderFillSegs(bgEventSegsByCol[col], 'bg-event'))), minHeight: props.cellMinHeight }));
+            })));
+    }
+    componentDidMount() {
+        this.updateSizing(true);
+        this.context.addResizeHandler(this.handleResize);
+    }
+    componentDidUpdate(prevProps, prevState) {
+        let currentProps = this.props;
+        this.updateSizing(!(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.E)(prevProps, currentProps));
+    }
+    componentWillUnmount() {
+        this.context.removeResizeHandler(this.handleResize);
+    }
+    getHighlightSegs() {
+        let { props } = this;
+        if (props.eventDrag && props.eventDrag.segs.length) { // messy check
+            return props.eventDrag.segs;
+        }
+        if (props.eventResize && props.eventResize.segs.length) { // messy check
+            return props.eventResize.segs;
+        }
+        return props.dateSelectionSegs;
+    }
+    getMirrorSegs() {
+        let { props } = this;
+        if (props.eventResize && props.eventResize.segs.length) { // messy check
+            return props.eventResize.segs;
+        }
+        return [];
+    }
+    renderFgSegs(col, segPlacements, todayRange, isForcedInvisible, isDragging, isResizing, isDateSelecting) {
+        let { context } = this;
+        let { eventSelection } = this.props;
+        let { framePositions } = this.state;
+        let defaultDisplayEventEnd = this.props.cells.length === 1; // colCnt === 1
+        let isMirror = isDragging || isResizing || isDateSelecting;
+        let nodes = [];
+        if (framePositions) {
+            for (let placement of segPlacements) {
+                let { seg } = placement;
+                let { instanceId } = seg.eventRange.instance;
+                let isVisible = placement.isVisible && !isForcedInvisible[instanceId];
+                let isAbsolute = placement.isAbsolute;
+                let left = '';
+                let right = '';
+                if (isAbsolute) {
+                    if (context.isRtl) {
+                        right = 0;
+                        left = framePositions.lefts[seg.lastCol] - framePositions.lefts[seg.firstCol];
+                    }
+                    else {
+                        left = 0;
+                        right = framePositions.rights[seg.firstCol] - framePositions.rights[seg.lastCol];
+                    }
+                }
+                /*
+                known bug: events that are force to be list-item but span multiple days still take up space in later columns
+                todo: in print view, for multi-day events, don't display title within non-start/end segs
+                */
+                nodes.push((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: 'fc-daygrid-event-harness' + (isAbsolute ? ' fc-daygrid-event-harness-abs' : ''), key: generateSegKey(seg), ref: isMirror ? null : this.segHarnessRefs.createRef(generateSegUid(seg)), style: {
+                        visibility: isVisible ? '' : 'hidden',
+                        marginTop: isAbsolute ? '' : placement.marginTop,
+                        top: isAbsolute ? placement.absoluteTop : '',
+                        left,
+                        right,
+                    } }, hasListItemDisplay(seg) ? ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TableListItemEvent, Object.assign({ seg: seg, isDragging: isDragging, isSelected: instanceId === eventSelection, defaultDisplayEventEnd: defaultDisplayEventEnd }, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bS)(seg, todayRange)))) : ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TableBlockEvent, Object.assign({ seg: seg, isDragging: isDragging, isResizing: isResizing, isDateSelecting: isDateSelecting, isSelected: instanceId === eventSelection, defaultDisplayEventEnd: defaultDisplayEventEnd }, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bS)(seg, todayRange))))));
+            }
+        }
+        return nodes;
+    }
+    renderFillSegs(segs, fillType) {
+        let { isRtl } = this.context;
+        let { todayRange } = this.props;
+        let { framePositions } = this.state;
+        let nodes = [];
+        if (framePositions) {
+            for (let seg of segs) {
+                let leftRightCss = isRtl ? {
+                    right: 0,
+                    left: framePositions.lefts[seg.lastCol] - framePositions.lefts[seg.firstCol],
+                } : {
+                    left: 0,
+                    right: framePositions.rights[seg.firstCol] - framePositions.rights[seg.lastCol],
+                };
+                nodes.push((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { key: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bT)(seg.eventRange), className: "fc-daygrid-bg-harness", style: leftRightCss }, fillType === 'bg-event' ?
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cp, Object.assign({ seg: seg }, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bS)(seg, todayRange))) :
+                    (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.co)(fillType)));
+            }
+        }
+        return (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, {}, ...nodes);
+    }
+    updateSizing(isExternalSizingChange) {
+        let { props, state, frameElRefs } = this;
+        if (!props.forPrint &&
+            props.clientWidth !== null // positioning ready?
+        ) {
+            if (isExternalSizingChange) {
+                let frameEls = props.cells.map((cell) => frameElRefs.currentMap[cell.key]);
+                if (frameEls.length) {
+                    let originEl = this.rootElRef.current;
+                    let newPositionCache = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ba(originEl, frameEls, true, // isHorizontal
+                    false);
+                    if (!state.framePositions || !state.framePositions.similarTo(newPositionCache)) {
+                        this.setState({
+                            framePositions: new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ba(originEl, frameEls, true, // isHorizontal
+                            false),
+                        });
+                    }
+                }
+            }
+            const oldSegHeights = this.state.segHeights;
+            const newSegHeights = this.querySegHeights();
+            const limitByContentHeight = props.dayMaxEvents === true || props.dayMaxEventRows === true;
+            this.safeSetState({
+                // HACK to prevent oscillations of events being shown/hidden from max-event-rows
+                // Essentially, once you compute an element's height, never null-out.
+                // TODO: always display all events, as visibility:hidden?
+                segHeights: Object.assign(Object.assign({}, oldSegHeights), newSegHeights),
+                maxContentHeight: limitByContentHeight ? this.computeMaxContentHeight() : null,
+            });
+        }
+    }
+    querySegHeights() {
+        let segElMap = this.segHarnessRefs.currentMap;
+        let segHeights = {};
+        // get the max height amongst instance segs
+        for (let segUid in segElMap) {
+            let height = Math.round(segElMap[segUid].getBoundingClientRect().height);
+            segHeights[segUid] = Math.max(segHeights[segUid] || 0, height);
+        }
+        return segHeights;
+    }
+    computeMaxContentHeight() {
+        let firstKey = this.props.cells[0].key;
+        let cellEl = this.cellElRefs.currentMap[firstKey];
+        let fcContainerEl = this.fgElRefs.currentMap[firstKey];
+        return cellEl.getBoundingClientRect().bottom - fcContainerEl.getBoundingClientRect().top;
+    }
+    getCellEls() {
+        let elMap = this.cellElRefs.currentMap;
+        return this.props.cells.map((cell) => elMap[cell.key]);
+    }
+}
+TableRow.addStateEquality({
+    segHeights: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.E,
+});
+function buildMirrorPlacements(mirrorSegs, colPlacements) {
+    if (!mirrorSegs.length) {
+        return [];
+    }
+    let topsByInstanceId = buildAbsoluteTopHash(colPlacements); // TODO: cache this at first render?
+    return mirrorSegs.map((seg) => ({
+        seg,
+        isVisible: true,
+        isAbsolute: true,
+        absoluteTop: topsByInstanceId[seg.eventRange.instance.instanceId],
+        marginTop: 0,
+    }));
+}
+function buildAbsoluteTopHash(colPlacements) {
+    let topsByInstanceId = {};
+    for (let placements of colPlacements) {
+        for (let placement of placements) {
+            topsByInstanceId[placement.seg.eventRange.instance.instanceId] = placement.absoluteTop;
+        }
+    }
+    return topsByInstanceId;
+}
+
+class TableRows extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.splitBusinessHourSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitSegsByRow);
+        this.splitBgEventSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitSegsByRow);
+        this.splitFgEventSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitSegsByRow);
+        this.splitDateSelectionSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitSegsByRow);
+        this.splitEventDrag = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitInteractionByRow);
+        this.splitEventResize = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitInteractionByRow);
+        this.rowRefs = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cf();
+    }
+    render() {
+        let { props, context } = this;
+        let rowCnt = props.cells.length;
+        let businessHourSegsByRow = this.splitBusinessHourSegs(props.businessHourSegs, rowCnt);
+        let bgEventSegsByRow = this.splitBgEventSegs(props.bgEventSegs, rowCnt);
+        let fgEventSegsByRow = this.splitFgEventSegs(props.fgEventSegs, rowCnt);
+        let dateSelectionSegsByRow = this.splitDateSelectionSegs(props.dateSelectionSegs, rowCnt);
+        let eventDragByRow = this.splitEventDrag(props.eventDrag, rowCnt);
+        let eventResizeByRow = this.splitEventResize(props.eventResize, rowCnt);
+        // for DayGrid view with many rows, force a min-height on cells so doesn't appear squished
+        // choose 7 because a month view will have max 6 rows
+        let cellMinHeight = (rowCnt >= 7 && props.clientWidth) ?
+            props.clientWidth / context.options.aspectRatio / 6 :
+            null;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ch, { unit: "day" }, (nowDate, todayRange) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null, props.cells.map((cells, row) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TableRow, { ref: this.rowRefs.createRef(row), key: cells.length
+                ? cells[0].date.toISOString() /* best? or put key on cell? or use diff formatter? */
+                : row // in case there are no cells (like when resource view is loading)
+            , showDayNumbers: rowCnt > 1, showWeekNumbers: props.showWeekNumbers, todayRange: todayRange, dateProfile: props.dateProfile, cells: cells, renderIntro: props.renderRowIntro, businessHourSegs: businessHourSegsByRow[row], eventSelection: props.eventSelection, bgEventSegs: bgEventSegsByRow[row].filter(isSegAllDay) /* hack */, fgEventSegs: fgEventSegsByRow[row], dateSelectionSegs: dateSelectionSegsByRow[row], eventDrag: eventDragByRow[row], eventResize: eventResizeByRow[row], dayMaxEvents: props.dayMaxEvents, dayMaxEventRows: props.dayMaxEventRows, clientWidth: props.clientWidth, clientHeight: props.clientHeight, cellMinHeight: cellMinHeight, forPrint: props.forPrint })))))));
+    }
+    componentDidMount() {
+        this.registerInteractiveComponent();
+    }
+    componentDidUpdate() {
+        // for if started with zero cells
+        this.registerInteractiveComponent();
+    }
+    registerInteractiveComponent() {
+        if (!this.rootEl) {
+            // HACK: need a daygrid wrapper parent to do positioning
+            // NOTE: a daygrid resource view w/o resources can have zero cells
+            const firstCellEl = this.rowRefs.currentMap[0].getCellEls()[0];
+            const rootEl = firstCellEl ? firstCellEl.closest('.fc-daygrid-body') : null;
+            if (rootEl) {
+                this.rootEl = rootEl;
+                this.context.registerInteractiveComponent(this, {
+                    el: rootEl,
+                    isHitComboAllowed: this.props.isHitComboAllowed,
+                });
+            }
+        }
+    }
+    componentWillUnmount() {
+        if (this.rootEl) {
+            this.context.unregisterInteractiveComponent(this);
+            this.rootEl = null;
+        }
+    }
+    // Hit System
+    // ----------------------------------------------------------------------------------------------------
+    prepareHits() {
+        this.rowPositions = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ba(this.rootEl, this.rowRefs.collect().map((rowObj) => rowObj.getCellEls()[0]), // first cell el in each row. TODO: not optimal
+        false, true);
+        this.colPositions = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ba(this.rootEl, this.rowRefs.currentMap[0].getCellEls(), // cell els in first row
+        true, // horizontal
+        false);
+    }
+    queryHit(positionLeft, positionTop) {
+        let { colPositions, rowPositions } = this;
+        let col = colPositions.leftToIndex(positionLeft);
+        let row = rowPositions.topToIndex(positionTop);
+        if (row != null && col != null) {
+            let cell = this.props.cells[row][col];
+            return {
+                dateProfile: this.props.dateProfile,
+                dateSpan: Object.assign({ range: this.getCellRange(row, col), allDay: true }, cell.extraDateSpan),
+                dayEl: this.getCellEl(row, col),
+                rect: {
+                    left: colPositions.lefts[col],
+                    right: colPositions.rights[col],
+                    top: rowPositions.tops[row],
+                    bottom: rowPositions.bottoms[row],
+                },
+                layer: 0,
+            };
+        }
+        return null;
+    }
+    getCellEl(row, col) {
+        return this.rowRefs.currentMap[row].getCellEls()[col]; // TODO: not optimal
+    }
+    getCellRange(row, col) {
+        let start = this.props.cells[row][col].date;
+        let end = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.t)(start, 1);
+        return { start, end };
+    }
+}
+function isSegAllDay(seg) {
+    return seg.eventRange.def.allDay;
+}
+
+class Table extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.elRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.needsScrollReset = false;
+    }
+    render() {
+        let { props } = this;
+        let { dayMaxEventRows, dayMaxEvents, expandRows } = props;
+        let limitViaBalanced = dayMaxEvents === true || dayMaxEventRows === true;
+        // if rows can't expand to fill fixed height, can't do balanced-height event limit
+        // TODO: best place to normalize these options?
+        if (limitViaBalanced && !expandRows) {
+            limitViaBalanced = false;
+            dayMaxEventRows = null;
+            dayMaxEvents = null;
+        }
+        let classNames = [
+            'fc-daygrid-body',
+            limitViaBalanced ? 'fc-daygrid-body-balanced' : 'fc-daygrid-body-unbalanced',
+            expandRows ? '' : 'fc-daygrid-body-natural', // will height of one row depend on the others?
+        ];
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { ref: this.elRef, className: classNames.join(' '), style: {
+                // these props are important to give this wrapper correct dimensions for interactions
+                // TODO: if we set it here, can we avoid giving to inner tables?
+                width: props.clientWidth,
+                minWidth: props.tableMinWidth,
+            } },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("table", { role: "presentation", className: "fc-scrollgrid-sync-table", style: {
+                    width: props.clientWidth,
+                    minWidth: props.tableMinWidth,
+                    height: expandRows ? props.clientHeight : '',
+                } },
+                props.colGroupNode,
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tbody", { role: "presentation" },
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TableRows, { dateProfile: props.dateProfile, cells: props.cells, renderRowIntro: props.renderRowIntro, showWeekNumbers: props.showWeekNumbers, clientWidth: props.clientWidth, clientHeight: props.clientHeight, businessHourSegs: props.businessHourSegs, bgEventSegs: props.bgEventSegs, fgEventSegs: props.fgEventSegs, dateSelectionSegs: props.dateSelectionSegs, eventSelection: props.eventSelection, eventDrag: props.eventDrag, eventResize: props.eventResize, dayMaxEvents: dayMaxEvents, dayMaxEventRows: dayMaxEventRows, forPrint: props.forPrint, isHitComboAllowed: props.isHitComboAllowed })))));
+    }
+    componentDidMount() {
+        this.requestScrollReset();
+    }
+    componentDidUpdate(prevProps) {
+        if (prevProps.dateProfile !== this.props.dateProfile) {
+            this.requestScrollReset();
+        }
+        else {
+            this.flushScrollReset();
+        }
+    }
+    requestScrollReset() {
+        this.needsScrollReset = true;
+        this.flushScrollReset();
+    }
+    flushScrollReset() {
+        if (this.needsScrollReset &&
+            this.props.clientWidth // sizes computed?
+        ) {
+            const subjectEl = getScrollSubjectEl(this.elRef.current, this.props.dateProfile);
+            if (subjectEl) {
+                const originEl = subjectEl.closest('.fc-daygrid-body');
+                const scrollEl = originEl.closest('.fc-scroller');
+                const scrollTop = subjectEl.getBoundingClientRect().top -
+                    originEl.getBoundingClientRect().top;
+                scrollEl.scrollTop = scrollTop ? (scrollTop + 1) : 0; // overcome border
+            }
+            this.needsScrollReset = false;
+        }
+    }
+}
+function getScrollSubjectEl(containerEl, dateProfile) {
+    let el;
+    if (dateProfile.currentRangeUnit.match(/year|month/)) {
+        el = containerEl.querySelector(`[data-date="${(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bx)(dateProfile.currentDate)}-01"]`);
+        // even if view is month-based, first-of-month might be hidden...
+    }
+    if (!el) {
+        el = containerEl.querySelector(`[data-date="${(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bv)(dateProfile.currentDate)}"]`);
+        // could still be hidden if an interior-view hidden day
+    }
+    return el;
+}
+
+class DayTableSlicer extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bW {
+    constructor() {
+        super(...arguments);
+        this.forceDayIfListItem = true;
+    }
+    sliceRange(dateRange, dayTableModel) {
+        return dayTableModel.sliceRange(dateRange);
+    }
+}
+
+class DayTable extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.slicer = new DayTableSlicer();
+        this.tableRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+    }
+    render() {
+        let { props, context } = this;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(Table, Object.assign({ ref: this.tableRef }, this.slicer.sliceProps(props, props.dateProfile, props.nextDayThreshold, context, props.dayTableModel), { dateProfile: props.dateProfile, cells: props.dayTableModel.cells, colGroupNode: props.colGroupNode, tableMinWidth: props.tableMinWidth, renderRowIntro: props.renderRowIntro, dayMaxEvents: props.dayMaxEvents, dayMaxEventRows: props.dayMaxEventRows, showWeekNumbers: props.showWeekNumbers, expandRows: props.expandRows, headerAlignElRef: props.headerAlignElRef, clientWidth: props.clientWidth, clientHeight: props.clientHeight, forPrint: props.forPrint })));
+    }
+}
+
+class TableDateProfileGenerator extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.U {
+    // Computes the date range that will be rendered
+    buildRenderRange(currentRange, currentRangeUnit, isRangeAllDay) {
+        let renderRange = super.buildRenderRange(currentRange, currentRangeUnit, isRangeAllDay);
+        let { props } = this;
+        return buildDayTableRenderRange({
+            currentRange: renderRange,
+            snapToWeek: /^(year|month)$/.test(currentRangeUnit),
+            fixedWeekCount: props.fixedWeekCount,
+            dateEnv: props.dateEnv,
+        });
+    }
+}
+function buildDayTableRenderRange(props) {
+    let { dateEnv, currentRange } = props;
+    let { start, end } = currentRange;
+    let endOfWeek;
+    // year and month views should be aligned with weeks. this is already done for week
+    if (props.snapToWeek) {
+        start = dateEnv.startOfWeek(start);
+        // make end-of-week if not already
+        endOfWeek = dateEnv.startOfWeek(end);
+        if (endOfWeek.valueOf() !== end.valueOf()) {
+            end = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bh)(endOfWeek, 1);
+        }
+    }
+    // ensure 6 weeks
+    if (props.fixedWeekCount) {
+        // TODO: instead of these date-math gymnastics (for multimonth view),
+        // compute dateprofiles of all months, then use start of first and end of last.
+        let lastMonthRenderStart = dateEnv.startOfWeek(dateEnv.startOfMonth((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.t)(currentRange.end, -1)));
+        let rowCnt = Math.ceil(// could be partial weeks due to hiddenDays
+        (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bi)(lastMonthRenderStart, end));
+        end = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bh)(end, 6 - rowCnt);
+    }
+    return { start, end };
+}
+
+/* An abstract class for the daygrid views, as well as month view. Renders one or more rows of day cells.
+----------------------------------------------------------------------------------------------------------------------*/
+// It is a manager for a Table subcomponent, which does most of the heavy lifting.
+// It is responsible for managing width/height.
+class TableView extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.headerElRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+    }
+    renderSimpleLayout(headerRowContent, bodyContent) {
+        let { props, context } = this;
+        let sections = [];
+        let stickyHeaderDates = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cc)(context.options);
+        if (headerRowContent) {
+            sections.push({
+                type: 'header',
+                key: 'header',
+                isSticky: stickyHeaderDates,
+                chunk: {
+                    elRef: this.headerElRef,
+                    tableClassName: 'fc-col-header',
+                    rowContent: headerRowContent,
+                },
+            });
+        }
+        sections.push({
+            type: 'body',
+            key: 'body',
+            liquid: true,
+            chunk: { content: bodyContent },
+        });
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ct, { elClasses: ['fc-daygrid'], viewSpec: context.viewSpec },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b$, { liquid: !props.isHeightAuto && !props.forPrint, collapsibleWidth: props.forPrint, cols: [] /* TODO: make optional? */, sections: sections })));
+    }
+    renderHScrollLayout(headerRowContent, bodyContent, colCnt, dayMinWidth) {
+        let ScrollGrid = this.context.pluginHooks.scrollGridImpl;
+        if (!ScrollGrid) {
+            throw new Error('No ScrollGrid implementation');
+        }
+        let { props, context } = this;
+        let stickyHeaderDates = !props.forPrint && (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cc)(context.options);
+        let stickyFooterScrollbar = !props.forPrint && (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cb)(context.options);
+        let sections = [];
+        if (headerRowContent) {
+            sections.push({
+                type: 'header',
+                key: 'header',
+                isSticky: stickyHeaderDates,
+                chunks: [{
+                        key: 'main',
+                        elRef: this.headerElRef,
+                        tableClassName: 'fc-col-header',
+                        rowContent: headerRowContent,
+                    }],
+            });
+        }
+        sections.push({
+            type: 'body',
+            key: 'body',
+            liquid: true,
+            chunks: [{
+                    key: 'main',
+                    content: bodyContent,
+                }],
+        });
+        if (stickyFooterScrollbar) {
+            sections.push({
+                type: 'footer',
+                key: 'footer',
+                isSticky: true,
+                chunks: [{
+                        key: 'main',
+                        content: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ca,
+                    }],
+            });
+        }
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ct, { elClasses: ['fc-daygrid'], viewSpec: context.viewSpec },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(ScrollGrid, { liquid: !props.isHeightAuto && !props.forPrint, forPrint: props.forPrint, collapsibleWidth: props.forPrint, colGroups: [{ cols: [{ span: colCnt, minWidth: dayMinWidth }] }], sections: sections })));
+    }
+}
+
+class DayTableView extends TableView {
+    constructor() {
+        super(...arguments);
+        this.buildDayTableModel = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildDayTableModel);
+        this.headerRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.tableRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        // can't override any lifecycle methods from parent
+    }
+    render() {
+        let { options, dateProfileGenerator } = this.context;
+        let { props } = this;
+        let dayTableModel = this.buildDayTableModel(props.dateProfile, dateProfileGenerator);
+        let headerContent = options.dayHeaders && ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bK, { ref: this.headerRef, dateProfile: props.dateProfile, dates: dayTableModel.headerDates, datesRepDistinctDays: dayTableModel.rowCnt === 1 }));
+        let bodyContent = (contentArg) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(DayTable, { ref: this.tableRef, dateProfile: props.dateProfile, dayTableModel: dayTableModel, businessHours: props.businessHours, dateSelection: props.dateSelection, eventStore: props.eventStore, eventUiBases: props.eventUiBases, eventSelection: props.eventSelection, eventDrag: props.eventDrag, eventResize: props.eventResize, nextDayThreshold: options.nextDayThreshold, colGroupNode: contentArg.tableColGroupNode, tableMinWidth: contentArg.tableMinWidth, dayMaxEvents: options.dayMaxEvents, dayMaxEventRows: options.dayMaxEventRows, showWeekNumbers: options.weekNumbers, expandRows: !props.isHeightAuto, headerAlignElRef: this.headerElRef, clientWidth: contentArg.clientWidth, clientHeight: contentArg.clientHeight, forPrint: props.forPrint }));
+        return options.dayMinWidth
+            ? this.renderHScrollLayout(headerContent, bodyContent, dayTableModel.colCnt, options.dayMinWidth)
+            : this.renderSimpleLayout(headerContent, bodyContent);
+    }
+}
+function buildDayTableModel(dateProfile, dateProfileGenerator) {
+    let daySeries = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bO(dateProfile.renderRange, dateProfileGenerator);
+    return new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bV(daySeries, /year|month|week/.test(dateProfile.currentRangeUnit));
+}
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/@fullcalendar/interaction/index.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/@fullcalendar/interaction/index.js ***!
+  \*********************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Draggable: function() { return /* binding */ ExternalDraggable; },
+/* harmony export */   ThirdPartyDraggable: function() { return /* binding */ ThirdPartyDraggable; },
+/* harmony export */   "default": function() { return /* binding */ index; }
+/* harmony export */ });
+/* harmony import */ var _fullcalendar_core_index_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @fullcalendar/core/index.js */ "./node_modules/@fullcalendar/core/index.js");
+/* harmony import */ var _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @fullcalendar/core/internal.js */ "./node_modules/@fullcalendar/core/internal-common.js");
+
+
+
+_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bI.touchMouseIgnoreWait = 500;
+let ignoreMouseDepth = 0;
+let listenerCnt = 0;
+let isWindowTouchMoveCancelled = false;
+/*
+Uses a "pointer" abstraction, which monitors UI events for both mouse and touch.
+Tracks when the pointer "drags" on a certain element, meaning down+move+up.
+
+Also, tracks if there was touch-scrolling.
+Also, can prevent touch-scrolling from happening.
+Also, can fire pointermove events when scrolling happens underneath, even when no real pointer movement.
+
+emits:
+- pointerdown
+- pointermove
+- pointerup
+*/
+class PointerDragging {
+    constructor(containerEl) {
+        this.subjectEl = null;
+        // options that can be directly assigned by caller
+        this.selector = ''; // will cause subjectEl in all emitted events to be this element
+        this.handleSelector = '';
+        this.shouldIgnoreMove = false;
+        this.shouldWatchScroll = true; // for simulating pointermove on scroll
+        // internal states
+        this.isDragging = false;
+        this.isTouchDragging = false;
+        this.wasTouchScroll = false;
+        // Mouse
+        // ----------------------------------------------------------------------------------------------------
+        this.handleMouseDown = (ev) => {
+            if (!this.shouldIgnoreMouse() &&
+                isPrimaryMouseButton(ev) &&
+                this.tryStart(ev)) {
+                let pev = this.createEventFromMouse(ev, true);
+                this.emitter.trigger('pointerdown', pev);
+                this.initScrollWatch(pev);
+                if (!this.shouldIgnoreMove) {
+                    document.addEventListener('mousemove', this.handleMouseMove);
+                }
+                document.addEventListener('mouseup', this.handleMouseUp);
+            }
+        };
+        this.handleMouseMove = (ev) => {
+            let pev = this.createEventFromMouse(ev);
+            this.recordCoords(pev);
+            this.emitter.trigger('pointermove', pev);
+        };
+        this.handleMouseUp = (ev) => {
+            document.removeEventListener('mousemove', this.handleMouseMove);
+            document.removeEventListener('mouseup', this.handleMouseUp);
+            this.emitter.trigger('pointerup', this.createEventFromMouse(ev));
+            this.cleanup(); // call last so that pointerup has access to props
+        };
+        // Touch
+        // ----------------------------------------------------------------------------------------------------
+        this.handleTouchStart = (ev) => {
+            if (this.tryStart(ev)) {
+                this.isTouchDragging = true;
+                let pev = this.createEventFromTouch(ev, true);
+                this.emitter.trigger('pointerdown', pev);
+                this.initScrollWatch(pev);
+                // unlike mouse, need to attach to target, not document
+                // https://stackoverflow.com/a/45760014
+                let targetEl = ev.target;
+                if (!this.shouldIgnoreMove) {
+                    targetEl.addEventListener('touchmove', this.handleTouchMove);
+                }
+                targetEl.addEventListener('touchend', this.handleTouchEnd);
+                targetEl.addEventListener('touchcancel', this.handleTouchEnd); // treat it as a touch end
+                // attach a handler to get called when ANY scroll action happens on the page.
+                // this was impossible to do with normal on/off because 'scroll' doesn't bubble.
+                // http://stackoverflow.com/a/32954565/96342
+                window.addEventListener('scroll', this.handleTouchScroll, true);
+            }
+        };
+        this.handleTouchMove = (ev) => {
+            let pev = this.createEventFromTouch(ev);
+            this.recordCoords(pev);
+            this.emitter.trigger('pointermove', pev);
+        };
+        this.handleTouchEnd = (ev) => {
+            if (this.isDragging) { // done to guard against touchend followed by touchcancel
+                let targetEl = ev.target;
+                targetEl.removeEventListener('touchmove', this.handleTouchMove);
+                targetEl.removeEventListener('touchend', this.handleTouchEnd);
+                targetEl.removeEventListener('touchcancel', this.handleTouchEnd);
+                window.removeEventListener('scroll', this.handleTouchScroll, true); // useCaptured=true
+                this.emitter.trigger('pointerup', this.createEventFromTouch(ev));
+                this.cleanup(); // call last so that pointerup has access to props
+                this.isTouchDragging = false;
+                startIgnoringMouse();
+            }
+        };
+        this.handleTouchScroll = () => {
+            this.wasTouchScroll = true;
+        };
+        this.handleScroll = (ev) => {
+            if (!this.shouldIgnoreMove) {
+                let pageX = (window.pageXOffset - this.prevScrollX) + this.prevPageX;
+                let pageY = (window.pageYOffset - this.prevScrollY) + this.prevPageY;
+                this.emitter.trigger('pointermove', {
+                    origEvent: ev,
+                    isTouch: this.isTouchDragging,
+                    subjectEl: this.subjectEl,
+                    pageX,
+                    pageY,
+                    deltaX: pageX - this.origPageX,
+                    deltaY: pageY - this.origPageY,
+                });
+            }
+        };
+        this.containerEl = containerEl;
+        this.emitter = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.F();
+        containerEl.addEventListener('mousedown', this.handleMouseDown);
+        containerEl.addEventListener('touchstart', this.handleTouchStart, { passive: true });
+        listenerCreated();
+    }
+    destroy() {
+        this.containerEl.removeEventListener('mousedown', this.handleMouseDown);
+        this.containerEl.removeEventListener('touchstart', this.handleTouchStart, { passive: true });
+        listenerDestroyed();
+    }
+    tryStart(ev) {
+        let subjectEl = this.querySubjectEl(ev);
+        let downEl = ev.target;
+        if (subjectEl &&
+            (!this.handleSelector || (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.$)(downEl, this.handleSelector))) {
+            this.subjectEl = subjectEl;
+            this.isDragging = true; // do this first so cancelTouchScroll will work
+            this.wasTouchScroll = false;
+            return true;
+        }
+        return false;
+    }
+    cleanup() {
+        isWindowTouchMoveCancelled = false;
+        this.isDragging = false;
+        this.subjectEl = null;
+        // keep wasTouchScroll around for later access
+        this.destroyScrollWatch();
+    }
+    querySubjectEl(ev) {
+        if (this.selector) {
+            return (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.$)(ev.target, this.selector);
+        }
+        return this.containerEl;
+    }
+    shouldIgnoreMouse() {
+        return ignoreMouseDepth || this.isTouchDragging;
+    }
+    // can be called by user of this class, to cancel touch-based scrolling for the current drag
+    cancelTouchScroll() {
+        if (this.isDragging) {
+            isWindowTouchMoveCancelled = true;
+        }
+    }
+    // Scrolling that simulates pointermoves
+    // ----------------------------------------------------------------------------------------------------
+    initScrollWatch(ev) {
+        if (this.shouldWatchScroll) {
+            this.recordCoords(ev);
+            window.addEventListener('scroll', this.handleScroll, true); // useCapture=true
+        }
+    }
+    recordCoords(ev) {
+        if (this.shouldWatchScroll) {
+            this.prevPageX = ev.pageX;
+            this.prevPageY = ev.pageY;
+            this.prevScrollX = window.pageXOffset;
+            this.prevScrollY = window.pageYOffset;
+        }
+    }
+    destroyScrollWatch() {
+        if (this.shouldWatchScroll) {
+            window.removeEventListener('scroll', this.handleScroll, true); // useCaptured=true
+        }
+    }
+    // Event Normalization
+    // ----------------------------------------------------------------------------------------------------
+    createEventFromMouse(ev, isFirst) {
+        let deltaX = 0;
+        let deltaY = 0;
+        // TODO: repeat code
+        if (isFirst) {
+            this.origPageX = ev.pageX;
+            this.origPageY = ev.pageY;
+        }
+        else {
+            deltaX = ev.pageX - this.origPageX;
+            deltaY = ev.pageY - this.origPageY;
+        }
+        return {
+            origEvent: ev,
+            isTouch: false,
+            subjectEl: this.subjectEl,
+            pageX: ev.pageX,
+            pageY: ev.pageY,
+            deltaX,
+            deltaY,
+        };
+    }
+    createEventFromTouch(ev, isFirst) {
+        let touches = ev.touches;
+        let pageX;
+        let pageY;
+        let deltaX = 0;
+        let deltaY = 0;
+        // if touch coords available, prefer,
+        // because FF would give bad ev.pageX ev.pageY
+        if (touches && touches.length) {
+            pageX = touches[0].pageX;
+            pageY = touches[0].pageY;
+        }
+        else {
+            pageX = ev.pageX;
+            pageY = ev.pageY;
+        }
+        // TODO: repeat code
+        if (isFirst) {
+            this.origPageX = pageX;
+            this.origPageY = pageY;
+        }
+        else {
+            deltaX = pageX - this.origPageX;
+            deltaY = pageY - this.origPageY;
+        }
+        return {
+            origEvent: ev,
+            isTouch: true,
+            subjectEl: this.subjectEl,
+            pageX,
+            pageY,
+            deltaX,
+            deltaY,
+        };
+    }
+}
+// Returns a boolean whether this was a left mouse click and no ctrl key (which means right click on Mac)
+function isPrimaryMouseButton(ev) {
+    return ev.button === 0 && !ev.ctrlKey;
+}
+// Ignoring fake mouse events generated by touch
+// ----------------------------------------------------------------------------------------------------
+function startIgnoringMouse() {
+    ignoreMouseDepth += 1;
+    setTimeout(() => {
+        ignoreMouseDepth -= 1;
+    }, _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bI.touchMouseIgnoreWait);
+}
+// We want to attach touchmove as early as possible for Safari
+// ----------------------------------------------------------------------------------------------------
+function listenerCreated() {
+    listenerCnt += 1;
+    if (listenerCnt === 1) {
+        window.addEventListener('touchmove', onWindowTouchMove, { passive: false });
+    }
+}
+function listenerDestroyed() {
+    listenerCnt -= 1;
+    if (!listenerCnt) {
+        window.removeEventListener('touchmove', onWindowTouchMove, { passive: false });
+    }
+}
+function onWindowTouchMove(ev) {
+    if (isWindowTouchMoveCancelled) {
+        ev.preventDefault();
+    }
+}
+
+/*
+An effect in which an element follows the movement of a pointer across the screen.
+The moving element is a clone of some other element.
+Must call start + handleMove + stop.
+*/
+class ElementMirror {
+    constructor() {
+        this.isVisible = false; // must be explicitly enabled
+        this.sourceEl = null;
+        this.mirrorEl = null;
+        this.sourceElRect = null; // screen coords relative to viewport
+        // options that can be set directly by caller
+        this.parentNode = document.body; // HIGHLY SUGGESTED to set this to sidestep ShadowDOM issues
+        this.zIndex = 9999;
+        this.revertDuration = 0;
+    }
+    start(sourceEl, pageX, pageY) {
+        this.sourceEl = sourceEl;
+        this.sourceElRect = this.sourceEl.getBoundingClientRect();
+        this.origScreenX = pageX - window.pageXOffset;
+        this.origScreenY = pageY - window.pageYOffset;
+        this.deltaX = 0;
+        this.deltaY = 0;
+        this.updateElPosition();
+    }
+    handleMove(pageX, pageY) {
+        this.deltaX = (pageX - window.pageXOffset) - this.origScreenX;
+        this.deltaY = (pageY - window.pageYOffset) - this.origScreenY;
+        this.updateElPosition();
+    }
+    // can be called before start
+    setIsVisible(bool) {
+        if (bool) {
+            if (!this.isVisible) {
+                if (this.mirrorEl) {
+                    this.mirrorEl.style.display = '';
+                }
+                this.isVisible = bool; // needs to happen before updateElPosition
+                this.updateElPosition(); // because was not updating the position while invisible
+            }
+        }
+        else if (this.isVisible) {
+            if (this.mirrorEl) {
+                this.mirrorEl.style.display = 'none';
+            }
+            this.isVisible = bool;
+        }
+    }
+    // always async
+    stop(needsRevertAnimation, callback) {
+        let done = () => {
+            this.cleanup();
+            callback();
+        };
+        if (needsRevertAnimation &&
+            this.mirrorEl &&
+            this.isVisible &&
+            this.revertDuration && // if 0, transition won't work
+            (this.deltaX || this.deltaY) // if same coords, transition won't work
+        ) {
+            this.doRevertAnimation(done, this.revertDuration);
+        }
+        else {
+            setTimeout(done, 0);
+        }
+    }
+    doRevertAnimation(callback, revertDuration) {
+        let mirrorEl = this.mirrorEl;
+        let finalSourceElRect = this.sourceEl.getBoundingClientRect(); // because autoscrolling might have happened
+        mirrorEl.style.transition =
+            'top ' + revertDuration + 'ms,' +
+                'left ' + revertDuration + 'ms';
+        (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aP)(mirrorEl, {
+            left: finalSourceElRect.left,
+            top: finalSourceElRect.top,
+        });
+        (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b2)(mirrorEl, () => {
+            mirrorEl.style.transition = '';
+            callback();
+        });
+    }
+    cleanup() {
+        if (this.mirrorEl) {
+            (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aO)(this.mirrorEl);
+            this.mirrorEl = null;
+        }
+        this.sourceEl = null;
+    }
+    updateElPosition() {
+        if (this.sourceEl && this.isVisible) {
+            (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aP)(this.getMirrorEl(), {
+                left: this.sourceElRect.left + this.deltaX,
+                top: this.sourceElRect.top + this.deltaY,
+            });
+        }
+    }
+    getMirrorEl() {
+        let sourceElRect = this.sourceElRect;
+        let mirrorEl = this.mirrorEl;
+        if (!mirrorEl) {
+            mirrorEl = this.mirrorEl = this.sourceEl.cloneNode(true); // cloneChildren=true
+            // we don't want long taps or any mouse interaction causing selection/menus.
+            // would use preventSelection(), but that prevents selectstart, causing problems.
+            mirrorEl.style.userSelect = 'none';
+            mirrorEl.style.webkitUserSelect = 'none';
+            mirrorEl.classList.add('fc-event-dragging');
+            (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aP)(mirrorEl, {
+                position: 'fixed',
+                zIndex: this.zIndex,
+                visibility: '',
+                boxSizing: 'border-box',
+                width: sourceElRect.right - sourceElRect.left,
+                height: sourceElRect.bottom - sourceElRect.top,
+                right: 'auto',
+                bottom: 'auto',
+                margin: 0,
+            });
+            this.parentNode.appendChild(mirrorEl);
+        }
+        return mirrorEl;
+    }
+}
+
+/*
+Is a cache for a given element's scroll information (all the info that ScrollController stores)
+in addition the "client rectangle" of the element.. the area within the scrollbars.
+
+The cache can be in one of two modes:
+- doesListening:false - ignores when the container is scrolled by someone else
+- doesListening:true - watch for scrolling and update the cache
+*/
+class ScrollGeomCache extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bb {
+    constructor(scrollController, doesListening) {
+        super();
+        this.handleScroll = () => {
+            this.scrollTop = this.scrollController.getScrollTop();
+            this.scrollLeft = this.scrollController.getScrollLeft();
+            this.handleScrollChange();
+        };
+        this.scrollController = scrollController;
+        this.doesListening = doesListening;
+        this.scrollTop = this.origScrollTop = scrollController.getScrollTop();
+        this.scrollLeft = this.origScrollLeft = scrollController.getScrollLeft();
+        this.scrollWidth = scrollController.getScrollWidth();
+        this.scrollHeight = scrollController.getScrollHeight();
+        this.clientWidth = scrollController.getClientWidth();
+        this.clientHeight = scrollController.getClientHeight();
+        this.clientRect = this.computeClientRect(); // do last in case it needs cached values
+        if (this.doesListening) {
+            this.getEventTarget().addEventListener('scroll', this.handleScroll);
+        }
+    }
+    destroy() {
+        if (this.doesListening) {
+            this.getEventTarget().removeEventListener('scroll', this.handleScroll);
+        }
+    }
+    getScrollTop() {
+        return this.scrollTop;
+    }
+    getScrollLeft() {
+        return this.scrollLeft;
+    }
+    setScrollTop(top) {
+        this.scrollController.setScrollTop(top);
+        if (!this.doesListening) {
+            // we are not relying on the element to normalize out-of-bounds scroll values
+            // so we need to sanitize ourselves
+            this.scrollTop = Math.max(Math.min(top, this.getMaxScrollTop()), 0);
+            this.handleScrollChange();
+        }
+    }
+    setScrollLeft(top) {
+        this.scrollController.setScrollLeft(top);
+        if (!this.doesListening) {
+            // we are not relying on the element to normalize out-of-bounds scroll values
+            // so we need to sanitize ourselves
+            this.scrollLeft = Math.max(Math.min(top, this.getMaxScrollLeft()), 0);
+            this.handleScrollChange();
+        }
+    }
+    getClientWidth() {
+        return this.clientWidth;
+    }
+    getClientHeight() {
+        return this.clientHeight;
+    }
+    getScrollWidth() {
+        return this.scrollWidth;
+    }
+    getScrollHeight() {
+        return this.scrollHeight;
+    }
+    handleScrollChange() {
+    }
+}
+
+class ElementScrollGeomCache extends ScrollGeomCache {
+    constructor(el, doesListening) {
+        super(new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bc(el), doesListening);
+    }
+    getEventTarget() {
+        return this.scrollController.el;
+    }
+    computeClientRect() {
+        return (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b3)(this.scrollController.el);
+    }
+}
+
+class WindowScrollGeomCache extends ScrollGeomCache {
+    constructor(doesListening) {
+        super(new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bd(), doesListening);
+    }
+    getEventTarget() {
+        return window;
+    }
+    computeClientRect() {
+        return {
+            left: this.scrollLeft,
+            right: this.scrollLeft + this.clientWidth,
+            top: this.scrollTop,
+            bottom: this.scrollTop + this.clientHeight,
+        };
+    }
+    // the window is the only scroll object that changes it's rectangle relative
+    // to the document's topleft as it scrolls
+    handleScrollChange() {
+        this.clientRect = this.computeClientRect();
+    }
+}
+
+// If available we are using native "performance" API instead of "Date"
+// Read more about it on MDN:
+// https://developer.mozilla.org/en-US/docs/Web/API/Performance
+const getTime = typeof performance === 'function' ? performance.now : Date.now;
+/*
+For a pointer interaction, automatically scrolls certain scroll containers when the pointer
+approaches the edge.
+
+The caller must call start + handleMove + stop.
+*/
+class AutoScroller {
+    constructor() {
+        // options that can be set by caller
+        this.isEnabled = true;
+        this.scrollQuery = [window, '.fc-scroller'];
+        this.edgeThreshold = 50; // pixels
+        this.maxVelocity = 300; // pixels per second
+        // internal state
+        this.pointerScreenX = null;
+        this.pointerScreenY = null;
+        this.isAnimating = false;
+        this.scrollCaches = null;
+        // protect against the initial pointerdown being too close to an edge and starting the scroll
+        this.everMovedUp = false;
+        this.everMovedDown = false;
+        this.everMovedLeft = false;
+        this.everMovedRight = false;
+        this.animate = () => {
+            if (this.isAnimating) { // wasn't cancelled between animation calls
+                let edge = this.computeBestEdge(this.pointerScreenX + window.pageXOffset, this.pointerScreenY + window.pageYOffset);
+                if (edge) {
+                    let now = getTime();
+                    this.handleSide(edge, (now - this.msSinceRequest) / 1000);
+                    this.requestAnimation(now);
+                }
+                else {
+                    this.isAnimating = false; // will stop animation
+                }
+            }
+        };
+    }
+    start(pageX, pageY, scrollStartEl) {
+        if (this.isEnabled) {
+            this.scrollCaches = this.buildCaches(scrollStartEl);
+            this.pointerScreenX = null;
+            this.pointerScreenY = null;
+            this.everMovedUp = false;
+            this.everMovedDown = false;
+            this.everMovedLeft = false;
+            this.everMovedRight = false;
+            this.handleMove(pageX, pageY);
+        }
+    }
+    handleMove(pageX, pageY) {
+        if (this.isEnabled) {
+            let pointerScreenX = pageX - window.pageXOffset;
+            let pointerScreenY = pageY - window.pageYOffset;
+            let yDelta = this.pointerScreenY === null ? 0 : pointerScreenY - this.pointerScreenY;
+            let xDelta = this.pointerScreenX === null ? 0 : pointerScreenX - this.pointerScreenX;
+            if (yDelta < 0) {
+                this.everMovedUp = true;
+            }
+            else if (yDelta > 0) {
+                this.everMovedDown = true;
+            }
+            if (xDelta < 0) {
+                this.everMovedLeft = true;
+            }
+            else if (xDelta > 0) {
+                this.everMovedRight = true;
+            }
+            this.pointerScreenX = pointerScreenX;
+            this.pointerScreenY = pointerScreenY;
+            if (!this.isAnimating) {
+                this.isAnimating = true;
+                this.requestAnimation(getTime());
+            }
+        }
+    }
+    stop() {
+        if (this.isEnabled) {
+            this.isAnimating = false; // will stop animation
+            for (let scrollCache of this.scrollCaches) {
+                scrollCache.destroy();
+            }
+            this.scrollCaches = null;
+        }
+    }
+    requestAnimation(now) {
+        this.msSinceRequest = now;
+        requestAnimationFrame(this.animate);
+    }
+    handleSide(edge, seconds) {
+        let { scrollCache } = edge;
+        let { edgeThreshold } = this;
+        let invDistance = edgeThreshold - edge.distance;
+        let velocity = // the closer to the edge, the faster we scroll
+         ((invDistance * invDistance) / (edgeThreshold * edgeThreshold)) * // quadratic
+            this.maxVelocity * seconds;
+        let sign = 1;
+        switch (edge.name) {
+            case 'left':
+                sign = -1;
+            // falls through
+            case 'right':
+                scrollCache.setScrollLeft(scrollCache.getScrollLeft() + velocity * sign);
+                break;
+            case 'top':
+                sign = -1;
+            // falls through
+            case 'bottom':
+                scrollCache.setScrollTop(scrollCache.getScrollTop() + velocity * sign);
+                break;
+        }
+    }
+    // left/top are relative to document topleft
+    computeBestEdge(left, top) {
+        let { edgeThreshold } = this;
+        let bestSide = null;
+        let scrollCaches = this.scrollCaches || [];
+        for (let scrollCache of scrollCaches) {
+            let rect = scrollCache.clientRect;
+            let leftDist = left - rect.left;
+            let rightDist = rect.right - left;
+            let topDist = top - rect.top;
+            let bottomDist = rect.bottom - top;
+            // completely within the rect?
+            if (leftDist >= 0 && rightDist >= 0 && topDist >= 0 && bottomDist >= 0) {
+                if (topDist <= edgeThreshold && this.everMovedUp && scrollCache.canScrollUp() &&
+                    (!bestSide || bestSide.distance > topDist)) {
+                    bestSide = { scrollCache, name: 'top', distance: topDist };
+                }
+                if (bottomDist <= edgeThreshold && this.everMovedDown && scrollCache.canScrollDown() &&
+                    (!bestSide || bestSide.distance > bottomDist)) {
+                    bestSide = { scrollCache, name: 'bottom', distance: bottomDist };
+                }
+                if (leftDist <= edgeThreshold && this.everMovedLeft && scrollCache.canScrollLeft() &&
+                    (!bestSide || bestSide.distance > leftDist)) {
+                    bestSide = { scrollCache, name: 'left', distance: leftDist };
+                }
+                if (rightDist <= edgeThreshold && this.everMovedRight && scrollCache.canScrollRight() &&
+                    (!bestSide || bestSide.distance > rightDist)) {
+                    bestSide = { scrollCache, name: 'right', distance: rightDist };
+                }
+            }
+        }
+        return bestSide;
+    }
+    buildCaches(scrollStartEl) {
+        return this.queryScrollEls(scrollStartEl).map((el) => {
+            if (el === window) {
+                return new WindowScrollGeomCache(false); // false = don't listen to user-generated scrolls
+            }
+            return new ElementScrollGeomCache(el, false); // false = don't listen to user-generated scrolls
+        });
+    }
+    queryScrollEls(scrollStartEl) {
+        let els = [];
+        for (let query of this.scrollQuery) {
+            if (typeof query === 'object') {
+                els.push(query);
+            }
+            else {
+                els.push(...Array.prototype.slice.call(scrollStartEl.getRootNode().querySelectorAll(query)));
+            }
+        }
+        return els;
+    }
+}
+
+/*
+Monitors dragging on an element. Has a number of high-level features:
+- minimum distance required before dragging
+- minimum wait time ("delay") before dragging
+- a mirror element that follows the pointer
+*/
+class FeaturefulElementDragging extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bH {
+    constructor(containerEl, selector) {
+        super(containerEl);
+        this.containerEl = containerEl;
+        // options that can be directly set by caller
+        // the caller can also set the PointerDragging's options as well
+        this.delay = null;
+        this.minDistance = 0;
+        this.touchScrollAllowed = true; // prevents drag from starting and blocks scrolling during drag
+        this.mirrorNeedsRevert = false;
+        this.isInteracting = false; // is the user validly moving the pointer? lasts until pointerup
+        this.isDragging = false; // is it INTENTFULLY dragging? lasts until after revert animation
+        this.isDelayEnded = false;
+        this.isDistanceSurpassed = false;
+        this.delayTimeoutId = null;
+        this.onPointerDown = (ev) => {
+            if (!this.isDragging) { // so new drag doesn't happen while revert animation is going
+                this.isInteracting = true;
+                this.isDelayEnded = false;
+                this.isDistanceSurpassed = false;
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ar)(document.body);
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.at)(document.body);
+                // prevent links from being visited if there's an eventual drag.
+                // also prevents selection in older browsers (maybe?).
+                // not necessary for touch, besides, browser would complain about passiveness.
+                if (!ev.isTouch) {
+                    ev.origEvent.preventDefault();
+                }
+                this.emitter.trigger('pointerdown', ev);
+                if (this.isInteracting && // not destroyed via pointerdown handler
+                    !this.pointer.shouldIgnoreMove) {
+                    // actions related to initiating dragstart+dragmove+dragend...
+                    this.mirror.setIsVisible(false); // reset. caller must set-visible
+                    this.mirror.start(ev.subjectEl, ev.pageX, ev.pageY); // must happen on first pointer down
+                    this.startDelay(ev);
+                    if (!this.minDistance) {
+                        this.handleDistanceSurpassed(ev);
+                    }
+                }
+            }
+        };
+        this.onPointerMove = (ev) => {
+            if (this.isInteracting) {
+                this.emitter.trigger('pointermove', ev);
+                if (!this.isDistanceSurpassed) {
+                    let minDistance = this.minDistance;
+                    let distanceSq; // current distance from the origin, squared
+                    let { deltaX, deltaY } = ev;
+                    distanceSq = deltaX * deltaX + deltaY * deltaY;
+                    if (distanceSq >= minDistance * minDistance) { // use pythagorean theorem
+                        this.handleDistanceSurpassed(ev);
+                    }
+                }
+                if (this.isDragging) {
+                    // a real pointer move? (not one simulated by scrolling)
+                    if (ev.origEvent.type !== 'scroll') {
+                        this.mirror.handleMove(ev.pageX, ev.pageY);
+                        this.autoScroller.handleMove(ev.pageX, ev.pageY);
+                    }
+                    this.emitter.trigger('dragmove', ev);
+                }
+            }
+        };
+        this.onPointerUp = (ev) => {
+            if (this.isInteracting) {
+                this.isInteracting = false;
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.as)(document.body);
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.au)(document.body);
+                this.emitter.trigger('pointerup', ev); // can potentially set mirrorNeedsRevert
+                if (this.isDragging) {
+                    this.autoScroller.stop();
+                    this.tryStopDrag(ev); // which will stop the mirror
+                }
+                if (this.delayTimeoutId) {
+                    clearTimeout(this.delayTimeoutId);
+                    this.delayTimeoutId = null;
+                }
+            }
+        };
+        let pointer = this.pointer = new PointerDragging(containerEl);
+        pointer.emitter.on('pointerdown', this.onPointerDown);
+        pointer.emitter.on('pointermove', this.onPointerMove);
+        pointer.emitter.on('pointerup', this.onPointerUp);
+        if (selector) {
+            pointer.selector = selector;
+        }
+        this.mirror = new ElementMirror();
+        this.autoScroller = new AutoScroller();
+    }
+    destroy() {
+        this.pointer.destroy();
+        // HACK: simulate a pointer-up to end the current drag
+        // TODO: fire 'dragend' directly and stop interaction. discourage use of pointerup event (b/c might not fire)
+        this.onPointerUp({});
+    }
+    startDelay(ev) {
+        if (typeof this.delay === 'number') {
+            this.delayTimeoutId = setTimeout(() => {
+                this.delayTimeoutId = null;
+                this.handleDelayEnd(ev);
+            }, this.delay); // not assignable to number!
+        }
+        else {
+            this.handleDelayEnd(ev);
+        }
+    }
+    handleDelayEnd(ev) {
+        this.isDelayEnded = true;
+        this.tryStartDrag(ev);
+    }
+    handleDistanceSurpassed(ev) {
+        this.isDistanceSurpassed = true;
+        this.tryStartDrag(ev);
+    }
+    tryStartDrag(ev) {
+        if (this.isDelayEnded && this.isDistanceSurpassed) {
+            if (!this.pointer.wasTouchScroll || this.touchScrollAllowed) {
+                this.isDragging = true;
+                this.mirrorNeedsRevert = false;
+                this.autoScroller.start(ev.pageX, ev.pageY, this.containerEl);
+                this.emitter.trigger('dragstart', ev);
+                if (this.touchScrollAllowed === false) {
+                    this.pointer.cancelTouchScroll();
+                }
+            }
+        }
+    }
+    tryStopDrag(ev) {
+        // .stop() is ALWAYS asynchronous, which we NEED because we want all pointerup events
+        // that come from the document to fire beforehand. much more convenient this way.
+        this.mirror.stop(this.mirrorNeedsRevert, this.stopDrag.bind(this, ev));
+    }
+    stopDrag(ev) {
+        this.isDragging = false;
+        this.emitter.trigger('dragend', ev);
+    }
+    // fill in the implementations...
+    setIgnoreMove(bool) {
+        this.pointer.shouldIgnoreMove = bool;
+    }
+    setMirrorIsVisible(bool) {
+        this.mirror.setIsVisible(bool);
+    }
+    setMirrorNeedsRevert(bool) {
+        this.mirrorNeedsRevert = bool;
+    }
+    setAutoScrollEnabled(bool) {
+        this.autoScroller.isEnabled = bool;
+    }
+}
+
+/*
+When this class is instantiated, it records the offset of an element (relative to the document topleft),
+and continues to monitor scrolling, updating the cached coordinates if it needs to.
+Does not access the DOM after instantiation, so highly performant.
+
+Also keeps track of all scrolling/overflow:hidden containers that are parents of the given element
+and an determine if a given point is inside the combined clipping rectangle.
+*/
+class OffsetTracker {
+    constructor(el) {
+        this.origRect = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b6)(el);
+        // will work fine for divs that have overflow:hidden
+        this.scrollCaches = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b5)(el).map((scrollEl) => new ElementScrollGeomCache(scrollEl, true));
+    }
+    destroy() {
+        for (let scrollCache of this.scrollCaches) {
+            scrollCache.destroy();
+        }
+    }
+    computeLeft() {
+        let left = this.origRect.left;
+        for (let scrollCache of this.scrollCaches) {
+            left += scrollCache.origScrollLeft - scrollCache.getScrollLeft();
+        }
+        return left;
+    }
+    computeTop() {
+        let top = this.origRect.top;
+        for (let scrollCache of this.scrollCaches) {
+            top += scrollCache.origScrollTop - scrollCache.getScrollTop();
+        }
+        return top;
+    }
+    isWithinClipping(pageX, pageY) {
+        let point = { left: pageX, top: pageY };
+        for (let scrollCache of this.scrollCaches) {
+            if (!isIgnoredClipping(scrollCache.getEventTarget()) &&
+                !(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aF)(point, scrollCache.clientRect)) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+// certain clipping containers should never constrain interactions, like <html> and <body>
+// https://github.com/fullcalendar/fullcalendar/issues/3615
+function isIgnoredClipping(node) {
+    let tagName = node.tagName;
+    return tagName === 'HTML' || tagName === 'BODY';
+}
+
+/*
+Tracks movement over multiple droppable areas (aka "hits")
+that exist in one or more DateComponents.
+Relies on an existing draggable.
+
+emits:
+- pointerdown
+- dragstart
+- hitchange - fires initially, even if not over a hit
+- pointerup
+- (hitchange - again, to null, if ended over a hit)
+- dragend
+*/
+class HitDragging {
+    constructor(dragging, droppableStore) {
+        // options that can be set by caller
+        this.useSubjectCenter = false;
+        this.requireInitial = true; // if doesn't start out on a hit, won't emit any events
+        this.initialHit = null;
+        this.movingHit = null;
+        this.finalHit = null; // won't ever be populated if shouldIgnoreMove
+        this.handlePointerDown = (ev) => {
+            let { dragging } = this;
+            this.initialHit = null;
+            this.movingHit = null;
+            this.finalHit = null;
+            this.prepareHits();
+            this.processFirstCoord(ev);
+            if (this.initialHit || !this.requireInitial) {
+                dragging.setIgnoreMove(false);
+                // TODO: fire this before computing processFirstCoord, so listeners can cancel. this gets fired by almost every handler :(
+                this.emitter.trigger('pointerdown', ev);
+            }
+            else {
+                dragging.setIgnoreMove(true);
+            }
+        };
+        this.handleDragStart = (ev) => {
+            this.emitter.trigger('dragstart', ev);
+            this.handleMove(ev, true); // force = fire even if initially null
+        };
+        this.handleDragMove = (ev) => {
+            this.emitter.trigger('dragmove', ev);
+            this.handleMove(ev);
+        };
+        this.handlePointerUp = (ev) => {
+            this.releaseHits();
+            this.emitter.trigger('pointerup', ev);
+        };
+        this.handleDragEnd = (ev) => {
+            if (this.movingHit) {
+                this.emitter.trigger('hitupdate', null, true, ev);
+            }
+            this.finalHit = this.movingHit;
+            this.movingHit = null;
+            this.emitter.trigger('dragend', ev);
+        };
+        this.droppableStore = droppableStore;
+        dragging.emitter.on('pointerdown', this.handlePointerDown);
+        dragging.emitter.on('dragstart', this.handleDragStart);
+        dragging.emitter.on('dragmove', this.handleDragMove);
+        dragging.emitter.on('pointerup', this.handlePointerUp);
+        dragging.emitter.on('dragend', this.handleDragEnd);
+        this.dragging = dragging;
+        this.emitter = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.F();
+    }
+    // sets initialHit
+    // sets coordAdjust
+    processFirstCoord(ev) {
+        let origPoint = { left: ev.pageX, top: ev.pageY };
+        let adjustedPoint = origPoint;
+        let subjectEl = ev.subjectEl;
+        let subjectRect;
+        if (subjectEl instanceof HTMLElement) { // i.e. not a Document/ShadowRoot
+            subjectRect = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b6)(subjectEl);
+            adjustedPoint = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aG)(adjustedPoint, subjectRect);
+        }
+        let initialHit = this.initialHit = this.queryHitForOffset(adjustedPoint.left, adjustedPoint.top);
+        if (initialHit) {
+            if (this.useSubjectCenter && subjectRect) {
+                let slicedSubjectRect = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aE)(subjectRect, initialHit.rect);
+                if (slicedSubjectRect) {
+                    adjustedPoint = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aH)(slicedSubjectRect);
+                }
+            }
+            this.coordAdjust = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aI)(adjustedPoint, origPoint);
+        }
+        else {
+            this.coordAdjust = { left: 0, top: 0 };
+        }
+    }
+    handleMove(ev, forceHandle) {
+        let hit = this.queryHitForOffset(ev.pageX + this.coordAdjust.left, ev.pageY + this.coordAdjust.top);
+        if (forceHandle || !isHitsEqual(this.movingHit, hit)) {
+            this.movingHit = hit;
+            this.emitter.trigger('hitupdate', hit, false, ev);
+        }
+    }
+    prepareHits() {
+        this.offsetTrackers = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a)(this.droppableStore, (interactionSettings) => {
+            interactionSettings.component.prepareHits();
+            return new OffsetTracker(interactionSettings.el);
+        });
+    }
+    releaseHits() {
+        let { offsetTrackers } = this;
+        for (let id in offsetTrackers) {
+            offsetTrackers[id].destroy();
+        }
+        this.offsetTrackers = {};
+    }
+    queryHitForOffset(offsetLeft, offsetTop) {
+        let { droppableStore, offsetTrackers } = this;
+        let bestHit = null;
+        for (let id in droppableStore) {
+            let component = droppableStore[id].component;
+            let offsetTracker = offsetTrackers[id];
+            if (offsetTracker && // wasn't destroyed mid-drag
+                offsetTracker.isWithinClipping(offsetLeft, offsetTop)) {
+                let originLeft = offsetTracker.computeLeft();
+                let originTop = offsetTracker.computeTop();
+                let positionLeft = offsetLeft - originLeft;
+                let positionTop = offsetTop - originTop;
+                let { origRect } = offsetTracker;
+                let width = origRect.right - origRect.left;
+                let height = origRect.bottom - origRect.top;
+                if (
+                // must be within the element's bounds
+                positionLeft >= 0 && positionLeft < width &&
+                    positionTop >= 0 && positionTop < height) {
+                    let hit = component.queryHit(positionLeft, positionTop, width, height);
+                    if (hit && (
+                    // make sure the hit is within activeRange, meaning it's not a dead cell
+                    (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b9)(hit.dateProfile.activeRange, hit.dateSpan.range)) &&
+                        (!bestHit || hit.layer > bestHit.layer)) {
+                        hit.componentId = id;
+                        hit.context = component.context;
+                        // TODO: better way to re-orient rectangle
+                        hit.rect.left += originLeft;
+                        hit.rect.right += originLeft;
+                        hit.rect.top += originTop;
+                        hit.rect.bottom += originTop;
+                        bestHit = hit;
+                    }
+                }
+            }
+        }
+        return bestHit;
+    }
+}
+function isHitsEqual(hit0, hit1) {
+    if (!hit0 && !hit1) {
+        return true;
+    }
+    if (Boolean(hit0) !== Boolean(hit1)) {
+        return false;
+    }
+    return (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bf)(hit0.dateSpan, hit1.dateSpan);
+}
+
+function buildDatePointApiWithContext(dateSpan, context) {
+    let props = {};
+    for (let transform of context.pluginHooks.datePointTransforms) {
+        Object.assign(props, transform(dateSpan, context));
+    }
+    Object.assign(props, buildDatePointApi(dateSpan, context.dateEnv));
+    return props;
+}
+function buildDatePointApi(span, dateEnv) {
+    return {
+        date: dateEnv.toDate(span.range.start),
+        dateStr: dateEnv.formatIso(span.range.start, { omitTime: span.allDay }),
+        allDay: span.allDay,
+    };
+}
+
+/*
+Monitors when the user clicks on a specific date/time of a component.
+A pointerdown+pointerup on the same "hit" constitutes a click.
+*/
+class DateClicking extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.Z {
+    constructor(settings) {
+        super(settings);
+        this.handlePointerDown = (pev) => {
+            let { dragging } = this;
+            let downEl = pev.origEvent.target;
+            // do this in pointerdown (not dragend) because DOM might be mutated by the time dragend is fired
+            dragging.setIgnoreMove(!this.component.isValidDateDownEl(downEl));
+        };
+        // won't even fire if moving was ignored
+        this.handleDragEnd = (ev) => {
+            let { component } = this;
+            let { pointer } = this.dragging;
+            if (!pointer.wasTouchScroll) {
+                let { initialHit, finalHit } = this.hitDragging;
+                if (initialHit && finalHit && isHitsEqual(initialHit, finalHit)) {
+                    let { context } = component;
+                    let arg = Object.assign(Object.assign({}, buildDatePointApiWithContext(initialHit.dateSpan, context)), { dayEl: initialHit.dayEl, jsEvent: ev.origEvent, view: context.viewApi || context.calendarApi.view });
+                    context.emitter.trigger('dateClick', arg);
+                }
+            }
+        };
+        // we DO want to watch pointer moves because otherwise finalHit won't get populated
+        this.dragging = new FeaturefulElementDragging(settings.el);
+        this.dragging.autoScroller.isEnabled = false;
+        let hitDragging = this.hitDragging = new HitDragging(this.dragging, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bG)(settings));
+        hitDragging.emitter.on('pointerdown', this.handlePointerDown);
+        hitDragging.emitter.on('dragend', this.handleDragEnd);
+    }
+    destroy() {
+        this.dragging.destroy();
+    }
+}
+
+/*
+Tracks when the user selects a portion of time of a component,
+constituted by a drag over date cells, with a possible delay at the beginning of the drag.
+*/
+class DateSelecting extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.Z {
+    constructor(settings) {
+        super(settings);
+        this.dragSelection = null;
+        this.handlePointerDown = (ev) => {
+            let { component, dragging } = this;
+            let { options } = component.context;
+            let canSelect = options.selectable &&
+                component.isValidDateDownEl(ev.origEvent.target);
+            // don't bother to watch expensive moves if component won't do selection
+            dragging.setIgnoreMove(!canSelect);
+            // if touch, require user to hold down
+            dragging.delay = ev.isTouch ? getComponentTouchDelay$1(component) : null;
+        };
+        this.handleDragStart = (ev) => {
+            this.component.context.calendarApi.unselect(ev); // unselect previous selections
+        };
+        this.handleHitUpdate = (hit, isFinal) => {
+            let { context } = this.component;
+            let dragSelection = null;
+            let isInvalid = false;
+            if (hit) {
+                let initialHit = this.hitDragging.initialHit;
+                let disallowed = hit.componentId === initialHit.componentId
+                    && this.isHitComboAllowed
+                    && !this.isHitComboAllowed(initialHit, hit);
+                if (!disallowed) {
+                    dragSelection = joinHitsIntoSelection(initialHit, hit, context.pluginHooks.dateSelectionTransformers);
+                }
+                if (!dragSelection || !(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b_)(dragSelection, hit.dateProfile, context)) {
+                    isInvalid = true;
+                    dragSelection = null;
+                }
+            }
+            if (dragSelection) {
+                context.dispatch({ type: 'SELECT_DATES', selection: dragSelection });
+            }
+            else if (!isFinal) { // only unselect if moved away while dragging
+                context.dispatch({ type: 'UNSELECT_DATES' });
+            }
+            if (!isInvalid) {
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aw)();
+            }
+            else {
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ax)();
+            }
+            if (!isFinal) {
+                this.dragSelection = dragSelection; // only clear if moved away from all hits while dragging
+            }
+        };
+        this.handlePointerUp = (pev) => {
+            if (this.dragSelection) {
+                // selection is already rendered, so just need to report selection
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cu)(this.dragSelection, pev, this.component.context);
+                this.dragSelection = null;
+            }
+        };
+        let { component } = settings;
+        let { options } = component.context;
+        let dragging = this.dragging = new FeaturefulElementDragging(settings.el);
+        dragging.touchScrollAllowed = false;
+        dragging.minDistance = options.selectMinDistance || 0;
+        dragging.autoScroller.isEnabled = options.dragScroll;
+        let hitDragging = this.hitDragging = new HitDragging(this.dragging, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bG)(settings));
+        hitDragging.emitter.on('pointerdown', this.handlePointerDown);
+        hitDragging.emitter.on('dragstart', this.handleDragStart);
+        hitDragging.emitter.on('hitupdate', this.handleHitUpdate);
+        hitDragging.emitter.on('pointerup', this.handlePointerUp);
+    }
+    destroy() {
+        this.dragging.destroy();
+    }
+}
+function getComponentTouchDelay$1(component) {
+    let { options } = component.context;
+    let delay = options.selectLongPressDelay;
+    if (delay == null) {
+        delay = options.longPressDelay;
+    }
+    return delay;
+}
+function joinHitsIntoSelection(hit0, hit1, dateSelectionTransformers) {
+    let dateSpan0 = hit0.dateSpan;
+    let dateSpan1 = hit1.dateSpan;
+    let ms = [
+        dateSpan0.range.start,
+        dateSpan0.range.end,
+        dateSpan1.range.start,
+        dateSpan1.range.end,
+    ];
+    ms.sort(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.av);
+    let props = {};
+    for (let transformer of dateSelectionTransformers) {
+        let res = transformer(hit0, hit1);
+        if (res === false) {
+            return null;
+        }
+        if (res) {
+            Object.assign(props, res);
+        }
+    }
+    props.range = { start: ms[0], end: ms[3] };
+    props.allDay = dateSpan0.allDay;
+    return props;
+}
+
+class EventDragging extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.Z {
+    constructor(settings) {
+        super(settings);
+        // internal state
+        this.subjectEl = null;
+        this.subjectSeg = null; // the seg being selected/dragged
+        this.isDragging = false;
+        this.eventRange = null;
+        this.relevantEvents = null; // the events being dragged
+        this.receivingContext = null;
+        this.validMutation = null;
+        this.mutatedRelevantEvents = null;
+        this.handlePointerDown = (ev) => {
+            let origTarget = ev.origEvent.target;
+            let { component, dragging } = this;
+            let { mirror } = dragging;
+            let { options } = component.context;
+            let initialContext = component.context;
+            this.subjectEl = ev.subjectEl;
+            let subjectSeg = this.subjectSeg = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__._)(ev.subjectEl);
+            let eventRange = this.eventRange = subjectSeg.eventRange;
+            let eventInstanceId = eventRange.instance.instanceId;
+            this.relevantEvents = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aV)(initialContext.getCurrentData().eventStore, eventInstanceId);
+            dragging.minDistance = ev.isTouch ? 0 : options.eventDragMinDistance;
+            dragging.delay =
+                // only do a touch delay if touch and this event hasn't been selected yet
+                (ev.isTouch && eventInstanceId !== component.props.eventSelection) ?
+                    getComponentTouchDelay(component) :
+                    null;
+            if (options.fixedMirrorParent) {
+                mirror.parentNode = options.fixedMirrorParent;
+            }
+            else {
+                mirror.parentNode = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.$)(origTarget, '.fc');
+            }
+            mirror.revertDuration = options.dragRevertDuration;
+            let isValid = component.isValidSegDownEl(origTarget) &&
+                !(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.$)(origTarget, '.fc-event-resizer'); // NOT on a resizer
+            dragging.setIgnoreMove(!isValid);
+            // disable dragging for elements that are resizable (ie, selectable)
+            // but are not draggable
+            this.isDragging = isValid &&
+                ev.subjectEl.classList.contains('fc-event-draggable');
+        };
+        this.handleDragStart = (ev) => {
+            let initialContext = this.component.context;
+            let eventRange = this.eventRange;
+            let eventInstanceId = eventRange.instance.instanceId;
+            if (ev.isTouch) {
+                // need to select a different event?
+                if (eventInstanceId !== this.component.props.eventSelection) {
+                    initialContext.dispatch({ type: 'SELECT_EVENT', eventInstanceId });
+                }
+            }
+            else {
+                // if now using mouse, but was previous touch interaction, clear selected event
+                initialContext.dispatch({ type: 'UNSELECT_EVENT' });
+            }
+            if (this.isDragging) {
+                initialContext.calendarApi.unselect(ev); // unselect *date* selection
+                initialContext.emitter.trigger('eventDragStart', {
+                    el: this.subjectEl,
+                    event: new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a0(initialContext, eventRange.def, eventRange.instance),
+                    jsEvent: ev.origEvent,
+                    view: initialContext.viewApi,
+                });
+            }
+        };
+        this.handleHitUpdate = (hit, isFinal) => {
+            if (!this.isDragging) {
+                return;
+            }
+            let relevantEvents = this.relevantEvents;
+            let initialHit = this.hitDragging.initialHit;
+            let initialContext = this.component.context;
+            // states based on new hit
+            let receivingContext = null;
+            let mutation = null;
+            let mutatedRelevantEvents = null;
+            let isInvalid = false;
+            let interaction = {
+                affectedEvents: relevantEvents,
+                mutatedEvents: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.I)(),
+                isEvent: true,
+            };
+            if (hit) {
+                receivingContext = hit.context;
+                let receivingOptions = receivingContext.options;
+                if (initialContext === receivingContext ||
+                    (receivingOptions.editable && receivingOptions.droppable)) {
+                    mutation = computeEventMutation(initialHit, hit, receivingContext.getCurrentData().pluginHooks.eventDragMutationMassagers);
+                    if (mutation) {
+                        mutatedRelevantEvents = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bX)(relevantEvents, receivingContext.getCurrentData().eventUiBases, mutation, receivingContext);
+                        interaction.mutatedEvents = mutatedRelevantEvents;
+                        if (!(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bZ)(interaction, hit.dateProfile, receivingContext)) {
+                            isInvalid = true;
+                            mutation = null;
+                            mutatedRelevantEvents = null;
+                            interaction.mutatedEvents = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.I)();
+                        }
+                    }
+                }
+                else {
+                    receivingContext = null;
+                }
+            }
+            this.displayDrag(receivingContext, interaction);
+            if (!isInvalid) {
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aw)();
+            }
+            else {
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ax)();
+            }
+            if (!isFinal) {
+                if (initialContext === receivingContext && // TODO: write test for this
+                    isHitsEqual(initialHit, hit)) {
+                    mutation = null;
+                }
+                this.dragging.setMirrorNeedsRevert(!mutation);
+                // render the mirror if no already-rendered mirror
+                // TODO: wish we could somehow wait for dispatch to guarantee render
+                this.dragging.setMirrorIsVisible(!hit || !this.subjectEl.getRootNode().querySelector('.fc-event-mirror'));
+                // assign states based on new hit
+                this.receivingContext = receivingContext;
+                this.validMutation = mutation;
+                this.mutatedRelevantEvents = mutatedRelevantEvents;
+            }
+        };
+        this.handlePointerUp = () => {
+            if (!this.isDragging) {
+                this.cleanup(); // because handleDragEnd won't fire
+            }
+        };
+        this.handleDragEnd = (ev) => {
+            if (this.isDragging) {
+                let initialContext = this.component.context;
+                let initialView = initialContext.viewApi;
+                let { receivingContext, validMutation } = this;
+                let eventDef = this.eventRange.def;
+                let eventInstance = this.eventRange.instance;
+                let eventApi = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a0(initialContext, eventDef, eventInstance);
+                let relevantEvents = this.relevantEvents;
+                let mutatedRelevantEvents = this.mutatedRelevantEvents;
+                let { finalHit } = this.hitDragging;
+                this.clearDrag(); // must happen after revert animation
+                initialContext.emitter.trigger('eventDragStop', {
+                    el: this.subjectEl,
+                    event: eventApi,
+                    jsEvent: ev.origEvent,
+                    view: initialView,
+                });
+                if (validMutation) {
+                    // dropped within same calendar
+                    if (receivingContext === initialContext) {
+                        let updatedEventApi = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a0(initialContext, mutatedRelevantEvents.defs[eventDef.defId], eventInstance ? mutatedRelevantEvents.instances[eventInstance.instanceId] : null);
+                        initialContext.dispatch({
+                            type: 'MERGE_EVENTS',
+                            eventStore: mutatedRelevantEvents,
+                        });
+                        let eventChangeArg = {
+                            oldEvent: eventApi,
+                            event: updatedEventApi,
+                            relatedEvents: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.w)(mutatedRelevantEvents, initialContext, eventInstance),
+                            revert() {
+                                initialContext.dispatch({
+                                    type: 'MERGE_EVENTS',
+                                    eventStore: relevantEvents, // the pre-change data
+                                });
+                            },
+                        };
+                        let transformed = {};
+                        for (let transformer of initialContext.getCurrentData().pluginHooks.eventDropTransformers) {
+                            Object.assign(transformed, transformer(validMutation, initialContext));
+                        }
+                        initialContext.emitter.trigger('eventDrop', Object.assign(Object.assign(Object.assign({}, eventChangeArg), transformed), { el: ev.subjectEl, delta: validMutation.datesDelta, jsEvent: ev.origEvent, view: initialView }));
+                        initialContext.emitter.trigger('eventChange', eventChangeArg);
+                        // dropped in different calendar
+                    }
+                    else if (receivingContext) {
+                        let eventRemoveArg = {
+                            event: eventApi,
+                            relatedEvents: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.w)(relevantEvents, initialContext, eventInstance),
+                            revert() {
+                                initialContext.dispatch({
+                                    type: 'MERGE_EVENTS',
+                                    eventStore: relevantEvents,
+                                });
+                            },
+                        };
+                        initialContext.emitter.trigger('eventLeave', Object.assign(Object.assign({}, eventRemoveArg), { draggedEl: ev.subjectEl, view: initialView }));
+                        initialContext.dispatch({
+                            type: 'REMOVE_EVENTS',
+                            eventStore: relevantEvents,
+                        });
+                        initialContext.emitter.trigger('eventRemove', eventRemoveArg);
+                        let addedEventDef = mutatedRelevantEvents.defs[eventDef.defId];
+                        let addedEventInstance = mutatedRelevantEvents.instances[eventInstance.instanceId];
+                        let addedEventApi = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a0(receivingContext, addedEventDef, addedEventInstance);
+                        receivingContext.dispatch({
+                            type: 'MERGE_EVENTS',
+                            eventStore: mutatedRelevantEvents,
+                        });
+                        let eventAddArg = {
+                            event: addedEventApi,
+                            relatedEvents: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.w)(mutatedRelevantEvents, receivingContext, addedEventInstance),
+                            revert() {
+                                receivingContext.dispatch({
+                                    type: 'REMOVE_EVENTS',
+                                    eventStore: mutatedRelevantEvents,
+                                });
+                            },
+                        };
+                        receivingContext.emitter.trigger('eventAdd', eventAddArg);
+                        if (ev.isTouch) {
+                            receivingContext.dispatch({
+                                type: 'SELECT_EVENT',
+                                eventInstanceId: eventInstance.instanceId,
+                            });
+                        }
+                        receivingContext.emitter.trigger('drop', Object.assign(Object.assign({}, buildDatePointApiWithContext(finalHit.dateSpan, receivingContext)), { draggedEl: ev.subjectEl, jsEvent: ev.origEvent, view: finalHit.context.viewApi }));
+                        receivingContext.emitter.trigger('eventReceive', Object.assign(Object.assign({}, eventAddArg), { draggedEl: ev.subjectEl, view: finalHit.context.viewApi }));
+                    }
+                }
+                else {
+                    initialContext.emitter.trigger('_noEventDrop');
+                }
+            }
+            this.cleanup();
+        };
+        let { component } = this;
+        let { options } = component.context;
+        let dragging = this.dragging = new FeaturefulElementDragging(settings.el);
+        dragging.pointer.selector = EventDragging.SELECTOR;
+        dragging.touchScrollAllowed = false;
+        dragging.autoScroller.isEnabled = options.dragScroll;
+        let hitDragging = this.hitDragging = new HitDragging(this.dragging, _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a7);
+        hitDragging.useSubjectCenter = settings.useEventCenter;
+        hitDragging.emitter.on('pointerdown', this.handlePointerDown);
+        hitDragging.emitter.on('dragstart', this.handleDragStart);
+        hitDragging.emitter.on('hitupdate', this.handleHitUpdate);
+        hitDragging.emitter.on('pointerup', this.handlePointerUp);
+        hitDragging.emitter.on('dragend', this.handleDragEnd);
+    }
+    destroy() {
+        this.dragging.destroy();
+    }
+    // render a drag state on the next receivingCalendar
+    displayDrag(nextContext, state) {
+        let initialContext = this.component.context;
+        let prevContext = this.receivingContext;
+        // does the previous calendar need to be cleared?
+        if (prevContext && prevContext !== nextContext) {
+            // does the initial calendar need to be cleared?
+            // if so, don't clear all the way. we still need to to hide the affectedEvents
+            if (prevContext === initialContext) {
+                prevContext.dispatch({
+                    type: 'SET_EVENT_DRAG',
+                    state: {
+                        affectedEvents: state.affectedEvents,
+                        mutatedEvents: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.I)(),
+                        isEvent: true,
+                    },
+                });
+                // completely clear the old calendar if it wasn't the initial
+            }
+            else {
+                prevContext.dispatch({ type: 'UNSET_EVENT_DRAG' });
+            }
+        }
+        if (nextContext) {
+            nextContext.dispatch({ type: 'SET_EVENT_DRAG', state });
+        }
+    }
+    clearDrag() {
+        let initialCalendar = this.component.context;
+        let { receivingContext } = this;
+        if (receivingContext) {
+            receivingContext.dispatch({ type: 'UNSET_EVENT_DRAG' });
+        }
+        // the initial calendar might have an dummy drag state from displayDrag
+        if (initialCalendar !== receivingContext) {
+            initialCalendar.dispatch({ type: 'UNSET_EVENT_DRAG' });
+        }
+    }
+    cleanup() {
+        this.subjectSeg = null;
+        this.isDragging = false;
+        this.eventRange = null;
+        this.relevantEvents = null;
+        this.receivingContext = null;
+        this.validMutation = null;
+        this.mutatedRelevantEvents = null;
+    }
+}
+// TODO: test this in IE11
+// QUESTION: why do we need it on the resizable???
+EventDragging.SELECTOR = '.fc-event-draggable, .fc-event-resizable';
+function computeEventMutation(hit0, hit1, massagers) {
+    let dateSpan0 = hit0.dateSpan;
+    let dateSpan1 = hit1.dateSpan;
+    let date0 = dateSpan0.range.start;
+    let date1 = dateSpan1.range.start;
+    let standardProps = {};
+    if (dateSpan0.allDay !== dateSpan1.allDay) {
+        standardProps.allDay = dateSpan1.allDay;
+        standardProps.hasEnd = hit1.context.options.allDayMaintainDuration;
+        if (dateSpan1.allDay) {
+            // means date1 is already start-of-day,
+            // but date0 needs to be converted
+            date0 = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.q)(date0);
+        }
+    }
+    let delta = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aA)(date0, date1, hit0.context.dateEnv, hit0.componentId === hit1.componentId ?
+        hit0.largeUnit :
+        null);
+    if (delta.milliseconds) { // has hours/minutes/seconds
+        standardProps.allDay = false;
+    }
+    let mutation = {
+        datesDelta: delta,
+        standardProps,
+    };
+    for (let massager of massagers) {
+        massager(mutation, hit0, hit1);
+    }
+    return mutation;
+}
+function getComponentTouchDelay(component) {
+    let { options } = component.context;
+    let delay = options.eventLongPressDelay;
+    if (delay == null) {
+        delay = options.longPressDelay;
+    }
+    return delay;
+}
+
+class EventResizing extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.Z {
+    constructor(settings) {
+        super(settings);
+        // internal state
+        this.draggingSegEl = null;
+        this.draggingSeg = null; // TODO: rename to resizingSeg? subjectSeg?
+        this.eventRange = null;
+        this.relevantEvents = null;
+        this.validMutation = null;
+        this.mutatedRelevantEvents = null;
+        this.handlePointerDown = (ev) => {
+            let { component } = this;
+            let segEl = this.querySegEl(ev);
+            let seg = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__._)(segEl);
+            let eventRange = this.eventRange = seg.eventRange;
+            this.dragging.minDistance = component.context.options.eventDragMinDistance;
+            // if touch, need to be working with a selected event
+            this.dragging.setIgnoreMove(!this.component.isValidSegDownEl(ev.origEvent.target) ||
+                (ev.isTouch && this.component.props.eventSelection !== eventRange.instance.instanceId));
+        };
+        this.handleDragStart = (ev) => {
+            let { context } = this.component;
+            let eventRange = this.eventRange;
+            this.relevantEvents = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aV)(context.getCurrentData().eventStore, this.eventRange.instance.instanceId);
+            let segEl = this.querySegEl(ev);
+            this.draggingSegEl = segEl;
+            this.draggingSeg = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__._)(segEl);
+            context.calendarApi.unselect();
+            context.emitter.trigger('eventResizeStart', {
+                el: segEl,
+                event: new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a0(context, eventRange.def, eventRange.instance),
+                jsEvent: ev.origEvent,
+                view: context.viewApi,
+            });
+        };
+        this.handleHitUpdate = (hit, isFinal, ev) => {
+            let { context } = this.component;
+            let relevantEvents = this.relevantEvents;
+            let initialHit = this.hitDragging.initialHit;
+            let eventInstance = this.eventRange.instance;
+            let mutation = null;
+            let mutatedRelevantEvents = null;
+            let isInvalid = false;
+            let interaction = {
+                affectedEvents: relevantEvents,
+                mutatedEvents: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.I)(),
+                isEvent: true,
+            };
+            if (hit) {
+                let disallowed = hit.componentId === initialHit.componentId
+                    && this.isHitComboAllowed
+                    && !this.isHitComboAllowed(initialHit, hit);
+                if (!disallowed) {
+                    mutation = computeMutation(initialHit, hit, ev.subjectEl.classList.contains('fc-event-resizer-start'), eventInstance.range);
+                }
+            }
+            if (mutation) {
+                mutatedRelevantEvents = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bX)(relevantEvents, context.getCurrentData().eventUiBases, mutation, context);
+                interaction.mutatedEvents = mutatedRelevantEvents;
+                if (!(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bZ)(interaction, hit.dateProfile, context)) {
+                    isInvalid = true;
+                    mutation = null;
+                    mutatedRelevantEvents = null;
+                    interaction.mutatedEvents = null;
+                }
+            }
+            if (mutatedRelevantEvents) {
+                context.dispatch({
+                    type: 'SET_EVENT_RESIZE',
+                    state: interaction,
+                });
+            }
+            else {
+                context.dispatch({ type: 'UNSET_EVENT_RESIZE' });
+            }
+            if (!isInvalid) {
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aw)();
+            }
+            else {
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ax)();
+            }
+            if (!isFinal) {
+                if (mutation && isHitsEqual(initialHit, hit)) {
+                    mutation = null;
+                }
+                this.validMutation = mutation;
+                this.mutatedRelevantEvents = mutatedRelevantEvents;
+            }
+        };
+        this.handleDragEnd = (ev) => {
+            let { context } = this.component;
+            let eventDef = this.eventRange.def;
+            let eventInstance = this.eventRange.instance;
+            let eventApi = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a0(context, eventDef, eventInstance);
+            let relevantEvents = this.relevantEvents;
+            let mutatedRelevantEvents = this.mutatedRelevantEvents;
+            context.emitter.trigger('eventResizeStop', {
+                el: this.draggingSegEl,
+                event: eventApi,
+                jsEvent: ev.origEvent,
+                view: context.viewApi,
+            });
+            if (this.validMutation) {
+                let updatedEventApi = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a0(context, mutatedRelevantEvents.defs[eventDef.defId], eventInstance ? mutatedRelevantEvents.instances[eventInstance.instanceId] : null);
+                context.dispatch({
+                    type: 'MERGE_EVENTS',
+                    eventStore: mutatedRelevantEvents,
+                });
+                let eventChangeArg = {
+                    oldEvent: eventApi,
+                    event: updatedEventApi,
+                    relatedEvents: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.w)(mutatedRelevantEvents, context, eventInstance),
+                    revert() {
+                        context.dispatch({
+                            type: 'MERGE_EVENTS',
+                            eventStore: relevantEvents, // the pre-change events
+                        });
+                    },
+                };
+                context.emitter.trigger('eventResize', Object.assign(Object.assign({}, eventChangeArg), { el: this.draggingSegEl, startDelta: this.validMutation.startDelta || (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.d)(0), endDelta: this.validMutation.endDelta || (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.d)(0), jsEvent: ev.origEvent, view: context.viewApi }));
+                context.emitter.trigger('eventChange', eventChangeArg);
+            }
+            else {
+                context.emitter.trigger('_noEventResize');
+            }
+            // reset all internal state
+            this.draggingSeg = null;
+            this.relevantEvents = null;
+            this.validMutation = null;
+            // okay to keep eventInstance around. useful to set it in handlePointerDown
+        };
+        let { component } = settings;
+        let dragging = this.dragging = new FeaturefulElementDragging(settings.el);
+        dragging.pointer.selector = '.fc-event-resizer';
+        dragging.touchScrollAllowed = false;
+        dragging.autoScroller.isEnabled = component.context.options.dragScroll;
+        let hitDragging = this.hitDragging = new HitDragging(this.dragging, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bG)(settings));
+        hitDragging.emitter.on('pointerdown', this.handlePointerDown);
+        hitDragging.emitter.on('dragstart', this.handleDragStart);
+        hitDragging.emitter.on('hitupdate', this.handleHitUpdate);
+        hitDragging.emitter.on('dragend', this.handleDragEnd);
+    }
+    destroy() {
+        this.dragging.destroy();
+    }
+    querySegEl(ev) {
+        return (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.$)(ev.subjectEl, '.fc-event');
+    }
+}
+function computeMutation(hit0, hit1, isFromStart, instanceRange) {
+    let dateEnv = hit0.context.dateEnv;
+    let date0 = hit0.dateSpan.range.start;
+    let date1 = hit1.dateSpan.range.start;
+    let delta = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aA)(date0, date1, dateEnv, hit0.largeUnit);
+    if (isFromStart) {
+        if (dateEnv.add(instanceRange.start, delta) < instanceRange.end) {
+            return { startDelta: delta };
+        }
+    }
+    else if (dateEnv.add(instanceRange.end, delta) > instanceRange.start) {
+        return { endDelta: delta };
+    }
+    return null;
+}
+
+class UnselectAuto {
+    constructor(context) {
+        this.context = context;
+        this.isRecentPointerDateSelect = false; // wish we could use a selector to detect date selection, but uses hit system
+        this.matchesCancel = false;
+        this.matchesEvent = false;
+        this.onSelect = (selectInfo) => {
+            if (selectInfo.jsEvent) {
+                this.isRecentPointerDateSelect = true;
+            }
+        };
+        this.onDocumentPointerDown = (pev) => {
+            let unselectCancel = this.context.options.unselectCancel;
+            let downEl = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aR)(pev.origEvent);
+            this.matchesCancel = !!(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.$)(downEl, unselectCancel);
+            this.matchesEvent = !!(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.$)(downEl, EventDragging.SELECTOR); // interaction started on an event?
+        };
+        this.onDocumentPointerUp = (pev) => {
+            let { context } = this;
+            let { documentPointer } = this;
+            let calendarState = context.getCurrentData();
+            // touch-scrolling should never unfocus any type of selection
+            if (!documentPointer.wasTouchScroll) {
+                if (calendarState.dateSelection && // an existing date selection?
+                    !this.isRecentPointerDateSelect // a new pointer-initiated date selection since last onDocumentPointerUp?
+                ) {
+                    let unselectAuto = context.options.unselectAuto;
+                    if (unselectAuto && (!unselectAuto || !this.matchesCancel)) {
+                        context.calendarApi.unselect(pev);
+                    }
+                }
+                if (calendarState.eventSelection && // an existing event selected?
+                    !this.matchesEvent // interaction DIDN'T start on an event
+                ) {
+                    context.dispatch({ type: 'UNSELECT_EVENT' });
+                }
+            }
+            this.isRecentPointerDateSelect = false;
+        };
+        let documentPointer = this.documentPointer = new PointerDragging(document);
+        documentPointer.shouldIgnoreMove = true;
+        documentPointer.shouldWatchScroll = false;
+        documentPointer.emitter.on('pointerdown', this.onDocumentPointerDown);
+        documentPointer.emitter.on('pointerup', this.onDocumentPointerUp);
+        /*
+        TODO: better way to know about whether there was a selection with the pointer
+        */
+        context.emitter.on('select', this.onSelect);
+    }
+    destroy() {
+        this.context.emitter.off('select', this.onSelect);
+        this.documentPointer.destroy();
+    }
+}
+
+const OPTION_REFINERS = {
+    fixedMirrorParent: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+};
+const LISTENER_REFINERS = {
+    dateClick: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    eventDragStart: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    eventDragStop: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    eventDrop: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    eventResizeStart: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    eventResizeStop: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    eventResize: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    drop: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    eventReceive: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    eventLeave: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+};
+
+/*
+Given an already instantiated draggable object for one-or-more elements,
+Interprets any dragging as an attempt to drag an events that lives outside
+of a calendar onto a calendar.
+*/
+class ExternalElementDragging {
+    constructor(dragging, suppliedDragMeta) {
+        this.receivingContext = null;
+        this.droppableEvent = null; // will exist for all drags, even if create:false
+        this.suppliedDragMeta = null;
+        this.dragMeta = null;
+        this.handleDragStart = (ev) => {
+            this.dragMeta = this.buildDragMeta(ev.subjectEl);
+        };
+        this.handleHitUpdate = (hit, isFinal, ev) => {
+            let { dragging } = this.hitDragging;
+            let receivingContext = null;
+            let droppableEvent = null;
+            let isInvalid = false;
+            let interaction = {
+                affectedEvents: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.I)(),
+                mutatedEvents: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.I)(),
+                isEvent: this.dragMeta.create,
+            };
+            if (hit) {
+                receivingContext = hit.context;
+                if (this.canDropElOnCalendar(ev.subjectEl, receivingContext)) {
+                    droppableEvent = computeEventForDateSpan(hit.dateSpan, this.dragMeta, receivingContext);
+                    interaction.mutatedEvents = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aW)(droppableEvent);
+                    isInvalid = !(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bZ)(interaction, hit.dateProfile, receivingContext);
+                    if (isInvalid) {
+                        interaction.mutatedEvents = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.I)();
+                        droppableEvent = null;
+                    }
+                }
+            }
+            this.displayDrag(receivingContext, interaction);
+            // show mirror if no already-rendered mirror element OR if we are shutting down the mirror (?)
+            // TODO: wish we could somehow wait for dispatch to guarantee render
+            dragging.setMirrorIsVisible(isFinal || !droppableEvent || !document.querySelector('.fc-event-mirror'));
+            if (!isInvalid) {
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aw)();
+            }
+            else {
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ax)();
+            }
+            if (!isFinal) {
+                dragging.setMirrorNeedsRevert(!droppableEvent);
+                this.receivingContext = receivingContext;
+                this.droppableEvent = droppableEvent;
+            }
+        };
+        this.handleDragEnd = (pev) => {
+            let { receivingContext, droppableEvent } = this;
+            this.clearDrag();
+            if (receivingContext && droppableEvent) {
+                let finalHit = this.hitDragging.finalHit;
+                let finalView = finalHit.context.viewApi;
+                let dragMeta = this.dragMeta;
+                receivingContext.emitter.trigger('drop', Object.assign(Object.assign({}, buildDatePointApiWithContext(finalHit.dateSpan, receivingContext)), { draggedEl: pev.subjectEl, jsEvent: pev.origEvent, view: finalView }));
+                if (dragMeta.create) {
+                    let addingEvents = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aW)(droppableEvent);
+                    receivingContext.dispatch({
+                        type: 'MERGE_EVENTS',
+                        eventStore: addingEvents,
+                    });
+                    if (pev.isTouch) {
+                        receivingContext.dispatch({
+                            type: 'SELECT_EVENT',
+                            eventInstanceId: droppableEvent.instance.instanceId,
+                        });
+                    }
+                    // signal that an external event landed
+                    receivingContext.emitter.trigger('eventReceive', {
+                        event: new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a0(receivingContext, droppableEvent.def, droppableEvent.instance),
+                        relatedEvents: [],
+                        revert() {
+                            receivingContext.dispatch({
+                                type: 'REMOVE_EVENTS',
+                                eventStore: addingEvents,
+                            });
+                        },
+                        draggedEl: pev.subjectEl,
+                        view: finalView,
+                    });
+                }
+            }
+            this.receivingContext = null;
+            this.droppableEvent = null;
+        };
+        let hitDragging = this.hitDragging = new HitDragging(dragging, _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a7);
+        hitDragging.requireInitial = false; // will start outside of a component
+        hitDragging.emitter.on('dragstart', this.handleDragStart);
+        hitDragging.emitter.on('hitupdate', this.handleHitUpdate);
+        hitDragging.emitter.on('dragend', this.handleDragEnd);
+        this.suppliedDragMeta = suppliedDragMeta;
+    }
+    buildDragMeta(subjectEl) {
+        if (typeof this.suppliedDragMeta === 'object') {
+            return (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bJ)(this.suppliedDragMeta);
+        }
+        if (typeof this.suppliedDragMeta === 'function') {
+            return (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bJ)(this.suppliedDragMeta(subjectEl));
+        }
+        return getDragMetaFromEl(subjectEl);
+    }
+    displayDrag(nextContext, state) {
+        let prevContext = this.receivingContext;
+        if (prevContext && prevContext !== nextContext) {
+            prevContext.dispatch({ type: 'UNSET_EVENT_DRAG' });
+        }
+        if (nextContext) {
+            nextContext.dispatch({ type: 'SET_EVENT_DRAG', state });
+        }
+    }
+    clearDrag() {
+        if (this.receivingContext) {
+            this.receivingContext.dispatch({ type: 'UNSET_EVENT_DRAG' });
+        }
+    }
+    canDropElOnCalendar(el, receivingContext) {
+        let dropAccept = receivingContext.options.dropAccept;
+        if (typeof dropAccept === 'function') {
+            return dropAccept.call(receivingContext.calendarApi, el);
+        }
+        if (typeof dropAccept === 'string' && dropAccept) {
+            return Boolean((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aQ)(el, dropAccept));
+        }
+        return true;
+    }
+}
+// Utils for computing event store from the DragMeta
+// ----------------------------------------------------------------------------------------------------
+function computeEventForDateSpan(dateSpan, dragMeta, context) {
+    let defProps = Object.assign({}, dragMeta.leftoverProps);
+    for (let transform of context.pluginHooks.externalDefTransforms) {
+        Object.assign(defProps, transform(dateSpan, dragMeta));
+    }
+    let { refined, extra } = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.al)(defProps, context);
+    let def = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ak)(refined, extra, dragMeta.sourceId, dateSpan.allDay, context.options.forceEventDuration || Boolean(dragMeta.duration), // hasEnd
+    context);
+    let start = dateSpan.range.start;
+    // only rely on time info if drop zone is all-day,
+    // otherwise, we already know the time
+    if (dateSpan.allDay && dragMeta.startTime) {
+        start = context.dateEnv.add(start, dragMeta.startTime);
+    }
+    let end = dragMeta.duration ?
+        context.dateEnv.add(start, dragMeta.duration) :
+        (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cv)(dateSpan.allDay, start, context);
+    let instance = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aj)(def.defId, { start, end });
+    return { def, instance };
+}
+// Utils for extracting data from element
+// ----------------------------------------------------------------------------------------------------
+function getDragMetaFromEl(el) {
+    let str = getEmbeddedElData(el, 'event');
+    let obj = str ?
+        JSON.parse(str) :
+        { create: false }; // if no embedded data, assume no event creation
+    return (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bJ)(obj);
+}
+_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bI.dataAttrPrefix = '';
+function getEmbeddedElData(el, name) {
+    let prefix = _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bI.dataAttrPrefix;
+    let prefixedName = (prefix ? prefix + '-' : '') + name;
+    return el.getAttribute('data-' + prefixedName) || '';
+}
+
+/*
+Makes an element (that is *external* to any calendar) draggable.
+Can pass in data that determines how an event will be created when dropped onto a calendar.
+Leverages FullCalendar's internal drag-n-drop functionality WITHOUT a third-party drag system.
+*/
+class ExternalDraggable {
+    constructor(el, settings = {}) {
+        this.handlePointerDown = (ev) => {
+            let { dragging } = this;
+            let { minDistance, longPressDelay } = this.settings;
+            dragging.minDistance =
+                minDistance != null ?
+                    minDistance :
+                    (ev.isTouch ? 0 : _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.e.eventDragMinDistance);
+            dragging.delay =
+                ev.isTouch ? // TODO: eventually read eventLongPressDelay instead vvv
+                    (longPressDelay != null ? longPressDelay : _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.e.longPressDelay) :
+                    0;
+        };
+        this.handleDragStart = (ev) => {
+            if (ev.isTouch &&
+                this.dragging.delay &&
+                ev.subjectEl.classList.contains('fc-event')) {
+                this.dragging.mirror.getMirrorEl().classList.add('fc-event-selected');
+            }
+        };
+        this.settings = settings;
+        let dragging = this.dragging = new FeaturefulElementDragging(el);
+        dragging.touchScrollAllowed = false;
+        if (settings.itemSelector != null) {
+            dragging.pointer.selector = settings.itemSelector;
+        }
+        if (settings.appendTo != null) {
+            dragging.mirror.parentNode = settings.appendTo; // TODO: write tests
+        }
+        dragging.emitter.on('pointerdown', this.handlePointerDown);
+        dragging.emitter.on('dragstart', this.handleDragStart);
+        new ExternalElementDragging(dragging, settings.eventData); // eslint-disable-line no-new
+    }
+    destroy() {
+        this.dragging.destroy();
+    }
+}
+
+/*
+Detects when a *THIRD-PARTY* drag-n-drop system interacts with elements.
+The third-party system is responsible for drawing the visuals effects of the drag.
+This class simply monitors for pointer movements and fires events.
+It also has the ability to hide the moving element (the "mirror") during the drag.
+*/
+class InferredElementDragging extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bH {
+    constructor(containerEl) {
+        super(containerEl);
+        this.shouldIgnoreMove = false;
+        this.mirrorSelector = '';
+        this.currentMirrorEl = null;
+        this.handlePointerDown = (ev) => {
+            this.emitter.trigger('pointerdown', ev);
+            if (!this.shouldIgnoreMove) {
+                // fire dragstart right away. does not support delay or min-distance
+                this.emitter.trigger('dragstart', ev);
+            }
+        };
+        this.handlePointerMove = (ev) => {
+            if (!this.shouldIgnoreMove) {
+                this.emitter.trigger('dragmove', ev);
+            }
+        };
+        this.handlePointerUp = (ev) => {
+            this.emitter.trigger('pointerup', ev);
+            if (!this.shouldIgnoreMove) {
+                // fire dragend right away. does not support a revert animation
+                this.emitter.trigger('dragend', ev);
+            }
+        };
+        let pointer = this.pointer = new PointerDragging(containerEl);
+        pointer.emitter.on('pointerdown', this.handlePointerDown);
+        pointer.emitter.on('pointermove', this.handlePointerMove);
+        pointer.emitter.on('pointerup', this.handlePointerUp);
+    }
+    destroy() {
+        this.pointer.destroy();
+    }
+    setIgnoreMove(bool) {
+        this.shouldIgnoreMove = bool;
+    }
+    setMirrorIsVisible(bool) {
+        if (bool) {
+            // restore a previously hidden element.
+            // use the reference in case the selector class has already been removed.
+            if (this.currentMirrorEl) {
+                this.currentMirrorEl.style.visibility = '';
+                this.currentMirrorEl = null;
+            }
+        }
+        else {
+            let mirrorEl = this.mirrorSelector
+                // TODO: somehow query FullCalendars WITHIN shadow-roots
+                ? document.querySelector(this.mirrorSelector)
+                : null;
+            if (mirrorEl) {
+                this.currentMirrorEl = mirrorEl;
+                mirrorEl.style.visibility = 'hidden';
+            }
+        }
+    }
+}
+
+/*
+Bridges third-party drag-n-drop systems with FullCalendar.
+Must be instantiated and destroyed by caller.
+*/
+class ThirdPartyDraggable {
+    constructor(containerOrSettings, settings) {
+        let containerEl = document;
+        if (
+        // wish we could just test instanceof EventTarget, but doesn't work in IE11
+        containerOrSettings === document ||
+            containerOrSettings instanceof Element) {
+            containerEl = containerOrSettings;
+            settings = settings || {};
+        }
+        else {
+            settings = (containerOrSettings || {});
+        }
+        let dragging = this.dragging = new InferredElementDragging(containerEl);
+        if (typeof settings.itemSelector === 'string') {
+            dragging.pointer.selector = settings.itemSelector;
+        }
+        else if (containerEl === document) {
+            dragging.pointer.selector = '[data-event]';
+        }
+        if (typeof settings.mirrorSelector === 'string') {
+            dragging.mirrorSelector = settings.mirrorSelector;
+        }
+        new ExternalElementDragging(dragging, settings.eventData); // eslint-disable-line no-new
+    }
+    destroy() {
+        this.dragging.destroy();
+    }
+}
+
+var index = (0,_fullcalendar_core_index_js__WEBPACK_IMPORTED_MODULE_1__.createPlugin)({
+    name: '@fullcalendar/interaction',
+    componentInteractions: [DateClicking, DateSelecting, EventDragging, EventResizing],
+    calendarInteractions: [UnselectAuto],
+    elementDraggingImpl: FeaturefulElementDragging,
+    optionRefiners: OPTION_REFINERS,
+    listenerRefiners: LISTENER_REFINERS,
+});
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/@fullcalendar/list/index.js":
+/*!**************************************************!*\
+  !*** ./node_modules/@fullcalendar/list/index.js ***!
+  \**************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": function() { return /* binding */ index; }
+/* harmony export */ });
+/* harmony import */ var _fullcalendar_core_index_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @fullcalendar/core/index.js */ "./node_modules/@fullcalendar/core/index.js");
+/* harmony import */ var _internal_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./internal.js */ "./node_modules/@fullcalendar/list/internal.js");
+/* harmony import */ var _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @fullcalendar/core/internal.js */ "./node_modules/@fullcalendar/core/internal-common.js");
+
+
+
+
+
+const OPTION_REFINERS = {
+    listDayFormat: createFalsableFormatter,
+    listDaySideFormat: createFalsableFormatter,
+    noEventsClassNames: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    noEventsContent: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    noEventsDidMount: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    noEventsWillUnmount: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.n,
+    // noEventsText is defined in base options
+};
+function createFalsableFormatter(input) {
+    return input === false ? null : (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.x)(input);
+}
+
+var index = (0,_fullcalendar_core_index_js__WEBPACK_IMPORTED_MODULE_1__.createPlugin)({
+    name: '@fullcalendar/list',
+    optionRefiners: OPTION_REFINERS,
+    views: {
+        list: {
+            component: _internal_js__WEBPACK_IMPORTED_MODULE_2__.ListView,
+            buttonTextKey: 'list',
+            listDayFormat: { month: 'long', day: 'numeric', year: 'numeric' }, // like "January 1, 2016"
+        },
+        listDay: {
+            type: 'list',
+            duration: { days: 1 },
+            listDayFormat: { weekday: 'long' }, // day-of-week is all we need. full date is probably in headerToolbar
+        },
+        listWeek: {
+            type: 'list',
+            duration: { weeks: 1 },
+            listDayFormat: { weekday: 'long' },
+            listDaySideFormat: { month: 'long', day: 'numeric', year: 'numeric' },
+        },
+        listMonth: {
+            type: 'list',
+            duration: { month: 1 },
+            listDaySideFormat: { weekday: 'long' }, // day-of-week is nice-to-have
+        },
+        listYear: {
+            type: 'list',
+            duration: { year: 1 },
+            listDaySideFormat: { weekday: 'long' }, // day-of-week is nice-to-have
+        },
+    },
+});
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/@fullcalendar/list/internal.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/@fullcalendar/list/internal.js ***!
+  \*****************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   ListView: function() { return /* binding */ ListView; }
+/* harmony export */ });
+/* harmony import */ var _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @fullcalendar/core/internal.js */ "./node_modules/@fullcalendar/core/internal-common.js");
+/* harmony import */ var _fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @fullcalendar/core/preact.js */ "./node_modules/preact/dist/preact.module.js");
+
+
+
+class ListViewHeaderRow extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    constructor() {
+        super(...arguments);
+        this.state = {
+            textId: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a5)(),
+        };
+    }
+    render() {
+        let { theme, dateEnv, options, viewApi } = this.context;
+        let { cellId, dayDate, todayRange } = this.props;
+        let { textId } = this.state;
+        let dayMeta = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a_)(dayDate, todayRange);
+        // will ever be falsy?
+        let text = options.listDayFormat ? dateEnv.format(dayDate, options.listDayFormat) : '';
+        // will ever be falsy? also, BAD NAME "alt"
+        let sideText = options.listDaySideFormat ? dateEnv.format(dayDate, options.listDaySideFormat) : '';
+        let renderProps = Object.assign({ date: dateEnv.toDate(dayDate), view: viewApi, textId,
+            text,
+            sideText, navLinkAttrs: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b0)(this.context, dayDate), sideNavLinkAttrs: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b0)(this.context, dayDate, 'day', false) }, dayMeta);
+        // TODO: make a reusable HOC for dayHeader (used in daygrid/timegrid too)
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.C, { elTag: "tr", elClasses: [
+                'fc-list-day',
+                ...(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aZ)(dayMeta, theme),
+            ], elAttrs: {
+                'data-date': (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bv)(dayDate),
+            }, renderProps: renderProps, generatorName: "dayHeaderContent", customGenerator: options.dayHeaderContent, defaultGenerator: renderInnerContent, classNameGenerator: options.dayHeaderClassNames, didMount: options.dayHeaderDidMount, willUnmount: options.dayHeaderWillUnmount }, (InnerContent) => ( // TODO: force-hide top border based on :first-child
+        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("th", { scope: "colgroup", colSpan: 3, id: cellId, "aria-labelledby": textId },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerContent, { elTag: "div", elClasses: [
+                    'fc-list-day-cushion',
+                    theme.getClass('tableCellShaded'),
+                ] })))));
+    }
+}
+function renderInnerContent(props) {
+    return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null,
+        props.text && ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("a", Object.assign({ id: props.textId, className: "fc-list-day-text" }, props.navLinkAttrs), props.text)),
+        props.sideText && ( /* not keyboard tabbable */(0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("a", Object.assign({ "aria-hidden": true, className: "fc-list-day-side-text" }, props.sideNavLinkAttrs), props.sideText))));
+}
+
+const DEFAULT_TIME_FORMAT = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.x)({
+    hour: 'numeric',
+    minute: '2-digit',
+    meridiem: 'short',
+});
+class ListViewEventRow extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    render() {
+        let { props, context } = this;
+        let { options } = context;
+        let { seg, timeHeaderId, eventHeaderId, dateHeaderId } = props;
+        let timeFormat = options.eventTimeFormat || DEFAULT_TIME_FORMAT;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cn, Object.assign({}, props, { elTag: "tr", elClasses: [
+                'fc-list-event',
+                seg.eventRange.def.url && 'fc-event-forced-url',
+            ], defaultGenerator: () => renderEventInnerContent(seg, context) /* weird */, seg: seg, timeText: "", disableDragging: true, disableResizing: true }), (InnerContent, eventContentArg) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null,
+            buildTimeContent(seg, timeFormat, context, timeHeaderId, dateHeaderId),
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("td", { "aria-hidden": true, className: "fc-list-event-graphic" },
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("span", { className: "fc-list-event-dot", style: {
+                        borderColor: eventContentArg.borderColor || eventContentArg.backgroundColor,
+                    } })),
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerContent, { elTag: "td", elClasses: ['fc-list-event-title'], elAttrs: { headers: `${eventHeaderId} ${dateHeaderId}` } })))));
+    }
+}
+function renderEventInnerContent(seg, context) {
+    let interactiveAttrs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bU)(seg, context);
+    return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("a", Object.assign({}, interactiveAttrs), seg.eventRange.def.title));
+}
+function buildTimeContent(seg, timeFormat, context, timeHeaderId, dateHeaderId) {
+    let { options } = context;
+    if (options.displayEventTime !== false) {
+        let eventDef = seg.eventRange.def;
+        let eventInstance = seg.eventRange.instance;
+        let doAllDay = false;
+        let timeText;
+        if (eventDef.allDay) {
+            doAllDay = true;
+        }
+        else if ((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.az)(seg.eventRange.range)) { // TODO: use (!isStart || !isEnd) instead?
+            if (seg.isStart) {
+                timeText = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bQ)(seg, timeFormat, context, null, null, eventInstance.range.start, seg.end);
+            }
+            else if (seg.isEnd) {
+                timeText = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bQ)(seg, timeFormat, context, null, null, seg.start, eventInstance.range.end);
+            }
+            else {
+                doAllDay = true;
+            }
+        }
+        else {
+            timeText = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bQ)(seg, timeFormat, context);
+        }
+        if (doAllDay) {
+            let renderProps = {
+                text: context.options.allDayText,
+                view: context.viewApi,
+            };
+            return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.C, { elTag: "td", elClasses: ['fc-list-event-time'], elAttrs: {
+                    headers: `${timeHeaderId} ${dateHeaderId}`,
+                }, renderProps: renderProps, generatorName: "allDayContent", customGenerator: options.allDayContent, defaultGenerator: renderAllDayInner, classNameGenerator: options.allDayClassNames, didMount: options.allDayDidMount, willUnmount: options.allDayWillUnmount }));
+        }
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("td", { className: "fc-list-event-time" }, timeText));
+    }
+    return null;
+}
+function renderAllDayInner(renderProps) {
+    return renderProps.text;
+}
+
+/*
+Responsible for the scroller, and forwarding event-related actions into the "grid".
+*/
+class ListView extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.computeDateVars = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(computeDateVars);
+        this.eventStoreToSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(this._eventStoreToSegs);
+        this.state = {
+            timeHeaderId: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a5)(),
+            eventHeaderId: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a5)(),
+            dateHeaderIdRoot: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.a5)(),
+        };
+        this.setRootEl = (rootEl) => {
+            if (rootEl) {
+                this.context.registerInteractiveComponent(this, {
+                    el: rootEl,
+                });
+            }
+            else {
+                this.context.unregisterInteractiveComponent(this);
+            }
+        };
+    }
+    render() {
+        let { props, context } = this;
+        let { dayDates, dayRanges } = this.computeDateVars(props.dateProfile);
+        let eventSegs = this.eventStoreToSegs(props.eventStore, props.eventUiBases, dayRanges);
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ct, { elRef: this.setRootEl, elClasses: [
+                'fc-list',
+                context.theme.getClass('table'),
+                context.options.stickyHeaderDates !== false ?
+                    'fc-list-sticky' :
+                    '',
+            ], viewSpec: context.viewSpec },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cd, { liquid: !props.isHeightAuto, overflowX: props.isHeightAuto ? 'visible' : 'hidden', overflowY: props.isHeightAuto ? 'visible' : 'auto' }, eventSegs.length > 0 ?
+                this.renderSegList(eventSegs, dayDates) :
+                this.renderEmptyMessage())));
+    }
+    renderEmptyMessage() {
+        let { options, viewApi } = this.context;
+        let renderProps = {
+            text: options.noEventsText,
+            view: viewApi,
+        };
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.C, { elTag: "div", elClasses: ['fc-list-empty'], renderProps: renderProps, generatorName: "noEventsContent", customGenerator: options.noEventsContent, defaultGenerator: renderNoEventsInner, classNameGenerator: options.noEventsClassNames, didMount: options.noEventsDidMount, willUnmount: options.noEventsWillUnmount }, (InnerContent) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerContent, { elTag: "div", elClasses: ['fc-list-empty-cushion'] }))));
+    }
+    renderSegList(allSegs, dayDates) {
+        let { theme, options } = this.context;
+        let { timeHeaderId, eventHeaderId, dateHeaderIdRoot } = this.state;
+        let segsByDay = groupSegsByDay(allSegs); // sparse array
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ch, { unit: "day" }, (nowDate, todayRange) => {
+            let innerNodes = [];
+            for (let dayIndex = 0; dayIndex < segsByDay.length; dayIndex += 1) {
+                let daySegs = segsByDay[dayIndex];
+                if (daySegs) { // sparse array, so might be undefined
+                    let dayStr = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bv)(dayDates[dayIndex]);
+                    let dateHeaderId = dateHeaderIdRoot + '-' + dayStr;
+                    // append a day header
+                    innerNodes.push((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(ListViewHeaderRow, { key: dayStr, cellId: dateHeaderId, dayDate: dayDates[dayIndex], todayRange: todayRange }));
+                    daySegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bR)(daySegs, options.eventOrder);
+                    for (let seg of daySegs) {
+                        innerNodes.push((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(ListViewEventRow, Object.assign({ key: dayStr + ':' + seg.eventRange.instance.instanceId /* are multiple segs for an instanceId */, seg: seg, isDragging: false, isResizing: false, isDateSelecting: false, isSelected: false, timeHeaderId: timeHeaderId, eventHeaderId: eventHeaderId, dateHeaderId: dateHeaderId }, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bS)(seg, todayRange, nowDate))));
+                    }
+                }
+            }
+            return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("table", { className: 'fc-list-table ' + theme.getClass('table') },
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("thead", null,
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tr", null,
+                        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("th", { scope: "col", id: timeHeaderId }, options.timeHint),
+                        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("th", { scope: "col", "aria-hidden": true }),
+                        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("th", { scope: "col", id: eventHeaderId }, options.eventHint))),
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tbody", null, innerNodes)));
+        }));
+    }
+    _eventStoreToSegs(eventStore, eventUiBases, dayRanges) {
+        return this.eventRangesToSegs((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.af)(eventStore, eventUiBases, this.props.dateProfile.activeRange, this.context.options.nextDayThreshold).fg, dayRanges);
+    }
+    eventRangesToSegs(eventRanges, dayRanges) {
+        let segs = [];
+        for (let eventRange of eventRanges) {
+            segs.push(...this.eventRangeToSegs(eventRange, dayRanges));
+        }
+        return segs;
+    }
+    eventRangeToSegs(eventRange, dayRanges) {
+        let { dateEnv } = this.context;
+        let { nextDayThreshold } = this.context.options;
+        let range = eventRange.range;
+        let allDay = eventRange.def.allDay;
+        let dayIndex;
+        let segRange;
+        let seg;
+        let segs = [];
+        for (dayIndex = 0; dayIndex < dayRanges.length; dayIndex += 1) {
+            segRange = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.o)(range, dayRanges[dayIndex]);
+            if (segRange) {
+                seg = {
+                    component: this,
+                    eventRange,
+                    start: segRange.start,
+                    end: segRange.end,
+                    isStart: eventRange.isStart && segRange.start.valueOf() === range.start.valueOf(),
+                    isEnd: eventRange.isEnd && segRange.end.valueOf() === range.end.valueOf(),
+                    dayIndex,
+                };
+                segs.push(seg);
+                // detect when range won't go fully into the next day,
+                // and mutate the latest seg to the be the end.
+                if (!seg.isEnd && !allDay &&
+                    dayIndex + 1 < dayRanges.length &&
+                    range.end <
+                        dateEnv.add(dayRanges[dayIndex + 1].start, nextDayThreshold)) {
+                    seg.end = range.end;
+                    seg.isEnd = true;
+                    break;
+                }
+            }
+        }
+        return segs;
+    }
+}
+function renderNoEventsInner(renderProps) {
+    return renderProps.text;
+}
+function computeDateVars(dateProfile) {
+    let dayStart = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.q)(dateProfile.renderRange.start);
+    let viewEnd = dateProfile.renderRange.end;
+    let dayDates = [];
+    let dayRanges = [];
+    while (dayStart < viewEnd) {
+        dayDates.push(dayStart);
+        dayRanges.push({
+            start: dayStart,
+            end: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.t)(dayStart, 1),
+        });
+        dayStart = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.t)(dayStart, 1);
+    }
+    return { dayDates, dayRanges };
+}
+// Returns a sparse array of arrays, segs grouped by their dayIndex
+function groupSegsByDay(segs) {
+    let segsByDay = []; // sparse array
+    let i;
+    let seg;
+    for (i = 0; i < segs.length; i += 1) {
+        seg = segs[i];
+        (segsByDay[seg.dayIndex] || (segsByDay[seg.dayIndex] = []))
+            .push(seg);
+    }
+    return segsByDay;
+}
+
+var css_248z = ":root{--fc-list-event-dot-width:10px;--fc-list-event-hover-bg-color:#f5f5f5}.fc-theme-standard .fc-list{border:1px solid var(--fc-border-color)}.fc .fc-list-empty{align-items:center;background-color:var(--fc-neutral-bg-color);display:flex;height:100%;justify-content:center}.fc .fc-list-empty-cushion{margin:5em 0}.fc .fc-list-table{border-style:hidden;width:100%}.fc .fc-list-table tr>*{border-left:0;border-right:0}.fc .fc-list-sticky .fc-list-day>*{background:var(--fc-page-bg-color);position:sticky;top:0}.fc .fc-list-table thead{left:-10000px;position:absolute}.fc .fc-list-table tbody>tr:first-child th{border-top:0}.fc .fc-list-table th{padding:0}.fc .fc-list-day-cushion,.fc .fc-list-table td{padding:8px 14px}.fc .fc-list-day-cushion:after{clear:both;content:\"\";display:table}.fc-theme-standard .fc-list-day-cushion{background-color:var(--fc-neutral-bg-color)}.fc-direction-ltr .fc-list-day-text,.fc-direction-rtl .fc-list-day-side-text{float:left}.fc-direction-ltr .fc-list-day-side-text,.fc-direction-rtl .fc-list-day-text{float:right}.fc-direction-ltr .fc-list-table .fc-list-event-graphic{padding-right:0}.fc-direction-rtl .fc-list-table .fc-list-event-graphic{padding-left:0}.fc .fc-list-event.fc-event-forced-url{cursor:pointer}.fc .fc-list-event:hover td{background-color:var(--fc-list-event-hover-bg-color)}.fc .fc-list-event-graphic,.fc .fc-list-event-time{white-space:nowrap;width:1px}.fc .fc-list-event-dot{border:calc(var(--fc-list-event-dot-width)/2) solid var(--fc-event-border-color);border-radius:calc(var(--fc-list-event-dot-width)/2);box-sizing:content-box;display:inline-block;height:0;width:0}.fc .fc-list-event-title a{color:inherit;text-decoration:none}.fc .fc-list-event.fc-event-forced-url:hover a{text-decoration:underline}";
+(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cw)(css_248z);
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/@fullcalendar/timegrid/index.js":
+/*!******************************************************!*\
+  !*** ./node_modules/@fullcalendar/timegrid/index.js ***!
+  \******************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": function() { return /* binding */ index; }
+/* harmony export */ });
+/* harmony import */ var _fullcalendar_core_index_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @fullcalendar/core/index.js */ "./node_modules/@fullcalendar/core/index.js");
+/* harmony import */ var _internal_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./internal.js */ "./node_modules/@fullcalendar/timegrid/internal.js");
+
+
+
+
+
+
+const OPTION_REFINERS = {
+    allDaySlot: Boolean,
+};
+
+var index = (0,_fullcalendar_core_index_js__WEBPACK_IMPORTED_MODULE_0__.createPlugin)({
+    name: '@fullcalendar/timegrid',
+    initialView: 'timeGridWeek',
+    optionRefiners: OPTION_REFINERS,
+    views: {
+        timeGrid: {
+            component: _internal_js__WEBPACK_IMPORTED_MODULE_1__.DayTimeColsView,
+            usesMinMaxTime: true,
+            allDaySlot: true,
+            slotDuration: '00:30:00',
+            slotEventOverlap: true, // a bad name. confused with overlap/constraint system
+        },
+        timeGridDay: {
+            type: 'timeGrid',
+            duration: { days: 1 },
+        },
+        timeGridWeek: {
+            type: 'timeGrid',
+            duration: { weeks: 1 },
+        },
+    },
+});
+
+
+
+
+/***/ }),
+
+/***/ "./node_modules/@fullcalendar/timegrid/internal.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/@fullcalendar/timegrid/internal.js ***!
+  \*********************************************************/
+/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   DayTimeCols: function() { return /* binding */ DayTimeCols; },
+/* harmony export */   DayTimeColsSlicer: function() { return /* binding */ DayTimeColsSlicer; },
+/* harmony export */   DayTimeColsView: function() { return /* binding */ DayTimeColsView; },
+/* harmony export */   TimeCols: function() { return /* binding */ TimeCols; },
+/* harmony export */   TimeColsSlatsCoords: function() { return /* binding */ TimeColsSlatsCoords; },
+/* harmony export */   TimeColsView: function() { return /* binding */ TimeColsView; },
+/* harmony export */   buildDayRanges: function() { return /* binding */ buildDayRanges; },
+/* harmony export */   buildSlatMetas: function() { return /* binding */ buildSlatMetas; },
+/* harmony export */   buildTimeColsModel: function() { return /* binding */ buildTimeColsModel; }
+/* harmony export */ });
+/* harmony import */ var _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @fullcalendar/core/internal.js */ "./node_modules/@fullcalendar/core/internal-common.js");
+/* harmony import */ var _fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @fullcalendar/core/preact.js */ "./node_modules/preact/dist/preact.module.js");
+/* harmony import */ var _fullcalendar_daygrid_internal_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @fullcalendar/daygrid/internal.js */ "./node_modules/@fullcalendar/daygrid/internal.js");
+
+
+
+
+var css_248z = ".fc-v-event{background-color:var(--fc-event-bg-color);border:1px solid var(--fc-event-border-color);display:block}.fc-v-event .fc-event-main{color:var(--fc-event-text-color);height:100%}.fc-v-event .fc-event-main-frame{display:flex;flex-direction:column;height:100%}.fc-v-event .fc-event-time{flex-grow:0;flex-shrink:0;max-height:100%;overflow:hidden}.fc-v-event .fc-event-title-container{flex-grow:1;flex-shrink:1;min-height:0}.fc-v-event .fc-event-title{bottom:0;max-height:100%;overflow:hidden;top:0}.fc-v-event:not(.fc-event-start){border-top-left-radius:0;border-top-right-radius:0;border-top-width:0}.fc-v-event:not(.fc-event-end){border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-width:0}.fc-v-event.fc-event-selected:before{left:-10px;right:-10px}.fc-v-event .fc-event-resizer-start{cursor:n-resize}.fc-v-event .fc-event-resizer-end{cursor:s-resize}.fc-v-event:not(.fc-event-selected) .fc-event-resizer{height:var(--fc-event-resizer-thickness);left:0;right:0}.fc-v-event:not(.fc-event-selected) .fc-event-resizer-start{top:calc(var(--fc-event-resizer-thickness)/-2)}.fc-v-event:not(.fc-event-selected) .fc-event-resizer-end{bottom:calc(var(--fc-event-resizer-thickness)/-2)}.fc-v-event.fc-event-selected .fc-event-resizer{left:50%;margin-left:calc(var(--fc-event-resizer-dot-total-width)/-2)}.fc-v-event.fc-event-selected .fc-event-resizer-start{top:calc(var(--fc-event-resizer-dot-total-width)/-2)}.fc-v-event.fc-event-selected .fc-event-resizer-end{bottom:calc(var(--fc-event-resizer-dot-total-width)/-2)}.fc .fc-timegrid .fc-daygrid-body{z-index:2}.fc .fc-timegrid-divider{padding:0 0 2px}.fc .fc-timegrid-body{min-height:100%;position:relative;z-index:1}.fc .fc-timegrid-axis-chunk{position:relative}.fc .fc-timegrid-axis-chunk>table,.fc .fc-timegrid-slots{position:relative;z-index:1}.fc .fc-timegrid-slot{border-bottom:0;height:1.5em}.fc .fc-timegrid-slot:empty:before{content:\"\\00a0\"}.fc .fc-timegrid-slot-minor{border-top-style:dotted}.fc .fc-timegrid-slot-label-cushion{display:inline-block;white-space:nowrap}.fc .fc-timegrid-slot-label{vertical-align:middle}.fc .fc-timegrid-axis-cushion,.fc .fc-timegrid-slot-label-cushion{padding:0 4px}.fc .fc-timegrid-axis-frame-liquid{height:100%}.fc .fc-timegrid-axis-frame{align-items:center;display:flex;justify-content:flex-end;overflow:hidden}.fc .fc-timegrid-axis-cushion{flex-shrink:0;max-width:60px}.fc-direction-ltr .fc-timegrid-slot-label-frame{text-align:right}.fc-direction-rtl .fc-timegrid-slot-label-frame{text-align:left}.fc-liquid-hack .fc-timegrid-axis-frame-liquid{bottom:0;height:auto;left:0;position:absolute;right:0;top:0}.fc .fc-timegrid-col.fc-day-today{background-color:var(--fc-today-bg-color)}.fc .fc-timegrid-col-frame{min-height:100%;position:relative}.fc-media-screen.fc-liquid-hack .fc-timegrid-col-frame{bottom:0;height:auto;left:0;position:absolute;right:0;top:0}.fc-media-screen .fc-timegrid-cols{bottom:0;left:0;position:absolute;right:0;top:0}.fc-media-screen .fc-timegrid-cols>table{height:100%}.fc-media-screen .fc-timegrid-col-bg,.fc-media-screen .fc-timegrid-col-events,.fc-media-screen .fc-timegrid-now-indicator-container{left:0;position:absolute;right:0;top:0}.fc .fc-timegrid-col-bg{z-index:2}.fc .fc-timegrid-col-bg .fc-non-business{z-index:1}.fc .fc-timegrid-col-bg .fc-bg-event{z-index:2}.fc .fc-timegrid-col-bg .fc-highlight{z-index:3}.fc .fc-timegrid-bg-harness{left:0;position:absolute;right:0}.fc .fc-timegrid-col-events{z-index:3}.fc .fc-timegrid-now-indicator-container{bottom:0;overflow:hidden}.fc-direction-ltr .fc-timegrid-col-events{margin:0 2.5% 0 2px}.fc-direction-rtl .fc-timegrid-col-events{margin:0 2px 0 2.5%}.fc-timegrid-event-harness{position:absolute}.fc-timegrid-event-harness>.fc-timegrid-event{bottom:0;left:0;position:absolute;right:0;top:0}.fc-timegrid-event-harness-inset .fc-timegrid-event,.fc-timegrid-event.fc-event-mirror,.fc-timegrid-more-link{box-shadow:0 0 0 1px var(--fc-page-bg-color)}.fc-timegrid-event,.fc-timegrid-more-link{border-radius:3px;font-size:var(--fc-small-font-size)}.fc-timegrid-event{margin-bottom:1px}.fc-timegrid-event .fc-event-main{padding:1px 1px 0}.fc-timegrid-event .fc-event-time{font-size:var(--fc-small-font-size);margin-bottom:1px;white-space:nowrap}.fc-timegrid-event-short .fc-event-main-frame{flex-direction:row;overflow:hidden}.fc-timegrid-event-short .fc-event-time:after{content:\"\\00a0-\\00a0\"}.fc-timegrid-event-short .fc-event-title{font-size:var(--fc-small-font-size)}.fc-timegrid-more-link{background:var(--fc-more-link-bg-color);color:var(--fc-more-link-text-color);cursor:pointer;margin-bottom:1px;position:absolute;z-index:9999}.fc-timegrid-more-link-inner{padding:3px 2px;top:0}.fc-direction-ltr .fc-timegrid-more-link{right:0}.fc-direction-rtl .fc-timegrid-more-link{left:0}.fc .fc-timegrid-now-indicator-line{border-color:var(--fc-now-indicator-color);border-style:solid;border-width:1px 0 0;left:0;position:absolute;right:0;z-index:4}.fc .fc-timegrid-now-indicator-arrow{border-color:var(--fc-now-indicator-color);border-style:solid;margin-top:-5px;position:absolute;z-index:4}.fc-direction-ltr .fc-timegrid-now-indicator-arrow{border-bottom-color:transparent;border-top-color:transparent;border-width:5px 0 5px 6px;left:0}.fc-direction-rtl .fc-timegrid-now-indicator-arrow{border-bottom-color:transparent;border-top-color:transparent;border-width:5px 6px 5px 0;right:0}";
+(0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cw)(css_248z);
+
+class AllDaySplitter extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.aY {
+    getKeyInfo() {
+        return {
+            allDay: {},
+            timed: {},
+        };
+    }
+    getKeysForDateSpan(dateSpan) {
+        if (dateSpan.allDay) {
+            return ['allDay'];
+        }
+        return ['timed'];
+    }
+    getKeysForEventDef(eventDef) {
+        if (!eventDef.allDay) {
+            return ['timed'];
+        }
+        if ((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bP)(eventDef)) {
+            return ['timed', 'allDay'];
+        }
+        return ['allDay'];
+    }
+}
+
+const DEFAULT_SLAT_LABEL_FORMAT = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.x)({
+    hour: 'numeric',
+    minute: '2-digit',
+    omitZeroMinute: true,
+    meridiem: 'short',
+});
+function TimeColsAxisCell(props) {
+    let classNames = [
+        'fc-timegrid-slot',
+        'fc-timegrid-slot-label',
+        props.isLabeled ? 'fc-scrollgrid-shrink' : 'fc-timegrid-slot-minor',
+    ];
+    return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.V.Consumer, null, (context) => {
+        if (!props.isLabeled) {
+            return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("td", { className: classNames.join(' '), "data-time": props.isoTimeStr }));
+        }
+        let { dateEnv, options, viewApi } = context;
+        let labelFormat = // TODO: fully pre-parse
+         options.slotLabelFormat == null ? DEFAULT_SLAT_LABEL_FORMAT :
+            Array.isArray(options.slotLabelFormat) ? (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.x)(options.slotLabelFormat[0]) :
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.x)(options.slotLabelFormat);
+        let renderProps = {
+            level: 0,
+            time: props.time,
+            date: dateEnv.toDate(props.date),
+            view: viewApi,
+            text: dateEnv.format(props.date, labelFormat),
+        };
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.C, { elTag: "td", elClasses: classNames, elAttrs: {
+                'data-time': props.isoTimeStr,
+            }, renderProps: renderProps, generatorName: "slotLabelContent", customGenerator: options.slotLabelContent, defaultGenerator: renderInnerContent, classNameGenerator: options.slotLabelClassNames, didMount: options.slotLabelDidMount, willUnmount: options.slotLabelWillUnmount }, (InnerContent) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-slot-label-frame fc-scrollgrid-shrink-frame" },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerContent, { elTag: "div", elClasses: [
+                    'fc-timegrid-slot-label-cushion',
+                    'fc-scrollgrid-shrink-cushion',
+                ] })))));
+    }));
+}
+function renderInnerContent(props) {
+    return props.text;
+}
+
+class TimeBodyAxis extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    render() {
+        return this.props.slatMetas.map((slatMeta) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tr", { key: slatMeta.key },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeColsAxisCell, Object.assign({}, slatMeta)))));
+    }
+}
+
+const DEFAULT_WEEK_NUM_FORMAT = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.x)({ week: 'short' });
+const AUTO_ALL_DAY_MAX_EVENT_ROWS = 5;
+class TimeColsView extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.allDaySplitter = new AllDaySplitter(); // for use by subclasses
+        this.headerElRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.rootElRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.scrollerElRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.state = {
+            slatCoords: null,
+        };
+        this.handleScrollTopRequest = (scrollTop) => {
+            let scrollerEl = this.scrollerElRef.current;
+            if (scrollerEl) { // TODO: not sure how this could ever be null. weirdness with the reducer
+                scrollerEl.scrollTop = scrollTop;
+            }
+        };
+        /* Header Render Methods
+        ------------------------------------------------------------------------------------------------------------------*/
+        this.renderHeadAxis = (rowKey, frameHeight = '') => {
+            let { options } = this.context;
+            let { dateProfile } = this.props;
+            let range = dateProfile.renderRange;
+            let dayCnt = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bl)(range.start, range.end);
+            // only do in day views (to avoid doing in week views that dont need it)
+            let navLinkAttrs = (dayCnt === 1)
+                ? (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b0)(this.context, range.start, 'week')
+                : {};
+            if (options.weekNumbers && rowKey === 'day') {
+                return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cq, { elTag: "th", elClasses: [
+                        'fc-timegrid-axis',
+                        'fc-scrollgrid-shrink',
+                    ], elAttrs: {
+                        'aria-hidden': true,
+                    }, date: range.start, defaultFormat: DEFAULT_WEEK_NUM_FORMAT }, (InnerContent) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: [
+                        'fc-timegrid-axis-frame',
+                        'fc-scrollgrid-shrink-frame',
+                        'fc-timegrid-axis-frame-liquid',
+                    ].join(' '), style: { height: frameHeight } },
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerContent, { elTag: "a", elClasses: [
+                            'fc-timegrid-axis-cushion',
+                            'fc-scrollgrid-shrink-cushion',
+                            'fc-scrollgrid-sync-inner',
+                        ], elAttrs: navLinkAttrs })))));
+            }
+            return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("th", { "aria-hidden": true, className: "fc-timegrid-axis" },
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-axis-frame", style: { height: frameHeight } })));
+        };
+        /* Table Component Render Methods
+        ------------------------------------------------------------------------------------------------------------------*/
+        // only a one-way height sync. we don't send the axis inner-content height to the DayGrid,
+        // but DayGrid still needs to have classNames on inner elements in order to measure.
+        this.renderTableRowAxis = (rowHeight) => {
+            let { options, viewApi } = this.context;
+            let renderProps = {
+                text: options.allDayText,
+                view: viewApi,
+            };
+            return (
+            // TODO: make reusable hook. used in list view too
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.C, { elTag: "td", elClasses: [
+                    'fc-timegrid-axis',
+                    'fc-scrollgrid-shrink',
+                ], elAttrs: {
+                    'aria-hidden': true,
+                }, renderProps: renderProps, generatorName: "allDayContent", customGenerator: options.allDayContent, defaultGenerator: renderAllDayInner, classNameGenerator: options.allDayClassNames, didMount: options.allDayDidMount, willUnmount: options.allDayWillUnmount }, (InnerContent) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: [
+                    'fc-timegrid-axis-frame',
+                    'fc-scrollgrid-shrink-frame',
+                    rowHeight == null ? ' fc-timegrid-axis-frame-liquid' : '',
+                ].join(' '), style: { height: rowHeight } },
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerContent, { elTag: "span", elClasses: [
+                        'fc-timegrid-axis-cushion',
+                        'fc-scrollgrid-shrink-cushion',
+                        'fc-scrollgrid-sync-inner',
+                    ] })))));
+        };
+        this.handleSlatCoords = (slatCoords) => {
+            this.setState({ slatCoords });
+        };
+    }
+    // rendering
+    // ----------------------------------------------------------------------------------------------------
+    renderSimpleLayout(headerRowContent, allDayContent, timeContent) {
+        let { context, props } = this;
+        let sections = [];
+        let stickyHeaderDates = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cc)(context.options);
+        if (headerRowContent) {
+            sections.push({
+                type: 'header',
+                key: 'header',
+                isSticky: stickyHeaderDates,
+                chunk: {
+                    elRef: this.headerElRef,
+                    tableClassName: 'fc-col-header',
+                    rowContent: headerRowContent,
+                },
+            });
+        }
+        if (allDayContent) {
+            sections.push({
+                type: 'body',
+                key: 'all-day',
+                chunk: { content: allDayContent },
+            });
+            sections.push({
+                type: 'body',
+                key: 'all-day-divider',
+                outerContent: ( // TODO: rename to cellContent so don't need to define <tr>?
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tr", { role: "presentation", className: "fc-scrollgrid-section" },
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("td", { className: 'fc-timegrid-divider ' + context.theme.getClass('tableCellShaded') }))),
+            });
+        }
+        sections.push({
+            type: 'body',
+            key: 'body',
+            liquid: true,
+            expandRows: Boolean(context.options.expandRows),
+            chunk: {
+                scrollerElRef: this.scrollerElRef,
+                content: timeContent,
+            },
+        });
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ct, { elRef: this.rootElRef, elClasses: ['fc-timegrid'], viewSpec: context.viewSpec },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.b$, { liquid: !props.isHeightAuto && !props.forPrint, collapsibleWidth: props.forPrint, cols: [{ width: 'shrink' }], sections: sections })));
+    }
+    renderHScrollLayout(headerRowContent, allDayContent, timeContent, colCnt, dayMinWidth, slatMetas, slatCoords) {
+        let ScrollGrid = this.context.pluginHooks.scrollGridImpl;
+        if (!ScrollGrid) {
+            throw new Error('No ScrollGrid implementation');
+        }
+        let { context, props } = this;
+        let stickyHeaderDates = !props.forPrint && (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cc)(context.options);
+        let stickyFooterScrollbar = !props.forPrint && (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cb)(context.options);
+        let sections = [];
+        if (headerRowContent) {
+            sections.push({
+                type: 'header',
+                key: 'header',
+                isSticky: stickyHeaderDates,
+                syncRowHeights: true,
+                chunks: [
+                    {
+                        key: 'axis',
+                        rowContent: (arg) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tr", { role: "presentation" }, this.renderHeadAxis('day', arg.rowSyncHeights[0]))),
+                    },
+                    {
+                        key: 'cols',
+                        elRef: this.headerElRef,
+                        tableClassName: 'fc-col-header',
+                        rowContent: headerRowContent,
+                    },
+                ],
+            });
+        }
+        if (allDayContent) {
+            sections.push({
+                type: 'body',
+                key: 'all-day',
+                syncRowHeights: true,
+                chunks: [
+                    {
+                        key: 'axis',
+                        rowContent: (contentArg) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tr", { role: "presentation" }, this.renderTableRowAxis(contentArg.rowSyncHeights[0]))),
+                    },
+                    {
+                        key: 'cols',
+                        content: allDayContent,
+                    },
+                ],
+            });
+            sections.push({
+                key: 'all-day-divider',
+                type: 'body',
+                outerContent: ( // TODO: rename to cellContent so don't need to define <tr>?
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tr", { role: "presentation", className: "fc-scrollgrid-section" },
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("td", { colSpan: 2, className: 'fc-timegrid-divider ' + context.theme.getClass('tableCellShaded') }))),
+            });
+        }
+        let isNowIndicator = context.options.nowIndicator;
+        sections.push({
+            type: 'body',
+            key: 'body',
+            liquid: true,
+            expandRows: Boolean(context.options.expandRows),
+            chunks: [
+                {
+                    key: 'axis',
+                    content: (arg) => (
+                    // TODO: make this now-indicator arrow more DRY with TimeColsContent
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-axis-chunk" },
+                        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("table", { "aria-hidden": true, style: { height: arg.expandRows ? arg.clientHeight : '' } },
+                            arg.tableColGroupNode,
+                            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tbody", null,
+                                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeBodyAxis, { slatMetas: slatMetas }))),
+                        (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-now-indicator-container" },
+                            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ch, { unit: isNowIndicator ? 'minute' : 'day' /* hacky */ }, (nowDate) => {
+                                let nowIndicatorTop = isNowIndicator &&
+                                    slatCoords &&
+                                    slatCoords.safeComputeTop(nowDate); // might return void
+                                if (typeof nowIndicatorTop === 'number') {
+                                    return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ck, { elClasses: ['fc-timegrid-now-indicator-arrow'], elStyle: { top: nowIndicatorTop }, isAxis: true, date: nowDate }));
+                                }
+                                return null;
+                            })))),
+                },
+                {
+                    key: 'cols',
+                    scrollerElRef: this.scrollerElRef,
+                    content: timeContent,
+                },
+            ],
+        });
+        if (stickyFooterScrollbar) {
+            sections.push({
+                key: 'footer',
+                type: 'footer',
+                isSticky: true,
+                chunks: [
+                    {
+                        key: 'axis',
+                        content: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ca,
+                    },
+                    {
+                        key: 'cols',
+                        content: _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ca,
+                    },
+                ],
+            });
+        }
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ct, { elRef: this.rootElRef, elClasses: ['fc-timegrid'], viewSpec: context.viewSpec },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(ScrollGrid, { liquid: !props.isHeightAuto && !props.forPrint, forPrint: props.forPrint, collapsibleWidth: false, colGroups: [
+                    { width: 'shrink', cols: [{ width: 'shrink' }] },
+                    { cols: [{ span: colCnt, minWidth: dayMinWidth }] },
+                ], sections: sections })));
+    }
+    /* Dimensions
+    ------------------------------------------------------------------------------------------------------------------*/
+    getAllDayMaxEventProps() {
+        let { dayMaxEvents, dayMaxEventRows } = this.context.options;
+        if (dayMaxEvents === true || dayMaxEventRows === true) { // is auto?
+            dayMaxEvents = undefined;
+            dayMaxEventRows = AUTO_ALL_DAY_MAX_EVENT_ROWS; // make sure "auto" goes to a real number
+        }
+        return { dayMaxEvents, dayMaxEventRows };
+    }
+}
+function renderAllDayInner(renderProps) {
+    return renderProps.text;
+}
+
+class TimeColsSlatsCoords {
+    constructor(positions, dateProfile, slotDuration) {
+        this.positions = positions;
+        this.dateProfile = dateProfile;
+        this.slotDuration = slotDuration;
+    }
+    safeComputeTop(date) {
+        let { dateProfile } = this;
+        if ((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.H)(dateProfile.currentRange, date)) {
+            let startOfDayDate = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.q)(date);
+            let timeMs = date.valueOf() - startOfDayDate.valueOf();
+            if (timeMs >= (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bs)(dateProfile.slotMinTime) &&
+                timeMs < (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bs)(dateProfile.slotMaxTime)) {
+                return this.computeTimeTop((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.d)(timeMs));
+            }
+        }
+        return null;
+    }
+    // Computes the top coordinate, relative to the bounds of the grid, of the given date.
+    // A `startOfDayDate` must be given for avoiding ambiguity over how to treat midnight.
+    computeDateTop(when, startOfDayDate) {
+        if (!startOfDayDate) {
+            startOfDayDate = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.q)(when);
+        }
+        return this.computeTimeTop((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.d)(when.valueOf() - startOfDayDate.valueOf()));
+    }
+    // Computes the top coordinate, relative to the bounds of the grid, of the given time (a Duration).
+    // This is a makeshify way to compute the time-top. Assumes all slatMetas dates are uniform.
+    // Eventually allow computation with arbirary slat dates.
+    computeTimeTop(duration) {
+        let { positions, dateProfile } = this;
+        let len = positions.els.length;
+        // floating-point value of # of slots covered
+        let slatCoverage = (duration.milliseconds - (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bs)(dateProfile.slotMinTime)) / (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bs)(this.slotDuration);
+        let slatIndex;
+        let slatRemainder;
+        // compute a floating-point number for how many slats should be progressed through.
+        // from 0 to number of slats (inclusive)
+        // constrained because slotMinTime/slotMaxTime might be customized.
+        slatCoverage = Math.max(0, slatCoverage);
+        slatCoverage = Math.min(len, slatCoverage);
+        // an integer index of the furthest whole slat
+        // from 0 to number slats (*exclusive*, so len-1)
+        slatIndex = Math.floor(slatCoverage);
+        slatIndex = Math.min(slatIndex, len - 1);
+        // how much further through the slatIndex slat (from 0.0-1.0) must be covered in addition.
+        // could be 1.0 if slatCoverage is covering *all* the slots
+        slatRemainder = slatCoverage - slatIndex;
+        return positions.tops[slatIndex] +
+            positions.getHeight(slatIndex) * slatRemainder;
+    }
+}
+
+class TimeColsSlatsBody extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    render() {
+        let { props, context } = this;
+        let { options } = context;
+        let { slatElRefs } = props;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tbody", null, props.slatMetas.map((slatMeta, i) => {
+            let renderProps = {
+                time: slatMeta.time,
+                date: context.dateEnv.toDate(slatMeta.date),
+                view: context.viewApi,
+            };
+            return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tr", { key: slatMeta.key, ref: slatElRefs.createRef(slatMeta.key) },
+                props.axis && ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeColsAxisCell, Object.assign({}, slatMeta))),
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.C, { elTag: "td", elClasses: [
+                        'fc-timegrid-slot',
+                        'fc-timegrid-slot-lane',
+                        !slatMeta.isLabeled && 'fc-timegrid-slot-minor',
+                    ], elAttrs: {
+                        'data-time': slatMeta.isoTimeStr,
+                    }, renderProps: renderProps, generatorName: "slotLaneContent", customGenerator: options.slotLaneContent, classNameGenerator: options.slotLaneClassNames, didMount: options.slotLaneDidMount, willUnmount: options.slotLaneWillUnmount })));
+        })));
+    }
+}
+
+/*
+for the horizontal "slats" that run width-wise. Has a time axis on a side. Depends on RTL.
+*/
+class TimeColsSlats extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    constructor() {
+        super(...arguments);
+        this.rootElRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.slatElRefs = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cf();
+    }
+    render() {
+        let { props, context } = this;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { ref: this.rootElRef, className: "fc-timegrid-slots" },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("table", { "aria-hidden": true, className: context.theme.getClass('table'), style: {
+                    minWidth: props.tableMinWidth,
+                    width: props.clientWidth,
+                    height: props.minHeight,
+                } },
+                props.tableColGroupNode /* relies on there only being a single <col> for the axis */,
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeColsSlatsBody, { slatElRefs: this.slatElRefs, axis: props.axis, slatMetas: props.slatMetas }))));
+    }
+    componentDidMount() {
+        this.updateSizing();
+    }
+    componentDidUpdate() {
+        this.updateSizing();
+    }
+    componentWillUnmount() {
+        if (this.props.onCoords) {
+            this.props.onCoords(null);
+        }
+    }
+    updateSizing() {
+        let { context, props } = this;
+        if (props.onCoords &&
+            props.clientWidth !== null // means sizing has stabilized
+        ) {
+            let rootEl = this.rootElRef.current;
+            if (rootEl.offsetHeight) { // not hidden by css
+                props.onCoords(new TimeColsSlatsCoords(new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ba(this.rootElRef.current, collectSlatEls(this.slatElRefs.currentMap, props.slatMetas), false, true), this.props.dateProfile, context.options.slotDuration));
+            }
+        }
+    }
+}
+function collectSlatEls(elMap, slatMetas) {
+    return slatMetas.map((slatMeta) => elMap[slatMeta.key]);
+}
+
+function splitSegsByCol(segs, colCnt) {
+    let segsByCol = [];
+    let i;
+    for (i = 0; i < colCnt; i += 1) {
+        segsByCol.push([]);
+    }
+    if (segs) {
+        for (i = 0; i < segs.length; i += 1) {
+            segsByCol[segs[i].col].push(segs[i]);
+        }
+    }
+    return segsByCol;
+}
+function splitInteractionByCol(ui, colCnt) {
+    let byRow = [];
+    if (!ui) {
+        for (let i = 0; i < colCnt; i += 1) {
+            byRow[i] = null;
+        }
+    }
+    else {
+        for (let i = 0; i < colCnt; i += 1) {
+            byRow[i] = {
+                affectedInstances: ui.affectedInstances,
+                isEvent: ui.isEvent,
+                segs: [],
+            };
+        }
+        for (let seg of ui.segs) {
+            byRow[seg.col].segs.push(seg);
+        }
+    }
+    return byRow;
+}
+
+class TimeColMoreLink extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    render() {
+        let { props } = this;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cr, { elClasses: ['fc-timegrid-more-link'], elStyle: {
+                top: props.top,
+                bottom: props.bottom,
+            }, allDayDate: null, moreCnt: props.hiddenSegs.length, allSegs: props.hiddenSegs, hiddenSegs: props.hiddenSegs, extraDateSpan: props.extraDateSpan, dateProfile: props.dateProfile, todayRange: props.todayRange, popoverContent: () => renderPlainFgSegs(props.hiddenSegs, props), defaultGenerator: renderMoreLinkInner, forceTimed: true }, (InnerContent) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerContent, { elTag: "div", elClasses: ['fc-timegrid-more-link-inner', 'fc-sticky'] }))));
+    }
+}
+function renderMoreLinkInner(props) {
+    return props.shortText;
+}
+
+// segInputs assumed sorted
+function buildPositioning(segInputs, strictOrder, maxStackCnt) {
+    let hierarchy = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bA();
+    if (strictOrder != null) {
+        hierarchy.strictOrder = strictOrder;
+    }
+    if (maxStackCnt != null) {
+        hierarchy.maxStackCnt = maxStackCnt;
+    }
+    let hiddenEntries = hierarchy.addSegs(segInputs);
+    let hiddenGroups = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bE)(hiddenEntries);
+    let web = buildWeb(hierarchy);
+    web = stretchWeb(web, 1); // all levelCoords/thickness will have 0.0-1.0
+    let segRects = webToRects(web);
+    return { segRects, hiddenGroups };
+}
+function buildWeb(hierarchy) {
+    const { entriesByLevel } = hierarchy;
+    const buildNode = cacheable((level, lateral) => level + ':' + lateral, (level, lateral) => {
+        let siblingRange = findNextLevelSegs(hierarchy, level, lateral);
+        let nextLevelRes = buildNodes(siblingRange, buildNode);
+        let entry = entriesByLevel[level][lateral];
+        return [
+            Object.assign(Object.assign({}, entry), { nextLevelNodes: nextLevelRes[0] }),
+            entry.thickness + nextLevelRes[1], // the pressure builds
+        ];
+    });
+    return buildNodes(entriesByLevel.length
+        ? { level: 0, lateralStart: 0, lateralEnd: entriesByLevel[0].length }
+        : null, buildNode)[0];
+}
+function buildNodes(siblingRange, buildNode) {
+    if (!siblingRange) {
+        return [[], 0];
+    }
+    let { level, lateralStart, lateralEnd } = siblingRange;
+    let lateral = lateralStart;
+    let pairs = [];
+    while (lateral < lateralEnd) {
+        pairs.push(buildNode(level, lateral));
+        lateral += 1;
+    }
+    pairs.sort(cmpDescPressures);
+    return [
+        pairs.map(extractNode),
+        pairs[0][1], // first item's pressure
+    ];
+}
+function cmpDescPressures(a, b) {
+    return b[1] - a[1];
+}
+function extractNode(a) {
+    return a[0];
+}
+function findNextLevelSegs(hierarchy, subjectLevel, subjectLateral) {
+    let { levelCoords, entriesByLevel } = hierarchy;
+    let subjectEntry = entriesByLevel[subjectLevel][subjectLateral];
+    let afterSubject = levelCoords[subjectLevel] + subjectEntry.thickness;
+    let levelCnt = levelCoords.length;
+    let level = subjectLevel;
+    // skip past levels that are too high up
+    for (; level < levelCnt && levelCoords[level] < afterSubject; level += 1)
+        ; // do nothing
+    for (; level < levelCnt; level += 1) {
+        let entries = entriesByLevel[level];
+        let entry;
+        let searchIndex = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bD)(entries, subjectEntry.span.start, _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bC);
+        let lateralStart = searchIndex[0] + searchIndex[1]; // if exact match (which doesn't collide), go to next one
+        let lateralEnd = lateralStart;
+        while ( // loop through entries that horizontally intersect
+        (entry = entries[lateralEnd]) && // but not past the whole seg list
+            entry.span.start < subjectEntry.span.end) {
+            lateralEnd += 1;
+        }
+        if (lateralStart < lateralEnd) {
+            return { level, lateralStart, lateralEnd };
+        }
+    }
+    return null;
+}
+function stretchWeb(topLevelNodes, totalThickness) {
+    const stretchNode = cacheable((node, startCoord, prevThickness) => (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bB)(node), (node, startCoord, prevThickness) => {
+        let { nextLevelNodes, thickness } = node;
+        let allThickness = thickness + prevThickness;
+        let thicknessFraction = thickness / allThickness;
+        let endCoord;
+        let newChildren = [];
+        if (!nextLevelNodes.length) {
+            endCoord = totalThickness;
+        }
+        else {
+            for (let childNode of nextLevelNodes) {
+                if (endCoord === undefined) {
+                    let res = stretchNode(childNode, startCoord, allThickness);
+                    endCoord = res[0];
+                    newChildren.push(res[1]);
+                }
+                else {
+                    let res = stretchNode(childNode, endCoord, 0);
+                    newChildren.push(res[1]);
+                }
+            }
+        }
+        let newThickness = (endCoord - startCoord) * thicknessFraction;
+        return [endCoord - newThickness, Object.assign(Object.assign({}, node), { thickness: newThickness, nextLevelNodes: newChildren })];
+    });
+    return topLevelNodes.map((node) => stretchNode(node, 0, 0)[1]);
+}
+// not sorted in any particular order
+function webToRects(topLevelNodes) {
+    let rects = [];
+    const processNode = cacheable((node, levelCoord, stackDepth) => (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bB)(node), (node, levelCoord, stackDepth) => {
+        let rect = Object.assign(Object.assign({}, node), { levelCoord,
+            stackDepth, stackForward: 0 });
+        rects.push(rect);
+        return (rect.stackForward = processNodes(node.nextLevelNodes, levelCoord + node.thickness, stackDepth + 1) + 1);
+    });
+    function processNodes(nodes, levelCoord, stackDepth) {
+        let stackForward = 0;
+        for (let node of nodes) {
+            stackForward = Math.max(processNode(node, levelCoord, stackDepth), stackForward);
+        }
+        return stackForward;
+    }
+    processNodes(topLevelNodes, 0, 0);
+    return rects; // TODO: sort rects by levelCoord to be consistent with toRects?
+}
+// TODO: move to general util
+function cacheable(keyFunc, workFunc) {
+    const cache = {};
+    return (...args) => {
+        let key = keyFunc(...args);
+        return (key in cache)
+            ? cache[key]
+            : (cache[key] = workFunc(...args));
+    };
+}
+
+function computeSegVCoords(segs, colDate, slatCoords = null, eventMinHeight = 0) {
+    let vcoords = [];
+    if (slatCoords) {
+        for (let i = 0; i < segs.length; i += 1) {
+            let seg = segs[i];
+            let spanStart = slatCoords.computeDateTop(seg.start, colDate);
+            let spanEnd = Math.max(spanStart + (eventMinHeight || 0), // :(
+            slatCoords.computeDateTop(seg.end, colDate));
+            vcoords.push({
+                start: Math.round(spanStart),
+                end: Math.round(spanEnd), //
+            });
+        }
+    }
+    return vcoords;
+}
+function computeFgSegPlacements(segs, segVCoords, // might not have for every seg
+eventOrderStrict, eventMaxStack) {
+    let segInputs = [];
+    let dumbSegs = []; // segs without coords
+    for (let i = 0; i < segs.length; i += 1) {
+        let vcoords = segVCoords[i];
+        if (vcoords) {
+            segInputs.push({
+                index: i,
+                thickness: 1,
+                span: vcoords,
+            });
+        }
+        else {
+            dumbSegs.push(segs[i]);
+        }
+    }
+    let { segRects, hiddenGroups } = buildPositioning(segInputs, eventOrderStrict, eventMaxStack);
+    let segPlacements = [];
+    for (let segRect of segRects) {
+        segPlacements.push({
+            seg: segs[segRect.index],
+            rect: segRect,
+        });
+    }
+    for (let dumbSeg of dumbSegs) {
+        segPlacements.push({ seg: dumbSeg, rect: null });
+    }
+    return { segPlacements, hiddenGroups };
+}
+
+const DEFAULT_TIME_FORMAT = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.x)({
+    hour: 'numeric',
+    minute: '2-digit',
+    meridiem: false,
+});
+class TimeColEvent extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    render() {
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cj, Object.assign({}, this.props, { elClasses: [
+                'fc-timegrid-event',
+                'fc-v-event',
+                this.props.isShort && 'fc-timegrid-event-short',
+            ], defaultTimeFormat: DEFAULT_TIME_FORMAT })));
+    }
+}
+
+class TimeCol extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    constructor() {
+        super(...arguments);
+        this.sortEventSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bR);
+    }
+    // TODO: memoize event-placement?
+    render() {
+        let { props, context } = this;
+        let { options } = context;
+        let isSelectMirror = options.selectMirror;
+        let mirrorSegs = // yuck
+         (props.eventDrag && props.eventDrag.segs) ||
+            (props.eventResize && props.eventResize.segs) ||
+            (isSelectMirror && props.dateSelectionSegs) ||
+            [];
+        let interactionAffectedInstances = // TODO: messy way to compute this
+         (props.eventDrag && props.eventDrag.affectedInstances) ||
+            (props.eventResize && props.eventResize.affectedInstances) ||
+            {};
+        let sortedFgSegs = this.sortEventSegs(props.fgEventSegs, options.eventOrder);
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cl, { elTag: "td", elRef: props.elRef, elClasses: [
+                'fc-timegrid-col',
+                ...(props.extraClassNames || []),
+            ], elAttrs: Object.assign({ role: 'gridcell' }, props.extraDataAttrs), date: props.date, dateProfile: props.dateProfile, todayRange: props.todayRange, extraRenderProps: props.extraRenderProps }, (InnerContent) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-col-frame" },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-col-bg" },
+                this.renderFillSegs(props.businessHourSegs, 'non-business'),
+                this.renderFillSegs(props.bgEventSegs, 'bg-event'),
+                this.renderFillSegs(props.dateSelectionSegs, 'highlight')),
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-col-events" }, this.renderFgSegs(sortedFgSegs, interactionAffectedInstances, false, false, false)),
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-col-events" }, this.renderFgSegs(mirrorSegs, {}, Boolean(props.eventDrag), Boolean(props.eventResize), Boolean(isSelectMirror), 'mirror')),
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-now-indicator-container" }, this.renderNowIndicator(props.nowIndicatorSegs)),
+            (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cm)(options) && ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerContent, { elTag: "div", elClasses: ['fc-timegrid-col-misc'] }))))));
+    }
+    renderFgSegs(sortedFgSegs, segIsInvisible, isDragging, isResizing, isDateSelecting, forcedKey) {
+        let { props } = this;
+        if (props.forPrint) {
+            return renderPlainFgSegs(sortedFgSegs, props);
+        }
+        return this.renderPositionedFgSegs(sortedFgSegs, segIsInvisible, isDragging, isResizing, isDateSelecting, forcedKey);
+    }
+    renderPositionedFgSegs(segs, // if not mirror, needs to be sorted
+    segIsInvisible, isDragging, isResizing, isDateSelecting, forcedKey) {
+        let { eventMaxStack, eventShortHeight, eventOrderStrict, eventMinHeight } = this.context.options;
+        let { date, slatCoords, eventSelection, todayRange, nowDate } = this.props;
+        let isMirror = isDragging || isResizing || isDateSelecting;
+        let segVCoords = computeSegVCoords(segs, date, slatCoords, eventMinHeight);
+        let { segPlacements, hiddenGroups } = computeFgSegPlacements(segs, segVCoords, eventOrderStrict, eventMaxStack);
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null,
+            this.renderHiddenGroups(hiddenGroups, segs),
+            segPlacements.map((segPlacement) => {
+                let { seg, rect } = segPlacement;
+                let instanceId = seg.eventRange.instance.instanceId;
+                let isVisible = isMirror || Boolean(!segIsInvisible[instanceId] && rect);
+                let vStyle = computeSegVStyle(rect && rect.span);
+                let hStyle = (!isMirror && rect) ? this.computeSegHStyle(rect) : { left: 0, right: 0 };
+                let isInset = Boolean(rect) && rect.stackForward > 0;
+                let isShort = Boolean(rect) && (rect.span.end - rect.span.start) < eventShortHeight; // look at other places for this problem
+                return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: 'fc-timegrid-event-harness' +
+                        (isInset ? ' fc-timegrid-event-harness-inset' : ''), key: forcedKey || instanceId, style: Object.assign(Object.assign({ visibility: isVisible ? '' : 'hidden' }, vStyle), hStyle) },
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeColEvent, Object.assign({ seg: seg, isDragging: isDragging, isResizing: isResizing, isDateSelecting: isDateSelecting, isSelected: instanceId === eventSelection, isShort: isShort }, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bS)(seg, todayRange, nowDate)))));
+            })));
+    }
+    // will already have eventMinHeight applied because segInputs already had it
+    renderHiddenGroups(hiddenGroups, segs) {
+        let { extraDateSpan, dateProfile, todayRange, nowDate, eventSelection, eventDrag, eventResize } = this.props;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null, hiddenGroups.map((hiddenGroup) => {
+            let positionCss = computeSegVStyle(hiddenGroup.span);
+            let hiddenSegs = compileSegsFromEntries(hiddenGroup.entries, segs);
+            return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeColMoreLink, { key: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bw)((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cs)(hiddenSegs)), hiddenSegs: hiddenSegs, top: positionCss.top, bottom: positionCss.bottom, extraDateSpan: extraDateSpan, dateProfile: dateProfile, todayRange: todayRange, nowDate: nowDate, eventSelection: eventSelection, eventDrag: eventDrag, eventResize: eventResize }));
+        })));
+    }
+    renderFillSegs(segs, fillType) {
+        let { props, context } = this;
+        let segVCoords = computeSegVCoords(segs, props.date, props.slatCoords, context.options.eventMinHeight); // don't assume all populated
+        let children = segVCoords.map((vcoords, i) => {
+            let seg = segs[i];
+            return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { key: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bT)(seg.eventRange), className: "fc-timegrid-bg-harness", style: computeSegVStyle(vcoords) }, fillType === 'bg-event' ?
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cp, Object.assign({ seg: seg }, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bS)(seg, props.todayRange, props.nowDate))) :
+                (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.co)(fillType)));
+        });
+        return (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null, children);
+    }
+    renderNowIndicator(segs) {
+        let { slatCoords, date } = this.props;
+        if (!slatCoords) {
+            return null;
+        }
+        return segs.map((seg, i) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ck
+        // key doesn't matter. will only ever be one
+        , { 
+            // key doesn't matter. will only ever be one
+            key: i, elClasses: ['fc-timegrid-now-indicator-line'], elStyle: {
+                top: slatCoords.computeDateTop(seg.start, date),
+            }, isAxis: false, date: date })));
+    }
+    computeSegHStyle(segHCoords) {
+        let { isRtl, options } = this.context;
+        let shouldOverlap = options.slotEventOverlap;
+        let nearCoord = segHCoords.levelCoord; // the left side if LTR. the right side if RTL. floating-point
+        let farCoord = segHCoords.levelCoord + segHCoords.thickness; // the right side if LTR. the left side if RTL. floating-point
+        let left; // amount of space from left edge, a fraction of the total width
+        let right; // amount of space from right edge, a fraction of the total width
+        if (shouldOverlap) {
+            // double the width, but don't go beyond the maximum forward coordinate (1.0)
+            farCoord = Math.min(1, nearCoord + (farCoord - nearCoord) * 2);
+        }
+        if (isRtl) {
+            left = 1 - farCoord;
+            right = nearCoord;
+        }
+        else {
+            left = nearCoord;
+            right = 1 - farCoord;
+        }
+        let props = {
+            zIndex: segHCoords.stackDepth + 1,
+            left: left * 100 + '%',
+            right: right * 100 + '%',
+        };
+        if (shouldOverlap && !segHCoords.stackForward) {
+            // add padding to the edge so that forward stacked events don't cover the resizer's icon
+            props[isRtl ? 'marginLeft' : 'marginRight'] = 10 * 2; // 10 is a guesstimate of the icon's width
+        }
+        return props;
+    }
+}
+function renderPlainFgSegs(sortedFgSegs, { todayRange, nowDate, eventSelection, eventDrag, eventResize }) {
+    let hiddenInstances = (eventDrag ? eventDrag.affectedInstances : null) ||
+        (eventResize ? eventResize.affectedInstances : null) ||
+        {};
+    return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.Fragment, null, sortedFgSegs.map((seg) => {
+        let instanceId = seg.eventRange.instance.instanceId;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { key: instanceId, style: { visibility: hiddenInstances[instanceId] ? 'hidden' : '' } },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeColEvent, Object.assign({ seg: seg, isDragging: false, isResizing: false, isDateSelecting: false, isSelected: instanceId === eventSelection, isShort: false }, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bS)(seg, todayRange, nowDate)))));
+    })));
+}
+function computeSegVStyle(segVCoords) {
+    if (!segVCoords) {
+        return { top: '', bottom: '' };
+    }
+    return {
+        top: segVCoords.start,
+        bottom: -segVCoords.end,
+    };
+}
+function compileSegsFromEntries(segEntries, allSegs) {
+    return segEntries.map((segEntry) => allSegs[segEntry.index]);
+}
+
+class TimeColsContent extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.B {
+    constructor() {
+        super(...arguments);
+        this.splitFgEventSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitSegsByCol);
+        this.splitBgEventSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitSegsByCol);
+        this.splitBusinessHourSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitSegsByCol);
+        this.splitNowIndicatorSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitSegsByCol);
+        this.splitDateSelectionSegs = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitSegsByCol);
+        this.splitEventDrag = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitInteractionByCol);
+        this.splitEventResize = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(splitInteractionByCol);
+        this.rootElRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+        this.cellElRefs = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.cf();
+    }
+    render() {
+        let { props, context } = this;
+        let nowIndicatorTop = context.options.nowIndicator &&
+            props.slatCoords &&
+            props.slatCoords.safeComputeTop(props.nowDate); // might return void
+        let colCnt = props.cells.length;
+        let fgEventSegsByRow = this.splitFgEventSegs(props.fgEventSegs, colCnt);
+        let bgEventSegsByRow = this.splitBgEventSegs(props.bgEventSegs, colCnt);
+        let businessHourSegsByRow = this.splitBusinessHourSegs(props.businessHourSegs, colCnt);
+        let nowIndicatorSegsByRow = this.splitNowIndicatorSegs(props.nowIndicatorSegs, colCnt);
+        let dateSelectionSegsByRow = this.splitDateSelectionSegs(props.dateSelectionSegs, colCnt);
+        let eventDragByRow = this.splitEventDrag(props.eventDrag, colCnt);
+        let eventResizeByRow = this.splitEventResize(props.eventResize, colCnt);
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-cols", ref: this.rootElRef },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("table", { role: "presentation", style: {
+                    minWidth: props.tableMinWidth,
+                    width: props.clientWidth,
+                } },
+                props.tableColGroupNode,
+                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tbody", { role: "presentation" },
+                    (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("tr", { role: "row" },
+                        props.axis && ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("td", { "aria-hidden": true, className: "fc-timegrid-col fc-timegrid-axis" },
+                            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-col-frame" },
+                                (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-now-indicator-container" }, typeof nowIndicatorTop === 'number' && ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ck, { elClasses: ['fc-timegrid-now-indicator-arrow'], elStyle: { top: nowIndicatorTop }, isAxis: true, date: props.nowDate })))))),
+                        props.cells.map((cell, i) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeCol, { key: cell.key, elRef: this.cellElRefs.createRef(cell.key), dateProfile: props.dateProfile, date: cell.date, nowDate: props.nowDate, todayRange: props.todayRange, extraRenderProps: cell.extraRenderProps, extraDataAttrs: cell.extraDataAttrs, extraClassNames: cell.extraClassNames, extraDateSpan: cell.extraDateSpan, fgEventSegs: fgEventSegsByRow[i], bgEventSegs: bgEventSegsByRow[i], businessHourSegs: businessHourSegsByRow[i], nowIndicatorSegs: nowIndicatorSegsByRow[i], dateSelectionSegs: dateSelectionSegsByRow[i], eventDrag: eventDragByRow[i], eventResize: eventResizeByRow[i], slatCoords: props.slatCoords, eventSelection: props.eventSelection, forPrint: props.forPrint }))))))));
+    }
+    componentDidMount() {
+        this.updateCoords();
+    }
+    componentDidUpdate() {
+        this.updateCoords();
+    }
+    updateCoords() {
+        let { props } = this;
+        if (props.onColCoords &&
+            props.clientWidth !== null // means sizing has stabilized
+        ) {
+            props.onColCoords(new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ba(this.rootElRef.current, collectCellEls(this.cellElRefs.currentMap, props.cells), true, // horizontal
+            false));
+        }
+    }
+}
+function collectCellEls(elMap, cells) {
+    return cells.map((cell) => elMap[cell.key]);
+}
+
+/* A component that renders one or more columns of vertical time slots
+----------------------------------------------------------------------------------------------------------------------*/
+class TimeCols extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.processSlotOptions = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(processSlotOptions);
+        this.state = {
+            slatCoords: null,
+        };
+        this.handleRootEl = (el) => {
+            if (el) {
+                this.context.registerInteractiveComponent(this, {
+                    el,
+                    isHitComboAllowed: this.props.isHitComboAllowed,
+                });
+            }
+            else {
+                this.context.unregisterInteractiveComponent(this);
+            }
+        };
+        this.handleScrollRequest = (request) => {
+            let { onScrollTopRequest } = this.props;
+            let { slatCoords } = this.state;
+            if (onScrollTopRequest && slatCoords) {
+                if (request.time) {
+                    let top = slatCoords.computeTimeTop(request.time);
+                    top = Math.ceil(top); // zoom can give weird floating-point values. rather scroll a little bit further
+                    if (top) {
+                        top += 1; // to overcome top border that slots beyond the first have. looks better
+                    }
+                    onScrollTopRequest(top);
+                }
+                return true;
+            }
+            return false;
+        };
+        this.handleColCoords = (colCoords) => {
+            this.colCoords = colCoords;
+        };
+        this.handleSlatCoords = (slatCoords) => {
+            this.setState({ slatCoords });
+            if (this.props.onSlatCoords) {
+                this.props.onSlatCoords(slatCoords);
+            }
+        };
+    }
+    render() {
+        let { props, state } = this;
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", { className: "fc-timegrid-body", ref: this.handleRootEl, style: {
+                // these props are important to give this wrapper correct dimensions for interactions
+                // TODO: if we set it here, can we avoid giving to inner tables?
+                width: props.clientWidth,
+                minWidth: props.tableMinWidth,
+            } },
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeColsSlats, { axis: props.axis, dateProfile: props.dateProfile, slatMetas: props.slatMetas, clientWidth: props.clientWidth, minHeight: props.expandRows ? props.clientHeight : '', tableMinWidth: props.tableMinWidth, tableColGroupNode: props.axis ? props.tableColGroupNode : null /* axis depends on the colgroup's shrinking */, onCoords: this.handleSlatCoords }),
+            (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeColsContent, { cells: props.cells, axis: props.axis, dateProfile: props.dateProfile, businessHourSegs: props.businessHourSegs, bgEventSegs: props.bgEventSegs, fgEventSegs: props.fgEventSegs, dateSelectionSegs: props.dateSelectionSegs, eventSelection: props.eventSelection, eventDrag: props.eventDrag, eventResize: props.eventResize, todayRange: props.todayRange, nowDate: props.nowDate, nowIndicatorSegs: props.nowIndicatorSegs, clientWidth: props.clientWidth, tableMinWidth: props.tableMinWidth, tableColGroupNode: props.tableColGroupNode, slatCoords: state.slatCoords, onColCoords: this.handleColCoords, forPrint: props.forPrint })));
+    }
+    componentDidMount() {
+        this.scrollResponder = this.context.createScrollResponder(this.handleScrollRequest);
+    }
+    componentDidUpdate(prevProps) {
+        this.scrollResponder.update(prevProps.dateProfile !== this.props.dateProfile);
+    }
+    componentWillUnmount() {
+        this.scrollResponder.detach();
+    }
+    queryHit(positionLeft, positionTop) {
+        let { dateEnv, options } = this.context;
+        let { colCoords } = this;
+        let { dateProfile } = this.props;
+        let { slatCoords } = this.state;
+        let { snapDuration, snapsPerSlot } = this.processSlotOptions(this.props.slotDuration, options.snapDuration);
+        let colIndex = colCoords.leftToIndex(positionLeft);
+        let slatIndex = slatCoords.positions.topToIndex(positionTop);
+        if (colIndex != null && slatIndex != null) {
+            let cell = this.props.cells[colIndex];
+            let slatTop = slatCoords.positions.tops[slatIndex];
+            let slatHeight = slatCoords.positions.getHeight(slatIndex);
+            let partial = (positionTop - slatTop) / slatHeight; // floating point number between 0 and 1
+            let localSnapIndex = Math.floor(partial * snapsPerSlot); // the snap # relative to start of slat
+            let snapIndex = slatIndex * snapsPerSlot + localSnapIndex;
+            let dayDate = this.props.cells[colIndex].date;
+            let time = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bp)(dateProfile.slotMinTime, (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bo)(snapDuration, snapIndex));
+            let start = dateEnv.add(dayDate, time);
+            let end = dateEnv.add(start, snapDuration);
+            return {
+                dateProfile,
+                dateSpan: Object.assign({ range: { start, end }, allDay: false }, cell.extraDateSpan),
+                dayEl: colCoords.els[colIndex],
+                rect: {
+                    left: colCoords.lefts[colIndex],
+                    right: colCoords.rights[colIndex],
+                    top: slatTop,
+                    bottom: slatTop + slatHeight,
+                },
+                layer: 0,
+            };
+        }
+        return null;
+    }
+}
+function processSlotOptions(slotDuration, snapDurationOverride) {
+    let snapDuration = snapDurationOverride || slotDuration;
+    let snapsPerSlot = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bt)(slotDuration, snapDuration);
+    if (snapsPerSlot === null) {
+        snapDuration = slotDuration;
+        snapsPerSlot = 1;
+        // TODO: say warning?
+    }
+    return { snapDuration, snapsPerSlot };
+}
+
+class DayTimeColsSlicer extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bW {
+    sliceRange(range, dayRanges) {
+        let segs = [];
+        for (let col = 0; col < dayRanges.length; col += 1) {
+            let segRange = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.o)(range, dayRanges[col]);
+            if (segRange) {
+                segs.push({
+                    start: segRange.start,
+                    end: segRange.end,
+                    isStart: segRange.start.valueOf() === range.start.valueOf(),
+                    isEnd: segRange.end.valueOf() === range.end.valueOf(),
+                    col,
+                });
+            }
+        }
+        return segs;
+    }
+}
+
+class DayTimeCols extends _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.be {
+    constructor() {
+        super(...arguments);
+        this.buildDayRanges = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildDayRanges);
+        this.slicer = new DayTimeColsSlicer();
+        this.timeColsRef = (0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createRef)();
+    }
+    render() {
+        let { props, context } = this;
+        let { dateProfile, dayTableModel } = props;
+        let { nowIndicator, nextDayThreshold } = context.options;
+        let dayRanges = this.buildDayRanges(dayTableModel, dateProfile, context.dateEnv);
+        // give it the first row of cells
+        // TODO: would move this further down hierarchy, but sliceNowDate needs it
+        return ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.ch, { unit: nowIndicator ? 'minute' : 'day' }, (nowDate, todayRange) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(TimeCols, Object.assign({ ref: this.timeColsRef }, this.slicer.sliceProps(props, dateProfile, null, context, dayRanges), { forPrint: props.forPrint, axis: props.axis, dateProfile: dateProfile, slatMetas: props.slatMetas, slotDuration: props.slotDuration, cells: dayTableModel.cells[0], tableColGroupNode: props.tableColGroupNode, tableMinWidth: props.tableMinWidth, clientWidth: props.clientWidth, clientHeight: props.clientHeight, expandRows: props.expandRows, nowDate: nowDate, nowIndicatorSegs: nowIndicator && this.slicer.sliceNowDate(nowDate, dateProfile, nextDayThreshold, context, dayRanges), todayRange: todayRange, onScrollTopRequest: props.onScrollTopRequest, onSlatCoords: props.onSlatCoords })))));
+    }
+}
+function buildDayRanges(dayTableModel, dateProfile, dateEnv) {
+    let ranges = [];
+    for (let date of dayTableModel.headerDates) {
+        ranges.push({
+            start: dateEnv.add(date, dateProfile.slotMinTime),
+            end: dateEnv.add(date, dateProfile.slotMaxTime),
+        });
+    }
+    return ranges;
+}
+
+// potential nice values for the slot-duration and interval-duration
+// from largest to smallest
+const STOCK_SUB_DURATIONS = [
+    { hours: 1 },
+    { minutes: 30 },
+    { minutes: 15 },
+    { seconds: 30 },
+    { seconds: 15 },
+];
+function buildSlatMetas(slotMinTime, slotMaxTime, explicitLabelInterval, slotDuration, dateEnv) {
+    let dayStart = new Date(0);
+    let slatTime = slotMinTime;
+    let slatIterator = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.d)(0);
+    let labelInterval = explicitLabelInterval || computeLabelInterval(slotDuration);
+    let metas = [];
+    while ((0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bs)(slatTime) < (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bs)(slotMaxTime)) {
+        let date = dateEnv.add(dayStart, slatTime);
+        let isLabeled = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bt)(slatIterator, labelInterval) !== null;
+        metas.push({
+            date,
+            time: slatTime,
+            key: date.toISOString(),
+            isoTimeStr: (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bu)(date),
+            isLabeled,
+        });
+        slatTime = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bp)(slatTime, slotDuration);
+        slatIterator = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bp)(slatIterator, slotDuration);
+    }
+    return metas;
+}
+// Computes an automatic value for slotLabelInterval
+function computeLabelInterval(slotDuration) {
+    let i;
+    let labelInterval;
+    let slotsPerLabel;
+    // find the smallest stock label interval that results in more than one slots-per-label
+    for (i = STOCK_SUB_DURATIONS.length - 1; i >= 0; i -= 1) {
+        labelInterval = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.d)(STOCK_SUB_DURATIONS[i]);
+        slotsPerLabel = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bt)(labelInterval, slotDuration);
+        if (slotsPerLabel !== null && slotsPerLabel > 1) {
+            return labelInterval;
+        }
+    }
+    return slotDuration; // fall back
+}
+
+class DayTimeColsView extends TimeColsView {
+    constructor() {
+        super(...arguments);
+        this.buildTimeColsModel = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildTimeColsModel);
+        this.buildSlatMetas = (0,_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.z)(buildSlatMetas);
+    }
+    render() {
+        let { options, dateEnv, dateProfileGenerator } = this.context;
+        let { props } = this;
+        let { dateProfile } = props;
+        let dayTableModel = this.buildTimeColsModel(dateProfile, dateProfileGenerator);
+        let splitProps = this.allDaySplitter.splitProps(props);
+        let slatMetas = this.buildSlatMetas(dateProfile.slotMinTime, dateProfile.slotMaxTime, options.slotLabelInterval, options.slotDuration, dateEnv);
+        let { dayMinWidth } = options;
+        let hasAttachedAxis = !dayMinWidth;
+        let hasDetachedAxis = dayMinWidth;
+        let headerContent = options.dayHeaders && ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bK, { dates: dayTableModel.headerDates, dateProfile: dateProfile, datesRepDistinctDays: true, renderIntro: hasAttachedAxis ? this.renderHeadAxis : null }));
+        let allDayContent = (options.allDaySlot !== false) && ((contentArg) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(_fullcalendar_daygrid_internal_js__WEBPACK_IMPORTED_MODULE_2__.DayTable, Object.assign({}, splitProps.allDay, { dateProfile: dateProfile, dayTableModel: dayTableModel, nextDayThreshold: options.nextDayThreshold, tableMinWidth: contentArg.tableMinWidth, colGroupNode: contentArg.tableColGroupNode, renderRowIntro: hasAttachedAxis ? this.renderTableRowAxis : null, showWeekNumbers: false, expandRows: false, headerAlignElRef: this.headerElRef, clientWidth: contentArg.clientWidth, clientHeight: contentArg.clientHeight, forPrint: props.forPrint }, this.getAllDayMaxEventProps()))));
+        let timeGridContent = (contentArg) => ((0,_fullcalendar_core_preact_js__WEBPACK_IMPORTED_MODULE_1__.createElement)(DayTimeCols, Object.assign({}, splitProps.timed, { dayTableModel: dayTableModel, dateProfile: dateProfile, axis: hasAttachedAxis, slotDuration: options.slotDuration, slatMetas: slatMetas, forPrint: props.forPrint, tableColGroupNode: contentArg.tableColGroupNode, tableMinWidth: contentArg.tableMinWidth, clientWidth: contentArg.clientWidth, clientHeight: contentArg.clientHeight, onSlatCoords: this.handleSlatCoords, expandRows: contentArg.expandRows, onScrollTopRequest: this.handleScrollTopRequest })));
+        return hasDetachedAxis
+            ? this.renderHScrollLayout(headerContent, allDayContent, timeGridContent, dayTableModel.colCnt, dayMinWidth, slatMetas, this.state.slatCoords)
+            : this.renderSimpleLayout(headerContent, allDayContent, timeGridContent);
+    }
+}
+function buildTimeColsModel(dateProfile, dateProfileGenerator) {
+    let daySeries = new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bO(dateProfile.renderRange, dateProfileGenerator);
+    return new _fullcalendar_core_internal_js__WEBPACK_IMPORTED_MODULE_0__.bV(daySeries, false);
+}
+
+
+
+
+/***/ })
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	!function() {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__webpack_require__.d = function(exports, definition) {
+/******/ 			for(var key in definition) {
+/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	!function() {
+/******/ 		__webpack_require__.o = function(obj, prop) { return Object.prototype.hasOwnProperty.call(obj, prop); }
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	!function() {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = function(exports) {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/************************************************************************/
+var __webpack_exports__ = {};
+// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+!function() {
+/*!*******************************************************************!*\
+  !*** ./resources/assets/vendor/libs/fullcalendar/fullcalendar.js ***!
+  \*******************************************************************/
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Calendar: function() { return /* reexport safe */ _fullcalendar_core__WEBPACK_IMPORTED_MODULE_0__.Calendar; },
+/* harmony export */   dayGridPlugin: function() { return /* reexport safe */ _fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_1__["default"]; },
+/* harmony export */   interactionPlugin: function() { return /* reexport safe */ _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_2__["default"]; },
+/* harmony export */   listPlugin: function() { return /* reexport safe */ _fullcalendar_list__WEBPACK_IMPORTED_MODULE_3__["default"]; },
+/* harmony export */   timegridPlugin: function() { return /* reexport safe */ _fullcalendar_timegrid__WEBPACK_IMPORTED_MODULE_4__["default"]; }
+/* harmony export */ });
+/* harmony import */ var _fullcalendar_core__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @fullcalendar/core */ "./node_modules/@fullcalendar/core/index.js");
+/* harmony import */ var _fullcalendar_daygrid__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @fullcalendar/daygrid */ "./node_modules/@fullcalendar/daygrid/index.js");
+/* harmony import */ var _fullcalendar_interaction__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! @fullcalendar/interaction */ "./node_modules/@fullcalendar/interaction/index.js");
+/* harmony import */ var _fullcalendar_list__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! @fullcalendar/list */ "./node_modules/@fullcalendar/list/index.js");
+/* harmony import */ var _fullcalendar_timegrid__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! @fullcalendar/timegrid */ "./node_modules/@fullcalendar/timegrid/index.js");
+
+
+
+
+
+
+}();
+/******/ 	return __webpack_exports__;
+/******/ })()
+;
+});

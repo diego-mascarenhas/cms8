@@ -13,6 +13,12 @@
       "menuHeader": "Apps"
     },
     {
+      "url": "bruler",
+      "name": "Bruler",
+      "icon": "menu-icon tf-icons ti ti-phone",
+      "slug": "bruler"
+    },
+    {
       "url": "sys/webhooks",
       "name": "Webhooks",
       "icon": "menu-icon tf-icons ti ti-forms",

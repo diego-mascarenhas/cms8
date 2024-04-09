@@ -1,5 +1,6 @@
 <?php
 use App\Http\Controllers\ApiAuthServiceController;
+use App\Http\Controllers\BrulerController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\sys\WebhookController;
 use App\Http\Controllers\trade\TradeDataController;
@@ -371,6 +372,7 @@ Route::get('/trade', [TradeDataController::class, 'index'])->name('trade.index')
 Route::get('/users', [UsersController::class, 'index'])->name('users.index');
 
 // Bruler
+Route::get('/bruler', [BrulerController::class, 'index'])->name('bruler.index');
 Route::get('/api/bruler/login', [ApiAuthServiceController::class, 'login']);
 Route::get('/api/bruler/token', [ApiAuthServiceController::class, 'token']);
 Route::get('/api/bruler/orders', [OrderController::class, 'store']);

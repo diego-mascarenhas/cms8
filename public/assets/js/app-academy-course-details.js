@@ -1,1 +1,27 @@
-"use strict";!function(){new Plyr("#plyr-video-player");document.getElementsByClassName("plyr")[0].style.borderRadius="7px";const e=document.getElementsByTagName("html")[0],t=document.querySelector(".stick-top");function s(){e.classList.contains("layout-navbar-fixed")?t.classList.add("course-content-fixed"):t.classList.remove("course-content-fixed")}s(),window.onscroll=function(){s()}}();
+// Academy course detail
+
+'use strict';
+
+(function () {
+  // video
+  const videoPlayer = new Plyr('#plyr-video-player');
+  document.getElementsByClassName('plyr')[0].style.borderRadius = '7px';
+
+  // content sticky
+
+  const htmlElement = document.getElementsByTagName('html')[0];
+  const stick = document.querySelector('.stick-top');
+
+  function TopSticky() {
+    if (htmlElement.classList.contains('layout-navbar-fixed')) {
+      stick.classList.add('course-content-fixed');
+    } else {
+      stick.classList.remove('course-content-fixed');
+    }
+  }
+
+  TopSticky();
+  window.onscroll = function () {
+    TopSticky();
+  };
+})();

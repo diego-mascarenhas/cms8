@@ -1,1 +1,194 @@
-"use strict";!function(){const t=document.querySelector("#shepherd-example");t&&(t.onclick=function(){(function(t){const e="btn btn-sm btn-label-secondary md-btn-flat waves-effect waves-light",a="btn btn-sm btn-primary btn-next waves-effect waves-light";return t.addStep({title:"Navbar",text:"This is your navbar",attachTo:{element:".navbar",on:"bottom"},buttons:[{action:t.cancel,classes:e,text:"Skip"},{text:"Next",classes:a,action:t.next}]}),t.addStep({title:"Card",text:"This is a card",attachTo:{element:".tour-card",on:"top"},buttons:[{text:"Skip",classes:e,action:t.cancel},{text:"Back",classes:e,action:t.back},{text:"Next",classes:a,action:t.next}]}),t.addStep({title:"Footer",text:"This is the Footer",attachTo:{element:".footer",on:"top"},buttons:[{text:"Skip",classes:e,action:t.cancel},{text:"Back",classes:e,action:t.back},{text:"Next",classes:a,action:t.next}]}),t.addStep({title:"Upgrade",text:"Click here to upgrade plan",attachTo:{element:".footer-link",on:"top"},buttons:[{text:"Back",classes:e,action:t.back},{text:"Finish",classes:a,action:t.cancel}]}),t})(new Shepherd.Tour({defaultStepOptions:{scrollTo:!1,cancelIcon:{enabled:!0}},useModalOverlay:!0})).start()});const e=document.querySelector("#shepherd-docs-example");e&&(e.onclick=function(){(function(t){const e="btn btn-sm btn-label-secondary md-btn-flat waves-effect waves-light",a="btn btn-sm btn-primary btn-next waves-effect waves-light";return t.addStep({title:"Navbar",text:"This is your navbar",attachTo:{element:".navbar",on:"bottom"},buttons:[{action:t.cancel,classes:e,text:"Skip"},{text:"Next",classes:a,action:t.next}]}),t.addStep({title:"Footer",text:"This is the Footer",attachTo:{element:".footer",on:"top"},buttons:[{text:"Skip",classes:e,action:t.cancel},{text:"Back",classes:e,action:t.back},{text:"Next",classes:a,action:t.next}]}),t.addStep({title:"Social Link",text:"Click here share on social media",attachTo:{element:".footer-link",on:"top"},buttons:[{text:"Back",classes:e,action:t.back},{text:"Finish",classes:a,action:t.cancel}]}),t})(new Shepherd.Tour({defaultStepOptions:{scrollTo:!1,cancelIcon:{enabled:!0}},useModalOverlay:!0})).start()})}();
+/**
+ * Tour
+ */
+
+'use strict';
+
+(function () {
+  const startBtn = document.querySelector('#shepherd-example');
+
+  function setupTour(tour) {
+    const backBtnClass = 'btn btn-sm btn-label-secondary md-btn-flat waves-effect waves-light',
+      nextBtnClass = 'btn btn-sm btn-primary btn-next waves-effect waves-light';
+    tour.addStep({
+      title: 'Navbar',
+      text: 'This is your navbar',
+      attachTo: { element: '.navbar', on: 'bottom' },
+      buttons: [
+        {
+          action: tour.cancel,
+          classes: backBtnClass,
+          text: 'Skip'
+        },
+        {
+          text: 'Next',
+          classes: nextBtnClass,
+          action: tour.next
+        }
+      ]
+    });
+    tour.addStep({
+      title: 'Card',
+      text: 'This is a card',
+      attachTo: { element: '.tour-card', on: 'top' },
+      buttons: [
+        {
+          text: 'Skip',
+          classes: backBtnClass,
+          action: tour.cancel
+        },
+        {
+          text: 'Back',
+          classes: backBtnClass,
+          action: tour.back
+        },
+        {
+          text: 'Next',
+          classes: nextBtnClass,
+          action: tour.next
+        }
+      ]
+    });
+    tour.addStep({
+      title: 'Footer',
+      text: 'This is the Footer',
+      attachTo: { element: '.footer', on: 'top' },
+      buttons: [
+        {
+          text: 'Skip',
+          classes: backBtnClass,
+          action: tour.cancel
+        },
+        {
+          text: 'Back',
+          classes: backBtnClass,
+          action: tour.back
+        },
+        {
+          text: 'Next',
+          classes: nextBtnClass,
+          action: tour.next
+        }
+      ]
+    });
+    tour.addStep({
+      title: 'Upgrade',
+      text: 'Click here to upgrade plan',
+      attachTo: { element: '.footer-link', on: 'top' },
+      buttons: [
+        {
+          text: 'Back',
+          classes: backBtnClass,
+          action: tour.back
+        },
+        {
+          text: 'Finish',
+          classes: nextBtnClass,
+          action: tour.cancel
+        }
+      ]
+    });
+
+    return tour;
+  }
+
+  if (startBtn) {
+    // On start tour button click
+    startBtn.onclick = function () {
+      const tourVar = new Shepherd.Tour({
+        defaultStepOptions: {
+          scrollTo: false,
+          cancelIcon: {
+            enabled: true
+          }
+        },
+        useModalOverlay: true
+      });
+
+      setupTour(tourVar).start();
+    };
+  }
+
+  // ! Documentation Tour only
+  const startBtnDocs = document.querySelector('#shepherd-docs-example');
+
+  function setupTourDocs(tour) {
+    const backBtnClass = 'btn btn-sm btn-label-secondary md-btn-flat waves-effect waves-light',
+      nextBtnClass = 'btn btn-sm btn-primary btn-next waves-effect waves-light';
+    tour.addStep({
+      title: 'Navbar',
+      text: 'This is your navbar',
+      attachTo: { element: '.navbar', on: 'bottom' },
+      buttons: [
+        {
+          action: tour.cancel,
+          classes: backBtnClass,
+          text: 'Skip'
+        },
+        {
+          text: 'Next',
+          classes: nextBtnClass,
+          action: tour.next
+        }
+      ]
+    });
+    tour.addStep({
+      title: 'Footer',
+      text: 'This is the Footer',
+      attachTo: { element: '.footer', on: 'top' },
+      buttons: [
+        {
+          text: 'Skip',
+          classes: backBtnClass,
+          action: tour.cancel
+        },
+        {
+          text: 'Back',
+          classes: backBtnClass,
+          action: tour.back
+        },
+        {
+          text: 'Next',
+          classes: nextBtnClass,
+          action: tour.next
+        }
+      ]
+    });
+    tour.addStep({
+      title: 'Social Link',
+      text: 'Click here share on social media',
+      attachTo: { element: '.footer-link', on: 'top' },
+      buttons: [
+        {
+          text: 'Back',
+          classes: backBtnClass,
+          action: tour.back
+        },
+        {
+          text: 'Finish',
+          classes: nextBtnClass,
+          action: tour.cancel
+        }
+      ]
+    });
+
+    return tour;
+  }
+
+  if (startBtnDocs) {
+    // On start tour button click
+    startBtnDocs.onclick = function () {
+      const tourDocsVar = new Shepherd.Tour({
+        defaultStepOptions: {
+          scrollTo: false,
+          cancelIcon: {
+            enabled: true
+          }
+        },
+        useModalOverlay: true
+      });
+
+      setupTourDocs(tourDocsVar).start();
+    };
+  }
+})();

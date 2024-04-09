@@ -1,1 +1,9 @@
-"use strict";window.print();
+/**
+ * Invoice Print
+ */
+
+'use strict';
+
+(function () {
+  window.print();
+})();
