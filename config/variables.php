@@ -3,7 +3,7 @@
 return [
 	"creatorName" => "Simplicity",
 	"creatorUrl" => "https://revisionalpha.es/",
-	"templateName" => "Simplicity",
+	"templateName" => "SIMPLICITY",
 	"templateSuffix" => "CMS8",
 	"templateVersion" => "2.0.1",
 	"templateFree" => false,

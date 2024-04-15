@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Webhooks extends Model
 {
-    protected $table = 'sys_webhooks';
+    protected $table = 'webhooks';
 
     protected $casts = [
         'data' => 'array',

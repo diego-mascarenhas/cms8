@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Bruler')
+@section('title', 'Order Slips')
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -26,7 +26,7 @@
 
 @section('content')
 <div class="card">
-    <div class="card-header">Bruler</div>
+    <div class="card-header">Order Slips</div>
     <div class="card-body">
         {{ $dataTable->table() }}
     </div>

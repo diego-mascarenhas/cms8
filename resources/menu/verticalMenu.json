@@ -1,28 +1,37 @@
 {
-  "menu": [
-    {
-      "menuHeader": "Admin"
-    },
-    {
-      "url": "laravel/user-management",
-      "name": "Users",
-      "icon": "menu-icon tf-icons ti ti-users",
-      "slug": "laravel-example-user-management"
-    },
-    {
-      "menuHeader": "Apps"
-    },
-    {
-      "url": "bruler",
-      "name": "Bruler",
-      "icon": "menu-icon tf-icons ti ti-phone",
-      "slug": "bruler"
-    },
-    {
-      "url": "sys/webhooks",
-      "name": "Webhooks",
-      "icon": "menu-icon tf-icons ti ti-forms",
-      "slug": "sys-webhooks"
-    }
-  ]
+	"menu": [
+		{
+			"menuHeader": "Admin"
+		},
+		{
+			"url": "laravel/user-management",
+			"name": "Users",
+			"icon": "menu-icon tf-icons ti ti-users",
+			"slug": "laravel-example-user-management"
+		},
+		{
+			"menuHeader": "Apps"
+		},
+		{
+			"url": "whatsapp",
+			"name": "WhatsApp",
+			"icon": "menu-icon tf-icons ti ti-note",
+			"slug": "whatsapp"
+		},
+		{
+			"url": "order-slips",
+			"name": "Order Slips",
+			"icon": "menu-icon tf-icons ti ti-edit",
+			"slug": "order-slips"
+		},
+		{
+			"menuHeader": "System"
+		},
+		{
+			"url": "webhooks",
+			"name": "Webhooks",
+			"icon": "menu-icon tf-icons ti ti-forms",
+			"slug": "webhooks"
+		}
+	]
 }

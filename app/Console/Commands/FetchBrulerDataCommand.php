@@ -5,13 +5,13 @@ namespace App\Console\Commands;
 use Cache;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
-use App\Models\BrulerData;
+use App\Models\OrderSlip;
 use Session;
 
 class FetchBrulerDataCommand extends Command
 {
     protected $signature = 'fetch:bruler-data';
-    protected $description = 'Fetch data from Bruler API and insert into bruler_data table';
+    protected $description = 'Fetch data from Bruler API and insert into order_slips table';
 
     public function __construct()
     {
@@ -35,12 +35,12 @@ class FetchBrulerDataCommand extends Command
         {
             $data = $response->json()['Data'];
 
-            BrulerData::create([
+            OrderSlip::create([
                 'type' => 'products',
                 'data' => $data,
             ]);
 
-            $this->info('Datos insertados exitosamente en la tabla bruler_data.');
+            $this->info('Datos insertados exitosamente en la tabla order_slips.');
         }
         else
         {

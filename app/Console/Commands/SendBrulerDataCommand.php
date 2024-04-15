@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use Cache;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
-use App\Models\BrulerData;
+use App\Models\OrderSlip;
 use Session;
 
 class SendBrulerDataCommand extends Command

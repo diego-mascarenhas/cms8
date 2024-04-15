@@ -11,13 +11,12 @@ return new class extends Migration
 	 */
 	public function up(): void
 	{
-		Schema::create('bruler_data', function (Blueprint $table)
+		Schema::create('regions_countries', function (Blueprint $table)
 		{
-			$table->increments('id');
-			$table->string('type');
-			$table->json('data');
-			$table->tinyInteger('status')->default(1);
-			$table->timestamps();
+			$table->unsignedSmallInteger('id')->primary();
+			$table->string('name');
+			$table->string('iso_code_2', 2);
+			$table->string('iso_code_3', 3);
 		});
 	}
 
@@ -26,6 +25,6 @@ return new class extends Migration
 	 */
 	public function down(): void
 	{
-		Schema::dropIfExists('bruler_data');
+		Schema::dropIfExists('regions_countries');
 	}
 };

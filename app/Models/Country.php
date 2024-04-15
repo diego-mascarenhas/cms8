@@ -11,5 +11,5 @@ class Country extends Model
 
     public $timestamps = false;
 
-    protected $table = 'sys_countries';
+    protected $table = 'regions_countries';
 }

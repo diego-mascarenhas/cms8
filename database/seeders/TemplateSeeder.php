@@ -7,19 +7,19 @@ use Illuminate\Database\Seeder;
 
 class TemplateSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
-    {
-        Template::create([
-            'template' => 'Prueba',
-            'code' => 'CODIGO',
-        ]);
+	/**
+	 * Run the database seeds.
+	 */
+	public function run(): void
+	{
+		Template::create([
+			'name' => 'Prueba',
+			'code' => 'CODIGO',
+		]);
 
-        Template::create([
-          'template' => 'Hosting Cloud',
-          'code' => '<!doctype html>
+		Template::create([
+			'name' => 'Hosting Cloud',
+			'code' => '<!doctype html>
           <html xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:v="urn:schemas-microsoft-com:vml">
           <head>
               <title>Hosting Cloud | revision alpha</title>
@@ -185,6 +185,6 @@ class TemplateSeeder extends Seeder
                 <![endif]--></div>
           </body>
           </html>',
-      ]);
-    }
+		]);
+	}
 }

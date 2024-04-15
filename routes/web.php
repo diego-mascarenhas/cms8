@@ -1,10 +1,11 @@
 <?php
 use App\Http\Controllers\ApiAuthServiceController;
-use App\Http\Controllers\BrulerController;
+use App\Http\Controllers\OrderSlipController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\sys\WebhookController;
 use App\Http\Controllers\trade\TradeDataController;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\dashboard\Analytics;
@@ -365,14 +366,15 @@ Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement']
 Route::resource('/user-list', UserManagement::class);
 
 // CMS8
-Route::get('/sys/webhooks', [WebhookController::class, 'WebhookManagement'])->name('sys-webhooks');
+Route::get('/webhooks', [WebhookController::class, 'WebhookManagement'])->name('webhooks');
 Route::resource('/webhook-list', WebhookController::class);
-Route::get('/sys/webhooks/{id}', [WebhookController::class, 'show']);
+Route::get('/webhooks/{id}', [WebhookController::class, 'show']);
 Route::get('/trade', [TradeDataController::class, 'index'])->name('trade.index');
 Route::get('/users', [UsersController::class, 'index'])->name('users.index');
+Route::get('/whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');
 
 // Bruler
-Route::get('/bruler', [BrulerController::class, 'index'])->name('bruler.index');
+Route::get('/order-slips', [OrderSlipController::class, 'index'])->name('order-slips.index');
 Route::get('/api/bruler/login', [ApiAuthServiceController::class, 'login']);
 Route::get('/api/bruler/token', [ApiAuthServiceController::class, 'token']);
 Route::get('/api/bruler/orders', [OrderController::class, 'store']);
