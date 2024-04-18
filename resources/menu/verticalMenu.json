@@ -19,30 +19,6 @@
 			"slug": "app-whatsapp"
 		},
 		{
-			"url": "app/email",
-			"name": "Email",
-			"icon": "menu-icon tf-icons ti ti-mail",
-			"slug": "app-email"
-		},
-		{
-			"url": "app/chat",
-			"name": "Chat",
-			"icon": "menu-icon tf-icons ti ti-messages",
-			"slug": "app-chat"
-		},
-		{
-			"url": "app/calendar",
-			"name": "Calendar",
-			"icon": "menu-icon tf-icons ti ti-calendar",
-			"slug": "app-calendar"
-		},
-		{
-			"url": "app/kanban",
-			"name": "Kanban",
-			"icon": "menu-icon tf-icons ti ti-layout-kanban",
-			"slug": "app-kanban"
-		},
-		{
 			"name": "Orders Slips",
 			"icon": "menu-icon tf-icons ti ti-edit",
 			"slug": "app-order-slips",

@@ -374,9 +374,9 @@ Route::get('/users', [UsersController::class, 'index'])->name('users.index');
 Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
 
 // MKT
-Route::get('/app/mkt/lists/list', [Email::class, 'index'])->name('app-mkt-lists-list');
-Route::get('/app/mkt/messages/list', [Chat::class, 'index'])->name('app-mkt-messages-list');
-Route::get('/app/mkt/templates/list', [Calendar::class, 'index'])->name('app-mkt-templates-list');
+Route::get('/app/mkt/lists/list', [EcommerceProductCategory::class, 'index'])->name('app-mkt-lists-list');
+Route::get('/app/mkt/messages/list', [EcommerceManageReviews::class, 'index'])->name('app-mkt-messages-list');
+Route::get('/app/mkt/templates/list', [EcommerceProductList::class, 'index'])->name('app-mkt-templates-list');
 
 // Order Slips
 Route::get('/app/order-slips/list', [OrderSlipController::class, 'index'])->name('app-order-slips-list');
