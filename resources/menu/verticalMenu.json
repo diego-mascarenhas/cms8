@@ -13,25 +13,73 @@
 			"menuHeader": "Apps"
 		},
 		{
-			"url": "whatsapp",
+			"url": "app/whatsapp",
 			"name": "WhatsApp",
-			"icon": "menu-icon tf-icons ti ti-note",
-			"slug": "whatsapp"
+			"icon": "menu-icon tf-icons ti ti-messages",
+			"slug": "app-whatsapp"
 		},
 		{
-			"url": "order-slips",
-			"name": "Order Slips",
+			"url": "app/email",
+			"name": "Email",
+			"icon": "menu-icon tf-icons ti ti-mail",
+			"slug": "app-email"
+		},
+		{
+			"url": "app/chat",
+			"name": "Chat",
+			"icon": "menu-icon tf-icons ti ti-messages",
+			"slug": "app-chat"
+		},
+		{
+			"url": "app/calendar",
+			"name": "Calendar",
+			"icon": "menu-icon tf-icons ti ti-calendar",
+			"slug": "app-calendar"
+		},
+		{
+			"url": "app/kanban",
+			"name": "Kanban",
+			"icon": "menu-icon tf-icons ti ti-layout-kanban",
+			"slug": "app-kanban"
+		},
+		{
+			"name": "Orders Slips",
 			"icon": "menu-icon tf-icons ti ti-edit",
-			"slug": "order-slips"
+			"slug": "app-order-slips",
+			"submenu": [
+				{
+					"url": "app/order-slips/list",
+					"name": "Orders",
+					"slug": "app-order-slips-list"
+				},
+				{
+					"url": "app/order-slips/products",
+					"name": "Products",
+					"slug": "app-order-slips-products"
+				}
+			]
 		},
 		{
-			"menuHeader": "System"
-		},
-		{
-			"url": "webhooks",
-			"name": "Webhooks",
-			"icon": "menu-icon tf-icons ti ti-forms",
-			"slug": "webhooks"
+			"name": "Marketing",
+			"icon": "menu-icon tf-icons ti ti-send",
+			"slug": "app-mkt",
+			"submenu": [
+				{
+					"url": "app/mkt/lists/list",
+					"name": "Lists",
+					"slug": "app-mkt-lists-list"
+				},
+				{
+					"url": "app/mkt/messages/list",
+					"name": "Messages",
+					"slug": "app-mkt-messages-list"
+				},
+				{
+					"url": "app/mkt/templates/list",
+					"name": "Templates",
+					"slug": "app-mkt-templates-list"
+				}
+			]
 		}
 	]
 }

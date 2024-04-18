@@ -371,10 +371,18 @@ Route::resource('/webhook-list', WebhookController::class);
 Route::get('/webhooks/{id}', [WebhookController::class, 'show']);
 Route::get('/trade', [TradeDataController::class, 'index'])->name('trade.index');
 Route::get('/users', [UsersController::class, 'index'])->name('users.index');
-Route::get('/whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');
+Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
+
+// MKT
+Route::get('/app/mkt/lists/list', [Email::class, 'index'])->name('app-mkt-lists-list');
+Route::get('/app/mkt/messages/list', [Chat::class, 'index'])->name('app-mkt-messages-list');
+Route::get('/app/mkt/templates/list', [Calendar::class, 'index'])->name('app-mkt-templates-list');
+
+// Order Slips
+Route::get('/app/order-slips/list', [OrderSlipController::class, 'index'])->name('app-order-slips-list');
+Route::get('/app/order-slips/products', [OrderSlipController::class, 'index'])->name('app-order-slips-products');
 
 // Bruler
-Route::get('/order-slips', [OrderSlipController::class, 'index'])->name('order-slips.index');
 Route::get('/api/bruler/login', [ApiAuthServiceController::class, 'login']);
 Route::get('/api/bruler/token', [ApiAuthServiceController::class, 'token']);
 Route::get('/api/bruler/orders', [OrderController::class, 'store']);
