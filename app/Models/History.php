@@ -18,7 +18,7 @@ class History extends Model
 
 		static::addGlobalScope('UsersMessages', function (Builder $builder)
 		{
-			$builder->where('options', '{}')
+			$builder->where('answer', '!=', '__call_action__')
 				->where('answer', 'not like', '_event_voice_note__%');
 		});
 	}
