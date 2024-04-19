@@ -2,6 +2,7 @@
 deployment:
     tasks:
         - export DEPLOYPATH=/home/revcms8
+				- rm -rf /home/revcms8/database
         - /bin/cp -R * $DEPLOYPATH
         - rm -rf /home/revcms8/public_html
         - ln -s /home/revcms8/public /home/revcms8/public_html
