@@ -2,24 +2,26 @@
 
 namespace App\Providers;
 
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\ServiceProvider;
 use Yajra\DataTables\Html\Builder;
 
 class AppServiceProvider extends ServiceProvider
 {
-  /**
-   * Register any application services.
-   */
-  public function register(): void
-  {
-    //
-  }
+	/**
+	 * Register any application services.
+	 */
+	public function register(): void
+	{
+		//
+	}
 
-  /**
-   * Bootstrap any application services.
-   */
-  public function boot(): void
-  {
-    Builder::useVite();
-  }
+	/**
+	 * Bootstrap any application services.
+	 */
+	public function boot(): void
+	{
+		Builder::useVite();
+		JsonResource::withoutWrapping();
+	}
 }

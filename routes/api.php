@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CategoryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\trade\TradeDataController;
@@ -40,3 +41,5 @@ Route::group(['prefix' => 'auth'], function ()
 
 Route::post('/webhooks', [WebhookController::class, 'store']);
 Route::post('/trade', [TradeDataController::class, 'store']);
+
+Route::get('categories', [CategoryController::class, 'index']);
