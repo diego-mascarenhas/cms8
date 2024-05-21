@@ -13,7 +13,7 @@ return new class extends Migration
 	{
 		Schema::create('order_slips_commands', function (Blueprint $table)
 		{
-			$table->id();
+			$table->unsignedTinyInteger('id')->autoIncrement();
 			$table->string('name');
 			$table->string('triggers')->nullable();
 			$table->unsignedTinyInteger('action_id');

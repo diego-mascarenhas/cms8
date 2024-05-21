@@ -14,10 +14,15 @@ return new class extends Migration
 		Schema::create('order_slips', function (Blueprint $table)
 		{
 			$table->increments('id');
-			$table->string('type');
+			$table->foreignId('user_id')->constrained()->onDelete('cascade');
+			$table->unsignedTinyInteger('command_id');
 			$table->json('data');
 			$table->tinyInteger('status')->default(1);
 			$table->timestamps();
+
+			$table->foreign('command_id')->references('id')->on('order_slips_commands')
+				->onUpdate('cascade')
+				->onDelete('cascade');
 		});
 	}
 
