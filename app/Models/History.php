@@ -10,6 +10,8 @@ class History extends Model
 {
 	use HasFactory;
 
+	public $timestamps = false;
+
 	protected $table = 'history';
 
 	protected static function boot()

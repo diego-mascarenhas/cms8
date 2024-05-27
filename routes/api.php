@@ -7,6 +7,7 @@ use App\Http\Controllers\trade\TradeDataController;
 use App\Http\Controllers\sys\WebhookController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthMobileController;
+use App\Http\Controllers\Api\StructuredVoiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,3 +44,5 @@ Route::post('/webhooks', [WebhookController::class, 'store']);
 Route::post('/trade', [TradeDataController::class, 'store']);
 
 Route::get('categories', [CategoryController::class, 'index']);
+
+Route::post('/process-order', [StructuredVoiceController::class, 'processOrder']);
