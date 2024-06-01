@@ -1,11 +1,4 @@
 <?php
-use App\Http\Controllers\ApiAuthServiceController;
-use App\Http\Controllers\OrderSlipController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\sys\WebhookController;
-use App\Http\Controllers\trade\TradeDataController;
-use App\Http\Controllers\UsersController;
-use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\dashboard\Analytics;
@@ -365,24 +358,12 @@ Route::get('/maps/leaflet', [Leaflet::class, 'index'])->name('maps-leaflet');
 Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement'])->name('laravel-example-user-management');
 Route::resource('/user-list', UserManagement::class);
 
-// CMS8
-Route::get('/webhooks', [WebhookController::class, 'WebhookManagement'])->name('webhooks');
-Route::resource('/webhook-list', WebhookController::class);
-Route::get('/webhooks/{id}', [WebhookController::class, 'show']);
-Route::get('/trade', [TradeDataController::class, 'index'])->name('trade.index');
-Route::get('/users', [UsersController::class, 'index'])->name('users.index');
-Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
-
-// MKT
-Route::get('/app/mkt/lists/list', [EcommerceProductCategory::class, 'index'])->name('app-mkt-lists-list');
-Route::get('/app/mkt/messages/list', [EcommerceManageReviews::class, 'index'])->name('app-mkt-messages-list');
-Route::get('/app/mkt/templates/list', [EcommerceProductList::class, 'index'])->name('app-mkt-templates-list');
-
-// Order Slips
-Route::get('/app/order-slips/list', [OrderSlipController::class, 'index'])->name('app-order-slips-list');
-Route::get('/app/order-slips/products', [OrderSlipController::class, 'index'])->name('app-order-slips-products');
-
-// Bruler
-Route::get('/api/bruler/login', [ApiAuthServiceController::class, 'login']);
-Route::get('/api/bruler/token', [ApiAuthServiceController::class, 'token']);
-Route::get('/api/bruler/orders', [OrderController::class, 'store']);
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+});
