@@ -171,6 +171,7 @@ return [
         App\Providers\FortifyServiceProvider::class,
         App\Providers\JetstreamServiceProvider::class,
     App\Providers\MenuServiceProvider::class,
+    Yajra\DataTables\DataTablesServiceProvider::class,
   ])->toArray(),
 
   /*

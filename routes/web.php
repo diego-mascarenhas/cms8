@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\dashboard\Analytics;
@@ -158,6 +159,7 @@ use App\Http\Controllers\tables\DatatableExtensions;
 use App\Http\Controllers\charts\ApexCharts;
 use App\Http\Controllers\charts\ChartJs;
 use App\Http\Controllers\maps\Leaflet;
+use App\Http\Controllers\WhatsAppController;
 
 // Main Page Route
 Route::get('/', [Analytics::class, 'index'])->name('dashboard-analytics');
@@ -367,3 +369,12 @@ Route::middleware([
         return view('dashboard');
     })->name('dashboard');
 });
+
+
+// WhatsApp
+Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
+
+// MKT
+Route::get('/app/mkt/lists/list', [EcommerceProductCategory::class, 'index'])->name('app-mkt-lists-list');
+Route::get('/app/mkt/messages/list', [EcommerceManageReviews::class, 'index'])->name('app-mkt-messages-list');
+Route::get('/app/mkt/templates/list', [EcommerceProductList::class, 'index'])->name('app-mkt-templates-list');

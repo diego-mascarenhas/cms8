@@ -58,9 +58,10 @@ class Ignition
         return new self();
     }
 
-    public function __construct()
-    {
-        $this->flare = Flare::make();
+    public function __construct(
+        ?Flare $flare = null,
+    ) {
+        $this->flare = $flare ?? Flare::make();
 
         $this->ignitionConfig = IgnitionConfig::loadFromConfigFile();
 
@@ -237,14 +238,14 @@ class Ignition
         return $this;
     }
 
-    public function register(): self
+    public function register(?int $errorLevels = null): self
     {
-        error_reporting(-1);
+        error_reporting($errorLevels ?? -1);
 
-        /** @phpstan-ignore-next-line  */
-        set_error_handler([$this, 'renderError']);
+        $errorLevels
+            ? set_error_handler([$this, 'renderError'], $errorLevels)
+            : set_error_handler([$this, 'renderError']);
 
-        /** @phpstan-ignore-next-line  */
         set_exception_handler([$this, 'handleException']);
 
         return $this;
