@@ -39,6 +39,15 @@
 					"slug": "app-mkt-templates-list"
 				}
 			]
+		},
+		{
+			"menuHeader": "Config"
+		},
+		{
+			"url": "app/category/list",
+			"name": "Categories",
+			"icon": "menu-icon tf-icons ti ti-list",
+			"slug": "app-category-list"
 		}
 	]
 }

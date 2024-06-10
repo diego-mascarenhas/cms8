@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CategoryController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\dashboard\Analytics;
@@ -356,9 +357,6 @@ Route::get('/charts/chartjs', [ChartJs::class, 'index'])->name('charts-chartjs')
 // maps
 Route::get('/maps/leaflet', [Leaflet::class, 'index'])->name('maps-leaflet');
 
-// laravel example
-Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement'])->name('laravel-example-user-management');
-Route::resource('/user-list', UserManagement::class);
 
 Route::middleware([
     'auth:sanctum',
@@ -370,11 +368,31 @@ Route::middleware([
     })->name('dashboard');
 });
 
+// CMS
+Route::middleware(['auth'])->group(function ()
+{
+    Route::get('/dashboard', function () {
+        return redirect()->route('laravel-example-user-management');
+    })->name('dashboard');
 
-// WhatsApp
-Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
+    // laravel example
+    Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement'])->name('laravel-example-user-management');
+    Route::resource('/user-list', UserManagement::class);
 
-// MKT
-Route::get('/app/mkt/lists/list', [EcommerceProductCategory::class, 'index'])->name('app-mkt-lists-list');
-Route::get('/app/mkt/messages/list', [EcommerceManageReviews::class, 'index'])->name('app-mkt-messages-list');
-Route::get('/app/mkt/templates/list', [EcommerceProductList::class, 'index'])->name('app-mkt-templates-list');
+    // Category
+    Route::get('/app/category/list', [CategoryController::class, 'index'])->name('app-category-list');
+    Route::get('/app/category/create', [CategoryController::class, 'create'])->name('category.create');
+    Route::get('/app/category/{id}', [CategoryController::class, 'show'])->name('category.show');
+    Route::get('/app/category/{id}/edit', [CategoryController::class, 'edit'])->name('category.edit');
+    Route::post('/app/category', [CategoryController::class, 'store'])->name('category.store');
+    Route::put('/app/category/{id}', [CategoryController::class, 'update'])->name('category.update');
+    Route::delete('/app/category/{id}', [CategoryController::class, 'destroy'])->name('category.destroy');
+
+    // WhatsApp
+    Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
+
+    // MKT
+    Route::get('/app/mkt/lists/list', [EcommerceProductCategory::class, 'index'])->name('app-mkt-lists-list');
+    Route::get('/app/mkt/messages/list', [EcommerceManageReviews::class, 'index'])->name('app-mkt-messages-list');
+    Route::get('/app/mkt/templates/list', [EcommerceProductList::class, 'index'])->name('app-mkt-templates-list');
+});
