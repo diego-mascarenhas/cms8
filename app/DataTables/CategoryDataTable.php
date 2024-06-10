@@ -34,13 +34,13 @@ class CategoryDataTable extends DataTable
             })
             ->editColumn('status', function ($data)
             {
-                if ($data->status == 1)
+                if ($data->status)
                 {
-                    return '<span class="badge rounded-pill bg-label-warning">Inactiva</span>';
+                    return '<span class="badge rounded-pill bg-label-success">Activa</span>';
                 }
                 else
                 {
-                    return '<span class="badge rounded-pill bg-label-success">Activa</span>';
+                    return '<span class="badge rounded-pill bg-label-warning">Inactiva</span>';
                 };
             });
     }
