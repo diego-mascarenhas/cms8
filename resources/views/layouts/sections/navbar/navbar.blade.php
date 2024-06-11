@@ -451,12 +451,14 @@ $navbarDetached = ($navbarDetached ?? '');
               <li>
                 <div class="dropdown-divider"></div>
               </li>
+              @if(Auth::check() && Auth::user()->currentTeam)
               <li>
-                <a class="dropdown-item" href="{{ Auth::user() ? route('teams.show', Auth::user()->currentTeam->id) : 'javascript:void(0)' }}">
-                  <i class='ti ti-settings me-2'></i>
-                  <span class="align-middle">Team Settings</span>
-                </a>
+                  <a class="dropdown-item" href="{{ route('teams.show', Auth::user()->currentTeam->id) }}">
+                      <i class='ti ti-settings me-2'></i>
+                      <span class="align-middle">Team Settings</span>
+                  </a>
               </li>
+              @endif
               @can('create', Laravel\Jetstream\Jetstream::newTeamModel())
               <li>
                 <a class="dropdown-item" href="{{ route('teams.create') }}">
