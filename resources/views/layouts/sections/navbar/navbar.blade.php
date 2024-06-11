@@ -52,6 +52,7 @@ $navbarDetached = ($navbarDetached ?? '');
         @endif
         <ul class="navbar-nav flex-row align-items-center ms-auto">
           <!-- Language -->
+          <!--
           <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
               <i class='ti ti-language rounded-circle ti-md'></i>
@@ -79,6 +80,7 @@ $navbarDetached = ($navbarDetached ?? '');
               </li>
             </ul>
           </li>
+          -->
           <!--/ Language -->
 
           @if(isset($menuHorizontal))
@@ -118,6 +120,7 @@ $navbarDetached = ($navbarDetached ?? '');
           @endif
 
           <!-- Quick links  -->
+          <!-- 
           <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
               <i class='ti ti-layout-grid-add ti-md'></i>
@@ -197,9 +200,11 @@ $navbarDetached = ($navbarDetached ?? '');
               </div>
             </div>
           </li>
+          -->
           <!-- Quick links -->
 
           <!-- Notification -->
+          <!--
           <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
               <i class="ti ti-bell ti-md"></i>
@@ -385,6 +390,7 @@ $navbarDetached = ($navbarDetached ?? '');
               </li>
             </ul>
           </li>
+          -->
           <!--/ Notification -->
 
           <!-- User -->
@@ -433,6 +439,7 @@ $navbarDetached = ($navbarDetached ?? '');
                 </a>
               </li>
               @endif
+              <!--
               <li>
                 <a class="dropdown-item" href="{{url('app/invoice/list')}}">
                   <span class="d-flex align-items-center align-middle">
@@ -441,6 +448,7 @@ $navbarDetached = ($navbarDetached ?? '');
                     <span class="flex-shrink-0 badge badge-center rounded-pill bg-label-danger w-px-20 h-px-20">2</span>
                   </span> </a>
               </li>
+              -->
               @if (Auth::User() && Laravel\Jetstream\Jetstream::hasTeamFeatures())
               <li>
                 <div class="dropdown-divider"></div>
