@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -12,12 +13,33 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\User::factory(10)->create();
+        // Admin
+        $email = 'diego.mascarenhas@icloud.com';
+        $user = User::whereEmail($email)->first();
 
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        if (!$user)
+        {
+            $user = User::factory()->create([
+                'name' => 'Diego Mascarenhas',
+                'email' => $email,
+                'password' => '$2y$10$9His4IIPh5nFp0TSilz.h.0DLLE4DzhX1Os2y0QHwt.a19s6whxyC',
+            ]);
+        }
+
+        // Tester
+        $email = 'test@example.com';
+        $user = User::whereEmail($email)->first();
+
+        if (!$user)
+        {
+            $user = User::factory()->create([
+                'name' => 'Test User',
+                'email' => $email,
+                'password' => hash::make('Passw0rd!'),
+            ]);
+        }
+
+        User::factory(10)->create();
 
         $this->call([
 			CategorySeeder::class,

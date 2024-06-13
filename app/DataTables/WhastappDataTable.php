@@ -23,7 +23,12 @@ class WhastappDataTable extends DataTable
 	{
 		return (new EloquentDataTable($query))
 			->addColumn('action', 'whastapp.action')
-			->setRowId('id');
+			->setRowId('id')
+			->editColumn('date', function ($data)
+            {
+                $formated_date = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $data->date)->format('d-m-Y H:i:s');
+                return $formated_date;
+            });
 	}
 
 	/**
@@ -44,7 +49,7 @@ class WhastappDataTable extends DataTable
 			->columns($this->getColumns())
 			->minifiedAjax()
 			//->dom('Bfrtip')
-			->orderBy(1)
+			->orderBy(1, 'desc')
 			->selectStyleSingle();
 	}
 
@@ -54,9 +59,10 @@ class WhastappDataTable extends DataTable
 	public function getColumns(): array
 	{
 		return [
-			Column::make('id'),
-			Column::make('phone'),
-			Column::make('answer'),
+			Column::make('id')->hidden(),
+			Column::make('date'),
+			Column::make('phone')->orderable(false),
+			Column::make('answer')->orderable(false),
 		];
 	}
 

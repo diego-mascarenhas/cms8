@@ -20,7 +20,8 @@ return new class extends Migration
 			$table->string('refSerialize');
 			$table->string('phone');
 			$table->longText('options');
-			$table->timestamp('created_at')->useCurrent()->nullable();
+			$table->longText('date')->useCurrent();
+			$table->timestamp('created_at')->nullable();
 		});
 	}
 
