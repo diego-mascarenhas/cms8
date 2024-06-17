@@ -18,7 +18,7 @@ return new class extends Migration
 			$table->string('keyword')->nullable();
 			$table->longText('answer');
 			$table->string('refSerialize');
-			$table->string('phone');
+			$table->unsignedBigInteger('phone');
 			$table->longText('options');
 			$table->longText('date')->useCurrent();
 			$table->timestamp('created_at')->nullable();

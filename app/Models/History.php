@@ -24,4 +24,9 @@ class History extends Model
 				->where('answer', 'not like', '_event_voice_note__%');
 		});
 	}
+
+	public function user()
+    {
+        return $this->belongsTo(User::class, 'phone', 'phone');
+    }
 }

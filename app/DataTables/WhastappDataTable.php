@@ -12,6 +12,8 @@ use Yajra\DataTables\Html\Editor\Editor;
 use Yajra\DataTables\Html\Editor\Fields;
 use Yajra\DataTables\Services\DataTable;
 
+use Carbon\Carbon;
+
 class WhastappDataTable extends DataTable
 {
 	/**
@@ -26,8 +28,11 @@ class WhastappDataTable extends DataTable
 			->setRowId('id')
 			->editColumn('date', function ($data)
             {
-                $formated_date = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $data->date)->format('d-m-Y H:i:s');
-                return $formated_date;
+				return Carbon::parse($data->date)->format('d-m-Y H:i:s');
+            })
+			->editColumn('phone', function ($data)
+            {
+                return $data->phone->name;
             });
 	}
 
