@@ -20,7 +20,7 @@ return new class extends Migration
 			$table->string('refSerialize');
 			$table->unsignedBigInteger('phone');
 			$table->longText('options');
-			$table->longText('date')->useCurrent();
+			$table->dateTime('date')->default(DB::raw('CURRENT_TIMESTAMP'));
 			$table->timestamp('created_at')->nullable();
 		});
 	}
