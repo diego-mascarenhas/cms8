@@ -28,7 +28,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">WhatsApp</h4>
-        <p class="text-muted">Mensajes entrantes</p>
+        <p class="text-muted">Connect with your customers on WhatsApp and enhance your outreach!</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         <a href="{{ url(getenv('WHATSAPP_QR')) }}" target="_blank" type="submit" class="btn btn-primary waves-effect waves-light">Scan QR code</a>

@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Categories')
+@section('title', 'Templates')
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -31,7 +31,6 @@
 
 @section('page-script')
 <script src="{{asset('assets/js/ui-toasts.js')}}"></script>
-<script src="{{asset('js/laravel-user-management.js')}}"></script>
 @endsection
 
 <style>
@@ -44,11 +43,11 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Categories</h4>
-        <p class="text-muted">Manage your categories efficiently and keep everything organized!</p>
+        <h4 class="mb-1 mt-3">Templates</h4>
+        <p class="text-muted">Create and customize templates for consistent communication!</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('category.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Create New</a>
+        <a href="{{ route('message.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Create New</a>
     </div>
 </div>
 
@@ -90,7 +89,7 @@
             confirmButtonText: 'Sí, eliminar'
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch("{{ route('category.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                fetch("{{ route('message.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',

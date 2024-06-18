@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\DataTables\CategoryDataTable;
-use App\Models\Category;
+use App\DataTables\MessageDataTable;
+use App\Models\Message;
 use Illuminate\Http\Request;
 use stdClass;
 
-class CategoryController extends Controller
+class MessageController extends Controller
 {
-    public function index(CategoryDataTable $dataTable)
+    public function index(MessageDataTable $dataTable)
     {
-        return $dataTable->render('category.index');
+        return $dataTable->render('message.index');
     }
 
     /**
@@ -19,7 +19,7 @@ class CategoryController extends Controller
      */
     public function create()
     {
-        return view('category.form');
+        return view('message.form');
     }
 
     /**
@@ -35,7 +35,7 @@ class CategoryController extends Controller
 
         $data['status'] = $request->has('status') ? 1 : 0;
 
-        Category::updateOrCreate(
+        Message::updateOrCreate(
             ['id' => $request->id],
             [
                 'name' => $data['name'],
@@ -43,7 +43,7 @@ class CategoryController extends Controller
             ]
         );
 
-        return redirect()->route('app-mkt-category-list')->with('success', 'Registro guardado correctamente.');
+        return redirect()->route('app-mkt-message-list')->with('success', 'Registro guardado correctamente.');
     }
 
     /**
@@ -59,14 +59,14 @@ class CategoryController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Category::find($id);
+        $data = Message::find($id);
 
         if (!$data)
         {
-            return redirect()->route('app-mkt-category-list')->with('error', 'Category not found.');
+            return redirect()->route('app-mkt-message-list')->with('error', 'Message not found.');
         }
 
-        return view('category.form', compact('data'));
+        return view('message.form', compact('data'));
     }
 
     /**
@@ -82,7 +82,7 @@ class CategoryController extends Controller
      */
     public function destroy(string $id)
     {
-        $model = Category::findOrFail($id);
+        $model = Message::findOrFail($id);
 
         $model->delete();
 

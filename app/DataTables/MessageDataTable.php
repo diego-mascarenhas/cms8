@@ -2,7 +2,7 @@
 
 namespace App\DataTables;
 
-use App\Models\Category;
+use App\Models\Message;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -11,7 +11,7 @@ use Yajra\DataTables\Services\DataTable;
 
 use Carbon\Carbon;
 
-class CategoryDataTable extends DataTable
+class MessageDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
@@ -21,7 +21,7 @@ class CategoryDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'category.action')
+            ->addColumn('action', 'message.action')
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status'])
             ->editColumn('created_at', function ($data)
@@ -45,7 +45,7 @@ class CategoryDataTable extends DataTable
             });
     }
 
-    public function query(Category $model): QueryBuilder
+    public function query(Message $model): QueryBuilder
     {
         return $model->newQuery();
     }
@@ -53,7 +53,7 @@ class CategoryDataTable extends DataTable
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('category-table')
+                    ->setTableId('message-table')
                     ->columns($this->getColumns())
                     ->minifiedAjax()
                     ->dom('frtip')
@@ -78,6 +78,6 @@ class CategoryDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Category_' . date('YmdHis');
+        return 'Message_' . date('YmdHis');
     }
 }

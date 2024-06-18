@@ -1,8 +1,8 @@
 <?php
 // Variables
 return [
-	"creatorName" => "revision alpha",
-	"creatorUrl" => "https://revisionalpha.es/",
+	"creatorName" => "Simplicity",
+	"creatorUrl" => "https://www.linkedin.com/in/diego-mascarenhas/",
 	"templateName" => "SIMPLICITY",
 	"templateSuffix" => "CMS8",
 	"templateVersion" => "2.0.1",
@@ -12,7 +12,7 @@ return [
 	"licenseUrl" => "https://themeforest.net/licenses/standard",
 	"livePreview" => "https://demos.pixinvent.com/vuexy-html-admin-template/landing/",
 	"productPage" => "https://1.envato.market/vuexy_admin",
-	"support" => "https://revisionalpha.es/contactenos",
+	"support" => "https://api.whatsapp.com/send/?phone=34722372858&text=I+need+technical+support+por&type=phone_number&app_absent=0",
 	"moreThemes" => "https://1.envato.market/pixinvent_portfolio",
 	"documentation" => "https://demos.pixinvent.com/vuexy-html-admin-template/documentation",
 	"generator" => "",

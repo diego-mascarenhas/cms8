@@ -16,7 +16,7 @@ class CategorySeeder extends Seeder
         Category::create([
             'id' => 1,
             'name' => 'Prospect',
-            'status' => 2
+            'status' => 0
         ]);
 
         Category::create([
@@ -28,7 +28,7 @@ class CategorySeeder extends Seeder
         Category::create([
             'id' => 3,
             'name' => 'Tester',
-            'status' => 2
+            'status' => 1
         ]);
     }
 }
