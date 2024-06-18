@@ -31,7 +31,7 @@ class MessageController extends Controller
      */
     public function show(string $id)
     {
-        $message = Message::find($id);
+        $message = Message::with('category.users')->find($id);
 
         if (!$message)
         {
