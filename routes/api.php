@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\MessageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,4 +33,12 @@ Route::group(['prefix' => 'auth'], function ()
 	});
 });
 
-Route::get('categories', [CategoryController::class, 'index']);
+Route::middleware('auth:sanctum')->group(function () {
+    // Category
+	Route::get('category', [CategoryController::class, 'index']);
+    
+	// Message
+	Route::get('message', [MessageController::class, 'index']);
+	Route::get('message/{id}', [MessageController::class, 'show']);
+
+});
