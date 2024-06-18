@@ -16,18 +16,24 @@ class CategorySeeder extends Seeder
         Category::create([
             'id' => 1,
             'name' => 'Tester',
-            'status' => 0
+            'status' => 1
         ]);
 
         Category::create([
             'id' => 2,
             'name' => 'Prospect',
-            'status' => 1
+            'status' => 0
         ]);
 
         Category::create([
             'id' => 3,
             'name' => 'Demo',
+            'status' => 1
+        ]);
+
+        Category::create([
+            'id' => 4,
+            'name' => 'Staff',
             'status' => 1
         ]);
     }
