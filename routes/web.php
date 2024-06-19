@@ -163,6 +163,8 @@ use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\PageController;
+
 
 // Main Page Route
 Route::get('/', [Analytics::class, 'index'])->name('dashboard-analytics')->middleware('auth');
@@ -410,4 +412,10 @@ Route::middleware(['auth'])->group(function ()
 
     // WhatsApp
     Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
+
+    
 });
+
+// Editor
+Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
+Route::get('pages/{page}', [PageController::class, 'show'])->name('message.show')->name('page.view');

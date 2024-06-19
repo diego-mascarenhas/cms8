@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             MessageTypeSeeder::class,
             TemplateSeeder::class,
             MessageSeeder::class,
+            PageSeeder::class,
 		]);
 
         // Admin
