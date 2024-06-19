@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\dashboard\Analytics;
@@ -158,9 +159,13 @@ use App\Http\Controllers\tables\DatatableExtensions;
 use App\Http\Controllers\charts\ApexCharts;
 use App\Http\Controllers\charts\ChartJs;
 use App\Http\Controllers\maps\Leaflet;
+use App\Http\Controllers\WhatsAppController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\TemplateController;
 
 // Main Page Route
-Route::get('/', [Analytics::class, 'index'])->name('dashboard-analytics');
+Route::get('/', [Analytics::class, 'index'])->name('dashboard-analytics')->middleware('auth');
 Route::get('/dashboard/analytics', [Analytics::class, 'index'])->name('dashboard-analytics');
 Route::get('/dashboard/crm', [Crm::class, 'index'])->name('dashboard-crm');
 // locale
@@ -354,6 +359,55 @@ Route::get('/charts/chartjs', [ChartJs::class, 'index'])->name('charts-chartjs')
 // maps
 Route::get('/maps/leaflet', [Leaflet::class, 'index'])->name('maps-leaflet');
 
-// laravel example
-Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement'])->name('laravel-example-user-management');
-Route::resource('/user-list', UserManagement::class);
+
+Route::middleware([
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+});
+
+// CMS
+Route::middleware(['auth'])->group(function ()
+{
+    Route::get('/dashboard', function () {
+        return redirect()->route('laravel-example-user-management');
+    })->name('dashboard');
+
+    // laravel example
+    Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement'])->name('laravel-example-user-management');
+    Route::resource('/user-list', UserManagement::class);
+
+    // Category
+    Route::get('/app/mkt/category/list', [CategoryController::class, 'index'])->name('app-mkt-category-list');
+    Route::get('/app/mkt/category/create', [CategoryController::class, 'create'])->name('category.create');
+    Route::get('/app/mkt/category/{id}', [CategoryController::class, 'show'])->name('category.show');
+    Route::get('/app/mkt/category/{id}/edit', [CategoryController::class, 'edit'])->name('category.edit');
+    Route::post('/app/mkt/category', [CategoryController::class, 'store'])->name('category.store');
+    Route::put('/app/mkt/category/{id}', [CategoryController::class, 'update'])->name('category.update');
+    Route::delete('/app/mkt/category/{id}', [CategoryController::class, 'destroy'])->name('category.destroy');
+
+    // Messages
+    Route::get('/app/mkt/message/list', [MessageController::class, 'index'])->name('app-mkt-message-list');
+    Route::get('/appmkt/message/create', [MessageController::class, 'create'])->name('message.create');
+    Route::get('/app/mkt/message/{id}', [MessageController::class, 'show'])->name('message.show');
+    Route::get('/app/mkt/message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
+    Route::post('/app/mkt/message', [MessageController::class, 'store'])->name('message.store');
+    Route::put('/app/mkt/message/{id}', [MessageController::class, 'update'])->name('message.update');
+    Route::delete('/app/mkt/message/{id}', [MessageController::class, 'destroy'])->name('message.destroy');
+
+    // Templates
+    Route::get('/app/mkt/template/list', [TemplateController::class, 'index'])->name('app-mkt-template-list');
+    Route::get('/appmkt/template/create', [TemplateController::class, 'create'])->name('template.create');
+    Route::get('/app/mkt/template/{id}', [TemplateController::class, 'show'])->name('template.show');
+    Route::get('/app/mkt/template/{id}/edit', [TemplateController::class, 'edit'])->name('template.edit');
+    Route::post('/app/mkt/template', [TemplateController::class, 'store'])->name('template.store');
+    Route::put('/app/mkt/template/{id}', [TemplateController::class, 'update'])->name('template.update');
+    Route::delete('/app/mkt/template/{id}', [TemplateController::class, 'destroy'])->name('template.destroy');
+
+    // WhatsApp
+    Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
+});
