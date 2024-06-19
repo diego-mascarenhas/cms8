@@ -81,13 +81,13 @@
 <script>
     function deleteRecord(id, element) {
         Swal.fire({
-            title: '¿Estás seguro de que deseas eliminar este registro?',
-            text: 'Esta acción no se puede deshacer',
+            title: 'Are you sure you want to delete this record?',
+            text: 'This action cannot be undone',
             icon: 'warning',
             showCloseButton: false,
             showCancelButton: false,
             confirmButtonColor: '#3085d6',
-            confirmButtonText: 'Sí, eliminar'
+            confirmButtonText: 'Yes, delete'
         }).then((result) => {
             if (result.isConfirmed) {
                 fetch("{{ route('category.destroy', ['id' => ':ID']) }}".replace(':ID', id), {

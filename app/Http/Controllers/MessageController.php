@@ -31,6 +31,7 @@ class MessageController extends Controller
 
         $request->validate([
             'name' => 'required|string|min:3|max:25',
+            'text' => 'required|string|min:3|max:255',
         ]);
 
         $data['status'] = $request->has('status') ? 1 : 0;
@@ -39,6 +40,7 @@ class MessageController extends Controller
             ['id' => $request->id],
             [
                 'name' => $data['name'],
+                'text' => $data['text'],
                 'status' => $data['status'],
             ]
         );
