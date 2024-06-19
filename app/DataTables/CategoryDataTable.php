@@ -24,6 +24,9 @@ class CategoryDataTable extends DataTable
             ->addColumn('action', 'category.action')
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status'])
+            ->addColumn('user_count', function ($data) {
+                return $data->users_count;
+            })
             ->editColumn('created_at', function ($data)
             {
                 return Carbon::parse($data->created_at)->format('d-m-Y H:i:s');
@@ -47,7 +50,7 @@ class CategoryDataTable extends DataTable
 
     public function query(Category $model): QueryBuilder
     {
-        return $model->newQuery();
+        return $model->newQuery()->withCount('users');
     }
 
     public function html(): HtmlBuilder
@@ -65,6 +68,7 @@ class CategoryDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')->title('Name'),
+            Column::make('user_count')->title('User Count')->className('text-center'),
             Column::make('created_at')->title('Created')->className('text-center'),
             Column::make('updated_at')->title('Updated')->className('text-center'),
             Column::make('status')->title('Status')->className('text-center'),
