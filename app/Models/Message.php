@@ -15,8 +15,13 @@ class Message extends Model
 
 	protected $table = 'messages';
 
-    protected $fillable = ['name', 'text'];
+    protected $fillable = ['name', 'category_id', 'type_id', 'text', 'status'];
 
+    public function type()
+    {
+        return $this->belongsTo(MessageType::class);
+    }
+    
     public function category()
     {
         return $this->belongsTo(Category::class);

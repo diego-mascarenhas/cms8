@@ -26,4 +26,15 @@ class Category extends Model
     {
         return $this->hasMany(Message::class);
     }
+
+    public static function categories()
+    {
+        return self::all()->map(function ($data)
+        {
+            return [
+                'id' => $data->id,
+                'name' => $data->name,
+            ];
+        });
+    }
 }

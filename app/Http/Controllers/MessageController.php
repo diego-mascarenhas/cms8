@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
+use App\Models\Category;
 use App\Models\Message;
+use App\Models\MessageType;
 use Illuminate\Http\Request;
 use stdClass;
 
@@ -40,12 +42,14 @@ class MessageController extends Controller
             ['id' => $request->id],
             [
                 'name' => $data['name'],
+                'category_id' => $data['category_id'],
+                'type_id' => $data['type_id'],
                 'text' => $data['text'],
                 'status' => $data['status'],
             ]
         );
 
-        return redirect()->route('app-mkt-message-list')->with('success', 'Registro guardado correctamente.');
+        return redirect()->route('app-mkt-message-list')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -62,6 +66,8 @@ class MessageController extends Controller
     public function edit(string $id)
     {
         $data = Message::find($id);
+        $data->categories = Category::categories();
+        $data->types = MessageType::types();
 
         if (!$data)
         {
@@ -88,6 +94,6 @@ class MessageController extends Controller
 
         $model->delete();
 
-        return response()->json(['success' => 'El registro ha sido eliminado.'], 200);
+        return response()->json(['success' => 'The record has been deleted.'], 200);
     }
 }

@@ -43,7 +43,7 @@ class CategoryController extends Controller
             ]
         );
 
-        return redirect()->route('app-mkt-category-list')->with('success', 'Registro guardado correctamente.');
+        return redirect()->route('app-mkt-category-list')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -86,6 +86,6 @@ class CategoryController extends Controller
 
         $model->delete();
 
-        return response()->json(['success' => 'El registro ha sido eliminado.'], 200);
+        return response()->json(['success' => 'The record has been deleted.'], 200);
     }
 }

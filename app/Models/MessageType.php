@@ -14,4 +14,15 @@ class MessageType extends Model
 	protected $table = 'messages_type';
 
     protected $fillable = ['name', 'status'];
+
+    public static function types()
+    {
+        return self::all()->map(function ($data)
+        {
+            return [
+                'id' => $data->id,
+                'name' => $data->name,
+            ];
+        });
+    }
 }
