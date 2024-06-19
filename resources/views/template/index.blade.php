@@ -47,7 +47,7 @@
         <p class="text-muted">Create and customize templates for consistent communication!</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('message.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Create New</a>
+        <a href="{{ route('template.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Create New</a>
     </div>
 </div>
 

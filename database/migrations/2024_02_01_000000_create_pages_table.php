@@ -15,7 +15,7 @@ return new class extends Migration
 		{
 			$table->id();
 			$table->string('name');
-			$table->jsonb('gjs_data');
+			$table->json('gjs_data');
 			$table->tinyInteger('status')->default(2);
 			$table->timestamps();
 			$table->softDeletes();

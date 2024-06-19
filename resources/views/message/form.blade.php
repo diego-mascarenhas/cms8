@@ -40,11 +40,14 @@
 			<div class="col-md-6">
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
-			<div class="col-md-3">
+			<div class="col-md-6">
 				<x-input-select-array id="category_id" label="Category" :options="$data->categories" value="{{ old('category_id', $data->category_id ?? '') }}" />
 			</div>
-			<div class="col-md-3">
+			<div class="col-md-6">
 				<x-input-select-array id="type_id" label="Type (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+			</div>
+			<div class="col-md-6">
+				<x-input-select-array id="template_id" label="Template" :options="$data->templates" value="{{ old('template_id', $data->template_id ?? '') }}" />
 			</div>
 			<div class="col-md-12">
 				<x-input-textarea id="text" label="Text (*)" value="{{ old('vivienda_otra_informacion', $data->text?? '') }}" />
@@ -60,7 +63,7 @@
 
 		<div class="pt-4">
 			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('app-mkt-category-list') }}'">Cancel</button>
+			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('app-mkt-message-list') }}'">Cancel</button>
 		</div>
 	</form>
 </div>

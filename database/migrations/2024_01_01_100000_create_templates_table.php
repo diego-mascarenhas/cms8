@@ -13,10 +13,9 @@ return new class extends Migration
 	{
 		Schema::create('templates', function (Blueprint $table)
 		{
-			//$table->increments('id');
 			$table->id();
 			$table->string('name');
-			$table->longText('code');
+			$table->json('gjs_data')->nullable();
 			$table->tinyInteger('status')->default(2);
 			$table->timestamps();
 			$table->softDeletes();

@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\DataTables\TemplateDataTable;
 use App\Models\Template;
 use Illuminate\Http\Request;
-use stdClass;
+use Dotlogics\Grapesjs\App\Traits\EditorTrait;
 
 class TemplateController extends Controller
 {
+    use EditorTrait;
+
     public function index(TemplateDataTable $dataTable)
     {
         return $dataTable->render('template.index');
@@ -51,7 +53,13 @@ class TemplateController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $page = Template::find($id);
+
+        if (!$page) {
+            return redirect()->route('template.index')->with('error', 'Page not found.');
+        }
+
+        return view('page.show', compact('page'));
     }
 
     /**
@@ -87,5 +95,10 @@ class TemplateController extends Controller
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
+    }
+
+    public function editor(Request $request, Template $page)
+    {
+        return $this->show_gjs_editor($request, $page);
     }
 }

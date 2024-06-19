@@ -6,6 +6,7 @@ use App\DataTables\MessageDataTable;
 use App\Models\Category;
 use App\Models\Message;
 use App\Models\MessageType;
+use App\Models\Template;
 use Illuminate\Http\Request;
 use stdClass;
 
@@ -21,7 +22,12 @@ class MessageController extends Controller
      */
     public function create()
     {
-        return view('message.form');
+        $data = new stdClass();
+        $data->categories = Category::categories();
+        $data->types = MessageType::types();
+        $data->templates = Template::templates();
+
+        return view('message.form', compact('data'));
     }
 
     /**
@@ -68,6 +74,7 @@ class MessageController extends Controller
         $data = Message::find($id);
         $data->categories = Category::categories();
         $data->types = MessageType::types();
+        $data->templates = Template::templates();
 
         if (!$data)
         {
