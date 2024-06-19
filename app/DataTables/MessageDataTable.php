@@ -32,10 +32,6 @@ class MessageDataTable extends DataTable
             {
                 return optional($data->category)->name;
             })
-            ->editColumn('created_at', function ($data)
-            {
-                return Carbon::parse($data->created_at)->format('d-m-Y H:i:s');
-            })
             ->editColumn('updated_at', function ($data)
             {
                 return Carbon::parse($data->updated_at)->format('d-m-Y H:i:s');
@@ -75,7 +71,6 @@ class MessageDataTable extends DataTable
             Column::make('name')->title('Name'),
             Column::make('type_id')->title('Type'),
             Column::make('category_id')->title('Category'),
-            Column::make('created_at')->title('Created')->className('text-center'),
             Column::make('updated_at')->title('Updated')->className('text-center'),
             Column::make('status')->title('Status')->className('text-center'),
             Column::computed('action')->title('Actions')->width(20)->className('text-center')

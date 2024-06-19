@@ -15,7 +15,7 @@ class Message extends Model
 
 	protected $table = 'messages';
 
-    protected $fillable = ['name', 'category_id', 'type_id', 'text', 'status'];
+    protected $fillable = ['name', 'type_id', 'category_id', 'template_id', 'text', 'status'];
 
     public function type()
     {
@@ -25,5 +25,10 @@ class Message extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function templates()
+    {
+        return $this->belongsTo(Template::class);
     }
 }

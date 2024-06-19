@@ -163,6 +163,8 @@ use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\PageController;
+
 
 // Main Page Route
 Route::get('/', [Analytics::class, 'index'])->name('dashboard-analytics')->middleware('auth');
@@ -407,7 +409,15 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/app/mkt/template', [TemplateController::class, 'store'])->name('template.store');
     Route::put('/app/mkt/template/{id}', [TemplateController::class, 'update'])->name('template.update');
     Route::delete('/app/mkt/template/{id}', [TemplateController::class, 'destroy'])->name('template.destroy');
+    Route::get('/app/mkt/{page}/editor', [TemplateController::class, 'editor'])->name('template.edit');
+    Route::get('/app/mkt/{page}', [TemplateController::class, 'show'])->name('template.view');
 
     // WhatsApp
     Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
+
+    
 });
+
+// Editor
+Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
+Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Dotlogics\Grapesjs\App\Traits\EditableTrait;
 use Dotlogics\Grapesjs\App\Contracts\Editable;
 
-class Template extends Model implements Editable
+class Page extends Model implements Editable
 {
     use EditableTrait;
     use HasFactory;
@@ -16,22 +16,11 @@ class Template extends Model implements Editable
 
     public $timestamps = true;
 
-    protected $table = 'templates';
+    protected $table = 'pages';
 
     protected $fillable = ['name', 'gjs_data', 'status'];
 
     protected $casts = [
         'gjs_data' => 'array',
     ];
-
-    public static function templates()
-    {
-        return self::all()->map(function ($data)
-        {
-            return [
-                'id' => $data->id,
-                'name' => $data->name,
-            ];
-        });
-    }
 }
