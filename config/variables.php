@@ -9,7 +9,7 @@ return [
 	"templateFree" => false,
 	"templateDescription" => "Start your development with a Dashboard for Bootstrap 5",
 	"templateKeyword" => "dashboard, bootstrap 5 dashboard, bootstrap 5 design, bootstrap 5",
-	"licenseUrl" => "https://themeforest.net/licenses/standard",
+	"licenseUrl" => "https://opensource.org/license/MIT",
 	"livePreview" => "https://demos.pixinvent.com/vuexy-html-admin-template/landing/",
 	"productPage" => "https://1.envato.market/vuexy_admin",
 	"support" => "https://api.whatsapp.com/send/?phone=34722372858&text=I+need+technical+support+por&type=phone_number&app_absent=0",
