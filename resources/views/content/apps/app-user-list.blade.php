@@ -140,6 +140,7 @@
     </table>
   </div>
   <!-- Offcanvas to add new user -->
+  <!-- No es el que se usa -->
   <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasAddUser" aria-labelledby="offcanvasAddUserLabel">
     <div class="offcanvas-header">
       <h5 id="offcanvasAddUserLabel" class="offcanvas-title">Add User</h5>

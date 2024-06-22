@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Str;
 
+use Log;
+
 class UserManagement extends Controller
 {
   /**
@@ -55,12 +57,15 @@ class UserManagement extends Controller
     $order = $columns[$request->input('order.0.column')];
     $dir = $request->input('order.0.dir');
 
-    if (empty($request->input('search.value'))) {
+    if (empty($request->input('search.value')))
+    {
       $users = User::offset($start)
         ->limit($limit)
         ->orderBy($order, $dir)
         ->get();
-    } else {
+    }
+    else
+    {
       $search = $request->input('search.value');
 
       $users = User::where('id', 'LIKE', "%{$search}%")
@@ -79,11 +84,13 @@ class UserManagement extends Controller
 
     $data = [];
 
-    if (!empty($users)) {
+    if (!empty($users))
+    {
       // providing a dummy id instead of database ids
       $ids = $start;
 
-      foreach ($users as $user) {
+      foreach ($users as $user)
+      {
         $nestedData['id'] = $user->id;
         $nestedData['fake_id'] = ++$ids;
         $nestedData['name'] = $user->name;
@@ -94,7 +101,8 @@ class UserManagement extends Controller
       }
     }
 
-    if ($data) {
+    if ($data)
+    {
       return response()->json([
         'draw' => intval($request->input('draw')),
         'recordsTotal' => intval($totalData),
@@ -102,7 +110,9 @@ class UserManagement extends Controller
         'code' => 200,
         'data' => $data,
       ]);
-    } else {
+    }
+    else
+    {
       return response()->json([
         'message' => 'Internal Server Error',
         'code' => 500,
@@ -129,30 +139,61 @@ class UserManagement extends Controller
    */
   public function store(Request $request)
   {
+    Log::info(json_encode($request->all()));
+
     $userID = $request->id;
 
-    if ($userID) {
+    if ($userID)
+    {
       // update the value
-      $users = User::updateOrCreate(
-        ['id' => $userID],
-        ['name' => $request->name, 'email' => $request->email]
-      );
+      $data = [
+        'name' => $request->name,
+        'email' => $request->email,
+      ];
+
+      if ($request->userContact)
+      {
+        $data['phone'] = preg_replace('/\D/', '', $request->userContact);
+      }
+      else
+      {
+        $data['phone'] = null;
+      }
+
+      $users = User::updateOrCreate(['id' => $userID], $data);
 
       // user updated
       return response()->json('Updated');
-    } else {
+    }
+    else
+    {
       // create new one if email is unique
       $userEmail = User::where('email', $request->email)->first();
 
-      if (empty($userEmail)) {
-        $users = User::updateOrCreate(
-          ['id' => $userID],
-          ['name' => $request->name, 'email' => $request->email, 'password' => bcrypt(Str::random(10))]
-        );
+      if (empty($userEmail))
+      {
+        $data = [
+          'name' => $request->name,
+          'email' => $request->email,
+          'password' => bcrypt(Str::random(10)),
+        ];
+
+        if ($request->userContact)
+        {
+          $data['phone'] = preg_replace('/\D/', '', $request->userContact);
+        }
+        else
+        {
+          $data['phone'] = null;
+        }
+
+        $users = User::updateOrCreate(['id' => $userID], $data);
 
         // user created
         return response()->json('Created');
-      } else {
+      }
+      else
+      {
         // user already exist
         return response()->json(['message' => "already exits"], 422);
       }

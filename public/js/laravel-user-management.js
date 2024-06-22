@@ -368,6 +368,7 @@ $(function () {
       $('#user_id').val(data.id);
       $('#add-user-fullname').val(data.name);
       $('#add-user-email').val(data.email);
+      $('#add-user-contact').val(data.phone);
     });
   });
 
@@ -404,20 +405,6 @@ $(function () {
           },
           emailAddress: {
             message: 'The value is not a valid email address'
-          }
-        }
-      },
-      userContact: {
-        validators: {
-          notEmpty: {
-            message: 'Please enter your contact'
-          }
-        }
-      },
-      company: {
-        validators: {
-          notEmpty: {
-            message: 'Please enter your company'
           }
         }
       }
