@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Hash;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,6 +23,13 @@ class DatabaseSeeder extends Seeder
             PageSeeder::class,
 		]);
 
+        // Roles
+        Role::create(['name' => 'writer']);
+
+        // Permissions
+        Permission::create(['name' => 'edit articles']);
+        Permission::create(['name' => 'publish articles']);
+
         // Admin
         $user = User::factory()->create([
             'name' => 'Diego Mascarenhas',
@@ -29,6 +38,9 @@ class DatabaseSeeder extends Seeder
             'password' => '$2y$10$9His4IIPh5nFp0TSilz.h.0DLLE4DzhX1Os2y0QHwt.a19s6whxyC',
         ]);
         $user->categories()->attach([1, 2, 3, 4]);
+
+        $user->assignRole('writer');
+        $user->givePermissionTo('edit articles');
 
         // Testers
         $user = User::factory()->create([
