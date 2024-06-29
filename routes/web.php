@@ -164,6 +164,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\ClientController;
 
 
 // Main Page Route
@@ -383,6 +384,15 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement'])->name('laravel-example-user-management');
     Route::resource('/user-list', UserManagement::class);
 
+    // Clients
+    Route::get('/app/client/list', [ClientController::class, 'index'])->name('app-client-list');
+    Route::get('/app/client/create', [ClientController::class, 'create'])->name('client.create');
+    Route::get('/app/client/{id}', [ClientController::class, 'show'])->name('client.show');
+    Route::get('/app/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
+    Route::post('/app/client', [ClientController::class, 'store'])->name('client.store');
+    Route::put('/app/client/{id}', [ClientController::class, 'update'])->name('client.update');
+    Route::delete('/app/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
+
     // Category
     Route::get('/app/mkt/category/list', [CategoryController::class, 'index'])->name('app-mkt-category-list');
     Route::get('/app/mkt/category/create', [CategoryController::class, 'create'])->name('category.create');
@@ -414,8 +424,6 @@ Route::middleware(['auth'])->group(function ()
 
     // WhatsApp
     Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
-
-    
 });
 
 // Editor

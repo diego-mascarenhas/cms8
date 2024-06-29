@@ -24,7 +24,7 @@ class UserSeeder extends Seeder
         $user = User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'password' => Hash::make('demo'),
+            'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
         ]);
         $user->assignRole(1);
