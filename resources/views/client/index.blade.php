@@ -54,7 +54,7 @@
 @if(session('success'))
 <div id="toast-container" class="toast-top-right">
     <div class="toast toast-success" aria-live="polite" style="display: block;">
-        <div class="toast-message">{{ session('success') }}</div>
+        <div class="toast-client">{{ session('success') }}</div>
     </div>
 </div>
 
@@ -89,7 +89,7 @@
             confirmButtonText: 'Yes, delete'
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch("{{ route('message.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                fetch("{{ route('client.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -106,7 +106,7 @@
                     const toastHTML = `
                         <div id="toast-container" class="toast-top-right">
                             <div class="toast toast-success" aria-live="polite" style="display: block;">
-                                <div class="toast-message">${data.success}</div>
+                                <div class="toast-client">${data.success}</div>
                             </div>
                         </div>
                     `;
