@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             PolicySeeder::class,
             UserSeeder::class,
             ClientSeeder::class,
+            UserClientSeeder::class,
 		]);
     }
 }

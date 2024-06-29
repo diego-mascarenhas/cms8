@@ -27,7 +27,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('demo'),
             'email_verified_at' => null,
         ]);
-        $user->assignRole(3);
+        $user->assignRole(1);
         $user->categories()->attach([1]);
 
         // Colaborators
