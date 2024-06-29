@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             MessageSeeder::class,
             PageSeeder::class,
             RolesAndPermissionsSeeder::class,
+            PolicySeeder::class,
 		]);
 
         // Admin
