@@ -21,14 +21,8 @@ class DatabaseSeeder extends Seeder
             TemplateSeeder::class,
             MessageSeeder::class,
             PageSeeder::class,
+            RolesAndPermissionsSeeder::class,
 		]);
-
-        // Roles
-        Role::create(['name' => 'writer']);
-
-        // Permissions
-        Permission::create(['name' => 'edit articles']);
-        Permission::create(['name' => 'publish articles']);
 
         // Admin
         $user = User::factory()->create([
@@ -38,9 +32,6 @@ class DatabaseSeeder extends Seeder
             'password' => '$2y$10$9His4IIPh5nFp0TSilz.h.0DLLE4DzhX1Os2y0QHwt.a19s6whxyC',
         ]);
         $user->categories()->attach([1, 2, 3, 4]);
-
-        $user->assignRole('writer');
-        $user->givePermissionTo('edit articles');
 
         // Testers
         $user = User::factory()->create([
