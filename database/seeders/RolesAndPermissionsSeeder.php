@@ -18,20 +18,20 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'update profile']);
         Permission::create(['name' => 'change password']);
 
-        $administratorRole = Role::create(['name' => 'Administrator']);
+        $administratorRole = Role::create(['name' => 'admin']);
         $administratorRole->syncPermissions([
             'create clients',
             'edit clients',
             'delete clients',
         ]);
 
-        $colaboratorRole = Role::create(['name' => 'Colaborator']);
+        $colaboratorRole = Role::create(['name' => 'colaborator']);
         $colaboratorRole->syncPermissions([
             'create clients',
             'edit own clients',
         ]);
 
-        $clientRole = Role::create(['name' => 'Client']);
+        $clientRole = Role::create(['name' => 'client']);
         $clientRole->syncPermissions([
             'view information',
             'update profile',

@@ -6,12 +6,37 @@ use App\DataTables\ClientDataTable;
 use App\Models\Client;
 use Illuminate\Http\Request;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
+use Illuminate\Support\Facades\Auth;
 
 class ClientController extends Controller
 {
     use EditorTrait;
 
-    public function index(ClientDataTable $dataTable)
+    public function index(Request $request)
+    {
+        // TODO: FIX
+        //$this->authorize('view', Client::class);
+
+        $user = Auth::user();
+        
+        if ($user->hasRole('admin'))
+        {
+            $clients = Client::all();
+        }
+        elseif ($user->hasRole('colaborator'))
+        {
+            $clients = Client::where('assigned_to', $user->id)->get();
+        }
+        else
+        {
+            abort(403, 'Unauthorized action.');
+        }
+
+        dd($clients);
+    }
+    
+
+    public function indexDataTables(ClientDataTable $dataTable)
     {
         return $dataTable->render('client.index');
     }
@@ -55,7 +80,8 @@ class ClientController extends Controller
     {
         $page = Client::find($id);
 
-        if (!$page) {
+        if (!$page)
+        {
             return redirect()->route('client.index')->with('error', 'Page not found.');
         }
 

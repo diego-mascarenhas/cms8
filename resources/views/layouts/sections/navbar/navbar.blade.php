@@ -413,11 +413,16 @@ $navbarDetached = ($navbarDetached ?? '');
                       <span class="fw-medium d-block">
                         @if (Auth::check())
                         {{ Auth::user()->name }}
-                        @else
-                        John Doe
                         @endif
                       </span>
-                      <small class="text-muted">Admin</small>
+                      <small class="text-muted">
+                        @if (Auth::check() && Auth::user()->roles()->exists())
+                            @foreach (Auth::user()->roles as $role)
+                                {{ ucfirst($role->name) }}
+                                @if (!$loop->last), @endif
+                            @endforeach
+                        @endif
+                      </small>
                     </div>
                   </div>
                 </a>

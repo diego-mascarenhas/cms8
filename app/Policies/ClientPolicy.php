@@ -12,11 +12,21 @@ class ClientPolicy
 
     public function view(User $user, Client $client)
     {
-        return $user->id === $client->user_id;
+        if ($user->hasRole('admin'))
+        {
+            return true;
+        }
+
+        if ($user->hasRole('colaborator'))
+        {
+            return $client->assigned_to == $user->id;
+        }
+
+        return false;
     }
 
     public function manage(User $user, Client $client)
     {
-        return $user->hasRole('Colaborador') && $user->id === $client->assigned_to;
+        return $user->hasRole('colaborator') && $client->assigned_to == $user->id;
     }
 }

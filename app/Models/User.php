@@ -80,4 +80,9 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Team::class);
     }
+
+    public function clients()
+{
+    return $this->hasMany(Client::class, 'assigned_to', 'id');
+}
 }

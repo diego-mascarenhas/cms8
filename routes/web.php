@@ -367,8 +367,10 @@ Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
-])->group(function () {
-    Route::get('/dashboard', function () {
+])->group(function ()
+{
+    Route::get('/dashboard', function ()
+    {
         return view('dashboard');
     })->name('dashboard');
 });
@@ -376,7 +378,8 @@ Route::middleware([
 // CMS
 Route::middleware(['auth'])->group(function ()
 {
-    Route::get('/dashboard', function () {
+    Route::get('/dashboard', function ()
+    {
         return redirect()->route('laravel-example-user-management');
     })->name('dashboard');
 
@@ -385,7 +388,10 @@ Route::middleware(['auth'])->group(function ()
     Route::resource('/user-list', UserManagement::class);
 
     // Clients
-    Route::get('/app/client/list', [ClientController::class, 'index'])->name('app-client-list');
+    Route::get('/app/client/list', [ClientController::class, 'index'])
+        ->middleware('role:admin,colaborator')
+        ->name('app-client-list');
+
     Route::get('/app/client/create', [ClientController::class, 'create'])->name('client.create');
     Route::get('/app/client/{id}', [ClientController::class, 'show'])->name('client.show');
     Route::get('/app/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');

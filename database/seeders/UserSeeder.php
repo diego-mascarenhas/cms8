@@ -30,6 +30,15 @@ class UserSeeder extends Seeder
         $user->assignRole(1);
         $user->categories()->attach([1]);
 
+        $user = User::factory()->create([
+            'name' => 'Client User',
+            'email' => 'client@example.com',
+            'password' => Hash::make('Passw0rd!'),
+            'email_verified_at' => null,
+        ]);
+        $user->assignRole(3);
+        $user->categories()->attach([1]);
+
         // Colaborators
         $user = User::factory()->create([
             'name' => 'Pablo Barrozo',
