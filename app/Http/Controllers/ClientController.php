@@ -12,31 +12,7 @@ class ClientController extends Controller
 {
     use EditorTrait;
 
-    public function index(Request $request)
-    {
-        // TODO: FIX
-        //$this->authorize('view', Client::class);
-
-        $user = Auth::user();
-        
-        if ($user->hasRole('admin'))
-        {
-            $clients = Client::all();
-        }
-        elseif ($user->hasRole('colaborator'))
-        {
-            $clients = Client::where('assigned_to', $user->id)->get();
-        }
-        else
-        {
-            abort(403, 'Unauthorized action.');
-        }
-
-        dd($clients);
-    }
-    
-
-    public function indexDataTables(ClientDataTable $dataTable)
+    public function index(ClientDataTable $dataTable)
     {
         return $dataTable->render('client.index');
     }

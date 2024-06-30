@@ -43,17 +43,30 @@ class ClientDataTable extends DataTable
 
     public function query(Client $model): QueryBuilder
     {
-        return $model->newQuery();
+        $user = auth()->user();
+
+        if ($user->hasRole('admin'))
+        {
+            return $model->newQuery();
+        }
+        elseif ($user->hasRole('colaborator'))
+        {
+            return $model->where('assigned_to', $user->id)->newQuery();
+        }
+        else
+        {
+            return $model->whereRaw('1 = 0')->newQuery();
+        }
     }
 
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('client-table')
-                    ->columns($this->getColumns())
-                    ->minifiedAjax()
-                    ->dom('frtip')
-                    ->orderBy(2);
+            ->setTableId('client-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(2);
     }
 
     public function getColumns(): array
@@ -64,10 +77,10 @@ class ClientDataTable extends DataTable
             Column::make('updated_at')->title('Updated')->className('text-center'),
             Column::make('status')->title('Status')->className('text-center'),
             Column::computed('action')->title('Actions')->width(20)->className('text-center')
-                  ->exportable(false)
-                  ->printable(false)
-                  ->width(30)
-                  ->addClass('text-center'),
+                ->exportable(false)
+                ->printable(false)
+                ->width(30)
+                ->addClass('text-center'),
         ];
     }
 
