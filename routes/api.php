@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\RolePermissionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -42,3 +43,5 @@ Route::middleware('auth:sanctum')->group(function () {
 	Route::get('message/{id}', [MessageController::class, 'show']);
 
 });
+
+Route::get('/roles-permissions', [RolePermissionController::class, 'index']);

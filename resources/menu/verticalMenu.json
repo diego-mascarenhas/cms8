@@ -10,6 +10,12 @@
 			"slug": "laravel-example-user-management"
 		},
 		{
+			"url": "app/client/list",
+			"name": "Clients",
+			"icon": "menu-icon tf-icons ti ti-briefcase",
+			"slug": "app-client-list"
+		},
+		{
 			"menuHeader": "Apps"
 		},
 		{

@@ -138,17 +138,17 @@
         <input type="hidden" name="id" id="user_id">
         <div class="mb-3">
           <label class="form-label" for="add-user-fullname">Full Name</label>
-          <input type="text" class="form-control" id="add-user-fullname" placeholder="John Doe" name="name" aria-label="John Doe" />
+          <input type="text" class="form-control" id="add-user-fullname" name="name" aria-label="John Doe" />
         </div>
         <div class="mb-3">
           <label class="form-label" for="add-user-email">Email</label>
-          <input type="text" id="add-user-email" class="form-control" placeholder="john.doe@example.com" aria-label="john.doe@example.com" name="email" />
+          <input type="text" id="add-user-email" class="form-control" aria-label="john.doe@example.com" name="email" />
         </div>
         <div class="mb-3">
-          <label class="form-label" for="add-user-contact">Contact</label>
-          <input type="text" id="add-user-contact" class="form-control phone-mask" placeholder="+1 (609) 988-44-11" aria-label="john.doe@example.com" name="userContact" />
+          <label class="form-label" for="add-user-contact">Phone</label>
+          <input type="text" id="add-user-contact" class="form-control phone-mask" aria-label="john.doe@example.com" name="userContact" />
         </div>
-        <div class="mb-3">
+        <!-- <div class="mb-3">
           <label class="form-label" for="add-user-company">Company</label>
           <input type="text" id="add-user-company" name="company" class="form-control" placeholder="Web Developer" aria-label="jdoe1" />
         </div>
@@ -200,7 +200,7 @@
             <option value="company">Company</option>
             <option value="team">Team</option>
           </select>
-        </div>
+        </div> -->
         <button type="submit" class="btn btn-primary me-sm-3 me-1 data-submit">Submit</button>
         <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="offcanvas">Cancel</button>
       </form>
