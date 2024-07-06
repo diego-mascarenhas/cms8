@@ -19,6 +19,10 @@ class ServiceType extends Model
         'data' => 'array',
     ];
 
+    public function services()
+    {
+        return $this->hasMany(Service::class, 'type_id');
+    }
 
     public static function types()
     {

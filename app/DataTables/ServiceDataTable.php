@@ -50,6 +50,9 @@ class ServiceDataTable extends DataTable
             {
                 return Carbon::parse($data->updated_at)->format('d-m-Y');
             })
+            ->addColumn('calculated_price', function ($data) {
+                return $data->calculated_price;
+            })
             ->editColumn('status', function ($data) {
                 return $data->status_label;
             });
@@ -76,6 +79,7 @@ class ServiceDataTable extends DataTable
             Column::make('id')->hidden(),
             Column::make('client_id')->title('Client'),
             Column::make('type_id')->title('Type'),
+            Column::make('calculated_price')->title('Price')->className('text-center'),
             Column::make('created_at')->title('Created')->className('text-center'),
             Column::make('updated_at')->title('Updated')->className('text-center'),
             Column::make('status')->title('Status')->className('text-center'),

@@ -71,6 +71,88 @@
 </script>
 @endif
 
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+             <div class="d-flex align-items-start justify-content-between">
+                <div class="content-left">
+                    <span>Sales</span>
+                    <div class="d-flex align-items-end mt-2">
+                        <h3 class="mb-0 me-2">{{ $total_sell }}</h3>
+                        <small class="text-success">({{ number_format($percentage_sell, 2) }}%)</small>
+                    </div>
+                    <small>Total Sales</small>
+                </div>
+                <span class="badge bg-label-success rounded p-2">
+                    <i class="fas fa-chart-line ti-sm"></i>
+                </span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Purchases</span>
+                        <div class="d-flex align-items-end mt-2">
+                            <h3 class="mb-0 me-2">{{ $total_buy }}</h3>
+                            <small class="text-danger">({{ number_format($percentage_buy, 2) }}%)</small>
+                        </div>
+                        <small>Total Purchases</small>
+                    </div>
+                    <span class="badge bg-label-primary rounded p-2">
+                        <i class="fas fa-shopping-cart ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Profit</span>
+                        <div class="d-flex align-items-end mt-2">
+                            <h3 class="mb-0 me-2">{{ $total_profit }}</h3>
+                            <small class="text-success">({{ number_format($percentage_profit, 2) }}%)</small>
+                        </div>
+                        <small>Recent analytics</small>
+                    </div>
+                    <span class="badge bg-label-danger rounded p-2">
+                        <i class="ti ti-pig-money ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Pending Services</span>
+                        <div class="d-flex align-items-end mt-2">
+                            <h3 class="mb-0 me-2">{{ $pending_services }}</h3>
+                            <small class="text-warning">({{ number_format($percentage_pending, 2) }}%)</small>
+                        </div>
+                        <small>Pending activation or suspension</small>
+                    </div>
+                    <span class="badge bg-label-warning rounded p-2">
+                        <i class="ti ti-clock ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         {{ $dataTable->table() }}

@@ -21,11 +21,21 @@ class Service extends Model
         'data' => 'object',
     ];
 
-    // public function type()
-    // {
-    //     return $this->belongsTo(InsuranceType::class, 'type_id');
-    // }
+    public function type()
+    {
+        return $this->belongsTo(ServiceType::class);
+    }
+    
+    public function client()
+    {
+        return $this->belongsTo(Client::class, 'client_id');
+    }
 
+    public function services()
+    {
+        return $this->hasMany(Service::class);
+    }
+    
     public function getStatusLabelAttribute()
     {
         switch ($this->status) {
@@ -42,18 +52,36 @@ class Service extends Model
         }
     }
 
-    public function type()
+    public function getCalculatedPriceAttribute()
     {
-        return $this->belongsTo(ServiceType::class);
-    }
-    
-    public function client()
-    {
-        return $this->belongsTo(Client::class, 'client_id');
+        $basePrice = $this->price ?? $this->type->price;
+        $discount = $this->discount ?? $this->type->discount;
+        $frequency = $this->frequency ?? 1;
+
+        $priceAfterDiscount = $basePrice - ($basePrice * ($discount / 100));
+
+        return $priceAfterDiscount / $frequency;
     }
 
-    public function services()
+    public static function calculateTotal($status, $operation)
     {
-        return $this->hasMany(Service::class);
+        $services = self::where('status', $status)
+            ->whereHas('type', function ($query) use ($operation) {
+                $query->where('operation', $operation);
+            })
+            ->get();
+
+        $total = 0;
+
+        foreach ($services as $service) {
+            $basePrice = $service->price ?? $service->type->price;
+            $discount = $service->discount ?? $service->type->discount;
+            $frequency = $service->frequency ?? 1;
+
+            $priceAfterDiscount = $basePrice - ($basePrice * ($discount / 100));
+            $total += $priceAfterDiscount / $frequency;
+        }
+
+        return $total;
     }
 }

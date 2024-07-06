@@ -11,7 +11,24 @@ class ServiceController extends Controller
 {
     public function index(ServiceDataTable $dataTable)
     {
-        return $dataTable->render('service.index');
+        $total_buy = Service::calculateTotal(4, 'Buy');
+        $total_sell = Service::calculateTotal(4, 'Sell');
+        $total_combined = $total_buy + $total_sell;
+
+        $percentage_buy = $total_combined > 0 ? ($total_buy / $total_combined) * 100 : 0;
+        $percentage_sell = $total_combined > 0 ? ($total_sell / $total_combined) * 100 : 0;
+
+        $total_profit = $total_sell - $total_buy;
+        $percentage_profit = $total_combined > 0 ? ($total_profit / $total_combined) * 100 : 0;
+
+        $pending_services = Service::whereIn('status', [2, 3])->count();
+        $active_services = Service::where('status', 4)->count();
+        $total_services = $pending_services + $active_services;
+        $percentage_pending = $total_services > 0 ? ($pending_services / $total_services) * 100 : 0;
+
+        return $dataTable->render('service.index', compact(
+            'total_buy', 'total_sell', 'percentage_buy', 'percentage_sell', 'total_profit', 'percentage_profit', 'pending_services', 'percentage_pending'
+        ));
     }
 
     /**

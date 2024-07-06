@@ -76,7 +76,7 @@ class ImportDataSeeder extends Seeder
         // Services
         $services = DB::connection('mysql_tmp')->table('servicios')
             ->where('grupo', 502)
-            ->where('operacion', 'V')
+            //->where('operacion', 'V')
             ->where('estado', '>', 0)
             //->where('estado', 4)
             ->get();
@@ -91,6 +91,7 @@ class ImportDataSeeder extends Seeder
                 'id' => $data->id,
                 'type_id' => $data->id_categoria,
                 'client_id' => $data->id_empresa,
+                'operation' => ($data->operacion == 'C') ? 'Buy' : 'Sell',
                 'desctiption' => $cleaned_description,
                 'price' => $data->valor,
                 'discount' => $data->descuento,
