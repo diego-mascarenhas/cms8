@@ -16,6 +16,12 @@
 			"slug": "app-client-list"
 		},
 		{
+			"url": "app/service/list",
+			"name": "Services",
+			"icon": "menu-icon tf-icons ti ti-toggle-left",
+			"slug": "app-service-list"
+		},
+		{
 			"menuHeader": "Apps"
 		},
 		{

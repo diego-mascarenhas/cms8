@@ -165,6 +165,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ServiceController;
 
 
 // Main Page Route
@@ -399,6 +400,15 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/app/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/app/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
 
+    // Services
+    Route::get('/app/service/list', [ServiceController::class, 'index'])->name('app-service-list');
+    Route::get('/app/service/create', [ServiceController::class, 'create'])->name('service.create');
+    Route::get('/app/service/{id}', [ServiceController::class, 'show'])->name('service.show');
+    Route::get('/app/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit');
+    Route::post('/app/service', [ServiceController::class, 'store'])->name('service.store');
+    Route::put('/app/service/{id}', [ServiceController::class, 'update'])->name('service.update');
+    Route::delete('/app/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy');
+    
     // Category
     Route::get('/app/mkt/category/list', [CategoryController::class, 'index'])->name('app-mkt-category-list');
     Route::get('/app/mkt/category/create', [CategoryController::class, 'create'])->name('category.create');
