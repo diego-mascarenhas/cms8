@@ -46,9 +46,9 @@
         <h4 class="mb-1 mt-3">Services</h4>
         <p class="text-muted">Track your clients' services</p>
     </div>
-    <!--<div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('category.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Create New</a>
-    </div>-->
+    <div class="d-flex align-content-center flex-wrap gap-3">
+        <a href="{{ route('service.projectBilling') }}" type="submit" class="btn btn-primary waves-effect waves-light">Projection</a>
+    </div>
 </div>
 
 @if(session('success'))

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 class Service extends Model
 {
@@ -15,7 +16,17 @@ class Service extends Model
 
     protected $table = 'services';
 
-    protected $fillable = ['client_id', 'type_id', 'description', 'data', 'status'];
+    protected $fillable = [
+        'client_id',
+        'type_id',
+        'description',
+        'data',
+        'operation',
+        'last_billed',
+        'next_billing',
+        'expires_at',
+        'status',
+    ];
 
     protected $casts = [
         'data' => 'object',
@@ -83,5 +94,13 @@ class Service extends Model
         }
 
         return $total;
+    }
+
+    public function billService($monthsToAdd)
+    {
+        $this->last_billed = Carbon::now();
+        $this->next_billing = Carbon::now()->addMonths($monthsToAdd);
+        $this->expires_at = $this->next_billing->addMonths($monthsToAdd);
+        $this->save();
     }
 }

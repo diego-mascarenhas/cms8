@@ -21,7 +21,9 @@ return new class extends Migration
             $table->decimal('price', 8, 2)->nullable();
             $table->decimal('discount', 5, 2)->nullable();
             $table->unsignedTinyInteger('frecuency')->default(1);
-            $table->dateTime('start_date')->nullable();
+            $table->date('last_billed')->nullable()->default(null);
+            $table->date('next_billing')->nullable()->default(null);
+            $table->date('expires_at')->nullable()->default(null);
 			$table->tinyInteger('status')->default(1);
 			$table->timestamps();
             $table->softDeletes();

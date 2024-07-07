@@ -6,6 +6,7 @@ use App\DataTables\ServiceDataTable;
 use App\Models\Service;
 use Illuminate\Http\Request;
 use stdClass;
+use Carbon\Carbon;
 
 class ServiceController extends Controller
 {
@@ -104,5 +105,42 @@ class ServiceController extends Controller
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
+    }
+
+    public function projectBilling()
+    {
+        // Obtener todos los servicios activos
+        $services = Service::where('status', 4)->take(10)->get();
+        $currentDate = Carbon::now();
+        $projectionMonths = 6; // Número de meses para proyectar
+        $projectionData = [];
+
+        // Inicializar la estructura de datos
+        for ($i = 0; $i < $projectionMonths; $i++) {
+            $month = $currentDate->copy()->addMonths($i)->format('Y-m');
+            $projectionData[$month] = [
+                'earnings' => 0,
+                'expenses' => 0,
+            ];
+        }
+
+        // Calcular las fechas de facturación y los montos
+        foreach ($services as $service) {
+            $nextBillingDate = Carbon::parse($service->next_billing);
+            $billingAmount = $service->price; // Asumiendo que tienes un campo price en la tabla services
+            $monthlyExpense = 0; // Calcula el gasto mensual si es aplicable
+            $frequency = $service->frequency; // Frecuencia en meses
+
+            while ($nextBillingDate->lessThanOrEqualTo($currentDate->copy()->addMonths($projectionMonths))) {
+                $month = $nextBillingDate->format('Y-m');
+                if (isset($projectionData[$month])) {
+                    $projectionData[$month]['earnings'] += $billingAmount;
+                    $projectionData[$month]['expenses'] += $monthlyExpense;
+                }
+                $nextBillingDate->addMonths($frequency); // Usar la frecuencia específica del servicio
+            }
+        }
+
+        return view('service.projection', compact('projectionData'));
     }
 }
