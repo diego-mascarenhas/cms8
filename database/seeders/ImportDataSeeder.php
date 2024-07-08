@@ -35,8 +35,6 @@ class ImportDataSeeder extends Seeder
             else
             {
                 DB::table('clients')->where('id', $data->id)->update($enterpriseData);
-
-                //Log::info('El empresa ' . $data->empresa . ' ha sido actualizado.');
             }
         }
 
@@ -55,9 +53,10 @@ class ImportDataSeeder extends Seeder
                 'id' => $data->id,
                 'name' => $data->categoria,
                 'desctiption' => $cleaned_description,
+                'currency_id' => $data->id_moneda,
                 'price' => $data->valor,
                 'discount' => $data->descuento,
-                'frecuency' => $data->frecuencia,
+                'frequency' => $data->frecuencia,
                 'status' => $data->estado,
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
@@ -76,9 +75,7 @@ class ImportDataSeeder extends Seeder
         // Services
         $services = DB::connection('mysql_tmp')->table('servicios')
             ->where('grupo', 502)
-            //->where('operacion', 'V')
             ->where('estado', '>', 0)
-            //->where('estado', 4)
             ->get();
 
         foreach ($services as $data)
@@ -93,9 +90,10 @@ class ImportDataSeeder extends Seeder
                 'client_id' => $data->id_empresa,
                 'operation' => ($data->operacion == 'C') ? 'Buy' : 'Sell',
                 'desctiption' => $cleaned_description,
+                'currency_id' => $data->id_moneda,
                 'price' => $data->valor,
                 'discount' => $data->descuento,
-                'frecuency' => $data->frecuencia,
+                'frequency' => $data->frecuencia,
                 'last_billed' => $data->ultima,
                 'next_billing' => $data->proxima,
                 'expires_at' => $data->caduca,
@@ -111,8 +109,6 @@ class ImportDataSeeder extends Seeder
             else
             {
                 DB::table('services')->where('id', $data->id)->update($serviceData);
-
-                //Log::info('El empresa ' . $data->empresa . ' ha sido actualizado.');
             }
         }
 
@@ -153,8 +149,6 @@ class ImportDataSeeder extends Seeder
             else
             {
                 DB::table('users')->where('email', $data->email)->update($userData);
-
-                //Log::info('El usuario con email ' . $data->email . ' ha sido actualizado.');
             }
         }
     }

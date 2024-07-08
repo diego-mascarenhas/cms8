@@ -28,7 +28,8 @@ class ServiceDataTable extends DataTable
             {
                 return $data->client->name;
             })
-            ->filterColumn('client_id', function ($query, $keyword) {
+            ->filterColumn('client_id', function ($query, $keyword)
+            {
                 $query->whereHas('client', function ($q) use ($keyword) {
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
@@ -37,7 +38,8 @@ class ServiceDataTable extends DataTable
             {
                 return $data->type->name;
             })
-            ->filterColumn('type_id', function ($query, $keyword) {
+            ->filterColumn('type_id', function ($query, $keyword)
+            {
                 $query->whereHas('type', function ($q) use ($keyword) {
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
@@ -50,8 +52,9 @@ class ServiceDataTable extends DataTable
             {
                 return Carbon::parse($data->updated_at)->format('d-m-Y');
             })
-            ->addColumn('calculated_price', function ($data) {
-                return $data->calculated_price;
+            ->addColumn('calculated_price', function ($data)
+            {
+                return number_format($data->calculated_price, 2, ',', '.');
             })
             ->editColumn('status', function ($data) {
                 return $data->status_label;

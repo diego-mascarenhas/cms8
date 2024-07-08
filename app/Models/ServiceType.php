@@ -13,7 +13,7 @@ class ServiceType extends Model
 
 	protected $table = 'services_type';
 
-    protected $fillable = ['name', 'desctiption', 'data', 'price', 'discount', 'frecuency', 'status'];
+    protected $fillable = ['name', 'desctiption', 'data', 'price', 'discount', 'frequency', 'status'];
 
     protected $casts = [
         'data' => 'array',

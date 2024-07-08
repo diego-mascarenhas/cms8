@@ -7,6 +7,7 @@ use App\Models\Service;
 use Illuminate\Http\Request;
 use stdClass;
 use Carbon\Carbon;
+use Log;
 
 class ServiceController extends Controller
 {
@@ -109,15 +110,18 @@ class ServiceController extends Controller
 
     public function projectBilling()
     {
-        // Obtener todos los servicios activos
-        $services = Service::where('status', 4)->take(10)->get();
-        $currentDate = Carbon::now();
-        $projectionMonths = 6; // Número de meses para proyectar
-        $projectionData = [];
+        Log::info('Iniciando proyección de facturación');
 
-        // Inicializar la estructura de datos
-        for ($i = 0; $i < $projectionMonths; $i++) {
-            $month = $currentDate->copy()->addMonths($i)->format('Y-m');
+        $services = Service::where('status', 4)->get();
+        $currentDate = Carbon::now();
+        $projectionMonths = 12; // Número de meses para proyectar
+        $projectionData = [];
+        $totalEarnings = 0;
+        $totalExpenses = 0;
+
+        // Inicializar la estructura de datos, omitiendo el mes en curso
+        for ($i = 1; $i <= $projectionMonths; $i++) {
+            $month = $currentDate->copy()->addMonths($i)->format('F Y');
             $projectionData[$month] = [
                 'earnings' => 0,
                 'expenses' => 0,
@@ -127,20 +131,62 @@ class ServiceController extends Controller
         // Calcular las fechas de facturación y los montos
         foreach ($services as $service) {
             $nextBillingDate = Carbon::parse($service->next_billing);
-            $billingAmount = $service->price; // Asumiendo que tienes un campo price en la tabla services
-            $monthlyExpense = 0; // Calcula el gasto mensual si es aplicable
-            $frequency = $service->frequency; // Frecuencia en meses
+
+            if ($service->price !== null && $service->price != 0) {
+                $basePrice = $service->price;
+                $discount = $service->discount ?? 0;
+                $frequency = $service->frequency;
+            } else {
+                $basePrice = $service->type->price;
+                $discount = $service->type->discount ?? 0;
+                $frequency = $service->type->frequency;
+            }
+
+            // Calcular el precio después del descuento sin dividir por la frecuencia
+            $priceAfterDiscount = $basePrice - ($basePrice * ($discount / 100));
+
+            // Asegurarse de que la frecuencia sea un valor válido
+            if (is_null($frequency) || $frequency <= 0) {
+                Log::error('Frecuencia inválida', ['service_id' => $service->id, 'frequency' => $frequency]);
+                continue;
+            }
+
+            // Asegurarse de que la fecha de próxima facturación es válida
+            if (is_null($nextBillingDate) || $nextBillingDate->lessThan($currentDate)) {
+                Log::error('Fecha de próxima facturación inválida', ['service_id' => $service->id, 'next_billing' => $service->next_billing]);
+                continue;
+            }
 
             while ($nextBillingDate->lessThanOrEqualTo($currentDate->copy()->addMonths($projectionMonths))) {
-                $month = $nextBillingDate->format('Y-m');
-                if (isset($projectionData[$month])) {
-                    $projectionData[$month]['earnings'] += $billingAmount;
-                    $projectionData[$month]['expenses'] += $monthlyExpense;
+                $month = $nextBillingDate->format('F Y');
+
+                // Omitir el mes en curso
+                if ($month === $currentDate->format('F Y')) {
+                    $nextBillingDate->addMonths($frequency);
+                    continue;
                 }
-                $nextBillingDate->addMonths($frequency); // Usar la frecuencia específica del servicio
+
+                if (!isset($projectionData[$month])) {
+                    $projectionData[$month] = [
+                        'earnings' => 0,
+                        'expenses' => 0,
+                    ];
+                }
+
+                if ($service->operation == 'Sell') {
+                    $projectionData[$month]['earnings'] += $priceAfterDiscount;
+                    $totalEarnings += $priceAfterDiscount;
+                } elseif ($service->operation == 'Buy') {
+                    $projectionData[$month]['expenses'] += $priceAfterDiscount;
+                    $totalExpenses += $priceAfterDiscount;
+                }
+
+                $nextBillingDate->addMonths($frequency);
             }
         }
 
-        return view('service.projection', compact('projectionData'));
+        Log::info('Proyección completada', ['projection_data' => $projectionData]);
+
+        return view('service.projection', compact('projectionData', 'totalEarnings', 'totalExpenses'));
     }
 }

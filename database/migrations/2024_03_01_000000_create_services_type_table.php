@@ -16,9 +16,10 @@ return new class extends Migration
             $table->string('name');
             $table->text('desctiption')->nullable();
 			$table->json('data')->nullable();
+            $table->unsignedSmallInteger('currency_id')->default(1);
             $table->decimal('price', 8, 2)->nullable();
             $table->decimal('discount', 5, 2)->nullable();
-            $table->unsignedTinyInteger('frecuency')->default(1);
+            $table->unsignedTinyInteger('frequency')->default(1);
 			$table->tinyInteger('status')->default(1);
 			$table->timestamps();
             $table->softDeletes();

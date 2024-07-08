@@ -17,15 +17,21 @@ class Service extends Model
     protected $table = 'services';
 
     protected $fillable = [
-        'client_id',
         'type_id',
+        'client_id',
+        'operation',
         'description',
         'data',
-        'operation',
-        'last_billed',
+        'currency_id',
+        'price',
+        'discount',
+        'frequency',
         'next_billing',
+        'last_billed',
         'expires_at',
         'status',
+        'created_at',
+        'updated_at',
     ];
 
     protected $casts = [
@@ -36,7 +42,7 @@ class Service extends Model
     {
         return $this->belongsTo(ServiceType::class);
     }
-    
+
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id');
@@ -46,10 +52,11 @@ class Service extends Model
     {
         return $this->hasMany(Service::class);
     }
-    
+
     public function getStatusLabelAttribute()
     {
-        switch ($this->status) {
+        switch ($this->status)
+        {
             case 1:
                 return '<span class="badge rounded-pill bg-label-danger">Suspended</span>';
             case 2:
@@ -65,9 +72,18 @@ class Service extends Model
 
     public function getCalculatedPriceAttribute()
     {
-        $basePrice = $this->price ?? $this->type->price;
-        $discount = $this->discount ?? $this->type->discount;
-        $frequency = $this->frequency ?? 1;
+        if ($this->price !== null && $this->price != 0)
+        {
+            $basePrice = $this->price;
+            $discount = $this->discount ?? 0;
+            $frequency = $this->frequency ?? 1;
+        }
+        else
+        {
+            $basePrice = $this->type->price;
+            $discount = $this->type->discount ?? 0;
+            $frequency = $this->type->frequency ?? 1;
+        }
 
         $priceAfterDiscount = $basePrice - ($basePrice * ($discount / 100));
 
@@ -77,20 +93,17 @@ class Service extends Model
     public static function calculateTotal($status, $operation)
     {
         $services = self::where('status', $status)
-            ->whereHas('type', function ($query) use ($operation) {
+            ->whereHas('type', function ($query) use ($operation)
+            {
                 $query->where('operation', $operation);
             })
             ->get();
 
         $total = 0;
 
-        foreach ($services as $service) {
-            $basePrice = $service->price ?? $service->type->price;
-            $discount = $service->discount ?? $service->type->discount;
-            $frequency = $service->frequency ?? 1;
-
-            $priceAfterDiscount = $basePrice - ($basePrice * ($discount / 100));
-            $total += $priceAfterDiscount / $frequency;
+        foreach ($services as $service)
+        {
+            $total += $service->calculated_price;
         }
 
         return $total;

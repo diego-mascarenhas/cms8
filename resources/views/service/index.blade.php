@@ -79,8 +79,8 @@
                 <div class="content-left">
                     <span>Sales</span>
                     <div class="d-flex align-items-end mt-2">
-                        <h3 class="mb-0 me-2">{{ $total_sell }}</h3>
-                        <small class="text-success">({{ number_format($percentage_sell, 2) }}%)</small>
+                        <h3 class="mb-0 me-2">{{ number_format($total_sell, 0, ',' ,'.') }}</h3>
+                        <small class="text-success">({{ number_format($percentage_sell, 0) }}%)</small>
                     </div>
                     <small>Total Sales</small>
                 </div>
@@ -99,8 +99,8 @@
                     <div class="content-left">
                         <span>Purchases</span>
                         <div class="d-flex align-items-end mt-2">
-                            <h3 class="mb-0 me-2">{{ $total_buy }}</h3>
-                            <small class="text-danger">({{ number_format($percentage_buy, 2) }}%)</small>
+                            <h3 class="mb-0 me-2">{{ number_format($total_buy, 0, ',' ,'.') }}</h3>
+                            <small class="text-danger">({{ number_format($percentage_buy, 0) }}%)</small>
                         </div>
                         <small>Total Purchases</small>
                     </div>
@@ -119,8 +119,8 @@
                     <div class="content-left">
                         <span>Profit</span>
                         <div class="d-flex align-items-end mt-2">
-                            <h3 class="mb-0 me-2">{{ $total_profit }}</h3>
-                            <small class="text-success">({{ number_format($percentage_profit, 2) }}%)</small>
+                            <h3 class="mb-0 me-2">{{ number_format($total_profit, 0, ',' ,'.') }}</h3>
+                            <small class="text-success">({{ number_format($percentage_profit, 0) }}%)</small>
                         </div>
                         <small>Recent analytics</small>
                     </div>
