@@ -165,6 +165,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ServiceController;
 
 
 // Main Page Route
@@ -178,8 +179,8 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/layouts/collapsed-menu', [CollapsedMenu::class, 'index'])->name('layouts-collapsed-menu');
 Route::get('/layouts/content-navbar', [ContentNavbar::class, 'index'])->name('layouts-content-navbar');
 Route::get('/layouts/content-nav-sidebar', [ContentNavSidebar::class, 'index'])->name('layouts-content-nav-sidebar');
-Route::get('/layouts/navbar-full', [NavbarFull::class, 'index'])->name('layouts-navbar-full');
-Route::get('/layouts/navbar-full-sidebar', [NavbarFullSidebar::class, 'index'])->name('layouts-navbar-full-sidebar');
+// Route::get('/layouts/navbar-full', [NavbarFull::class, 'index'])->name('layouts-navbar-full');
+// Route::get('/layouts/navbar-full-sidebar', [NavbarFullSidebar::class, 'index'])->name('layouts-navbar-full-sidebar');
 Route::get('/layouts/horizontal', [Horizontal::class, 'index'])->name('dashboard-analytics');
 Route::get('/layouts/vertical', [Vertical::class, 'index'])->name('dashboard-analytics');
 Route::get('/layouts/without-menu', [WithoutMenu::class, 'index'])->name('layouts-without-menu');
@@ -284,7 +285,7 @@ Route::get('/cards/basic', [CardBasic::class, 'index'])->name('cards-basic');
 Route::get('/cards/advance', [CardAdvance::class, 'index'])->name('cards-advance');
 Route::get('/cards/statistics', [CardStatistics::class, 'index'])->name('cards-statistics');
 Route::get('/cards/analytics', [CardAnalytics::class, 'index'])->name('cards-analytics');
-Route::get('/cards/gamifications', [CardGamifications::class, 'index'])->name('cards-gamifications');
+// Route::get('/cards/gamifications', [CardGamifications::class, 'index'])->name('cards-gamifications');
 Route::get('/cards/actions', [CardActions::class, 'index'])->name('cards-actions');
 
 // User Interface
@@ -376,6 +377,8 @@ Route::middleware([
 });
 
 // CMS
+Route::get('/services/project-billing', [ServiceController::class, 'projectBilling'])->name('service.projectBilling');
+
 Route::middleware(['auth'])->group(function ()
 {
     Route::get('/dashboard', function ()
@@ -399,6 +402,15 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/app/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/app/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
 
+    // Services
+    Route::get('/app/service/list', [ServiceController::class, 'index'])->name('app-service-list');
+    Route::get('/app/service/create', [ServiceController::class, 'create'])->name('service.create');
+    Route::get('/app/service/{id}', [ServiceController::class, 'show'])->name('service.show');
+    Route::get('/app/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit');
+    Route::post('/app/service', [ServiceController::class, 'store'])->name('service.store');
+    Route::put('/app/service/{id}', [ServiceController::class, 'update'])->name('service.update');
+    Route::delete('/app/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy');
+    
     // Category
     Route::get('/app/mkt/category/list', [CategoryController::class, 'index'])->name('app-mkt-category-list');
     Route::get('/app/mkt/category/create', [CategoryController::class, 'create'])->name('category.create');
