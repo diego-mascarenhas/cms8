@@ -9,6 +9,7 @@ use App\Models\MessageType;
 use App\Models\Template;
 use Illuminate\Http\Request;
 use stdClass;
+use Twilio\Rest\Client;
 
 class MessageController extends Controller
 {
@@ -102,5 +103,49 @@ class MessageController extends Controller
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
+    }
+
+    public function sendSmsMessage(Request $request)
+    {
+        $receiverNumber = '+34722372858'; // +5491155687301 // +5491138738376
+        $message = 'CMS8+ SMS Message testing...';
+
+        $sid = env('TWILIO_SID');
+        $token = env('TWILIO_TOKEN');
+        $fromNumber = env('TWILIO_SMS_FROM');
+
+        try {
+            $client = new Client($sid, $token);
+            $client->messages->create($receiverNumber, [
+                'from' => $fromNumber,
+                'body' => $message
+            ]);
+
+            return response()->json(['status' => 'SMS Message Sent Successfully.']);
+        } catch (\Twilio\Exceptions\RestException $e) {
+            return response()->json(['error' => 'Error: ' . $e->getMessage()], 400);
+        }
+    }
+
+	public function sendWhatsAppMessage(Request $request)
+    {
+        $receiverNumber = 'whatsapp:' . '+34722372858';
+        $message = 'CMS8+ WhatsApp Message testing...';
+
+        $sid = env('TWILIO_SID');
+        $token = env('TWILIO_TOKEN');
+        $fromNumber = env('TWILIO_WHATSAPP_FROM');
+        try {
+            $client = new Client($sid, $token);
+
+            $client->messages->create($receiverNumber, [
+                'from' => $fromNumber,
+                'body' => $message
+            ]);
+
+            return response()->json(['status' => 'WhatsApp Message Sent Successfully.']);
+        } catch (\Twilio\Exceptions\RestException $e) {
+            return response()->json(['error' => 'Error: ' . $e->getMessage()], 400);
+        }
     }
 }

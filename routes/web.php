@@ -429,6 +429,9 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/app/mkt/message/{id}', [MessageController::class, 'update'])->name('message.update');
     Route::delete('/app/mkt/message/{id}', [MessageController::class, 'destroy'])->name('message.destroy');
 
+    Route::get('/send-sms', [MessageController::class, 'sendSmsMessage']);
+    Route::get('/send-whatsapp', [MessageController::class, 'sendWhatsAppMessage']);
+
     // Templates
     Route::get('/app/mkt/template/list', [TemplateController::class, 'index'])->name('app-mkt-template-list');
     Route::get('/appmkt/template/create', [TemplateController::class, 'create'])->name('template.create');
