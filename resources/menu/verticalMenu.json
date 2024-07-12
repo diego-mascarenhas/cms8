@@ -22,6 +22,12 @@
 			"slug": "app-service-list"
 		},
 		{
+			"url": "app/project/list",
+			"name": "Projects",
+			"icon": "menu-icon tf-icons ti ti-tools",
+			"slug": "app-project-list"
+		},
+		{
 			"menuHeader": "Apps"
 		},
 		{
