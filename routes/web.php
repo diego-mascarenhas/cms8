@@ -159,6 +159,7 @@ use App\Http\Controllers\tables\DatatableExtensions;
 use App\Http\Controllers\charts\ApexCharts;
 use App\Http\Controllers\charts\ChartJs;
 use App\Http\Controllers\maps\Leaflet;
+use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MessageController;
@@ -377,6 +378,13 @@ Route::middleware([
 });
 
 // CMS
+Route::get('/terms', [LegalDocumentsController::class, 'terms'])->name('terms');
+Route::get('/privacy', [LegalDocumentsController::class, 'privacy'])->name('privacy');
+Route::get('/security', [LegalDocumentsController::class, 'security'])->name('security');
+Route::get('/sla', [LegalDocumentsController::class, 'sla'])->name('sla');
+Route::get('/legal/{document}', [LegalDocumentsController::class, 'show'])->name('legal.show');
+
+Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 Route::get('/services/project-billing', [ServiceController::class, 'projectBilling'])->name('service.projectBilling');
 
 Route::middleware(['auth'])->group(function ()
@@ -428,6 +436,10 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/app/mkt/message', [MessageController::class, 'store'])->name('message.store');
     Route::put('/app/mkt/message/{id}', [MessageController::class, 'update'])->name('message.update');
     Route::delete('/app/mkt/message/{id}', [MessageController::class, 'destroy'])->name('message.destroy');
+
+    Route::get('/send-sms', [MessageController::class, 'sendSmsMessage']);
+    Route::get('/send-whatsapp', [MessageController::class, 'sendWhatsAppMessage']);
+    Route::get('/send-email', [MessageController::class, 'sendSendGridMessage']);
 
     // Templates
     Route::get('/app/mkt/template/list', [TemplateController::class, 'index'])->name('app-mkt-template-list');
