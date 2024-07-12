@@ -167,6 +167,7 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\ProjectController;
 
 
 // Main Page Route
@@ -418,6 +419,10 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/app/service', [ServiceController::class, 'store'])->name('service.store');
     Route::put('/app/service/{id}', [ServiceController::class, 'update'])->name('service.update');
     Route::delete('/app/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy');
+
+    // Projects
+    Route::get('/app/project/list', [ProjectController::class, 'index'])->name('app-project-list');
+    Route::delete('/app/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
     
     // Category
     Route::get('/app/mkt/category/list', [CategoryController::class, 'index'])->name('app-mkt-category-list');

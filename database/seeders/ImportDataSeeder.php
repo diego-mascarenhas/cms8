@@ -112,6 +112,69 @@ class ImportDataSeeder extends Seeder
             }
         }
 
+        // Project Types
+        $projectsType = DB::connection('mysql_tmp')->table('categorias_generales')
+            ->where('grupo', 502)
+            ->whereIn('id', [41, 42, 43, 44, 98, 99])
+            ->get();
+
+        foreach ($projectsType as $data)
+        {
+            $existingService = DB::table('project_types')->where('id', $data->id)->first();
+
+            $cleaned_description = strip_tags($data->descripcion);
+
+            $serviceData = [
+                'id' => $data->id,
+                'name' => $data->categoria
+            ];
+            
+            if (!$existingService)
+            {
+                DB::table('project_types')->insert($serviceData);
+            }
+            else
+            {
+                DB::table('project_types')->where('id', $data->id)->update($serviceData);
+            }
+        }
+
+        // Projects
+        $projetcs = DB::connection('mysql_tmp')->table('proyectos')
+            ->where('grupo', 502)
+            ->where('estado', '>', 0)
+            ->get();
+
+        foreach ($projetcs as $data)
+        {
+            $existingProjetc = DB::table('projects')->where('id', $data->numero_proyecto)->first();
+
+            $projetcData = [
+                'id' => $data->numero_proyecto,
+                'type_id' => $data->id_categoria,
+                'client_id' => $data->id_empresa,
+                'name' => $data->titulo,
+                'description' => $data->descripcion,
+                'price' => $data->valor,
+                'discount' => $data->descuento,
+                'cost' => $data->costo,
+                'start_date' => $data->desde,
+                'end_date' => $data->hasta,
+                'status' => $data->estado,
+                'created_at' => $data->fecha_alta,
+                'updated_at' => $data->fecha_modificacion,
+            ];
+            
+            if (!$existingProjetc)
+            {
+                DB::table('projects')->insert($projetcData);
+            }
+            else
+            {
+                DB::table('projects')->where('id', $data->id)->update($projetcData);
+            }
+        }
+
         // Users
         $users = DB::connection('mysql_tmp')->table('contactos')
             ->whereNotNull('email')
