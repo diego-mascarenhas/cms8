@@ -7,9 +7,14 @@ use App\Models\Category;
 use App\Models\Message;
 use App\Models\MessageType;
 use App\Models\Template;
+use App\Models\User;
 use Illuminate\Http\Request;
-use stdClass;
+use Illuminate\Support\Facades\Mail;
+
 use Twilio\Rest\Client;
+use App\Mail\MySendGridMail;
+
+use stdClass;
 
 class MessageController extends Controller
 {
@@ -114,7 +119,8 @@ class MessageController extends Controller
         $token = env('TWILIO_TOKEN');
         $fromNumber = env('TWILIO_SMS_FROM');
 
-        try {
+        try
+        {
             $client = new Client($sid, $token);
             $client->messages->create($receiverNumber, [
                 'from' => $fromNumber,
@@ -122,12 +128,14 @@ class MessageController extends Controller
             ]);
 
             return response()->json(['status' => 'SMS Message Sent Successfully.']);
-        } catch (\Twilio\Exceptions\RestException $e) {
+        }
+        catch (\Twilio\Exceptions\RestException $e)
+        {
             return response()->json(['error' => 'Error: ' . $e->getMessage()], 400);
         }
     }
 
-	public function sendWhatsAppMessage(Request $request)
+    public function sendWhatsAppMessage(Request $request)
     {
         $receiverNumber = 'whatsapp:' . '+34722372858';
         $message = 'CMS8+ WhatsApp Message testing...';
@@ -135,7 +143,8 @@ class MessageController extends Controller
         $sid = env('TWILIO_SID');
         $token = env('TWILIO_TOKEN');
         $fromNumber = env('TWILIO_WHATSAPP_FROM');
-        try {
+        try
+        {
             $client = new Client($sid, $token);
 
             $client->messages->create($receiverNumber, [
@@ -144,8 +153,38 @@ class MessageController extends Controller
             ]);
 
             return response()->json(['status' => 'WhatsApp Message Sent Successfully.']);
-        } catch (\Twilio\Exceptions\RestException $e) {
+        }
+        catch (\Twilio\Exceptions\RestException $e)
+        {
             return response()->json(['error' => 'Error: ' . $e->getMessage()], 400);
         }
     }
+
+    public function sendSendGridMessage()
+    {
+        $data = [
+            'to' => 'diego@revisionalpha.es',
+            'dynamic_template_data' => [
+                'name' => 'Diego Mascarenhas',
+                'message' => 'CMS8+ SendGrid Message testing...',
+                'unsubscribe_url' => route('unsubscribe', ['email' => 'diego@revisionalpha.es']),
+            ],
+        ];
+
+        Mail::send(new MySendGridMail($data));
+    }
+
+    public function unsubscribe($email)
+    {
+        $user = User::where('email', $email)->first();
+
+        if ($user)
+        {
+            $user->subscribed = false;
+            $user->save();
+        }
+
+        return view('message.unsubscribe', ['email' => $email]);
+    }
+
 }
