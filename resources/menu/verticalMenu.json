@@ -28,6 +28,12 @@
 			"slug": "app-project-list"
 		},
 		{
+			"url": "app/invoice/list",
+			"name": "Invoice",
+			"icon": "menu-icon tf-icons ti ti-file-dollar",
+			"slug": "app-invoice-list"
+		},
+		{
 			"menuHeader": "Apps"
 		},
 		{

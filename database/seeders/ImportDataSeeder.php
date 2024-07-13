@@ -175,6 +175,68 @@ class ImportDataSeeder extends Seeder
             }
         }
 
+        // Invoice Types
+        $invoiceTypes = DB::connection('mysql_tmp')->table('facturas_tipo')
+            ->where('grupo', 502)
+            ->get();
+
+        foreach ($invoiceTypes as $data)
+        {
+            $existingService = DB::table('invoice_types')->where('id', $data->id)->first();
+
+            $invoiceTypesData = [
+                'id' => $data->id,
+                'name' => $data->factura_tipo,
+            ];
+            
+            if (!$existingService)
+            {
+                DB::table('invoice_types')->insert($invoiceTypesData);
+            }
+            else
+            {
+                DB::table('invoice_types')->where('id', $data->id)->update($invoiceTypesData);
+            }
+        }
+        
+        // Invoices
+        $invoices = DB::connection('mysql_tmp')->table('facturas')
+            ->where('grupo', 502)
+            ->where('estado', '>', 0)
+            ->get();
+
+        foreach ($invoices as $data)
+        {
+            $existingInvoice = DB::table('invoices')->where('id', $data->id)->first();
+
+            $operation = $data->operacion === 'C' ? 'Buy' : 'Sell';
+
+            $invoiceData = [
+                'id' => $data->id,
+                'type_id' => $data->id_factura_tipo,
+                'operation' => $operation,
+                'number' => $data->numero_talonario . $data->numero_factura,
+                'date' => $data->fecha,
+                'due_date' => $data->vencimiento,
+                'gross_amount' => $data->bruto,
+                'discount' => $data->descuento,
+                'total_amount' => $data->total_neto,
+                'balance' => $data->saldo,
+                'status' => $data->estado,
+                'created_at' => $data->fecha_alta,
+                'updated_at' => $data->fecha_modificacion,
+            ];
+            
+            if (!$existingInvoice)
+            {
+                DB::table('invoices')->insert($invoiceData);
+            }
+            else
+            {
+                DB::table('invoices')->where('id', $data->id)->update($invoiceData);
+            }
+        }
+
         // Users
         $users = DB::connection('mysql_tmp')->table('contactos')
             ->whereNotNull('email')
