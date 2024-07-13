@@ -168,6 +168,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\InvoiceController;
 
 
 // Main Page Route
@@ -228,7 +229,7 @@ Route::get('/app/academy/course', [AcademyCourse::class, 'index'])->name('app-ac
 Route::get('/app/academy/course-details', [AcademyCourseDetails::class, 'index'])->name('app-academy-course-details');
 Route::get('/app/logistics/dashboard', [LogisticsDashboard::class, 'index'])->name('app-logistics-dashboard');
 Route::get('/app/logistics/fleet', [LogisticsFleet::class, 'index'])->name('app-logistics-fleet');
-Route::get('/app/invoice/list', [InvoiceList::class, 'index'])->name('app-invoice-list');
+//Route::get('/app/invoice/list', [InvoiceList::class, 'index'])->name('app-invoice-list');
 Route::get('/app/invoice/preview', [InvoicePreview::class, 'index'])->name('app-invoice-preview');
 Route::get('/app/invoice/print', [InvoicePrint::class, 'index'])->name('app-invoice-print');
 Route::get('/app/invoice/edit', [InvoiceEdit::class, 'index'])->name('app-invoice-edit');
@@ -423,6 +424,9 @@ Route::middleware(['auth'])->group(function ()
     // Projects
     Route::get('/app/project/list', [ProjectController::class, 'index'])->name('app-project-list');
     Route::delete('/app/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
+
+    // Invoices
+    Route::get('/app/invoice/list', [InvoiceController::class, 'index'])->name('app-invoice-list');
     
     // Category
     Route::get('/app/mkt/category/list', [CategoryController::class, 'index'])->name('app-mkt-category-list');
