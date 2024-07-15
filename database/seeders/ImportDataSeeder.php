@@ -27,7 +27,7 @@ class ImportDataSeeder extends Seeder
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
             ];
-            
+
             if (!$existingEnterprise)
             {
                 DB::table('clients')->insert($enterpriseData);
@@ -61,7 +61,7 @@ class ImportDataSeeder extends Seeder
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
             ];
-            
+
             if (!$existingService)
             {
                 DB::table('services_type')->insert($serviceData);
@@ -71,11 +71,14 @@ class ImportDataSeeder extends Seeder
                 DB::table('services_type')->where('id', $data->id)->update($serviceData);
             }
         }
-        
+
         // Services
-        $services = DB::connection('mysql_tmp')->table('servicios')
-            ->where('grupo', 502)
-            ->where('estado', '>', 0)
+        $services = DB::connection('mysql_tmp')
+            ->table('servicios')
+            ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
+            ->where('servicios.grupo', 502)
+            ->where('servicios.estado', '>', 0)
+            ->select('servicios.*', 'servicios_hosting.user')
             ->get();
 
         foreach ($services as $data)
@@ -90,6 +93,7 @@ class ImportDataSeeder extends Seeder
                 'client_id' => $data->id_empresa,
                 'operation' => ($data->operacion == 'C') ? 'Buy' : 'Sell',
                 'desctiption' => $cleaned_description,
+                'data' => json_encode(['user' => $data->user]),
                 'currency_id' => $data->id_moneda,
                 'price' => $data->valor,
                 'discount' => $data->descuento,
@@ -101,7 +105,7 @@ class ImportDataSeeder extends Seeder
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
             ];
-            
+
             if (!$existingService)
             {
                 DB::table('services')->insert($serviceData);
@@ -111,7 +115,7 @@ class ImportDataSeeder extends Seeder
                 DB::table('services')->where('id', $data->id)->update($serviceData);
             }
         }
-
+        
         // Project Types
         $projectsType = DB::connection('mysql_tmp')->table('categorias_generales')
             ->where('grupo', 502)
@@ -128,7 +132,7 @@ class ImportDataSeeder extends Seeder
                 'id' => $data->id,
                 'name' => $data->categoria
             ];
-            
+
             if (!$existingService)
             {
                 DB::table('project_types')->insert($serviceData);
@@ -164,7 +168,7 @@ class ImportDataSeeder extends Seeder
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
             ];
-            
+
             if (!$existingProjetc)
             {
                 DB::table('projects')->insert($projetcData);
@@ -188,7 +192,7 @@ class ImportDataSeeder extends Seeder
                 'id' => $data->id,
                 'name' => $data->factura_tipo,
             ];
-            
+
             if (!$existingService)
             {
                 DB::table('invoice_types')->insert($invoiceTypesData);
@@ -198,7 +202,7 @@ class ImportDataSeeder extends Seeder
                 DB::table('invoice_types')->where('id', $data->id)->update($invoiceTypesData);
             }
         }
-        
+
         // Invoices
         $invoices = DB::connection('mysql_tmp')->table('facturas')
             ->where('grupo', 502)
@@ -226,7 +230,7 @@ class ImportDataSeeder extends Seeder
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
             ];
-            
+
             if (!$existingInvoice)
             {
                 DB::table('invoices')->insert($invoiceData);
@@ -253,8 +257,10 @@ class ImportDataSeeder extends Seeder
 
             $phone = $data->celular ?? $data->telefono ?? null;
             $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
-            if (!empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0) $cleaned_phone = '54' . $cleaned_phone;
-            if (empty($cleaned_phone)) $cleaned_phone = null;
+            if (!empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0)
+                $cleaned_phone = '54' . $cleaned_phone;
+            if (empty($cleaned_phone))
+                $cleaned_phone = null;
 
             $userData = [
                 'id' => $data->id,
@@ -266,7 +272,7 @@ class ImportDataSeeder extends Seeder
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
             ];
-            
+
             if (!$existingUser)
             {
                 DB::table('users')->insert($userData);

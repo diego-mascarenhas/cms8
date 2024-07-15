@@ -32,11 +32,11 @@ class UpdateHostMetrics extends Command
             }
 
             $hosts = $this->vCenterService->getHosts();
-            
-            if ($this->showConsoleOutput)
-            {
-                $this->info('Hosts obtained from vCenter: ' . print_r($hosts, true));
-            }
+
+            // if ($this->showConsoleOutput)
+            // {
+            //     $this->info('Hosts obtained from vCenter: ' . print_r($hosts, true));
+            // }
 
             foreach ($hosts['value'] as $hostData)
             {
@@ -48,6 +48,11 @@ class UpdateHostMetrics extends Command
                         'connection_state' => $hostData['connection_state'] ?? 'N/A'
                     ]
                 );
+
+                if ($this->showConsoleOutput)
+                {
+                    $this->info("Updated metrics for host: {$hostData['name']} - {$hostData['host']}");
+                }
             }
 
             if ($this->showConsoleOutput)
@@ -58,6 +63,11 @@ class UpdateHostMetrics extends Command
         catch (\Exception $e)
         {
             Log::error('Error updating host metrics: ' . $e->getMessage());
+
+            if ($this->showConsoleOutput)
+            {
+                $this->error('Error updating host metrics: ' . $e->getMessage());
+            }
         }
     }
 }
