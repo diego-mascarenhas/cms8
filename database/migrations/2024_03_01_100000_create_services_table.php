@@ -29,7 +29,7 @@ return new class extends Migration
 			$table->timestamps();
             $table->softDeletes();
 
-            $table->foreign('type_id')->references('id')->on('services_type')
+            $table->foreign('type_id')->references('id')->on('service_type')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
             

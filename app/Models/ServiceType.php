@@ -11,7 +11,7 @@ class ServiceType extends Model
 
     public $timestamps = false;
 
-	protected $table = 'services_type';
+	protected $table = 'service_type';
 
     protected $fillable = ['name', 'desctiption', 'data', 'price', 'discount', 'frequency', 'status'];
 

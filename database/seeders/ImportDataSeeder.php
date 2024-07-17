@@ -45,7 +45,7 @@ class ImportDataSeeder extends Seeder
 
         foreach ($servicesType as $data)
         {
-            $existingService = DB::table('services_type')->where('id', $data->id)->first();
+            $existingService = DB::table('service_type')->where('id', $data->id)->first();
 
             $cleaned_description = strip_tags($data->descripcion);
 
@@ -64,11 +64,11 @@ class ImportDataSeeder extends Seeder
 
             if (!$existingService)
             {
-                DB::table('services_type')->insert($serviceData);
+                DB::table('service_type')->insert($serviceData);
             }
             else
             {
-                DB::table('services_type')->where('id', $data->id)->update($serviceData);
+                DB::table('service_type')->where('id', $data->id)->update($serviceData);
             }
         }
 
@@ -238,6 +238,68 @@ class ImportDataSeeder extends Seeder
             else
             {
                 DB::table('invoices')->where('id', $data->id)->update($invoiceData);
+            }
+        }
+
+        // Payment Types
+        $paymentTypes = DB::connection('mysql_tmp')->table('formas_pago')
+            ->where('grupo', 502)
+            ->get();
+
+        foreach ($paymentTypes as $data)
+        {
+            $existingService = DB::table('payment_types')->where('id', $data->id)->first();
+
+            $paymentTypesData = [
+                'id' => $data->id,
+                'name' => $data->forma_pago,
+                'discount' => $data->descuento,
+                'status' => $data->estado,
+            ];
+
+            if (!$existingService)
+            {
+                DB::table('payment_types')->insert($paymentTypesData);
+            }
+            else
+            {
+                DB::table('payment_types')->where('id', $data->id)->update($paymentTypesData);
+            }
+        }
+
+        // Payments
+        $payments = DB::connection('mysql_tmp')->table('movimientos')
+            ->where('grupo', 502)
+            ->where('estado', '>', 0)
+            ->get();
+
+        foreach ($payments as $data)
+        {
+            $existingInvoice = DB::table('payments')->where('id', $data->id)->first();
+
+            $transaction_type = $data->transaccion === 'I' ? 'I' : 'E';
+
+            $paymentData = [
+                'client_id' => $data->id_empresa,
+                'transaction_type' => $transaction_type,
+                'date' => $data->fecha,
+                'invoice_id' => $data->id_factura,
+                'account_id' => $data->id_cuenta,
+                'type_id' => $data->id_forma_pago,
+                'amount' => $data->valor,
+                'remarks' => $data->observaciones,
+                'status' => $data->estado,
+                'created_at' => $data->fecha_alta,
+                'updated_at' => $data->fecha_modificacion,
+            ];
+
+            if (!$existingInvoice)
+            {
+                DB::table('payments')->insert($paymentData);
+            }
+            else
+            {
+                DB::table('payments')->where('id', $data->id)->update($paymentData);
             }
         }
 

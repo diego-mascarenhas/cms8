@@ -39,168 +39,168 @@
 
   // Revenue Generated Area Chart
   // --------------------------------------------------------------------
-  const revenueGeneratedEl = document.querySelector('#revenueGenerated'),
-    revenueGeneratedConfig = {
-      chart: {
-        height: 130,
-        type: 'area',
-        parentHeightOffset: 0,
-        toolbar: {
-          show: false
-        },
-        sparkline: {
-          enabled: true
-        }
-      },
-      markers: {
-        colors: 'transparent',
-        strokeColors: 'transparent'
-      },
-      grid: {
-        show: false
-      },
-      colors: [config.colors.success],
-      fill: {
-        type: 'gradient',
-        gradient: {
-          shade: shadeColor,
-          shadeIntensity: 0.8,
-          opacityFrom: 0.6,
-          opacityTo: 0.1
-        }
-      },
-      dataLabels: {
-        enabled: false
-      },
-      stroke: {
-        width: 2,
-        curve: 'smooth'
-      },
-      series: [
-        {
-          data: [300, 350, 330, 380, 340, 400, 380]
-        }
-      ],
-      xaxis: {
-        show: true,
-        lines: {
-          show: false
-        },
-        labels: {
-          show: false
-        },
-        stroke: {
-          width: 0
-        },
-        axisBorder: {
-          show: false
-        }
-      },
-      yaxis: {
-        stroke: {
-          width: 0
-        },
-        show: false
-      },
-      tooltip: {
-        enabled: false
-      }
-    };
-  if (typeof revenueGeneratedEl !== undefined && revenueGeneratedEl !== null) {
-    const revenueGenerated = new ApexCharts(revenueGeneratedEl, revenueGeneratedConfig);
-    revenueGenerated.render();
-  }
+  // const revenueGeneratedEl = document.querySelector('#revenueGenerated'),
+  //   revenueGeneratedConfig = {
+  //     chart: {
+  //       height: 130,
+  //       type: 'area',
+  //       parentHeightOffset: 0,
+  //       toolbar: {
+  //         show: false
+  //       },
+  //       sparkline: {
+  //         enabled: true
+  //       }
+  //     },
+  //     markers: {
+  //       colors: 'transparent',
+  //       strokeColors: 'transparent'
+  //     },
+  //     grid: {
+  //       show: false
+  //     },
+  //     colors: [config.colors.success],
+  //     fill: {
+  //       type: 'gradient',
+  //       gradient: {
+  //         shade: shadeColor,
+  //         shadeIntensity: 0.8,
+  //         opacityFrom: 0.6,
+  //         opacityTo: 0.1
+  //       }
+  //     },
+  //     dataLabels: {
+  //       enabled: false
+  //     },
+  //     stroke: {
+  //       width: 2,
+  //       curve: 'smooth'
+  //     },
+  //     series: [
+  //       {
+  //         data: [300, 350, 330, 380, 340, 400, 380]
+  //       }
+  //     ],
+  //     xaxis: {
+  //       show: true,
+  //       lines: {
+  //         show: false
+  //       },
+  //       labels: {
+  //         show: false
+  //       },
+  //       stroke: {
+  //         width: 0
+  //       },
+  //       axisBorder: {
+  //         show: false
+  //       }
+  //     },
+  //     yaxis: {
+  //       stroke: {
+  //         width: 0
+  //       },
+  //       show: false
+  //     },
+  //     tooltip: {
+  //       enabled: false
+  //     }
+  //   };
+  // if (typeof revenueGeneratedEl !== undefined && revenueGeneratedEl !== null) {
+  //   const revenueGenerated = new ApexCharts(revenueGeneratedEl, revenueGeneratedConfig);
+  //   revenueGenerated.render();
+  // }
 
   // Earning Reports Bar Chart
   // --------------------------------------------------------------------
-  const weeklyEarningReportsEl = document.querySelector('#weeklyEarningReports'),
-    weeklyEarningReportsConfig = {
-      chart: {
-        height: 202,
-        parentHeightOffset: 0,
-        type: 'bar',
-        toolbar: {
-          show: false
-        }
-      },
-      plotOptions: {
-        bar: {
-          barHeight: '60%',
-          columnWidth: '38%',
-          startingShape: 'rounded',
-          endingShape: 'rounded',
-          borderRadius: 4,
-          distributed: true
-        }
-      },
-      grid: {
-        show: false,
-        padding: {
-          top: -30,
-          bottom: 0,
-          left: -10,
-          right: -10
-        }
-      },
-      colors: [
-        config.colors_label.primary,
-        config.colors_label.primary,
-        config.colors_label.primary,
-        config.colors_label.primary,
-        config.colors.primary,
-        config.colors_label.primary,
-        config.colors_label.primary
-      ],
-      dataLabels: {
-        enabled: false
-      },
-      series: [
-        {
-          data: [40, 65, 50, 45, 90, 55, 70]
-        }
-      ],
-      legend: {
-        show: false
-      },
-      xaxis: {
-        categories: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
-        axisBorder: {
-          show: false
-        },
-        axisTicks: {
-          show: false
-        },
-        labels: {
-          style: {
-            colors: labelColor,
-            fontSize: '13px',
-            fontFamily: 'Public Sans'
-          }
-        }
-      },
-      yaxis: {
-        labels: {
-          show: false
-        }
-      },
-      tooltip: {
-        enabled: false
-      },
-      responsive: [
-        {
-          breakpoint: 1025,
-          options: {
-            chart: {
-              height: 199
-            }
-          }
-        }
-      ]
-    };
-  if (typeof weeklyEarningReportsEl !== undefined && weeklyEarningReportsEl !== null) {
-    const weeklyEarningReports = new ApexCharts(weeklyEarningReportsEl, weeklyEarningReportsConfig);
-    weeklyEarningReports.render();
-  }
+  // const weeklyEarningReportsEl = document.querySelector('#weeklyEarningReports'),
+  //   weeklyEarningReportsConfig = {
+  //     chart: {
+  //       height: 202,
+  //       parentHeightOffset: 0,
+  //       type: 'bar',
+  //       toolbar: {
+  //         show: false
+  //       }
+  //     },
+  //     plotOptions: {
+  //       bar: {
+  //         barHeight: '60%',
+  //         columnWidth: '38%',
+  //         startingShape: 'rounded',
+  //         endingShape: 'rounded',
+  //         borderRadius: 4,
+  //         distributed: true
+  //       }
+  //     },
+  //     grid: {
+  //       show: false,
+  //       padding: {
+  //         top: -30,
+  //         bottom: 0,
+  //         left: -10,
+  //         right: -10
+  //       }
+  //     },
+  //     colors: [
+  //       config.colors_label.primary,
+  //       config.colors_label.primary,
+  //       config.colors_label.primary,
+  //       config.colors_label.primary,
+  //       config.colors.primary,
+  //       config.colors_label.primary,
+  //       config.colors_label.primary
+  //     ],
+  //     dataLabels: {
+  //       enabled: false
+  //     },
+  //     series: [
+  //       {
+  //         data: [40, 65, 50, 45, 90, 55, 70]
+  //       }
+  //     ],
+  //     legend: {
+  //       show: false
+  //     },
+  //     xaxis: {
+  //       categories: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
+  //       axisBorder: {
+  //         show: false
+  //       },
+  //       axisTicks: {
+  //         show: false
+  //       },
+  //       labels: {
+  //         style: {
+  //           colors: labelColor,
+  //           fontSize: '13px',
+  //           fontFamily: 'Public Sans'
+  //         }
+  //       }
+  //     },
+  //     yaxis: {
+  //       labels: {
+  //         show: false
+  //       }
+  //     },
+  //     tooltip: {
+  //       enabled: false
+  //     },
+  //     responsive: [
+  //       {
+  //         breakpoint: 1025,
+  //         options: {
+  //           chart: {
+  //             height: 199
+  //           }
+  //         }
+  //       }
+  //     ]
+  //   };
+  // if (typeof weeklyEarningReportsEl !== undefined && weeklyEarningReportsEl !== null) {
+  //   const weeklyEarningReports = new ApexCharts(weeklyEarningReportsEl, weeklyEarningReportsConfig);
+  //   weeklyEarningReports.render();
+  // }
 
   // Support Tracker - Radial Bar Chart
   // --------------------------------------------------------------------
@@ -302,168 +302,168 @@
 
   // Total Earning Chart - Bar Chart
   // --------------------------------------------------------------------
-  const totalEarningChartEl = document.querySelector('#totalEarningChart'),
-    totalEarningChartOptions = {
-      series: [
-        {
-          name: 'Earning',
-          data: [15, 10, 20, 8, 12, 18, 12, 5]
-        },
-        {
-          name: 'Expense',
-          data: [-7, -10, -7, -12, -6, -9, -5, -8]
-        }
-      ],
-      chart: {
-        height: 230,
-        parentHeightOffset: 0,
-        stacked: true,
-        type: 'bar',
-        toolbar: { show: false }
-      },
-      tooltip: {
-        enabled: false
-      },
-      legend: {
-        show: false
-      },
-      plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: '18%',
-          borderRadius: 5,
-          startingShape: 'rounded',
-          endingShape: 'rounded'
-        }
-      },
-      colors: [config.colors.primary, grayColor],
-      dataLabels: {
-        enabled: false
-      },
-      grid: {
-        show: false,
-        padding: {
-          top: -40,
-          bottom: -20,
-          left: -10,
-          right: -2
-        }
-      },
-      xaxis: {
-        labels: {
-          show: false
-        },
-        axisTicks: {
-          show: false
-        },
-        axisBorder: {
-          show: false
-        }
-      },
-      yaxis: {
-        labels: {
-          show: false
-        }
-      },
-      responsive: [
-        {
-          breakpoint: 1468,
-          options: {
-            plotOptions: {
-              bar: {
-                columnWidth: '22%'
-              }
-            }
-          }
-        },
-        {
-          breakpoint: 1197,
-          options: {
-            chart: {
-              height: 228
-            },
-            plotOptions: {
-              bar: {
-                borderRadius: 8,
-                columnWidth: '26%'
-              }
-            }
-          }
-        },
-        {
-          breakpoint: 783,
-          options: {
-            chart: {
-              height: 232
-            },
-            plotOptions: {
-              bar: {
-                borderRadius: 6,
-                columnWidth: '28%'
-              }
-            }
-          }
-        },
-        {
-          breakpoint: 589,
-          options: {
-            plotOptions: {
-              bar: {
-                columnWidth: '16%'
-              }
-            }
-          }
-        },
-        {
-          breakpoint: 520,
-          options: {
-            plotOptions: {
-              bar: {
-                borderRadius: 6,
-                columnWidth: '18%'
-              }
-            }
-          }
-        },
-        {
-          breakpoint: 426,
-          options: {
-            plotOptions: {
-              bar: {
-                borderRadius: 5,
-                columnWidth: '20%'
-              }
-            }
-          }
-        },
-        {
-          breakpoint: 381,
-          options: {
-            plotOptions: {
-              bar: {
-                columnWidth: '24%'
-              }
-            }
-          }
-        }
-      ],
-      states: {
-        hover: {
-          filter: {
-            type: 'none'
-          }
-        },
-        active: {
-          filter: {
-            type: 'none'
-          }
-        }
-      }
-    };
-  if (typeof totalEarningChartEl !== undefined && totalEarningChartEl !== null) {
-    const totalEarningChart = new ApexCharts(totalEarningChartEl, totalEarningChartOptions);
-    totalEarningChart.render();
-  }
+  // const totalEarningChartEl = document.querySelector('#totalEarningChart'),
+  //   totalEarningChartOptions = {
+  //     series: [
+  //       {
+  //         name: 'Earning',
+  //         data: [15, 10, 20, 8, 12, 18, 12, 5]
+  //       },
+  //       {
+  //         name: 'Expense',
+  //         data: [-7, -10, -7, -12, -6, -9, -5, -8]
+  //       }
+  //     ],
+  //     chart: {
+  //       height: 230,
+  //       parentHeightOffset: 0,
+  //       stacked: true,
+  //       type: 'bar',
+  //       toolbar: { show: false }
+  //     },
+  //     tooltip: {
+  //       enabled: false
+  //     },
+  //     legend: {
+  //       show: false
+  //     },
+  //     plotOptions: {
+  //       bar: {
+  //         horizontal: false,
+  //         columnWidth: '18%',
+  //         borderRadius: 5,
+  //         startingShape: 'rounded',
+  //         endingShape: 'rounded'
+  //       }
+  //     },
+  //     colors: [config.colors.primary, grayColor],
+  //     dataLabels: {
+  //       enabled: false
+  //     },
+  //     grid: {
+  //       show: false,
+  //       padding: {
+  //         top: -40,
+  //         bottom: -20,
+  //         left: -10,
+  //         right: -2
+  //       }
+  //     },
+  //     xaxis: {
+  //       labels: {
+  //         show: false
+  //       },
+  //       axisTicks: {
+  //         show: false
+  //       },
+  //       axisBorder: {
+  //         show: false
+  //       }
+  //     },
+  //     yaxis: {
+  //       labels: {
+  //         show: false
+  //       }
+  //     },
+  //     responsive: [
+  //       {
+  //         breakpoint: 1468,
+  //         options: {
+  //           plotOptions: {
+  //             bar: {
+  //               columnWidth: '22%'
+  //             }
+  //           }
+  //         }
+  //       },
+  //       {
+  //         breakpoint: 1197,
+  //         options: {
+  //           chart: {
+  //             height: 228
+  //           },
+  //           plotOptions: {
+  //             bar: {
+  //               borderRadius: 8,
+  //               columnWidth: '26%'
+  //             }
+  //           }
+  //         }
+  //       },
+  //       {
+  //         breakpoint: 783,
+  //         options: {
+  //           chart: {
+  //             height: 232
+  //           },
+  //           plotOptions: {
+  //             bar: {
+  //               borderRadius: 6,
+  //               columnWidth: '28%'
+  //             }
+  //           }
+  //         }
+  //       },
+  //       {
+  //         breakpoint: 589,
+  //         options: {
+  //           plotOptions: {
+  //             bar: {
+  //               columnWidth: '16%'
+  //             }
+  //           }
+  //         }
+  //       },
+  //       {
+  //         breakpoint: 520,
+  //         options: {
+  //           plotOptions: {
+  //             bar: {
+  //               borderRadius: 6,
+  //               columnWidth: '18%'
+  //             }
+  //           }
+  //         }
+  //       },
+  //       {
+  //         breakpoint: 426,
+  //         options: {
+  //           plotOptions: {
+  //             bar: {
+  //               borderRadius: 5,
+  //               columnWidth: '20%'
+  //             }
+  //           }
+  //         }
+  //       },
+  //       {
+  //         breakpoint: 381,
+  //         options: {
+  //           plotOptions: {
+  //             bar: {
+  //               columnWidth: '24%'
+  //             }
+  //           }
+  //         }
+  //       }
+  //     ],
+  //     states: {
+  //       hover: {
+  //         filter: {
+  //           type: 'none'
+  //         }
+  //       },
+  //       active: {
+  //         filter: {
+  //           type: 'none'
+  //         }
+  //       }
+  //     }
+  //   };
+  // if (typeof totalEarningChartEl !== undefined && totalEarningChartEl !== null) {
+  //   const totalEarningChart = new ApexCharts(totalEarningChartEl, totalEarningChartOptions);
+  //   totalEarningChart.render();
+  // }
 
   //  For Datatable
   // --------------------------------------------------------------------
