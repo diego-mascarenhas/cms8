@@ -12,6 +12,7 @@ class Analytics extends Controller
     {
         $hosts = Host::orderBy('name', 'asc')->get();
 
-        return $dataTable->render('content.dashboard.dashboards-analytics', compact('hosts'));
+        return $dataTable->forDashboard()->render('content.dashboard.dashboards-analytics', compact('hosts'));
     }
+
 }
