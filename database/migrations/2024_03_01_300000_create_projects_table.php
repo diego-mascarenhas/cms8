@@ -15,9 +15,9 @@ return new class extends Migration
             $table->unsignedBigInteger('leader_id');
             $table->string('name');
             $table->text('description')->nullable();
+            $table->decimal('cost', 10, 2)->unsigned()->nullable();
             $table->decimal('price', 10, 2)->nullable();
             $table->decimal('discount', 10, 2)->unsigned()->default(0.00);
-            $table->decimal('cost', 10, 2)->unsigned()->nullable();
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->unsignedTinyInteger('status')->default(1);

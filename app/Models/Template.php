@@ -24,7 +24,7 @@ class Template extends Model implements Editable
         'gjs_data' => 'array',
     ];
 
-    public static function templates()
+    public static function getOptions()
     {
         return self::all()->map(function ($data)
         {

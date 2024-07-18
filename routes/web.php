@@ -423,6 +423,11 @@ Route::middleware(['auth'])->group(function ()
 
     // Projects
     Route::get('/app/project/list', [ProjectController::class, 'index'])->name('app-project-list');
+    Route::get('/app/project/create', [ProjectController::class, 'create'])->name('project.create');
+    Route::get('/app/project/{id}', [ProjectController::class, 'show'])->name('project.show');
+    Route::get('/app/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
+    Route::post('/app/project', [ProjectController::class, 'store'])->name('project.store');
+    Route::put('/app/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::delete('/app/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
 
     // Invoices

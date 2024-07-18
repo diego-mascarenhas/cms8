@@ -15,7 +15,7 @@ class MessageType extends Model
 
     protected $fillable = ['name', 'status'];
 
-    public static function types()
+    public static function getOptions()
     {
         return self::all()->map(function ($data)
         {
