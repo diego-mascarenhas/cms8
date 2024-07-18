@@ -11,7 +11,7 @@ class MessageType extends Model
 
     public $timestamps = false;
 
-	protected $table = 'messages_type';
+	protected $table = 'message_type';
 
     protected $fillable = ['name', 'status'];
 
