@@ -120,12 +120,12 @@
                         <span>Profit</span>
                         <div class="d-flex align-items-end mt-2">
                             <h3 class="mb-0 me-2">{{ number_format($total_profit, 0, ',' ,'.') }}</h3>
-                            <small class="text-success">({{ number_format($percentage_profit, 0) }}%)</small>
+                            <small class="text-info">({{ number_format($percentage_profit, 0) }}%)</small>
                         </div>
                         <small>Recent analytics</small>
                     </div>
-                    <span class="badge bg-label-danger rounded p-2">
-                        <i class="ti ti-pig-money ti-sm"></i>
+                    <span class="badge bg-label-info rounded p-2">
+                        <i class="ti ti-currency-dollar ti-sm"></i>
                     </span>
                 </div>
             </div>
