@@ -82,7 +82,12 @@ class User extends Authenticatable
     }
 
     public function clients()
-{
-    return $this->hasMany(Client::class, 'assigned_to', 'id');
-}
+    {
+        return $this->hasMany(Client::class, 'assigned_to', 'id');
+    }
+
+    public function projetcs()
+    {
+        return $this->hasMany(Project::class, 'leader_id');
+    }
 }

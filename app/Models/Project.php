@@ -14,6 +14,7 @@ class Project extends Model
     protected $fillable = [
         'client_id',
         'type_id',
+        'leader_id',
         'name',
         'description',
         'price',
@@ -35,6 +36,11 @@ class Project extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function leader()
+    {
+        return $this->belongsTo(User::class, 'leader_id');
     }
 
     public function getStatusLabelAttribute()

@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('client_id');
             $table->unsignedTinyInteger('type_id')->nullable();
+            $table->unsignedBigInteger('leader_id');
             $table->string('name');
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2)->nullable();
@@ -25,6 +26,7 @@ return new class extends Migration
 
             $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
             $table->foreign('type_id')->references('id')->on('project_types')->onDelete('set null');
+            $table->foreign('leader_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

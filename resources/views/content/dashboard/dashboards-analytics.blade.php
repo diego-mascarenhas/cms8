@@ -68,18 +68,21 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             xaxis: {
                 categories: @json(array_keys($monthDays)),
-                axisBorder: {
-                    show: false
-                },
-                axisTicks: {
-                    show: false
-                },
                 labels: {
+                    formatter: function(value) {
+                        return new Date(value).getDate(); // Aquí se obtiene solo el día
+                    },
                     style: {
                         colors: '#697a8d',
                         fontSize: '13px',
                         fontFamily: 'Public Sans'
                     }
+                },
+                axisBorder: {
+                    show: false
+                },
+                axisTicks: {
+                    show: false
                 }
             },
             yaxis: {
@@ -110,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
             series: [85],
             labels: ['Completed Task'],
             chart: {
-                height: 360,
+                height: 300,
                 type: 'radialBar'
             },
             plotOptions: {
@@ -208,7 +211,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <div class="row">
     <!-- Earning Reports -->
-    <div class="col-lg-6 mb-4">
+    <div class="col-lg-8 mb-4">
         <div class="card h-100">
             <div class="card-header pb-0 d-flex justify-content-between mb-lg-n4">
                 <div class="card-title mb-0">
@@ -244,20 +247,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="row gap-4 gap-sm-0">
                         <div class="col-12 col-sm-4">
                             <div class="d-flex gap-2 align-items-center">
-                                <div class="badge rounded bg-label-primary p-1">
-                                    <i class="ti ti-currency-dollar ti-sm"></i>
+                                <div class="badge rounded bg-label-success p-1">
+                                    <i class="fas fa-chart-line ti-sm"></i>
                                 </div>
                                 <h6 class="mb-0">Earnings</h6>
                             </div>
                             <h4 class="my-2 pt-1">${{ number_format($currentMonthEarnings, 2) }}</h4>
                             <div class="progress w-75" style="height:4px">
-                                <div class="progress-bar bg-primary" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                         </div>
                         <div class="col-12 col-sm-4">
                             <div class="d-flex gap-2 align-items-center">
                                 <div class="badge rounded bg-label-info p-1">
-                                    <i class="ti ti-chart-pie-2 ti-sm"></i>
+                                    <i class="ti ti-currency-dollar ti-sm"></i>
                                 </div>
                                 <h6 class="mb-0">Profit</h6>
                             </div>
@@ -269,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="col-12 col-sm-4">
                             <div class="d-flex gap-2 align-items-center">
                                 <div class="badge rounded bg-label-danger p-1">
-                                    <i class="ti ti-brand-paypal ti-sm"></i>
+                                    <i class="fas fa-shopping-cart ti-sm"></i>
                                 </div>
                                 <h6 class="mb-0">Expense</h6>
                             </div>
@@ -286,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <!--/ Earning Reports -->
 
     <!-- Support Tracker -->
-    <div class="col-md-6 mb-4">
+    <div class="col-md-4 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between pb-0">
                 <div class="card-title mb-0">
@@ -405,31 +408,29 @@ document.addEventListener('DOMContentLoaded', function () {
     <!-- Projects table -->
     <div class="col-12 col-xl-8 col-sm-12 order-1 order-lg-2 mb-4 mb-lg-0">
         <div class="card">
+            <div class="card-header d-flex justify-content-between">
+                <div class="card-title mb-0">
+                    <h5 class="mb-0">Projects</h5>
+                    <small class="text-muted">Ongoing projects</small>
+                </div>
+            </div>
             <div class="card-datatable table-responsive">
                 <table class="datatables-projects table border-top">
                     <thead>
                         <tr>
-                            <th></th>
-                            <th></th>
                             <th>Name</th>
+                            <th>Client</th>
                             <th>Leader</th>
-                            <th>Team</th>
                             <th class="w-px-200">Status</th>
-                            <th>Action</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($projects as $project)
                         <tr>
-                            <td></td>
-                            <td></td>
+                            <td>{{ $project->name }}</td>
                             <td>{{ $project->name }}</td>
                             <td>{{ $project->leader->name }}</td>
-                            <td>
-                                @foreach($project->team as $member)
-                                <img src="{{ asset('path/to/image/' . $member->avatar) }}" alt="{{ $member->name }}" class="rounded-circle" width="24" height="24">
-                                @endforeach
-                            </td>
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="progress w-100" style="height: 8px;">
@@ -446,7 +447,6 @@ document.addEventListener('DOMContentLoaded', function () {
                                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="projectActions">
                                         <a class="dropdown-item" href="javascript:void(0);">View</a>
                                         <a class="dropdown-item" href="javascript:void(0);">Edit</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Delete</a>
                                     </div>
                                 </div>
                             </td>
