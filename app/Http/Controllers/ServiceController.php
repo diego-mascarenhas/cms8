@@ -13,70 +13,47 @@ use DB;
 class ServiceController extends Controller
 {
     public function index(ServiceDataTable $dataTable)
-{
-    // Fechas relevantes
-    $threeMonthsAgo = Carbon::now()->subMonths(3);
-    $lastMonthStart = Carbon::now()->subMonth()->startOfMonth();
-    $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
-
-    // Obtener las últimas facturas de clientes que tienen facturas en los últimos tres meses
-    $invoicesLastThreeMonths = DB::table('invoices')
-        ->select('client_id', DB::raw('MAX(date) as last_invoice_date'))
-        ->where('date', '>=', $threeMonthsAgo)
-        ->groupBy('client_id')
-        ->havingRaw('COUNT(client_id) >= 3');
-
-    // Obtener la suma del gross_amount de las facturas del mes anterior para esos clientes
-    $totalBuyLastMonth = DB::table('invoices')
-        ->joinSub($invoicesLastThreeMonths, 'last_invoices', function ($join) {
-            $join->on('invoices.client_id', '=', 'last_invoices.client_id');
-        })
-        ->where('invoices.operation', 'Buy')
-        ->whereBetween('invoices.date', [$lastMonthStart, $lastMonthEnd])
-        ->sum('invoices.gross_amount');
-
-    // Proyectar el total mensual basado en el mes anterior
-    $total_buy = $totalBuyLastMonth; // Proyección anual
-
-    // Calcular ventas desde los servicios
-    $total_sell = Service::calculateTotal(4, 'Sell');
-
-    // Calcular el total combinado de compras y ventas
-    $total_combined = $total_buy + $total_sell;
-
-    // Calcular porcentajes
-    $percentage_buy = $total_combined > 0 ? ($total_buy / $total_combined) * 100 : 0;
-    $percentage_sell = $total_combined > 0 ? ($total_sell / $total_combined) * 100 : 0;
-
-    // Calcular el profit total y el porcentaje de profit
-    $total_profit = $total_sell - $total_buy;
-    $percentage_profit = $total_combined > 0 ? ($total_profit / $total_combined) * 100 : 0;
-
-    // Calcular servicios pendientes y activos
-    $pending_services = Service::whereIn('status', [2, 3])->count();
-    $active_services = Service::where('status', 4)->count();
-    $total_services = $pending_services + $active_services;
-    $percentage_pending = $total_services > 0 ? ($pending_services / $total_services) * 100 : 0;
-
-    return $dataTable->render('service.index', compact(
-        'total_buy', 'total_sell', 'percentage_buy', 'percentage_sell', 'total_profit', 'percentage_profit', 'pending_services', 'percentage_pending'
-    ));
-}
-
-
-
-    public function indexX(ServiceDataTable $dataTable)
     {
-        $total_buy = Service::calculateTotal(4, 'Buy');
+        // Relevant dates
+        $threeMonthsAgo = Carbon::now()->subMonths(3);
+        $lastMonthStart = Carbon::now()->subMonth()->startOfMonth();
+        $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
+
+        // Get the latest invoices of clients who have invoices in the last three months
+        $invoicesLastThreeMonths = DB::table('invoices')
+            ->select('client_id', DB::raw('MAX(date) as last_invoice_date'))
+            ->where('date', '>=', $threeMonthsAgo)
+            ->groupBy('client_id')
+            ->havingRaw('COUNT(client_id) >= 3');
+
+        // Get the sum of the gross_amount of last month's invoices for those clients
+        $totalBuyLastMonth = DB::table('invoices')
+            ->joinSub($invoicesLastThreeMonths, 'last_invoices', function ($join)
+            {
+                $join->on('invoices.client_id', '=', 'last_invoices.client_id');
+            })
+            ->where('invoices.operation', 'Buy')
+            ->whereBetween('invoices.date', [$lastMonthStart, $lastMonthEnd])
+            ->sum('invoices.gross_amount');
+
+        // Project the total monthly amount based on the previous month
+        $total_buy = $totalBuyLastMonth;
+
+        // Calculate sales from services
         $total_sell = Service::calculateTotal(4, 'Sell');
+
+        // Calculate the total combined buy and sell amounts
         $total_combined = $total_buy + $total_sell;
 
+        // Calculate percentages
         $percentage_buy = $total_combined > 0 ? ($total_buy / $total_combined) * 100 : 0;
         $percentage_sell = $total_combined > 0 ? ($total_sell / $total_combined) * 100 : 0;
 
+        // Calculate the total profit and the profit percentage
         $total_profit = $total_sell - $total_buy;
         $percentage_profit = $total_combined > 0 ? ($total_profit / $total_combined) * 100 : 0;
 
+        // Calculate pending and active services
         $pending_services = Service::whereIn('status', [2, 3])->count();
         $active_services = Service::where('status', 4)->count();
         $total_services = $pending_services + $active_services;

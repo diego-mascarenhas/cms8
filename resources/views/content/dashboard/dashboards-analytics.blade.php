@@ -429,25 +429,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         @foreach($projects as $project)
                         <tr>
                             <td>{{ $project->name }}</td>
-                            <td>{{ $project->name }}</td>
-                            <td>{{ $project->leader->name }}</td>
+                            <td>{{ $project->client }}</td>
+                            <td>{{ $project->leader }}</td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <div class="progress w-100" style="height: 8px;">
+                                    <div class="progress w-100 me-3" style="height: 6px;">
                                         <div class="progress-bar bg-{{ $project->status->color }}" role="progressbar" style="width: {{ $project->status->percentage }}%;" aria-valuenow="{{ $project->status->percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
                                     </div>
-                                    <span class="ms-2">{{ $project->status->percentage }}%</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="dropdown">
-                                    <button class="btn p-0" type="button" id="projectActions" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <i class="ti ti-dots-vertical ti-sm text-muted"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="projectActions">
-                                        <a class="dropdown-item" href="javascript:void(0);">View</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Edit</a>
-                                    </div>
+                                    <small>{{ $project->status->percentage }}%</small>
                                 </div>
                             </td>
                         </tr>

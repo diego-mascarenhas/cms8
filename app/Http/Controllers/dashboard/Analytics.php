@@ -1,6 +1,5 @@
 <?php
 
-// app/Http/Controllers/Dashboard/Analytics.php
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
@@ -15,41 +14,41 @@ class Analytics extends Controller
     {
         $hosts = Host::orderBy('name', 'asc')->get();
 
-        // Fechas actuales y anteriores
+        // Current and previous dates
         $now = Carbon::now();
         $startOfMonth = $now->clone()->startOfMonth();
         $startOfLastMonth = $now->clone()->subMonth()->startOfMonth();
         $endOfLastMonth = $now->clone()->subMonth()->endOfMonth();
 
-        // Calcular los ingresos del mes actual
+        // Calculate current month's earnings
         $currentMonthEarnings = Payment::where('transaction_type', 'I')
             ->whereBetween('date', [$startOfMonth, $now])
             ->sum('amount');
 
-        // Calcular los ingresos del mes anterior
+        // Calculate previous month's earnings
         $previousMonthEarnings = Payment::where('transaction_type', 'I')
             ->whereBetween('date', [$startOfLastMonth, $endOfLastMonth])
             ->sum('amount');
 
-        // Calcular los egresos del mes actual
+        // Calculate current month's expenses
         $currentMonthExpenses = Payment::where('transaction_type', 'E')
             ->whereBetween('date', [$startOfMonth, $now])
             ->sum('amount');
 
-        // Calcular los egresos del mes anterior
+        // Calculate previous month's expenses
         $previousMonthExpenses = Payment::where('transaction_type', 'E')
             ->whereBetween('date', [$startOfLastMonth, $endOfLastMonth])
             ->sum('amount');
 
-        // Calcular el profit del mes actual y anterior
+        // Calculate current and previous month's profit
         $currentMonthProfit = $currentMonthEarnings - $currentMonthExpenses;
         $previousMonthProfit = $previousMonthEarnings - $previousMonthExpenses;
 
-        // Comparar los profits de ambos meses
+        // Compare profits of both months
         $profitDifference = $currentMonthProfit - $previousMonthProfit;
         $profitPercentage = $previousMonthProfit ? ($profitDifference / $previousMonthProfit) * 100 : 0;
 
-        // Calcular los ingresos diarios del mes actual
+        // Calculate daily earnings for the current month
         $dailyEarnings = Payment::selectRaw('DATE(date) as date, SUM(amount) as total')
             ->where('transaction_type', 'I')
             ->whereBetween('date', [$startOfMonth, $now])
@@ -58,55 +57,33 @@ class Analytics extends Controller
             ->keyBy('date')
             ->toArray();
 
-        // Crear un array con los ingresos diarios para el mes actual
+        // Create an array with daily earnings for the current month
         $monthDays = [];
         for ($i = 0; $i < $now->daysInMonth; $i++) {
             $date = $startOfMonth->clone()->addDays($i)->toDateString();
             $monthDays[$date] = isset($dailyEarnings[$date]) ? $dailyEarnings[$date]['total'] : 0;
         }
 
-        // Generar proyectos de prueba
-        $projects = collect([
-            (object) [
-                'id' => 1,
-                'name' => 'Website SEO',
-                'leader' => (object) ['name' => 'Eileen'],
-                'team' => collect([
-                    (object) ['name' => 'John Doe', 'avatar' => 'https://via.placeholder.com/24'],
-                    (object) ['name' => 'Jane Doe', 'avatar' => 'https://via.placeholder.com/24'],
-                    (object) ['name' => 'Sam Smith', 'avatar' => 'https://via.placeholder.com/24'],
-                ]),
-                'status' => (object) ['name' => 'In Progress', 'percentage' => 38, 'color' => 'primary'],
-                'date' => '2021-05-10',
-            ],
-            (object) [
-                'id' => 2,
-                'name' => 'Social Banners',
-                'leader' => (object) ['name' => 'Owen'],
-                'team' => collect([
-                    (object) ['name' => 'Alice', 'avatar' => 'https://via.placeholder.com/24'],
-                    (object) ['name' => 'Bob', 'avatar' => 'https://via.placeholder.com/24'],
-                ]),
-                'status' => (object) ['name' => 'Completed', 'percentage' => 45, 'color' => 'success'],
-                'date' => '2021-01-03',
-            ],
-            (object) [
-                'id' => 3,
-                'name' => 'Logo Designs',
-                'leader' => (object) ['name' => 'Keith'],
-                'team' => collect([
-                    (object) ['name' => 'Eve', 'avatar' => 'https://via.placeholder.com/24'],
-                    (object) ['name' => 'Charlie', 'avatar' => 'https://via.placeholder.com/24'],
-                    (object) ['name' => 'David', 'avatar' => 'https://via.placeholder.com/24'],
-                    (object) ['name' => 'Frank', 'avatar' => 'https://via.placeholder.com/24'],
-                ]),
-                'status' => (object) ['name' => 'Pending', 'percentage' => 92, 'color' => 'warning'],
-                'date' => '2021-08-12',
-            ],
-            // Agrega más proyectos de prueba según sea necesario
-        ]);
+        $projects = Project::with(['leader', 'client'])
+            ->whereIn('status', [1, 7, 9])
+            ->orderBy('id', 'desc')
+            ->limit(25)
+            ->get()
+            ->map(function ($project) {
+                return (object) [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'client' => $project->client->name,
+                    'leader' => $project->leader->name,
+                    'status' => (object) [
+                        'name' => 'test',
+                        'percentage' => 10,
+                        'color' => 'success'
+                    ],
+                    'date' => $project->created_at->format('Y-m-d')
+                ];
+            });
 
-        // Datos para pasar a la vista
         $data = [
             'hosts' => $hosts,
             'currentMonthEarnings' => $currentMonthEarnings,
