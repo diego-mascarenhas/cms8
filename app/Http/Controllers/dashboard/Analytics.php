@@ -1,16 +1,17 @@
 <?php
 
-namespace App\Http\Controllers\dashboard;
+// app/Http/Controllers/Dashboard/Analytics.php
+namespace App\Http\Controllers\Dashboard;
 
-use App\DataTables\ProjectDataTable;
 use App\Http\Controllers\Controller;
 use App\Models\Host;
 use App\Models\Payment;
+use App\Models\Project;
 use Carbon\Carbon;
 
 class Analytics extends Controller
 {
-    public function index(ProjectDataTable $dataTable)
+    public function index()
     {
         $hosts = Host::orderBy('name', 'asc')->get();
 
@@ -64,6 +65,47 @@ class Analytics extends Controller
             $monthDays[$date] = isset($dailyEarnings[$date]) ? $dailyEarnings[$date]['total'] : 0;
         }
 
+        // Generar proyectos de prueba
+        $projects = collect([
+            (object) [
+                'id' => 1,
+                'name' => 'Website SEO',
+                'leader' => (object) ['name' => 'Eileen'],
+                'team' => collect([
+                    (object) ['name' => 'John Doe', 'avatar' => 'https://via.placeholder.com/24'],
+                    (object) ['name' => 'Jane Doe', 'avatar' => 'https://via.placeholder.com/24'],
+                    (object) ['name' => 'Sam Smith', 'avatar' => 'https://via.placeholder.com/24'],
+                ]),
+                'status' => (object) ['name' => 'In Progress', 'percentage' => 38, 'color' => 'primary'],
+                'date' => '2021-05-10',
+            ],
+            (object) [
+                'id' => 2,
+                'name' => 'Social Banners',
+                'leader' => (object) ['name' => 'Owen'],
+                'team' => collect([
+                    (object) ['name' => 'Alice', 'avatar' => 'https://via.placeholder.com/24'],
+                    (object) ['name' => 'Bob', 'avatar' => 'https://via.placeholder.com/24'],
+                ]),
+                'status' => (object) ['name' => 'Completed', 'percentage' => 45, 'color' => 'success'],
+                'date' => '2021-01-03',
+            ],
+            (object) [
+                'id' => 3,
+                'name' => 'Logo Designs',
+                'leader' => (object) ['name' => 'Keith'],
+                'team' => collect([
+                    (object) ['name' => 'Eve', 'avatar' => 'https://via.placeholder.com/24'],
+                    (object) ['name' => 'Charlie', 'avatar' => 'https://via.placeholder.com/24'],
+                    (object) ['name' => 'David', 'avatar' => 'https://via.placeholder.com/24'],
+                    (object) ['name' => 'Frank', 'avatar' => 'https://via.placeholder.com/24'],
+                ]),
+                'status' => (object) ['name' => 'Pending', 'percentage' => 92, 'color' => 'warning'],
+                'date' => '2021-08-12',
+            ],
+            // Agrega más proyectos de prueba según sea necesario
+        ]);
+
         // Datos para pasar a la vista
         $data = [
             'hosts' => $hosts,
@@ -74,8 +116,9 @@ class Analytics extends Controller
             'profitDifference' => $profitDifference,
             'profitPercentage' => $profitPercentage,
             'monthDays' => $monthDays,
+            'projects' => $projects,
         ];
 
-        return $dataTable->render('content.dashboard.dashboards-analytics', $data);
+        return view('content.dashboard.dashboards-analytics', $data);
     }
 }

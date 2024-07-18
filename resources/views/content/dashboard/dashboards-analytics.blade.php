@@ -5,7 +5,7 @@
 @section('vendor-style')
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/apex-charts/apex-charts.css') }}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/swiper/swiper.css') }}" />
-<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css') }}" />
 @endsection
@@ -24,9 +24,9 @@
 @section('page-script')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Earning Reports Bar Chart
-    const monthlyEarningReportsEl = document.querySelector('#monthlyEarningReports'),
-        monthlyEarningReportsConfig = {
+    // Configuración del gráfico de ingresos por día de la semana
+    const weeklyEarningReportsEl = document.querySelector('#weeklyEarningReports'),
+        weeklyEarningReportsConfig = {
             chart: {
                 height: 202,
                 parentHeightOffset: 0,
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 show: false
             },
             xaxis: {
-                categories: Array.from({ length: {{ now()->daysInMonth }} }, (_, i) => i + 1),
+                categories: @json(array_keys($monthDays)),
                 axisBorder: {
                     show: false
                 },
@@ -99,155 +99,72 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }]
         };
-    if (typeof monthlyEarningReportsEl !== undefined && monthlyEarningReportsEl !== null) {
-        const monthlyEarningReports = new ApexCharts(monthlyEarningReportsEl, monthlyEarningReportsConfig);
-        monthlyEarningReports.render();
+    if (typeof weeklyEarningReportsEl !== undefined && weeklyEarningReportsEl !== null) {
+        const weeklyEarningReports = new ApexCharts(weeklyEarningReportsEl, weeklyEarningReportsConfig);
+        weeklyEarningReports.render();
     }
 
-    // Total Earning Chart - Bar Chart
-    const totalEarningChartEl = document.querySelector('#totalEarningChart'),
-        totalEarningChartOptions = {
-            series: [{
-                name: 'Earning',
-                data: [@json($currentMonthEarnings)]
-            }, {
-                name: 'Expense',
-                data: [@json($currentMonthExpenses)]
-            }],
+    // Configuración del gráfico de Support Tracker
+    const supportTrackerEl = document.querySelector('#supportTracker'),
+        supportTrackerOptions = {
+            series: [85],
+            labels: ['Completed Task'],
             chart: {
-                height: 230,
-                parentHeightOffset: 0,
-                stacked: true,
-                type: 'bar',
-                toolbar: {
-                    show: false
-                }
-            },
-            tooltip: {
-                enabled: false
-            },
-            legend: {
-                show: false
+                height: 360,
+                type: 'radialBar'
             },
             plotOptions: {
-                bar: {
-                    horizontal: false,
-                    columnWidth: '18%',
-                    borderRadius: 5,
-                    startingShape: 'rounded',
-                    endingShape: 'rounded'
+                radialBar: {
+                    offsetY: 10,
+                    startAngle: -140,
+                    endAngle: 130,
+                    hollow: {
+                        size: '65%'
+                    },
+                    track: {
+                        background: '#f2f2f2',
+                        strokeWidth: '100%'
+                    },
+                    dataLabels: {
+                        name: {
+                            offsetY: -20,
+                            color: '#6e6b7b',
+                            fontSize: '13px',
+                            fontWeight: '400',
+                            fontFamily: 'Public Sans'
+                        },
+                        value: {
+                            offsetY: 10,
+                            color: '#333',
+                            fontSize: '38px',
+                            fontWeight: '500',
+                            fontFamily: 'Public Sans'
+                        }
+                    }
                 }
             },
-            colors: ['#696cff', '#d1d7e3'],
-            dataLabels: {
-                enabled: false
+            colors: ['#696cff'],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shade: 'dark',
+                    shadeIntensity: 0.5,
+                    gradientToColors: ['#696cff'],
+                    inverseColors: true,
+                    opacityFrom: 1,
+                    opacityTo: 0.6,
+                    stops: [30, 70, 100]
+                }
+            },
+            stroke: {
+                dashArray: 10
             },
             grid: {
-                show: false,
                 padding: {
-                    top: -40,
-                    bottom: -20,
-                    left: -10,
-                    right: -2
+                    top: -20,
+                    bottom: 5
                 }
             },
-            xaxis: {
-                labels: {
-                    show: false
-                },
-                axisTicks: {
-                    show: false
-                },
-                axisBorder: {
-                    show: false
-                }
-            },
-            yaxis: {
-                labels: {
-                    show: false
-                }
-            },
-            responsive: [{
-                    breakpoint: 1468,
-                    options: {
-                        plotOptions: {
-                            bar: {
-                                columnWidth: '22%'
-                            }
-                        }
-                    }
-                },
-                {
-                    breakpoint: 1197,
-                    options: {
-                        chart: {
-                            height: 228
-                        },
-                        plotOptions: {
-                            bar: {
-                                borderRadius: 8,
-                                columnWidth: '26%'
-                            }
-                        }
-                    }
-                },
-                {
-                    breakpoint: 783,
-                    options: {
-                        chart: {
-                            height: 232
-                        },
-                        plotOptions: {
-                            bar: {
-                                borderRadius: 6,
-                                columnWidth: '28%'
-                            }
-                        }
-                    }
-                },
-                {
-                    breakpoint: 589,
-                    options: {
-                        plotOptions: {
-                            bar: {
-                                columnWidth: '16%'
-                            }
-                        }
-                    }
-                },
-                {
-                    breakpoint: 520,
-                    options: {
-                        plotOptions: {
-                            bar: {
-                                borderRadius: 6,
-                                columnWidth: '18%'
-                            }
-                        }
-                    }
-                },
-                {
-                    breakpoint: 426,
-                    options: {
-                        plotOptions: {
-                            bar: {
-                                borderRadius: 5,
-                                columnWidth: '20%'
-                            }
-                        }
-                    }
-                },
-                {
-                    breakpoint: 381,
-                    options: {
-                        plotOptions: {
-                            bar: {
-                                columnWidth: '24%'
-                            }
-                        }
-                    }
-                }
-            ],
             states: {
                 hover: {
                     filter: {
@@ -259,11 +176,29 @@ document.addEventListener('DOMContentLoaded', function () {
                         type: 'none'
                     }
                 }
-            }
+            },
+            responsive: [
+                {
+                    breakpoint: 1025,
+                    options: {
+                        chart: {
+                            height: 330
+                        }
+                    }
+                },
+                {
+                    breakpoint: 769,
+                    options: {
+                        chart: {
+                            height: 280
+                        }
+                    }
+                }
+            ]
         };
-    if (typeof totalEarningChartEl !== undefined && totalEarningChartEl !== null) {
-        const totalEarningChart = new ApexCharts(totalEarningChartEl, totalEarningChartOptions);
-        totalEarningChart.render();
+    if (typeof supportTrackerEl !== undefined && supportTrackerEl !== null) {
+        const supportTracker = new ApexCharts(supportTrackerEl, supportTrackerOptions);
+        supportTracker.render();
     }
 });
 </script>
@@ -302,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <small>You informed of this month compared to last month</small>
                     </div>
                     <div class="col-12 col-md-8">
-                        <div id="monthlyEarningReports"></div>
+                        <div id="weeklyEarningReports"></div>
                     </div>
                 </div>
                 <div class="border rounded p-3 mt-4">
@@ -471,15 +406,58 @@ document.addEventListener('DOMContentLoaded', function () {
     <div class="col-12 col-xl-8 col-sm-12 order-1 order-lg-2 mb-4 mb-lg-0">
         <div class="card">
             <div class="card-datatable table-responsive">
-                {!! $dataTable->table(['class' => 'project-table table border-top', 'id' => 'project-table']) !!}
+                <table class="datatables-projects table border-top">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th>Name</th>
+                            <th>Leader</th>
+                            <th>Team</th>
+                            <th class="w-px-200">Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($projects as $project)
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <td>{{ $project->name }}</td>
+                            <td>{{ $project->leader->name }}</td>
+                            <td>
+                                @foreach($project->team as $member)
+                                <img src="{{ asset('path/to/image/' . $member->avatar) }}" alt="{{ $member->name }}" class="rounded-circle" width="24" height="24">
+                                @endforeach
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress w-100" style="height: 8px;">
+                                        <div class="progress-bar bg-{{ $project->status->color }}" role="progressbar" style="width: {{ $project->status->percentage }}%;" aria-valuenow="{{ $project->status->percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="ms-2">{{ $project->status->percentage }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn p-0" type="button" id="projectActions" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="ti ti-dots-vertical ti-sm text-muted"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="projectActions">
+                                        <a class="dropdown-item" href="javascript:void(0);">View</a>
+                                        <a class="dropdown-item" href="javascript:void(0);">Edit</a>
+                                        <a class="dropdown-item" href="javascript:void(0);">Delete</a>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
     <!--/ Projects table -->
 </div>
 
-@endsection
-
-@section('scripts')
-{!! $dataTable->scripts() !!}
 @endsection
