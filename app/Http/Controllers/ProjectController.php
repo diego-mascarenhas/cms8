@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ProjectDataTable;
 use App\Models\Project;
+use App\Models\ProjectType;
 use Illuminate\Http\Request;
 use stdClass;
 use Carbon\Carbon;
@@ -29,7 +30,24 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $data = $request->except(['id', '_token']);
+
+        $request->validate([
+            'name' => 'required|string|min:3|max:25',
+            'description' => 'required|string|min:3|max:255',
+        ]);
+
+        Project::updateOrCreate(
+            ['id' => $request->id],
+            [
+                'name' => $data['name'],
+                'client_id' => $data['client_id'],
+                'type_id' => $data['type_id'],
+                'description' => $data['description'],
+            ]
+        );
+
+        return redirect()->route('app-project-list')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -45,7 +63,15 @@ class ProjectController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $data = Project::find($id);
+        $data->types = ProjectType::getOptions();
+
+        if (!$data)
+        {
+            return redirect()->route('app-project-list')->with('error', 'Service not found.');
+        }
+
+        return view('project.form', compact('data'));
     }
 
     /**

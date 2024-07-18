@@ -17,4 +17,15 @@ class ProjectType extends Model
     {
         return $this->hasMany(Project::class);
     }
+
+    public static function getOptions()
+    {
+        return self::all()->map(function ($data)
+        {
+            return [
+                'id' => $data->id,
+                'name' => $data->name,
+            ];
+        });
+    }
 }

@@ -78,9 +78,9 @@ class MessageController extends Controller
     public function edit(string $id)
     {
         $data = Message::find($id);
-        $data->categories = Category::categories();
-        $data->types = MessageType::types();
-        $data->templates = Template::templates();
+        $data->categories = Category::getOptions();
+        $data->types = MessageType::getOptions();
+        $data->templates = Template::getOptions();
 
         if (!$data)
         {

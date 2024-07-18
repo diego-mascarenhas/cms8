@@ -59,28 +59,36 @@ class Analytics extends Controller
 
         // Create an array with daily earnings for the current month
         $monthDays = [];
-        for ($i = 0; $i < $now->daysInMonth; $i++) {
+        for ($i = 0; $i < $now->daysInMonth; $i++)
+        {
             $date = $startOfMonth->clone()->addDays($i)->toDateString();
             $monthDays[$date] = isset($dailyEarnings[$date]) ? $dailyEarnings[$date]['total'] : 0;
         }
 
+        // Projects
         $projects = Project::with(['leader', 'client'])
             ->whereIn('status', [1, 7, 9])
             ->orderBy('id', 'desc')
             ->limit(25)
             ->get()
-            ->map(function ($project) {
+            ->map(function ($project)
+            {
                 return (object) [
                     'id' => $project->id,
                     'name' => $project->name,
                     'client' => $project->client->name,
                     'leader' => $project->leader->name,
-                    'status' => (object) [
-                        'name' => 'test',
-                        'percentage' => 10,
-                        'color' => 'success'
-                    ],
-                    'date' => $project->created_at->format('Y-m-d')
+                    'status_label' => $project->status_label,
+                    'date' => $project->created_at->format('Y-m-d'),
+                    'dropdown' => '
+                <div class="dropdown">
+                    <button class="btn p-0" type="button" id="sourceVisits" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="ti ti-dots-vertical ti-sm text-muted"></i>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="sourceVisits">
+                        <a class="dropdown-item" href="' . route('project.edit', $project->id) . '">View Details</a>
+                    </div>
+                </div>'
                 ];
             });
 

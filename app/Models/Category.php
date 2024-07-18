@@ -27,7 +27,7 @@ class Category extends Model
         return $this->hasMany(Message::class);
     }
 
-    public static function categories()
+    public static function getOptions()
     {
         return self::all()->map(function ($data)
         {

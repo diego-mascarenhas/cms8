@@ -224,7 +224,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     </button>
                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="earningReportsId">
                         <a class="dropdown-item" href="javascript:void(0);">View More</a>
-                        <a class="dropdown-item" href="javascript:void(0);">Delete</a>
                     </div>
                 </div>
             </div>
@@ -302,7 +301,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     </button>
                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="supportTrackerMenu">
                         <a class="dropdown-item" href="javascript:void(0);">View More</a>
-                        <a class="dropdown-item" href="javascript:void(0);">Delete</a>
                     </div>
                 </div>
             </div>
@@ -421,7 +419,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             <th>Name</th>
                             <th>Client</th>
                             <th>Leader</th>
-                            <th class="w-px-200">Status</th>
+                            <th class="text-center">Status</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -431,14 +429,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             <td>{{ $project->name }}</td>
                             <td>{{ $project->client }}</td>
                             <td>{{ $project->leader }}</td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="progress w-100 me-3" style="height: 6px;">
-                                        <div class="progress-bar bg-{{ $project->status->color }}" role="progressbar" style="width: {{ $project->status->percentage }}%;" aria-valuenow="{{ $project->status->percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                    <small>{{ $project->status->percentage }}%</small>
-                                </div>
-                            </td>
+                            <td class="text-center">{!! $project->status_label !!}</td>
+                            <td>{!! $project->dropdown !!}</td>
                         </tr>
                         @endforeach
                     </tbody>
