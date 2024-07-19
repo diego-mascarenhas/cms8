@@ -26,42 +26,46 @@ class ModifyMenuBasedOnRole
 
         if ($user)
         {
-            // Filter the menu based on the user's role
-            if (!$user->hasRole('admin'))
+            // Filter the menu based on the user's permissions
+            $filteredMenu = [];
+            $currentSection = null;
+            $sectionItems = [];
+
+            foreach ($verticalMenuData->menu as $menuItem)
             {
-                // Filter specific menu items that are admin-only
-                $adminOnlySlugs = [
-                    'user-management',
-                    'app-client-list',
-                    'app-service-list',
-                    'app-project-list',
-                    'app-invoice-list',
-                    'app-payment-list',
-                    'app-communication-list'
-                ];
-
-                // Filter specific menu items that are admin-only
-                $verticalMenuData->menu = array_filter($verticalMenuData->menu, function ($menuItem) use ($adminOnlySlugs)
+                if (isset($menuItem->menuHeader))
                 {
-                    // If the item has no 'slug' and is a header, filter it if it's in the 'Admin' section
-                    if (isset($menuItem->menuHeader) && $menuItem->menuHeader === 'Admin')
+                    // If we are starting a new section, add the previous section if it had items
+                    if ($currentSection && count($sectionItems) > 0)
                     {
-                        return false;
+                        $filteredMenu[] = $currentSection;
+                        $filteredMenu = array_merge($filteredMenu, $sectionItems);
                     }
-
-                    // Check if the item has a 'slug' before applying the filter
-                    if (isset($menuItem->slug))
-                    {
-                        return !in_array($menuItem->slug, $adminOnlySlugs);
-                    }
-
-                    // Keep the item if it has no 'slug' and is not an 'Admin' header
-                    return true;
-                });
-
-                // Reindex the array to avoid issues in JavaScript
-                $verticalMenuData->menu = array_values($verticalMenuData->menu);
+                    // Start a new section
+                    $currentSection = $menuItem;
+                    $sectionItems = [];
+                }
+                elseif (isset($menuItem->permission) && !$user->can($menuItem->permission))
+                {
+                    // If the user does not have the permission, skip this item
+                    continue;
+                }
+                else
+                {
+                    // Add the item to the current section
+                    $sectionItems[] = $menuItem;
+                }
             }
+
+            // Add the last section if it had items
+            if ($currentSection && count($sectionItems) > 0)
+            {
+                $filteredMenu[] = $currentSection;
+                $filteredMenu = array_merge($filteredMenu, $sectionItems);
+            }
+
+            // Reindex the array to avoid issues in JavaScript
+            $verticalMenuData->menu = array_values($filteredMenu);
 
             \View::share('menuData', [$verticalMenuData, $horizontalMenuData]);
         }

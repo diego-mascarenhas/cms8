@@ -7,31 +7,43 @@
 			"url": "user-management",
 			"name": "Users",
 			"icon": "menu-icon tf-icons ti ti-users",
-			"slug": "user-management"
+			"slug": "user-management",
+			"permission": "user.list"
 		},
 		{
 			"url": "app/client/list",
 			"name": "Clients",
 			"icon": "menu-icon tf-icons ti ti-briefcase",
-			"slug": "app-client-list"
+			"slug": "app-client-list",
+			"permission": "client.list"
 		},
 		{
 			"url": "app/service/list",
 			"name": "Services",
 			"icon": "menu-icon tf-icons ti ti-toggle-left",
-			"slug": "app-service-list"
+			"slug": "app-service-list",
+			"permission": "service.list"
 		},
 		{
 			"url": "app/project/list",
 			"name": "Projects",
 			"icon": "menu-icon tf-icons ti ti-tools",
-			"slug": "app-project-list"
+			"slug": "app-project-list",
+			"permission": "project.list"
 		},
 		{
 			"url": "app/invoice/list",
 			"name": "Invoice",
 			"icon": "menu-icon tf-icons ti ti-file-dollar",
-			"slug": "app-invoice-list"
+			"slug": "app-invoice-list",
+			"permission": "invoice.list"
+		},
+		{
+			"url": "app/communication/list",
+			"name": "Communications",
+			"icon": "menu-icon tf-icons ti ti-microphone",
+			"slug": "app-communication-list",
+			"permission": "communication.list"
 		},
 		{
 			"menuHeader": "Apps"
