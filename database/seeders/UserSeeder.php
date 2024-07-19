@@ -27,7 +27,7 @@ class UserSeeder extends Seeder
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
         ]);
-        $user->assignRole(1);
+        $user->assignRole(2);
         $user->categories()->attach([1]);
 
         // $user = User::factory()->create([
