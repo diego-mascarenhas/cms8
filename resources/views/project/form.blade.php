@@ -5,6 +5,10 @@
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/typography.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/katex.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/editor.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -13,10 +17,15 @@
 <script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+
+<script src="{{asset('assets/vendor/libs/quill/katex.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/quill/quill.js')}}"></script>
 @endsection
 
 @section('page-script')
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
+
+<script src="{{asset('assets/js/forms-editors.js')}}"></script>
 @endsection
 
 @section('content')
@@ -41,18 +50,41 @@
 				<x-input-select-array id="type_id" label="Category" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
+				<x-input-general id="namex" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
+				<x-input-general id="namex" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-12">
-				<x-input-textarea id="text" label="Description (*)" value="{{ old('description', $data->description?? '') }}" />
-			</div>
-			<div class="col-xl-12 p-4">
-				<div class="text-light small fw-medium">Status</div>
-				<div class="demo-inline-spacing">
-					<x-input-checkbox name="status" label="Active" value="{{ old('status', $data->status ?? '') }}" />
+				<div class="form-group">
+    			<label for="text" class="form-label">Description (*)</label>
+					<!-- Snow Theme -->
+					<div id="snow-toolbar">
+						<span class="ql-formats">
+							<button class="ql-bold"></button>
+							<button class="ql-italic"></button>
+							<button class="ql-underline"></button>
+							<button class="ql-strike"></button>
+						</span>
+						<span class="ql-formats">
+							<select class="ql-color"></select>
+							<select class="ql-background"></select>
+						</span>
+						<span class="ql-formats">
+							<button class="ql-script" value="sub"></button>
+							<button class="ql-script" value="super"></button>
+						</span>
+						<span class="ql-formats">
+							<button class="ql-header" value="1"></button>
+							<button class="ql-header" value="2"></button>
+							<button class="ql-blockquote"></button>
+							<button class="ql-code-block"></button>
+						</span>
+					</div>
+					<div id="snow-editor">
+					{{ old('description', $data->description ?? '') }}
+					</div>
+					<!-- /Snow Theme -->
 				</div>
 			</div>
 		</div>
@@ -60,7 +92,7 @@
 
 		<div class="pt-4">
 			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('app-mkt-message-list') }}'">Cancel</button>
+			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('app-project-list') }}'">Cancel</button>
 		</div>
 	</form>
 </div>

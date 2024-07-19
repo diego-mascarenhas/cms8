@@ -45,11 +45,11 @@ class ClientDataTable extends DataTable
     {
         $user = auth()->user();
 
-        if ($user->hasRole('admin'))
+        if ($user->can('client.list'))
         {
             return $model->newQuery();
         }
-        elseif ($user->hasRole('colaborator'))
+        elseif ($user->hasRole('colab'))
         {
             return $model->where('assigned_to', $user->id)->newQuery();
         }
