@@ -1,6 +1,5 @@
 <?php
 
-// app/Http/Middleware/ModifyMenuBasedOnRole.php
 namespace App\Http\Middleware;
 
 use Closure;
@@ -25,12 +24,14 @@ class ModifyMenuBasedOnRole
 
         $user = Auth::user();
 
-        if ($user) {
-            // Filtrar el menú según el rol del usuario
-            if (!$user->hasRole('admin')) {
-                // Filtrar elementos específicos del menú que son solo para administradores
+        if ($user)
+        {
+            // Filter the menu based on the user's role
+            if (!$user->hasRole('admin'))
+            {
+                // Filter specific menu items that are admin-only
                 $adminOnlySlugs = [
-                    'laravel-example-user-management',
+                    'user-management',
                     'app-client-list',
                     'app-service-list',
                     'app-project-list',
@@ -39,23 +40,26 @@ class ModifyMenuBasedOnRole
                     'app-communication-list'
                 ];
 
-                // Filtrar elementos específicos del menú que son solo para administradores
-                $verticalMenuData->menu = array_filter($verticalMenuData->menu, function ($menuItem) use ($adminOnlySlugs) {
-                    // Si el item no tiene 'slug' y es un encabezado, filtrarlo si está en la sección de 'Admin'
-                    if (isset($menuItem->menuHeader) && $menuItem->menuHeader === 'Admin') {
+                // Filter specific menu items that are admin-only
+                $verticalMenuData->menu = array_filter($verticalMenuData->menu, function ($menuItem) use ($adminOnlySlugs)
+                {
+                    // If the item has no 'slug' and is a header, filter it if it's in the 'Admin' section
+                    if (isset($menuItem->menuHeader) && $menuItem->menuHeader === 'Admin')
+                    {
                         return false;
                     }
 
-                    // Verificar si el item tiene un 'slug' antes de aplicar el filtro
-                    if (isset($menuItem->slug)) {
+                    // Check if the item has a 'slug' before applying the filter
+                    if (isset($menuItem->slug))
+                    {
                         return !in_array($menuItem->slug, $adminOnlySlugs);
                     }
 
-                    // Mantener el item si no tiene 'slug' y no es un encabezado de 'Admin'
+                    // Keep the item if it has no 'slug' and is not an 'Admin' header
                     return true;
                 });
 
-                // Reindexar el array para evitar problemas en JavaScript
+                // Reindex the array to avoid issues in JavaScript
                 $verticalMenuData->menu = array_values($verticalMenuData->menu);
             }
 

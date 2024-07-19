@@ -374,7 +374,7 @@
             {
               "url": "laravel/user-management",
               "name": "User Management",
-              "slug": "laravel-example-user-management"
+              "slug": "laravel-user-management"
             }
           ]
         }

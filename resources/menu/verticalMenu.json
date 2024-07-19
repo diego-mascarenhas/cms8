@@ -4,10 +4,10 @@
 			"menuHeader": "Admin"
 		},
 		{
-			"url": "laravel/user-management",
+			"url": "user-management",
 			"name": "Users",
 			"icon": "menu-icon tf-icons ti ti-users",
-			"slug": "laravel-example-user-management"
+			"slug": "user-management"
 		},
 		{
 			"url": "app/client/list",

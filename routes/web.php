@@ -393,11 +393,11 @@ Route::middleware(['auth'])->group(function ()
 {
     Route::get('/dashboard', function ()
     {
-        return redirect()->route('laravel-example-user-management');
+        return redirect()->route('user-management');
     })->name('dashboard');
 
     // laravel example
-    Route::get('/laravel/user-management', [UserManagement::class, 'UserManagement'])->name('laravel-example-user-management');
+    Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
     Route::resource('/user-list', UserManagement::class);
 
     // Clients
