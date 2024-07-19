@@ -20,24 +20,27 @@ class Analytics extends Controller
         $startOfLastMonth = $now->clone()->subMonth()->startOfMonth();
         $endOfLastMonth = $now->clone()->subMonth()->endOfMonth();
 
+        // Define the column to use for date calculations
+        $dateColumn = 'created_at'; // or 'date'
+
         // Calculate current month's earnings
         $currentMonthEarnings = Payment::where('transaction_type', 'I')
-            ->whereBetween('date', [$startOfMonth, $now])
+            ->whereBetween($dateColumn, [$startOfMonth, $now])
             ->sum('amount');
 
         // Calculate previous month's earnings
         $previousMonthEarnings = Payment::where('transaction_type', 'I')
-            ->whereBetween('date', [$startOfLastMonth, $endOfLastMonth])
+            ->whereBetween($dateColumn, [$startOfLastMonth, $endOfLastMonth])
             ->sum('amount');
 
         // Calculate current month's expenses
         $currentMonthExpenses = Payment::where('transaction_type', 'E')
-            ->whereBetween('date', [$startOfMonth, $now])
+            ->whereBetween($dateColumn, [$startOfMonth, $now])
             ->sum('amount');
 
         // Calculate previous month's expenses
         $previousMonthExpenses = Payment::where('transaction_type', 'E')
-            ->whereBetween('date', [$startOfLastMonth, $endOfLastMonth])
+            ->whereBetween($dateColumn, [$startOfLastMonth, $endOfLastMonth])
             ->sum('amount');
 
         // Calculate current and previous month's profit
