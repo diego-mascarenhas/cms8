@@ -49,12 +49,6 @@
 			<div class="col-md-6">
 				<x-input-select-array id="type_id" label="Category" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
 			</div>
-			<div class="col-md-6">
-				<x-input-general id="namex" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
-			</div>
-			<div class="col-md-6">
-				<x-input-general id="namex" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
-			</div>
 			<div class="col-md-12">
 				<div class="form-group">
     			<label for="text" class="form-label">Description (*)</label>
@@ -84,6 +78,7 @@
 					<div id="snow-editor">
 					{{ old('description', $data->description ?? '') }}
 					</div>
+					<input type="hidden" name="description" id="description">
 					<!-- /Snow Theme -->
 				</div>
 			</div>
@@ -96,4 +91,21 @@
 		</div>
 	</form>
 </div>
+
+<script>
+    // Initialize Quill editor
+    var quill = new Quill('#snow-editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: '#snow-toolbar'
+        }
+    });
+
+    // Form submission handler
+    document.querySelector('form').onsubmit = function() {
+        // Update hidden input field with editor content
+        document.querySelector('#description').value = quill.root.innerHTML;
+    };
+</script>
+
 @endsection

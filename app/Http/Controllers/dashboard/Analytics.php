@@ -89,7 +89,7 @@ class Analytics extends Controller
                         <i class="ti ti-dots-vertical ti-sm text-muted"></i>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="sourceVisits">
-                        <a class="dropdown-item" href="' . route('project.edit', $project->id) . '">View Details</a>
+                        <a class="dropdown-item" href="' . route('project.edit', $project->id) . '">Edit Project</a>
                     </div>
                 </div>'
                 ];

@@ -165,6 +165,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\CommunicationController;
 
 
@@ -393,7 +394,7 @@ Route::middleware(['auth'])->group(function ()
         return redirect()->route('user-management');
     })->name('dashboard');
 
-    // laravel example
+    // User Management
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
     Route::resource('/user-list', UserManagement::class);
 
@@ -432,13 +433,15 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/app/invoice/{id}', [InvoiceController::class, 'destroy'])->name('invoice.destroy');
 
     // Payments
-    Route::get('/app/payment/list', [InvoiceController::class, 'index'])->name('app-payment-list');
+    Route::get('/app/payment/list', [PaymentController::class, 'index'])->name('app-payment-list');
+    Route::get('/app/payment/{id}/edit', [PaymentController::class, 'edit'])->name('payment.edit');
+    Route::delete('/app/payment/{id}', [PaymentController::class, 'destroy'])->name('payment.destroy');
 
     // Communications
     Route::get('/app/communication/list', [CommunicationController::class, 'index'])->name('app-communication-list');
     Route::delete('/app/communication/{id}', [CommunicationController::class, 'destroy'])->name('communication.destroy');
     
-    // Category
+    // Categories
     Route::get('/app/mkt/category/list', [CategoryController::class, 'index'])->name('app-mkt-category-list');
     Route::get('/app/mkt/category/create', [CategoryController::class, 'create'])->name('category.create');
     Route::get('/app/mkt/category/{id}', [CategoryController::class, 'show'])->name('category.show');

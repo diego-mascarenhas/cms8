@@ -24,9 +24,20 @@ class PaymentDataTable extends DataTable
             ->addColumn('action', 'payment.action')
             ->setRowId('id')
             ->rawColumns(['status'])
+            ->editColumn('client_id', function ($data) {
+                return $data->client->name;
+            })
+            ->filterColumn('client_id', function ($query, $keyword) {
+                $query->whereHas('client', function ($q) use ($keyword) {
+                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+                });
+            })
             ->editColumn('date', function ($data)
             {
                 return Carbon::parse($data->date)->format('d-m-Y');
+            })
+            ->editColumn('type_id', function ($data) {
+                return $data->type->name;
             })
             ->editColumn('status', function ($data) {
                 return $data->status_label;
@@ -52,12 +63,11 @@ class PaymentDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('number')->title('Number'),
             Column::make('date')->title('Date'),
-            Column::make('operation')->title('Operation'),
-            Column::make('total_amount')->title('Total'),
-            Column::make('discount')->title('Discount'),
-            Column::make('balance')->title('Balance'),
+            Column::make('client_id')->title('Client'),
+            Column::make('transaction_type_label')->title('Transaction'),
+            Column::make('type_id')->title('Type'),
+            Column::make('amount')->title('Amount')->className('text-end'),
             Column::make('status')->title('Status')->className('text-center'),
         ];
     }
