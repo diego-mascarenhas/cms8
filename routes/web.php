@@ -471,7 +471,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/app/mkt/template', [TemplateController::class, 'store'])->name('template.store');
     Route::put('/app/mkt/template/{id}', [TemplateController::class, 'update'])->name('template.update');
     Route::delete('/app/mkt/template/{id}', [TemplateController::class, 'destroy'])->name('template.destroy');
-    Route::get('/app/mkt/{page}/editor', [TemplateController::class, 'editor'])->name('template.edit');
+    Route::get('/app/mkt/{page}/editor', [TemplateController::class, 'editor'])->name('template.editor');
     Route::get('/app/mkt/{page}', [TemplateController::class, 'show'])->name('template.view');
 
     // WhatsApp
