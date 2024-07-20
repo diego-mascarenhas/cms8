@@ -41,8 +41,7 @@ class ProjectController extends Controller
             ['id' => $request->id],
             [
                 'name' => $data['name'],
-                // 'client_id' => $data['client_id'],
-                // 'type_id' => $data['type_id'],
+                'type_id' => $data['type_id'],
                 'description' => $data['description'],
             ]
         );
