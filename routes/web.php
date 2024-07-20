@@ -8,8 +8,6 @@ use App\Http\Controllers\language\LanguageController;
 use App\Http\Controllers\layouts\CollapsedMenu;
 use App\Http\Controllers\layouts\ContentNavbar;
 use App\Http\Controllers\layouts\ContentNavSidebar;
-use App\Http\Controllers\layouts\NavbarFull;
-use App\Http\Controllers\layouts\NavbarFullSidebar;
 use App\Http\Controllers\layouts\Horizontal;
 use App\Http\Controllers\layouts\Vertical;
 use App\Http\Controllers\layouts\WithoutMenu;
@@ -51,7 +49,6 @@ use App\Http\Controllers\apps\AcademyCourse;
 use App\Http\Controllers\apps\AcademyCourseDetails;
 use App\Http\Controllers\apps\LogisticsDashboard;
 use App\Http\Controllers\apps\LogisticsFleet;
-use App\Http\Controllers\apps\InvoiceList;
 use App\Http\Controllers\apps\InvoicePreview;
 use App\Http\Controllers\apps\InvoicePrint;
 use App\Http\Controllers\apps\InvoiceEdit;
@@ -100,7 +97,6 @@ use App\Http\Controllers\cards\CardBasic;
 use App\Http\Controllers\cards\CardAdvance;
 use App\Http\Controllers\cards\CardStatistics;
 use App\Http\Controllers\cards\CardAnalytics;
-use App\Http\Controllers\cards\CardGamifications;
 use App\Http\Controllers\cards\CardActions;
 use App\Http\Controllers\user_interface\Accordion;
 use App\Http\Controllers\user_interface\Alerts;
@@ -169,6 +165,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\CommunicationController;
 
 
 // Main Page Route
@@ -432,6 +429,14 @@ Route::middleware(['auth'])->group(function ()
 
     // Invoices
     Route::get('/app/invoice/list', [InvoiceController::class, 'index'])->name('app-invoice-list');
+    Route::delete('/app/invoice/{id}', [InvoiceController::class, 'destroy'])->name('invoice.destroy');
+
+    // Payments
+    Route::get('/app/payment/list', [InvoiceController::class, 'index'])->name('app-payment-list');
+
+    // Communications
+    Route::get('/app/communication/list', [CommunicationController::class, 'index'])->name('app-communication-list');
+    Route::delete('/app/communication/{id}', [CommunicationController::class, 'destroy'])->name('communication.destroy');
     
     // Category
     Route::get('/app/mkt/category/list', [CategoryController::class, 'index'])->name('app-mkt-category-list');

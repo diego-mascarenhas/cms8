@@ -11,6 +11,8 @@ class Invoice extends Model
     use HasFactory;
 
     protected $fillable = [
+        'client_id',
+        'billing_id',
         'type_id',
         'operation',
         'number',
@@ -23,6 +25,11 @@ class Invoice extends Model
         'status'
     ];
 
+    public function client()
+    {
+        return $this->belongsTo(Client::class);
+    }
+    
     public function type()
     {
         return $this->belongsTo(InvoiceType::class);

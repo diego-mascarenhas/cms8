@@ -2,7 +2,7 @@
 
 namespace App\DataTables;
 
-use App\Models\Invoice;
+use App\Models\Payment;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -11,7 +11,7 @@ use Yajra\DataTables\Services\DataTable;
 
 use Carbon\Carbon;
 
-class InvoiceDataTable extends DataTable
+class PaymentDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
@@ -21,17 +21,9 @@ class InvoiceDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'invoice.action')
+            ->addColumn('action', 'payment.action')
             ->setRowId('id')
             ->rawColumns(['status'])
-            ->editColumn('client_id', function ($data) {
-                return $data->client->name;
-            })
-            ->filterColumn('client_id', function ($query, $keyword) {
-                $query->whereHas('client', function ($q) use ($keyword) {
-                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
-                });
-            })
             ->editColumn('date', function ($data)
             {
                 return Carbon::parse($data->date)->format('d-m-Y');
@@ -41,7 +33,7 @@ class InvoiceDataTable extends DataTable
             });
     }
 
-    public function query(Invoice $model): QueryBuilder
+    public function query(Payment $model): QueryBuilder
     {
         return $model->newQuery();
     }
@@ -49,7 +41,7 @@ class InvoiceDataTable extends DataTable
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('invoice-table')
+                    ->setTableId('payment-table')
                     ->columns($this->getColumns())
                     ->minifiedAjax()
                     ->dom('frtip')
@@ -62,7 +54,6 @@ class InvoiceDataTable extends DataTable
             Column::make('id')->hidden(),
             Column::make('number')->title('Number'),
             Column::make('date')->title('Date'),
-            Column::make('client_id')->title('Client'),
             Column::make('operation')->title('Operation'),
             Column::make('total_amount')->title('Total'),
             Column::make('discount')->title('Discount'),
@@ -73,6 +64,6 @@ class InvoiceDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Invoice_' . date('YmdHis');
+        return 'Payment_' . date('YmdHis');
     }
 }

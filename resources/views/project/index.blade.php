@@ -86,7 +86,7 @@
             confirmButtonText: 'Yes, delete'
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch("{{ route('category.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                fetch("{{ route('project.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',

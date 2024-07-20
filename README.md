@@ -4,8 +4,11 @@ CMS8 is a web application with expressive, elegant syntax. We believe developmen
 
 - [The PHP Framework for Web Artisans](https://laravel.com).
 - [Build Scalable, High-Performance Web Applications](https://pixinvent.com/vuexy-bootstrap-html-admin-template).
+- [Spatie Roles and Permissions](https://spatie.be/docs/laravel-permission/v5/introduction) for robust role and permission management.
 - [GrapesJS, Web Builder Framework](https://grapesjs.com).
-- [Laravel Sail & Docker](https://demos.pixinvent.com/vuexy-html-admin-template/documentation/laravel-sail-docker.html)
+- [Twilio Messaging](https://www.twilio.com/docs/sms) for integrating SMS and messaging services.
+- [WHM/cPanel Management](https://documentation.cpanel.net) for managing hosting services and server configurations.
+- [Laravel Sail & Docker](https://demos.pixinvent.com/vuexy-html-admin-template/documentation/laravel-sail-docker.html).
 
 CMS8 is accessible, powerful, and provides tools required for large, robust applications.
 
@@ -14,45 +17,45 @@ CMS8 is accessible, powerful, and provides tools required for large, robust appl
 Clone the repository
 
 ```sh
-$ git clone git@github.com:diego-mascarenhas/cms8.git
-$ cd cms8
-$ composer install
+git clone git@github.com:diego-mascarenhas/cms8.git
+cd cms8
+composer install
 ```
 
 Configure environment variables
 
 ```sh
-$ cp .env.example .env
-$ vi .env
+cp .env.example .env
+vi .env
 ```
 
 Generating Application Key and Running Migrations
 
 ```sh
-$ php artisan key:generate
-$ php artisan migrate
+php artisan key:generate
+php artisan migrate
 ```
 
 Install all the necessary dependencies (`yarn` is highly recommended)
 
 ```sh
-$ rm -rf node_modules
-$ rm -rf package-lock.json
-$ rm -rf yarn.lock
+rm -rf node_modules
+rm -rf package-lock.json
+rm -rf yarn.lock
 
-$ npm cache clean --force
+npm cache clean --force
 
-$ npm install --legacy-peer-deps
+npm install --legacy-peer-deps
 
-$ yarn
+yarn
 
-$ npm run dev
+npm run dev
 ```
 
 Start the dev server
 
 ```sh
-$ php artisan serve
+php artisan serve
 ```
 
 Once the development server is started you should be able to reach the demo page (eg. `http://localhost:8080`)
@@ -67,4 +70,8 @@ If you discover a security vulnerability within CMS8, please send an e-mail to D
 
 ## License
 
-The CMS8 admin is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The CMS8 admin is open-sourced software licensed under the [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html).
+
+### Additional Terms
+
+By deploying this software, you agree to notify the original author at [diego.mascarenhas@icloud.com] or by visiting [http://linkedin.com/in/diego-mascarenhas/]. Any modifications or enhancements must be shared with the original author.

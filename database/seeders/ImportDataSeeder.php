@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use Carbon\Carbon;
 use Hash;
 use Log;
 
@@ -14,7 +16,7 @@ class ImportDataSeeder extends Seeder
         // Users
         $users = DB::connection('mysql_tmp')->table('contactos')
             ->whereNotNull('email')
-            ->where('grupo', 502)
+            ->where('grupo', env('CMS_GROUP'))
             ->whereNotNull('id_empresa')
             ->where('area_privada', '!=', 6)
             ->where('id', '>', 2)
@@ -52,7 +54,7 @@ class ImportDataSeeder extends Seeder
 
         // Enterprises
         $enterprises = DB::connection('mysql_tmp')->table('empresas')
-            ->where('grupo', 502)
+            ->where('grupo', env('CMS_GROUP'))
             ->get();
 
         foreach ($enterprises as $data)
@@ -79,7 +81,7 @@ class ImportDataSeeder extends Seeder
 
         // Services Type
         $servicesType = DB::connection('mysql_tmp')->table('categorias_generales')
-            ->where('grupo', 502)
+            ->where('grupo', env('CMS_GROUP'))
             ->get();
 
         foreach ($servicesType as $data)
@@ -157,7 +159,7 @@ class ImportDataSeeder extends Seeder
         
         // Project Types
         $projectsType = DB::connection('mysql_tmp')->table('categorias_generales')
-            ->where('grupo', 502)
+            ->where('grupo', env('CMS_GROUP'))
             ->whereIn('id', [41, 42, 43, 44, 98, 99])
             ->get();
 
@@ -238,7 +240,7 @@ class ImportDataSeeder extends Seeder
 
         // Invoice Types
         $invoiceTypes = DB::connection('mysql_tmp')->table('facturas_tipo')
-            ->where('grupo', 502)
+            ->where('grupo', env('CMS_GROUP'))
             ->get();
 
         foreach ($invoiceTypes as $data)
@@ -306,7 +308,7 @@ class ImportDataSeeder extends Seeder
 
         // Payment Types
         $paymentTypes = DB::connection('mysql_tmp')->table('formas_pago')
-            ->where('grupo', 502)
+            ->where('grupo', env('CMS_GROUP'))
             ->get();
 
         foreach ($paymentTypes as $data)
@@ -332,7 +334,7 @@ class ImportDataSeeder extends Seeder
 
         // Payments
         $payments = DB::connection('mysql_tmp')->table('movimientos')
-            ->where('grupo', 502)
+            ->where('grupo', env('CMS_GROUP'))
             ->where('estado', '>', 0)
             ->get();
 
@@ -365,5 +367,108 @@ class ImportDataSeeder extends Seeder
                 DB::table('payments')->where('id', $existingPayment->id)->update($paymentData);
             }
         }
+
+        // Communication Types
+        $communicationTypes = DB::connection('mysql_tmp')->table('comunicaciones_tipo')
+            ->get();
+
+        foreach ($communicationTypes as $data)
+        {
+            $existingCommunicationTypes = DB::table('communication_types')->where('id', $data->id)->first();
+
+            $communicationTypesData = [
+                'id' => $data->id,
+                'name' => $data->tipo,
+                'status' => $data->estado-1,
+            ];
+
+            if (!$existingCommunicationTypes)
+            {
+                DB::table('communication_types')->insert($communicationTypesData);
+            }
+            else
+            {
+                DB::table('communication_types')->where('id', $existingCommunicationTypes->id)->update($communicationTypesData);
+            }
+        }
+
+        // Communication Templates
+        $communicationTemplates = DB::connection('mysql_tmp')->table('comunicaciones_templates')
+            ->where('grupo', env('CMS_GROUP'))
+            ->get();
+
+        foreach ($communicationTemplates as $data)
+        {
+            $existingCommunicationTemplates = DB::table('communication_templates')->where('id', $data->id)->first();
+
+            $communicationTemplatesData = [
+                'id' => $data->id,
+                'type_id' => $data->id_tipo,
+                'name' => $data->asunto,
+                'message' => $data->mensaje,
+                'url' => $data->url,
+            ];
+
+            if (!$existingCommunicationTemplates)
+            {
+                DB::table('communication_templates')->insert($communicationTemplatesData);
+            }
+            else
+            {
+                DB::table('communication_templates')->where('id', $existingCommunicationTemplates->id)->update($communicationTemplatesData);
+            }
+        }
+
+        // // Communications
+        $chunkSize = 1000;
+
+        DB::connection('mysql_tmp')->table('comunicaciones')
+            ->leftJoin('contactos', 'comunicaciones.id_contacto', '=', 'contactos.id')
+            ->where('comunicaciones.grupo', env('CMS_GROUP'))
+            ->where('comunicaciones.estado', '>', 0)
+            ->select('comunicaciones.*', 'contactos.email')
+            ->orderBy('comunicaciones.id')
+            ->chunk($chunkSize, function ($communications) {
+                $userEmails = $communications->pluck('email')->filter()->unique()->toArray();
+                $users = User::whereIn('email', $userEmails)->get()->keyBy('email');
+
+                $insertData = [];
+                $updateData = [];
+
+                foreach ($communications as $data) {
+                    $userId = $users->get($data->email)?->id;
+
+                    $communicationData = [
+                        'id' => $data->id,
+                        'user_id' => $userId,
+                        'type_id' => $data->id_tipo,
+                        'reference' => $data->id_referencia,
+                        'data' => $data->data,
+                        'sent' => $data->enviado ? Carbon::createFromTimestamp($data->enviado)->toDateTimeString() : null,
+                        'received' => $data->recibido ? Carbon::createFromTimestamp($data->recibido)->toDateTimeString() : null,
+                        'link' => $data->vinculo,
+                        'status' => $data->estado,
+                    ];
+
+                    $existingCommunication = DB::table('communications')->where('id', $data->id)->first();
+                    if (!$existingCommunication) {
+                        $insertData[] = $communicationData;
+                    } else {
+                        $updateData[] = $communicationData;
+                    }
+                }
+
+                if (!empty($insertData)) {
+                    DB::table('communications')->insert($insertData);
+                }
+
+                if (!empty($updateData)) {
+                    foreach ($updateData as $update) {
+                        DB::table('communications')->where('id', $update['id'])->update($update);
+                    }
+                }
+            });
+
+        Log::info('Data import completed successfully.');
     }
 }
