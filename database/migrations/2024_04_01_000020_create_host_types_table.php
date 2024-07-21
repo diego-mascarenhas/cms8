@@ -8,18 +8,15 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('hosts', function (Blueprint $table) {
-            $table->id();
-            $table->string('host');
+        Schema::create('host_types', function (Blueprint $table) {
+            $table->tinyIncrements('id');
             $table->string('name');
-            $table->string('power_state');
-            $table->string('connection_state');
             $table->timestamps();
         });
     }
 
     public function down()
     {
-        Schema::dropIfExists('hosts');
+        Schema::dropIfExists('host_types');
     }
 };

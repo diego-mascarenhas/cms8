@@ -45,7 +45,8 @@ class UpdateHostMetrics extends Command
                     [
                         'name' => $hostData['name'] ?? 'N/A',
                         'power_state' => $hostData['power_state'] ?? 'N/A',
-                        'connection_state' => $hostData['connection_state'] ?? 'N/A'
+                        'connection_state' => $hostData['connection_state'] ?? 'N/A',
+                        'type_id' => 1,
                     ]
                 );
 

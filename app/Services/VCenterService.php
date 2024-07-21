@@ -68,4 +68,28 @@ class VCenterService
             throw new \Exception('Error retrieving hosts: ' . $e->getMessage());
         }
     }
+
+    public function getVMs()
+    {
+        if (!$this->token)
+        {
+            $this->authenticate();
+        }
+
+        try
+        {
+            $response = $this->client->get($this->host . '/rest/vcenter/vm', [
+                'headers' => [
+                    'vmware-api-session-id' => $this->token
+                ]
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        }
+        catch (RequestException $e)
+        {
+            throw new \Exception('Error retrieving VMs: ' . $e->getMessage());
+        }
+    }
+    
 }

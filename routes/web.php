@@ -155,6 +155,7 @@ use App\Http\Controllers\tables\DatatableExtensions;
 use App\Http\Controllers\charts\ApexCharts;
 use App\Http\Controllers\charts\ChartJs;
 use App\Http\Controllers\maps\Leaflet;
+use App\Http\Controllers\HostController;
 use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\CategoryController;
@@ -389,9 +390,12 @@ Route::get('/services/project-billing', [ServiceController::class, 'projectBilli
 
 Route::middleware(['auth'])->group(function ()
 {
+    // Hosts
+    Route::resource('host', HostController::class)->except(['create, show, destroy']);
+
     Route::get('/dashboard', function ()
     {
-        return redirect()->route('user-management');
+        return redirect()->route('dashboard-analytics');
     })->name('dashboard');
 
     // User Management

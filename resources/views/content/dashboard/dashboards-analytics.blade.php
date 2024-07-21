@@ -364,8 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <i class="ti ti-dots-vertical ti-sm text-muted"></i>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="sourceVisits">
-                        <a class="dropdown-item" href="javascript:void(0);">Refresh</a>
-                        <a class="dropdown-item" href="javascript:void(0);">View All</a>
+                        <a class="dropdown-item" href="{{ route('host.index') }}">View All Hosts</a>
                     </div>
                 </div>
             </div>
