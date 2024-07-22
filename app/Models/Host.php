@@ -13,6 +13,7 @@ class Host extends Model
     protected $table = 'hosts';
 
     protected $fillable = [
+        'host',
         'name',
         'type_id',
         'user',
