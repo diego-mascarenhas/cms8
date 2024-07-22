@@ -10,29 +10,62 @@ class RegisterApplication extends Command
 {
     protected $signature = 'app:register-application';
     protected $description = 'Register the application with the central server';
+    protected $showConsoleOutput;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->showConsoleOutput = env('SHOW_CONSOLE_OUTPUT', false);
+    }
 
     public function handle()
     {
+        $appName = env('APP_NAME');
+        $appEnv = env('APP_ENV');
+        $appKey = env('APP_KEY');
+        $appDebug = env('APP_DEBUG') ? 'true' : 'false';
+        $appUrl = env('APP_URL');
+
+        if ($this->showConsoleOutput)
+        {
+            $this->info("Registering application {$appName}...");
+        }
+
         $response = Http::post('https://cms8.revisionalpha.es/api/register-application', [
-            'name' => env('APP_NAME'),
-            'env' => env('APP_ENV'),
-            'key' => env('APP_KEY'),
-            'debug' => env('APP_DEBUG'),
-            'url' => env('APP_URL'),
+            'name' => $appName,
+            'env' => $appEnv,
+            'key' => $appKey,
+            'debug' => $appDebug,
+            'url' => $appUrl,
         ]);
 
         if ($response->failed())
         {
-            Log::error('Application registration failed', [
+            $errorMessage = 'Application registration failed.';
+            $errorData = [
                 'status' => $response->status(),
                 'response' => $response->body(),
-            ]);
+            ];
+
+            Log::error($errorMessage, $errorData);
+
+            if ($this->showConsoleOutput)
+            {
+                $this->error($errorMessage);
+                $this->error(print_r($errorData, true));
+            }
         }
         else
         {
-            Log::info('Application registered successfully', [
+            $successMessage = 'Application registered successfully.';
+            $successData = [
                 'response' => $response->body(),
-            ]);
+            ];
+
+            if ($this->showConsoleOutput)
+            {
+                $this->info($successMessage);
+            }
         }
     }
 }
