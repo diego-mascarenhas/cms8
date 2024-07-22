@@ -391,7 +391,7 @@ Route::get('/services/project-billing', [ServiceController::class, 'projectBilli
 Route::middleware(['auth'])->group(function ()
 {
     // Hosts
-    Route::resource('host', HostController::class)->except(['create, show, destroy']);
+    Route::resource('host', HostController::class)->except(['create, update, show, destroy']);
 
     Route::get('/dashboard', function ()
     {

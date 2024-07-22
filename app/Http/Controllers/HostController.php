@@ -35,8 +35,6 @@ class HostController extends Controller
             'private_connection_id' => 'nullable|exists:network_devices,id',
             'public_ip' => 'nullable|string|unique:hosts,public_ip,' . $hostId,
             'public_connection_id' => 'nullable|exists:network_devices,id',
-            'power_state' => 'nullable|string|max:255',
-            'connection_state' => 'nullable|string|max:255',
         ]);
 
         Host::updateOrCreate(
@@ -50,8 +48,6 @@ class HostController extends Controller
                 'private_connection_id' => $data['private_connection_id'] ?? null,
                 'public_ip' => $data['public_ip'] ?? null,
                 'public_connection_id' => $data['public_connection_id'] ?? null,
-                'power_state' => $data['power_state'] ?? null,
-                'connection_state' => $data['connection_state'] ?? null,
             ]
         );
 

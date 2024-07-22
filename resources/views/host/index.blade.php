@@ -44,9 +44,6 @@
         <h4 class="mb-1 mt-3">Hosts</h4>
         <p class="text-muted">Monitor and Optimize Your Network Devices and Hosts</p>
     </div>
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('host.create') }}" class="btn btn-primary waves-effect waves-light">Create New</a>
-    </div>
 </div>
 
 @if(session('success'))
