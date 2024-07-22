@@ -17,6 +17,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
+        $schedule->command('app:register-application')->dailyAt('23:59');
         $schedule->command('update:host-metrics')->everyFiveMinutes();
         $schedule->command('update:update:vm-metrics')->twiceDaily(1, 13);
         $schedule->command('update:whm-service-status')->twiceDaily(2, 14);
