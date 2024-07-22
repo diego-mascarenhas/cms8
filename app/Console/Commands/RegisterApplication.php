@@ -58,9 +58,6 @@ class RegisterApplication extends Command
         else
         {
             $successMessage = 'Application registered successfully.';
-            $successData = [
-                'response' => $response->body(),
-            ];
 
             if ($this->showConsoleOutput)
             {
