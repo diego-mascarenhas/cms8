@@ -9,7 +9,7 @@ return [
 	"templateFree" => false,
 	"templateDescription" => "Start your development with a Dashboard for Bootstrap 5",
 	"templateKeyword" => "laravel, dashboard, bootstrap 5 dashboard, bootstrap 5 design, bootstrap 5",
-	"licenseUrl" => "https://opensource.org/license/MIT",
+	"licenseUrl" => "https://www.gnu.org/licenses/agpl-3.0.html",
 	"livePreview" => "https://cms8.revisionalpha.es/",
 	"productPage" => "https://revisionalpha.es",
 	"support" => "https://api.whatsapp.com/send/?phone=34722372858&text=I+need+technical+support+por&type=phone_number&app_absent=0",
