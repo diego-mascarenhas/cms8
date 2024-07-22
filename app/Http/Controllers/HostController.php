@@ -15,69 +15,74 @@ class HostController extends Controller
         return $dataTable->render('host.index');
     }
 
-    public function indexX()
-    {
-        $hosts = Host::with(['hostType', 'hostConnection', 'publicConnection'])->get();
-        return view('hosts.index', compact('hosts'));
-    }
-
     public function create()
     {
-        $hostTypes = HostType::all();
-        $networkDevices = NetworkDevice::all();
-        return view('hosts.create', compact('hostTypes', 'networkDevices'));
+        //
     }
 
     public function store(Request $request)
     {
+        $hostId = $request->id;
+
+        $data = $request->except(['id', '_token']);
+
         $request->validate([
-            'name' => 'required|string|max:255',
-            'host' => 'required|string|max:255|unique:hosts,host',
+            'name' => 'required|string|min:3|max:255',
+            'type_id' => 'nullable|exists:host_types,id',
             'user' => 'nullable|string|max:255',
             'password' => 'nullable|string|max:255',
-            'public_ip' => 'nullable|string|max:255|unique:hosts,public_ip',
-            'data' => 'nullable|json',
+            'private_ip' => 'nullable|string|unique:hosts,private_ip,' . $hostId,
+            'private_connection_id' => 'nullable|exists:network_devices,id',
+            'public_ip' => 'nullable|string|unique:hosts,public_ip,' . $hostId,
+            'public_connection_id' => 'nullable|exists:network_devices,id',
             'power_state' => 'nullable|string|max:255',
             'connection_state' => 'nullable|string|max:255',
-            'type_id' => 'nullable|exists:host_types,id',
-            'private_connection_id' => 'nullable|exists:network_devices,id',
-            'public_connection_id' => 'nullable|exists:network_devices,id',
         ]);
 
-        Host::create($request->all());
-        return redirect()->route('hosts.index')->with('success', 'Host created successfully.');
+        Host::updateOrCreate(
+            ['id' => $hostId],
+            [
+                'name' => $data['name'],
+                'type_id' => $data['type_id'] ?? null,
+                'user' => $data['user'] ?? null,
+                'password' => $data['password'] ?? null,
+                'private_ip' => $data['private_ip'] ?? null,
+                'private_connection_id' => $data['private_connection_id'] ?? null,
+                'public_ip' => $data['public_ip'] ?? null,
+                'public_connection_id' => $data['public_connection_id'] ?? null,
+                'power_state' => $data['power_state'] ?? null,
+                'connection_state' => $data['connection_state'] ?? null,
+            ]
+        );
+
+        return redirect()->route('host.index')->with('success', 'Host saved successfully.');
     }
 
-    public function edit(Host $host)
+    public function edit(string $id)
     {
-        $hostTypes = HostType::all();
-        $networkDevices = NetworkDevice::all();
-        return view('hosts.edit', compact('host', 'hostTypes', 'networkDevices'));
+        $data = Host::find($id);
+        $data->types = HostType::getOptions();
+        $data->devices = NetworkDevice::getOptions();
+
+        if (!$data)
+        {
+            return redirect()->route('host.index')->with('error', 'Host not found.');
+        }
+
+        return view('host.form', compact('data'));
     }
 
     public function update(Request $request, Host $host)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'host' => 'required|string|max:255|unique:hosts,host,' . $host->id,
-            'user' => 'nullable|string|max:255',
-            'password' => 'nullable|string|max:255',
-            'public_ip' => 'nullable|string|max:255|unique:hosts,public_ip,' . $host->id,
-            'data' => 'nullable|json',
-            'power_state' => 'nullable|string|max:255',
-            'connection_state' => 'nullable|string|max:255',
-            'type_id' => 'nullable|exists:host_types,id',
-            'private_connection_id' => 'nullable|exists:network_devices,id',
-            'public_connection_id' => 'nullable|exists:network_devices,id',
-        ]);
-
-        $host->update($request->all());
-        return redirect()->route('hosts.index')->with('success', 'Host updated successfully.');
+        //
     }
 
-    public function destroy(Host $host)
+    public function destroy(string $id)
     {
-        $host->delete();
-        return redirect()->route('hosts.index')->with('success', 'Host deleted successfully.');
+        $model = Host::findOrFail($id);
+
+        $model->delete();
+
+        return response()->json(['success' => 'The record has been deleted.'], 200);
     }
 }

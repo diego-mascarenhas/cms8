@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <i class="ti ti-dots-vertical ti-sm text-muted"></i>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="supportTrackerMenu">
-                        <a class="dropdown-item" href="javascript:void(0);">View More</a>
+                        <a class="dropdown-item" href="{{ route('app-communication-list') }}">View Communications</a>
                     </div>
                 </div>
             </div>
@@ -364,7 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <i class="ti ti-dots-vertical ti-sm text-muted"></i>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="sourceVisits">
-                        <a class="dropdown-item" href="{{ route('host.index') }}">View All Hosts</a>
+                        <a class="dropdown-item" href="{{ route('host.index') }}">View all Hosts</a>
                     </div>
                 </div>
             </div>

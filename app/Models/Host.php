@@ -14,16 +14,16 @@ class Host extends Model
 
     protected $fillable = [
         'name',
-        'host',
+        'type_id',
         'user',
         'password',
+        'private_ip',
+        'private_connection_id',
         'public_ip',
+        'public_connection_id',
         'data',
         'power_state',
-        'connection_state',
-        'type_id',
-        'private_connection_id',
-        'public_connection_id',
+        'connection_state',       
     ];
 
     // public function setUserAttribute($value)

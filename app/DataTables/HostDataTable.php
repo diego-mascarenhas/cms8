@@ -65,7 +65,12 @@ class HostDataTable extends DataTable
             Column::make('private_ip')->title('Private IP'),
             Column::make('public_ip')->title('Public IP'),
             Column::make('power_state')->title('State')->className('text-center'),
-        ];
+            Column::computed('action')->title('Actions')->width(20)->className('text-center')
+            ->exportable(false)
+            ->printable(false)
+            ->width(30)
+            ->addClass('text-center'),
+  ];
     }
 
     protected function filename(): string

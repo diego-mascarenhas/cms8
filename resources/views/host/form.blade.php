@@ -34,21 +34,39 @@
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
 		
 		<div class="row g-3">
-			<div class="col-md-4">
+			<div class="col-md-6">
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
-			<div class="col-xl-12 p-4">
-				<div class="text-light small fw-medium">Status</div>
-				<div class="demo-inline-spacing">
-					<x-input-checkbox name="status" label="Active" value="{{ old('status', $data->status ?? '') }}" />
-				</div>
+			<div class="col-md-6">
+				<x-input-select-array id="type_id" label="Type" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+			</div>
+			
+			<div class="col-md-6">
+				<x-input-general id="user" label="User" value="{{ old('user', $data->user?? '') }}" />
+			</div>
+			<div class="col-md-6">
+				<x-input-general id="password" label="Password" value="{{ old('password', $data->password?? '') }}" />
+			</div>
+
+			<div class="col-md-6">
+				<x-input-general id="private_ip" label="Private IP" value="{{ old('private_ip', $data->private_ip?? '') }}" />
+			</div>
+			<div class="col-md-6">
+				<x-input-select-array id="private_connection_id" label="Connection" :options="$data->devices" value="{{ old('private_connection_id', $data->private_connection_id ?? '') }}" />
+			</div>
+			
+			<div class="col-md-6">
+				<x-input-general id="public_ip" label="Public IP" value="{{ old('public_ip', $data->public_ip?? '') }}" />
+			</div>
+			<div class="col-md-6">
+				<x-input-select-array id="public_connection_id" label="Connection" :options="$data->devices" value="{{ old('public_connection_id', $data->public_connection_id ?? '') }}" />
 			</div>
 		</div>
 		<hr class="my-4 mx-n4" />
 
 		<div class="pt-4">
 			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('app-host-list') }}'">Cancel</button>
+			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('host.index') }}'">Cancel</button>
 		</div>
 	</form>
 </div>
