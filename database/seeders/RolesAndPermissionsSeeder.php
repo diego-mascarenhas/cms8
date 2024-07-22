@@ -68,6 +68,14 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'communication.update']);
         Permission::create(['name' => 'communication.destroy']);
 
+        Permission::create(['name' => 'host.list']);
+        Permission::create(['name' => 'host.create']);
+        Permission::create(['name' => 'host.show']);
+        Permission::create(['name' => 'host.edit']);
+        Permission::create(['name' => 'host.store']);
+        Permission::create(['name' => 'host.update']);
+        Permission::create(['name' => 'host.destroy']);
+
         Permission::create(['name' => 'profile.show']);
         Permission::create(['name' => 'profile.edit']);
         Permission::create(['name' => 'profile.update']);
@@ -77,53 +85,12 @@ class RolesAndPermissionsSeeder extends Seeder
         $rootRole->syncPermissions([
             'user.management',
             'user.list',
-            'user.create',
-            'user.show',
-            'user.edit',
-            'user.store',
-            'user.update',
             'user.destroy',
-            'client.list',
-            'client.create',
-            'client.show',
-            'client.edit',
-            'client.store',
-            'client.update',
             'client.destroy',
-            'service.list',
-            'service.create',
-            'service.show',
-            'service.edit',
-            'service.store',
-            'service.update',
             'service.destroy',
-            'project.list',
-            'project.create',
-            'project.show',
-            'project.edit',
-            'project.store',
-            'project.update',
             'project.destroy',
-            'invoice.list',
-            'invoice.create',
-            'invoice.show',
-            'invoice.edit',
-            'invoice.store',
-            'invoice.update',
             'invoice.destroy',
-            'payment.list',
-            'payment.create',
-            'payment.show',
-            'payment.edit',
-            'payment.store',
-            'payment.update',
             'payment.destroy',
-            'communication.list',
-            'communication.create',
-            'communication.show',
-            'communication.edit',
-            'communication.store',
-            'communication.update',
             'communication.destroy',
             'password.update',
         ]);
@@ -219,6 +186,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.edit',
             'profile.update',
             'password.update',
+        ]);
+
+        $technicalRole = Role::create(['name' => 'technical']);
+        $technicalRole->syncPermissions([
+            'host.list',
+            'host.edit',
         ]);
         
         $guestRole = Role::create(['name' => 'guest']);

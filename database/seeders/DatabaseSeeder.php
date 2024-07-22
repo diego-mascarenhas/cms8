@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             //ClientSeeder::class,
             UserClientSeeder::class,
+            HostTypeSeeder::class,
+            NetworkDeviceSeeder::class,
 		]);
     }
 }
