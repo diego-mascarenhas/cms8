@@ -12,7 +12,7 @@ class Analytics extends Controller
 {
     public function index()
     {
-        $hosts = Host::orderBy('name', 'asc')->get();
+        $hosts = Host::where('type_id', 1)->orderBy('name', 'asc')->get();
 
         // Current and previous dates
         $now = Carbon::now();

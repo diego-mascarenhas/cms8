@@ -39,13 +39,6 @@
 			"permission": "invoice.list"
 		},
 		{
-			"url": "app/communication/list",
-			"name": "Communications",
-			"icon": "menu-icon tf-icons ti ti-microphone",
-			"slug": "app-communication-list",
-			"permission": "communication.list"
-		},
-		{
 			"menuHeader": "Apps"
 		},
 		{
