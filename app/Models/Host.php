@@ -23,28 +23,28 @@ class Host extends Model
         'public_connection_id',
         'data',
         'power_state',
-        'connection_state',       
+        'connection_state',
     ];
 
-    // public function setUserAttribute($value)
-    // {
-    //     $this->attributes['user'] = Crypt::encryptString($value);
-    // }
+    public function setUserAttribute($value)
+    {
+        $this->attributes['user'] = Crypt::encryptString($value);
+    }
 
-    // public function getUserAttribute($value)
-    // {
-    //     return Crypt::decryptString($value);
-    // }
+    public function getUserAttribute($value)
+    {
+        return $value ? Crypt::decryptString($value) : null;
+    }
 
-    // public function setPasswordAttribute($value)
-    // {
-    //     $this->attributes['password'] = Crypt::encryptString($value);
-    // }
+    public function setPasswordAttribute($value)
+    {
+        $this->attributes['password'] = Crypt::encryptString($value);
+    }
 
-    // public function getPasswordAttribute($value)
-    // {
-    //     return Crypt::decryptString($value);
-    // }
+    public function getPasswordAttribute($value)
+    {
+        return $value ? Crypt::decryptString($value) : null;
+    }
 
     public function type()
     {

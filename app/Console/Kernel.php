@@ -18,6 +18,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command('update:host-metrics')->everyFiveMinutes();
+        $schedule->command('update:update:vm-metrics')->twiceDaily(1, 13);
         $schedule->command('update:whm-service-status')->twiceDaily(2, 14);
     }
 
