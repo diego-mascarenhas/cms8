@@ -1,4 +1,4 @@
-name: Staging revision alpha (COM) Deployment 12
+name: Staging revision alpha (COM) Deployment 13
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
       with:
         host: ${{ secrets.SSH_HOST_STAGING_REVISIONALPHA_COM }}
         username: ${{ secrets.SSH_USERNAME_STAGING_REVISIONALPHA_COM }}
-        password: ${{ secrets.SSH_PASSWORD_STAGING_REVISIONALPHA_COM }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.SSH_PORT_STAGING_REVISIONALPHA_COM }}
         script: |
           rsync -avz --delete ./ ${{ secrets.SSH_USERNAME_STAGING_REVISIONALPHA_COM }}@${{ secrets.SSH_HOST_STAGING_REVISIONALPHA_COM }}:/home/revstag/public_html
