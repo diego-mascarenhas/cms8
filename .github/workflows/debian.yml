@@ -13,13 +13,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Compile CSS and JavasCript
-      run: |
-        npm install
-        npm run build
+    # - name: Compile CSS and JavasCript
+    #   run: |
+    #     npm install
+    #     npm run build
 
 
-    - name: COnfigure PHP 8.0
+    - name: Configure PHP 8.0
       uses: shivammathur/setup-php@master
       with:
         php-version: '8.0'
