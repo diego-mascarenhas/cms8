@@ -1,4 +1,4 @@
-name: Staging revision alpha (COM) Deployment 13
+name: Staging revision alpha (COM) Deployment 14
 
 on:
   push:
@@ -28,10 +28,8 @@ jobs:
     - name: Deploy to Server
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.SSH_HOST_STAGING_REVISIONALPHA_COM }}
+        server: ${{ secrets.SSH_HOST_STAGING_REVISIONALPHA_COM }}
         username: ${{ secrets.SSH_USERNAME_STAGING_REVISIONALPHA_COM }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.SSH_PORT_STAGING_REVISIONALPHA_COM }}
-        script: |
-          rsync -avz --delete ./ ${{ secrets.SSH_USERNAME_STAGING_REVISIONALPHA_COM }}@${{ secrets.SSH_HOST_STAGING_REVISIONALPHA_COM }}:/home/revstag/public_html
-          ssh ${{ secrets.SSH_USERNAME_STAGING_REVISIONALPHA_COM }}@${{ secrets.SSH_HOST_STAGING_REVISIONALPHA_COM }} "cd /home/revstag/public_html && composer install --no-interaction --prefer-dist --optimize-autoloader && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache"
+        server-dir: ./
