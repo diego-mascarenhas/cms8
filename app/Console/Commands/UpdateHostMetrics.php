@@ -43,6 +43,7 @@ class UpdateHostMetrics extends Command
                 Host::updateOrCreate(
                     ['host' => $hostData['host']],
                     [
+                        'host' => $hostData['host'],
                         'name' => $hostData['name'] ?? 'N/A',
                         'power_state' => $hostData['power_state'] ?? 'N/A',
                         'connection_state' => $hostData['connection_state'] ?? 'N/A',
