@@ -27,10 +27,8 @@ jobs:
     - name: Deploy to FTP server
       uses: SamKirkland/FTP-Deploy-Action@4.1.0
       with:
-        ftp-server: ${{ secrets.VUEXYINF_FTP_SERVER }}
-        ftp-username: ${{ secrets.VUEXYINF_FTP_USERNAME }}
-        ftp-password: ${{ secrets.VUEXYINF_FTP_PASSWORD }}
+        server: ${{ secrets.VUEXYINF_FTP_SERVER }}
+        username: ${{ secrets.VUEXYINF_FTP_USERNAME }}
+        password: ${{ secrets.VUEXYINF_FTP_PASSWORD }}
         local-dir: ./
         git-ftp-args: --insecure # Optional: if you need to bypass SSL verification
-    - name: Run Laravel Migrations and Seed
-      run: php artisan migrate:fresh --seed
