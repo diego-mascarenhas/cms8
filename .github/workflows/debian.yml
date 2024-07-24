@@ -1,4 +1,4 @@
-name: Debian Deployment 15
+name: Create artifact for distribution
 
 on:
   push:
@@ -13,10 +13,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # - name: Compile CSS and JavasCript
-    #   run: |
-    #     npm install
-    #     npm run build
+    - name: Compile CSS and JavaScript
+      run: |
+        npm install
+        npm run build
 
 
     - name: Configure PHP 8.2
@@ -28,5 +28,21 @@ jobs:
     - name: Install Composer Dependencies
       run: composer install --no-dev --no-interaction --prefer-dist
 
-    # - name: Create deployment artifact
-    #   run: tar -czf aap.tar.gb --exclude=*.git --excluede=node_modules *
+    - name: Create deployment artifact
+      env:
+        GITHUB_SHA: ${{ github.sha }}
+
+      run: tar -czf "${{ github.sha }}".tar.gz --exclude=*.git --exclude=node_modules *
+
+    - name: Create artifact for distribution
+      uses: actions/upload-artifact@v2
+      with:
+        name: app-build
+        path: ${{ github.sha }}
+
+    # - name: Export deployment matrix
+    #   id: export-deployment-matrix
+    #   run: |
+
+
+      
