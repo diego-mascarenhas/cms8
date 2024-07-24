@@ -15,15 +15,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # - name: Compile CSS and JavaScript
-    #   run: |
-    #     rm -rf node_modules 
-    #     rm -rf package-lock.json
-    #     rm -rf yarn.lock
-    #     npm cache clean --force 
-    #     npm install --legacy-peer-deps 
-    #     yarn
-    #     yarn run dev
+    - name: Compile CSS and JavaScript
+      run: |
+        rm -rf node_modules 
+        rm -rf package-lock.json
+        rm -rf yarn.lock
+        npm cache clean --force 
+        npm install --legacy-peer-deps 
+        yarn
+        yarn run dev
 
     - name: Configure PHP 8.2
       uses: shivammathur/setup-php@master
@@ -49,7 +49,7 @@ jobs:
     - name: Export deployment matrix
       id: export-deployment-matrix
       run: |
-        JSON=${{ secrets.DEPLOYMENT_MATRIX }}
+        JSON="$(cat ./deployment-config.json)"
         JSON="${JSON//'%'/'%25'}"
         JSON="${JSON//$'\n'/'%0A'}"
         JSON="${JSON//$'\r'/'%0D'}"

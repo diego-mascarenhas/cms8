@@ -8,5 +8,15 @@
         "beforeHooks": "echo $GITHUB_SHA",
         "afterHooks": "",
         "path": "/var/www/html"
+    },
+    {
+        "name": "CMS8",
+        "ip": "190.7.29.26",
+        "username": "revstag",
+        "password": "",
+        "port": "13022",
+        "beforeHooks": "echo $GITHUB_SHA",
+        "afterHooks": "",
+        "path": "./public_html"
     }    
 ]
