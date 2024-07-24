@@ -15,7 +15,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    back
+    # - name: Compile CSS and JavaScript
+    #   run: |
+    #     rm -rf node_modules 
+    #     rm -rf package-lock.json
+    #     rm -rf yarn.lock
+    #     npm cache clean --force 
+    #     npm install --legacy-peer-deps 
+    #     yarn
+    #     yarn run dev
 
     - name: Configure PHP 8.2
       uses: shivammathur/setup-php@master
