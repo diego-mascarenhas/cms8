@@ -15,15 +15,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # - name: Compile CSS and JavaScript
-    #   run: |
-    #     rm -rf node_modules 
-    #     rm -rf package-lock.json
-    #     rm -rf yarn.lock
-    #     npm cache clean --force 
-    #     npm install --legacy-peer-deps 
-    #     yarn
-    #     yarn run dev
+    - name: Compile CSS and JavaScript
+      run: |
+        rm -rf node_modules 
+        rm -rf package-lock.json
+        rm -rf yarn.lock
+        npm cache clean --force 
+        npm install --legacy-peer-deps 
+        yarn
+        yarn run dev
 
     - name: Configure PHP 8.2
       uses: shivammathur/setup-php@master
@@ -70,7 +70,8 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          password: ${{ matrix.server.password }}
+          # password: ${{ matrix.server.password }}DEBIAN
+          key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
           port: ${{ matrix.server.port }}
           source: ${{ github.sha }}.tar.gz
           target: ${{ matrix.server.path }}/artifacts
@@ -82,7 +83,8 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          password: ${{ matrix.server.password }}
+          # password: ${{ matrix.server.password }}
+          key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
           port: ${{ matrix.server.port }}
         
           envs: GITHUB_SHA
@@ -113,7 +115,8 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          password: ${{ matrix.server.password }}
+          # password: ${{ matrix.server.password }}
+          key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH
           script: |
