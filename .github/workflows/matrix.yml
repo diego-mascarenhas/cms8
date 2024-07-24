@@ -1,4 +1,4 @@
-name: Create artifact for distribution
+name: Matrix
 
 on:
   push:
@@ -49,7 +49,7 @@ jobs:
     - name: Export deployment matrix
       id: export-deployment-matrix
       run: |
-        JSON="${{ secrets.DEPLOYMENT_MATRIX }}"
+        JSON=${{ secrets.DEPLOYMENT_MATRIX }}
         JSON="${JSON//'%'/'%25'}"
         JSON="${JSON//$'\n'/'%0A'}"
         JSON="${JSON//$'\r'/'%0D'}"
