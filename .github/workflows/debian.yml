@@ -15,15 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Compile CSS and JavaScript
-      run: |
-        rm -rf node_modules 
-        rm -rf package-lock.json
-        rm -rf yarn.lock
-        npm cache clean --force 
-        npm install --legacy-peer-deps 
-        yarn
-        yarn run dev
+    back
 
     - name: Configure PHP 8.2
       uses: shivammathur/setup-php@master
@@ -53,7 +45,7 @@ jobs:
         JSON="${JSON//'%'/'%25'}"
         JSON="${JSON//$'\n'/'%0A'}"
         JSON="${JSON//$'\r'/'%0D'}"
-        echo "deployment-matrix=$JSON" >> $GITHUB_ENV
+        echo "::set-output name=deployment-matrix::$JSON"
     
   prepare-release-on-servers:
     runs-on: ubuntu-latest
