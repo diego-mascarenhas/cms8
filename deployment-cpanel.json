@@ -1,15 +1,5 @@
 [
     {
-        "name": "server-debian",
-        "ip": "190.7.29.30",
-        "username": "root",
-        "password": "",
-        "port": "15022",
-        "beforeHooks": "echo $GITHUB_SHA",
-        "afterHooks": "",
-        "path": "/var/www/html"
-    },
-    {
         "name": "CMS8",
         "ip": "190.7.29.26",
         "username": "revstag",
