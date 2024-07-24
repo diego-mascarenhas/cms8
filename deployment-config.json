@@ -3,7 +3,7 @@
         "name": "server-debian",
         "ip": "190.7.29.30",
         "username": "root",
-        "password": "Byt.kubo%gWidov6",
+        "password": "",
         "port": "15022",
         "beforeHooks": "echo $GITHUB_SHA",
         "afterHooks": "",

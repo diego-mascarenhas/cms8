@@ -15,15 +15,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Compile CSS and JavaScript
-      run: |
-        rm -rf node_modules 
-        rm -rf package-lock.json
-        rm -rf yarn.lock
-        npm cache clean --force 
-        npm install --legacy-peer-deps 
-        yarn
-        yarn run dev
+    # - name: Compile CSS and JavaScript
+    #   run: |
+    #     rm -rf node_modules 
+    #     rm -rf package-lock.json
+    #     rm -rf yarn.lock
+    #     npm cache clean --force 
+    #     npm install --legacy-peer-deps 
+    #     yarn
+    #     yarn run dev
 
     - name: Configure PHP 8.2
       uses: shivammathur/setup-php@master
@@ -90,10 +90,11 @@ jobs:
           envs: GITHUB_SHA
         
           script: |
-            mkdir -p "${{ matrix.server.path }}/releases/${GITHUB_SHA}"
+            mkdir -p "${{ matrix.server.path }}/releases/${ }"
             tar xzf ${{ matrix.server.path }}/artifacts/${GITHUB_SHA}.tar.gz -C "${{ matrix.server.path }}/releases/${GITHUB_SHA}"
             rm -rf ${{ matrix.server.path }}/releases/${GITHUB_SHA}/storage
             mkdir -p ${{ matrix.server.path }}/storage/{app,public,framework,logs}
+            mkdir -p ${{ matrix.server.path }}/storage/framework/{cache,sessions,testing,views}
             chmod -R 0777 ${{ matrix.server.path }}/storage/{framework/{cache,sessions,testing,views}}
 
   run-before-hooks:
