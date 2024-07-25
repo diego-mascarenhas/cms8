@@ -12,6 +12,6 @@ class License extends Model
     protected $table = 'licenses';
 
     protected $fillable = [
-        'name', 'env', 'key', 'debug', 'url',
+        'name', 'env', 'key', 'debug', 'url', 'commit',
     ];
 }

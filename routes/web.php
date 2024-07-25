@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\laravel_example\UserManagement;
-use App\Http\Controllers\dashboard\Analytics;
 use App\Http\Controllers\dashboard\Crm;
 use App\Http\Controllers\language\LanguageController;
 use App\Http\Controllers\layouts\CollapsedMenu;
@@ -168,11 +167,12 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\CommunicationController;
+use App\Http\Controllers\DashboardController;
 
 
 // Main Page Route
-Route::get('/', [Analytics::class, 'index'])->name('dashboard-analytics')->middleware('auth');
-Route::get('/dashboard/analytics', [Analytics::class, 'index'])->name('dashboard-analytics');
+Route::get('/', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
+Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/dashboard/crm', [Crm::class, 'index'])->name('dashboard-crm');
 // locale
 Route::get('lang/{locale}', [LanguageController::class, 'swap']);
@@ -395,7 +395,7 @@ Route::middleware(['auth'])->group(function ()
 
     Route::get('/dashboard', function ()
     {
-        return redirect()->route('dashboard-analytics');
+        return redirect()->route('dashboard');
     })->name('dashboard');
 
     // User Management

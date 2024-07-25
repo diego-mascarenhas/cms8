@@ -9,7 +9,7 @@
           "url": "/",
           "icon": "menu-icon tf-icons ti ti-chart-pie-2",
           "name": "Analytics",
-          "slug": "dashboard-analytics"
+          "slug": "dashboard"
         },
         {
           "url": "dashboard/crm",

@@ -25,6 +25,7 @@ class RegisterApplication extends Command
         $appKey = env('APP_KEY');
         $appDebug = env('APP_DEBUG') ? 'true' : 'false';
         $appUrl = env('APP_URL');
+        $appCommit = env('APP_VERSION');
 
         if ($this->showConsoleOutput)
         {
@@ -37,6 +38,7 @@ class RegisterApplication extends Command
             'key' => $appKey,
             'debug' => $appDebug,
             'url' => $appUrl,
+            'commit' => $appCommit,
         ]);
 
         if ($response->failed())

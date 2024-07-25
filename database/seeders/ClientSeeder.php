@@ -9,6 +9,17 @@ class ClientSeeder extends Seeder
 {
     public function run()
     {
-        Client::factory(20)->create();
+        if (app()->environment(['local', 'dev'])) {
+            $faker = \Faker\Factory::create();
+
+            foreach (range(1, 2) as $index) {
+                Client::create([
+                    'name' => $faker->company,
+                    'description' => $faker->sentence,
+                    'user_id' => $faker->numberBetween(5, 6),
+                    'assigned_to' => $faker->numberBetween(3, 4),
+                ]);
+            }
+        }
     }
 }

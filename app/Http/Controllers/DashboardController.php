@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\dashboard;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Host;
@@ -8,7 +8,7 @@ use App\Models\Payment;
 use App\Models\Project;
 use Carbon\Carbon;
 
-class Analytics extends Controller
+class DashboardController extends Controller
 {
     public function index()
     {
