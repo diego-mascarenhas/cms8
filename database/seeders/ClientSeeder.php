@@ -16,7 +16,7 @@ class ClientSeeder extends Seeder
                 Client::create([
                     'name' => $faker->company,
                     'description' => $faker->sentence,
-                    'user_id' => $faker->numberBetween(5, 10),
+                    'user_id' => $faker->numberBetween(5, 6),
                     'assigned_to' => $faker->numberBetween(3, 4),
                 ]);
             }
