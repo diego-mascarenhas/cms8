@@ -23,7 +23,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('update:whm-service-status')->twiceDaily(2, 14);
 
         $schedule->command('fetch:bruler-data')
-             ->everyMinute()
+             ->everySixHours()
              ->when(function () {
                  return !empty(env('BRULER_API_KEY'));
              });
