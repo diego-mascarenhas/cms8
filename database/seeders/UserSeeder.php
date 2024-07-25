@@ -40,6 +40,15 @@ class UserSeeder extends Seeder
         $user->assignRole(3);
         $user->categories()->attach([1, 4]);
 
+        $user = User::factory()->create([
+            'name' => 'Daniel Girol',
+            'phone' => 34660136913,
+            'email' => 'daniel@girol.es',
+            'password' => Hash::make('Passw0rd!'),
+        ]);
+        $user->assignRole(2);
+        $user->categories()->attach([3]);
+
         // Editor
         $user = User::factory()->create([
             'name' => 'Editor User',
@@ -79,14 +88,5 @@ class UserSeeder extends Seeder
         ]);
         $user->assignRole(7);
         $user->categories()->attach([1]);
-
-        // $user = User::factory()->create([
-        //     'name' => 'Daniel Girol',
-        //     'phone' => 34660136913,
-        //     'email' => 'daniel@girol.es',
-        //     'password' => Hash::make('Passw0rd!'),
-        // ]);
-        // $user->assignRole(2);
-        // $user->categories()->attach([3]);
     }
 }

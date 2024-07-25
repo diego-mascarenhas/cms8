@@ -12,12 +12,12 @@ class ClientSeeder extends Seeder
         if (app()->environment(['local', 'dev'])) {
             $faker = \Faker\Factory::create();
 
-            foreach (range(1, 20) as $index) {
+            foreach (range(1, 2) as $index) {
                 Client::create([
                     'name' => $faker->company,
                     'description' => $faker->sentence,
-                    'user_id' => $faker->numberBetween(1, 10),
-                    'assigned_to' => $faker->numberBetween(1, 10),
+                    'user_id' => $faker->numberBetween(5, 10),
+                    'assigned_to' => $faker->numberBetween(3, 4),
                 ]);
             }
         }

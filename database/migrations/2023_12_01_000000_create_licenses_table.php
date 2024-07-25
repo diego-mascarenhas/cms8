@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('key')->nullable();
             $table->string('debug')->nullable();
             $table->string('url')->nullable();
+            $table->string('commit')->nullable();
             $table->timestamps();
         });
     }

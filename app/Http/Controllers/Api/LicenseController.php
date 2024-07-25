@@ -18,16 +18,32 @@ class LicenseController extends Controller
 			'key' => 'nullable|string',
 			'debug' => 'nullable|string',
 			'url' => 'nullable|url',
+			'commit' => 'nullable|url',
 		]);
+
+		$normalizedUrl = preg_replace('/^https?:\/\//', '', $data['url']);
+
+		$license = License::where('key', $data['key'])
+			->where('url', 'like', "%$normalizedUrl%")
+			->first();
 
 		try
 		{
-			License::create($data);
-			return response()->json(['message' => 'Application registered successfully'], 200);
+			if ($license)
+			{
+				$license->update($data);
+				$license->touch();
+				return response()->json(['message' => 'License updated successfully'], 200);
+			}
+			else
+			{
+				License::create($data);
+				return response()->json(['message' => 'Application registered successfully'], 201);
+			}
 		}
 		catch (\Exception $e)
 		{
-			Log::error('Error creating license: ' . $e->getMessage());
+			Log::error('Error creating or updating license: ' . $e->getMessage());
 			return response()->json(['error' => 'Failed to register application'], 500);
 		}
 	}
