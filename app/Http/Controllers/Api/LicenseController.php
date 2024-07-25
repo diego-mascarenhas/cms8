@@ -18,7 +18,7 @@ class LicenseController extends Controller
 			'key' => 'nullable|string',
 			'debug' => 'nullable|string',
 			'url' => 'nullable|url',
-			'commit' => 'nullable|url',
+			'commit' => 'nullable|string',
 		]);
 
 		$normalizedUrl = preg_replace('/^https?:\/\//', '', $data['url']);

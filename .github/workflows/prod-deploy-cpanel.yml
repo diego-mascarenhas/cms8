@@ -115,17 +115,17 @@ jobs:
           envs: GITHUB_SHA,BASE_PATH
           script: |
             cd ${{ matrix.server.path }}
-            if grep -q '^APP_VERSION=' .env; then
-                sed -i "s/^APP_VERSION=.*/APP_VERSION=${GITHUB_SHA}/" .env
-            else
-                echo "APP_VERSION=${GITHUB_SHA}" >> .env
-            fi
+            
+            sed -i '/^APP_VERSION=/d' .env
+            sed -i "/^APP_URL=.*/a APP_VERSION=${GITHUB_SHA}" .env
+
             if grep -q '^APP_KEY=' .env && ! grep -q 'APP_KEY=[a-zA-Z0-9]' .env; then
               echo "APP_KEY is empty. Running 'php artisan key:generate'."
               php artisan key:generate
             else
               echo "APP_KEY already set. Skipping 'php artisan key:generate'."
             fi
+            
             ${{ matrix.server.beforeHooks }}
 
   activate-release:
