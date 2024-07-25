@@ -61,7 +61,7 @@ class CommunicationController extends Controller
      */
     public function destroy(string $id)
     {
-        $model = Invoice::findOrFail($id);
+        $model = Communication::findOrFail($id);
 
         $model->delete();
 
