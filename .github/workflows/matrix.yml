@@ -70,7 +70,7 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
+          key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           source: ${{ github.sha }}.tar.gz
           target: ${{ matrix.server.path }}/artifacts
@@ -82,7 +82,7 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
+          key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
         
           envs: GITHUB_SHA
@@ -115,7 +115,7 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
+          key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH
           script: |
@@ -141,7 +141,7 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
+          key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH,LARAVEL_ENV
           script: |
@@ -170,7 +170,7 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
+          key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH
           script: |
@@ -192,7 +192,7 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
+          key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           envs: RELEASES_PATH,ARTIFACTS_PATH
           script: |
