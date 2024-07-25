@@ -5,7 +5,7 @@
         "username": "revcms8",
         "password": "",
         "port": "13022",
-        "beforeHooks": "php artisan migrate",
+        "beforeHooks": "",
         "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
     }
