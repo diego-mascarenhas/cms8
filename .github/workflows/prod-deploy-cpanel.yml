@@ -1,4 +1,4 @@
-name: cPanel
+name: cPanel (Prod)
 
 on:
   push:
