@@ -3,7 +3,7 @@ name: cPanel
 on:
   push:
     branches:
-      - main
+      - dev
 
 jobs:
   create-deployment-artifacts:
@@ -49,7 +49,7 @@ jobs:
     - name: Export deployment matrix
       id: export-deployment-matrix
       run: |
-        JSON="$(cat .github/workflows/prod-deploy-cpanel.json)"
+        JSON="$(cat .github/workflows/dev-deploy-cpanel.json)"
         JSON="${JSON//'%'/'%25'}"
         JSON="${JSON//$'\n'/'%0A'}"
         JSON="${JSON//$'\r'/'%0D'}"
