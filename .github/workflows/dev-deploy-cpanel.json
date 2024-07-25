@@ -1,5 +1,15 @@
 [
     {
+        "name": "Staging (AR)",
+        "ip": "190.7.29.26",
+        "username": "revstag",
+        "password": "",
+        "port": "13022",
+        "beforeHooks": "php artisan migrate:fresh --seed && php artisan db:seed --class=ImportDataSeeder",
+        "afterHooks": "php artisan app:register-application",
+        "path": "./public_html"
+    },    
+    {
         "name": "VuexyInf",
         "ip": "46.24.172.69",
         "username": "vuexyinf",

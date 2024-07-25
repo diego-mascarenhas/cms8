@@ -1,12 +1,12 @@
 [
     {
-        "name": "VuexyInf",
-        "ip": "46.24.172.69",
-        "username": "vuexyinf",
+        "name": "CMS8 (AR)",
+        "ip": "190.7.29.26",
+        "username": "revcms8",
         "password": "",
-        "port": "22",
-        "beforeHooks": "php artisan migrate:fresh --seed",
+        "port": "13022",
+        "beforeHooks": "php artisan migrate",
         "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
-    }    
+    }
 ]
