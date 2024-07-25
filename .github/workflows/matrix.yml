@@ -38,7 +38,7 @@ jobs:
       env:
         GITHUB_SHA: ${{ github.sha }}
 
-      run: tar -czf "${{ github.sha }}".tar.gz --exclude=*.git --exclude=node_modules *
+      run: tar -czf "${{ github.sha }}".tar.gz --exclude=*.git --exclude=node_modules --exclude='deployment-*.json' *
 
     - name: Create artifact for distribution
       uses: actions/upload-artifact@v4
@@ -70,7 +70,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}DEBIAN
           key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
           port: ${{ matrix.server.port }}
           source: ${{ github.sha }}.tar.gz
@@ -83,7 +82,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
           port: ${{ matrix.server.port }}
         
@@ -117,7 +115,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH
@@ -144,7 +141,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH,LARAVEL_ENV
@@ -174,7 +170,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH
@@ -197,7 +192,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_KEY_STAGING_DEBIAN }}
           port: ${{ matrix.server.port }}
           envs: RELEASES_PATH,ARTIFACTS_PATH

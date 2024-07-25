@@ -5,8 +5,8 @@
         "username": "revstag",
         "password": "",
         "port": "13022",
-        "beforeHooks": "echo $GITHUB_SHA",
-        "afterHooks": "",
+        "beforeHooks": "php artisan migrate:fresh --seed",
+        "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
     }    
 ]
