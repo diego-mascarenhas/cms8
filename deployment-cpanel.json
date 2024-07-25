@@ -5,6 +5,16 @@
         "username": "revstag",
         "password": "",
         "port": "13022",
+        "beforeHooks": "php artisan migrate:fresh --seed && php artisan db:seed --class=ImportDataSeeder",
+        "afterHooks": "php artisan app:register-application",
+        "path": "./public_html"
+    },
+    {
+        "name": "Vuexyinf",
+        "ip": "46.24.172.69",
+        "username": "vuexyinf",
+        "password": "",
+        "port": "22",
         "beforeHooks": "php artisan migrate:fresh --seed",
         "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
