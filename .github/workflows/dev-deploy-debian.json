@@ -5,8 +5,8 @@
         "username": "root",
         "password": "",
         "port": "15022",
-        "beforeHooks": "echo $GITHUB_SHA",
-        "afterHooks": "",
+        "beforeHooks": "php artisan migrate:fresh --seed && php artisan db:seed --class=ImportDataSeeder",
+        "afterHooks": "php artisan app:register-application",
         "path": "/var/www/html"
     }   
 ]
