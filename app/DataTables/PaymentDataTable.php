@@ -25,7 +25,7 @@ class PaymentDataTable extends DataTable
             ->setRowId('id')
             ->rawColumns(['status'])
             ->editColumn('client_id', function ($data) {
-                return $data->client->name;
+                return $data->client->name ?? 'Transfer';
             })
             ->filterColumn('client_id', function ($query, $keyword) {
                 $query->whereHas('client', function ($q) use ($keyword) {

@@ -1,0 +1,12 @@
+[
+    {
+        "name": "VuexyInf",
+        "ip": "46.24.172.69",
+        "username": "vuexyinf",
+        "password": "",
+        "port": "22",
+        "beforeHooks": "php artisan migrate:fresh --seed",
+        "afterHooks": "php artisan app:register-application",
+        "path": "./public_html"
+    }    
+]

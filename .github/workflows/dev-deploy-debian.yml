@@ -1,4 +1,4 @@
-name: Create artifact for distribution
+name: Debian
 
 on:
   push:
@@ -15,15 +15,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # - name: Compile CSS and JavaScript
-    #   run: |
-    #     rm -rf node_modules 
-    #     rm -rf package-lock.json
-    #     rm -rf yarn.lock
-    #     npm cache clean --force 
-    #     npm install --legacy-peer-deps 
-    #     yarn
-    #     yarn run dev
+    - name: Compile CSS and JavaScript
+      run: |
+        rm -rf node_modules 
+        rm -rf package-lock.json
+        rm -rf yarn.lock
+        npm cache clean --force 
+        npm install --legacy-peer-deps 
+        yarn
+        yarn run dev
 
     - name: Configure PHP 8.2
       uses: shivammathur/setup-php@master
@@ -38,7 +38,7 @@ jobs:
       env:
         GITHUB_SHA: ${{ github.sha }}
 
-      run: tar -czf "${{ github.sha }}".tar.gz --exclude=*.git --exclude=node_modules *
+      run: tar -czf "${{ github.sha }}".tar.gz --exclude=*.git --exclude=node_modules --exclude='*-deploy-*.json' *
 
     - name: Create artifact for distribution
       uses: actions/upload-artifact@v4
@@ -49,7 +49,7 @@ jobs:
     - name: Export deployment matrix
       id: export-deployment-matrix
       run: |
-        JSON="$(cat ./deployment-debian.json)"
+        JSON="$(cat .github/workflows/dev-deploy-debian.json)"
         JSON="${JSON//'%'/'%25'}"
         JSON="${JSON//$'\n'/'%0A'}"
         JSON="${JSON//$'\r'/'%0D'}"
@@ -70,7 +70,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}DEBIAN
           key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           source: ${{ github.sha }}.tar.gz
@@ -83,7 +82,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
         
@@ -117,11 +115,17 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH
           script: |
+            cd ${{ matrix.server.path }}
+            if grep -q '^APP_KEY=' .env && ! grep -q 'APP_KEY=[a-zA-Z0-9]' .env; then
+              echo "APP_KEY is empty. Running 'php artisan key:generate'."
+              php artisan key:generate
+            else
+              echo "APP_KEY already set. Skipping 'php artisan key:generate'."
+            fi
             ${{ matrix.server.beforeHooks }}
   
   activate-release:
@@ -144,7 +148,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH,LARAVEL_ENV
@@ -174,7 +177,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           envs: GITHUB_SHA,RELEASE_PATH,ACTIVE_RELEASE_PATH,STORAGE_PATH,BASE_PATH
@@ -197,7 +199,6 @@ jobs:
         with:
           host: ${{ matrix.server.ip }}
           username: ${{ matrix.server.username }}
-          # password: ${{ matrix.server.password }}
           key: ${{ secrets.SSH_GITHUB_KEY }}
           port: ${{ matrix.server.port }}
           envs: RELEASES_PATH,ARTIFACTS_PATH
