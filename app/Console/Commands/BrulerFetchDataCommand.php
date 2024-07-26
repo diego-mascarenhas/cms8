@@ -11,7 +11,7 @@ use App\Models\Bruler\Products;
 class BrulerFetchDataCommand extends Command
 {
     protected $signature = 'fetch:bruler-data';
-    protected $description = 'Fetch data from Bruler API and insert into order_slips table';
+    protected $description = 'Fetch data from Bruler API and insert or update in products table';
 
     protected $authService;
     protected $showConsoleOutput;
@@ -20,6 +20,7 @@ class BrulerFetchDataCommand extends Command
     {
         parent::__construct();
         $this->authService = $authService;
+        $this->showConsoleOutput = env('SHOW_CONSOLE_OUTPUT', false);
     }
 
     public function handle()
@@ -37,7 +38,6 @@ class BrulerFetchDataCommand extends Command
                 return;
             }
 
-            // Store the new token in cache
             Cache::put('brulerApiToken', $brulerApiToken, now()->addHours(2));
         }
 
@@ -47,24 +47,60 @@ class BrulerFetchDataCommand extends Command
             'Content-Type' => 'application/json',
         ])->post('https://brulerapi.ar/api/pedimosfacilmdw/articulos/list', [
                     'Articulo' => '',
-                    'Rubro' => '', // EMPANADAS
+                    'Rubro' => '', // Specific product category (EMPANADAS)
                 ]);
 
         if ($response->successful())
         {
             $data = $response->json()['Data'];
 
-            Products::create([
-                'type' => 'products',
-                'data' => $data,
-                'status' => 0,
-            ]);
+            // Extract RemoteId from the first element
+            $brulerId = $data[0]['RemoteId'] ?? null;
 
-            // Convert data to JSON for better readability in the console output
-            if ($this->showConsoleOutput)
+            if ($brulerId === null)
             {
-                $dataString = json_encode($data, JSON_PRETTY_PRINT);
-                $this->info("Data successfully inserted into the order_slips table. Response data: \n$dataString");
+                $this->error('RemoteId not found in the API response.');
+                return;
+            }
+
+            // Check if a product with the bruler_id exists
+            $product = Products::where('bruler_id', $brulerId)->first();
+
+            // Convert current data to JSON for comparison
+            $currentData = $product ? $product->data : null;
+
+            if (json_encode($currentData) !== json_encode($data))
+            {
+                if ($product)
+                {
+                    // Update the existing product
+                    $product->update([
+                        'data' => $data,
+                        'status' => 0,
+                    ]);
+                }
+                else
+                {
+                    // Create a new product
+                    Products::create([
+                        'type' => 'products',
+                        'bruler_id' => $brulerId,
+                        'data' => $data,
+                        'status' => 0,
+                    ]);
+                }
+
+                if ($this->showConsoleOutput)
+                {
+                    $this->info("Data successfully inserted or updated in the products table.");
+                }
+            }
+            else
+            {
+                if ($this->showConsoleOutput)
+                {
+                    $this->info("No changes detected. Data remains the same.");
+                }
             }
         }
         else

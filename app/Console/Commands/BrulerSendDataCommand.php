@@ -35,6 +35,7 @@ class BrulerSendDataCommand extends Command
 	{
 		parent::__construct();
 		$this->authService = $authService;
+		$this->showConsoleOutput = env('SHOW_CONSOLE_OUTPUT', false);
 	}
 
 	/**
