@@ -8,6 +8,16 @@
         "beforeHooks": "php artisan migrate:fresh --seed && php artisan db:seed --class=ImportDataSeeder",
         "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
+    },
+    {
+        "name": "Pedimos Fácil Simplicity (AR)",
+        "ip": "190.7.29.26",
+        "username": "simplpedimos",
+        "password": "",
+        "port": "13022",
+        "beforeHooks": "php artisan migrate:fresh --seed",
+        "afterHooks": "php artisan app:register-application",
+        "path": "./public_html"
     },    
     {
         "name": "VuexyInf",
