@@ -18,7 +18,7 @@ class Category extends Model
     protected $fillable = ['name', 'description', 'data', 'parent_id', 'order', 'status'];
 
     protected $casts = [
-        'data' => 'array',
+        'data' => 'object',
     ];
 
     public function parent()

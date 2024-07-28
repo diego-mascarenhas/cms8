@@ -33,11 +33,11 @@ class ProjectDataTable extends DataTable
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
-            ->editColumn('type_id', function ($data) {
-                return $data->type->name;
+            ->editColumn('category_id', function ($data) {
+                return $data->category->name;
             })
-            ->filterColumn('type_id', function ($query, $keyword) {
-                $query->whereHas('type', function ($q) use ($keyword) {
+            ->filterColumn('category_id', function ($query, $keyword) {
+                $query->whereHas('category', function ($q) use ($keyword) {
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
@@ -91,7 +91,7 @@ class ProjectDataTable extends DataTable
             Column::make('id')->title('#')->responsivePriority(-1),
             Column::make('name')->title('Name'),
             Column::make('enterprise_id')->title('Client')->responsivePriority(1),
-            Column::make('type_id')->title('Type')->responsivePriority(2),
+            Column::make('category_id')->title('Category')->responsivePriority(2),
             Column::make('start_date')->title('Start')->className('text-center')->responsivePriority(3),
             Column::make('end_date')->title('End')->className('text-center')->responsivePriority(4),
             Column::make('status')->title('Status')->className('text-center')->responsivePriority(5),

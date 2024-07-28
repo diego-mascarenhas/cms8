@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('projects', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('enterprise_id');
-            $table->unsignedTinyInteger('type_id')->nullable();
+            $table->unsignedBigInteger('category_id')->nullable();
             $table->unsignedBigInteger('leader_id');
             $table->string('name');
             $table->text('description')->nullable();
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('cascade');
-            $table->foreign('type_id')->references('id')->on('project_types')->onDelete('set null');
+            $table->foreign('category_id')->references('id')->on('categories')->onDelete('set null');
             $table->foreign('leader_id')->references('id')->on('users')->onDelete('cascade');
         });
     }

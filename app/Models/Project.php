@@ -13,7 +13,7 @@ class Project extends Model
 
     protected $fillable = [
         'enterprise_id',
-        'type_id',
+        'category_id',
         'leader_id',
         'name',
         'description',
@@ -28,9 +28,9 @@ class Project extends Model
         'updated_at'
     ];
 
-    public function type()
+    public function category()
     {
-        return $this->belongsTo(ProjectType::class);
+        return $this->belongsTo(Category::class);
     }
 
     public function client()

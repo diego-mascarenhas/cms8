@@ -23,7 +23,6 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             EnterpriseTypeSeeder::class,
             EnterpriseFiscalConditionTypesSeeder::class,
-            // EnterpriseSeeder::class,
             UserClientSeeder::class,
             HostTypeSeeder::class,
             NetworkDeviceSeeder::class,

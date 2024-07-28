@@ -34,13 +34,11 @@ class ServiceDataTable extends DataTable
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
-            ->editColumn('type_id', function ($data)
-            {
-                return $data->type->name;
+            ->editColumn('category_id', function ($data) {
+                return $data->category->name;
             })
-            ->filterColumn('type_id', function ($query, $keyword)
-            {
-                $query->whereHas('type', function ($q) use ($keyword) {
+            ->filterColumn('category_id', function ($query, $keyword) {
+                $query->whereHas('category', function ($q) use ($keyword) {
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
@@ -81,7 +79,7 @@ class ServiceDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('enterprise_id')->title('Client'),
-            Column::make('type_id')->title('Type'),
+            Column::make('category_id')->title('Category'),
             Column::make('calculated_price')->title('Price')->className('text-center'),
             Column::make('created_at')->title('Created')->className('text-center'),
             Column::make('updated_at')->title('Updated')->className('text-center'),
