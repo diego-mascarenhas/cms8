@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class InvoiceType extends Model
+class EnterpriseType extends Model
 {
     use HasFactory;
 
@@ -13,8 +13,8 @@ class InvoiceType extends Model
 
     protected $fillable = ['name'];
 
-    public function invoices()
+    public function enterprises()
     {
-        return $this->hasMany(Invoice::class);
+        return $this->hasMany(Enterprise::class);
     }
 }

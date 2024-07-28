@@ -5,16 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class InvoiceType extends Model
+class EnterpriseFiscalConditionType extends Model
 {
     use HasFactory;
+
+    protected $table = 'enterprise_fiscal_condition_types';
 
     public $timestamps = false;
 
     protected $fillable = ['name'];
 
-    public function invoices()
+    public function enterpriseBillingAddresses()
     {
-        return $this->hasMany(Invoice::class);
+        return $this->hasMany(EnterpriseBillingAddress::class);
     }
 }

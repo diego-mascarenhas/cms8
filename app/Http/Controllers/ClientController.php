@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ClientDataTable;
-use App\Models\Client;
+use App\Models\Enterprise;
 use Illuminate\Http\Request;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
 use Illuminate\Support\Facades\Auth;
@@ -38,7 +38,7 @@ class ClientController extends Controller
 
         $data['status'] = $request->has('status') ? 1 : 0;
 
-        Client::updateOrCreate(
+        Enterprise::updateOrCreate(
             ['id' => $request->id],
             [
                 'name' => $data['name'],
@@ -54,7 +54,7 @@ class ClientController extends Controller
      */
     public function show(string $id)
     {
-        $page = Client::find($id);
+        $page = Enterprise::find($id);
 
         if (!$page)
         {
@@ -69,7 +69,7 @@ class ClientController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Client::find($id);
+        $data = Enterprise::find($id);
 
         if (!$data)
         {
@@ -92,14 +92,14 @@ class ClientController extends Controller
      */
     public function destroy(string $id)
     {
-        $model = Client::findOrFail($id);
+        $model = Enterprise::findOrFail($id);
 
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
     }
 
-    public function editor(Request $request, Client $page)
+    public function editor(Request $request, Enterprise $page)
     {
         return $this->show_gjs_editor($request, $page);
     }

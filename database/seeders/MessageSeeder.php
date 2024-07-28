@@ -18,7 +18,7 @@ class MessageSeeder extends Seeder
             'name' => 'Test',
             'text' => 'Test Message',
             'type_id' => 2,
-            'category_id' => 1,
+            'category_id' => 5001,
             'status' => 1
         ]);
 

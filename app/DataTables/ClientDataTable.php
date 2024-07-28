@@ -2,7 +2,7 @@
 
 namespace App\DataTables;
 
-use App\Models\Client;
+use App\Models\Enterprise;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -41,21 +41,21 @@ class ClientDataTable extends DataTable
             });
     }
 
-    public function query(Client $model): QueryBuilder
+    public function query(Enterprise $model): QueryBuilder
     {
         $user = auth()->user();
 
         if ($user->can('client.list'))
         {
-            return $model->newQuery();
+            return $model->clients()->newQuery();
         }
         elseif ($user->hasRole('colab'))
         {
-            return $model->where('assigned_to', $user->id)->newQuery();
+            return $model->clients()->where('assigned_to', $user->id)->newQuery();
         }
         else
         {
-            return $model->whereRaw('1 = 0')->newQuery();
+            return $model->clients()->whereRaw('1 = 0')->newQuery();
         }
     }
 

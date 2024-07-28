@@ -10,7 +10,7 @@ class Payment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'client_id',
+        'enterprise_id',
         'transaction_type',
         'date',
         'invoice_id',
@@ -23,9 +23,9 @@ class Payment extends Model
 
     protected $appends = ['transaction_type_label'];
 
-    public function client()
+    public function enterprise()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Enterprise::class);
     }
 
     public function invoice()

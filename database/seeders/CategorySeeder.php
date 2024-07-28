@@ -11,29 +11,40 @@ class CategorySeeder extends Seeder
     /**
      * Run the database seeds.
      */
-    public function run(): void
+    public function run()
     {
         Category::create([
-            'id' => 1,
-            'name' => 'Tester',
+            'id' => 5000,
+            'name' => 'Messages',
+            'parent_id' => null,
             'status' => 1
         ]);
 
         Category::create([
-            'id' => 2,
+            'id' => 5001,
+            'name' => 'Tester',
+            'parent_id' => 5000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'id' => 5002,
             'name' => 'Prospect',
+            'parent_id' => 5000,
             'status' => 0
         ]);
 
         Category::create([
-            'id' => 3,
+            'id' => 5003,
             'name' => 'Demo',
+            'parent_id' => 5000,
             'status' => 1
         ]);
 
         Category::create([
-            'id' => 4,
+            'id' => 5004,
             'name' => 'Staff',
+            'parent_id' => 5000,
             'status' => 1
         ]);
     }

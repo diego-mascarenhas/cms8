@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('client_id');
+            $table->unsignedBigInteger('enterprise_id');
             $table->unsignedBigInteger('billing_id');
             $table->unsignedTinyInteger('type_id');
             $table->enum('operation', ['Buy', 'Sell'])->default('Sell');
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('status')->default(1);
             $table->timestamps();
 
-            $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
+            $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('cascade');
             $table->foreign('type_id')->references('id')->on('invoice_types')->onDelete('cascade');
         });
     }

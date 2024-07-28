@@ -21,16 +21,16 @@ class ServiceController extends Controller
 
         // Get the latest invoices of clients who have invoices in the last three months
         $invoicesLastThreeMonths = DB::table('invoices')
-            ->select('client_id', DB::raw('MAX(date) as last_invoice_date'))
+            ->select('enterprise_id', DB::raw('MAX(date) as last_invoice_date'))
             ->where('date', '>=', $threeMonthsAgo)
-            ->groupBy('client_id')
-            ->havingRaw('COUNT(client_id) >= 3');
+            ->groupBy('enterprise_id')
+            ->havingRaw('COUNT(enterprise_id) >= 3');
 
         // Get the sum of the gross_amount of last month's invoices for those clients
         $totalBuyLastMonth = DB::table('invoices')
             ->joinSub($invoicesLastThreeMonths, 'last_invoices', function ($join)
             {
-                $join->on('invoices.client_id', '=', 'last_invoices.client_id');
+                $join->on('invoices.enterprise_id', '=', 'last_invoices.enterprise_id');
             })
             ->where('invoices.operation', 'Buy')
             ->whereBetween('invoices.date', [$lastMonthStart, $lastMonthEnd])

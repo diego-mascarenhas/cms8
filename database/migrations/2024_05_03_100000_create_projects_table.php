@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('projects', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('client_id');
+            $table->unsignedBigInteger('enterprise_id');
             $table->unsignedTinyInteger('type_id')->nullable();
             $table->unsignedBigInteger('leader_id');
             $table->string('name');
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->foreign('client_id')->references('id')->on('clients')->onDelete('cascade');
+            $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('cascade');
             $table->foreign('type_id')->references('id')->on('project_types')->onDelete('set null');
             $table->foreign('leader_id')->references('id')->on('users')->onDelete('cascade');
         });

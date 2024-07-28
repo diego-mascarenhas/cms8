@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('client_id')->nullable();
+            $table->unsignedBigInteger('enterprise_id')->nullable();
             $table->enum('transaction_type', ['I', 'E'])->default('I'); // 'I' for income, 'E' for expense
             $table->date('date');
             $table->unsignedBigInteger('invoice_id')->nullable();
@@ -21,7 +21,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('status')->default(1);
             $table->timestamps();
 
-            $table->foreign('client_id')->references('id')->on('clients')->onDelete('set null');
+            $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('set null');
             $table->foreign('invoice_id')->references('id')->on('invoices')->onDelete('set null');
         });
     }

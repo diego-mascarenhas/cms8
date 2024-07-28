@@ -25,10 +25,10 @@ class ProjectDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'project.action')
             ->setRowId('id')
-            ->editColumn('client_id', function ($data) {
+            ->editColumn('enterprise_id', function ($data) {
                 return $data->client->name;
             })
-            ->filterColumn('client_id', function ($query, $keyword) {
+            ->filterColumn('enterprise_id', function ($query, $keyword) {
                 $query->whereHas('client', function ($q) use ($keyword) {
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
@@ -90,7 +90,7 @@ class ProjectDataTable extends DataTable
         return [
             Column::make('id')->title('#')->responsivePriority(-1),
             Column::make('name')->title('Name'),
-            Column::make('client_id')->title('Client')->responsivePriority(1),
+            Column::make('enterprise_id')->title('Client')->responsivePriority(1),
             Column::make('type_id')->title('Type')->responsivePriority(2),
             Column::make('start_date')->title('Start')->className('text-center')->responsivePriority(3),
             Column::make('end_date')->title('End')->className('text-center')->responsivePriority(4),

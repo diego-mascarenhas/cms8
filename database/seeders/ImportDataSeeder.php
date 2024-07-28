@@ -13,322 +13,458 @@ class ImportDataSeeder extends Seeder
 {
     public function run()
     {
-        // Users
-        $users = DB::connection('mysql_tmp')->table('contactos')
-            ->whereNotNull('email')
-            ->where('grupo', env('CMS_GROUP'))
-            ->whereNotNull('id_empresa')
-            ->where('area_privada', '!=', 6)
-            ->where('id', '>', 2)
-            //->limit(5)
-            ->get();
-            //dd($users);
+        // // Users
+        // $users = DB::connection('mysql_tmp')->table('contactos')
+        //     ->whereNotNull('email')
+        //     ->where('grupo', env('CMS_GROUP'))
+        //     ->whereNotNull('id_empresa')
+        //     ->where('area_privada', '!=', 6)
+        //     ->where('id', '>', 2)
+        //     //->limit(5)
+        //     ->get();
 
-        foreach ($users as $data)
-        {
-            $existingUser = DB::table('users')->where('email', $data->email)->first();
+        // foreach ($users as $data)
+        // {
+        //     $existingUser = DB::table('users')->where('email', $data->email)->first();
 
-            $phone = $data->celular ?? $data->telefono ?? null;
-            $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
-            if (!empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0)
-                $cleaned_phone = '54' . $cleaned_phone;
-            if (empty($cleaned_phone))
-                $cleaned_phone = null;
+        //     $phone = $data->celular ?? $data->telefono ?? null;
+        //     $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
+        //     if (!empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0)
+        //         $cleaned_phone = '54' . $cleaned_phone;
+        //     if (empty($cleaned_phone))
+        //         $cleaned_phone = null;
 
-            $userData = [
-                'id' => $data->id,
-                'name' => $data->nombre . ' ' . $data->apellido,
-                'phone' => $cleaned_phone,
-                'email' => $data->email,
-                'password' => Hash::make($cleaned_phone),
-                'email_verified_at' => $data->ultima_visita,
-                'created_at' => $data->fecha_alta,
-                'updated_at' => $data->fecha_modificacion,
-            ];
+        //     $userData = [
+        //         'id' => $data->id,
+        //         'name' => $data->nombre . ' ' . $data->apellido,
+        //         'phone' => $cleaned_phone,
+        //         'email' => $data->email,
+        //         'password' => Hash::make($cleaned_phone),
+        //         'email_verified_at' => $data->ultima_visita,
+        //         'created_at' => $data->fecha_alta,
+        //         'updated_at' => $data->fecha_modificacion,
+        //     ];
 
-            if (!$existingUser)
-            {
-                DB::table('users')->insert($userData);
-            }
-        }
+        //     if (!$existingUser)
+        //     {
+        //         DB::table('users')->insert($userData);
+        //     }
+        // }
 
-        // Enterprises
-        $enterprises = DB::connection('mysql_tmp')->table('empresas')
-            ->where('grupo', env('CMS_GROUP'))
-            ->get();
+        // // Categories
+        // $categories = DB::connection('mysql_tmp')->table('categorias_generales')
+        //     ->where('grupo', env('CMS_GROUP'))
+        //     ->orderBy('padre', 'asc')
+        //     ->get();
 
-        foreach ($enterprises as $data)
-        {
-            $existingEnterprise = DB::table('clients')->where('id', $data->id)->first();
+        // foreach ($categories as $data)
+        // {
+        //     $existingCategory = DB::table('categories')->where('id', $data->id)->first();
 
-            $enterpriseData = [
-                'id' => $data->id,
-                'name' => $data->empresa,
-                'status' => $data->estado,
-                'created_at' => $data->fecha_alta,
-                'updated_at' => $data->fecha_modificacion,
-            ];
+        //     $cleaned_description = strip_tags($data->descripcion);
 
-            if (!$existingEnterprise)
-            {
-                DB::table('clients')->insert($enterpriseData);
-            }
-            else
-            {
-                DB::table('clients')->where('id', $existingEnterprise->id)->update($enterpriseData);
-            }
-        }
+        //     $dataArray = [
+        //         'currency_id' => $data->id_moneda,
+        //         'price' => $data->valor,
+        //         'discount' => $data->descuento,
+        //         'frequency' => $data->frecuencia,
+        //     ];
 
-        // Services Type
-        $servicesType = DB::connection('mysql_tmp')->table('categorias_generales')
-            ->where('grupo', env('CMS_GROUP'))
-            ->get();
+        //     $categoryData = [
+        //         'id' => $data->id,
+        //         'name' => $data->categoria,
+        //         'description' => $cleaned_description,
+        //         'data' => json_encode($dataArray),
+        //         'parent_id' => $data->padre,
+        //         'order' => $data->orden,
+        //         'status' => $data->estado,
+        //         'created_at' => $data->fecha_alta,
+        //         'updated_at' => $data->fecha_modificacion,
+        //     ];
 
-        foreach ($servicesType as $data)
-        {
-            $existingServiceType = DB::table('service_type')->where('id', $data->id)->first();
+        //     if (!$existingCategory)
+        //     {
+        //         DB::table('categories')->insert($categoryData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('categories')->where('id', $existingCategory->id)->update($categoryData);
+        //     }
+        // }
 
-            $cleaned_description = strip_tags($data->descripcion);
+        // // Payment Types
+        // $paymentTypes = DB::connection('mysql_tmp')->table('formas_pago')
+        //     ->where('grupo', env('CMS_GROUP'))
+        //     ->get();
 
-            $serviceData = [
-                'id' => $data->id,
-                'name' => $data->categoria,
-                'desctiption' => $cleaned_description,
-                'currency_id' => $data->id_moneda,
-                'price' => $data->valor,
-                'discount' => $data->descuento,
-                'frequency' => $data->frecuencia,
-                'status' => $data->estado,
-                'created_at' => $data->fecha_alta,
-                'updated_at' => $data->fecha_modificacion,
-            ];
+        // foreach ($paymentTypes as $data)
+        // {
+        //     $existingPaymentType = DB::table('payment_types')->where('id', $data->id)->first();
 
-            if (!$existingServiceType)
-            {
-                DB::table('service_type')->insert($serviceData);
-            }
-            else
-            {
-                DB::table('service_type')->where('id', $existingServiceType->id)->update($serviceData);
-            }
-        }
+        //     $paymentTypesData = [
+        //         'id' => $data->id,
+        //         'name' => $data->forma_pago,
+        //         'discount' => $data->descuento,
+        //         'status' => $data->estado,
+        //     ];
 
-        // Services
-        $services = DB::connection('mysql_tmp')
-            ->table('servicios')
-            ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
-            ->where('servicios.grupo', 502)
-            ->where('servicios.estado', '>', 0)
-            ->select('servicios.*', 'servicios_hosting.user')
-            ->get();
+        //     if (!$existingPaymentType)
+        //     {
+        //         DB::table('payment_types')->insert($paymentTypesData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('payment_types')->where('id', $existingPaymentType->id)->update($paymentTypesData);
+        //     }
+        // }
 
-        foreach ($services as $data)
-        {
-            $existingService = DB::table('services')->where('id', $data->id)->first();
+        // // Invoice Types
+        // $invoiceTypes = DB::connection('mysql_tmp')->table('facturas_tipo')
+        //     ->where('grupo', env('CMS_GROUP'))
+        //     ->get();
 
-            $cleaned_description = strip_tags($data->descripcion);
+        // foreach ($invoiceTypes as $data)
+        // {
+        //     $existingInvoiceType = DB::table('invoice_types')->where('id', $data->id)->first();
 
-            $serviceData = [
-                'id' => $data->id,
-                'type_id' => $data->id_categoria,
-                'client_id' => $data->id_empresa,
-                'operation' => ($data->operacion == 'C') ? 'Buy' : 'Sell',
-                'desctiption' => $cleaned_description,
-                'data' => json_encode(['user' => $data->user]),
-                'currency_id' => $data->id_moneda,
-                'price' => $data->valor,
-                'discount' => $data->descuento,
-                'frequency' => $data->frecuencia,
-                'last_billed' => $data->ultima,
-                'next_billing' => $data->proxima,
-                'expires_at' => $data->caduca,
-                'status' => $data->estado,
-                'created_at' => $data->fecha_alta,
-                'updated_at' => $data->fecha_modificacion,
-            ];
+        //     $invoiceTypesData = [
+        //         'id' => $data->id,
+        //         'name' => $data->factura_tipo,
+        //     ];
 
-            if (!$existingService)
-            {
-                DB::table('services')->insert($serviceData);
-            }
-            else
-            {
-                DB::table('services')->where('id', $existingService->id)->update($serviceData);
-            }
-        }
-        
-        // Project Types
-        $projectsType = DB::connection('mysql_tmp')->table('categorias_generales')
-            ->where('grupo', env('CMS_GROUP'))
-            ->whereIn('id', [41, 42, 43, 44, 98, 99])
-            ->get();
+        //     if (!$existingInvoiceType)
+        //     {
+        //         DB::table('invoice_types')->insert($invoiceTypesData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('invoice_types')->where('id', $existingInvoiceType->id)->update($invoiceTypesData);
+        //     }
+        // }
 
-        foreach ($projectsType as $data)
-        {
-            $existingProjectType = DB::table('project_types')->where('id', $data->id)->first();
+        // // Enterprises
+        // $enterprises = DB::connection('mysql_tmp')->table('empresas')
+        //     ->where('grupo', env('CMS_GROUP'))
+        //     ->get();
 
-            $cleaned_description = strip_tags($data->descripcion);
+        // foreach ($enterprises as $data)
+        // {
+        //     $existingEnterprise = DB::table('enterprises')->where('id', $data->id)->first();
 
-            $serviceData = [
-                'id' => $data->id,
-                'name' => $data->categoria
-            ];
 
-            if (!$existingProjectType)
-            {
-                DB::table('project_types')->insert($serviceData);
-            }
-            else
-            {
-                DB::table('project_types')->where('id', $existingProjectType->id)->update($serviceData);
-            }
-        }
+        //     if ($data->id_categoria == 2)
+        //     {
+        //         $type_id = 1;
+        //     }
+        //     elseif ($data->id_categoria == 100)
+        //     {
+        //         $type_id = 3;
+        //     }
+        //     else
+        //     {
+        //         $type_id = 2;
+        //     }
 
-        // Projects
-        $projetcs = DB::connection('mysql_tmp')->table('proyectos')
-            ->leftJoin('contactos', 'proyectos.responsable', '=', 'contactos.username')
-            ->select(
-                'proyectos.numero_proyecto',
-                'proyectos.id_empresa',
-                'proyectos.id_categoria',
-                'contactos.id as leader_id',
-                'proyectos.titulo',
-                'proyectos.descripcion',
-                'proyectos.valor',
-                'proyectos.descuento',
-                'proyectos.costo',
-                'proyectos.desde',
-                'proyectos.hasta',
-                'proyectos.estado',
-                'proyectos.fecha_alta',
-                'proyectos.fecha_modificacion'
-            )
-            ->where('proyectos.grupo', 502)
-            ->where('proyectos.estado', '>', 0)
-            ->get();
+        //     $enterpriseData = [
+        //         'id' => $data->id,
+        //         'name' => $data->empresa,
+        //         'type_id' => $type_id,
+        //         'referred_by' => $data->referido ?? null,
+        //         'address' => $data->domicilio ?? null,
+        //         'postal_code' => $data->codigo_postal ?? null,
+        //         'locality' => $data->localidad ?? null,
+        //         'province' => $data->provincia ?? null,
+        //         'country' => $data->pais ?? null,
+        //         'phone' => $data->telefono ?? null,
+        //         'whatsapp' => $data->whatsapp ?? null,
+        //         'email' => $data->email ?? null,
+        //         'website' => $data->web ?? null,
+        //         'payment_type_id' => $data->id_forma_pago ?? null,
+        //         'invoice_type_id' => $data->id_factura_tipo ?? null,
+        //         'status' => $data->estado,
+        //         'created_at' => $data->fecha_alta,
+        //         'updated_at' => $data->fecha_modificacion,
+        //     ];
 
-        foreach ($projetcs as $data)
-        {
-            $existingProjetc = DB::table('projects')->where('id', $data->numero_proyecto)->first();
+        //     if (!$existingEnterprise)
+        //     {
+        //         DB::table('enterprises')->insert($enterpriseData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('enterprises')->where('id', $existingEnterprise->id)->update($enterpriseData);
+        //     }
+        // }
 
-            $projetcData = [
-                'id' => $data->numero_proyecto,
-                'client_id' => $data->id_empresa,
-                'type_id' => $data->id_categoria,
-                'leader_id' => $data->leader_id,
-                'name' => $data->titulo,
-                'description' => $data->descripcion,
-                'price' => $data->valor,
-                'discount' => $data->descuento,
-                'cost' => $data->costo,
-                'start_date' => $data->desde,
-                'end_date' => $data->hasta,
-                'status' => $data->estado,
-                'created_at' => $data->fecha_alta,
-                'updated_at' => $data->fecha_modificacion,
-            ];
+        // // Enterprise Billing Address 
+        // $EnterpriseBillingAddress = DB::connection('mysql_tmp')->table('empresas_fiscales')
+        //     ->where('grupo', env('CMS_GROUP'))
+        //     ->get();
 
-            if (!$existingProjetc)
-            {
-                DB::table('projects')->insert($projetcData);
-            }
-            else
-            {
-                DB::table('projects')->where('id', $existingProjetc->id)->update($projetcData);
-            }
-        }
+        // foreach ($EnterpriseBillingAddress as $data)
+        // {
+        //     $existingEnterpriseBillingAddress = DB::table('enterprise_billing_addresses')->where('id', $data->id)->first();
 
-        // Invoice Types
-        $invoiceTypes = DB::connection('mysql_tmp')->table('facturas_tipo')
-            ->where('grupo', env('CMS_GROUP'))
-            ->get();
+        //     $enterpriseBillingAddressData = [
+        //         'id' => $data->id,
+        //         'name' => $data->razon_social,
+        //         'enterprise_id' => $data->id_empresa,
+        //         'fiscal_condition_type_id' => $data->id_condicion_iva ?? null,
+        //         'identification_number' => $data->cuit ?? null,
+        //         'address' => $data->domicilio ?? null,
+        //         'postal_code' => $data->codigo_postal ?? null,
+        //         'locality' => $data->localidad ?? null,
+        //         'province' => $data->provincia ?? null,
+        //         'country' => $data->pais ?? null,
+        //         'status' => $data->estado,
+        //         'created_at' => $data->fecha_alta,
+        //         'updated_at' => $data->fecha_modificacion,
+        //     ];
 
-        foreach ($invoiceTypes as $data)
-        {
-            $existingInvoiceType = DB::table('invoice_types')->where('id', $data->id)->first();
+        //     if (!$existingEnterpriseBillingAddress)
+        //     {
+        //         DB::table('enterprise_billing_addresses')->insert($enterpriseBillingAddressData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('enterprise_billing_addresses')->where('id', $existingEnterpriseBillingAddress->id)->update($enterpriseBillingAddressData);
+        //     }
+        // }
 
-            $invoiceTypesData = [
-                'id' => $data->id,
-                'name' => $data->factura_tipo,
-            ];
+        // // Services Type
+        // $servicesType = DB::connection('mysql_tmp')->table('categorias_generales')
+        //     ->where('grupo', env('CMS_GROUP'))
+        //     ->get();
 
-            if (!$existingInvoiceType)
-            {
-                DB::table('invoice_types')->insert($invoiceTypesData);
-            }
-            else
-            {
-                DB::table('invoice_types')->where('id', $existingInvoiceType->id)->update($invoiceTypesData);
-            }
-        }
+        // foreach ($servicesType as $data)
+        // {
+        //     $existingServiceType = DB::table('service_type')->where('id', $data->id)->first();
 
-        // Invoices
-        $invoices = DB::connection('mysql_tmp')
-            ->table('facturas')
-            ->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
-            ->leftJoin('empresas', 'empresas_fiscales.id_empresa', '=', 'empresas.id')
-            ->where('facturas.grupo', 502)
+        //     $cleaned_description = strip_tags($data->descripcion);
+
+        //     $serviceData = [
+        //         'id' => $data->id,
+        //         'name' => $data->categoria,
+        //         'desctiption' => $cleaned_description,
+        //         'currency_id' => $data->id_moneda,
+        //         'price' => $data->valor,
+        //         'discount' => $data->descuento,
+        //         'frequency' => $data->frecuencia,
+        //         'status' => $data->estado,
+        //         'created_at' => $data->fecha_alta,
+        //         'updated_at' => $data->fecha_modificacion,
+        //     ];
+
+        //     if (!$existingServiceType)
+        //     {
+        //         DB::table('service_type')->insert($serviceData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('service_type')->where('id', $existingServiceType->id)->update($serviceData);
+        //     }
+        // }
+
+        // // Services
+        // $services = DB::connection('mysql_tmp')
+        //     ->table('servicios')
+        //     ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
+        //     ->where('servicios.grupo', 502)
+        //     ->where('servicios.estado', '>', 0)
+        //     ->select('servicios.*', 'servicios_hosting.user')
+        //     ->get();
+
+        // foreach ($services as $data)
+        // {
+        //     $existingService = DB::table('services')->where('id', $data->id)->first();
+
+        //     $cleaned_description = strip_tags($data->descripcion);
+
+        //     $serviceData = [
+        //         'id' => $data->id,
+        //         'type_id' => $data->id_categoria,
+        //         'enterprise_id' => $data->id_empresa,
+        //         'operation' => ($data->operacion == 'C') ? 'Buy' : 'Sell',
+        //         'desctiption' => $cleaned_description,
+        //         'data' => json_encode(['user' => $data->user]),
+        //         'currency_id' => $data->id_moneda,
+        //         'price' => $data->valor,
+        //         'discount' => $data->descuento,
+        //         'frequency' => $data->frecuencia,
+        //         'last_billed' => $data->ultima,
+        //         'next_billing' => $data->proxima,
+        //         'expires_at' => $data->caduca,
+        //         'status' => $data->estado,
+        //         'created_at' => $data->fecha_alta,
+        //         'updated_at' => $data->fecha_modificacion,
+        //     ];
+
+        //     if (!$existingService)
+        //     {
+        //         DB::table('services')->insert($serviceData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('services')->where('id', $existingService->id)->update($serviceData);
+        //     }
+        // }
+
+        // // Project Types
+        // $projectsType = DB::connection('mysql_tmp')->table('categorias_generales')
+        //     ->where('grupo', env('CMS_GROUP'))
+        //     ->whereIn('id', [41, 42, 43, 44, 98, 99])
+        //     ->get();
+
+        // foreach ($projectsType as $data)
+        // {
+        //     $existingProjectType = DB::table('project_types')->where('id', $data->id)->first();
+
+        //     $cleaned_description = strip_tags($data->descripcion);
+
+        //     $serviceData = [
+        //         'id' => $data->id,
+        //         'name' => $data->categoria
+        //     ];
+
+        //     if (!$existingProjectType)
+        //     {
+        //         DB::table('project_types')->insert($serviceData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('project_types')->where('id', $existingProjectType->id)->update($serviceData);
+        //     }
+        // }
+
+        // // Projects
+        // $projetcs = DB::connection('mysql_tmp')->table('proyectos')
+        //     ->leftJoin('contactos', 'proyectos.responsable', '=', 'contactos.username')
+        //     ->select(
+        //         'proyectos.numero_proyecto',
+        //         'proyectos.id_empresa',
+        //         'proyectos.id_categoria',
+        //         'contactos.id as leader_id',
+        //         'proyectos.titulo',
+        //         'proyectos.descripcion',
+        //         'proyectos.valor',
+        //         'proyectos.descuento',
+        //         'proyectos.costo',
+        //         'proyectos.desde',
+        //         'proyectos.hasta',
+        //         'proyectos.estado',
+        //         'proyectos.fecha_alta',
+        //         'proyectos.fecha_modificacion'
+        //     )
+        //     ->where('proyectos.grupo', 502)
+        //     ->where('proyectos.estado', '>', 0)
+        //     ->get();
+
+        // foreach ($projetcs as $data)
+        // {
+        //     $existingProjetc = DB::table('projects')->where('id', $data->numero_proyecto)->first();
+
+        //     $projetcData = [
+        //         'id' => $data->numero_proyecto,
+        //         'enterprise_id' => $data->id_empresa,
+        //         'type_id' => $data->id_categoria,
+        //         'leader_id' => $data->leader_id,
+        //         'name' => $data->titulo,
+        //         'description' => $data->descripcion,
+        //         'price' => $data->valor,
+        //         'discount' => $data->descuento,
+        //         'cost' => $data->costo,
+        //         'start_date' => $data->desde,
+        //         'end_date' => $data->hasta,
+        //         'status' => $data->estado,
+        //         'created_at' => $data->fecha_alta,
+        //         'updated_at' => $data->fecha_modificacion,
+        //     ];
+
+        //     if (!$existingProjetc)
+        //     {
+        //         DB::table('projects')->insert($projetcData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('projects')->where('id', $existingProjetc->id)->update($projetcData);
+        //     }
+        // }
+
+        // // Invoices
+        // $invoices = DB::connection('mysql_tmp')
+        //     ->table('facturas')
+        //     ->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
+        //     ->leftJoin('empresas', 'empresas_fiscales.id_empresa', '=', 'empresas.id')
+        //     ->where('facturas.grupo', 502)
+        //     ->where('facturas.estado', '>', 0)
+        //     ->select('facturas.*', 'empresas.id as enterprise_id')
+        //     ->get();
+
+        // foreach ($invoices as $data)
+        // {
+        //     $existingInvoice = DB::table('invoices')->where('id', $data->id)->first();
+
+        //     $operation = $data->operacion === 'C' ? 'Buy' : 'Sell';
+
+        //     $invoiceData = [
+        //         'id' => $data->id,
+        //         'enterprise_id' => $data->enterprise_id,
+        //         'billing_id' => $data->id_empresa_fiscal,
+        //         'type_id' => $data->id_factura_tipo,
+        //         'operation' => $operation,
+        //         'number' => $data->numero_talonario . $data->numero_factura,
+        //         'date' => $data->fecha,
+        //         'due_date' => $data->vencimiento,
+        //         'gross_amount' => $data->bruto,
+        //         'discount' => $data->descuento,
+        //         'total_amount' => $data->total_neto,
+        //         'balance' => $data->saldo,
+        //         'status' => $data->estado,
+        //         'created_at' => $data->fecha_alta,
+        //         'updated_at' => $data->fecha_modificacion,
+        //     ];
+
+        //     if (!$existingInvoice)
+        //     {
+        //         DB::table('invoices')->insert($invoiceData);
+        //     }
+        //     else
+        //     {
+        //         DB::table('invoices')->where('id', $existingInvoice->id)->update($invoiceData);
+        //     }
+        // }
+
+        // Invoice Items
+        $invoiceItems = DB::connection('mysql_tmp')->table('facturas_items')
+            ->join('facturas', 'facturas_items.id_factura', '=', 'facturas.id')
+            ->where('facturas_items.grupo', env('CMS_GROUP'))
             ->where('facturas.estado', '>', 0)
-            ->select('facturas.*', 'empresas.id as client_id')
+            ->select('facturas_items.*')
             ->get();
 
-        foreach ($invoices as $data)
+        foreach ($invoiceItems as $data)
         {
-            $existingInvoice = DB::table('invoices')->where('id', $data->id)->first();
+            $existingInvoiceItem = DB::table('invoice_items')->where('id', $data->id)->first();
 
-            $operation = $data->operacion === 'C' ? 'Buy' : 'Sell';
-
-            $invoiceData = [
-                'id' => $data->id,
-                'client_id' => $data->client_id,
-                'billing_id' => $data->id_empresa_fiscal,
-                'type_id' => $data->id_factura_tipo,
-                'operation' => $operation,
-                'number' => $data->numero_talonario . $data->numero_factura,
-                'date' => $data->fecha,
-                'due_date' => $data->vencimiento,
-                'gross_amount' => $data->bruto,
+            $invoiceItemData = [
+                'invoice_id' => $data->id_factura,
+                'category_id' => $data->id_categoria,
+                'description' => $data->descripcion,
+                'quantity' => 1,
+                'unit_price' => $data->valor,
                 'discount' => $data->descuento,
-                'total_amount' => $data->total_neto,
-                'balance' => $data->saldo,
-                'status' => $data->estado,
+                'tax_percentage' => 21,
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
             ];
 
-            if (!$existingInvoice)
+            if (!$existingInvoiceItem)
             {
-                DB::table('invoices')->insert($invoiceData);
+                DB::table('invoice_items')->insert($invoiceItemData);
             }
             else
             {
-                DB::table('invoices')->where('id', $existingInvoice->id)->update($invoiceData);
-            }
-        }
-
-        // Payment Types
-        $paymentTypes = DB::connection('mysql_tmp')->table('formas_pago')
-            ->where('grupo', env('CMS_GROUP'))
-            ->get();
-
-        foreach ($paymentTypes as $data)
-        {
-            $existingPaymentType = DB::table('payment_types')->where('id', $data->id)->first();
-
-            $paymentTypesData = [
-                'id' => $data->id,
-                'name' => $data->forma_pago,
-                'discount' => $data->descuento,
-                'status' => $data->estado,
-            ];
-
-            if (!$existingPaymentType)
-            {
-                DB::table('payment_types')->insert($paymentTypesData);
-            }
-            else
-            {
-                DB::table('payment_types')->where('id', $existingPaymentType->id)->update($paymentTypesData);
+                DB::table('invoice_items')->where('id', $existingInvoiceItem->id)->update($invoiceItemData);
             }
         }
 
@@ -345,7 +481,7 @@ class ImportDataSeeder extends Seeder
             $transaction_type = $data->transaccion === 'I' ? 'I' : 'E';
 
             $paymentData = [
-                'client_id' => $data->id_empresa,
+                'enterprise_id' => $data->id_empresa,
                 'transaction_type' => $transaction_type,
                 'date' => $data->fecha,
                 'invoice_id' => $data->id_factura,
@@ -379,7 +515,7 @@ class ImportDataSeeder extends Seeder
             $communicationTypesData = [
                 'id' => $data->id,
                 'name' => $data->tipo,
-                'status' => $data->estado-1,
+                'status' => $data->estado - 1,
             ];
 
             if (!$existingCommunicationTypes)
@@ -428,14 +564,16 @@ class ImportDataSeeder extends Seeder
             ->where('comunicaciones.estado', '>', 0)
             ->select('comunicaciones.*', 'contactos.email')
             ->orderBy('comunicaciones.id')
-            ->chunk($chunkSize, function ($communications) {
+            ->chunk($chunkSize, function ($communications)
+            {
                 $userEmails = $communications->pluck('email')->filter()->unique()->toArray();
                 $users = User::whereIn('email', $userEmails)->get()->keyBy('email');
 
                 $insertData = [];
                 $updateData = [];
 
-                foreach ($communications as $data) {
+                foreach ($communications as $data)
+                {
                     $userId = $users->get($data->email)?->id;
 
                     $communicationData = [
@@ -451,19 +589,25 @@ class ImportDataSeeder extends Seeder
                     ];
 
                     $existingCommunication = DB::table('communications')->where('id', $data->id)->first();
-                    if (!$existingCommunication) {
+                    if (!$existingCommunication)
+                    {
                         $insertData[] = $communicationData;
-                    } else {
+                    }
+                    else
+                    {
                         $updateData[] = $communicationData;
                     }
                 }
 
-                if (!empty($insertData)) {
+                if (!empty($insertData))
+                {
                     DB::table('communications')->insert($insertData);
                 }
 
-                if (!empty($updateData)) {
-                    foreach ($updateData as $update) {
+                if (!empty($updateData))
+                {
+                    foreach ($updateData as $update)
+                    {
                         DB::table('communications')->where('id', $update['id'])->update($update);
                     }
                 }

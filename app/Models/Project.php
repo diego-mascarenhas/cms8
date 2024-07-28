@@ -12,7 +12,7 @@ class Project extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'client_id',
+        'enterprise_id',
         'type_id',
         'leader_id',
         'name',
@@ -35,7 +35,7 @@ class Project extends Model
 
     public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Enterprise::class, 'enterprise_id');
     }
 
     public function leader()

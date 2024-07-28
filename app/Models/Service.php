@@ -18,7 +18,7 @@ class Service extends Model
 
     protected $fillable = [
         'type_id',
-        'client_id',
+        'enterprise_id',
         'operation',
         'description',
         'data',
@@ -45,7 +45,7 @@ class Service extends Model
 
     public function client()
     {
-        return $this->belongsTo(Client::class, 'client_id');
+        return $this->belongsTo(Enterprise::class, 'enterprise_id');
     }
 
     public function services()
