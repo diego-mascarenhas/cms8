@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
@@ -21,6 +22,24 @@ class UserSeeder extends Seeder
         $user->categories()->attach([5001, 5002, 5003, 5004]);
 
         // Admin
+        $appUrl = env('APP_URL', 'localhost');
+        $parsedUrl = parse_url($appUrl, PHP_URL_HOST) ?? $appUrl;
+
+        if (Str::startsWith($parsedUrl, 'www.'))
+        {
+            $parsedUrl = substr($parsedUrl, 4);
+        }
+
+        $adminEmail = 'admin@' . $parsedUrl;
+
+        $user = User::factory()->create([
+            'name' => 'Admin User',
+            'email' => $adminEmail,
+            'password' => Hash::make('Simplicity!'),
+            'email_verified_at' => now(),
+        ]);
+        $user->assignRole([2, 7]);
+
         $user = User::factory()->create([
             'name' => 'Pablo Barrozo',
             'phone' => 5491138738376,

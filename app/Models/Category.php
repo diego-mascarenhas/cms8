@@ -13,7 +13,7 @@ class Category extends Model
 
     public $timestamps = true;
 
-	protected $table = 'categories';
+    protected $table = 'categories';
 
     protected $fillable = ['name', 'description', 'data', 'parent_id', 'order', 'status'];
 
@@ -30,7 +30,7 @@ class Category extends Model
     {
         return $this->hasMany(Category::class, 'parent_id');
     }
-    
+
     public function users()
     {
         return $this->belongsToMany(User::class, 'category_user', 'category_id', 'user_id');
@@ -46,9 +46,16 @@ class Category extends Model
         return $this->hasMany(InvoiceItem::class, 'category_id');
     }
 
-    public static function getOptions()
+    public static function getOptions($parentId = null)
     {
-        return self::all()->map(function ($data)
+        $query = self::query();
+
+        if (!is_null($parentId))
+        {
+            $query->where('parent_id', $parentId);
+        }
+
+        return $query->get()->map(function ($data)
         {
             return [
                 'id' => $data->id,

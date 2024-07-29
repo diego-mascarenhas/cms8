@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ProjectDataTable;
 use App\Models\Project;
-use App\Models\ProjectType;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use stdClass;
 use Carbon\Carbon;
@@ -63,7 +63,7 @@ class ProjectController extends Controller
     public function edit(string $id)
     {
         $data = Project::find($id);
-        $data->types = ProjectType::getOptions();
+        $data->types = Category::getOptions(40);
 
         if (!$data)
         {
