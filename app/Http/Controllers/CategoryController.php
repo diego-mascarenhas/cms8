@@ -88,4 +88,34 @@ class CategoryController extends Controller
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
     }
+
+    public function report()
+{
+    $categories = Category::with(['invoiceItems.invoice.enterprise'])->get();
+
+    $reportData = $categories->map(function ($category) {
+        $totalAmount = $category->invoiceItems->sum(function ($item) {
+            return $item->quantity * $item->unit_price - ($item->discount ?? 0);
+        });
+
+        if ($totalAmount == 0) {
+            return null; // Filtra categorías con total de cero
+        }
+
+        // Determina el tipo de operación (ingreso o gasto)
+        $operation = $category->invoiceItems->first()->invoice->operation ?? 'Unknown';
+        $labelClass = ($operation === 'Sell') ? 'bg-success' : 'bg-danger'; // Verde para ingresos, rojo para gastos
+
+        return [
+            'category' => $category->name,
+            'description' => $category->description,
+            'items' => $category->invoiceItems,
+            'total' => $totalAmount,
+            'labelClass' => $labelClass,
+        ];
+    })->filter(); // Elimina las categorías nulas
+
+    return view('category.report', compact('reportData'));
+}
+
 }

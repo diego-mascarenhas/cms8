@@ -19,9 +19,18 @@ class InvoiceItem extends Model
         'tax_percentage',
     ];
 
-    /**
-     * Get the category associated with the invoice item.
-     */
+    protected static function booted()
+    {
+        static::addGlobalScope('itemsFromJuly2024', function ($builder) {
+            $builder->where('created_at', '>=', '2024-07-01 00:00:00');
+        });
+    }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+    
     public function category()
     {
         return $this->belongsTo(Category::class);

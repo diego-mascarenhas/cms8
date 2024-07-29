@@ -480,6 +480,9 @@ Route::middleware(['auth'])->group(function ()
 
     // WhatsApp
     Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
+
+    // Report
+    Route::get('/app/invoice/report', [CategoryController::class, 'report'])->name('app-invoice-report');
 });
 
 // Editor
