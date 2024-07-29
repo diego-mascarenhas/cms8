@@ -483,6 +483,9 @@ Route::middleware(['auth'])->group(function ()
 
     // Report
     Route::get('/app/invoice/report', [CategoryController::class, 'report'])->name('app-invoice-report');
+    Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('category.items');
+
+
 });
 
 // Editor

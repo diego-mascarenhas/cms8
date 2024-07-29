@@ -43,7 +43,7 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Report</h4>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Report/</span> {{ $category->name }}</h4>
         <p class="text-muted">View reports</p>
     </div>
 </div>
@@ -69,42 +69,31 @@
 @endif
 
 <div class="row">
-    @foreach($reportData as $data)
-        <div class="col-md-4 mb-3">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between pb-0">
-                    <div class="card-title mb-0">
-                        <h5 class="mb-0">{{ $data['category'] }}</h5>
-                        <small class="text-muted">{{ $data['description'] }}</small>
+    <div class="col-12">
+        <ul class="list-group">
+            @foreach($items as $item)
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ $item->description }}</strong><br>
+                        <small class="text-muted">{{ $item->invoice->enterprise->name ?? 'Unknown' }}</small>
                     </div>
-                    <div class="dropdown">
-                        <button class="btn p-0" type="button" id="moreItemsDropdown{{ $loop->index }}" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="ti ti-dots-vertical ti-sm text-muted"></i>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="moreItemsDropdown{{ $loop->index }}">
-                            <a class="dropdown-item" href="{{ route('category.items', ['id' => $data['id']]) }}">View All</a>
-                        </div>
+                    <div class="d-flex align-items-center">
+                        @if($item->discount !== null && $item->discount > 0)
+                            <span class="badge bg-info me-2">
+                                Discount: ${{ number_format($item->discount, 2) }}
+                            </span>
+                        @endif
+                        <span class="badge {{ $item->invoice->operation === 'Sell' ? 'bg-success' : 'bg-danger' }}">
+                            ${{ number_format($item->quantity * $item->unit_price - ($item->discount ?? 0), 2) }}
+                        </span>
                     </div>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        @foreach($data['items']->take(5) as $item)
-                            <li class="list-group-item">
-                                {{ $item->description }} <br>
-                                <small class="text-muted">{{ $item->invoice->enterprise->name ?? 'Unknown' }}</small>
-                                <span class="badge {{ $data['labelClass'] }} float-end">
-                                    ${{ number_format($item->quantity * $item->unit_price - ($item->discount ?? 0), 2) }}
-                                </span>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-                <div class="card-footer text-end">
-                    <strong>Total: ${{ number_format($data['total'], 2) }}</strong>
-                </div>
-            </div>
+                </li>
+            @endforeach
+        </ul>
+        <div class="mt-4 text-end">
+            <h4><strong>Total: ${{ number_format($totalAmount, 2) }}</strong></h4>
         </div>
-    @endforeach
+    </div>
 </div>
 @endsection
 

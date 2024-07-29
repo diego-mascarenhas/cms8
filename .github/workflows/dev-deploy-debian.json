@@ -6,7 +6,7 @@
         "password": "",
         "port": "15022",
         "beforeHooks": "echo $GITHUB_SHA",
-        "afterHooks": "php artisan migrate:fresh --seed && php artisan db:seed --class=ImportDataSeeder && php artisan app:register-application",
+        "afterHooks": "php artisan migrate:fresh --seed && php artisan app:register-application",
         "path": "/var/www/html"
     }   
 ]
