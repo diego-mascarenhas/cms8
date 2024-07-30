@@ -18,7 +18,6 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
         $schedule->command('inspire')
             ->hourly()
             ->appendOutputTo(storage_path('logs/inspire.log'));
@@ -59,7 +58,7 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('db:seed', [
             '--class' => 'ImportDataSeeder',
-        ])->dailyAt('12:30')
+        ])->dailyAt('07:00')
             ->timezone('Europe/Madrid')
             ->onOneServer()
             ->withoutOverlapping()

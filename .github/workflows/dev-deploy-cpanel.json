@@ -5,8 +5,7 @@
         "username": "revstag",
         "password": "",
         "port": "13022",
-        "beforeHooks": "php artisan migrate:fresh --seed && php artisan db:seed --class=ImportDataSeeder && php artisan cache:clear && php artisan config:clear && php artisan route:clear && php artisan view:clear"
-,
+        "beforeHooks": "php artisan db:backup-restore backup --tables=hosts --tables=pages || true && php artisan migrate:fresh --seed && php artisan db:seed --class=ImportDataSeeder && php artisan db:backup-restore restore --tables=hosts --tables=pages || true && php artisan cache:clear && php artisan config:clear && php artisan route:clear && php artisan view:clear",
         "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
     },
