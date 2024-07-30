@@ -162,6 +162,7 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\InvoiceController;
@@ -413,6 +414,15 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/app/client', [ClientController::class, 'store'])->name('client.store');
     Route::put('/app/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/app/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
+
+    // Suppliers
+    Route::get('/app/supplier/list', [SupplierController::class, 'index'])->name('app-supplier-list');
+    Route::get('/app/supplier/create', [SupplierController::class, 'create'])->name('supplier.create');
+    Route::get('/app/supplier/{id}', [SupplierController::class, 'show'])->name('supplier.show');
+    Route::get('/app/supplier/{id}/edit', [SupplierController::class, 'edit'])->name('supplier.edit');
+    Route::post('/app/supplier', [SupplierController::class, 'store'])->name('supplier.store');
+    Route::put('/app/supplier/{id}', [SupplierController::class, 'update'])->name('supplier.update');
+    Route::delete('/app/supplier/{id}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
 
     // Services
     Route::get('/app/service/list', [ServiceController::class, 'index'])->name('app-service-list');

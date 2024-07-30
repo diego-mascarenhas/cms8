@@ -95,8 +95,6 @@ jobs:
             mkdir -p ${{ matrix.server.path }}/storage/framework/{cache,sessions,testing,views}
             mkdir -p ${{ matrix.server.path }}/storage/framework/cache
             chmod -R 0777 ${{ matrix.server.path }}/storage
-            [ -L ${{ matrix.server.path }}/public/storage ] && rm ${{ matrix.server.path }}/public/storage
-            ln -s ${{ matrix.server.path }}/storage/app/public ${{ matrix.server.path }}/public/storage
 
   run-before-hooks:
     name: "${{ matrix.server.name }}: Before hook"
@@ -184,6 +182,7 @@ jobs:
             if grep -q '^APP_KEY=' .env && ! grep -q 'APP_KEY=[a-zA-Z0-9]' .env; then
               echo "APP_KEY is empty. Running 'php artisan key:generate'."
               php artisan key:generate
+              php artisan storage:link
             else
               echo "APP_KEY already set. Skipping 'php artisan key:generate'."
             fi

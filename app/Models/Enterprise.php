@@ -35,6 +35,11 @@ class Enterprise extends Model
     {
         return $query->where('type_id', 1);
     }
+
+    public function scopeSuppliers($query)
+    {
+        return $query->where('type_id', 2);
+    }
     
     public function type()
     {
@@ -51,11 +56,16 @@ class Enterprise extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function enterpriseBillingAddresses()
+    {
+        return $this->hasMany(EnterpriseBillingAddress::class);
+    }
+
     public function enterpriseBillingAddress()
     {
-        return $this->hasMany(EnterpriseBillingAddress::class)
-                ->where('status', 1)
-                ->latest()
-                ->first();
+        return $this->enterpriseBillingAddresses()
+                    ->where('status', 1)
+                    ->latest()
+                    ->first();
     }
 }

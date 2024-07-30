@@ -6,6 +6,8 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use App\Console\Commands\UpdateHostMetrics;
 
+use Log;
+
 class Kernel extends ConsoleKernel
 {
     protected $commands = [
@@ -53,6 +55,22 @@ class Kernel extends ConsoleKernel
             ->when(function ()
             {
                 return !empty(env('BRULER_API_KEY'));
+            });
+
+        $schedule->command('db:seed', [
+            '--class' => 'ImportDataSeeder',
+        ])->dailyAt('12:30')
+            ->timezone('Europe/Madrid')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->before(function ()
+            {
+                Log::info('Starting the ImportDataSeeder task.');
+            })
+            ->after(function ()
+            {
+                Log::info('Finished the ImportDataSeeder task.');
             });
     }
 

@@ -11,7 +11,7 @@ use Yajra\DataTables\Services\DataTable;
 
 use Carbon\Carbon;
 
-class ClientDataTable extends DataTable
+class SupplierDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
@@ -21,18 +21,20 @@ class ClientDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'client.action')
+            ->addColumn('action', 'supplier.action')
             ->setRowId('id')
-            ->addColumn('user_id', function ($row) {
-                return $row->user ? $row->user->name : null;
+            ->addColumn('billing_address', function ($row) {
+                $billingAddress = $row->enterpriseBillingAddress();
+                return $billingAddress ? $billingAddress->name : null;
             })
-            ->filterColumn('user_id', function ($query, $keyword) {
-                $query->whereHas('user', function ($q) use ($keyword) {
-                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+            ->filterColumn('billing_address', function ($query, $keyword) {
+                $query->whereHas('enterpriseBillingAddresses', function ($q) use ($keyword) {
+                    $q->where('name', 'like', "%{$keyword}%");
                 });
             })
-            ->addColumn('assignee', function ($row) {
-                return $row->assignee ? $row->assignee->name : null;
+            ->addColumn('status', function ($row) {
+                return $row->status ? '<span class="badge rounded-pill bg-label-success">Active</span>' :
+                                      '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
             })
             ->rawColumns(['name', 'action', 'status'])
             ->editColumn('status', function ($data)
@@ -50,26 +52,13 @@ class ClientDataTable extends DataTable
 
     public function query(Enterprise $model): QueryBuilder
     {
-        $user = auth()->user();
-
-        if ($user->can('client.list'))
-        {
-            return $model->clients()->newQuery();
-        }
-        elseif ($user->hasRole('colab'))
-        {
-            return $model->clients()->where('assigned_to', $user->id)->newQuery();
-        }
-        else
-        {
-            return $model->clients()->whereRaw('1 = 0')->newQuery();
-        }
+        return $model->suppliers()->newQuery();
     }
 
     public function html(): HtmlBuilder
     {
         return $this->builder()
-            ->setTableId('client-table')
+            ->setTableId('supplier-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
@@ -81,8 +70,7 @@ class ClientDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')->title('Name'),
-            Column::make('user_id')->title('User'),
-            Column::make('assigned_to')->title('Assigned'),
+            Column::make('billing_address')->title('Billing Address'),
             Column::make('status')->title('Status')->className('text-center'),
             Column::computed('action')->title('Actions')->width(20)->className('text-center')
                 ->exportable(false)
@@ -94,6 +82,6 @@ class ClientDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Client_' . date('YmdHis');
+        return 'Supplier_' . date('YmdHis');
     }
 }

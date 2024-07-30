@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Cache;
 use App\Services\Bruler\AuthService;
 use App\Models\Bruler\Products;
 
+use Log;
+
 class BrulerFetchDataCommand extends Command
 {
     protected $signature = 'fetch:bruler-data';
@@ -35,6 +37,7 @@ class BrulerFetchDataCommand extends Command
             if (!$brulerApiToken)
             {
                 $this->error('Authentication failed. Unable to retrieve data from the Bruler API.');
+                Log::info('Bruler: Authentication failed. Unable to retrieve data from the Bruler API.');
                 return;
             }
 
@@ -94,6 +97,8 @@ class BrulerFetchDataCommand extends Command
                 {
                     $this->info("Data successfully inserted or updated in the products table.");
                 }
+
+                Log::info('Bruler: Data successfully inserted or updated in the products table.');
             }
             else
             {
@@ -101,11 +106,15 @@ class BrulerFetchDataCommand extends Command
                 {
                     $this->info("No changes detected. Data remains the same.");
                 }
+
+                Log::info('Bruler: No changes detected. Data remains the same.');
             }
         }
         else
         {
             $this->error('Failed to retrieve data from the Bruler API.');
+
+            Log::info('Bruler: Failed to retrieve data from the Bruler API.');
         }
     }
 }

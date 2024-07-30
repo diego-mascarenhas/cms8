@@ -14,6 +14,7 @@ class ImportDataSeeder extends Seeder
     public function run()
     {
         // Users
+        echo "Starting migration of Users...\n";
         $users = DB::connection('mysql_tmp')->table('contactos')
             ->whereNotNull('email')
             ->where('grupo', env('CMS_GROUP'))
@@ -52,6 +53,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Categories
+        echo "Starting migration of Categories...\n";
         $categories = DB::connection('mysql_tmp')->table('categorias_generales')
             ->where('grupo', env('CMS_GROUP'))
             ->orderBy('padre', 'asc')
@@ -93,6 +95,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Payment Types
+        echo "Starting migration of Payment Types...\n";
         $paymentTypes = DB::connection('mysql_tmp')->table('formas_pago')
             ->where('grupo', env('CMS_GROUP'))
             ->get();
@@ -119,6 +122,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Invoice Types
+        echo "Starting migration of Invoice Types...\n";
         $invoiceTypes = DB::connection('mysql_tmp')->table('facturas_tipo')
             ->where('grupo', env('CMS_GROUP'))
             ->get();
@@ -143,6 +147,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Enterprises
+        echo "Starting migration of Enterprises...\n";
         $enterprises = DB::connection('mysql_tmp')->table('empresas')
             ->where('grupo', env('CMS_GROUP'))
             ->get();
@@ -165,10 +170,18 @@ class ImportDataSeeder extends Seeder
                 $type_id = 2;
             }
 
+            $userId = $data->id_contacto ?? null;
+
+            if ($userId !== null && !User::where('id', $userId)->exists())
+            {
+                $userId = null;
+            }
+
             $enterpriseData = [
                 'id' => $data->id,
                 'name' => $data->empresa,
                 'type_id' => $type_id,
+                'user_id' => $userId,
                 'referred_by' => $data->referido ?? null,
                 'address' => $data->domicilio ?? null,
                 'postal_code' => $data->codigo_postal ?? null,
@@ -196,7 +209,8 @@ class ImportDataSeeder extends Seeder
             }
         }
 
-        // Enterprise Billing Address 
+        // Enterprise Billing Address
+        echo "Starting migration of Enterprise Billing Address...\n";
         $EnterpriseBillingAddress = DB::connection('mysql_tmp')->table('empresas_fiscales')
             ->where('grupo', env('CMS_GROUP'))
             ->get();
@@ -232,6 +246,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Services
+        echo "Starting migration of Services...\n";
         $services = DB::connection('mysql_tmp')
             ->table('servicios')
             ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
@@ -276,6 +291,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Projects
+        echo "Starting migration of Projects...\n";
         $projetcs = DB::connection('mysql_tmp')->table('proyectos')
             ->leftJoin('contactos', 'proyectos.responsable', '=', 'contactos.username')
             ->select(
@@ -330,6 +346,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Invoices
+        echo "Starting migration of Invoices...\n";
         $invoices = DB::connection('mysql_tmp')
             ->table('facturas')
             ->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
@@ -374,6 +391,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Invoice Items
+        echo "Starting migration of Invoices Items...\n";
         $invoiceItems = DB::connection('mysql_tmp')->table('facturas_items')
             ->join('facturas', 'facturas_items.id_factura', '=', 'facturas.id')
             ->where('facturas_items.grupo', env('CMS_GROUP'))
@@ -408,6 +426,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Payments
+        echo "Starting migration of Payments...\n";
         $payments = DB::connection('mysql_tmp')->table('movimientos')
             ->where('grupo', env('CMS_GROUP'))
             ->where('estado', '>', 0)
@@ -444,6 +463,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Communication Types
+        echo "Starting migration of Communication Types...\n";
         $communicationTypes = DB::connection('mysql_tmp')->table('comunicaciones_tipo')
             ->get();
 
@@ -468,6 +488,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Communication Templates
+        echo "Starting migration of Communication Templates...\n";
         $communicationTemplates = DB::connection('mysql_tmp')->table('comunicaciones_templates')
             ->where('grupo', env('CMS_GROUP'))
             ->get();
@@ -494,7 +515,8 @@ class ImportDataSeeder extends Seeder
             }
         }
 
-        // // Communications
+        // Communications
+        echo "Starting migration of Communications...\n";
         $chunkSize = 1000;
 
         DB::connection('mysql_tmp')->table('comunicaciones')
