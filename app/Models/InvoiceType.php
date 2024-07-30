@@ -9,6 +9,8 @@ class InvoiceType extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $fillable = ['name'];
 
     public function invoices()

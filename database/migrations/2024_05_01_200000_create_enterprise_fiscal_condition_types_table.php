@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('project_types', function (Blueprint $table) {
+        Schema::create('enterprise_fiscal_condition_types', function (Blueprint $table) {
             $table->tinyIncrements('id');
             $table->string('name');
         });
@@ -16,6 +16,6 @@ return new class extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('project_types');
+        Schema::dropIfExists('enterprise_fiscal_condition_types');
     }
 };

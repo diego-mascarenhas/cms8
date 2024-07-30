@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('services', function (Blueprint $table) {
             $table->id();
-            $table->unsignedInteger('type_id');
-            $table->unsignedBigInteger('client_id');
+            $table->unsignedBigInteger('category_id');
+            $table->unsignedBigInteger('enterprise_id');
             $table->enum('operation', ['Buy', 'Sell'])->default('Sell');
             $table->text('desctiption')->nullable();
 			$table->json('data')->nullable();
@@ -29,11 +29,11 @@ return new class extends Migration
 			$table->timestamps();
             $table->softDeletes();
 
-            $table->foreign('type_id')->references('id')->on('service_type')
+            $table->foreign('category_id')->references('id')->on('categories')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
             
-            $table->foreign('client_id')->references('id')->on('clients')
+            $table->foreign('enterprise_id')->references('id')->on('enterprises')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
         });

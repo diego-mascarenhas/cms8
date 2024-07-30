@@ -18,6 +18,13 @@
 			"permission": "client.list"
 		},
 		{
+			"url": "app/supplier/list",
+			"name": "Suppliers",
+			"icon": "menu-icon tf-icons ti ti-building-factory-2",
+			"slug": "app-supplier-list",
+			"permission": "supplier.list"
+		},
+		{
 			"url": "app/service/list",
 			"name": "Services",
 			"icon": "menu-icon tf-icons ti ti-toggle-left",

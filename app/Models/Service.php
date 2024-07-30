@@ -17,8 +17,8 @@ class Service extends Model
     protected $table = 'services';
 
     protected $fillable = [
-        'type_id',
-        'client_id',
+        'enterprise_id',
+        'category_id',
         'operation',
         'description',
         'data',
@@ -38,14 +38,14 @@ class Service extends Model
         'data' => 'object',
     ];
 
-    public function type()
+    public function category()
     {
-        return $this->belongsTo(ServiceType::class);
+        return $this->belongsTo(Category::class);
     }
 
     public function client()
     {
-        return $this->belongsTo(Client::class, 'client_id');
+        return $this->belongsTo(Enterprise::class, 'enterprise_id');
     }
 
     public function services()
@@ -72,6 +72,28 @@ class Service extends Model
 
     public function getCalculatedPriceAttribute()
     {
+        $dataField = $this->category->data;
+
+        $categoryData = [];
+
+        if (is_string($dataField))
+        {
+            $decodedData = json_decode($dataField, true);
+
+            if (json_last_error() === JSON_ERROR_NONE)
+            {
+                $categoryData = $decodedData;
+            }
+        }
+        elseif (is_array($dataField))
+        {
+            $categoryData = $dataField;
+        }
+        elseif (is_object($dataField))
+        {
+            $categoryData = (array) $dataField;
+        }
+
         if ($this->price !== null && $this->price != 0)
         {
             $basePrice = $this->price;
@@ -80,9 +102,9 @@ class Service extends Model
         }
         else
         {
-            $basePrice = $this->type->price;
-            $discount = $this->type->discount ?? 0;
-            $frequency = $this->type->frequency ?? 1;
+            $basePrice = $categoryData['price'] ?? 0;
+            $discount = $categoryData['discount'] ?? 0;
+            $frequency = $categoryData['frequency'] ?? 1;
         }
 
         $priceAfterDiscount = $basePrice - ($basePrice * ($discount / 100));
@@ -93,7 +115,7 @@ class Service extends Model
     public static function calculateTotal($status, $operation)
     {
         $services = self::where('status', $status)
-            ->whereHas('type', function ($query) use ($operation)
+            ->whereHas('category', function ($query) use ($operation)
             {
                 $query->where('operation', $operation);
             })

@@ -122,6 +122,7 @@ jobs:
             if grep -q '^APP_KEY=' .env && ! grep -q 'APP_KEY=[a-zA-Z0-9]' .env; then
               echo "APP_KEY is empty. Running 'php artisan key:generate'."
               php artisan key:generate
+              php artisan storage:link
             else
               echo "APP_KEY already set. Skipping 'php artisan key:generate'."
             fi

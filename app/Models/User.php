@@ -83,7 +83,7 @@ class User extends Authenticatable
 
     public function clients()
     {
-        return $this->hasMany(Client::class, 'assigned_to', 'id');
+        return $this->hasMany(Enterprise::class, 'assigned_to', 'id');
     }
 
     public function projetcs()

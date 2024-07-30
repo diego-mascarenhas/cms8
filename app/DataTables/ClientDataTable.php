@@ -2,7 +2,7 @@
 
 namespace App\DataTables;
 
-use App\Models\Client;
+use App\Models\Enterprise;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -23,11 +23,18 @@ class ClientDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'client.action')
             ->setRowId('id')
-            ->rawColumns(['name', 'action', 'status'])
-            ->editColumn('updated_at', function ($data)
-            {
-                return Carbon::parse($data->updated_at)->format('d-m-Y H:i:s');
+            ->addColumn('user_id', function ($row) {
+                return $row->user ? $row->user->name : null;
             })
+            ->filterColumn('user_id', function ($query, $keyword) {
+                $query->whereHas('user', function ($q) use ($keyword) {
+                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+                });
+            })
+            ->addColumn('assignee', function ($row) {
+                return $row->assignee ? $row->assignee->name : null;
+            })
+            ->rawColumns(['name', 'action', 'status'])
             ->editColumn('status', function ($data)
             {
                 if ($data->status)
@@ -41,21 +48,21 @@ class ClientDataTable extends DataTable
             });
     }
 
-    public function query(Client $model): QueryBuilder
+    public function query(Enterprise $model): QueryBuilder
     {
         $user = auth()->user();
 
         if ($user->can('client.list'))
         {
-            return $model->newQuery();
+            return $model->clients()->newQuery();
         }
         elseif ($user->hasRole('colab'))
         {
-            return $model->where('assigned_to', $user->id)->newQuery();
+            return $model->clients()->where('assigned_to', $user->id)->newQuery();
         }
         else
         {
-            return $model->whereRaw('1 = 0')->newQuery();
+            return $model->clients()->whereRaw('1 = 0')->newQuery();
         }
     }
 
@@ -74,7 +81,8 @@ class ClientDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')->title('Name'),
-            Column::make('updated_at')->title('Updated')->className('text-center'),
+            Column::make('user_id')->title('User'),
+            Column::make('assigned_to')->title('Assigned'),
             Column::make('status')->title('Status')->className('text-center'),
             Column::computed('action')->title('Actions')->width(20)->className('text-center')
                 ->exportable(false)

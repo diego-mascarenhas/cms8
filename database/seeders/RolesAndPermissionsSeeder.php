@@ -28,6 +28,14 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'client.update']);
         Permission::create(['name' => 'client.destroy']);
 
+        Permission::create(['name' => 'supplier.list']);
+        Permission::create(['name' => 'supplier.create']);
+        Permission::create(['name' => 'supplier.show']);
+        Permission::create(['name' => 'supplier.edit']);
+        Permission::create(['name' => 'supplier.store']);
+        Permission::create(['name' => 'supplier.update']);
+        Permission::create(['name' => 'supplier.destroy']);
+
         Permission::create(['name' => 'service.list']);
         Permission::create(['name' => 'service.create']);
         Permission::create(['name' => 'service.show']);
@@ -87,6 +95,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'user.list',
             'user.destroy',
             'client.destroy',
+            'supplier.destroy',
             'service.destroy',
             'project.destroy',
             'invoice.destroy',
@@ -110,6 +119,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'client.edit',
             'client.store',
             'client.update',
+            'supplier.list',
+            'supplier.create',
+            'supplier.show',
+            'supplier.edit',
+            'supplier.store',
+            'supplier.update',
             'service.list',
             'service.create',
             'service.show',
@@ -176,6 +191,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $editorRole = Role::create(['name' => 'auditor']);
         $editorRole->syncPermissions([
             'client.list',
+            'supplier.list',
             'invoice.list',
             'payment.list',
         ]);

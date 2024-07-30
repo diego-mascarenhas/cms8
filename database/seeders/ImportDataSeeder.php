@@ -14,6 +14,7 @@ class ImportDataSeeder extends Seeder
     public function run()
     {
         // Users
+        echo "Starting migration of Users...\n";
         $users = DB::connection('mysql_tmp')->table('contactos')
             ->whereNotNull('email')
             ->where('grupo', env('CMS_GROUP'))
@@ -22,7 +23,6 @@ class ImportDataSeeder extends Seeder
             ->where('id', '>', 2)
             //->limit(5)
             ->get();
-            //dd($users);
 
         foreach ($users as $data)
         {
@@ -52,18 +52,148 @@ class ImportDataSeeder extends Seeder
             }
         }
 
+        // Categories
+        echo "Starting migration of Categories...\n";
+        $categories = DB::connection('mysql_tmp')->table('categorias_generales')
+            ->where('grupo', env('CMS_GROUP'))
+            ->orderBy('padre', 'asc')
+            ->get();
+
+        foreach ($categories as $data)
+        {
+            $existingCategory = DB::table('categories')->where('id', $data->id)->first();
+
+            $cleaned_description = strip_tags($data->descripcion);
+
+            $dataArray = [
+                'currency_id' => $data->id_moneda,
+                'price' => $data->valor,
+                'discount' => $data->descuento,
+                'frequency' => $data->frecuencia,
+            ];
+
+            $categoryData = [
+                'id' => $data->id,
+                'name' => $data->categoria,
+                'description' => $cleaned_description,
+                'data' => json_encode($dataArray),
+                'parent_id' => $data->padre,
+                'order' => $data->orden,
+                'status' => $data->estado,
+                'created_at' => $data->fecha_alta,
+                'updated_at' => $data->fecha_modificacion,
+            ];
+
+            if (!$existingCategory)
+            {
+                DB::table('categories')->insert($categoryData);
+            }
+            else
+            {
+                DB::table('categories')->where('id', $existingCategory->id)->update($categoryData);
+            }
+        }
+
+        // Payment Types
+        echo "Starting migration of Payment Types...\n";
+        $paymentTypes = DB::connection('mysql_tmp')->table('formas_pago')
+            ->where('grupo', env('CMS_GROUP'))
+            ->get();
+
+        foreach ($paymentTypes as $data)
+        {
+            $existingPaymentType = DB::table('payment_types')->where('id', $data->id)->first();
+
+            $paymentTypesData = [
+                'id' => $data->id,
+                'name' => $data->forma_pago,
+                'discount' => $data->descuento,
+                'status' => $data->estado,
+            ];
+
+            if (!$existingPaymentType)
+            {
+                DB::table('payment_types')->insert($paymentTypesData);
+            }
+            else
+            {
+                DB::table('payment_types')->where('id', $existingPaymentType->id)->update($paymentTypesData);
+            }
+        }
+
+        // Invoice Types
+        echo "Starting migration of Invoice Types...\n";
+        $invoiceTypes = DB::connection('mysql_tmp')->table('facturas_tipo')
+            ->where('grupo', env('CMS_GROUP'))
+            ->get();
+
+        foreach ($invoiceTypes as $data)
+        {
+            $existingInvoiceType = DB::table('invoice_types')->where('id', $data->id)->first();
+
+            $invoiceTypesData = [
+                'id' => $data->id,
+                'name' => $data->factura_tipo,
+            ];
+
+            if (!$existingInvoiceType)
+            {
+                DB::table('invoice_types')->insert($invoiceTypesData);
+            }
+            else
+            {
+                DB::table('invoice_types')->where('id', $existingInvoiceType->id)->update($invoiceTypesData);
+            }
+        }
+
         // Enterprises
+        echo "Starting migration of Enterprises...\n";
         $enterprises = DB::connection('mysql_tmp')->table('empresas')
             ->where('grupo', env('CMS_GROUP'))
             ->get();
 
         foreach ($enterprises as $data)
         {
-            $existingEnterprise = DB::table('clients')->where('id', $data->id)->first();
+            $existingEnterprise = DB::table('enterprises')->where('id', $data->id)->first();
+
+
+            if ($data->id_categoria == 2)
+            {
+                $type_id = 1;
+            }
+            elseif ($data->id_categoria == 100)
+            {
+                $type_id = 3;
+            }
+            else
+            {
+                $type_id = 2;
+            }
+
+            $userId = $data->id_contacto ?? null;
+
+            if ($userId !== null && !User::where('id', $userId)->exists())
+            {
+                $userId = null;
+            }
 
             $enterpriseData = [
                 'id' => $data->id,
                 'name' => $data->empresa,
+                'type_id' => $type_id,
+                'user_id' => $userId,
+                'referred_by' => $data->referido ?? null,
+                'address' => $data->domicilio ?? null,
+                'postal_code' => $data->codigo_postal ?? null,
+                'locality' => $data->localidad ?? null,
+                'province' => $data->provincia ?? null,
+                'country' => $data->pais ?? null,
+                'phone' => $data->telefono ?? null,
+                'whatsapp' => $data->whatsapp ?? null,
+                'email' => $data->email ?? null,
+                'website' => $data->web ?? null,
+                'payment_type_id' => $data->id_forma_pago ?? null,
+                'invoice_type_id' => $data->id_factura_tipo ?? null,
                 'status' => $data->estado,
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
@@ -71,49 +201,52 @@ class ImportDataSeeder extends Seeder
 
             if (!$existingEnterprise)
             {
-                DB::table('clients')->insert($enterpriseData);
+                DB::table('enterprises')->insert($enterpriseData);
             }
             else
             {
-                DB::table('clients')->where('id', $existingEnterprise->id)->update($enterpriseData);
+                DB::table('enterprises')->where('id', $existingEnterprise->id)->update($enterpriseData);
             }
         }
 
-        // Services Type
-        $servicesType = DB::connection('mysql_tmp')->table('categorias_generales')
+        // Enterprise Billing Address
+        echo "Starting migration of Enterprise Billing Address...\n";
+        $EnterpriseBillingAddress = DB::connection('mysql_tmp')->table('empresas_fiscales')
             ->where('grupo', env('CMS_GROUP'))
             ->get();
 
-        foreach ($servicesType as $data)
+        foreach ($EnterpriseBillingAddress as $data)
         {
-            $existingServiceType = DB::table('service_type')->where('id', $data->id)->first();
+            $existingEnterpriseBillingAddress = DB::table('enterprise_billing_addresses')->where('id', $data->id)->first();
 
-            $cleaned_description = strip_tags($data->descripcion);
-
-            $serviceData = [
+            $enterpriseBillingAddressData = [
                 'id' => $data->id,
-                'name' => $data->categoria,
-                'desctiption' => $cleaned_description,
-                'currency_id' => $data->id_moneda,
-                'price' => $data->valor,
-                'discount' => $data->descuento,
-                'frequency' => $data->frecuencia,
+                'name' => $data->razon_social,
+                'enterprise_id' => $data->id_empresa,
+                'fiscal_condition_type_id' => $data->id_condicion_iva ?? null,
+                'identification_number' => $data->cuit ?? null,
+                'address' => $data->domicilio ?? null,
+                'postal_code' => $data->codigo_postal ?? null,
+                'locality' => $data->localidad ?? null,
+                'province' => $data->provincia ?? null,
+                'country' => $data->pais ?? null,
                 'status' => $data->estado,
                 'created_at' => $data->fecha_alta,
                 'updated_at' => $data->fecha_modificacion,
             ];
 
-            if (!$existingServiceType)
+            if (!$existingEnterpriseBillingAddress)
             {
-                DB::table('service_type')->insert($serviceData);
+                DB::table('enterprise_billing_addresses')->insert($enterpriseBillingAddressData);
             }
             else
             {
-                DB::table('service_type')->where('id', $existingServiceType->id)->update($serviceData);
+                DB::table('enterprise_billing_addresses')->where('id', $existingEnterpriseBillingAddress->id)->update($enterpriseBillingAddressData);
             }
         }
 
         // Services
+        echo "Starting migration of Services...\n";
         $services = DB::connection('mysql_tmp')
             ->table('servicios')
             ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
@@ -130,8 +263,8 @@ class ImportDataSeeder extends Seeder
 
             $serviceData = [
                 'id' => $data->id,
-                'type_id' => $data->id_categoria,
-                'client_id' => $data->id_empresa,
+                'category_id' => $data->id_categoria,
+                'enterprise_id' => $data->id_empresa,
                 'operation' => ($data->operacion == 'C') ? 'Buy' : 'Sell',
                 'desctiption' => $cleaned_description,
                 'data' => json_encode(['user' => $data->user]),
@@ -156,35 +289,9 @@ class ImportDataSeeder extends Seeder
                 DB::table('services')->where('id', $existingService->id)->update($serviceData);
             }
         }
-        
-        // Project Types
-        $projectsType = DB::connection('mysql_tmp')->table('categorias_generales')
-            ->where('grupo', env('CMS_GROUP'))
-            ->whereIn('id', [41, 42, 43, 44, 98, 99])
-            ->get();
-
-        foreach ($projectsType as $data)
-        {
-            $existingProjectType = DB::table('project_types')->where('id', $data->id)->first();
-
-            $cleaned_description = strip_tags($data->descripcion);
-
-            $serviceData = [
-                'id' => $data->id,
-                'name' => $data->categoria
-            ];
-
-            if (!$existingProjectType)
-            {
-                DB::table('project_types')->insert($serviceData);
-            }
-            else
-            {
-                DB::table('project_types')->where('id', $existingProjectType->id)->update($serviceData);
-            }
-        }
 
         // Projects
+        echo "Starting migration of Projects...\n";
         $projetcs = DB::connection('mysql_tmp')->table('proyectos')
             ->leftJoin('contactos', 'proyectos.responsable', '=', 'contactos.username')
             ->select(
@@ -213,8 +320,8 @@ class ImportDataSeeder extends Seeder
 
             $projetcData = [
                 'id' => $data->numero_proyecto,
-                'client_id' => $data->id_empresa,
-                'type_id' => $data->id_categoria,
+                'enterprise_id' => $data->id_empresa,
+                'category_id' => $data->id_categoria,
                 'leader_id' => $data->leader_id,
                 'name' => $data->titulo,
                 'description' => $data->descripcion,
@@ -238,38 +345,15 @@ class ImportDataSeeder extends Seeder
             }
         }
 
-        // Invoice Types
-        $invoiceTypes = DB::connection('mysql_tmp')->table('facturas_tipo')
-            ->where('grupo', env('CMS_GROUP'))
-            ->get();
-
-        foreach ($invoiceTypes as $data)
-        {
-            $existingInvoiceType = DB::table('invoice_types')->where('id', $data->id)->first();
-
-            $invoiceTypesData = [
-                'id' => $data->id,
-                'name' => $data->factura_tipo,
-            ];
-
-            if (!$existingInvoiceType)
-            {
-                DB::table('invoice_types')->insert($invoiceTypesData);
-            }
-            else
-            {
-                DB::table('invoice_types')->where('id', $existingInvoiceType->id)->update($invoiceTypesData);
-            }
-        }
-
         // Invoices
+        echo "Starting migration of Invoices...\n";
         $invoices = DB::connection('mysql_tmp')
             ->table('facturas')
             ->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
             ->leftJoin('empresas', 'empresas_fiscales.id_empresa', '=', 'empresas.id')
             ->where('facturas.grupo', 502)
             ->where('facturas.estado', '>', 0)
-            ->select('facturas.*', 'empresas.id as client_id')
+            ->select('facturas.*', 'empresas.id as enterprise_id')
             ->get();
 
         foreach ($invoices as $data)
@@ -280,7 +364,7 @@ class ImportDataSeeder extends Seeder
 
             $invoiceData = [
                 'id' => $data->id,
-                'client_id' => $data->client_id,
+                'enterprise_id' => $data->enterprise_id,
                 'billing_id' => $data->id_empresa_fiscal,
                 'type_id' => $data->id_factura_tipo,
                 'operation' => $operation,
@@ -306,33 +390,43 @@ class ImportDataSeeder extends Seeder
             }
         }
 
-        // Payment Types
-        $paymentTypes = DB::connection('mysql_tmp')->table('formas_pago')
-            ->where('grupo', env('CMS_GROUP'))
+        // Invoice Items
+        echo "Starting migration of Invoices Items...\n";
+        $invoiceItems = DB::connection('mysql_tmp')->table('facturas_items')
+            ->join('facturas', 'facturas_items.id_factura', '=', 'facturas.id')
+            ->where('facturas_items.grupo', env('CMS_GROUP'))
+            ->where('facturas.estado', '>', 0)
+            ->select('facturas_items.*')
             ->get();
 
-        foreach ($paymentTypes as $data)
+        foreach ($invoiceItems as $data)
         {
-            $existingPaymentType = DB::table('payment_types')->where('id', $data->id)->first();
+            $existingInvoiceItem = DB::table('invoice_items')->where('id', $data->id)->first();
 
-            $paymentTypesData = [
-                'id' => $data->id,
-                'name' => $data->forma_pago,
+            $invoiceItemData = [
+                'invoice_id' => $data->id_factura,
+                'category_id' => $data->id_categoria,
+                'description' => $data->descripcion,
+                'quantity' => 1,
+                'unit_price' => $data->valor,
                 'discount' => $data->descuento,
-                'status' => $data->estado,
+                'tax_percentage' => 21,
+                'created_at' => $data->fecha_alta,
+                'updated_at' => $data->fecha_modificacion,
             ];
 
-            if (!$existingPaymentType)
+            if (!$existingInvoiceItem)
             {
-                DB::table('payment_types')->insert($paymentTypesData);
+                DB::table('invoice_items')->insert($invoiceItemData);
             }
             else
             {
-                DB::table('payment_types')->where('id', $existingPaymentType->id)->update($paymentTypesData);
+                DB::table('invoice_items')->where('id', $existingInvoiceItem->id)->update($invoiceItemData);
             }
         }
 
         // Payments
+        echo "Starting migration of Payments...\n";
         $payments = DB::connection('mysql_tmp')->table('movimientos')
             ->where('grupo', env('CMS_GROUP'))
             ->where('estado', '>', 0)
@@ -345,7 +439,7 @@ class ImportDataSeeder extends Seeder
             $transaction_type = $data->transaccion === 'I' ? 'I' : 'E';
 
             $paymentData = [
-                'client_id' => $data->id_empresa,
+                'enterprise_id' => $data->id_empresa,
                 'transaction_type' => $transaction_type,
                 'date' => $data->fecha,
                 'invoice_id' => $data->id_factura,
@@ -369,6 +463,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Communication Types
+        echo "Starting migration of Communication Types...\n";
         $communicationTypes = DB::connection('mysql_tmp')->table('comunicaciones_tipo')
             ->get();
 
@@ -379,7 +474,7 @@ class ImportDataSeeder extends Seeder
             $communicationTypesData = [
                 'id' => $data->id,
                 'name' => $data->tipo,
-                'status' => $data->estado-1,
+                'status' => $data->estado - 1,
             ];
 
             if (!$existingCommunicationTypes)
@@ -393,6 +488,7 @@ class ImportDataSeeder extends Seeder
         }
 
         // Communication Templates
+        echo "Starting migration of Communication Templates...\n";
         $communicationTemplates = DB::connection('mysql_tmp')->table('comunicaciones_templates')
             ->where('grupo', env('CMS_GROUP'))
             ->get();
@@ -419,7 +515,8 @@ class ImportDataSeeder extends Seeder
             }
         }
 
-        // // Communications
+        // Communications
+        echo "Starting migration of Communications...\n";
         $chunkSize = 1000;
 
         DB::connection('mysql_tmp')->table('comunicaciones')
@@ -428,14 +525,16 @@ class ImportDataSeeder extends Seeder
             ->where('comunicaciones.estado', '>', 0)
             ->select('comunicaciones.*', 'contactos.email')
             ->orderBy('comunicaciones.id')
-            ->chunk($chunkSize, function ($communications) {
+            ->chunk($chunkSize, function ($communications)
+            {
                 $userEmails = $communications->pluck('email')->filter()->unique()->toArray();
                 $users = User::whereIn('email', $userEmails)->get()->keyBy('email');
 
                 $insertData = [];
                 $updateData = [];
 
-                foreach ($communications as $data) {
+                foreach ($communications as $data)
+                {
                     $userId = $users->get($data->email)?->id;
 
                     $communicationData = [
@@ -451,19 +550,25 @@ class ImportDataSeeder extends Seeder
                     ];
 
                     $existingCommunication = DB::table('communications')->where('id', $data->id)->first();
-                    if (!$existingCommunication) {
+                    if (!$existingCommunication)
+                    {
                         $insertData[] = $communicationData;
-                    } else {
+                    }
+                    else
+                    {
                         $updateData[] = $communicationData;
                     }
                 }
 
-                if (!empty($insertData)) {
+                if (!empty($insertData))
+                {
                     DB::table('communications')->insert($insertData);
                 }
 
-                if (!empty($updateData)) {
-                    foreach ($updateData as $update) {
+                if (!empty($updateData))
+                {
+                    foreach ($updateData as $update)
+                    {
                         DB::table('communications')->where('id', $update['id'])->update($update);
                     }
                 }

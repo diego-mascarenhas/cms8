@@ -224,6 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </button>
                     <div class="dropdown-menu dropdown-menu-end" aria-labelledby="earningReportsId">
                         <a class="dropdown-item" href="{{ route('app-payment-list') }}">View Payments</a>
+                        <a class="dropdown-item" href="{{ route('app-invoice-report') }}">View Report</a>
                     </div>
                 </div>
             </div>

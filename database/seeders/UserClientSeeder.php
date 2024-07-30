@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Models\Client;
+use App\Models\Enterprise;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -11,7 +11,7 @@ class UserClientSeeder extends Seeder
 {
     public function run()
     {
-        $clients = Client::all();
+        $clients = Enterprise::all();
 
         foreach ($clients as $client)
         {

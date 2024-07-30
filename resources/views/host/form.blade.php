@@ -45,7 +45,7 @@
 				<x-input-general id="user" label="User" value="{{ old('user', $data->user?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-general id="password" label="Password" value="{{ old('password', $data->password?? '') }}" />
+				<x-input-general id="password" label="Password" value="{!! old('password', $data->password ?? '') !!}" />
 			</div>
 
 			<div class="col-md-6">

@@ -13,9 +13,23 @@ class Category extends Model
 
     public $timestamps = true;
 
-	protected $table = 'categories';
+    protected $table = 'categories';
 
-    protected $fillable = ['name', 'status'];
+    protected $fillable = ['name', 'description', 'data', 'parent_id', 'order', 'status'];
+
+    protected $casts = [
+        'data' => 'object',
+    ];
+
+    public function parent()
+    {
+        return $this->belongsTo(Category::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(Category::class, 'parent_id');
+    }
 
     public function users()
     {
@@ -27,9 +41,21 @@ class Category extends Model
         return $this->hasMany(Message::class);
     }
 
-    public static function getOptions()
+    public function invoiceItems()
     {
-        return self::all()->map(function ($data)
+        return $this->hasMany(InvoiceItem::class, 'category_id');
+    }
+
+    public static function getOptions($parentId = null)
+    {
+        $query = self::query();
+
+        if (!is_null($parentId))
+        {
+            $query->where('parent_id', $parentId);
+        }
+
+        return $query->get()->map(function ($data)
         {
             return [
                 'id' => $data->id,

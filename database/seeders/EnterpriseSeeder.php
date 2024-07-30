@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Client;
+use App\Models\Enterprise;
 
-class ClientSeeder extends Seeder
+class EnterpriseSeeder extends Seeder
 {
     public function run()
     {
@@ -13,9 +13,9 @@ class ClientSeeder extends Seeder
             $faker = \Faker\Factory::create();
 
             foreach (range(1, 2) as $index) {
-                Client::create([
+                Enterprise::create([
                     'name' => $faker->company,
-                    'description' => $faker->sentence,
+                    'type_id' => $faker->numberBetween(1, 2),
                     'user_id' => $faker->numberBetween(5, 6),
                     'assigned_to' => $faker->numberBetween(3, 4),
                 ]);
