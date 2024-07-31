@@ -1,6 +1,6 @@
 [
     {
-        "name": "Staging (AR)",
+        "name": "Staging",
         "ip": "190.7.29.26",
         "username": "revstag",
         "password": "",
@@ -8,35 +8,5 @@
         "beforeHooks": "php artisan db:backup-restore backup --tables=hosts --tables=pages || true && php artisan migrate:fresh --seed && php artisan db:seed --class=ImportDataSeeder && php artisan db:backup-restore restore --tables=hosts --tables=pages || true && php artisan cache:clear && php artisan config:clear && php artisan route:clear && php artisan view:clear",
         "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
-    },
-    {
-        "name": "Pedimos Facil Simplicity (AR)",
-        "ip": "190.7.29.26",
-        "username": "simplpedimos",
-        "password": "",
-        "port": "13022",
-        "beforeHooks": "php artisan migrate:fresh --seed",
-        "afterHooks": "php artisan app:register-application",
-        "path": "./public_html"
-    },    
-    {
-        "name": "Argentos",
-        "ip": "46.24.172.69",
-        "username": "simplargentos",
-        "password": "",
-        "port": "22",
-        "beforeHooks": "php artisan migrate:fresh --seed",
-        "afterHooks": "php artisan app:register-application",
-        "path": "./public_html"
-    },    
-    {
-        "name": "VuexyInf",
-        "ip": "46.24.172.69",
-        "username": "vuexyinf",
-        "password": "",
-        "port": "22",
-        "beforeHooks": "php artisan migrate:fresh --seed",
-        "afterHooks": "php artisan app:register-application",
-        "path": "./public_html"
-    }    
+    }
 ]
