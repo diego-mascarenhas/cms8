@@ -46,14 +46,14 @@ jobs:
         name: app-build
         path: ${{ github.sha }}.tar.gz
 
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+
     - name: Export deployment matrix
       id: export-deployment-matrix
       run: |
-        JSON="$(cat .github/workflows/dev-deploy-cpanel.json)"
-        JSON="${JSON//'%'/'%25'}"
-        JSON="${JSON//$'\n'/'%0A'}"
-        JSON="${JSON//$'\r'/'%0D'}"
-        echo "::set-output name=deployment-matrix::$JSON"
+          JSON=$(jq -c . .github/workflows/dev-deploy-cpanel.json)
+          echo "deployment-matrix=$JSON" >> $GITHUB_OUTPUT
     
   prepare-release-on-servers:
     runs-on: ubuntu-latest
@@ -88,6 +88,7 @@ jobs:
           envs: GITHUB_SHA
         
           script: |
+            find ${{ matrix.server.path }} -mindepth 1 -maxdepth 1 -type d -not -name 'storage' -not -name 'artifacts' -exec rm -rf {} +
             tar xzf ${{ matrix.server.path }}/artifacts/${GITHUB_SHA}.tar.gz -C "${{ matrix.server.path }}"
             mkdir -p ${{ matrix.server.path }}/storage/{app,public,framework,logs}
             mkdir -p ${{ matrix.server.path }}/storage/framework/{cache,sessions,testing,views}

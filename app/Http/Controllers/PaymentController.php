@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\PaymentDataTable;
 use App\Models\Payment;
+use App\Models\PaymentAccount;
 use Illuminate\Http\Request;
 use stdClass;
 use Carbon\Carbon;
@@ -13,7 +14,28 @@ class PaymentController extends Controller
 {
     public function index(PaymentDataTable $dataTable)
     {
-        return $dataTable->render('payment.index');
+        $accounts = PaymentAccount::all()->map(function ($account)
+        {
+            $income = $account->payments()
+                ->approvedStatus()
+                ->where('transaction_type', 'I')
+                ->sum('amount');
+
+            $expense = $account->payments()
+                ->approvedStatus()
+                ->where('transaction_type', 'E')
+                ->sum('amount');
+
+            $balance = $income - $expense;
+
+            return [
+                'name' => $account->name,
+                'balance' => $balance,
+                'currency_code' => $account->currency ? $account->currency->code : 'N/A',
+            ];
+        });
+
+        return $dataTable->render('payment.index', compact('accounts'));
     }
 
     /**

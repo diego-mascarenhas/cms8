@@ -23,6 +23,18 @@ class Payment extends Model
 
     protected $appends = ['transaction_type_label'];
 
+    protected static function booted()
+    {
+        static::addGlobalScope('fromJuly2024', function ($builder) {
+            $builder->where('date', '>=', '2024-07-01 00:00:00');
+        });
+    }
+
+    public function scopeApprovedStatus($query)
+    {
+        return $query->where('status', 2);
+    }
+
     public function enterprise()
     {
         return $this->belongsTo(Enterprise::class);
@@ -33,10 +45,10 @@ class Payment extends Model
         return $this->belongsTo(Invoice::class);
     }
 
-    // public function account()
-    // {
-    //     return $this->belongsTo(PaymentAccount::class);
-    // }
+    public function account()
+    {
+        return $this->belongsTo(PaymentAccount::class);
+    }
 
     public function type()
     {

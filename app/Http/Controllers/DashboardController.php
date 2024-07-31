@@ -14,18 +14,33 @@ class DashboardController extends Controller
     {
         $hosts = Host::where('type_id', 1)->orderBy('name', 'asc')->get();
 
-        // Current and previous dates
-        $now = Carbon::now();
-        $startOfMonth = $now->clone()->startOfMonth();
-        $startOfLastMonth = $now->clone()->subMonth()->startOfMonth();
-        $endOfLastMonth = $now->clone()->subMonth()->endOfMonth();
+        // Current date and time
+        $now = Carbon::now(); // Obtener la fecha y hora actual
 
+        // Current year and month
+        $year = Carbon::now()->year;
+        $month = Carbon::now()->month;
+
+        // Dates for the current month (sin horas, solo fecha)
+        $startOfMonth = Carbon::createFromDate($year, $month, 1)->startOfDay();
+        $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth()->endOfDay();
+
+        // Dates for last month (sin horas, solo fecha)
+        $startOfLastMonth = Carbon::createFromDate($year, $month - 1, 1)->startOfDay();
+        $endOfLastMonth = Carbon::createFromDate($year, $month - 1, 1)->endOfMonth()->endOfDay();
+
+        // Ajuste para el cambio de año (si estamos en enero)
+        if ($month == 1) {
+            $startOfLastMonth = Carbon::createFromDate($year - 1, 12, 1)->startOfDay();
+            $endOfLastMonth = Carbon::createFromDate($year - 1, 12, 1)->endOfMonth()->endOfDay();
+        }
+        
         // Define the column to use for date calculations
         $dateColumn = 'created_at'; // or 'date'
 
         // Calculate current month's earnings
         $currentMonthEarnings = Payment::where('transaction_type', 'I')
-            ->whereBetween($dateColumn, [$startOfMonth, $now])
+            ->whereBetween($dateColumn, [$startOfMonth, $endOfMonth])
             ->sum('amount');
 
         // Calculate previous month's earnings
@@ -35,7 +50,7 @@ class DashboardController extends Controller
 
         // Calculate current month's expenses
         $currentMonthExpenses = Payment::where('transaction_type', 'E')
-            ->whereBetween($dateColumn, [$startOfMonth, $now])
+            ->whereBetween($dateColumn, [$startOfMonth, $endOfMonth])
             ->sum('amount');
 
         // Calculate previous month's expenses
