@@ -32,6 +32,9 @@ class PaymentDataTable extends DataTable
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
+            ->editColumn('account_id', function ($data) {
+                return $data->account->name ?? 'Transfer';
+            })
             ->filterColumn('transaction_type_label', function ($query, $keyword) {
                 return;
             })
@@ -68,6 +71,7 @@ class PaymentDataTable extends DataTable
             Column::make('id')->hidden(),
             Column::make('date')->title('Date'),
             Column::make('enterprise_id')->title('Enterprise'),
+            Column::make('account_id')->title('Account'),
             Column::make('transaction_type_label')->title('Transaction'),
             Column::make('type_id')->title('Type'),
             Column::make('amount')->title('Amount')->className('text-end'),

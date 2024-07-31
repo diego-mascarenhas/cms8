@@ -23,6 +23,8 @@ return new class extends Migration
 
             $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('set null');
             $table->foreign('invoice_id')->references('id')->on('invoices')->onDelete('set null');
+            $table->foreign('account_id')->references('id')->on('payment_accounts')->onDelete('cascade');
+            $table->foreign('type_id')->references('id')->on('payment_types')->onDelete('cascade');
         });
     }
 

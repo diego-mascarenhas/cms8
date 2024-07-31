@@ -121,6 +121,36 @@ class ImportDataSeeder extends Seeder
             }
         }
 
+        // Payment Accounts
+        echo "Starting migration of Payment Accounts...\n";
+        $paymentAccounts = DB::connection('mysql_tmp')->table('cuentas')
+            ->where('grupo', env('CMS_GROUP'))
+            ->where('id_empresa', 1)
+            ->get();
+
+        foreach ($paymentAccounts as $data)
+        {
+            $existingPaymentAccount = DB::table('payment_accounts')->where('id', $data->id)->first();
+
+            $paymentAccountssData = [
+                'id' => $data->id,
+                'name' => $data->nombre_cuenta,
+                'currency_id' => $data->id_moneda == 2 ? 840 : 32,
+                'status' => $data->estado == 2 ? 1 : 0,
+                'created_at' => $data->fecha_alta,
+                'updated_at' => $data->fecha_modificacion,
+            ];
+
+            if (!$existingPaymentAccount)
+            {
+                DB::table('payment_accounts')->insert($paymentAccountssData);
+            }
+            else
+            {
+                DB::table('payment_accounts')->where('id', $existingPaymentAccount->id)->update($paymentAccountssData);
+            }
+        }
+
         // Invoice Types
         echo "Starting migration of Invoice Types...\n";
         $invoiceTypes = DB::connection('mysql_tmp')->table('facturas_tipo')

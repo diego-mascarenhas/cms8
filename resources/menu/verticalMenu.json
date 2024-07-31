@@ -40,10 +40,24 @@
 		},
 		{
 			"url": "app/invoice/list",
-			"name": "Invoice",
-			"icon": "menu-icon tf-icons ti ti-file-dollar",
+			"name": "Invoices",
+			"icon": "menu-icon tf-icons ti ti-file",
 			"slug": "app-invoice-list",
 			"permission": "invoice.list"
+		},
+		{
+			"url": "app/payment/list",
+			"name": "Payments",
+			"icon": "menu-icon tf-icons ti ti-file-dollar",
+			"slug": "app-payment-list",
+			"permission": "payment.list"
+		},
+		{
+			"url": "app/communication/list",
+			"name": "Communications",
+			"icon": "menu-icon tf-icons ti ti-microphone",
+			"slug": "app-communication-list",
+			"permission": "communication.list"
 		},
 		{
 			"menuHeader": "Apps"

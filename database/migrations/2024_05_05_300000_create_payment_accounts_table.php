@@ -11,8 +11,11 @@ return new class extends Migration
         Schema::create('payment_accounts', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->unsignedInteger('currency_id');
             $table->unsignedTinyInteger('status')->default(1);
             $table->timestamps();
+
+            $table->foreign('currency_id')->references('id')->on('currencies');
         });
     }
 
