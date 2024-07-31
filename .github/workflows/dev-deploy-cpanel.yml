@@ -46,14 +46,23 @@ jobs:
         name: app-build
         path: ${{ github.sha }}.tar.gz
 
+    # - name: Export deployment matrix
+    #   id: export-deployment-matrix
+    #   run: |
+    #     JSON="$(cat .github/workflows/dev-deploy-cpanel.json)"
+    #     JSON="${JSON//'%'/'%25'}"
+    #     JSON="${JSON//$'\n'/'%0A'}"
+    #     JSON="${JSON//$'\r'/'%0D'}"
+    #     echo "deployment-matrix=$JSON" >> $GITHUB_OUTPUT
+    
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+
     - name: Export deployment matrix
       id: export-deployment-matrix
       run: |
-        JSON="$(cat .github/workflows/dev-deploy-cpanel.json)"
-        JSON="${JSON//'%'/'%25'}"
-        JSON="${JSON//$'\n'/'%0A'}"
-        JSON="${JSON//$'\r'/'%0D'}"
-        echo "deployment-matrix=$JSON" >> $GITHUB_OUTPUT
+          JSON=$(cat .github/workflows/dev-deploy-cpanel.json | jq -c .)
+          echo "deployment-matrix=$JSON" >> $GITHUB_OUTPUT
     
     - name: Print deployment matrix
       run: echo "${{ steps.export-deployment-matrix.outputs.deployment-matrix }}"
