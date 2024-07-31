@@ -49,11 +49,14 @@ jobs:
     - name: Export deployment matrix
       id: export-deployment-matrix
       run: |
-        JSON=$(cat .github/workflows/dev-deploy-cpanel.json)
+        JSON="$(cat .github/workflows/dev-deploy-cpanel.json)"
         JSON="${JSON//'%'/'%25'}"
         JSON="${JSON//$'\n'/'%0A'}"
         JSON="${JSON//$'\r'/'%0D'}"
-        echo "deployment-matrix=$JSON" >> $GITHUB_OUTPUT
+        run: echo "deployment-matrix=$JSON" >> $GITHUB_OUTPUT
+    
+    - name: Print deployment matrix
+      run: echo "${{ steps.export-deployment-matrix.outputs.deployment-matrix }}"
     
   prepare-release-on-servers:
     runs-on: ubuntu-latest
