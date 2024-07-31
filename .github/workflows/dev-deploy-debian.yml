@@ -46,14 +46,14 @@ jobs:
         name: app-build
         path: ${{ github.sha }}.tar.gz
 
+    - name: Install jq
+      run: sudo apt-get update && sudo apt-get install -y jq
+  
     - name: Export deployment matrix
       id: export-deployment-matrix
       run: |
-        JSON="$(cat .github/workflows/dev-deploy-debian.json)"
-        JSON="${JSON//'%'/'%25'}"
-        JSON="${JSON//$'\n'/'%0A'}"
-        JSON="${JSON//$'\r'/'%0D'}"
-        echo "::set-output name=deployment-matrix::$JSON"
+          JSON=$(jq -c . .github/workflows/dev-deploy-debian.json)
+          echo "deployment-matrix=$JSON" >> $GITHUB_OUTPUT
     
   prepare-release-on-servers:
     runs-on: ubuntu-latest
