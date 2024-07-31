@@ -53,7 +53,7 @@ jobs:
         JSON="${JSON//'%'/'%25'}"
         JSON="${JSON//$'\n'/'%0A'}"
         JSON="${JSON//$'\r'/'%0D'}"
-        run: echo "deployment-matrix=$JSON" >> $GITHUB_OUTPUT
+        echo "deployment-matrix=$JSON" >> $GITHUB_OUTPUT
     
     - name: Print deployment matrix
       run: echo "${{ steps.export-deployment-matrix.outputs.deployment-matrix }}"
