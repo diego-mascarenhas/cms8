@@ -5,6 +5,17 @@
         "username": "revcms8",
         "password": "",
         "port": "13022",
+        "beforeHooks": "php artisan migrate:fresh",
+        "afterHooks": "php artisan app:register-application",
+        "path": "./public_html"
+    },
+    {
+        "name": "CMS8 (ES)",
+        "ip": "46.24.172.69",
+        "username": "revcms8",
+        "password": "",
+        "port": "22",
+        "beforeHooks": "php artisan migrate:fresh",
         "beforeHooks": "",
         "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
