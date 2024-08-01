@@ -16,6 +16,7 @@
         "password": "",
         "port": "22",
         "beforeHooks": "php artisan migrate:fresh",
+        "beforeHooks": "",
         "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
     }
