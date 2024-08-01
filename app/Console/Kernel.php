@@ -71,6 +71,8 @@ class Kernel extends ConsoleKernel
             {
                 Log::info('Finished the ImportDataSeeder task.');
             });
+
+        $schedule->job(new \App\Jobs\SendBalanceEmail())->monthlyOn(1, '00:00');
     }
 
     /**
