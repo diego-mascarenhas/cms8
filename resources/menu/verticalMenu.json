@@ -107,6 +107,15 @@
 			"icon": "menu-icon tf-icons ti ti-eye",
 			"slug": "page-view",
 			"target": "blank"
+		},
+		{
+			"menuHeader": "Support"
+		},
+		{
+			"url": "help",
+			"name": "Helpdesk",
+			"icon": "menu-icon tf-icons ti ti-lifebuoy",
+			"slug": "help"
 		}
 	]
 }

@@ -1,0 +1,34 @@
+#chat-form {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 30px;
+  width: 100%;
+  padding: 10px;
+}
+
+#chat-form input[type="text"] {
+  height: 35px;
+  padding: 0 10px;
+  width: 100%;
+  margin-right: 10px;
+}
+
+#chat-form button {
+  padding: 10px 20px;
+  margin-top: 0;
+}
+
+.message-actions {
+  display: flex;
+  align-items: center;
+}
+
+.message-actions i,
+.message-actions label {
+  margin-right: 10px;
+}
+
+.message-actions button {
+  margin-top: 0;
+}

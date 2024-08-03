@@ -169,6 +169,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\CommunicationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OpenAIController;
 
 
 // Main Page Route
@@ -501,3 +502,6 @@ Route::middleware(['auth'])->group(function ()
 // Editor
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
+
+Route::get('help', function () { return view('ai.index'); });
+Route::post('open-ai', [OpenAIController::class, 'index']);
