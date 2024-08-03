@@ -280,7 +280,7 @@ class ImportDataSeeder extends Seeder
         $services = DB::connection('mysql_tmp')
             ->table('servicios')
             ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
-            ->where('servicios.grupo', 502)
+            ->where('servicios.grupo', env('CMS_GROUP'))
             ->where('servicios.estado', '>', 0)
             ->select('servicios.*', 'servicios_hosting.user')
             ->get();
@@ -340,7 +340,7 @@ class ImportDataSeeder extends Seeder
                 'proyectos.fecha_alta',
                 'proyectos.fecha_modificacion'
             )
-            ->where('proyectos.grupo', 502)
+            ->where('proyectos.grupo', env('CMS_GROUP'))
             ->where('proyectos.estado', '>', 0)
             ->get();
 
@@ -381,7 +381,7 @@ class ImportDataSeeder extends Seeder
             ->table('facturas')
             ->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
             ->leftJoin('empresas', 'empresas_fiscales.id_empresa', '=', 'empresas.id')
-            ->where('facturas.grupo', 502)
+            ->where('facturas.grupo', env('CMS_GROUP'))
             ->where('facturas.estado', '>', 0)
             ->select('facturas.*', 'empresas.id as enterprise_id')
             ->get();
