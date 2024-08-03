@@ -15,7 +15,7 @@
         "username": "revcms8",
         "password": "",
         "port": "22",
-        "beforeHooks": "php artisan db:backup-restore backup --tables=hosts --tables=licenses || true php artisan migrate:fresh && php artisan db:seed --class=ImportDataSeeder && php artisan db:backup-restore restore --tables=hosts --tables=licenses || true",
+        "beforeHooks": "php artisan migrate:fresh",
         "afterHooks": "php artisan app:register-application",
         "path": "./public_html"
     }
