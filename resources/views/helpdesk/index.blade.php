@@ -32,8 +32,8 @@
                 <img src="{{asset('assets/img/avatars/guru-meditating.jpg')}}" alt="Avatar" class="rounded-circle" data-bs-toggle="sidebar" data-overlay data-target="#app-chat-sidebar-right">
               </div>
               <div class="chat-contact-info flex-grow-1 ms-2">
-                <h6 class="m-0">ChatBot</h6>
-                <small class="user-status text-muted">Open AI</small>
+                <h6 class="m-0">Helpdesk</h6>
+                <small class="user-status text-muted">ChatBot</small>
               </div>
             </div>
           </div>

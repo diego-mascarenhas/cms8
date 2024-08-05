@@ -22,7 +22,7 @@ $(document).ready(function() {
 
         chatHistory.push({ role: 'user', content: message });
 
-        var botMessageElement = createBotMessageElement('');
+        var botMessageElement = createBotMessageElement('Writing...');
         chatMessages.append(botMessageElement);
         chatMessages.scrollTop(chatMessages[0].scrollHeight);
 
@@ -37,6 +37,7 @@ $(document).ready(function() {
             success: function(response) {
                 chatHistory.push({ role: 'assistant', content: response.response });
 
+                botMessageElement.find('.chat-message-text img').remove();
                 botMessageElement.find('.chat-message-text p').html(response.response);
 
                 if (response.audioFile) {
@@ -50,13 +51,14 @@ $(document).ready(function() {
                             botMessageElement.find('.chat-message-text').append(audioElement);
                         })
                         .catch(error => {
-                            console.error("Error al obtener el archivo de audio:", error);
+                            console.error("Error getting audio file: ", error);
                         });
                 }
                 chatMessages.scrollTop(chatMessages[0].scrollHeight);
             },
             error: function(xhr, status, error) {
-                botMessageElement.find('.chat-message-text p').html("ERROR: O no has puesto tu clave de API o GPT no funciona en este momento.");
+                botMessageElement.find('.chat-message-text img').remove();
+                botMessageElement.find('.chat-message-text p').html("Error: Either you have not entered your API key or GPT is not working at this time.");
                 chatMessages.scrollTop(chatMessages[0].scrollHeight);
             }
         });
@@ -65,17 +67,26 @@ $(document).ready(function() {
     function createMessageElement(sender, message) {
         var isUser = sender.toLowerCase() === 'usuario';
         var senderClass = isUser ? 'chat-message chat-message-right' : 'chat-message';
-        var avatarUrl = isUser ? '/assets/img/avatars/guru-meditating.jpg' : '/assets/img/avatars/guru-meditating.jpg';
+        var avatarUrl = isUser ? null : '/assets/img/avatars/guru-meditating.jpg';
         var messageElement = $('<li class="' + senderClass + '">');
+
+        var userAvatar = avatarUrl ? `
+            <div class="user-avatar flex-shrink-0 me-3">
+                <div class="avatar avatar-sm">
+                    <img src="${avatarUrl}" alt="Avatar" class="rounded-circle">
+                </div>
+            </div>` : '';
+
+        var userAvatarRight = avatarUrl ? `
+            <div class="user-avatar flex-shrink-0 ms-3">
+                <div class="avatar avatar-sm">
+                    <img src="${avatarUrl}" alt="Avatar" class="rounded-circle">
+                </div>
+            </div>` : '';
 
         var messageContent = `
             <div class="d-flex overflow-hidden">
-                ${isUser ? '' : `
-                <div class="user-avatar flex-shrink-0 me-3">
-                    <div class="avatar avatar-sm">
-                        <img src="${avatarUrl}" alt="Avatar" class="rounded-circle">
-                    </div>
-                </div>`}
+                ${isUser ? '' : userAvatar}
                 <div class="chat-message-wrapper flex-grow-1">
                     <div class="chat-message-text">
                         <p class="mb-0">${message}</p>
@@ -85,12 +96,7 @@ $(document).ready(function() {
                         <small>${new Date().toLocaleTimeString()}</small>
                     </div>
                 </div>
-                ${isUser ? `
-                <div class="user-avatar flex-shrink-0 ms-3">
-                    <div class="avatar avatar-sm">
-                        <img src="${avatarUrl}" alt="Avatar" class="rounded-circle">
-                    </div>
-                </div>` : ''}
+                ${isUser ? userAvatarRight : ''}
             </div>
         `;
 
@@ -101,7 +107,7 @@ $(document).ready(function() {
     function createBotMessageElement(message) {
         var botMessageElement = $('<li class="chat-message">');
         var avatarUrl = '/assets/img/avatars/guru-meditating.jpg';
-        var preloaderImage = '<div class="sk-wave sk-primary"><div class="sk-wave-rect"></div><div class="sk-wave-rect"></div><div class="sk-wave-rect"></div><div class="sk-wave-rect"></div><div class="sk-wave-rect"></div></div>';
+        var preloaderImage = '<img src="/assets/img/preloaders/preloader.gif" width="32" alt="Preloader" />';
 
         var messageContent = `
             <div class="d-flex overflow-hidden">

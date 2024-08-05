@@ -503,5 +503,6 @@ Route::middleware(['auth'])->group(function ()
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 
-Route::get('help', function () { return view('ai.index'); });
+// Helpdesk
+Route::get('help', function () { return view('helpdesk.index'); });
 Route::post('open-ai', [OpenAIController::class, 'index']);
