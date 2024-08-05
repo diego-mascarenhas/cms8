@@ -145,9 +145,10 @@ mixAssetsDir('vendor/fonts/!(_)*.scss', (src, dest) =>
 
 mixAssetsDir('js/**/*.js', (src, dest) => mix.scripts(src, dest));
 mixAssetsDir('css/**/*.css', (src, dest) => mix.copy(src, dest));
-// laravel working crud app related js
+
 mix.js('resources/js/laravel-user-management.js', 'public/js/');
 mix.js('resources/js/openai.js', 'public/js/');
+mix.js('resources/js/helpdesk-chat.js', 'public/js/');
 
 mix.copy('node_modules/flag-icons/flags/1x1/*', 'public/assets/vendor/fonts/flags/1x1');
 mix.copy('node_modules/flag-icons/flags/4x3/*', 'public/assets/vendor/fonts/flags/4x3');

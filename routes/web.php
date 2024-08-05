@@ -169,7 +169,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\CommunicationController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\OpenAIController;
+use App\Http\Controllers\HelpdeskController;
 
 
 // Main Page Route
@@ -505,4 +505,4 @@ Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 
 // Helpdesk
 Route::get('help', function () { return view('helpdesk.index'); });
-Route::post('open-ai', [OpenAIController::class, 'index']);
+Route::post('open-ai', [HelpdeskController::class, 'index']);

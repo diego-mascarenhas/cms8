@@ -15,7 +15,7 @@
 @endsection
 
 @section('page-script')
-<script src="{{asset('assets/js/app-chat.js')}}"></script>
+<script src="{{asset('js/helpdesk-chat.js')}}"></script>
 @endsection
 
 @section('content')
@@ -40,7 +40,85 @@
         </div>
         <div class="chat-history-body bg-body">
           <ul class="list-unstyled chat-history">
-            
+            <li class="chat-message chat-message-right">
+              <div class="d-flex overflow-hidden">
+                <div class="chat-message-wrapper flex-grow-1">
+                  <div class="chat-message-text">
+                    <p class="mb-0">{{ config('variables.templateName') ? config('variables.templateName') : 'TemplateName' }} has all the components you'll ever need in a app.</p>
+                  </div>
+                  <div class="text-end text-muted mt-1">
+                    <i class='ti ti-checks ti-xs me-1 text-success'></i>
+                    <small>10:03 AM</small>
+                  </div>
+                </div>
+                <div class="user-avatar flex-shrink-0 ms-3">
+                  <div class="avatar avatar-sm">
+                    <img src="{{asset('assets/img/avatars/1.png')}}" alt="Avatar" class="rounded-circle">
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li class="chat-message">
+              <div class="d-flex overflow-hidden">
+                <div class="user-avatar flex-shrink-0 me-3">
+                  <div class="avatar avatar-sm">
+                    <img src="{{asset('assets/img/avatars/2.png')}}" alt="Avatar" class="rounded-circle">
+                  </div>
+                </div>
+                <div class="chat-message-wrapper flex-grow-1">
+                  <div class="chat-message-text">
+                    <p class="mb-0">Looks clean and fresh UI. 😃</p>
+                  </div>
+                  <div class="chat-message-text mt-2">
+                    <p class="mb-0">It's perfect for my next project.</p>
+                  </div>
+                  <div class="chat-message-text mt-2">
+                    <p class="mb-0">How can I purchase it?</p>
+                  </div>
+                  <div class="text-muted mt-1">
+                    <small>10:05 AM</small>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li class="chat-message chat-message-right">
+              <div class="d-flex overflow-hidden">
+                <div class="chat-message-wrapper flex-grow-1">
+                  <div class="chat-message-text">
+                    <p class="mb-0">Thanks, you can purchase it.</p>
+                  </div>
+                  <div class="text-end text-muted mt-1">
+                    <i class='ti ti-checks ti-xs me-1 text-success'></i>
+                    <small>10:06 AM</small>
+                  </div>
+                </div>
+                <div class="user-avatar flex-shrink-0 ms-3">
+                  <div class="avatar avatar-sm">
+                    <img src="{{asset('assets/img/avatars/1.png')}}" alt="Avatar" class="rounded-circle">
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li class="chat-message">
+              <div class="d-flex overflow-hidden">
+                <div class="user-avatar flex-shrink-0 me-3">
+                  <div class="avatar avatar-sm">
+                    <img src="{{asset('assets/img/avatars/2.png')}}" alt="Avatar" class="rounded-circle">
+                  </div>
+                </div>
+                <div class="chat-message-wrapper flex-grow-1">
+                  <div class="chat-message-text">
+                    <p class="mb-0">I will purchase it for sure. 👍</p>
+                  </div>
+                  <div class="chat-message-text mt-2">
+                    <p class="mb-0">Thanks.</p>
+                  </div>
+                  <div class="text-muted mt-1">
+                    <small>10:08 AM</small>
+                  </div>
+                </div>
+              </div>
+            </li>
             <div id="chat-messages" class="chat-container" class="chat-history-wrapperx"></div>
 
           </ul>

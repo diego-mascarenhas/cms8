@@ -36,7 +36,7 @@ $(document).ready(function () {
     });
     var botMessageElement = createBotMessageElement('Writing...');
     chatMessages.append(botMessageElement);
-    chatMessages.scrollTop(chatMessages[0].scrollHeight);
+    scrollToBottom();
     $.ajax({
       headers: {
         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -67,12 +67,12 @@ $(document).ready(function () {
             console.error("Error getting audio file: ", error);
           });
         }
-        chatMessages.scrollTop(chatMessages[0].scrollHeight);
+        scrollToBottom();
       },
       error: function error(xhr, status, _error) {
         botMessageElement.find('.chat-message-text img').remove();
         botMessageElement.find('.chat-message-text p').html("Error: Either you have not entered your API key or GPT is not working at this time.");
-        chatMessages.scrollTop(chatMessages[0].scrollHeight);
+        scrollToBottom();
       }
     });
   }
@@ -95,6 +95,17 @@ $(document).ready(function () {
     botMessageElement.html(messageContent);
     return botMessageElement;
   }
+  function scrollToBottom() {
+    chatMessages.animate({
+      scrollTop: chatMessages[0].scrollHeight
+    }, 'slow');
+  }
+
+  // Ensure the chat scrolls to the bottom on page load
+  scrollToBottom();
+
+  // Assign scrollToBottom to the window object for testing in the console
+  window.scrollToBottom = scrollToBottom;
 });
 /******/ 	return __webpack_exports__;
 /******/ })()
