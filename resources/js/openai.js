@@ -132,8 +132,9 @@ $(document).ready(function() {
         return botMessageElement;
     }
 
+    // Scroll to bottom function
     function scrollToBottom() {
-        chatMessages.animate({ scrollTop: chatMessages[0].scrollHeight }, 'slow');
+        chatMessages.scrollTop(chatMessages[0].scrollHeight);
     }
 
     // Ensure the chat scrolls to the bottom on page load
