@@ -22,8 +22,9 @@ $(document).ready(function () {
   var chatHistoryBody = document.querySelector('.chat-history-body');
 
   // Initialize PerfectScrollbar
+  var ps;
   if (chatHistoryBody) {
-    new PerfectScrollbar(chatHistoryBody, {
+    ps = new PerfectScrollbar(chatHistoryBody, {
       wheelPropagation: false,
       suppressScrollX: true
     });
@@ -76,11 +77,12 @@ $(document).ready(function () {
             console.error("Error getting audio file: ", error);
           });
         }
-        scrollToBottom();
       },
       error: function error(xhr, status, _error) {
         botMessageElement.find('.chat-message-text img').remove();
         botMessageElement.find('.chat-message-text p').html("Error: Either you have not entered your API key or GPT is not working at this time.");
+      },
+      complete: function complete() {
         scrollToBottom();
       }
     });
@@ -107,7 +109,10 @@ $(document).ready(function () {
 
   // Scroll to bottom function
   function scrollToBottom() {
-    chatHistoryBody.scrollTo(0, chatHistoryBody.scrollHeight);
+    $(chatHistoryBody).animate({
+      scrollTop: chatHistoryBody.scrollHeight
+    }, 500);
+    if (ps) ps.update();
   }
 
   // Ensure the chat scrolls to the bottom on page load
@@ -129,6 +134,9 @@ $(document).ready(function () {
       scrollToBottom();
     }
   });
+
+  // Scroll to bottom every 10 seconds with smooth animation
+  setInterval(scrollToBottom, 10000);
 });
 /******/ 	return __webpack_exports__;
 /******/ })()
