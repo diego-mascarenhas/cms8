@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\Prompt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -26,8 +27,18 @@ class HelpdeskController extends Controller
     {
         $chatHistory = $request->input('chatHistory', []);
 
-        $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptName];
-        $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptSystem];
+        $prompts = Prompt::where('status', true)->get();
+
+        if ($prompts->isEmpty())
+        {
+            $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptName];
+            $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptSystem];
+        }
+        else
+        {
+            $systemMessage = $prompts->pluck('content')->implode(' ');
+            $chatHistory[] = ['role' => 'system', 'content' => $systemMessage];
+        }
 
         $userMessage = $request->post('msg');
         $chatHistory[] = ['role' => 'user', 'content' => $userMessage];
@@ -65,7 +76,8 @@ class HelpdeskController extends Controller
 
     private function createVoiceFile($prompt, $selected_voice_id, $eleven_api_key, Request $request)
     {
-        if (empty($this->elevenApiKey)) {
+        if (empty($this->elevenApiKey))
+        {
             return false;
         }
 
