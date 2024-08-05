@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Chat - Apps')
+@section('title', 'Helpdesk')
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.css')}}" />
@@ -15,7 +15,7 @@
 @endsection
 
 @section('page-script')
-<script src="{{asset('assets/js/app-chat.js')}}"></script>
+<script src="{{asset('js/helpdesk-chat.js')}}"></script>
 @endsection
 
 @section('content')
@@ -40,9 +40,7 @@
         </div>
         <div class="chat-history-body bg-body">
           <ul class="list-unstyled chat-history">
-            
-            <div id="chat-messages" class="chat-container" class="chat-history-wrapperx"></div>
-
+            <div id="chat-messages" class="chat-container"></div>
           </ul>
         </div>
         <!-- Chat message form -->

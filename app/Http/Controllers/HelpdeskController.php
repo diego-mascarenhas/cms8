@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\JsonResponse;
 
-class OpenAIController extends Controller
+class HelpdeskController extends Controller
 {
     private $apiKey;
     private $elevenApiKey;
@@ -54,7 +54,7 @@ class OpenAIController extends Controller
         $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptName];
         $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptSystem];
 
-        $voiceFilePath = $this->crea_el_archivo_de_voz($response, $this->chatGptVoice, $this->elevenApiKey, $request);
+        $voiceFilePath = $this->createVoiceFile($response, $this->chatGptVoice, $this->elevenApiKey, $request);
 
         return response()->json([
             'response' => $response,
@@ -63,8 +63,12 @@ class OpenAIController extends Controller
         ], 200, [], JSON_PRETTY_PRINT);
     }
 
-    private function crea_el_archivo_de_voz($prompt, $selected_voice_id, $eleven_api_key, Request $request)
+    private function createVoiceFile($prompt, $selected_voice_id, $eleven_api_key, Request $request)
     {
+        if (empty($this->elevenApiKey)) {
+            return false;
+        }
+
         $response_text = $prompt;
 
         $url = "https://api.elevenlabs.io/v1/text-to-speech/" . $selected_voice_id;
