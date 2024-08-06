@@ -15,6 +15,7 @@ return new class extends Migration
             $table->text('content');
             $table->boolean('status')->default(true);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->foreign('type_id')->references('id')->on('prompt_types')->onDelete('set null');
         });

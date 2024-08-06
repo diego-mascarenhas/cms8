@@ -22,7 +22,7 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">Hosts/</span> {{ isset($data) ? 'Edit' : 'Create' }}</h4>
+		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">Hosts/</span> {{ isset($data->id) ? 'Edit' : 'Create' }}</h4>
         <p class="text-muted">Monitor and Optimize Your Network Devices and Hosts</p>
     </div>
 </div>

@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\JsonResponse;
 
+use Log;
+
 class HelpdeskController extends Controller
 {
     private $apiKey;
@@ -39,6 +41,8 @@ class HelpdeskController extends Controller
             $systemMessage = $prompts->pluck('content')->implode(' ');
             $chatHistory[] = ['role' => 'system', 'content' => $systemMessage];
         }
+
+        Log::info($systemMessage);
 
         $userMessage = $request->post('msg');
         $chatHistory[] = ['role' => 'user', 'content' => $userMessage];
