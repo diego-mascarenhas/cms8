@@ -14,7 +14,7 @@ class HelpdeskController extends Controller
     private $apiKey;
     private $elevenApiKey;
 
-    private $chatGptModel = "gpt-3.5-turbo-0301";
+    private $chatGptModel = "gpt-3.5-turbo-0301"; // gpt-4
     private $chatGptName = "YOUR NAME IS Simplicity. Remember that you are a VERY kind, respectful, understanding and ALWAYS positive technical support employee. Don't be repetitive.";
     private $chatGptSystem = "Use VERY SHORT answers. Don't be ironic, acidic, unbearable, rude. HABLA EN ESPAÑOL.";
     private $chatGptVoice = "ErXwobaYiN019PkySvjV";
@@ -42,8 +42,6 @@ class HelpdeskController extends Controller
             $chatHistory[] = ['role' => 'system', 'content' => $systemMessage];
         }
 
-        Log::info($systemMessage);
-
         $userMessage = $request->post('msg');
         $chatHistory[] = ['role' => 'user', 'content' => $userMessage];
 
@@ -63,6 +61,7 @@ class HelpdeskController extends Controller
             ->json();
 
         $response = $data['choices'][0]['message']['content'];
+        // Log::info($data);
 
         $chatHistory[] = ['role' => 'assistant', 'content' => $response];
 

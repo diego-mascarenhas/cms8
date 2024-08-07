@@ -512,5 +512,6 @@ Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 
 // Chat
-Route::get('chat', function () { return view('helpdesk.index'); });
+Route::get('chat', function () { return view('helpdesk.index', ['pageConfigs' => ['myLayout' => 'blank']]); });
 Route::post('open-ai', [HelpdeskController::class, 'index']);
+

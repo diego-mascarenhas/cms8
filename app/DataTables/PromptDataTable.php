@@ -66,6 +66,7 @@ class PromptDataTable extends DataTable
             Column::make('id')->hidden(),
             Column::make('name')->title('Name')->orderable(false),
             Column::make('type_id')->title('Type')->orderable(false),
+            Column::make('content')->title('Content')->hidden(),
             Column::make('status')->title('Status')->className('text-center'),
             Column::computed('action')->title('Actions')->width(20)->className('text-center')
                 ->exportable(false)
