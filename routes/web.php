@@ -154,6 +154,7 @@ use App\Http\Controllers\tables\DatatableExtensions;
 use App\Http\Controllers\charts\ApexCharts;
 use App\Http\Controllers\charts\ChartJs;
 use App\Http\Controllers\maps\Leaflet;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostController;
 use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\WhatsAppController;
@@ -174,9 +175,11 @@ use App\Http\Controllers\PromptController;
 
 
 // Main Page Route
-Route::get('/', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
-Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard');
-Route::get('/dashboard/crm', [Crm::class, 'index'])->name('dashboard-crm');
+Route::get('/', [HomeController::class, 'index']);
+Route::get('/home', [PageController::class, 'home'])->name('home');
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
+Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
+Route::get('/dashboard/crm', [Crm::class, 'index'])->name('dashboard-crm')->middleware('auth');
 // locale
 Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 
