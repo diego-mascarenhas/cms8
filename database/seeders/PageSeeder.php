@@ -21,7 +21,7 @@ class PageSeeder extends Seeder
 
     Page::create([
       'id' => 1,
-      'name' => 'GrapesJs',
+      'name' => 'Home',
 			'gjs_data' => $data,
       'status' => 1,
     ]);

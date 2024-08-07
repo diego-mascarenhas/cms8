@@ -33,6 +33,6 @@ class PageController extends Controller
     {
         $page = Page::findOrFail(1);
 
-        return view('page.show', compact('page'));
+        return view('page.home', compact('page'));
     }
 }
