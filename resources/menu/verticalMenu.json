@@ -63,6 +63,13 @@
 			"menuHeader": "Apps"
 		},
 		{
+			"url": "pages/1/editor",
+			"name": "Landing Page",
+			"icon": "menu-icon tf-icons ti ti-globe",
+			"slug": "page-edit",
+			"target": "blank"
+		},
+		{
 			"url": "app/whatsapp",
 			"name": "WhatsApp",
 			"icon": "menu-icon tf-icons ti ti-messages",
@@ -92,30 +99,13 @@
 			]
 		},
 		{
-			"menuHeader": "Landing Page"
-		},
-		{
-			"url": "pages/1/editor",
-			"name": "Edit",
-			"icon": "menu-icon tf-icons ti ti-edit",
-			"slug": "page-edit",
-			"target": "blank"
-		},
-		{
-			"url": "pages/1",
-			"name": "View",
-			"icon": "menu-icon tf-icons ti ti-eye",
-			"slug": "page-view",
-			"target": "blank"
-		},
-		{
 			"menuHeader": "Support"
 		},
 		{
-			"url": "help",
+			"url": "app/prompt/list",
 			"name": "Helpdesk",
 			"icon": "menu-icon tf-icons ti ti-lifebuoy",
-			"slug": "help"
+			"slug": "app-prompt-list"
 		}
 	]
 }

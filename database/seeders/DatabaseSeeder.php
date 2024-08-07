@@ -27,6 +27,8 @@ class DatabaseSeeder extends Seeder
             UserClientSeeder::class,
             HostTypeSeeder::class,
             NetworkDeviceSeeder::class,
+            PromptTypeSeeder::class,
+            PromptSeeder::class
 		]);
     }
 }

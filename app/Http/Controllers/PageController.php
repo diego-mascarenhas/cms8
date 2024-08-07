@@ -28,4 +28,11 @@ class PageController extends Controller
 
         return view('page.show', compact('page'));
     }
+
+    public function home()
+    {
+        $page = Page::findOrFail(1);
+
+        return view('page.home', compact('page'));
+    }
 }

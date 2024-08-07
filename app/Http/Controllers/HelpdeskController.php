@@ -1,17 +1,20 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\Prompt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\JsonResponse;
+
+use Log;
 
 class HelpdeskController extends Controller
 {
     private $apiKey;
     private $elevenApiKey;
 
-    private $chatGptModel = "gpt-3.5-turbo-0301";
+    private $chatGptModel = "gpt-3.5-turbo-0301"; // gpt-4
     private $chatGptName = "YOUR NAME IS Simplicity. Remember that you are a VERY kind, respectful, understanding and ALWAYS positive technical support employee. Don't be repetitive.";
     private $chatGptSystem = "Use VERY SHORT answers. Don't be ironic, acidic, unbearable, rude. HABLA EN ESPAÑOL.";
     private $chatGptVoice = "ErXwobaYiN019PkySvjV";
@@ -26,8 +29,18 @@ class HelpdeskController extends Controller
     {
         $chatHistory = $request->input('chatHistory', []);
 
-        $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptName];
-        $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptSystem];
+        $prompts = Prompt::where('status', true)->get();
+
+        if ($prompts->isEmpty())
+        {
+            $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptName];
+            $chatHistory[] = ['role' => 'system', 'content' => $this->chatGptSystem];
+        }
+        else
+        {
+            $systemMessage = $prompts->pluck('content')->implode(' ');
+            $chatHistory[] = ['role' => 'system', 'content' => $systemMessage];
+        }
 
         $userMessage = $request->post('msg');
         $chatHistory[] = ['role' => 'user', 'content' => $userMessage];
@@ -48,6 +61,7 @@ class HelpdeskController extends Controller
             ->json();
 
         $response = $data['choices'][0]['message']['content'];
+        // Log::info($data);
 
         $chatHistory[] = ['role' => 'assistant', 'content' => $response];
 
@@ -65,7 +79,8 @@ class HelpdeskController extends Controller
 
     private function createVoiceFile($prompt, $selected_voice_id, $eleven_api_key, Request $request)
     {
-        if (empty($this->elevenApiKey)) {
+        if (empty($this->elevenApiKey))
+        {
             return false;
         }
 
