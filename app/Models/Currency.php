@@ -22,7 +22,7 @@ class Currency extends Model
     ];
 
     protected $casts = [
-        'status' => 'boolean',  // Asegura que el estado se maneje como un booleano
+        'status' => 'boolean',
     ];
 
     public function scopeActive($query)

@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Currency;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class CurrencySeeder extends Seeder
 {
@@ -14,28 +14,28 @@ class CurrencySeeder extends Seeder
      */
     public function run()
     {
-        DB::table('currencies')->insert([
-            [
-                'id' => 840,
-                'code' => 'USD',
-                'name' => 'United States Dollar',
-                'symbol' => '$',
-                'status' => true,
-            ],
-            [
-                'id' => 978,
-                'code' => 'EUR',
-                'name' => 'Euro',
-                'symbol' => '€',
-                'status' => true,
-            ],
-            [
-                'id' => 32,
-                'code' => 'ARS',
-                'name' => 'Argentine Peso',
-                'symbol' => '$',
-                'status' => true,
-            ],
+        Currency::create([
+            'id' => 840,
+            'code' => 'USD',
+            'name' => 'United States Dollar',
+            'symbol' => '$',
+            'status' => true,
+        ]);
+
+        Currency::create([
+            'id' => 978,
+            'code' => 'EUR',
+            'name' => 'Euro',
+            'symbol' => '€',
+            'status' => true,
+        ]);
+
+        Currency::create([
+            'id' => 32,
+            'code' => 'ARS',
+            'name' => 'Argentine Peso',
+            'symbol' => '$',
+            'status' => true,
         ]);
     }
 }

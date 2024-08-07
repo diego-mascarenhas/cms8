@@ -169,6 +169,8 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\CommunicationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HelpdeskController;
+use App\Http\Controllers\PromptController;
 
 
 // Main Page Route
@@ -495,9 +497,21 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/app/invoice/report', [CategoryController::class, 'report'])->name('app-invoice-report');
     Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('category.items');
 
-
+    // Prompt
+    Route::get('/app/prompt/list', [PromptController::class, 'index'])->name('app-prompt-list');
+    Route::get('/app/prompt/create', [PromptController::class, 'create'])->name('prompt.create');
+    Route::get('/app/prompt/{id}', [PromptController::class, 'show'])->name('prompt.show');
+    Route::get('/app/prompt/{id}/edit', [PromptController::class, 'edit'])->name('prompt.edit');
+    Route::post('/app/prompt', [PromptController::class, 'store'])->name('prompt.store');
+    Route::put('/app/prompt/{id}', [PromptController::class, 'update'])->name('prompt.update');
+    Route::delete('/app/prompt/{id}', [PromptController::class, 'destroy'])->name('prompt.destroy');
 });
 
 // Editor
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
+
+// Chat
+Route::get('chat', function () { return view('helpdesk.index', ['pageConfigs' => ['myLayout' => 'blank']]); });
+Route::post('open-ai', [HelpdeskController::class, 'index']);
+

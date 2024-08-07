@@ -187,17 +187,17 @@ class ImportDataSeeder extends Seeder
             $existingEnterprise = DB::table('enterprises')->where('id', $data->id)->first();
 
 
-            if ($data->id_categoria == 2)
+            if ($data->id_categoria == 3 || $data->id_categoria == 463)
             {
-                $type_id = 1;
+                $type_id = 2; // Supplier
             }
-            elseif ($data->id_categoria == 100)
+            elseif ($data->id_categoria == 100 || $data->id_categoria == 464)
             {
-                $type_id = 3;
+                $type_id = 3; // Partnership
             }
             else
             {
-                $type_id = 2;
+                $type_id = 1; // Client
             }
 
             $userId = $data->id_contacto ?? null;

@@ -78,6 +78,6 @@ class CommunicationDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Invoice_' . date('YmdHis');
+        return 'Communication_' . date('YmdHis');
     }
 }
