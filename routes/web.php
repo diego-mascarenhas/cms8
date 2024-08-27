@@ -14,6 +14,9 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\CommunicationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\apps\Calendar;
+use App\Http\Controllers\apps\InvoiceList;
+use App\Http\Controllers\pages\AccountSettingsAccount;
 
 
 // Main Page Route
@@ -21,6 +24,14 @@ Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
+
+Route::get('misc-error', function () {
+    return view('content.pages.pages-misc-error');
+})->name('404');
+
+Route::get('/app/calendar', [Calendar::class, 'index'])->name('app-calendar');
+Route::get('/app/invoice/list', [InvoiceList::class, 'index'])->name('app-invoice-list');
+Route::get('/pages/account-settings-account', [AccountSettingsAccount::class, 'index'])->name('pages-account-settings-account');
 
 // locale
 Route::get('lang/{locale}', [LanguageController::class, 'swap']);
@@ -71,7 +82,7 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/app/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
 
     // Invoices
-    Route::get('/app/invoice/list', [InvoiceController::class, 'index'])->name('app-invoice-list');
+    //Route::get('/app/invoice/list', [InvoiceController::class, 'index'])->name('app-invoice-list');
     Route::delete('/app/invoice/{id}', [InvoiceController::class, 'destroy'])->name('invoice.destroy');
 
     // Payments
@@ -88,5 +99,5 @@ Route::middleware(['auth'])->group(function ()
 });
 
 // Editor
-Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
-Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
+// Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
+// Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');

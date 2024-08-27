@@ -167,7 +167,7 @@ $navbarDetached = ($navbarDetached ?? '');
                     <span class="dropdown-shortcuts-icon rounded-circle mb-2">
                       <i class="ti ti-users fs-4"></i>
                     </span>
-                    <a href="{{url('app/user/list')}}" class="stretched-link">User App</a>
+                    <a href="{{url('user-management')}}" class="stretched-link">User App</a>
                     <small class="text-muted mb-0">Manage Users</small>
                   </div>
                   <div class="dropdown-shortcuts-item col">
@@ -184,7 +184,6 @@ $navbarDetached = ($navbarDetached ?? '');
           <!-- Quick links -->
 
           <!-- Notification -->
-          <!--
           <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
               <i class="ti ti-bell ti-md"></i>
@@ -370,7 +369,6 @@ $navbarDetached = ($navbarDetached ?? '');
               </li>
             </ul>
           </li>
-          -->
           <!--/ Notification -->
 
           <!-- User -->

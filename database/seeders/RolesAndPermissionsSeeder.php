@@ -11,7 +11,12 @@ class RolesAndPermissionsSeeder extends Seeder
     public function run()
     {
         Permission::create(['name' => 'user.management']);
+        Permission::create(['name' => 'profile.show']);
+        Permission::create(['name' => 'profile.edit']);
+        Permission::create(['name' => 'profile.update']);
+        Permission::create(['name' => 'password.update']);
 
+        Permission::create(['name' => 'user.index']);
         Permission::create(['name' => 'user.list']);
         Permission::create(['name' => 'user.create']);
         Permission::create(['name' => 'user.show']);
@@ -20,22 +25,25 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'user.update']);
         Permission::create(['name' => 'user.destroy']);
 
-        Permission::create(['name' => 'client.list']);
-        Permission::create(['name' => 'client.create']);
-        Permission::create(['name' => 'client.show']);
-        Permission::create(['name' => 'client.edit']);
-        Permission::create(['name' => 'client.store']);
-        Permission::create(['name' => 'client.update']);
-        Permission::create(['name' => 'client.destroy']);
+        Permission::create(['name' => 'today.index']);
+        Permission::create(['name' => 'today.list']);
+        Permission::create(['name' => 'today.create']);
+        Permission::create(['name' => 'today.show']);
+        Permission::create(['name' => 'today.edit']);
+        Permission::create(['name' => 'today.store']);
+        Permission::create(['name' => 'today.update']);
+        Permission::create(['name' => 'today.destroy']);
+        
+        Permission::create(['name' => 'chat.index']);
+        Permission::create(['name' => 'chat.list']);
+        Permission::create(['name' => 'chat.create']);
+        Permission::create(['name' => 'chat.show']);
+        Permission::create(['name' => 'chat.edit']);
+        Permission::create(['name' => 'chat.store']);
+        Permission::create(['name' => 'chat.update']);
+        Permission::create(['name' => 'chat.destroy']);
 
-        Permission::create(['name' => 'supplier.list']);
-        Permission::create(['name' => 'supplier.create']);
-        Permission::create(['name' => 'supplier.show']);
-        Permission::create(['name' => 'supplier.edit']);
-        Permission::create(['name' => 'supplier.store']);
-        Permission::create(['name' => 'supplier.update']);
-        Permission::create(['name' => 'supplier.destroy']);
-
+        Permission::create(['name' => 'service.index']);
         Permission::create(['name' => 'service.list']);
         Permission::create(['name' => 'service.create']);
         Permission::create(['name' => 'service.show']);
@@ -44,140 +52,304 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'service.update']);
         Permission::create(['name' => 'service.destroy']);
 
-        Permission::create(['name' => 'project.list']);
-        Permission::create(['name' => 'project.create']);
-        Permission::create(['name' => 'project.show']);
-        Permission::create(['name' => 'project.edit']);
-        Permission::create(['name' => 'project.store']);
-        Permission::create(['name' => 'project.update']);
-        Permission::create(['name' => 'project.destroy']);
+        Permission::create(['name' => 'client.index']);
+        Permission::create(['name' => 'client.list']);
+        Permission::create(['name' => 'client.create']);
+        Permission::create(['name' => 'client.show']);
+        Permission::create(['name' => 'client.edit']);
+        Permission::create(['name' => 'client.store']);
+        Permission::create(['name' => 'client.update']);
+        Permission::create(['name' => 'client.destroy']);
 
-        Permission::create(['name' => 'invoice.list']);
-        Permission::create(['name' => 'invoice.create']);
-        Permission::create(['name' => 'invoice.show']);
-        Permission::create(['name' => 'invoice.edit']);
-        Permission::create(['name' => 'invoice.store']);
-        Permission::create(['name' => 'invoice.update']);
-        Permission::create(['name' => 'invoice.destroy']);
+        Permission::create(['name' => 'list60.index']);
+        Permission::create(['name' => 'list60.list']);
+        Permission::create(['name' => 'list60.create']);
+        Permission::create(['name' => 'list60.show']);
+        Permission::create(['name' => 'list60.edit']);
+        Permission::create(['name' => 'list60.store']);
+        Permission::create(['name' => 'list60.update']);
+        Permission::create(['name' => 'list60.destroy']);
 
-        Permission::create(['name' => 'payment.list']);
-        Permission::create(['name' => 'payment.create']);
-        Permission::create(['name' => 'payment.show']);
-        Permission::create(['name' => 'payment.edit']);
-        Permission::create(['name' => 'payment.store']);
-        Permission::create(['name' => 'payment.update']);
-        Permission::create(['name' => 'payment.destroy']);
+        Permission::create(['name' => 'task.index']);
+        Permission::create(['name' => 'task.list']);
+        Permission::create(['name' => 'task.create']);
+        Permission::create(['name' => 'task.show']);
+        Permission::create(['name' => 'task.edit']);
+        Permission::create(['name' => 'task.store']);
+        Permission::create(['name' => 'task.update']);
+        Permission::create(['name' => 'task.destroy']);
 
-        Permission::create(['name' => 'communication.list']);
-        Permission::create(['name' => 'communication.create']);
-        Permission::create(['name' => 'communication.show']);
-        Permission::create(['name' => 'communication.edit']);
-        Permission::create(['name' => 'communication.store']);
-        Permission::create(['name' => 'communication.update']);
-        Permission::create(['name' => 'communication.destroy']);
+        Permission::create(['name' => 'time.index']);
+        Permission::create(['name' => 'time.list']);
+        Permission::create(['name' => 'time.create']);
+        Permission::create(['name' => 'time.show']);
+        Permission::create(['name' => 'time.edit']);
+        Permission::create(['name' => 'time.store']);
+        Permission::create(['name' => 'time.update']);
+        Permission::create(['name' => 'time.destroy']);
 
-        Permission::create(['name' => 'host.list']);
-        Permission::create(['name' => 'host.create']);
-        Permission::create(['name' => 'host.show']);
-        Permission::create(['name' => 'host.edit']);
-        Permission::create(['name' => 'host.store']);
-        Permission::create(['name' => 'host.update']);
-        Permission::create(['name' => 'host.destroy']);
+        Permission::create(['name' => 'documentation.index']);
+        Permission::create(['name' => 'documentation.list']);
+        Permission::create(['name' => 'documentation.create']);
+        Permission::create(['name' => 'documentation.show']);
+        Permission::create(['name' => 'documentation.edit']);
+        Permission::create(['name' => 'documentation.store']);
+        Permission::create(['name' => 'documentation.update']);
+        Permission::create(['name' => 'documentation.destroy']);
 
-        Permission::create(['name' => 'profile.show']);
-        Permission::create(['name' => 'profile.edit']);
-        Permission::create(['name' => 'profile.update']);
-        Permission::create(['name' => 'password.update']);
+        Permission::create(['name' => 'earning.index']);
+        Permission::create(['name' => 'earning.list']);
+        Permission::create(['name' => 'earning.create']);
+        Permission::create(['name' => 'earning.show']);
+        Permission::create(['name' => 'earning.edit']);
+        Permission::create(['name' => 'earning.store']);
+        Permission::create(['name' => 'earning.update']);
+        Permission::create(['name' => 'earning.destroy']);
+
+        Permission::create(['name' => 'expense.index']);
+        Permission::create(['name' => 'expense.list']);
+        Permission::create(['name' => 'expense.create']);
+        Permission::create(['name' => 'expense.show']);
+        Permission::create(['name' => 'expense.edit']);
+        Permission::create(['name' => 'expense.store']);
+        Permission::create(['name' => 'expense.update']);
+        Permission::create(['name' => 'expense.destroy']);
+
+        Permission::create(['name' => 'accounting.index']);
+        Permission::create(['name' => 'accounting.list']);
+        Permission::create(['name' => 'accounting.create']);
+        Permission::create(['name' => 'accounting.show']);
+        Permission::create(['name' => 'accounting.edit']);
+        Permission::create(['name' => 'accounting.store']);
+        Permission::create(['name' => 'accounting.update']);
+        Permission::create(['name' => 'accounting.destroy']);
+
+        Permission::create(['name' => 'financial.index']);
+        Permission::create(['name' => 'financial.list']);
+        Permission::create(['name' => 'financial.create']);
+        Permission::create(['name' => 'financial.show']);
+        Permission::create(['name' => 'financial.edit']);
+        Permission::create(['name' => 'financial.store']);
+        Permission::create(['name' => 'financial.update']);
+        Permission::create(['name' => 'financial.destroy']);
+
+        Permission::create(['name' => 'department.index']);
+        Permission::create(['name' => 'department.list']);
+        Permission::create(['name' => 'department.create']);
+        Permission::create(['name' => 'department.show']);
+        Permission::create(['name' => 'department.edit']);
+        Permission::create(['name' => 'department.store']);
+        Permission::create(['name' => 'department.update']);
+        Permission::create(['name' => 'department.destroy']);
+
+        Permission::create(['name' => 'funnel.index']);
+        Permission::create(['name' => 'funnel.list']);
+        Permission::create(['name' => 'funnel.create']);
+        Permission::create(['name' => 'funnel.show']);
+        Permission::create(['name' => 'funnel.edit']);
+        Permission::create(['name' => 'funnel.store']);
+        Permission::create(['name' => 'funnel.update']);
+        Permission::create(['name' => 'funnel.destroy']);
+
+        Permission::create(['name' => 'automation.index']);
+        Permission::create(['name' => 'automation.list']);
+        Permission::create(['name' => 'automation.create']);
+        Permission::create(['name' => 'automation.show']);
+        Permission::create(['name' => 'automation.edit']);
+        Permission::create(['name' => 'automation.store']);
+        Permission::create(['name' => 'automation.update']);
+        Permission::create(['name' => 'automation.destroy']);
+
+        Permission::create(['name' => 'integration.index']);
+        Permission::create(['name' => 'integration.list']);
+        Permission::create(['name' => 'integration.create']);
+        Permission::create(['name' => 'integration.show']);
+        Permission::create(['name' => 'integration.edit']);
+        Permission::create(['name' => 'integration.store']);
+        Permission::create(['name' => 'integration.update']);
+        Permission::create(['name' => 'integration.destroy']);
+
+        Permission::create(['name' => 'campaign.index']);
+        Permission::create(['name' => 'campaign.list']);
+        Permission::create(['name' => 'campaign.create']);
+        Permission::create(['name' => 'campaign.show']);
+        Permission::create(['name' => 'campaign.edit']);
+        Permission::create(['name' => 'campaign.store']);
+        Permission::create(['name' => 'campaign.update']);
+        Permission::create(['name' => 'campaign.destroy']);
+
 
         $rootRole = Role::create(['name' => 'root']);
         $rootRole->syncPermissions([
             'user.management',
-            'user.list',
-            'user.destroy',
-            'client.destroy',
-            'supplier.destroy',
-            'service.destroy',
-            'project.destroy',
-            'invoice.destroy',
-            'payment.destroy',
-            'communication.destroy',
-            'password.update',
         ]);
         
         $administratorRole = Role::create(['name' => 'admin']);
         $administratorRole->syncPermissions([
-            'user.management',
             'user.list',
             'user.create',
             'user.show',
             'user.edit',
             'user.store',
             'user.update',
-            'client.list',
-            'client.create',
-            'client.show',
-            'client.edit',
-            'client.store',
-            'client.update',
-            'supplier.list',
-            'supplier.create',
-            'supplier.show',
-            'supplier.edit',
-            'supplier.store',
-            'supplier.update',
+            'user.destroy',
+            'today.list',
+            'today.create',
+            'today.show',
+            'today.edit',
+            'today.store',
+            'today.update',
+            'today.destroy',
+            'chat.index',
+            'chat.list',
+            'chat.create',
+            'chat.show',
+            'chat.edit',
+            'chat.store',
+            'chat.update',
+            'chat.destroy',
+            'service.index',
             'service.list',
             'service.create',
             'service.show',
             'service.edit',
             'service.store',
             'service.update',
-            'project.list',
-            'project.create',
-            'project.show',
-            'project.edit',
-            'project.store',
-            'project.update',
-            'invoice.list',
-            'invoice.create',
-            'invoice.show',
-            'invoice.store',
-            'payment.list',
-            'payment.create',
-            'payment.show',
-            'payment.edit',
-            'payment.store',
-            'payment.update',
-            'communication.list',
-            'communication.create',
-            'communication.show',
-            'communication.edit',
-            'communication.store',
-            'communication.update',
-            'password.update',
+            'service.destroy',
+            'client.index',
+            'client.list',
+            'client.create',
+            'client.show',
+            'client.edit',
+            'client.store',
+            'client.update',
+            'client.destroy',
+            'list60.index',
+            'list60.list',
+            'list60.create',
+            'list60.show',
+            'list60.edit',
+            'list60.store',
+            'list60.update',
+            'list60.destroy',
+            'task.index',
+            'task.list',
+            'task.create',
+            'task.show',
+            'task.edit',
+            'task.store',
+            'task.update',
+            'task.destroy',
+            'time.index',
+            'time.list',
+            'time.create',
+            'time.show',
+            'time.edit',
+            'time.store',
+            'time.update',
+            'time.destroy',
+            'documentation.index',
+            'documentation.list',
+            'documentation.create',
+            'documentation.show',
+            'documentation.edit',
+            'documentation.store',
+            'documentation.update',
+            'documentation.destroy',
+            'earning.index',
+            'earning.list',
+            'earning.create',
+            'earning.show',
+            'earning.edit',
+            'earning.store',
+            'earning.update',
+            'earning.destroy',
+            'expense.index',
+            'expense.list',
+            'expense.create',
+            'expense.show',
+            'expense.edit',
+            'expense.store',
+            'expense.update',
+            'expense.destroy',
+            'accounting.index',
+            'accounting.list',
+            'accounting.create',
+            'accounting.show',
+            'accounting.edit',
+            'accounting.store',
+            'accounting.update',
+            'accounting.destroy',
+            'financial.index',
+            'financial.list',
+            'financial.create',
+            'financial.show',
+            'financial.edit',
+            'financial.store',
+            'financial.update',
+            'financial.destroy',
+            'department.index',
+            'department.list',
+            'department.create',
+            'department.show',
+            'department.edit',
+            'department.store',
+            'department.update',
+            'department.destroy',
+            'funnel.index',
+            'funnel.list',
+            'funnel.create',
+            'funnel.show',
+            'funnel.edit',
+            'funnel.store',
+            'funnel.update',
+            'funnel.destroy',
+            'automation.index',
+            'automation.list',
+            'automation.create',
+            'automation.show',
+            'automation.edit',
+            'automation.store',
+            'automation.update',
+            'automation.destroy',
+            'integration.index',
+            'integration.list',
+            'integration.create',
+            'integration.show',
+            'integration.edit',
+            'integration.store',
+            'integration.update',
+            'integration.destroy',
+            'campaign.index',
+            'campaign.list',
+            'campaign.create',
+            'campaign.show',
+            'campaign.edit',
+            'campaign.store',
+            'campaign.update',
+            'campaign.destroy',
         ]);
 
         $colaboratorRole = Role::create(['name' => 'colaborator']);
         $colaboratorRole->syncPermissions([
-            'client.list',
-            'client.create',
-            'client.show',
-            'client.edit',
-            'client.store',
-            'client.update',
+            'user.list',
+            'today.list',
+            'chat.list',
             'service.list',
-            'service.create',
-            'service.show',
-            'service.edit',
-            'service.store',
-            'service.update',
-            'project.list',
-            'project.create',
-            'project.show',
-            'project.edit',
-            'project.store',
-            'project.update',
-            'communication.list',
-            'password.update',
+            'client.list',
+            'list60.list',
+            'task.list',
+            'time.list',
+            'documentation.list',
+            'earning.list',
+            'expense.list',
+            'accounting.list',
+            'financial.list',
+            'department.list',
+            'funnel.list',
+            'automation.list',
+            'integration.list',
+            'campaign.list',
         ]);
 
         $editorRole = Role::create(['name' => 'editor']);
@@ -190,10 +362,10 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $editorRole = Role::create(['name' => 'auditor']);
         $editorRole->syncPermissions([
-            'client.list',
-            'supplier.list',
-            'invoice.list',
-            'payment.list',
+            'profile.show',
+            'profile.edit',
+            'profile.update',
+            'password.update',
         ]);
         
         $clientRole = Role::create(['name' => 'client']);
@@ -206,8 +378,10 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $technicalRole = Role::create(['name' => 'technical']);
         $technicalRole->syncPermissions([
-            'host.list',
-            'host.edit',
+            'profile.show',
+            'profile.edit',
+            'profile.update',
+            'password.update',
         ]);
         
         $guestRole = Role::create(['name' => 'guest']);

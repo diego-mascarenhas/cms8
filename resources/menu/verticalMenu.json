@@ -10,48 +10,142 @@
 			"slug": "dashboard"
 		},
 		{
-			"menuHeader": "Admin"
+			"menuHeader": "Operativa"
 		},
 		{
-			"url": "user-management",
-			"name": "Contactos",
-			"icon": "menu-icon tf-icons ti ti-users",
-			"slug": "user-management",
-			"permission": "user.list"
+			"url": "today",
+			"name": "Hoy",
+			"icon": "menu-icon tf-icons ti ti-calendar-time",
+			"slug": "today",
+			"permission": "today.index"
 		},
 		{
-			"url": "app/whatsapp",
-			"name": "WhatsApp",
-			"icon": "menu-icon tf-icons ti ti-messages",
-			"slug": "app-whatsapp"
+			"url": "chat",
+			"name": "Chat",
+			"icon": "menu-icon tf-icons ti ti-message-chatbot",
+			"slug": "chat",
+			"permission": "chat.index"
 		},
 		{
-			"url": "app/client/list",
-			"name": "Empresas",
-			"icon": "menu-icon tf-icons ti ti-briefcase",
-			"slug": "app-client-list",
+			"url": "service/list",
+			"name": "Servicios",
+			"icon": "menu-icon tf-icons ti ti-rocket",
+			"slug": "service-list",
+			"permission": "service.list"
+		},
+		{
+			"url": "client/list",
+			"name": "Clientes",
+			"icon": "menu-icon tf-icons ti ti-user-heart",
+			"slug": "client-list",
 			"permission": "client.list"
 		},
 		{
-			"url": "app/supplier/list",
-			"name": "Productos",
-			"icon": "menu-icon tf-icons ti ti-shopping-cart",
-			"slug": "app-supplier-list",
-			"permission": "supplier.list"
+			"url": "list60/list",
+			"name": "Lista de 60",
+			"icon": "menu-icon tf-icons ti ti-list-check",
+			"slug": "list60-list",
+			"permission": "list60.list"
 		},
 		{
-			"url": "app/invoice/list",
+			"url": "task/list",
+			"name": "Tareas",
+			"icon": "menu-icon tf-icons ti ti-checklist",
+			"slug": "task-list",
+			"permission": "task.list"
+		},
+		{
+			"url": "time/list",
+			"name": "Tiempos",
+			"icon": "menu-icon tf-icons ti ti-hourglass-low",
+			"slug": "time-list",
+			"permission": "time.list"
+		},
+		{
+			"url": "documentation/list",
+			"name": "Documentación",
+			"icon": "menu-icon tf-icons ti ti-files",
+			"slug": "documentation-list",
+			"permission": "documentation.list"
+		},
+		{
+			"menuHeader": "Facturación"
+		},
+		{
+			"url": "earning/list",
 			"name": "Ingresos",
-			"icon": "menu-icon tf-icons ti ti-file",
-			"slug": "app-invoice-list",
-			"permission": "invoice.list"
+			"icon": "menu-icon tf-icons ti ti-moneybag",
+			"slug": "earning-list",
+			"permission": "earning.list"
 		},
 		{
-			"url": "app/payment/list",
+			"url": "expense/list",
 			"name": "Gastos",
-			"icon": "menu-icon tf-icons ti ti-file-dollar",
-			"slug": "app-payment-list",
-			"permission": "payment.list"
+			"icon": "menu-icon tf-icons ti ti-receipt",
+			"slug": "expense-list",
+			"permission": "expense.list"
+		},
+		{
+			"url": "accounting/list",
+			"name": "accounting",
+			"icon": "menu-icon tf-icons ti ti-receipt-tax",
+			"slug": "accounting-list",
+			"permission": "accounting.list"
+		},
+		{
+			"url": "financial/list",
+			"name": "Evolución",
+			"icon": "menu-icon tf-icons ti ti-graph",
+			"slug": "financial-list",
+			"permission": "financial.list"
+		},
+		{
+			"menuHeader": "Equipo"
+		},
+		{
+			"url": "user/list",
+			"name": "Usuarios",
+			"icon": "menu-icon tf-icons ti ti-users",
+			"slug": "user-list",
+			"permission": "user.list"
+		},
+		{
+			"url": "department/list",
+			"name": "Departamentos",
+			"icon": "menu-icon tf-icons ti ti-users-group",
+			"slug": "department-list",
+			"permission": "department.list"
+		},
+		{
+			"menuHeader": "Automatismo"
+		},
+		{
+			"url": "funnel/list",
+			"name": "Embudo",
+			"icon": "menu-icon tf-icons ti ti-filter",
+			"slug": "funnel-list",
+			"permission": "funnel.list"
+		},
+		{
+			"url": "automation/list",
+			"name": "Automatizaciones",
+			"icon": "menu-icon tf-icons ti ti-robot",
+			"slug": "automation-list",
+			"permission": "automation.list"
+		},
+		{
+			"url": "integration/list",
+			"name": "Integraciones",
+			"icon": "menu-icon tf-icons ti ti-api-app",
+			"slug": "integration-list",
+			"permission": "integration.list"
+		},
+		{
+			"url": "campaign/list",
+			"name": "Campañas",
+			"icon": "menu-icon tf-icons ti ti-mail",
+			"slug": "campaign-list",
+			"permission": "campaign.list"
 		}
 	]
 }

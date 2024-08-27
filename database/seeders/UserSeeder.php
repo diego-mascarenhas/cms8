@@ -39,34 +39,7 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         $user->assignRole([2, 7]);
-
-        $user = User::factory()->create([
-            'name' => 'Pablo Barrozo',
-            'phone' => 5491138738376,
-            'email' => 'pablo@revisionalpha.com.ar',
-            'password' => Hash::make('Passw0rd!'),
-        ]);
-        $user->assignRole([2, 7]);
         $user->categories()->attach([5001, 5003, 5004]);
-
-        // Colaborator
-        $user = User::factory()->create([
-            'name' => 'Carla De Loureiro',
-            'phone' => 5491153875691,
-            'email' => 'carla@revisionestudio.com',
-            'password' => Hash::make('Passw0rd!'),
-        ]);
-        $user->assignRole(3);
-        $user->categories()->attach([5001, 5004]);
-
-        $user = User::factory()->create([
-            'name' => 'Daniel Girol',
-            'phone' => 34660136913,
-            'email' => 'daniel@girol.es',
-            'password' => Hash::make('Passw0rd!'),
-        ]);
-        $user->assignRole(2);
-        $user->categories()->attach([5003]);
 
         // Editor
         $user = User::factory()->create([
