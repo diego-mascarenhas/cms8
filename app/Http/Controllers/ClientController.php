@@ -14,6 +14,11 @@ class ClientController extends Controller
 
     public function index(ClientDataTable $dataTable)
     {
+        if (!auth()->user()->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+
         return $dataTable->render('client.index');
     }
 
@@ -36,14 +41,12 @@ class ClientController extends Controller
             'name' => 'required|string|min:3|max:25',
         ]);
 
+        $data['team_id'] = auth()->user()->currentTeam->id;
         $data['status'] = $request->has('status') ? 1 : 0;
 
         Enterprise::updateOrCreate(
             ['id' => $request->id],
-            [
-                'name' => $data['name'],
-                'status' => $data['status'],
-            ]
+            $data
         );
 
         return redirect()->route('app-client-list')->with('success', 'Record saved successfully.');

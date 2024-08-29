@@ -25,9 +25,6 @@
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">Clients/</span> {{ isset($data->id) ? 'Edit' : 'Create' }}</h4>
         <p class="text-muted">Manage and personalize your clients</p>
     </div>
-    <!-- <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('category.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Eliminar</a>
-    </div> -->
 </div>
 
 <div class="card mb-4">

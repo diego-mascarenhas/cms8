@@ -368,14 +368,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'password.update',
         ]);
         
-        $clientRole = Role::create(['name' => 'client']);
-        $clientRole->syncPermissions([
-            'profile.show',
-            'profile.edit',
-            'profile.update',
-            'password.update',
-        ]);
-
         $technicalRole = Role::create(['name' => 'technical']);
         $technicalRole->syncPermissions([
             'profile.show',
@@ -384,8 +376,24 @@ class RolesAndPermissionsSeeder extends Seeder
             'password.update',
         ]);
         
-        $guestRole = Role::create(['name' => 'guest']);
-        $guestRole->syncPermissions([
+        $clientRole = Role::create(['name' => 'client']);
+        $clientRole->syncPermissions([
+            'profile.show',
+            'profile.edit',
+            'profile.update',
+            'password.update',
+        ]);
+
+        $userRole = Role::create(['name' => 'user']);
+        $userRole->syncPermissions([
+            'profile.show',
+            'profile.edit',
+            'profile.update',
+            'password.update',
+        ]);
+        
+        $userRole = Role::create(['name' => 'guest']);
+        $userRole->syncPermissions([
             'profile.show',
             'profile.edit',
             'profile.update',

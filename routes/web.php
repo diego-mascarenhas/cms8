@@ -48,6 +48,11 @@ Route::middleware([
     })->name('dashboard');
 });
 
+// errors
+Route::get('/error-without-team', function () {
+    return view('error-without-team');
+})->name('error-without-team');
+
 // CMS
 Route::get('/terms', [LegalDocumentsController::class, 'terms'])->name('terms');
 Route::get('/privacy', [LegalDocumentsController::class, 'privacy'])->name('privacy');
@@ -70,29 +75,29 @@ Route::middleware(['auth'])->group(function ()
     Route::resource('/user-list', UserManagement::class);
 
     // Clients
-    Route::get('/app/client/list', [ClientController::class, 'index'])
+    Route::get('/client/list', [ClientController::class, 'index'])
         ->middleware('role:admin,colaborator')
         ->name('app-client-list');
 
-    Route::get('/app/client/create', [ClientController::class, 'create'])->name('client.create');
-    Route::get('/app/client/{id}', [ClientController::class, 'show'])->name('client.show');
-    Route::get('/app/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
-    Route::post('/app/client', [ClientController::class, 'store'])->name('client.store');
-    Route::put('/app/client/{id}', [ClientController::class, 'update'])->name('client.update');
-    Route::delete('/app/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
+    Route::get('/client/create', [ClientController::class, 'create'])->name('client.create');
+    Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');
+    Route::get('/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
+    Route::post('/client', [ClientController::class, 'store'])->name('client.store');
+    Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
+    Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
 
     // Invoices
-    //Route::get('/app/invoice/list', [InvoiceController::class, 'index'])->name('app-invoice-list');
-    Route::delete('/app/invoice/{id}', [InvoiceController::class, 'destroy'])->name('invoice.destroy');
+    //Route::get('/invoice/list', [InvoiceController::class, 'index'])->name('app-invoice-list');
+    Route::delete('/invoice/{id}', [InvoiceController::class, 'destroy'])->name('invoice.destroy');
 
     // Payments
-    Route::get('/app/payment/list', [PaymentController::class, 'index'])->name('app-payment-list');
-    Route::get('/app/payment/{id}/edit', [PaymentController::class, 'edit'])->name('payment.edit');
-    Route::delete('/app/payment/{id}', [PaymentController::class, 'destroy'])->name('payment.destroy');
+    Route::get('/payment/list', [PaymentController::class, 'index'])->name('app-payment-list');
+    Route::get('/payment/{id}/edit', [PaymentController::class, 'edit'])->name('payment.edit');
+    Route::delete('/payment/{id}', [PaymentController::class, 'destroy'])->name('payment.destroy');
 
     // Communications
-    Route::get('/app/communication/list', [CommunicationController::class, 'index'])->name('app-communication-list');
-    Route::delete('/app/communication/{id}', [CommunicationController::class, 'destroy'])->name('communication.destroy');
+    Route::get('/communication/list', [CommunicationController::class, 'index'])->name('app-communication-list');
+    Route::delete('/communication/{id}', [CommunicationController::class, 'destroy'])->name('communication.destroy');
 
     // WhatsApp
     Route::get('/app/whatsapp', [WhatsAppController::class, 'index'])->name('app-whatsapp');
