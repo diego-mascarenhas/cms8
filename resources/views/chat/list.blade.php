@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('app.clients') )
+@section('title', 'Clients')
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -43,7 +43,7 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">{{ __('app.clients') }}</h4>
+        <h4 class="mb-1 mt-3">Clients</h4>
         <p class="text-muted">Manage and personalize your clients</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">

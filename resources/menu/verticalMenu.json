@@ -5,16 +5,16 @@
 		},
 		{
 			"url": "dashboard",
-			"name": "Cuadro de mando",
+			"name": "Dashboard",
 			"icon": "menu-icon tf-icons ti ti-layout-grid",
 			"slug": "dashboard"
 		},
 		{
-			"menuHeader": "Operativa"
+			"menuHeader": "Operations"
 		},
 		{
 			"url": "today",
-			"name": "Hoy",
+			"name": "Today",
 			"icon": "menu-icon tf-icons ti ti-calendar-time",
 			"slug": "today",
 			"permission": "today.index"
@@ -28,35 +28,35 @@
 		},
 		{
 			"url": "service/list",
-			"name": "Servicios",
+			"name": "Services",
 			"icon": "menu-icon tf-icons ti ti-rocket",
 			"slug": "service-list",
 			"permission": "service.list"
 		},
 		{
 			"url": "client/list",
-			"name": "Clientes",
+			"name": "Clients",
 			"icon": "menu-icon tf-icons ti ti-user-heart",
 			"slug": "client-list",
 			"permission": "client.list"
 		},
 		{
 			"url": "list60/list",
-			"name": "Lista de 60",
+			"name": "List of 60",
 			"icon": "menu-icon tf-icons ti ti-list-check",
 			"slug": "list60-list",
 			"permission": "list60.list"
 		},
 		{
 			"url": "task/list",
-			"name": "Tareas",
+			"name": "Tasks",
 			"icon": "menu-icon tf-icons ti ti-checklist",
 			"slug": "task-list",
 			"permission": "task.list"
 		},
 		{
 			"url": "time/list",
-			"name": "Tiempos",
+			"name": "Times",
 			"icon": "menu-icon tf-icons ti ti-hourglass-low",
 			"slug": "time-list",
 			"permission": "time.list"
@@ -69,80 +69,80 @@
 			"permission": "documentation.list"
 		},
 		{
-			"menuHeader": "Facturación"
+			"menuHeader": "Billing"
 		},
 		{
 			"url": "earning/list",
-			"name": "Ingresos",
+			"name": "Earnings",
 			"icon": "menu-icon tf-icons ti ti-moneybag",
 			"slug": "earning-list",
 			"permission": "earning.list"
 		},
 		{
 			"url": "expense/list",
-			"name": "Gastos",
+			"name": "Expenses",
 			"icon": "menu-icon tf-icons ti ti-receipt",
 			"slug": "expense-list",
 			"permission": "expense.list"
 		},
 		{
 			"url": "accounting/list",
-			"name": "accounting",
+			"name": "Accounting",
 			"icon": "menu-icon tf-icons ti ti-receipt-tax",
 			"slug": "accounting-list",
 			"permission": "accounting.list"
 		},
 		{
 			"url": "financial/list",
-			"name": "Evolución",
+			"name": "Evolution",
 			"icon": "menu-icon tf-icons ti ti-graph",
 			"slug": "financial-list",
 			"permission": "financial.list"
 		},
 		{
-			"menuHeader": "Equipo"
+			"menuHeader": "Team"
 		},
 		{
 			"url": "user/list",
-			"name": "Usuarios",
+			"name": "Users",
 			"icon": "menu-icon tf-icons ti ti-users",
 			"slug": "user-list",
 			"permission": "user.list"
 		},
 		{
 			"url": "department/list",
-			"name": "Departamentos",
+			"name": "Departments",
 			"icon": "menu-icon tf-icons ti ti-users-group",
 			"slug": "department-list",
 			"permission": "department.list"
 		},
 		{
-			"menuHeader": "Automatismo"
+			"menuHeader": "Automation"
 		},
 		{
 			"url": "funnel/list",
-			"name": "Embudo",
+			"name": "Funnel",
 			"icon": "menu-icon tf-icons ti ti-filter",
 			"slug": "funnel-list",
 			"permission": "funnel.list"
 		},
 		{
 			"url": "automation/list",
-			"name": "Automatizaciones",
+			"name": "Automations",
 			"icon": "menu-icon tf-icons ti ti-robot",
 			"slug": "automation-list",
 			"permission": "automation.list"
 		},
 		{
 			"url": "integration/list",
-			"name": "Integraciones",
+			"name": "Integrations",
 			"icon": "menu-icon tf-icons ti ti-api-app",
 			"slug": "integration-list",
 			"permission": "integration.list"
 		},
 		{
 			"url": "campaign/list",
-			"name": "Campañas",
+			"name": "Campaigns",
 			"icon": "menu-icon tf-icons ti ti-mail",
 			"slug": "campaign-list",
 			"permission": "campaign.list"

@@ -187,8 +187,11 @@ $navbarDetached = ($navbarDetached ?? '');
           <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
               <i class="ti ti-bell ti-md"></i>
+              <!-- 
               <span class="badge bg-danger rounded-pill badge-notifications">5</span>
+              -->
             </a>
+            <!-- 
             <ul class="dropdown-menu dropdown-menu-end py-0">
               <li class="dropdown-menu-header border-bottom">
                 <div class="dropdown-header d-flex align-items-center py-3">
@@ -368,6 +371,7 @@ $navbarDetached = ($navbarDetached ?? '');
                 </a>
               </li>
             </ul>
+            -->
           </li>
           <!--/ Notification -->
 
@@ -429,10 +433,10 @@ $navbarDetached = ($navbarDetached ?? '');
                     <i class="flex-shrink-0 ti ti-credit-card me-2 ti-sm"></i>
                     <span class="flex-grow-1 align-middle">Billing</span>
                     <span class="flex-shrink-0 badge badge-center rounded-pill bg-label-danger w-px-20 h-px-20">2</span>
-                  </span> </a>
+                  </span></a>
               </li>
               -->
-              @if (Auth::User() && Laravel\Jetstream\Jetstream::hasTeamFeatures())
+              @if (Auth::User() && Laravel\Jetstream\Jetstream::hasTeamFeatures() && config('custom.TeamManager'))
               <li>
                 <div class="dropdown-divider"></div>
               </li>

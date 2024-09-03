@@ -30,5 +30,7 @@ return [
       'layoutNavbarOptions',
       'themes',
     ], // To show/hide customizer options
+    //REVIEW - TeamManager true/false
+    'TeamManager' => false,
   ],
 ];

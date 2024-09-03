@@ -49,7 +49,7 @@ class ClientController extends Controller
             $data
         );
 
-        return redirect()->route('app-client-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('client-list')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -76,7 +76,7 @@ class ClientController extends Controller
 
         if (!$data)
         {
-            return redirect()->route('app-client-list')->with('error', 'Client not found.');
+            return redirect()->route('client-list')->with('error', 'Client not found.');
         }
 
         return view('client.form', compact('data'));
