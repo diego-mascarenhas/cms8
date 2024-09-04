@@ -14,6 +14,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\EmailController;
 
 
 // auth
@@ -88,3 +89,6 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/chat', [ChatController::class, 'index'])->name('chat');
     Route::get('/chat/list', [WhatsAppController::class, 'index'])->name('chat-list');
 });
+
+// Testing
+Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
