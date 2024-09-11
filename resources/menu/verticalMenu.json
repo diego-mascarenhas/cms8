@@ -20,11 +20,11 @@
 			"permission": "today.index"
 		},
 		{
-			"url": "chat",
+			"url": "chat/list",
 			"name": "Chat",
 			"icon": "menu-icon tf-icons ti ti-message-chatbot",
-			"slug": "chat",
-			"permission": "chat.index"
+			"slug": "chat-list",
+			"permission": "chat.list"
 		},
 		{
 			"url": "service/list",
