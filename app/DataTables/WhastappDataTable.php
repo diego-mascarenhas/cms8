@@ -62,9 +62,9 @@ class WhastappDataTable extends DataTable
 			->setTableId('whastapp-table')
 			->columns($this->getColumns())
 			->minifiedAjax()
-			//->dom('Bfrtip')
+			->dom('frtip')
 			->orderBy(1, 'desc')
-			->selectStyleSingle();
+			->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json']);
 	}
 
 	/**

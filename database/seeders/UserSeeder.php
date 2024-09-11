@@ -18,7 +18,7 @@ class UserSeeder extends Seeder
             'email' => 'diego.mascarenhas@icloud.com',
             'password' => '$2y$10$9His4IIPh5nFp0TSilz.h.0DLLE4DzhX1Os2y0QHwt.a19s6whxyC',
         ]);
-        $user->assignRole([1, 2, 7]);
+        $user->assignRole([1, 2]);
         $user->categories()->attach([5001, 5002, 5003, 5004]);
 
         // Admin
@@ -33,17 +33,27 @@ class UserSeeder extends Seeder
         $adminEmail = 'admin@' . $parsedUrl;
 
         $user = User::factory()->create([
-            'name' => 'Admin User',
+            'name' => 'Admin',
             'email' => $adminEmail,
             'password' => Hash::make('Simplicity!'),
             'email_verified_at' => now(),
         ]);
-        $user->assignRole([2, 7]);
+        $user->assignRole([2]);
         $user->categories()->attach([5001, 5003, 5004]);
 
+        // Colaborator
+        $user = User::factory()->create([
+            'name' => 'Colaborator',
+            'email' => 'colaborator@example.com',
+            'password' => Hash::make('Passw0rd!'),
+            'email_verified_at' => null,
+        ]);
+        $user->assignRole(3);
+        $user->categories()->attach([5001]);
+        
         // Editor
         $user = User::factory()->create([
-            'name' => 'Editor User',
+            'name' => 'Editor',
             'email' => 'editor@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
@@ -53,7 +63,7 @@ class UserSeeder extends Seeder
 
         // Auditor
         $user = User::factory()->create([
-            'name' => 'Auditor User',
+            'name' => 'Auditor',
             'email' => 'auditor@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
@@ -61,24 +71,44 @@ class UserSeeder extends Seeder
         $user->assignRole(5);
         $user->categories()->attach([5001]);
 
-        // Client
+        // Technical
         $user = User::factory()->create([
-            'name' => 'Client User',
-            'email' => 'client@example.com',
+            'name' => 'Technical',
+            'email' => 'technical@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
         ]);
         $user->assignRole(6);
         $user->categories()->attach([5001]);
 
-        // Guest
+        // Client
         $user = User::factory()->create([
-            'name' => 'Guest User',
-            'email' => 'guest@example.com',
+            'name' => 'Client',
+            'email' => 'client@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
         ]);
         $user->assignRole(7);
+        $user->categories()->attach([5001]);
+
+        // User
+        $user = User::factory()->create([
+            'name' => 'User',
+            'email' => 'user@example.com',
+            'password' => Hash::make('Passw0rd!'),
+            'email_verified_at' => null,
+        ]);
+        $user->assignRole(8);
+        $user->categories()->attach([5001]);
+        
+        // Guest
+        $user = User::factory()->create([
+            'name' => 'Guest',
+            'email' => 'guest@example.com',
+            'password' => Hash::make('Passw0rd!'),
+            'email_verified_at' => null,
+        ]);
+        $user->assignRole(9);
         $user->categories()->attach([5001]);
     }
 }
