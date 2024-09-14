@@ -28,9 +28,14 @@ class Enterprise extends Model
         'whatsapp',
         'email',
         'website',
+        'data',
         'payment_method_id',
         'invoice_type_id',
         'status',
+    ];
+
+    protected $casts = [
+        'data' => 'object',
     ];
 
     protected static function booted()

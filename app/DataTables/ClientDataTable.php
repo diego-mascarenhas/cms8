@@ -81,11 +81,14 @@ class ClientDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('name')->title('Name'),
-            Column::make('user_id')->title('User'),
-            Column::make('assigned_to')->title('Assigned'),
-            Column::make('status')->title('Status')->className('text-center'),
-            Column::computed('action')->title('Actions')->width(20)->className('text-center')
+            Column::make('name')->title('Nombre'),
+            Column::make('email')->title('Email'),
+            Column::make('whatsapp')->title('WhatsApp'),
+            Column::make('locality')->title('Localidad'),
+            Column::make('user_id')->title('User')->hidden(),
+            Column::make('assigned_to')->title('Assigned')->hidden(),
+            Column::make('status')->title('Estado')->className('text-center'),
+            Column::computed('action')->title('Acciones')->width(20)->className('text-center')
                 ->exportable(false)
                 ->printable(false)
                 ->width(30)

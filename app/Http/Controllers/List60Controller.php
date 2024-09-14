@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
 use Illuminate\Support\Facades\Auth;
 
-class ClientController extends Controller
+class List60Controller extends Controller
 {
     use EditorTrait;
 
@@ -19,7 +19,7 @@ class ClientController extends Controller
             return redirect()->route('error-without-team');
         }
 
-        return $dataTable->render('client.index');
+        return $dataTable->render('list60.index');
     }
 
     /**
@@ -43,8 +43,6 @@ class ClientController extends Controller
 
         $data['team_id'] = auth()->user()->currentTeam->id;
         $data['status'] = $request->has('status') ? 1 : 0;
-
-        $data['data'] = $data;
 
         Enterprise::updateOrCreate(
             ['id' => $request->id],
@@ -74,16 +72,11 @@ class ClientController extends Controller
      */
     public function edit(string $id)
     {
-        $row = Enterprise::find($id);
+        $data = Enterprise::find($id);
 
-        if (!$row)
+        if (!$data)
         {
             return redirect()->route('client-list')->with('error', 'Client not found.');
-        }
-        else
-        {
-            $data = $row->data;
-            $data->id = $id;
         }
 
         return view('client.form', compact('data'));

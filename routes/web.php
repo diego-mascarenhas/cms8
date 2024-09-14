@@ -14,6 +14,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\EmailController;
 
 
@@ -84,6 +85,9 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/client', [ClientController::class, 'store'])->name('client.store');
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
+
+    // List60
+    Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
 
     // Chat
     Route::get('/chat', [ChatController::class, 'index'])->name('chat');
