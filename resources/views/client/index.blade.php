@@ -40,6 +40,15 @@
         });
     });
 
+    $(function() {
+        let table = $('.datatable').DataTable();
+        
+        $('#EmotionalState').on('change', function(){
+            let selectedValue = $(this).val();
+            table.column('.select-filter').search(selectedValue).draw();
+        });
+    });
+
     function deleteRecord(id, element) {
         Swal.fire({
             title: 'Are you sure you want to delete this record?',
@@ -235,10 +244,12 @@
             </div>
             <div class="d-flex flex-column flex-md-row gap-3">
                 <div class="flex-grow-1">
-                    <select id="EmotionalState" class="form-select text-capitalize">
-                        <option value=""> Selector de estado emocional </option>
-                        <!-- Añade aquí las opciones de estado emocional -->
-                    </select>
+                    <x-input-select-array 
+                        id="EmotionalState" 
+                        :options="$emotionalStates" 
+                        :value="''"
+                        placeholder="Seleccione un estado emocional"
+                    />
                 </div>
                 <div class="flex-grow-1">
                     <select id="ContractedService" class="form-select text-capitalize">
@@ -273,6 +284,7 @@
                         <div class="mb-3">
                             <label for="sentiment_id" class="form-label">Sentiment</label>
                             <select class="form-select" id="sentiment_id" name="sentiment_id" required>
+                                <option value="" selected disabled>Seleccione el estado emocional</option>
                                 @foreach(App\Models\EnterpriseSentiment::all() as $sentiment)
                                     <option value="{{ $sentiment->id }}">{{ $sentiment->name }} {{ $sentiment->emoji }}</option>
                                 @endforeach

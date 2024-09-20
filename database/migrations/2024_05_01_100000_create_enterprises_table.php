@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('whatsapp')->nullable();
             $table->string('email')->nullable();
             $table->string('website')->nullable();
-            $table->json('data');
+            $table->json('data')->nullable(); // Add this line
             $table->unsignedTinyInteger('payment_type_id')->nullable();
             $table->unsignedTinyInteger('invoice_type_id')->nullable();
             $table->unsignedTinyInteger('status_id')->default(1);

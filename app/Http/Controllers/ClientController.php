@@ -6,6 +6,7 @@ use App\DataTables\ClientDataTable;
 use App\Models\Enterprise;
 use App\Models\EnterpriseSentimentHistory;
 use App\Models\EnterpriseStatus;
+use App\Models\EnterpriseSentiment;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
@@ -26,6 +27,7 @@ class ClientController extends Controller
             'followUpsPercentage' => -14,
             'totalPast' => 237,
             'pastPercentage' => 42,
+            'emotionalStates' => EnterpriseSentiment::getOptions(),
         ];
 
         return $dataTable->render('client.index', $data);

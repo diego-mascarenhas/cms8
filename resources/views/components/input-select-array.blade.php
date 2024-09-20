@@ -1,9 +1,11 @@
-@props(['id', 'label', 'options', 'value'])
+@props(['id', 'label' => null, 'options', 'value', 'placeholder' => 'Select an option'])
 
 <div class="form-group">
-    <label for="{{ $id }}">{{ $label }}</label>
+    @if($label)
+        <label for="{{ $id }}">{{ $label }}</label>
+    @endif
     <select id="{{ $id }}" name="{{ $id }}" class="form-control @error($id) is-invalid @enderror">
-        <option value="">Select an option</option>
+        <option value="">{{ $placeholder }}</option>
         @foreach ($options as $option)
             <option value="{{ $option['id'] }}" {{ old($id, $value) == $option['id'] ? 'selected' : '' }}>
                 {{ $option['name'] }}

@@ -41,6 +41,11 @@ class UserSeeder extends Seeder
         $user->assignRole([2]);
         $user->categories()->attach([5001, 5003, 5004]);
 
+        $user->ownedTeams()->create([
+            'name' => $user->name . "'s Team",
+            'personal_team' => true,
+        ]);
+
         // Colaborator
         $user = User::factory()->create([
             'name' => 'Colaborator',

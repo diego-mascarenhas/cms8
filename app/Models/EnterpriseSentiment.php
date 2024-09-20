@@ -16,7 +16,7 @@ class EnterpriseSentiment extends Model
             2 => '🙁',
             3 => '😐',
             4 => '🙂',
-            5 => '😄',
+            5 => '🥳',
             default => '❓',
         };
     }
@@ -24,5 +24,15 @@ class EnterpriseSentiment extends Model
     public function histories()
     {
         return $this->hasMany(EnterpriseSentimentHistory::class, 'sentiment_id');
+    }
+
+    public static function getOptions()
+    {
+        return self::all()->map(function ($sentiment) {
+            return [
+                'id' => $sentiment->id,
+                'name' => $sentiment->name . ' ' . $sentiment->emoji,
+            ];
+        });
     }
 }

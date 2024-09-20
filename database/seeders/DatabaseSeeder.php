@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             EnterpriseTypeSeeder::class,
             EnterpriseSentimentSeeder::class,
             EnterpriseStatusSeeder::class,
+            EnterpriseSeeder::class,
 		]);
     }
 }

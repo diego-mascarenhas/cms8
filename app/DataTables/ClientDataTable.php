@@ -48,6 +48,13 @@ class ClientDataTable extends DataTable
                 }
                 return '🤔';
             })
+            ->filterColumn('current_sentiment', function($query, $keyword) {
+                if ($keyword !== '') {
+                    $query->whereHas('currentSentiment', function($q) use ($keyword) {
+                        $q->where('sentiment_id', $keyword);
+                    });
+                }
+            })
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
@@ -56,22 +63,24 @@ class ClientDataTable extends DataTable
 
     public function query(Enterprise $model): QueryBuilder
     {
-        $user = auth()->user();
+        // $user = auth()->user();
 
-        $query = $model->clients()->with('status');
+        // $query = $model->clients()->with('status');
 
-        if ($user->can('client.list'))
-        {
-            return $query;
-        }
-        elseif ($user->hasRole('colab'))
-        {
-            return $query->where('assigned_to', $user->id);
-        }
-        else
-        {
-            return $query->whereRaw('1 = 0');
-        }
+        // if ($user->can('client.list'))
+        // {
+        //     return $query;
+        // }
+        // elseif ($user->hasRole('colab'))
+        // {
+        //     return $query->where('assigned_to', $user->id);
+        // }
+        // else
+        // {
+        //     return $query->whereRaw('1 = 0');
+        // }
+
+        return $model->newQuery()->with('currentSentiment.sentiment');
     }
 
     public function html(): HtmlBuilder
@@ -82,7 +91,24 @@ class ClientDataTable extends DataTable
             ->minifiedAjax()
             ->dom('frtip')
             ->orderBy(2)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json']);
+            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->parameters([
+                'initComplete' => "function() {
+                    var api = this.api();
+                    api.columns('.select-filter').every(function() {
+                        var column = this;
+                        $('#EmotionalState').on('change', function() {
+                            var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                            column.search(val ? val : '', true, false).draw();
+                        });
+                    });
+                }",
+                'drawCallback' => "function() {
+                    $('#EmotionalState').off('change').on('change', function() {
+                        $('#client-table').DataTable().columns('.select-filter').search($(this).val()).draw();
+                    });
+                }",
+            ]);
     }
 
     public function getColumns(): array
@@ -90,7 +116,11 @@ class ClientDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')->title('Cliente'),
-            Column::make('current_sentiment')->title('Sentimiento')->className('text-center'),
+            Column::make('current_sentiment')
+                ->title('Estado Emocional')
+                ->addClass('select-filter')
+                ->searchable(true)
+                ->orderable(false),
             Column::make('whatsapp')->title('Redes'),
             Column::make('locality')->title('Mensajes'),
             Column::make('user_id')->title('User')->hidden(),
