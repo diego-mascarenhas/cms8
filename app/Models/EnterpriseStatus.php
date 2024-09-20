@@ -9,6 +9,8 @@ class EnterpriseStatus extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     public static function getOptions($enterpriseTypeId = null)
     {
         $query = self::query();
