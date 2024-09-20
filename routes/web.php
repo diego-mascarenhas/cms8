@@ -85,6 +85,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/client', [ClientController::class, 'store'])->name('client.store');
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
+    Route::post('/client/{id}/update-sentiment', [ClientController::class, 'updateSentiment'])->name('client.update-sentiment');
 
     // List60
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');

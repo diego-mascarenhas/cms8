@@ -17,4 +17,9 @@ class EnterpriseType extends Model
     {
         return $this->hasMany(Enterprise::class);
     }
+    
+    public function enterpriseType()
+    {
+        return $this->belongsTo(EnterpriseType::class);
+    }
 }

@@ -4,14 +4,12 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ClientDataTable;
 use App\Models\Enterprise;
+use App\Models\EnterpriseSentimentHistory;
+use App\Models\EnterpriseStatus;
 use Illuminate\Http\Request;
-use Dotlogics\Grapesjs\App\Traits\EditorTrait;
-use Illuminate\Support\Facades\Auth;
 
 class ClientController extends Controller
 {
-    use EditorTrait;
-
     public function index(ClientDataTable $dataTable)
     {
         if (!auth()->user()->currentTeam)
@@ -19,7 +17,18 @@ class ClientController extends Controller
             return redirect()->route('error-without-team');
         }
 
-        return $dataTable->render('client.index');
+        $data = [
+            'totalContacts' => 21459,
+            'contactsPercentage' => 29,
+            'totalClients' => 4567,
+            'clientsPercentage' => 18,
+            'totalFollowUps' => 19860,
+            'followUpsPercentage' => -14,
+            'totalPast' => 237,
+            'pastPercentage' => 42,
+        ];
+
+        return $dataTable->render('client.index', $data);
     }
 
     /**
@@ -27,7 +36,9 @@ class ClientController extends Controller
      */
     public function create()
     {
-        return view('client.form');
+        $enterpriseStatuses = EnterpriseStatus::getOptions(1);
+
+        return view('client.form', compact('enterpriseStatuses'));
     }
 
     /**
@@ -42,7 +53,6 @@ class ClientController extends Controller
         ]);
 
         $data['team_id'] = auth()->user()->currentTeam->id;
-        $data['status'] = $request->has('status') ? 1 : 0;
 
         $data['data'] = $data;
 
@@ -86,7 +96,9 @@ class ClientController extends Controller
             $data->id = $id;
         }
 
-        return view('client.form', compact('data'));
+        $enterpriseStatuses = EnterpriseStatus::getOptions(1);
+
+        return view('client.form', compact('data', 'enterpriseStatuses'));
     }
 
     /**
@@ -109,8 +121,21 @@ class ClientController extends Controller
         return response()->json(['success' => 'The record has been deleted.'], 200);
     }
 
-    public function editor(Request $request, Enterprise $page)
+    public function updateSentiment(Request $request, string $id)
     {
-        return $this->show_gjs_editor($request, $page);
+        $request->validate([
+            'sentiment_id' => 'required|exists:enterprise_sentiments,id',
+            'notes' => 'nullable|string|max:255',
+        ]);
+    
+        $enterprise = Enterprise::findOrFail($id);
+    
+        EnterpriseSentimentHistory::create([
+            'enterprise_id' => $enterprise->id,
+            'sentiment_id' => $request->sentiment_id,
+            'notes' => $request->notes,
+        ]);
+    
+        return redirect()->route('client-list')->with('success', 'Sentiment updated successfully.');
     }
 }

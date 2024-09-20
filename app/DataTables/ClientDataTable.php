@@ -34,35 +34,43 @@ class ClientDataTable extends DataTable
             ->addColumn('assignee', function ($row) {
                 return $row->assignee ? $row->assignee->name : null;
             })
-            ->rawColumns(['name', 'action', 'status'])
-            ->editColumn('status', function ($data)
-            {
-                if ($data->status)
-                {
-                    return '<span class="badge rounded-pill bg-label-success">Active</span>';
+            ->editColumn('name', function ($row) {
+                return '<div class="d-flex flex-column">
+                            <a href="javascript:;" class="text-body text-truncate">
+                                <span class="fw-medium">' . $row->name . '</span>
+                            </a>
+                            <small class="text-muted">' . $row->email . '</small>
+                        </div>';
+            })
+            ->addColumn('current_sentiment', function ($row) {
+                if ($row->currentSentiment) {
+                    return $row->currentSentiment->sentiment->emoji;
                 }
-                else
-                {
-                    return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
-                };
-            });
+                return '🤔';
+            })
+            ->editColumn('status_id', function ($row) {
+                return $row->status_label;
+            })
+            ->rawColumns(['name', 'action', 'status', 'current_sentiment', 'status_id']);
     }
 
     public function query(Enterprise $model): QueryBuilder
     {
         $user = auth()->user();
 
+        $query = $model->clients()->with('status');
+
         if ($user->can('client.list'))
         {
-            return $model->clients()->newQuery();
+            return $query;
         }
         elseif ($user->hasRole('colab'))
         {
-            return $model->clients()->where('assigned_to', $user->id)->newQuery();
+            return $query->where('assigned_to', $user->id);
         }
         else
         {
-            return $model->clients()->whereRaw('1 = 0')->newQuery();
+            return $query->whereRaw('1 = 0');
         }
     }
 
@@ -81,13 +89,13 @@ class ClientDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('name')->title('Nombre'),
-            Column::make('email')->title('Email'),
-            Column::make('whatsapp')->title('WhatsApp'),
-            Column::make('locality')->title('Localidad'),
+            Column::make('name')->title('Cliente'),
+            Column::make('current_sentiment')->title('Sentimiento')->className('text-center'),
+            Column::make('whatsapp')->title('Redes'),
+            Column::make('locality')->title('Mensajes'),
             Column::make('user_id')->title('User')->hidden(),
             Column::make('assigned_to')->title('Assigned')->hidden(),
-            Column::make('status')->title('Estado')->className('text-center'),
+            Column::make('status_id')->title('Estado')->className('text-center'),
             Column::computed('action')->title('Acciones')->width(20)->className('text-center')
                 ->exportable(false)
                 ->printable(false)

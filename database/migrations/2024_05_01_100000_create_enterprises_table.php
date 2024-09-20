@@ -31,13 +31,14 @@ return new class extends Migration
             $table->json('data');
             $table->unsignedTinyInteger('payment_type_id')->nullable();
             $table->unsignedTinyInteger('invoice_type_id')->nullable();
-            $table->tinyInteger('status')->default(0);
+            $table->unsignedTinyInteger('status_id')->default(1);
             $table->timestamps();
             $table->softDeletes();
 
             $table->foreign('type_id')->references('id')->on('enterprise_types')->onDelete('cascade');
             $table->foreign('payment_type_id')->references('id')->on('payment_types')->onDelete('cascade');
             $table->foreign('invoice_type_id')->references('id')->on('invoice_types')->onDelete('cascade');
+            $table->foreign('status_id')->references('id')->on('enterprise_statuses')->onDelete('restrict');
         });
     }
 

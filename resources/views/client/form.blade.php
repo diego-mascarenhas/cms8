@@ -137,10 +137,10 @@
               <div class="col-sm-6">
                 <x-input-general id="name" label="Nombre (*)" value="{{ old('name', $data->name?? '') }}" />
               </div>
-              <div class="col-sm-6">
-                <label class="form-label" for="last-name-modern">Estado</label>
-				<br/>
-                <x-input-checkbox name="status" label="Active" value="{{ old('status', $data->status ?? '') }}" />
+             <div class="col-sm-6">
+                  <x-enterprise-status-select 
+                      :value="old('status_id', $data->status_id ?? '')"
+                  />
               </div>
               <div class="col-sm-6">
                 @php

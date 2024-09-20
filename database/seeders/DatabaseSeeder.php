@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
             PolicySeeder::class,
             UserSeeder::class,
             EnterpriseTypeSeeder::class,
+            EnterpriseSentimentSeeder::class,
+            EnterpriseStatusSeeder::class,
 		]);
     }
 }

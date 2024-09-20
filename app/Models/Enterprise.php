@@ -31,7 +31,7 @@ class Enterprise extends Model
         'data',
         'payment_method_id',
         'invoice_type_id',
-        'status',
+        'status_id',
     ];
 
     protected $casts = [
@@ -85,5 +85,28 @@ class Enterprise extends Model
                     ->where('status', 1)
                     ->latest()
                     ->first();
+    }
+
+    public function sentimentHistories()
+    {
+        return $this->hasMany(EnterpriseSentimentHistory::class);
+    }
+
+    public function currentSentiment()
+    {
+        return $this->hasOne(EnterpriseSentimentHistory::class)->latest();
+    }
+
+    public function status()
+    {
+        return $this->belongsTo(EnterpriseStatus::class);
+    }
+    
+    public function getStatusLabelAttribute()
+    {
+        if ($this->status) {
+            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
+        }
+        return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
     }
 }
