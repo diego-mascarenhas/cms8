@@ -143,16 +143,16 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>Contactos</span>
+                            <span>Leads</span>
                             <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $totalContacts }}</h3>
-                                <p class="text-success mb-0">(+{{ $contactsPercentage }}%)</p>
+                                <h3 class="mb-0 me-2">{{ $totalLeads ?? 0 }}</h3>
+                                <p class="text-info mb-0">({{ $leadsPercentage ?? 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Total Contactos</p>
+                            <p class="mb-0">Total de Leads</p>
                         </div>
                         <div class="avatar">
-                            <span class="avatar-initial rounded bg-label-primary">
-                                <i class="ti ti-user ti-sm"></i>
+                            <span class="avatar-initial rounded bg-label-info">
+                                <i class="ti ti-target ti-sm"></i>
                             </span>
                         </div>
                     </div>
@@ -166,31 +166,10 @@
                         <div class="content-left">
                             <span>Clientes</span>
                             <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $totalClients }}</h3>
-                                <p class="text-success mb-0">(+{{ $clientsPercentage }}%)</p>
+                                <h3 class="mb-0 me-2">{{ $totalClients ?? 0 }}</h3>
+                                <p class="text-success mb-0">({{ $clientsPercentage ?? 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Total Clientes</p>
-                        </div>
-                        <div class="avatar">
-                            <span class="avatar-initial rounded bg-label-danger">
-                                <i class="ti ti-user-plus ti-sm"></i>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="content-left">
-                            <span>En seguimiento</span>
-                            <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $totalFollowUps }}</h3>
-                                <p class="text-danger mb-0">({{ $followUpsPercentage }}%)</p>
-                            </div>
-                            <p class="mb-0">Total en seguimiento</p>
+                            <p class="mb-0">Total de Clientes</p>
                         </div>
                         <div class="avatar">
                             <span class="avatar-initial rounded bg-label-success">
@@ -206,16 +185,37 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
+                            <span>En seguimiento</span>
+                            <div class="d-flex align-items-center my-2">
+                                <h3 class="mb-0 me-2">{{ $totalFollowUp ?? 0 }}</h3>
+                                <p class="text-warning mb-0">({{ $followUpPercentage ?? 0 }}%)</p>
+                            </div>
+                            <p class="mb-0">Total en seguimiento</p>
+                        </div>
+                        <div class="avatar">
+                            <span class="avatar-initial rounded bg-label-warning">
+                                <i class="ti ti-arrows-left-right ti-sm"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between">
+                        <div class="content-left">
                             <span>Pasados</span>
                             <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $totalPast }}</h3>
-                                <p class="text-success mb-0">(+{{ $pastPercentage }}%)</p>
+                                <h3 class="mb-0 me-2">{{ $totalPast ?? 0 }}</h3>
+                                <p class="text-danger mb-0">({{ $pastPercentage ?? 0 }}%)</p>
                             </div>
                             <p class="mb-0">Total pasados</p>
                         </div>
                         <div class="avatar">
-                            <span class="avatar-initial rounded bg-label-warning">
-                                <i class="ti ti-user-exclamation ti-sm"></i>
+                            <span class="avatar-initial rounded bg-label-danger">
+                                <i class="ti ti-user-off ti-sm"></i>
                             </span>
                         </div>
                     </div>
@@ -254,13 +254,11 @@
                 <div class="flex-grow-1">
                     <select id="ContractedService" class="form-select text-capitalize">
                         <option value=""> Selector de servicio contratado </option>
-                        <!-- Añade aquí las opciones de servicio contratado -->
                     </select>
                 </div>
                 <div class="flex-grow-1">
                     <select id="ContactType" class="form-select text-capitalize">
                         <option value=""> Selector de tipo de contacto </option>
-                        <!-- Añade aquí las opciones de tipo de contacto -->
                     </select>
                 </div>
             </div>
@@ -275,29 +273,29 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Update Sentiment</h5>
+                    <h5 class="modal-title">Actualizar Sentimiento</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="updateSentimentForm" method="POST">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="sentiment_id" class="form-label">Sentiment</label>
+                            <label for="sentiment_id" class="form-label">Sentimiento</label>
                             <select class="form-select" id="sentiment_id" name="sentiment_id" required>
-                                <option value="" selected disabled>Seleccione el estado emocional</option>
+                                <option value="" selected disabled>Selecciona un estado emocional</option>
                                 @foreach(App\Models\EnterpriseSentiment::all() as $sentiment)
                                     <option value="{{ $sentiment->id }}">{{ $sentiment->name }} {{ $sentiment->emoji }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="notes" class="form-label">Notes</label>
+                            <label for="notes" class="form-label">Notas</label>
                             <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-primary">Update Sentiment</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-primary">Actualizar</button>
                     </div>
                 </form>
             </div>

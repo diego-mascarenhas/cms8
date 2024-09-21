@@ -13,22 +13,10 @@ class ClientController extends Controller
 {
     public function index(ClientDataTable $dataTable)
     {
-        if (!auth()->user()->currentTeam)
-        {
-            return redirect()->route('error-without-team');
-        }
-
-        $data = [
-            'totalContacts' => 21459,
-            'contactsPercentage' => 29,
-            'totalClients' => 4567,
-            'clientsPercentage' => 18,
-            'totalFollowUps' => 19860,
-            'followUpsPercentage' => -14,
-            'totalPast' => 237,
-            'pastPercentage' => 42,
-            'emotionalStates' => EnterpriseSentiment::getOptions(),
-        ];
+        $teamId = auth()->user()->current_team_id;
+        
+        $data = Enterprise::getContactStats($teamId);
+        $data['emotionalStates'] = EnterpriseSentiment::getOptions();
 
         return $dataTable->render('client.index', $data);
     }
@@ -94,7 +82,8 @@ class ClientController extends Controller
         }
         else
         {
-            $data = $row->data;
+            $data = (object) ($row->data ?? []);
+
             $data->id = $id;
         }
 

@@ -109,4 +109,50 @@ class Enterprise extends Model
         }
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
     }
+
+    public static function getContactStats($teamId)
+    {
+        $statusLabels = [
+            1 => 'Leads',
+            6 => 'Clients',
+            4 => 'FollowUp',
+            5 => 'Past',
+        ];
+
+        $contactStats = self::where('team_id', $teamId)
+            ->whereIn('status_id', array_keys($statusLabels))
+            ->get()
+            ->groupBy('status_id')
+            ->map(function ($group) {
+                return $group->count();
+            });
+
+        $totalContacts = $contactStats->sum();
+
+        $data = ['totalContacts' => $totalContacts];
+        foreach ($statusLabels as $statusId => $label) {
+            $count = $contactStats[$statusId] ?? 0;
+            $percentage = $totalContacts > 0 ? round(($count / $totalContacts) * 100, 2) : 0;
+            $data["total$label"] = $count;
+            $data[lcfirst($label) . "Percentage"] = $percentage;
+        }
+
+        // Asegurarse de que todas las claves necesarias existan
+        $defaultData = [
+            'totalContacts' => 0,
+            'totalLeads' => 0,
+            'leadsPercentage' => 0,
+            'totalClients' => 0,
+            'clientsPercentage' => 0,
+            'totalFollowUp' => 0,
+            'followUpPercentage' => 0,
+            'totalPast' => 0,
+            'pastPercentage' => 0,
+        ];
+
+        // Combinar los datos calculados con los predeterminados
+        $finalData = array_merge($defaultData, $data);
+
+        return $finalData;
+    }
 }

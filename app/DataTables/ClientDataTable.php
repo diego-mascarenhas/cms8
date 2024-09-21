@@ -55,10 +55,39 @@ class ClientDataTable extends DataTable
                     });
                 }
             })
+            ->addColumn('social_networks', function ($row) {
+                $networks = [];
+                $socialNetworks = [
+                    'whatsapp' => ['icon' => 'fab fa-whatsapp', 'color' => '#25D366'],
+                    'facebook' => ['icon' => 'fab fa-facebook', 'color' => '#1877F2'],
+                    'instagram' => ['icon' => 'fab fa-instagram', 'color' => '#E4405F'],
+                    'twitter' => ['icon' => 'fab fa-twitter', 'color' => '#1DA1F2'],
+                    'linkedin' => ['icon' => 'fab fa-linkedin', 'color' => '#0A66C2'],
+                    'youtube' => ['icon' => 'fab fa-youtube', 'color' => '#FF0000'],
+                    'tiktok' => ['icon' => 'fab fa-tiktok', 'color' => '#000000'],
+                    'pinterest' => ['icon' => 'fab fa-pinterest', 'color' => '#BD081C'],
+                    'snapchat' => ['icon' => 'fab fa-snapchat', 'color' => '#FFFC00'],
+                    'telegram' => ['icon' => 'fab fa-telegram', 'color' => '#0088cc'],
+                ];
+
+                foreach ($socialNetworks as $network => $info) {
+                    if (!empty($row->$network)) {
+                        $networks[] = sprintf(
+                            '<a href="%s" target="_blank" style="color: %s;"><i class="%s"></i> %s</a>',
+                            $this->getSocialLink($network, $row->$network),
+                            $info['color'],
+                            $info['icon'],
+                            $row->$network
+                        );
+                    }
+                }
+
+                return empty($networks) ? '' : implode('<br>', $networks);
+            })
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
-            ->rawColumns(['name', 'action', 'status', 'current_sentiment', 'status_id']);
+            ->rawColumns(['name', 'action', 'status', 'current_sentiment', 'social_networks', 'status_id']);
     }
 
     public function query(Enterprise $model): QueryBuilder
@@ -117,12 +146,18 @@ class ClientDataTable extends DataTable
             Column::make('id')->hidden(),
             Column::make('name')->title('Cliente'),
             Column::make('current_sentiment')
-                ->title('Estado Emocional')
+                ->title('Sentimiento')
+                ->className('text-center')
                 ->addClass('select-filter')
                 ->searchable(true)
                 ->orderable(false),
-            Column::make('whatsapp')->title('Redes'),
-            Column::make('locality')->title('Mensajes'),
+            Column::make('social_networks')
+                ->title('Redes Sociales')
+                ->className('text-center')
+                ->searchable(false)
+                ->orderable(false)
+                ->width(200),
+            Column::make('locality')->title('Mensajes')->className('text-center'),
             Column::make('user_id')->title('User')->hidden(),
             Column::make('assigned_to')->title('Assigned')->hidden(),
             Column::make('status_id')->title('Estado')->className('text-center'),
@@ -132,6 +167,24 @@ class ClientDataTable extends DataTable
                 ->width(30)
                 ->addClass('text-center'),
         ];
+    }
+
+    private function getSocialLink($network, $value)
+    {
+        $baseUrls = [
+            'whatsapp' => 'https://wa.me/',
+            'facebook' => 'https://facebook.com/',
+            'instagram' => 'https://instagram.com/',
+            'twitter' => 'https://twitter.com/',
+            'linkedin' => 'https://linkedin.com/in/',
+            'youtube' => 'https://youtube.com/',
+            'tiktok' => 'https://tiktok.com/@',
+            'pinterest' => 'https://pinterest.com/',
+            'snapchat' => 'https://snapchat.com/add/',
+            'telegram' => 'https://t.me/',
+        ];
+
+        return $baseUrls[$network] . $value;
     }
 
     protected function filename(): string

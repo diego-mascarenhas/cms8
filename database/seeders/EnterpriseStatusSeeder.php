@@ -14,9 +14,9 @@ class EnterpriseStatusSeeder extends Seeder
     {
         $statuses = [
             ['name' => 'Lead', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-info'],
-            ['name' => 'Conversion', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-warning'],
-            ['name' => 'Close', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-success'],
-            ['name' => 'Follow Up', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-primary'],
+            ['name' => 'Conversion', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-info'],
+            ['name' => 'Close', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-info'],
+            ['name' => 'Follow Up', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-warning'],
             ['name' => 'Lost', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-danger'],
             ['name' => 'Active', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-success'],
         ];
