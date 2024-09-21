@@ -47,6 +47,12 @@
             let selectedValue = $(this).val();
             table.column('.select-filter').search(selectedValue).draw();
         });
+
+        $('.filter-status').on('click', function(e) {
+            e.preventDefault();
+            var status = $(this).data('status');
+            table.column('status_id:name').search(status).draw();
+        });
     });
 
     function deleteRecord(id, element) {
@@ -151,9 +157,9 @@
                             <p class="mb-0">Total de Leads</p>
                         </div>
                         <div class="avatar">
-                            <span class="avatar-initial rounded bg-label-info">
+                            <a href="#" class="avatar-initial rounded bg-label-info filter-status" data-status="1">
                                 <i class="ti ti-target ti-sm"></i>
-                            </span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -172,9 +178,9 @@
                             <p class="mb-0">Total de Clientes</p>
                         </div>
                         <div class="avatar">
-                            <span class="avatar-initial rounded bg-label-success">
+                            <a href="#" class="avatar-initial rounded bg-label-success filter-status" data-status="6">
                                 <i class="ti ti-user-check ti-sm"></i>
-                            </span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -193,9 +199,9 @@
                             <p class="mb-0">Total en seguimiento</p>
                         </div>
                         <div class="avatar">
-                            <span class="avatar-initial rounded bg-label-warning">
+                            <a href="#" class="avatar-initial rounded bg-label-warning filter-status" data-status="4">
                                 <i class="ti ti-arrows-left-right ti-sm"></i>
-                            </span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -214,9 +220,9 @@
                             <p class="mb-0">Total pasados</p>
                         </div>
                         <div class="avatar">
-                            <span class="avatar-initial rounded bg-label-danger">
+                            <a href="#" class="avatar-initial rounded bg-label-danger filter-status" data-status="5">
                                 <i class="ti ti-user-off ti-sm"></i>
-                            </span>
+                            </a>
                         </div>
                     </div>
                 </div>

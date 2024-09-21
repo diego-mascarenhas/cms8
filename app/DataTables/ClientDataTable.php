@@ -36,10 +36,10 @@ class ClientDataTable extends DataTable
             })
             ->editColumn('name', function ($row) {
                 return '<div class="d-flex flex-column">
-                            <a href="javascript:;" class="text-body text-truncate">
-                                <span class="fw-medium">' . $row->name . '</span>
-                            </a>
-                            <small class="text-muted">' . $row->email . '</small>
+                            <span class="fw-medium text-body text-truncate">' . $row->name . '</span>
+                            <small class="text-muted">
+                                <a href="mailto:' . $row->email . '">' . $row->email . '</a>
+                            </small>
                         </div>';
             })
             ->addColumn('current_sentiment', function ($row) {
@@ -56,7 +56,6 @@ class ClientDataTable extends DataTable
                 }
             })
             ->addColumn('social_networks', function ($row) {
-                $networks = [];
                 $socialNetworks = [
                     'whatsapp' => ['icon' => 'fab fa-whatsapp', 'color' => '#25D366'],
                     'facebook' => ['icon' => 'fab fa-facebook', 'color' => '#1877F2'],
@@ -70,19 +69,22 @@ class ClientDataTable extends DataTable
                     'telegram' => ['icon' => 'fab fa-telegram', 'color' => '#0088cc'],
                 ];
 
+                $networks = [];
+                $data = json_decode(json_encode($row->data), true) ?? [];
+
                 foreach ($socialNetworks as $network => $info) {
-                    if (!empty($row->$network)) {
+                    $value = $data[$network] ?? '';
+                    if (!empty($value)) {
                         $networks[] = sprintf(
-                            '<a href="%s" target="_blank" style="color: %s;"><i class="%s"></i> %s</a>',
-                            $this->getSocialLink($network, $row->$network),
+                            '<a href="%s" target="_blank" style="color: %s;"><i class="%s"></i></a>',
+                            $this->getSocialLink($network, $value),
                             $info['color'],
-                            $info['icon'],
-                            $row->$network
+                            $info['icon']
                         );
                     }
                 }
 
-                return empty($networks) ? '' : implode('<br>', $networks);
+                return empty($networks) ? '' : implode(' ', $networks);
             })
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
@@ -109,7 +111,7 @@ class ClientDataTable extends DataTable
         //     return $query->whereRaw('1 = 0');
         // }
 
-        return $model->newQuery()->with('currentSentiment.sentiment');
+        return $model->newQuery()->with('currentSentiment.sentiment')->with('status');
     }
 
     public function html(): HtmlBuilder
@@ -129,6 +131,12 @@ class ClientDataTable extends DataTable
                         $('#EmotionalState').on('change', function() {
                             var val = $.fn.dataTable.util.escapeRegex($(this).val());
                             column.search(val ? val : '', true, false).draw();
+                        });
+
+                        $('.filter-status').on('click', function(e) {
+                            e.preventDefault();
+                            var status = $(this).data('status');
+                            api.column('status_id:name').search(status).draw();
                         });
                     });
                 }",
@@ -171,6 +179,10 @@ class ClientDataTable extends DataTable
 
     private function getSocialLink($network, $value)
     {
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
         $baseUrls = [
             'whatsapp' => 'https://wa.me/',
             'facebook' => 'https://facebook.com/',
@@ -184,7 +196,7 @@ class ClientDataTable extends DataTable
             'telegram' => 'https://t.me/',
         ];
 
-        return $baseUrls[$network] . $value;
+        return ($baseUrls[$network] ?? '') . $value;
     }
 
     protected function filename(): string

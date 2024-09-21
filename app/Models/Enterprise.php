@@ -137,7 +137,6 @@ class Enterprise extends Model
             $data[lcfirst($label) . "Percentage"] = $percentage;
         }
 
-        // Asegurarse de que todas las claves necesarias existan
         $defaultData = [
             'totalContacts' => 0,
             'totalLeads' => 0,
@@ -150,7 +149,6 @@ class Enterprise extends Model
             'pastPercentage' => 0,
         ];
 
-        // Combinar los datos calculados con los predeterminados
         $finalData = array_merge($defaultData, $data);
 
         return $finalData;

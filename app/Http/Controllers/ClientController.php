@@ -13,6 +13,11 @@ class ClientController extends Controller
 {
     public function index(ClientDataTable $dataTable)
     {
+        if (!auth()->user()->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+        
         $teamId = auth()->user()->current_team_id;
         
         $data = Enterprise::getContactStats($teamId);
@@ -40,9 +45,11 @@ class ClientController extends Controller
 
         $request->validate([
             'name' => 'required|string|min:3|max:25',
+            'email' => 'required|email',
         ]);
 
         $data['team_id'] = auth()->user()->currentTeam->id;
+        $data['status_id'] = $request->status_id ?? 1;
 
         $data['data'] = $data;
 
@@ -80,12 +87,9 @@ class ClientController extends Controller
         {
             return redirect()->route('client-list')->with('error', 'Client not found.');
         }
-        else
-        {
-            $data = (object) ($row->data ?? []);
 
-            $data->id = $id;
-        }
+        $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass()));
+        $data->id = $id;
 
         $enterpriseStatuses = EnterpriseStatus::getOptions(1);
 
