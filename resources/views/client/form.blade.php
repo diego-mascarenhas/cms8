@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', ' Clients')
+@section('title', __('app.clients'))
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />

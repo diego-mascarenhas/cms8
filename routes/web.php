@@ -79,13 +79,18 @@ Route::middleware(['auth'])->group(function ()
         ->middleware('role:admin,colaborator')
         ->name('client-list');
 
+    Route::get('/client/import', [ClientController::class, 'showImportForm'])->name('client.import');
+    Route::post('/client/import-excel', [ClientController::class, 'importExcel'])->name('import.excel');
+
     Route::get('/client/create', [ClientController::class, 'create'])->name('client.create');
     Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');
     Route::get('/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
     Route::post('/client', [ClientController::class, 'store'])->name('client.store');
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
+    
     Route::post('/client/{id}/update-sentiment', [ClientController::class, 'updateSentiment'])->name('client.update-sentiment');
+   
 
     // List60
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
@@ -97,3 +102,4 @@ Route::middleware(['auth'])->group(function ()
 
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
+

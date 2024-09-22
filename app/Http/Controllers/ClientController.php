@@ -8,6 +8,8 @@ use App\Models\EnterpriseSentimentHistory;
 use App\Models\EnterpriseStatus;
 use App\Models\EnterpriseSentiment;
 use Illuminate\Http\Request;
+use Spatie\SimpleExcel\SimpleExcelReader;
+use Illuminate\Support\Facades\Storage;
 
 class ClientController extends Controller
 {
@@ -66,14 +68,7 @@ class ClientController extends Controller
      */
     public function show(string $id)
     {
-        $page = Enterprise::find($id);
-
-        if (!$page)
-        {
-            return redirect()->route('client.index')->with('error', 'Page not found.');
-        }
-
-        return view('page.show', compact('page'));
+        //
     }
 
     /**
@@ -132,5 +127,68 @@ class ClientController extends Controller
         ]);
     
         return redirect()->route('client-list')->with('success', 'Sentiment updated successfully.');
+    }
+
+    public function importExcel(Request $request)
+    {
+        $request->validate([
+            'excel_file' => 'required|file|mimes:xlsx,xls,csv'
+        ]);
+
+        $file = $request->file('excel_file');
+        $path = $file->store('temp');
+        $fullPath = Storage::path($path);
+
+        $extension = $file->getClientOriginalExtension();
+        
+        try {
+            if ($extension == 'csv') {
+                $excel = SimpleExcelReader::create($fullPath, 'csv');
+            } else {
+                $excel = SimpleExcelReader::create($fullPath);
+            }
+
+            $data = [];
+            $headers = ['name', 'email', 'teléfono'];
+            $rawData = [];
+
+            foreach ($excel->getRows() as $index => $row) {
+                $rawData[] = $row;
+                
+                if ($index === 0 || $index === 1) {
+                    continue;
+                }
+                
+                $value = $row['Table 1'] ?? null;
+                
+                if ($value) {
+                    $data[] = $value;
+                }
+            }
+
+            $groupedData = array_chunk($data, 3);
+            $processedData = [];
+            foreach ($groupedData as $group) {
+                if (count($group) === 3) {
+                    $processedData[] = array_combine($headers, $group);
+                }
+            }
+
+            Storage::delete($path);
+
+            return response()->json([
+                'headers' => $headers,
+                'data' => $processedData,
+                'rawData' => $rawData,
+            ]);
+        } catch (\Exception $e) {
+            Storage::delete($path);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function showImportForm()
+    {
+        return view('client.import');
     }
 }

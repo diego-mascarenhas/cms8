@@ -238,10 +238,10 @@
                         <i class="ti ti-plus me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Añadir cliente</span>
                     </a>
-                    <button class="btn btn-outline-secondary btn-sm waves-effect">
+                    <a href="{{ route('client.import') }}" class="btn btn-outline-secondary btn-sm waves-effect">
                         <i class="ti ti-file-import me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Importar</span>
-                    </button>
+                    </a>
                     <button class="btn btn-outline-secondary btn-sm waves-effect">
                         <i class="ti ti-file-export me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Exportar</span>
