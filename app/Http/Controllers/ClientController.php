@@ -10,6 +10,8 @@ use App\Models\EnterpriseSentiment;
 use Illuminate\Http\Request;
 use Spatie\SimpleExcel\SimpleExcelReader;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class ClientController extends Controller
 {
@@ -148,36 +150,68 @@ class ClientController extends Controller
                 $excel = SimpleExcelReader::create($fullPath);
             }
 
-            $data = [];
-            $headers = ['name', 'email', 'teléfono'];
             $rawData = [];
+            $processedData = [];
+            $headers = null;
 
             foreach ($excel->getRows() as $index => $row) {
                 $rawData[] = $row;
-                
-                if ($index === 0 || $index === 1) {
-                    continue;
-                }
-                
-                $value = $row['Table 1'] ?? null;
-                
-                if ($value) {
-                    $data[] = $value;
-                }
-            }
 
-            $groupedData = array_chunk($data, 3);
-            $processedData = [];
-            foreach ($groupedData as $group) {
-                if (count($group) === 3) {
-                    $processedData[] = array_combine($headers, $group);
+                if ($index === 0) {
+                    if ($this->isHeaderRow($row)) {
+                        $headers = array_map([$this, 'normalizeHeader'], array_keys($row));
+                        continue; // Skip header row
+                    }
+                }
+
+                $values = array_values(array_filter($row));
+
+                if (count($values) >= 2) { // At least name and email
+                    $client = $this->detectFields($values);
+                    $client['team_id'] = Auth::user()->currentTeam->id;
+
+                    if ($headers) {
+                        $additionalData = array_slice($values, 3);
+                        $additionalDataAssoc = [];
+
+                        // Ensure both arrays have the same length
+                        for ($i = 0; $i < count($additionalData); $i++) {
+                            if (isset($headers[$i + 3])) {
+                                $additionalDataAssoc[$headers[$i + 3]] = $additionalData[$i];
+                            }
+                        }
+
+                        $client['data'] = !empty($additionalDataAssoc) ? $additionalDataAssoc : null;
+                    } else {
+                        $additionalData = array_slice($values, 3);
+                        $client['data'] = !empty($additionalData) ? $additionalData : null;
+                    }
+
+                    $validator = Validator::make($client, [
+                        'name' => 'required|string',
+                        'email' => 'required|email',
+                        'phone' => 'nullable',
+                    ]);
+
+                    if ($validator->fails()) {
+                        continue; // Skip this row if validation fails
+                    }
+
+                    // Crear o actualizar el cliente
+                    Enterprise::updateOrCreate(
+                        ['email' => $client['email'], 'team_id' => $client['team_id']],
+                        $client
+                    );
+
+                    $processedData[] = $client;
                 }
             }
 
             Storage::delete($path);
 
             return response()->json([
-                'headers' => $headers,
+                'message' => 'Importación completada con éxito',
+                'processed' => count($processedData),
                 'data' => $processedData,
                 'rawData' => $rawData,
             ]);
@@ -185,6 +219,49 @@ class ClientController extends Controller
             Storage::delete($path);
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    private function detectFields($values)
+    {
+        $client = [
+            'name' => null,
+            'email' => null,
+            'phone' => null,
+        ];
+
+        foreach ($values as $value) {
+            if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                $client['email'] = $value;
+            } elseif (preg_match('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/', $value)) {
+                $client['phone'] = $value;
+            } else {
+                $client['name'] = $value;
+            }
+
+            if ($client['name'] && $client['email']) {
+                break;
+            }
+        }
+
+        return $client;
+    }
+
+    private function isHeaderRow($row)
+    {
+        foreach ($row as $value) {
+            if (!is_string($value)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function normalizeHeader($header)
+    {
+        $header = strtolower($header);
+        $header = iconv('UTF-8', 'ASCII//TRANSLIT', $header);
+        $header = preg_replace('/[^a-z0-9_]/', '_', $header);
+        return $header;
     }
 
     public function showImportForm()
