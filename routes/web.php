@@ -80,7 +80,7 @@ Route::middleware(['auth'])->group(function ()
         ->name('client-list');
 
     Route::get('/client/import', [ClientController::class, 'showImportForm'])->name('client.import');
-    Route::post('/client/import-excel', [ClientController::class, 'importExcel'])->name('import.excel');
+    Route::post('/client/import-excel', [ClientController::class, 'importExcel'])->name('client.import-excel');
 
     Route::get('/client/create', [ClientController::class, 'create'])->name('client.create');
     Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');

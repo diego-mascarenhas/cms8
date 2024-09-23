@@ -152,6 +152,8 @@ class ClientController extends Controller
 
             $rawData = [];
             $processedData = [];
+            $updatedCount = 0;
+            $duplicateCount = 0;
             $headers = null;
 
             foreach ($excel->getRows() as $index => $row) {
@@ -197,13 +199,17 @@ class ClientController extends Controller
                         continue; // Skip this row if validation fails
                     }
 
-                    // Crear o actualizar el cliente
-                    Enterprise::updateOrCreate(
-                        ['email' => $client['email'], 'team_id' => $client['team_id']],
-                        $client
-                    );
+                    $existingClient = Enterprise::where('email', $client['email'])
+                                                ->where('team_id', $client['team_id'])
+                                                ->first();
 
-                    $processedData[] = $client;
+                    if ($existingClient) {
+                        $existingClient->update($client);
+                        $updatedCount++;
+                    } else {
+                        Enterprise::create($client);
+                        $processedData[] = $client;
+                    }
                 }
             }
 
@@ -212,6 +218,8 @@ class ClientController extends Controller
             return response()->json([
                 'message' => 'Importación completada con éxito',
                 'processed' => count($processedData),
+                'updated' => $updatedCount,
+                'duplicates' => $duplicateCount,
                 'data' => $processedData,
                 'rawData' => $rawData,
             ]);
