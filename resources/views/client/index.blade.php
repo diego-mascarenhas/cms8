@@ -48,6 +48,11 @@
                 table.column('.select-filter').search(selectedValue).draw();
             });
 
+            $('#EnterpriseState').on('change', function() {
+                let selectedValue = $(this).val();
+                table.column('.enterprise-filter').search(selectedValue).draw();
+            });
+
             $('.filter-status').on('click', function(e) {
                 e.preventDefault();
                 var status = $(this).data('status');
@@ -303,7 +308,7 @@
             <div class="d-flex flex-column flex-md-row gap-3">
                 <div class="flex-grow-1">
                     <x-input-select-array id="EmotionalState" :options="$emotionalStates" :value="''"
-                        placeholder="Seleccione un estado emocional" />
+                        placeholder="Selector de estado emocional" />
                 </div>
                 <div class="flex-grow-1">
                     <select id="ContractedService" class="form-select text-capitalize">
@@ -311,9 +316,8 @@
                     </select>
                 </div>
                 <div class="flex-grow-1">
-                    <select id="ContactType" class="form-select text-capitalize">
-                        <option value=""> Selector de tipo de contacto </option>
-                    </select>
+                    <x-input-select-array id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
+                        placeholder="Selector de tipo de contacto" />
                 </div>
             </div>
         </div>

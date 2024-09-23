@@ -26,6 +26,8 @@ class ClientController extends Controller
         
         $data = Enterprise::getContactStats($teamId);
         $data['emotionalStates'] = EnterpriseSentiment::getOptions();
+        $data['enterpriseStatuses'] = EnterpriseStatus::getOptions(1);
+
 
         return $dataTable->render('client.index', $data);
     }
