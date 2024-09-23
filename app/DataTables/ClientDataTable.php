@@ -121,7 +121,7 @@ class ClientDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(2)
+            ->orderBy(1, 'asc')
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'initComplete' => "function() {

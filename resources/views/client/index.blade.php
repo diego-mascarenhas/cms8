@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/animate-css/animate.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
 @endsection
 
 @section('vendor-script')
@@ -22,7 +23,155 @@
     <script src="{{ asset('assets/vendor/libs/cleavejs/cleave.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/cleavejs/cleave-phone.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
 @endsection
+
+@section('page-script')
+    <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
+
+    <script>
+        $(document).ready(function() {
+            $(document).on('click', '.edit-sentiment', function() {
+                var id = $(this).data('id');
+                var url = "{{ route('client.update-sentiment', ':id') }}";
+                url = url.replace(':id', id);
+                $('#updateSentimentForm').attr('action', url);
+                $('#updateSentimentModal').modal('show');
+            });
+        });
+
+        $(function() {
+            let table = $('.datatable').DataTable();
+
+            $('#EmotionalState').on('change', function() {
+                let selectedValue = $(this).val();
+                table.column('.select-filter').search(selectedValue).draw();
+            });
+
+            $('.filter-status').on('click', function(e) {
+                e.preventDefault();
+                var status = $(this).data('status');
+                table.column('status_id:name').search(status).draw();
+            });
+
+            $('#import-button').on('click', function() {
+                $('#importModal').modal('show');
+            });
+
+            $('#importForm').on('submit', function(e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+
+                $.ajax({
+                    url: '{{ route('client.import-excel') }}',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        $('#importModal').modal('hide');
+                        Swal.fire({
+                            title: 'Importación completada',
+                            text: `Importados: ${response.processed}, Actualizados: ${response.updated || 0}, Duplicados: ${response.duplicates || 0}`,
+                            icon: 'success',
+                            confirmButtonText: 'OK',
+                            showCancelButton: false,
+                            showDenyButton: false,
+                            buttonsStyling: false,
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            }
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                table.ajax.reload();
+                            }
+                        });
+                    },
+                    error: function(response) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'Hubo un problema al importar el archivo.',
+                            icon: 'error',
+                            confirmButtonText: 'OK',
+                            showCancelButton: false,
+                            showDenyButton: false,
+                            buttonsStyling: false,
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            }
+                        });
+                    }
+                });
+            });
+        });
+
+        function deleteRecord(id, element) {
+            Swal.fire({
+                title: '¿Estás seguro de que deseas eliminar este registro?',
+                icon: 'warning',
+                showCloseButton: false,
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch("{{ route('client.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok.');
+                        }
+                        return response.json();
+                    }).then(data => {
+                        console.log('Response data:', data);
+
+                        const toastHTML = `
+                    <div id="toast-container" class="toast-top-right">
+                        <div class="toast toast-success" aria-live="polite" style="display: block;">
+                            <div class="toast-client">${data.success}</div>
+                        </div>
+                    </div>
+                `;
+                        document.body.insertAdjacentHTML('beforeend', toastHTML);
+                        var toastElement = document.getElementById('toast-container');
+                        var toast = new bootstrap.Toast(toastElement, {
+                            animation: true,
+                            delay: 3000,
+                            autohide: true
+                        });
+                        toast.show();
+
+                        const row = element.closest('tr');
+                        if (row) {
+                            row.classList.add('fade-out');
+                            row.addEventListener('transitionend', () => {
+                                row.remove();
+                            });
+                        } else {
+                            console.error('No se encontró la fila correspondiente.');
+                        }
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+@endsection
+
+<style>
+    .fade-out {
+        opacity: 0;
+        transition: opacity 0.5s ease-out;
+    }
+</style>
 
 @section('content')
     @if (session('success'))
@@ -134,7 +283,8 @@
 
     <div class="card">
         <div class="card-header border-bottom">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+            <div
+                class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
                 <div class="d-flex gap-2">
                     <a href="{{ route('client.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
                         <i class="ti ti-plus me-sm-1"></i>
@@ -144,20 +294,16 @@
                         <i class="ti ti-file-import me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Importar</span>
                     </button>
-                    <button id="export-csv" class="btn btn-outline-secondary btn-sm waves-effect">
-                        <i class="ti ti-file-export me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Exportar CSV</span>
-                    </button>
+                    <!-- <button class="btn btn-outline-secondary btn-sm waves-effect">
+                            <i class="ti ti-file-export me-sm-1"></i>
+                            <span class="d-none d-sm-inline-block">Exportar</span>
+                        </button> -->
                 </div>
             </div>
             <div class="d-flex flex-column flex-md-row gap-3">
                 <div class="flex-grow-1">
-                    <x-input-select-array 
-                        id="EmotionalState" 
-                        :options="$emotionalStates" 
-                        :value="''"
-                        placeholder="Seleccione un estado emocional"
-                    />
+                    <x-input-select-array id="EmotionalState" :options="$emotionalStates" :value="''"
+                        placeholder="Seleccione un estado emocional" />
                 </div>
                 <div class="flex-grow-1">
                     <select id="ContractedService" class="form-select text-capitalize">
@@ -191,8 +337,9 @@
                             <label for="sentiment_id" class="form-label">Sentimiento</label>
                             <select class="form-select" id="sentiment_id" name="sentiment_id" required>
                                 <option value="" selected disabled>Selecciona un estado emocional</option>
-                                @foreach(App\Models\EnterpriseSentiment::all() as $sentiment)
-                                    <option value="{{ $sentiment->id }}">{{ $sentiment->name }} {{ $sentiment->emoji }}</option>
+                                @foreach (App\Models\EnterpriseSentiment::all() as $sentiment)
+                                    <option value="{{ $sentiment->id }}">{{ $sentiment->name }} {{ $sentiment->emoji }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
@@ -218,19 +365,19 @@
                     <h5 class="modal-title" id="importModalLabel">Importar Contactos</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <form id="importForm" enctype="multipart/form-data">
-                        @csrf
+                <form id="importForm" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body">
                         <div class="mb-3">
                             <label for="excel_file" class="form-label">Archivo Excel</label>
                             <input type="file" class="form-control" id="excel_file" name="excel_file" required>
                         </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         <button type="submit" class="btn btn-primary">Importar</button>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -238,157 +385,6 @@
 
 @push('scripts')
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
-    <script>
-        $(function () {
-            let table = $('.datatable').DataTable();
-            
-            $('#EmotionalState').on('change', function(){
-                let selectedValue = $(this).val();
-                table.column('.select-filter').search(selectedValue).draw();
-            });
-
-            $('.filter-status').on('click', function(e) {
-                e.preventDefault();
-                var status = $(this).data('status');
-                table.column('status_id:name').search(status).draw();
-            });
-
-            $('#export-csv').on('click', function() {
-                var data = table.rows().data().toArray();
-                
-                var headers = [];
-                table.columns().every(function() {
-                    headers.push(this.header().textContent.trim());
-                });
-                
-                var csvContent = headers.join(',') + '\n';
-                data.forEach(function(row) {
-                    csvContent += Object.values(row).join(',') + '\n';
-                });
-                
-                var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                
-                var link = document.createElement("a");
-                if (link.download !== undefined) {
-                    var url = URL.createObjectURL(blob);
-                    link.setAttribute("href", url);
-                    link.setAttribute("download", "clients_export.csv");
-                    link.style.visibility = 'hidden';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                }
-            });
-
-            $('#import-button').on('click', function() {
-                $('#importModal').modal('show');
-            });
-
-            $('#importForm').on('submit', function(e) {
-                e.preventDefault();
-                var formData = new FormData(this);
-
-                $.ajax({
-                    url: '{{ route("client.import-excel") }}',
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    success: function(response) {
-                        $('#importModal').modal('hide');
-                        Swal.fire({
-                            title: 'Importación completada',
-                            text: `Importados: ${response.processed}, Actualizados: ${response.updated || 0}, Duplicados: ${response.duplicates || 0}`,
-                            icon: 'success',
-                            confirmButtonText: 'OK',
-                            showCancelButton: false,
-                            showDenyButton: false,
-                            buttonsStyling: false,
-                            customClass: {
-                                confirmButton: 'btn btn-primary'
-                            }
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                table.ajax.reload();
-                            }
-                        });
-                    },
-                    error: function(response) {
-                        Swal.fire({
-                            title: 'Error',
-                            text: 'Hubo un problema al importar el archivo.',
-                            icon: 'error',
-                            confirmButtonText: 'OK',
-                            showCancelButton: false,
-                            showDenyButton: false,
-                            buttonsStyling: false,
-                            customClass: {
-                                confirmButton: 'btn btn-primary'
-                            }
-                        });
-                    }
-                });
-            });
-        });
-
-        function deleteRecord(id, element) {
-            Swal.fire({
-                title: 'Are you sure you want to delete this record?',
-                text: 'This action cannot be undone',
-                icon: 'warning',
-                showCloseButton: false,
-                showCancelButton: false,
-                confirmButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch("{{ route('client.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        }
-                    }).then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok.');
-                        }
-                        return response.json();
-                    }).then(data => {
-                        console.log('Response data:', data);
-
-                        const toastHTML = `
-                        <div id="toast-container" class="toast-top-right">
-                            <div class="toast toast-success" aria-live="polite" style="display: block;">
-                                <div class="toast-client">${data.success}</div>
-                            </div>
-                        </div>
-                    `;
-                        document.body.insertAdjacentHTML('beforeend', toastHTML);
-                        var toastElement = document.getElementById('toast-container');
-                        var toast = new bootstrap.Toast(toastElement, {
-                            animation: true,
-                            delay: 3000,
-                            autohide: true
-                        });
-                        toast.show();
-
-                        const row = element.closest('tr');
-                        if (row) {
-                            row.classList.add('fade-out');
-                            row.addEventListener('transitionend', () => {
-                                row.remove();
-                            });
-                        } else {
-                            console.error('No se encontró la fila correspondiente.');
-                        }
-                    }).catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
-                    });
-                }
-            });
-        }
-    </script>
 @endpush
 
 @section('vendor-script')
