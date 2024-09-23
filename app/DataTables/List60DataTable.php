@@ -11,7 +11,7 @@ use Yajra\DataTables\Services\DataTable;
 
 use Carbon\Carbon;
 
-class ClientDataTable extends DataTable
+class List60DataTable extends DataTable
 {
     /**
      * Build the DataTable class.
@@ -21,7 +21,7 @@ class ClientDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'client.action')
+            ->addColumn('action', 'list60.action')
             ->setRowId('id')
             ->editColumn('name', function ($row) {
                 return '<div class="d-flex flex-column">
@@ -30,19 +30,6 @@ class ClientDataTable extends DataTable
                                 <a href="mailto:' . $row->email . '">' . $row->email . '</a>
                             </small>
                         </div>';
-            })
-            ->addColumn('current_sentiment', function ($row) {
-                if ($row->currentSentiment) {
-                    return $row->currentSentiment->sentiment->emoji;
-                }
-                return '🤔';
-            })
-            ->filterColumn('current_sentiment', function($query, $keyword) {
-                if ($keyword !== '') {
-                    $query->whereHas('currentSentiment', function($q) use ($keyword) {
-                        $q->where('sentiment_id', $keyword);
-                    });
-                }
             })
             ->addColumn('social_networks', function ($row) {
                 $socialNetworks = [
@@ -78,16 +65,19 @@ class ClientDataTable extends DataTable
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
-            ->rawColumns(['name', 'action', 'current_sentiment', 'social_networks', 'status_id']);
+            ->editColumn('type_id', function ($row) {
+                return $row->type->name;
+            })
+            ->rawColumns(['name', 'action', 'social_networks', 'status_id']);
     }
 
     public function query(Enterprise $model): QueryBuilder
     {
         // $user = auth()->user();
 
-        // $query = $model->clients()->with('status');
+        // $query = $model->list60s()->with('status');
 
-        // if ($user->can('client.list'))
+        // if ($user->can('list60.list'))
         // {
         //     return $query;
         // }
@@ -100,38 +90,31 @@ class ClientDataTable extends DataTable
         //     return $query->whereRaw('1 = 0');
         // }
 
-        return $model->newQuery()->with('currentSentiment.sentiment')->with('status');
+        return $model->newQuery()->with('status');
     }
 
     public function html(): HtmlBuilder
     {
         return $this->builder()
-            ->setTableId('client-table')
+            ->setTableId('list60-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
-            ->dom('frtip')
+            ->dom('rtip')
             ->orderBy(1, 'asc')
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
+                'pageLength' => 60,
+                'paging' => false,
                 'initComplete' => "function() {
                     var api = this.api();
                     api.columns('.select-filter').every(function() {
                         var column = this;
-                        $('#EmotionalState').on('change', function() {
-                            var val = $.fn.dataTable.util.escapeRegex($(this).val());
-                            column.search(val ? val : '', true, false).draw();
-                        });
 
                         $('.filter-status').on('click', function(e) {
                             e.preventDefault();
                             var status = $(this).data('status');
                             api.column('status_id:name').search(status).draw();
                         });
-                    });
-                }",
-                'drawCallback' => "function() {
-                    $('#EmotionalState').off('change').on('change', function() {
-                        $('#client-table').DataTable().columns('.select-filter').search($(this).val()).draw();
                     });
                 }",
             ]);
@@ -142,20 +125,16 @@ class ClientDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')->title('Cliente'),
-            Column::make('current_sentiment')
-                ->title('Sentimiento')
-                ->className('text-center')
-                ->addClass('select-filter')
-                ->searchable(true)
-                ->orderable(false),
+            Column::make('status_id')->title('Estado')->className('text-center'),
             Column::make('social_networks')
                 ->title('Redes Sociales')
                 ->className('text-center')
                 ->searchable(false)
                 ->orderable(false)
                 ->width(200),
-            Column::make('locality')->title('Mensajes')->className('text-center'),
-            Column::make('status_id')->title('Estado')->className('text-center'),
+            Column::make('locality')->title('Próximo contacto')->className('text-center'),
+            Column::make('type_id')->title('Tipo')->className('text-center'),
+            Column::make('locality')->title('Negocio')->className('text-center'),
             Column::computed('action')->title('Acciones')->width(20)->className('text-center')
                 ->exportable(false)
                 ->printable(false)

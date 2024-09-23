@@ -1,116 +1,154 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('app.list60') )
+@section('title', __('app.list60'))
 
 @section('vendor-style')
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css')}}">
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css')}}">
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css')}}">
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
-<!-- Row Group CSS -->
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-rowgroup-bs5/rowgroup.bootstrap5.css')}}">
-<!-- Form Validation -->
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css')}}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/animate-css/animate.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
 @endsection
 
 @section('vendor-script')
-<script src="{{asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
-<!-- Flat Picker -->
-<script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
-<!-- Form Validation -->
-<script src="{{asset('assets/vendor/libs/@form-validation/umd/bundle/popular.min.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js')}}"></script>
+    <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/@form-validation/umd/bundle/popular.min.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/cleavejs/cleave.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/cleavejs/cleave-phone.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
 @endsection
 
 @section('page-script')
-<script src="{{asset('assets/js/tables-datatables-list60.js')}}"></script>
+    <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
+
+    <script>
+        function deleteRecord(id, element) {
+            Swal.fire({
+                title: '¿Estás seguro de que deseas eliminar este registro?',
+                icon: 'warning',
+                showCloseButton: false,
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch("{{ route('client.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok.');
+                        }
+                        return response.json();
+                    }).then(data => {
+                        console.log('Response data:', data);
+
+                        const toastHTML = `
+                    <div id="toast-container" class="toast-top-right">
+                        <div class="toast toast-success" aria-live="polite" style="display: block;">
+                            <div class="toast-client">${data.success}</div>
+                        </div>
+                    </div>
+                `;
+                        document.body.insertAdjacentHTML('beforeend', toastHTML);
+                        var toastElement = document.getElementById('toast-container');
+                        var toast = new bootstrap.Toast(toastElement, {
+                            animation: true,
+                            delay: 3000,
+                            autohide: true
+                        });
+                        toast.show();
+
+                        const row = element.closest('tr');
+                        if (row) {
+                            row.classList.add('fade-out');
+                            row.addEventListener('transitionend', () => {
+                                row.remove();
+                            });
+                        } else {
+                            console.error('No se encontró la fila correspondiente.');
+                        }
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
+                    });
+                }
+            });
+        }
+    </script>
 @endsection
 
+<style>
+    .fade-out {
+        opacity: 0;
+        transition: opacity 0.5s ease-out;
+    }
+</style>
+
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">{{ __('app.list60') }}</h4>
-        <p class="text-muted">Averigua cómo esta vaina va a lanzar tus ventas</p>
+    @if (session('success'))
+        <div id="toast-container" class="toast-top-right">
+            <div class="toast toast-success" aria-live="polite" style="display: block;">
+                <div class="toast-client">{{ session('success') }}</div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var toastElement = document.getElementById('toast-container');
+                var toast = new bootstrap.Toast(toastElement, {
+                    animation: true,
+                    delay: 1000,
+                    autohide: true
+                });
+                toast.show();
+            });
+        </script>
+    @endif
+
+    <div class="alert alert-info" role="alert">
+        <i class="ti ti-info-circle"></i> Averigua cómo esta vaina va a lanzar tus ventas
     </div>
-</div>
 
-<!-- DataTable with Buttons -->
-<div class="card">
-  <div class="card-datatable table-responsive pt-0">
-    <table class="datatables-basic table">
-      <thead>
-        <tr>
-          <th></th>
-          <th></th>
-          <th>id</th>
-          <th>Nombre</th>
-          <th>Email</th>
-          <th>Proximo contacto</th>
-          <th>Negocio</th>
-          <th>Estado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-    </table>
-  </div>
-</div>
-<!-- Modal to add new record -->
-<div class="offcanvas offcanvas-end" id="add-new-record">
-  <div class="offcanvas-header border-bottom">
-    <h5 class="offcanvas-title" id="exampleModalLabel">+ Añadir contacto</h5>
-    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-  </div>
-  <div class="offcanvas-body flex-grow-1">
-    <form class="add-new-record pt-0 row g-2" id="form-add-new-record" onsubmit="return false">
-      <div class="col-sm-12">
-        <label class="form-label" for="basicFullname">Full Name</label>
-        <div class="input-group input-group-merge">
-          <span id="basicFullname2" class="input-group-text"><i class="ti ti-user"></i></span>
-          <input type="text" id="basicFullname" class="form-control dt-full-name" name="basicFullname" placeholder="John Doe" aria-label="John Doe" aria-describedby="basicFullname2" />
+    <div class="card">
+        <div class="card-header border-bottom">
+            <div
+                class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+                <div class="d-flex gap-2">
+                    <a href="{{ route('client.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
+                        <i class="ti ti-plus me-sm-1"></i>
+                        <span class="d-none d-sm-inline-block">Añadir cliente</span>
+                    </a>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="col-sm-12">
-        <label class="form-label" for="basicPost">Post</label>
-        <div class="input-group input-group-merge">
-          <span id="basicPost2" class="input-group-text"><i class='ti ti-briefcase'></i></span>
-          <input type="text" id="basicPost" name="basicPost" class="form-control dt-post" placeholder="Web Developer" aria-label="Web Developer" aria-describedby="basicPost2" />
+        <div class="card-body">
+            {{ $dataTable->table() }}
         </div>
-      </div>
-      <div class="col-sm-12">
-        <label class="form-label" for="basicEmail">Email</label>
-        <div class="input-group input-group-merge">
-          <span class="input-group-text"><i class="ti ti-mail"></i></span>
-          <input type="text" id="basicEmail" name="basicEmail" class="form-control dt-email" placeholder="john.doe@example.com" aria-label="john.doe@example.com" />
-        </div>
-        <div class="form-text">
-          You can use letters, numbers & periods
-        </div>
-      </div>
-      <div class="col-sm-12">
-        <label class="form-label" for="basicDate">Joining Date</label>
-        <div class="input-group input-group-merge">
-          <span id="basicDate2" class="input-group-text"><i class='ti ti-calendar'></i></span>
-          <input type="text" class="form-control dt-date" id="basicDate" name="basicDate" aria-describedby="basicDate2" placeholder="MM/DD/YYYY" aria-label="MM/DD/YYYY" />
-        </div>
-      </div>
-      <div class="col-sm-12">
-        <label class="form-label" for="basicSalary">Salary</label>
-        <div class="input-group input-group-merge">
-          <span id="basicSalary2" class="input-group-text"><i class='ti ti-currency-dollar'></i></span>
-          <input type="number" id="basicSalary" name="basicSalary" class="form-control dt-salary" placeholder="12000" aria-label="12000" aria-describedby="basicSalary2" />
-        </div>
-      </div>
-      <div class="col-sm-12">
-        <button type="submit" class="btn btn-primary data-submit me-sm-3 me-1">Submit</button>
-        <button type="reset" class="btn btn-outline-secondary" data-bs-dismiss="offcanvas">Cancel</button>
-      </div>
-    </form>
+    </div>
+@endsection
 
-  </div>
-</div>
-<!--/ DataTable with Buttons -->
+@push('scripts')
+    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+@endpush
 
+@section('vendor-script')
+    <script src="{{ asset('vendors/data-tables/js/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js') }}"></script>
+    <script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
+    <script src="{{ asset('vendors/fullcalendar/lib/moment.min.js') }}"></script>
+    <script src="{{ asset('js/moment/' . app()->getLocale() . '.js') }}"></script>
 @endsection

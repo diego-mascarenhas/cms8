@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\DataTables\ClientDataTable;
+use App\DataTables\List60DataTable;
 use App\Models\Enterprise;
 use Illuminate\Http\Request;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
@@ -12,7 +12,7 @@ class List60Controller extends Controller
 {
     use EditorTrait;
 
-    public function index(ClientDataTable $dataTable)
+    public function index(List60DataTable $dataTable)
     {
         if (!auth()->user()->currentTeam)
         {
