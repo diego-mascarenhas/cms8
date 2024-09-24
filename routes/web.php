@@ -78,7 +78,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/client/list', [ClientController::class, 'index'])
         ->middleware('role:admin,colaborator')
         ->name('client-list');
-
+        
+    Route::post('/client/end-action/{id}', [ClientController::class, 'endAction'])->name('client.end-action');
     Route::get('/client/import', [ClientController::class, 'showImportForm'])->name('client.import');
     Route::post('/client/import-excel', [ClientController::class, 'importExcel'])->name('client.import-excel');
 
@@ -98,6 +99,7 @@ Route::middleware(['auth'])->group(function ()
     // Chat
     Route::get('/chat', [ChatController::class, 'index'])->name('chat');
     Route::get('/chat/list', [WhatsAppController::class, 'index'])->name('chat-list');
+
 });
 
 // Testing

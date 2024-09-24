@@ -12,9 +12,12 @@ use Spatie\SimpleExcel\SimpleExcelReader;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Traits\TracksEnterpriseActions;
 
 class ClientController extends Controller
 {
+    use TracksEnterpriseActions;
+    
     public function index(ClientDataTable $dataTable)
     {
         if (!auth()->user()->currentTeam)
@@ -72,7 +75,8 @@ class ClientController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $trackingId = $this->startActionTracking($id, 'show');
+        return view('client.show', compact('enterprise', 'trackingId'));
     }
 
     /**
@@ -92,7 +96,8 @@ class ClientController extends Controller
 
         $enterpriseStatuses = EnterpriseStatus::getOptions(1);
 
-        return view('client.form', compact('data', 'enterpriseStatuses'));
+        $trackingId = $this->startActionTracking($id, 'edit');
+        return view('client.form', compact('data', 'enterpriseStatuses', 'trackingId'));
     }
 
     /**
@@ -277,5 +282,11 @@ class ClientController extends Controller
     public function showImportForm()
     {
         return view('client.import');
+    }
+
+    public function endAction($trackingId)
+    {
+        $this->endActionTracking($trackingId);
+        return response()->json(['success' => true]);
     }
 }
