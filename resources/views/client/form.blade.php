@@ -209,8 +209,6 @@
                             </div>
                         </div>
                         <div class="col-12 d-flex justify-content-between mt-4">
-                            <button type="button" class="btn btn-primary btn-prev" disabled> <i class="ti ti-arrow-left ti-xs me-1"></i> Anterior</button>
-                            <button type="button" class="btn btn-primary btn-next"> Siguiente <i class="ti ti-arrow-right ti-xs ms-1"></i></button>
                             <button type="submit" class="btn btn-success btn-submit d-none">Guardar</button>
                         </div>
                     </form>
@@ -224,9 +222,6 @@
 @push('scripts')
 <script>
 function endActionTracking(trackingId) {
-    // Alerta de depuración
-    // alert('Intentando finalizar el seguimiento de la acción. ID: ' + trackingId);
-
     fetch(`/client/end-action/${trackingId}`, {
         method: 'POST',
         headers: {
@@ -237,14 +232,11 @@ function endActionTracking(trackingId) {
       .then(data => {
         if (data.success) {
             console.log('Acción finalizada correctamente');
-            alert('Acción finalizada correctamente');
         } else {
             console.error('Error al finalizar el seguimiento de la acción');
-            alert('Error al finalizar el seguimiento de la acción');
         }
     }).catch(error => {
         console.error('Error:', error);
-        alert('Error: ' + error);
     });
 }
 
@@ -252,28 +244,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const trackingId = {{ $trackingId ?? 'null' }};
     
     if (trackingId) {
-        // Llamar a endActionTracking cuando se envíe el formulario
         document.getElementById('clientForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            alert('Formulario enviado. Intentando finalizar el seguimiento.');
             endActionTracking(trackingId);
             this.submit();
         });
 
-        // Llamar a endActionTracking cuando se cierre la ventana o se navegue fuera de la página
-        window.addEventListener('beforeunload', function(e) {
-            e.preventDefault(); // Cancel the event
-            e.returnValue = ''; // Display a default message in the browser
-            alert('Intentando salir de la página. Finalizando seguimiento.');
+        window.addEventListener('beforeunload', function() {
             endActionTracking(trackingId);
         });
 
-        // Llamar a endActionTracking cuando se haga clic en el botón de cancelar
         const cancelButton = document.querySelector('button[onclick*="client-list"]');
         if (cancelButton) {
             cancelButton.addEventListener('click', function(e) {
                 e.preventDefault();
-                alert('Botón de cancelar presionado. Finalizando seguimiento.');
                 endActionTracking(trackingId);
                 location.href = '{{ route('client-list') }}';
             });
