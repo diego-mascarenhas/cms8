@@ -50,7 +50,7 @@
                                 height="100" width="100" alt="User avatar" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>
-                                <span class="badge bg-label-secondary mt-1">Author</span>
+                                <span class="badge bg-label-secondary mt-1">Customer ID #{{ $data->id }}</span>
                             </div>
                         </div>
                     </div>
@@ -58,17 +58,17 @@
                         <div class="d-flex align-items-start me-4 mt-3 gap-2">
                             <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-checkbox ti-sm'></i></span>
                             <div>
-                                <p class="mb-0 fw-medium">1.23k</p>
-                                <small>Tasks Done</small>
+                                <p class="mb-0 fw-medium">{{ Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}</p>
+                                <small>Primera compra</small>
                             </div>
                         </div>
                         <div class="d-flex align-items-start mt-3 gap-2">
                             <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-briefcase ti-sm'></i></span>
                             <div>
                                 <p class="mb-0 fw-medium">
-                                    <p id="totalTime" class="mb-0 fw-medium">{{ $totalSeconds }} segundos</p>
+                                    <span id="totalTime" class="mb-0 fw-medium">{{ $totalSeconds }} segundos</span>
                                 </p>
-                                <small>Projects Done</small>
+                                <small>LTV</small>
                             </div>
                         </div>
                     </div>
@@ -336,12 +336,10 @@
             const trackingId = {{ $trackingId ?? 'null' }};
 
             if (trackingId) {
-                // Finalizar acción cuando el usuario abandona la página o cierra el navegador
                 window.addEventListener('beforeunload', function() {
                     endActionTracking(trackingId);
                 });
 
-                // Finalizar acción cuando el usuario hace clic en cualquier enlace que lo lleve fuera de la página
                 document.body.addEventListener('click', function(e) {
                     if (e.target.tagName === 'A' && e.target.href && !e.target.href.startsWith(window
                             .location.origin + window.location.pathname)) {

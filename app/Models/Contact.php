@@ -164,10 +164,27 @@ class Contact extends Model
             $totalSeconds += Carbon::parse($action->end_time)->diffInSeconds($action->start_time);
         }
 
-        // Add time from current ongoing action, if any
         $currentActionSeconds = $this->calculateCurrentActionSeconds();
         $totalSeconds += $currentActionSeconds;
 
         return $totalSeconds;
+    }
+
+    public static function getTotalTeamMinutes()
+    {
+        $totalTeamSeconds = self::sum('duration_seconds');
+        return round($totalTeamSeconds / 60);
+    }
+
+    public static function getTotalTeamTime()
+    {
+        $totalMinutes = self::getTotalTeamMinutes();
+        $hours = floor($totalMinutes / 60);
+        $minutes = $totalMinutes % 60;
+        
+        return [
+            'hours' => $hours,
+            'minutes' => $minutes
+        ];
     }
 }
