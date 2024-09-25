@@ -48,6 +48,6 @@ class UserContactAction extends Model
      */
     public function contact()
     {
-        return $this->belongsTo(Enterprise::class);
+        return $this->belongsTo(Contact::class);
     }
 }
