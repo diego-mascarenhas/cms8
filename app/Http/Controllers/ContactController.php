@@ -29,7 +29,7 @@ class ContactController extends Controller
         
         $data = Contact::getContactStats($teamId);
         $data['emotionalStates'] = ContactSentiment::getOptions();
-        $data['enterpriseStatuses'] = ContactStatus::getOptions(1);
+        $data['enterpriseStatuses'] = ContactStatus::getOptions();
 
 
         return $dataTable->render('contact.index', $data);
@@ -86,7 +86,9 @@ class ContactController extends Controller
         $data->id = $id;
 
         $trackingId = $this->startActionTracking($id, 'show');
-        return view('contact.show', compact('data', 'trackingId'));
+        $totalSeconds = $row->calculateTotalAccumulatedSeconds();
+
+        return view('contact.show', compact('data', 'trackingId', 'totalSeconds'));
     }
 
     /**

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\UserContactAction;
+use Carbon\Carbon;
 
 class Contact extends Model
 {
@@ -126,5 +128,46 @@ class Contact extends Model
         $finalData = array_merge($defaultData, $data);
 
         return $finalData;
+    }
+    
+    public function actions()
+    {
+        return $this->hasMany(UserContactAction::class, 'contact_id');
+    }
+
+    public function calculateCurrentActionSeconds()
+    {
+        $latestAction = UserContactAction::where('contact_id', $this->id)
+                                         ->whereNull('end_time')
+                                         ->latest('start_time')
+                                         ->first();
+        
+        if (!$latestAction) {
+            return 0;
+        }
+
+        $startTime = $latestAction->start_time;
+        $endTime = Carbon::now();
+
+        return $endTime->diffInSeconds($startTime);
+    }
+
+    public function calculateTotalAccumulatedSeconds()
+    {
+        $completedActions = UserContactAction::where('contact_id', $this->id)
+                                             ->whereNotNull('end_time')
+                                             ->get();
+
+        $totalSeconds = 0;
+
+        foreach ($completedActions as $action) {
+            $totalSeconds += Carbon::parse($action->end_time)->diffInSeconds($action->start_time);
+        }
+
+        // Add time from current ongoing action, if any
+        $currentActionSeconds = $this->calculateCurrentActionSeconds();
+        $totalSeconds += $currentActionSeconds;
+
+        return $totalSeconds;
     }
 }

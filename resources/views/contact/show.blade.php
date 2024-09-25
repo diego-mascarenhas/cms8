@@ -66,7 +66,7 @@
                             <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-briefcase ti-sm'></i></span>
                             <div>
                                 <p class="mb-0 fw-medium">
-                                    {{ \Carbon\CarbonInterval::seconds($trackingId)->cascade()->forHumans(['parts' => 1]) }}
+                                    <p id="totalTime" class="mb-0 fw-medium">{{ $totalSeconds }} segundos</p>
                                 </p>
                                 <small>Projects Done</small>
                             </div>
@@ -354,5 +354,23 @@
                 });
             }
         });
+
+    let totalSeconds = {{ $totalSeconds }};
+    setInterval(() => {
+        totalSeconds++;
+        let hours = Math.floor(totalSeconds / 3600);
+        let minutes = Math.floor((totalSeconds % 3600) / 60);
+        let seconds = totalSeconds % 60;
+
+        let formattedTime = `${seconds} segundos`;
+        if (minutes > 0) {
+            formattedTime = `${minutes} minutos, ${formattedTime}`;
+        }
+        if (hours > 0) {
+            formattedTime = `${hours} horas, ${formattedTime}`;
+        }
+
+        document.getElementById('totalTime').textContent = formattedTime;
+    }, 1000);
     </script>
 @endpush
