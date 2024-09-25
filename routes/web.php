@@ -13,6 +13,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\EmailController;
@@ -74,6 +75,21 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
     Route::resource('/user-list', UserManagement::class);
 
+    // Contacts
+    Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
+    Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
+    Route::get('/contact/import', [contactController::class, 'showImportForm'])->name('contact.import');
+    Route::post('/contact/import-excel', [contactController::class, 'importExcel'])->name('contact.import-excel');
+
+    Route::get('/contact/create', [contactController::class, 'create'])->name('contact.create');
+    Route::get('/contact/{id}', [contactController::class, 'show'])->name('contact.show');
+    Route::get('/contact/{id}/edit', [contactController::class, 'edit'])->name('contact.edit');
+    Route::post('/contac', [contactController::class, 'store'])->name('contact.store');
+    Route::put('/contact/{id}', [contactController::class, 'update'])->name('contact.update');
+    Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
+    
+    Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
+    
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])
         ->middleware('role:admin,colaborator')
@@ -89,9 +105,6 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/client', [ClientController::class, 'store'])->name('client.store');
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
-    
-    Route::post('/client/{id}/update-sentiment', [ClientController::class, 'updateSentiment'])->name('client.update-sentiment');
-   
 
     // List60
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');

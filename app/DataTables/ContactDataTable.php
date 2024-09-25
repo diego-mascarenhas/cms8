@@ -2,7 +2,7 @@
 
 namespace App\DataTables;
 
-use App\Models\Enterprise;
+use App\Models\Contact;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -11,7 +11,7 @@ use Yajra\DataTables\Services\DataTable;
 
 use Carbon\Carbon;
 
-class ClientDataTable extends DataTable
+class ContactDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
@@ -21,7 +21,7 @@ class ClientDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'client.action')
+            ->addColumn('action', 'contact.action')
             ->setRowId('id')
             ->editColumn('name', function ($row) {
                 return '<div class="d-flex flex-column">
@@ -81,32 +81,15 @@ class ClientDataTable extends DataTable
             ->rawColumns(['name', 'action', 'current_sentiment', 'social_networks', 'status_id']);
     }
 
-    public function query(Enterprise $model): QueryBuilder
+    public function query(Contact $model): QueryBuilder
     {
-        // $user = auth()->user();
-
-        // $query = $model->clients()->with('status');
-
-        // if ($user->can('client.list'))
-        // {
-        //     return $query;
-        // }
-        // elseif ($user->hasRole('colab'))
-        // {
-        //     return $query->where('assigned_to', $user->id);
-        // }
-        // else
-        // {
-        //     return $query->whereRaw('1 = 0');
-        // }
-
-        return $model->newQuery()->with('status');
+        return $model->newQuery()->with('currentSentiment.sentiment')->with('status');
     }
 
     public function html(): HtmlBuilder
     {
         return $this->builder()
-            ->setTableId('client-table')
+            ->setTableId('contact-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
@@ -131,7 +114,7 @@ class ClientDataTable extends DataTable
                 }",
                 'drawCallback' => "function() {
                     $('#EmotionalState').off('change').on('change', function() {
-                        $('#client-table').DataTable().columns('.select-filter').search($(this).val()).draw();
+                        $('#contact-table').DataTable().columns('.select-filter').search($(this).val()).draw();
                     });
                 }",
             ]);
@@ -141,14 +124,20 @@ class ClientDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('name')->title('Cliente'),
+            Column::make('name')->title('Contacto'),
+            Column::make('current_sentiment')
+                ->title('Último estado')
+                ->className('text-center')
+                ->addClass('select-filter')
+                ->searchable(true)
+                ->orderable(false),
             Column::make('social_networks')
-                ->title('Redes Sociales')
+                ->title('Redes')
                 ->className('text-center')
                 ->searchable(false)
                 ->orderable(false)
                 ->width(200),
-            Column::make('locality')->title('Mensajes')->className('text-center'),
+            Column::make('birthday')->title('Asesor')->className('text-center'),
             Column::make('status_id')->title('Estado')->className('text-center'),
             Column::computed('action')->title('Acciones')->width(20)->className('text-center')
                 ->exportable(false)
@@ -182,6 +171,6 @@ class ClientDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Client_' . date('YmdHis');
+        return 'Contact_' . date('YmdHis');
     }
 }

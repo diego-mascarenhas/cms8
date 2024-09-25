@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('app.clients'))
+@section('title', __('app.contacts'))
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
@@ -30,6 +30,16 @@
     <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
 
     <script>
+        $(document).ready(function() {
+            $(document).on('click', '.edit-sentiment', function() {
+                var id = $(this).data('id');
+                var url = "{{ route('contact.update-sentiment', ':id') }}";
+                url = url.replace(':id', id);
+                $('#updateSentimentForm').attr('action', url);
+                $('#updateSentimentModal').modal('show');
+            });
+        });
+
         $(function() {
             let table = $('.datatable').DataTable();
 
@@ -58,7 +68,7 @@
                 var formData = new FormData(this);
 
                 $.ajax({
-                    url: '{{ route('client.import-excel') }}',
+                    url: '{{ route('contact.import-excel') }}',
                     type: 'POST',
                     data: formData,
                     processData: false,
@@ -112,7 +122,7 @@
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch("{{ route('client.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                    fetch("{{ route('contact.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
                         method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json',
@@ -281,9 +291,9 @@
             <div
                 class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
                 <div class="d-flex gap-2">
-                    <a href="{{ route('client.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
+                    <a href="{{ route('contact.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
                         <i class="ti ti-plus me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Añadir cliente</span>
+                        <span class="d-none d-sm-inline-block">Añadir contacto</span>
                     </a>
                     <button id="import-button" class="btn btn-outline-secondary btn-sm waves-effect">
                         <i class="ti ti-file-import me-sm-1"></i>
@@ -297,6 +307,10 @@
             </div>
             <div class="d-flex flex-column flex-md-row gap-3">
                 <div class="flex-grow-1">
+                    <x-input-select-array id="EmotionalState" :options="$emotionalStates" :value="''"
+                        placeholder="Selector de estado emocional" />
+                </div>
+                <div class="flex-grow-1">
                     <select id="ContractedService" class="form-select text-capitalize">
                         <option value=""> Selector de servicio contratado </option>
                     </select>
@@ -309,6 +323,41 @@
         </div>
         <div class="card-body">
             {{ $dataTable->table() }}
+        </div>
+    </div>
+
+    <!-- Modal Sentiment -->
+    <div class="modal fade" id="updateSentimentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Actualizar Sentimiento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="updateSentimentForm" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="sentiment_id" class="form-label">Sentimiento</label>
+                            <select class="form-select" id="sentiment_id" name="sentiment_id" required>
+                                <option value="" selected disabled>Selecciona un estado emocional</option>
+                                @foreach (App\Models\ContactSentiment::all() as $sentiment)
+                                    <option value="{{ $sentiment->id }}">{{ $sentiment->name }} {{ $sentiment->emoji }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notas</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-primary">Actualizar</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

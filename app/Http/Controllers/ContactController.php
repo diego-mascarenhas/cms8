@@ -2,18 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\DataTables\ClientDataTable;
-use App\Models\Enterprise;
-use App\Models\EnterpriseStatus;
+use App\DataTables\ContactDataTable;
+use App\Models\Contact;
+use App\Models\ContactSentimentHistory;
+use App\Models\ContactStatus;
+use App\Models\ContactSentiment;
 use Illuminate\Http\Request;
 use Spatie\SimpleExcel\SimpleExcelReader;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Traits\TracksContactActions;
 
-class ClientController extends Controller
+class ContactController extends Controller
 {
-    public function index(ClientDataTable $dataTable)
+    use TracksContactActions;
+    
+    public function index(ContactDataTable $dataTable)
     {
         if (!auth()->user()->currentTeam)
         {
@@ -22,11 +27,12 @@ class ClientController extends Controller
         
         $teamId = auth()->user()->current_team_id;
         
-        $data = Enterprise::getContactStats($teamId);
-        $data['enterpriseStatuses'] = EnterpriseStatus::getOptions(1);
+        $data = Contact::getContactStats($teamId);
+        $data['emotionalStates'] = ContactSentiment::getOptions();
+        $data['enterpriseStatuses'] = ContactStatus::getOptions(1);
 
 
-        return $dataTable->render('client.index', $data);
+        return $dataTable->render('contact.index', $data);
     }
 
     /**
@@ -34,9 +40,9 @@ class ClientController extends Controller
      */
     public function create()
     {
-        $enterpriseStatuses = EnterpriseStatus::getOptions(1);
+        $enterpriseStatuses = ContactStatus::getOptions(1);
 
-        return view('client.form', compact('enterpriseStatuses'));
+        return view('contact.form', compact('enterpriseStatuses'));
     }
 
     /**
@@ -56,12 +62,12 @@ class ClientController extends Controller
 
         $data['data'] = $data;
 
-        Enterprise::updateOrCreate(
+        Contact::updateOrCreate(
             ['id' => $request->id],
             $data
         );
 
-        return redirect()->route('client-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('contact-list')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -69,7 +75,18 @@ class ClientController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $row = Contact::find($id);
+
+        if (!$row)
+        {
+            return redirect()->route('contact-list')->with('error', 'Contact not found.');
+        }
+
+        $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass()));
+        $data->id = $id;
+
+        $trackingId = $this->startActionTracking($id, 'show');
+        return view('contact.show', compact('data', 'trackingId'));
     }
 
     /**
@@ -77,20 +94,20 @@ class ClientController extends Controller
      */
     public function edit(string $id)
     {
-        $row = Enterprise::find($id);
+        $row = Contact::find($id);
 
         if (!$row)
         {
-            return redirect()->route('client-list')->with('error', 'Client not found.');
+            return redirect()->route('contact-list')->with('error', 'Contact not found.');
         }
 
         $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass()));
         $data->id = $id;
 
-        $enterpriseStatuses = EnterpriseStatus::getOptions(1);
+        $enterpriseStatuses = ContactStatus::getOptions(1);
 
         $trackingId = $this->startActionTracking($id, 'edit');
-        return view('client.form', compact('data', 'enterpriseStatuses', 'trackingId'));
+        return view('contact.form', compact('data', 'enterpriseStatuses', 'trackingId'));
     }
 
     /**
@@ -106,11 +123,29 @@ class ClientController extends Controller
      */
     public function destroy(string $id)
     {
-        $model = Enterprise::findOrFail($id);
+        $model = Contact::findOrFail($id);
 
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
+    }
+
+    public function updateSentiment(Request $request, string $id)
+    {
+        $request->validate([
+            'sentiment_id' => 'required|exists:contact_sentiments,id',
+            'notes' => 'nullable|string|max:255',
+        ]);
+    
+        $contact = Contact::findOrFail($id);
+    
+        ContactSentimentHistory::create([
+            'contact_id' => $contact->id,
+            'sentiment_id' => $request->sentiment_id,
+            'notes' => $request->notes,
+        ]);
+    
+        return redirect()->route('contact-list')->with('success', 'Sentiment updated successfully.');
     }
 
     public function importExcel(Request $request)
@@ -123,7 +158,7 @@ class ClientController extends Controller
         $path = $file->store('temp');
         $fullPath = Storage::path($path);
 
-        $extension = $file->getClientOriginalExtension();
+        $extension = $file->getContactOriginalExtension();
         
         try {
             if ($extension == 'csv') {
@@ -151,8 +186,8 @@ class ClientController extends Controller
                 $values = array_values(array_filter($row));
 
                 if (count($values) >= 2) { // At least name and email
-                    $client = $this->detectFields($values);
-                    $client['team_id'] = Auth::user()->currentTeam->id;
+                    $contact = $this->detectFields($values);
+                    $contact['team_id'] = Auth::user()->currentTeam->id;
 
                     if ($headers) {
                         $additionalData = array_slice($values, 3);
@@ -165,13 +200,13 @@ class ClientController extends Controller
                             }
                         }
 
-                        $client['data'] = !empty($additionalDataAssoc) ? $additionalDataAssoc : null;
+                        $contact['data'] = !empty($additionalDataAssoc) ? $additionalDataAssoc : null;
                     } else {
                         $additionalData = array_slice($values, 3);
-                        $client['data'] = !empty($additionalData) ? $additionalData : null;
+                        $contact['data'] = !empty($additionalData) ? $additionalData : null;
                     }
 
-                    $validator = Validator::make($client, [
+                    $validator = Validator::make($contact, [
                         'name' => 'required|string',
                         'email' => 'required|email',
                         'phone' => 'nullable',
@@ -181,16 +216,16 @@ class ClientController extends Controller
                         continue; // Skip this row if validation fails
                     }
 
-                    $existingClient = Enterprise::where('email', $client['email'])
-                                                ->where('team_id', $client['team_id'])
+                    $existingContact = Contact::where('email', $contact['email'])
+                                                ->where('team_id', $contact['team_id'])
                                                 ->first();
 
-                    if ($existingClient) {
-                        $existingClient->update($client);
+                    if ($existingContact) {
+                        $existingContact->update($contact);
                         $updatedCount++;
                     } else {
-                        Enterprise::create($client);
-                        $processedData[] = $client;
+                        Contact::create($contact);
+                        $processedData[] = $contact;
                     }
                 }
             }
@@ -213,7 +248,7 @@ class ClientController extends Controller
 
     private function detectFields($values)
     {
-        $client = [
+        $contact = [
             'name' => null,
             'email' => null,
             'phone' => null,
@@ -221,19 +256,19 @@ class ClientController extends Controller
 
         foreach ($values as $value) {
             if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
-                $client['email'] = $value;
+                $contact['email'] = $value;
             } elseif (preg_match('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/', $value)) {
-                $client['phone'] = $value;
+                $contact['phone'] = $value;
             } else {
-                $client['name'] = $value;
+                $contact['name'] = $value;
             }
 
-            if ($client['name'] && $client['email']) {
+            if ($contact['name'] && $contact['email']) {
                 break;
             }
         }
 
-        return $client;
+        return $contact;
     }
 
     private function isHeaderRow($row)
@@ -256,6 +291,12 @@ class ClientController extends Controller
 
     public function showImportForm()
     {
-        return view('client.import');
+        return view('contact.import');
+    }
+
+    public function endAction($trackingId)
+    {
+        $this->endActionTracking($trackingId);
+        return response()->json(['success' => true]);
     }
 }

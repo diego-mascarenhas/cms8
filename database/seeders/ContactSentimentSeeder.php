@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\EnterpriseSentiment;
+use App\Models\ContactSentiment;
 use Illuminate\Database\Seeder;
 
-class EnterpriseSentimentSeeder extends Seeder
+class ContactSentimentSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -21,7 +21,7 @@ class EnterpriseSentimentSeeder extends Seeder
         ];
 
         foreach ($sentiments as $sentiment) {
-            EnterpriseSentiment::create($sentiment);
+            ContactSentiment::create($sentiment);
         }
     }
 }

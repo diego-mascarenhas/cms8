@@ -7,30 +7,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
 
-class Enterprise extends Model
+class Contact extends Model
 {
     use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
         'team_id',
-        'name',
-        'type_id',
         'user_id',
-        'assigned_to',
-        'referred_by',
-        'address',
-        'postal_code',
-        'locality',
-        'province',
+        'name',
+        'channel_id',
+        'birthday',
+        'profile',
+        'engagment',
         'country',
-        'phone',
-        'whatsapp',
-        'email',
-        'website',
+        'language',
+        'creator_id',
+        'responsible_id',
         'data',
-        'payment_method_id',
-        'invoice_type_id',
         'status_id',
     ];
 
@@ -41,17 +35,10 @@ class Enterprise extends Model
     protected static function booted()
     {
         static::addGlobalScope('team', function (Builder $builder) {
-            $builder->where('team_id', auth()->user()->currentTeam->id);
+            if (auth()->check()) {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
         });
-    }
-    public function scopeClients($query)
-    {
-        return $query->where('type_id', 1);
-    }
-
-    public function scopeSuppliers($query)
-    {
-        return $query->where('type_id', 2);
     }
     
     public function team()
@@ -64,32 +51,29 @@ class Enterprise extends Model
         return $this->belongsTo(User::class);
     }
     
-    public function type()
+    public function creator()
     {
-        return $this->belongsTo(EnterpriseType::class);
+        return $this->belongsTo(User::class, 'creator_id');
     }
     
-    public function assignee()
+    public function responsible()
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsTo(User::class, 'responsible_id');
     }
 
-    public function enterpriseBillingAddresses()
+    public function sentimentHistories()
     {
-        return $this->hasMany(EnterpriseBillingAddress::class);
+        return $this->hasMany(ContactSentimentHistory::class);
     }
 
-    public function enterpriseBillingAddress()
+    public function currentSentiment()
     {
-        return $this->enterpriseBillingAddresses()
-                    ->where('status', 1)
-                    ->latest()
-                    ->first();
+        return $this->hasOne(ContactSentimentHistory::class)->latest();
     }
 
     public function status()
     {
-        return $this->belongsTo(EnterpriseStatus::class);
+        return $this->belongsTo(ContactStatus::class);
     }
     
     public function getStatusLabelAttribute()

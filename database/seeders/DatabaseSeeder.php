@@ -21,11 +21,16 @@ class DatabaseSeeder extends Seeder
             PageSeeder::class,
             RolesAndPermissionsSeeder::class,
             PolicySeeder::class,
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            SourceSeeder::class,
             UserSeeder::class,
+            ContactStatusSeeder::class,
             EnterpriseTypeSeeder::class,
-            EnterpriseSentimentSeeder::class,
+            ContactSentimentSeeder::class,
             EnterpriseStatusSeeder::class,
-            EnterpriseSeeder::class,
+            ContactSeeder::class,
+            ContactSourceSeeder::class,
 		]);
     }
 }

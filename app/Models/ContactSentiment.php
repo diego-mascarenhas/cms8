@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class EnterpriseSentiment extends Model
+class ContactSentiment extends Model
 {
     public $timestamps = false;
     protected $fillable = ['name'];
@@ -17,13 +17,13 @@ class EnterpriseSentiment extends Model
             3 => '😐',
             4 => '🙂',
             5 => '🥳',
-            default => '❓',
+            default => '🤔',
         };
     }
 
     public function histories()
     {
-        return $this->hasMany(EnterpriseSentimentHistory::class, 'sentiment_id');
+        return $this->hasMany(ContactSentimentHistory::class, 'sentiment_id');
     }
 
     public static function getOptions()

@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class UserEnterpriseAction extends Model
+class UserContactAction extends Model
 {
     use HasFactory;
 
@@ -18,7 +18,7 @@ class UserEnterpriseAction extends Model
      */
     protected $fillable = [
         'user_id',
-        'enterprise_id',
+        'contact_id',
         'action',
         'start_time',
         'end_time',
@@ -46,7 +46,7 @@ class UserEnterpriseAction extends Model
     /**
      * Get the enterprise associated with the action.
      */
-    public function enterprise()
+    public function contact()
     {
         return $this->belongsTo(Enterprise::class);
     }

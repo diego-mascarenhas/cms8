@@ -2,16 +2,16 @@
 
 namespace App\Traits;
 
-use App\Models\UserEnterpriseAction;
+use App\Models\UserContactAction;
 use Illuminate\Support\Facades\Auth;
 
-trait TracksEnterpriseActions
+trait TracksContactActions
 {
-    protected function startActionTracking($enterpriseId, $action)
+    protected function startActionTracking($contactId, $action)
     {
-        $tracking = UserEnterpriseAction::create([
+        $tracking = UserContactAction::create([
             'user_id' => Auth::id(),
-            'enterprise_id' => $enterpriseId,
+            'contact_id' => $contactId,
             'action' => $action,
             'start_time' => now(),
         ]);
@@ -21,7 +21,7 @@ trait TracksEnterpriseActions
 
     protected function endActionTracking($trackingId)
     {
-        $tracking = UserEnterpriseAction::findOrFail($trackingId);
+        $tracking = UserContactAction::findOrFail($trackingId);
         $tracking->end_time = now();
         $tracking->duration_seconds = $tracking->end_time->diffInSeconds($tracking->start_time);
         $tracking->save();
