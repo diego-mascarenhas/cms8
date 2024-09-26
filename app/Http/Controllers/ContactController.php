@@ -75,18 +75,16 @@ class ContactController extends Controller
      */
     public function show(string $id)
     {
-        $row = Contact::find($id);
+        $data = Contact::with(['currentSentiment.sentiment', 'creator', 'responsible', 'status', 'country'])
+                  ->find($id);
 
-        if (!$row)
+        if (!$data)
         {
             return redirect()->route('contact-list')->with('error', 'Contact not found.');
         }
 
-        $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass()));
-        $data->id = $id;
-
         $trackingId = $this->startActionTracking($id, 'show');
-        $totalSeconds = $row->calculateTotalAccumulatedSeconds();
+        $totalSeconds = $data->calculateTotalAccumulatedSeconds();
 
         return view('contact.show', compact('data', 'trackingId', 'totalSeconds'));
     }

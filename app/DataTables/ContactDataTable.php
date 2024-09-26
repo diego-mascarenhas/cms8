@@ -75,6 +75,9 @@ class ContactDataTable extends DataTable
 
                 return empty($networks) ? '' : implode(' ', $networks);
             })
+            ->editColumn('responsible_id', function ($row) {
+                return $row->responsible->name ?? '';
+            })
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
@@ -137,7 +140,7 @@ class ContactDataTable extends DataTable
                 ->searchable(false)
                 ->orderable(false)
                 ->width(200),
-            Column::make('birthday')->title('Asesor')->className('text-center'),
+            Column::make('responsible_id')->title('Asesor')->className('text-center'),
             Column::make('status_id')->title('Estado')->className('text-center'),
             Column::computed('action')->title('Acciones')->width(20)->className('text-center')
                 ->exportable(false)

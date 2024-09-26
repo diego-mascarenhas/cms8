@@ -20,7 +20,7 @@ return new class extends Migration
             $table->datetime('birthday')->nullable();
             $table->text('profile')->nullable();
             $table->enum('engagment', ['cold', 'temperate', 'hot'])->default('temperate');
-            $table->string('country', 2)->default('ES');
+            $table->string('country', 2)->default('es');
             $table->string('language', 2)->default('es');
             $table->foreignId('creator_id')->constrained('users');
             $table->foreignId('responsible_id')->nullable()->constrained('users');

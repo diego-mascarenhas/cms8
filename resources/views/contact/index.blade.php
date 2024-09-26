@@ -311,7 +311,7 @@
                         placeholder="Selector de estado emocional" />
                 </div>
                 <div class="flex-grow-1">
-                    <select id="ContractedService" class="form-select text-capitalize">
+                    <select id="ContractedService" class="form-select">
                         <option value=""> Selector de servicio contratado </option>
                     </select>
                 </div>

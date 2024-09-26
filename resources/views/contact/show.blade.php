@@ -35,9 +35,24 @@
 @endsection
 
 @section('content')
-    <h4 class="py-3 mb-4">
-        <span class="text-muted fw-light">Contacto/ Detalle/</span> Account
-    </h4>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+        <div class="d-flex flex-column justify-content-center">
+            <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Contacto/</span> {{ $data->name }}
+                @if ($data->currentSentiment && $data->currentSentiment->sentiment)
+                    {{ $data->currentSentiment->sentiment->emoji }}
+                @endif
+            </h4>
+            <p class="text-muted">
+                {{ Carbon\Carbon::parse($data->created_at)->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}</p>
+        </div>
+        <div class="d-flex align-content-center flex-wrap gap-3">
+            <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
+                    class="ti ti-plus me-1"></i>Añadir informe</a>
+            <a href="#" class="btn btn-info waves-effect waves-light"><i
+                    class="ti ti-message-chatbot me-1"></i>Chat</a>
+        </div>
+    </div>
+
     <div class="row">
         <!-- User Sidebar -->
         <div class="col-xl-4 col-lg-5 col-md-5 order-1 order-md-0">
@@ -56,14 +71,15 @@
                     </div>
                     <div class="d-flex justify-content-around flex-wrap mt-3 pt-3 pb-4 border-bottom">
                         <div class="d-flex align-items-start me-4 mt-3 gap-2">
-                            <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-checkbox ti-sm'></i></span>
+                            <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-shopping-cart ti-sm'></i></span>
                             <div>
-                                <p class="mb-0 fw-medium">{{ Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}</p>
+                                <p class="mb-0 fw-medium">{{ Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}
+                                </p>
                                 <small>Primera compra</small>
                             </div>
                         </div>
-                        <div class="d-flex align-items-start mt-3 gap-2">
-                            <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-briefcase ti-sm'></i></span>
+                        <div class="d-flex align-items-start mt-3 gap-2" style="min-width: 220px;">
+                            <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-currency-dollar ti-sm'></i></span>
                             <div>
                                 <p class="mb-0 fw-medium">
                                     <span id="totalTime" class="mb-0 fw-medium">{{ $totalSeconds }} segundos</span>
@@ -77,35 +93,64 @@
                         <ul class="list-unstyled">
                             <li class="mb-2">
                                 <span class="fw-medium me-1">Username:</span>
-                                <span>violet.dev</span>
+                                <span>
+                                    @if ($data->user_id)
+                                        {{ $data->username }}
+                                    @else
+                                        Sin acceso al sistema
+                                    @endif
+                                </span>
                             </li>
                             <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Email:</span>
-                                <span>vafgot@vultukir.org</span>
+                                <span class="fw-medium me-1">Billing Email:</span>
+                                <span>Sin empresa vinculada</span>
                             </li>
                             <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Status:</span>
-                                <span class="badge bg-label-success">Active</span>
+                                <span class="fw-medium me-1">Estado:</span>
+                                <span class="badge {{ $data->status->label_class }}">{{ $data->status->name }}</span>
                             </li>
                             <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Role:</span>
-                                <span>Author</span>
-                            </li>
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Tax id:</span>
-                                <span>Tax-8965</span>
-                            </li>
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Contact:</span>
+                                <span class="fw-medium me-1">Contacto:</span>
                                 <span>(123) 456-7890</span>
                             </li>
                             <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Languages:</span>
-                                <span>French</span>
+                                <span class="fw-medium me-1">País:</span>
+                                <span>{{ $data->country->name ?? 'No asignado' }}</span>
+                            </li>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Asesor:</span>
+                                <span>{{ $data->responsible->name ?? 'No asignado' }}</span>
+                            </li>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Horarios:</span>
+                                <span>-</span>
+                            </li>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Redes:</span>
+                                <span>-</span>
+                            </li>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Canal favorito:</span>
+                                <span>-</span>
+                            </li>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Cargo:</span>
+                                <span>-</span>
+                            </li>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Fecha de nacimiento:</span>
+                                <span>
+                                    @if (isset($data->birthday))
+                                        {{ \Carbon\Carbon::parse($data->birthday)->format('d/m/Y') }}
+                                        ({{ \Carbon\Carbon::parse($data->birthday)->age }} años)
+                                    @else
+                                        No disponible
+                                    @endif
+                                </span>
                             </li>
                             <li class="pt-1">
-                                <span class="fw-medium me-1">Country:</span>
-                                <span>England</span>
+                                <span class="fw-medium me-1">Superior:</span>
+                                <span>{{ $data->creator->name ?? 'No asignado' }}</span>
                             </li>
                         </ul>
                         <div class="d-flex justify-content-center">
@@ -353,22 +398,22 @@
             }
         });
 
-    let totalSeconds = {{ $totalSeconds }};
-    setInterval(() => {
-        totalSeconds++;
-        let hours = Math.floor(totalSeconds / 3600);
-        let minutes = Math.floor((totalSeconds % 3600) / 60);
-        let seconds = totalSeconds % 60;
+        let totalSeconds = {{ $totalSeconds }};
+        setInterval(() => {
+            totalSeconds++;
+            let hours = Math.floor(totalSeconds / 3600);
+            let minutes = Math.floor((totalSeconds % 3600) / 60);
+            let seconds = totalSeconds % 60;
 
-        let formattedTime = `${seconds} segundos`;
-        if (minutes > 0) {
-            formattedTime = `${minutes} minutos, ${formattedTime}`;
-        }
-        if (hours > 0) {
-            formattedTime = `${hours} horas, ${formattedTime}`;
-        }
+            let formattedTime = `${seconds} segundos`;
+            if (minutes > 0) {
+                formattedTime = `${minutes} minutos, ${formattedTime}`;
+            }
+            if (hours > 0) {
+                formattedTime = `${hours} horas, ${formattedTime}`;
+            }
 
-        document.getElementById('totalTime').textContent = formattedTime;
-    }, 1000);
+            document.getElementById('totalTime').textContent = formattedTime;
+        }, 1000);
     </script>
 @endpush

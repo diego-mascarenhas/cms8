@@ -21,6 +21,9 @@ class ContactFactory extends Factory
             'creator_id' => $this->faker->boolean(70) ? $users->random()->id : $this->faker->randomElement($users)->id,
             'responsible_id' => $this->faker->boolean(70) ? $users->random()->id : $this->faker->randomElement($users)->id,
             'status_id' => ContactStatus::inRandomOrder()->first()->id,
+            // 'channel_id' => $this->faker->numberBetween(1, 3),
+            'birthday' => $this->faker->date(),
+            'profile' => $this->faker->paragraph(),
         ];
     }
 }
