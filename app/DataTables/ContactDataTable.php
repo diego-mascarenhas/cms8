@@ -75,8 +75,13 @@ class ContactDataTable extends DataTable
 
                 return empty($networks) ? '' : implode(' ', $networks);
             })
-            ->editColumn('responsible_id', function ($row) {
-                return $row->responsible->name ?? '';
+            ->addColumn('responsible_name', function ($contact) {
+                return $contact->responsible->name ?? 'N/A';
+            })
+            ->filterColumn('responsible_name', function($query, $keyword) {
+                $query->whereHas('responsible', function ($q) use ($keyword) {
+                    $q->where('name', 'like', "%{$keyword}%");
+                });
             })
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
@@ -86,7 +91,7 @@ class ContactDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery()->with('currentSentiment.sentiment')->with('status');
+        return $model->newQuery()->with('currentSentiment.sentiment', 'status', 'responsible');
     }
 
     public function html(): HtmlBuilder
@@ -140,7 +145,7 @@ class ContactDataTable extends DataTable
                 ->searchable(false)
                 ->orderable(false)
                 ->width(200),
-            Column::make('responsible_id')->title('Asesor')->className('text-center'),
+            Column::make('responsible_name')->title('Asesor')->className('text-center'),
             Column::make('status_id')->title('Estado')->className('text-center'),
             Column::computed('action')->title('Acciones')->width(20)->className('text-center')
                 ->exportable(false)

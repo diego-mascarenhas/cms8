@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->unsignedTinyInteger('channel_id')->nullable();
+            $table->unsignedTinyInteger('source_id')->nullable();
             $table->datetime('birthday')->nullable();
             $table->text('profile')->nullable();
             $table->enum('engagment', ['cold', 'temperate', 'hot'])->default('temperate');
@@ -29,7 +29,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->foreign('channel_id')->references('id')->on('channels')->onDelete('restrict');
+            $table->foreign('source_id')->references('id')->on('sources')->onDelete('restrict');
             $table->foreign('country')->references('code')->on('countries')->onDelete('restrict');
             $table->foreign('language')->references('code')->on('languages')->onDelete('restrict');
             $table->foreign('status_id')->references('id')->on('contact_statuses')->onDelete('restrict');
