@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
 @endsection
 
 @section('page-style')
@@ -26,6 +27,7 @@
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/bundle/popular.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -71,7 +73,8 @@
                     </div>
                     <div class="d-flex justify-content-around flex-wrap mt-3 pt-3 pb-4 border-bottom">
                         <div class="d-flex align-items-start me-4 mt-3 gap-2">
-                            <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-shopping-cart ti-sm'></i></span>
+                            <span class="badge bg-label-primary p-2 rounded"><i
+                                    class='ti ti-shopping-cart ti-sm'></i></span>
                             <div>
                                 <p class="mb-0 fw-medium">{{ Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}
                                 </p>
@@ -79,7 +82,8 @@
                             </div>
                         </div>
                         <div class="d-flex align-items-start mt-3 gap-2" style="min-width: 200px;">
-                            <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-currency-dollar ti-sm'></i></span>
+                            <span class="badge bg-label-primary p-2 rounded"><i
+                                    class='ti ti-currency-dollar ti-sm'></i></span>
                             <div>
                                 <p class="mb-0 fw-medium">
                                     <span id="totalTime" class="mb-0 fw-medium">{{ $totalSeconds }} segundos</span>
@@ -92,10 +96,10 @@
                     <div class="info-container">
                         <ul class="list-unstyled">
                             @if ($data->user_id)
-                            <li class="mb-2">
-                                <span class="fw-medium me-1">Username:</span>
-                                <span>{{ $data->username }}</span>
-                            </li>
+                                <li class="mb-2">
+                                    <span class="fw-medium me-1">Username:</span>
+                                    <span>{{ $data->username }}</span>
+                                </li>
                             @endif
                             {{-- <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Billing email:</span>
@@ -108,12 +112,16 @@
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Contacto:</span>
                                 <span>
-                                    @if($data->phone)
+                                    @if ($data->phone)
                                         @php
                                             $phone = $data->phone;
                                             $countryCode = substr($phone, 0, 2);
                                             $restOfNumber = substr($phone, 2);
-                                            $formattedNumber = preg_replace("/(\d{3})(\d{3})(\d{3})/", "$1 $2 $3", $restOfNumber);
+                                            $formattedNumber = preg_replace(
+                                                '/(\d{3})(\d{3})(\d{3})/',
+                                                "$1 $2 $3",
+                                                $restOfNumber,
+                                            );
                                         @endphp
                                         +{{ $countryCode }} {{ $formattedNumber }}
                                     @else
@@ -140,7 +148,7 @@
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Canal favorito:</span>
                                 <span>
-                                    @if($data->primarySource)
+                                    @if ($data->primarySource)
                                         {{ $data->primarySource->name }}
                                     @else
                                         No hay canal favorito
@@ -178,7 +186,7 @@
             </div>
             <!-- /User Card -->
             <!-- Plan Card -->
-            <div class="card mb-4">
+            {{-- <div class="card mb-4">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <span class="badge bg-label-primary">Standard</span>
@@ -207,7 +215,7 @@
                             Plan</button>
                     </div>
                 </div>
-            </div>
+            </div> --}}
             <!-- /Plan Card -->
         </div>
         <!--/ User Sidebar -->
@@ -234,166 +242,34 @@
             <div class="card mb-4">
                 <h5 class="card-header d-flex justify-content-between align-items-center">
                     Emotional History
-                    <i class="ti ti-info-circle text-muted cursor-pointer"></i>
+                    <button type="button" class="btn btn-primary btn-sm add-sentiment-btn">
+                        + Añadir estado emocional
+                    </button>
                 </h5>
                 <div class="card-body">
                     <ul class="timeline mb-0 ms-3">
-                        @foreach($data->sentimentHistories->sortByDesc('created_at')->take(5) as $sentimentHistory)
-                        <li class="timeline-item timeline-item-transparent">
-                            <span class="timeline-point timeline-point-transparent" style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">{{ $sentimentHistory->sentiment->emoji }}</span>
-                            <div class="timeline-event">
-                                <div class="timeline-header mb-1">
-                                    <h6 class="mb-0">{{ $sentimentHistory->notes }}</h6>
-                                    <small class="text-muted">
-                                        @if($sentimentHistory->created_at->diffInDays(now()) < 7)
-                                            {{ $sentimentHistory->created_at->diffForHumans() }}
-                                        @else
-                                            {{ $sentimentHistory->created_at->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}
-                                        @endif
-                                    </small>
+                        @foreach ($data->sentimentHistories->sortByDesc('created_at')->take(5) as $sentimentHistory)
+                            <li class="timeline-item timeline-item-transparent">
+                                <span class="timeline-point timeline-point-transparent"
+                                    style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">{!! $sentimentHistory->sentiment->emoji !!}</span>
+                                <div class="timeline-event">
+                                    <div class="timeline-header mb-1">
+                                        <h6 class="mb-0">{{ $sentimentHistory->notes }}</h6>
+                                        <small class="text-muted">
+                                            @if ($sentimentHistory->created_at->diffInDays(now()) < 7)
+                                                {{ $sentimentHistory->created_at->diffForHumans() }}
+                                            @else
+                                                {{ $sentimentHistory->created_at->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}
+                                            @endif
+                                        </small>
+                                    </div>
                                 </div>
-                            </div>
-                        </li>
+                            </li>
                         @endforeach
                     </ul>
-                    <div class="mt-4">
-                        <a href="#" class="btn btn-primary btn-sm">+ Añadir estado emocional</a>
-                    </div>
                 </div>
             </div>
             <!-- /Emotional History -->
-
-            <!-- Project table -->
-            <div class="card mb-4">
-                <h5 class="card-header">User's Projects List</h5>
-                <div class="table-responsive mb-3">
-                    <table class="table datatable-project border-top">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>Project</th>
-                                <th class="text-nowrap">Total Task</th>
-                                <th>Progress</th>
-                                <th>Hours</th>
-                            </tr>
-                        </thead>
-                    </table>
-                </div>
-            </div>
-            <!-- /Project table -->
-
-            <!-- Activity Timeline -->
-            <div class="card mb-4">
-                <h5 class="card-header">User Activity Timeline</h5>
-                <div class="card-body pb-0">
-                    <ul class="timeline mb-0">
-                        <li class="timeline-item timeline-item-transparent">
-                            <span class="timeline-point timeline-point-primary"></span>
-                            <div class="timeline-event">
-                                <div class="timeline-header mb-1">
-                                    <h6 class="mb-0">12 Invoices have been paid</h6>
-                                    <small class="text-muted">12 min ago</small>
-                                </div>
-                                <p class="mb-2">Invoices have been paid to the company</p>
-                                <div class="d-flex">
-                                    <a href="javascript:void(0)" class="me-3">
-                                        <img src="{{ asset('assets/img/icons/misc/pdf.png') }}" alt="PDF image"
-                                            width="15" class="me-2">
-                                        <span class="fw-medium text-heading">invoices.pdf</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="timeline-item timeline-item-transparent">
-                            <span class="timeline-point timeline-point-warning"></span>
-                            <div class="timeline-event">
-                                <div class="timeline-header mb-1">
-                                    <h6 class="mb-0">Client Meeting</h6>
-                                    <small class="text-muted">45 min ago</small>
-                                </div>
-                                <p class="mb-2">Project meeting with john @10:15am</p>
-                                <div class="d-flex flex-wrap">
-                                    <div class="avatar me-3">
-                                        <img src="{{ asset('assets/img/avatars/3.png') }}" alt="Avatar"
-                                            class="rounded-circle" />
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-0">Lester McCarthy (Client)</h6>
-                                        <small>CEO of {{ config('variables.creatorName') }}</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="timeline-item timeline-item-transparent">
-                            <span class="timeline-point timeline-point-info"></span>
-                            <div class="timeline-event">
-                                <div class="timeline-header mb-1">
-                                    <h6 class="mb-0">Create a new project for client</h6>
-                                    <small class="text-muted">2 Day Ago</small>
-                                </div>
-                                <p class="mb-2">5 team members in a project</p>
-                                <div class="d-flex align-items-center avatar-group">
-                                    <div class="avatar pull-up" data-bs-toggle="tooltip" data-popup="tooltip-custom"
-                                        data-bs-placement="top" title="Vinnie Mostowy">
-                                        <img src="{{ asset('assets/img/avatars/5.png') }}" alt="Avatar"
-                                            class="rounded-circle">
-                                    </div>
-                                    <div class="avatar pull-up" data-bs-toggle="tooltip" data-popup="tooltip-custom"
-                                        data-bs-placement="top" title="Marrie Patty">
-                                        <img src="{{ asset('assets/img/avatars/12.png') }}" alt="Avatar"
-                                            class="rounded-circle">
-                                    </div>
-                                    <div class="avatar pull-up" data-bs-toggle="tooltip" data-popup="tooltip-custom"
-                                        data-bs-placement="top" title="Jimmy Jackson">
-                                        <img src="{{ asset('assets/img/avatars/9.png') }}" alt="Avatar"
-                                            class="rounded-circle">
-                                    </div>
-                                    <div class="avatar pull-up" data-bs-toggle="tooltip" data-popup="tooltip-custom"
-                                        data-bs-placement="top" title="Kristine Gill">
-                                        <img src="{{ asset('assets/img/avatars/6.png') }}" alt="Avatar"
-                                            class="rounded-circle">
-                                    </div>
-                                    <div class="avatar pull-up" data-bs-toggle="tooltip" data-popup="tooltip-custom"
-                                        data-bs-placement="top" title="Nelson Wilson">
-                                        <img src="{{ asset('assets/img/avatars/4.png') }}" alt="Avatar"
-                                            class="rounded-circle">
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="timeline-item timeline-item-transparent border-transparent">
-                            <span class="timeline-point timeline-point-success"></span>
-                            <div class="timeline-event">
-                                <div class="timeline-header mb-1">
-                                    <h6 class="mb-0">Design Review</h6>
-                                    <small class="text-muted">5 days Ago</small>
-                                </div>
-                                <p class="mb-0">Weekly review of freshly prepared design for our new app.</p>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <!-- /Activity Timeline -->
-
-            <!-- Invoice table -->
-            <div class="card mb-4">
-                <div class="table-responsive mb-3">
-                    <table class="table datatable-invoice border-top">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>ID</th>
-                                <th><i class='ti ti-trending-up text-secondary'></i></th>
-                                <th>Total</th>
-                                <th>Issued Date</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                    </table>
-                </div>
-            </div>
-            <!-- /Invoice table -->
         </div>
         <!--/ User Content -->
     </div>
@@ -404,8 +280,112 @@
     <!-- /Modal -->
 @endsection
 
+@push('modals')
+    <!-- Modal para añadir estado emocional -->
+    <div class="modal fade" id="updateSentimentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Añadir estado emocional</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="updateSentimentForm" method="POST"
+                    action="{{ route('contact.update-sentiment', $data->id) }}">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="sentiment_id" class="form-label">Estado emocional</label>
+                                <select id="sentiment_id" name="sentiment_id" class="form-select" required>
+                                    <option value="" selected disabled>Selecciona un estado emocional</option>
+                                    @foreach ($sentiments as $sentiment)
+                                        <option value="{{ $sentiment->id }}">{{ $sentiment->name }}
+                                            {!! $sentiment->emoji !!}</option>
+                                    @endforeach
+                                </select>
+                                <div class="invalid-feedback" id="sentiment_id_error"></div>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label for="notes" class="form-label">Notas</label>
+                                <textarea id="notes" name="notes" class="form-control" rows="3" required></textarea>
+                                <div class="invalid-feedback" id="notes_error"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endpush
+
 @push('scripts')
+    <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
+
     <script>
+        $(document).ready(function() {
+            $('.add-sentiment-btn').on('click', function() {
+                $('#updateSentimentModal').modal('show');
+            });
+
+            $('#updateSentimentForm').on('submit', function(e) {
+                e.preventDefault();
+
+                var form = $(this);
+                var url = form.attr('action');
+
+                // Reset previous errors
+                form.find('.is-invalid').removeClass('is-invalid');
+                form.find('.invalid-feedback').text('');
+
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                    data: form.serialize(),
+                    success: function(response) {
+                        $('#updateSentimentModal').modal('hide');
+                        toastr.success(response.message);
+                        updateEmotionalHistory(response);
+                    },
+                    error: function(xhr) {
+                        if (xhr.status === 422) {
+                            var errors = xhr.responseJSON.errors;
+                            // Mostrar errores de validación
+                            $.each(errors, function(key, value) {
+                                $('#' + key).addClass('is-invalid');
+                                $('#' + key + '_error').text(value[0]);
+                            });
+                        } else {
+                            toastr.error('An error occurred. Please try again.');
+                        }
+                    }
+                });
+            });
+        });
+
+        function updateEmotionalHistory(response) {
+            var newItem = `
+                <li class="timeline-item timeline-item-transparent">
+                    <span class="timeline-point timeline-point-transparent" style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">${response.newEmoji}</span>
+                    <div class="timeline-event">
+                        <div class="timeline-header mb-1">
+                            <h6 class="mb-0">${$('#notes').val()}</h6>
+                            <small class="text-muted">Ahora mismo</small>
+                        </div>
+                    </div>
+                </li>
+            `;
+
+            $('.timeline').prepend(newItem);
+
+            if ($('.timeline-item').length > 5) {
+                $('.timeline-item:last').remove();
+            }
+        }
+
         function endActionTracking(trackingId) {
             fetch(`/contact/end-action/${trackingId}`, {
                     method: 'POST',

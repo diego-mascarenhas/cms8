@@ -75,7 +75,7 @@ class ContactController extends Controller
      */
     public function show(string $id)
     {
-        $data = Contact::with(['currentSentiment.sentiment', 'creator', 'responsible', 'status', 'country'])
+        $data = Contact::with(['currentSentiment.sentiment', 'creator', 'responsible', 'status', 'country', 'sentimentHistories.sentiment'])
                   ->find($id);
 
         if (!$data)
@@ -83,10 +83,11 @@ class ContactController extends Controller
             return redirect()->route('contact-list')->with('error', 'Contact not found.');
         }
 
+        $sentiments = ContactSentiment::all();
         $trackingId = $this->startActionTracking($id, 'show');
         $totalSeconds = $data->calculateTotalAccumulatedSeconds();
 
-        return view('contact.show', compact('data', 'trackingId', 'totalSeconds'));
+        return view('contact.show', compact('data', 'trackingId', 'totalSeconds', 'sentiments'));
     }
 
     /**
