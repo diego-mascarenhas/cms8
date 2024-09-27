@@ -36,9 +36,9 @@ class ContactDataTable extends DataTable
             })
             ->addColumn('current_sentiment', function ($row) {
                 if ($row->currentSentiment) {
-                    return $row->currentSentiment->sentiment->emoji;
+                    return '<span style="font-size: 1.5em;">' . $row->currentSentiment->sentiment->emoji . '</span>';
                 }
-                return '🤔';
+                return '<span style="font-size: 1.5em;">🤔</span>';
             })
             ->filterColumn('current_sentiment', function($query, $keyword) {
                 if ($keyword !== '') {

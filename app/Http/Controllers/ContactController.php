@@ -149,7 +149,13 @@ class ContactController extends Controller
             'notes' => $request->notes,
         ]);
 
-        return response()->json(['message' => 'Sentiment updated successfully.']);
+        $newSentiment = ContactSentiment::find($request->sentiment_id);
+
+        return response()->json([
+            'message' => 'Sentiment updated successfully.',
+            'newEmoji' => $newSentiment->emoji,
+            'contactId' => $contact->id
+        ]);
     }
 
     public function importExcel(Request $request)

@@ -107,82 +107,23 @@
                 <div class="table-responsive">
                     <table class="table table-borderless border-top">
                         <tbody>
+                            @foreach($dangerousContacts as $contact)
                             <tr>
                                 <td class="pt-2">
-                                    <div class="d-flex justify-content-start align-items-center mt-lg-4">
-                                        <div class="avatar me-3 avatar-sm">
-                                            <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar"
-                                                class="rounded-circle" />
-                                        </div>
+                                    <div class="d-flex justify-content-start align-items-center @if($loop->first) mt-lg-4 @endif">
                                         <div class="d-flex flex-column">
-                                            <h6 class="mb-0">Maven Analytics</h6>
-                                            <small class="text-truncate text-muted">Business Intelligence</small>
+                                            <h6 class="mb-0"><a href="{{ route('contact.show', $contact->id) }}">{{ $contact->name }}</a></h6>
+                                            <small class="text-truncate text-muted"><a href="mailto:{{ $contact->email }}">{{ $contact->email }}</a></small>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="text-end pt-2">
-                                    <div class="user-progress mt-lg-4">
-                                        <p class="mb-0 fw-medium">😠</p>
+                                <td class="text-end @if($loop->first) pt-2 @endif">
+                                    <div class="user-progress @if($loop->first) mt-lg-4 @endif">
+                                        <p class="mb-0 fw-medium" style="font-size: 1.5em;">{{ $contact->currentSentiment->sentiment->emoji }}</p>
                                     </div>
                                 </td>
                             </tr>
-                            <tr>
-                                <td>
-                                    <div class="d-flex justify-content-start align-items-center">
-                                        <div class="avatar me-3 avatar-sm">
-                                            <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
-                                                class="rounded-circle" />
-                                        </div>
-                                        <div class="d-flex flex-column">
-                                            <h6 class="mb-0">Zsazsa McCleverty</h6>
-                                            <small class="text-truncate text-muted">Digital Marketing</small>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-end">
-                                    <div class="user-progress">
-                                        <p class="mb-0 fw-medium">😡</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="d-flex justify-content-start align-items-center">
-                                        <div class="avatar me-3 avatar-sm">
-                                            <img src="{{ asset('assets/img/avatars/3.png') }}" alt="Avatar"
-                                                class="rounded-circle" />
-                                        </div>
-                                        <div class="d-flex flex-column">
-                                            <h6 class="mb-0">Nathan Wagner</h6>
-                                            <small class="text-truncate text-muted">UI/UX Design</small>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-end">
-                                    <div class="user-progress">
-                                        <p class="mb-0 fw-medium">😤</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="d-flex justify-content-start align-items-center">
-                                        <div class="avatar me-3 avatar-sm">
-                                            <img src="{{ asset('assets/img/avatars/4.png') }}" alt="Avatar"
-                                                class="rounded-circle" />
-                                        </div>
-                                        <div class="d-flex flex-column">
-                                            <h6 class="mb-0">Emma Bowen</h6>
-                                            <small class="text-truncate text-muted">React Native</small>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-end">
-                                    <div class="user-progress">
-                                        <p class="mb-0 fw-medium">😠</p>
-                                    </div>
-                                </td>
-                            </tr>
+                            @endforeach
                         </tbody>
                     </table>
                 </div>

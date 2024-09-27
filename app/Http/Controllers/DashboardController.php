@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Contact;
 use App\Models\UserContactAction;
 
 class DashboardController extends Controller
@@ -12,6 +13,17 @@ class DashboardController extends Controller
         $totalTeamSeconds = UserContactAction::sum('duration_seconds');
         $totalTeamMinutes = round($totalTeamSeconds / 60);
 
-        return view('dashboard', compact('totalTeamMinutes'));
+        $dangerousContacts = Contact::whereHas('sentimentHistories', function ($query) {
+            $query->whereIn('sentiment_id', [1, 2])
+                  ->whereIn('id', function ($subQuery) {
+                      $subQuery->selectRaw('MAX(id)')
+                               ->from('contact_sentiment_histories')
+                               ->groupBy('contact_id');
+                  });
+        })->with(['currentSentiment' => function ($query) {
+            $query->whereIn('sentiment_id', [1, 2]);
+        }])->get();
+    
+        return view('dashboard', compact('totalTeamMinutes', 'dangerousContacts'));
     }
 }
