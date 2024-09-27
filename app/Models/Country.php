@@ -28,4 +28,8 @@ class Country extends Model
         return $this->hasMany(Contact::class, 'country', 'code');
     }
 
+    public static function getOptions()
+    {
+        return self::orderBy('name')->pluck('name', 'code');
+    }
 }

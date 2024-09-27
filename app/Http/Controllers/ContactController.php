@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
 use App\Models\ContactSentiment;
+use App\Models\Country;
 use Illuminate\Http\Request;
 use Spatie\SimpleExcel\SimpleExcelReader;
 use Illuminate\Support\Facades\Storage;
@@ -87,7 +88,10 @@ class ContactController extends Controller
         $trackingId = $this->startActionTracking($id, 'show');
         $totalSeconds = $data->calculateTotalAccumulatedSeconds();
 
-        return view('contact.show', compact('data', 'trackingId', 'totalSeconds', 'sentiments'));
+        $enterpriseStatuses = ContactStatus::getOptions();
+        $countries = Country::orderBy('name')->get();
+
+        return view('contact.show', compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries'));
     }
 
     /**
@@ -116,7 +120,42 @@ class ContactController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $contact = Contact::findOrFail($id);
+
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'status_id' => 'required|exists:contact_statuses,id',
+            'phone' => 'nullable|string|max:20',
+            'language' => 'nullable|array',
+            'country' => 'nullable|string|max:2',
+        ]);
+
+        $contact->update($validatedData);
+
+        // Update email in contact_sources
+        $contact->sources()->updateOrCreate(
+            ['source_id' => 1], // Assuming 1 is the ID for email source
+            ['value' => $validatedData['email']]
+        );
+
+        // Update phone in contact_sources
+        if (isset($validatedData['phone'])) {
+            $contact->sources()->updateOrCreate(
+                ['source_id' => 2], // Assuming 2 is the ID for phone source
+                ['value' => $validatedData['phone']]
+            );
+        }
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Contact updated successfully.',
+                'data' => $contact
+            ]);
+        }
+
+        return redirect()->route('contact.show', $contact->id)->with('success', 'Contact updated successfully.');
     }
 
     /**
