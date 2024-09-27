@@ -14,69 +14,84 @@ class SourceSeeder extends Seeder
     {
         $sources = [
             [
-                'name' => 'Phone',
-                'base_url' => 'tel:',
-                'icon' => 'phone',
-            ],
-            [
                 'name' => 'Email',
                 'base_url' => 'mailto:',
-                'icon' => 'envelope',
+                'icon' => 'fa-envelope',
+                'color' => '#D44638',
+            ],
+            [
+                'name' => 'Phone',
+                'base_url' => 'tel:',
+                'icon' => 'fa-phone',
+                'color' => '#118C7E',
             ],
             [
                 'name' => 'WhatsApp',
                 'base_url' => 'https://wa.me/',
-                'icon' => 'whatsapp',
+                'icon' => 'fa-whatsapp',
+                'color' => '#25D366',
             ],
             [
                 'name' => 'Facebook',
                 'base_url' => 'https://facebook.com/',
-                'icon' => 'facebook',
+                'icon' => 'fa-facebook',
+                'color' => '#1877F2',
             ],
             [
                 'name' => 'Instagram',
                 'base_url' => 'https://instagram.com/',
-                'icon' => 'instagram',
+                'icon' => 'fa-instagram',
+                'color' => '#E4405F',
             ],
             [
                 'name' => 'Twitter',
                 'base_url' => 'https://twitter.com/',
-                'icon' => 'twitter',
+                'icon' => 'fa-twitter',
+                'color' => '#1DA1F2',
             ],
             [
                 'name' => 'LinkedIn',
                 'base_url' => 'https://linkedin.com/in/',
-                'icon' => 'linkedin',
+                'icon' => 'fa-linkedin',
+                'color' => '#0A66C2',
             ],
             [
                 'name' => 'YouTube',
                 'base_url' => 'https://youtube.com/',
-                'icon' => 'youtube',
+                'icon' => 'fa-youtube',
+                'color' => '#FF0000',
             ],
             [
                 'name' => 'TikTok',
                 'base_url' => 'https://tiktok.com/@',
-                'icon' => 'tiktok',
+                'icon' => 'fa-tiktok',
+                'color' => '#000000',
             ],
             [
                 'name' => 'Pinterest',
                 'base_url' => 'https://pinterest.com/',
-                'icon' => 'pinterest',
+                'icon' => 'fa-pinterest',
+                'color' => '#BD081C',
             ],
             [
                 'name' => 'Snapchat',
                 'base_url' => 'https://snapchat.com/add/',
-                'icon' => 'snapchat',
+                'icon' => 'fa-snapchat',
+                'color' => '#FFFC00',
             ],
             [
                 'name' => 'Telegram',
                 'base_url' => 'https://t.me/',
-                'icon' => 'telegram',
+                'icon' => 'fa-telegram',
+                'color' => '#0088cc',
             ],
         ];
 
         foreach ($sources as $source) {
-            Source::create($source);
+            Source::updateOrCreate(
+                ['name' => $source['name']],
+                $source
+            );
         }
     }
 }

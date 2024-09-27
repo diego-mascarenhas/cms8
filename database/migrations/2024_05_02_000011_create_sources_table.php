@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('base_url');
             $table->string('icon');
+            $table->string('color', 7)->default('#000000');
         });
     }
 

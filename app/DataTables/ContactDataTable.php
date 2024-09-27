@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Contact;
+use App\Models\Source;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -44,36 +45,8 @@ class ContactDataTable extends DataTable
                     });
                 }
             })
-            ->addColumn('social_networks', function ($row) {
-                $socialNetworks = [
-                    'whatsapp' => ['icon' => 'fab fa-whatsapp', 'color' => '#25D366'],
-                    'facebook' => ['icon' => 'fab fa-facebook', 'color' => '#1877F2'],
-                    'instagram' => ['icon' => 'fab fa-instagram', 'color' => '#E4405F'],
-                    'twitter' => ['icon' => 'fab fa-twitter', 'color' => '#1DA1F2'],
-                    'linkedin' => ['icon' => 'fab fa-linkedin', 'color' => '#0A66C2'],
-                    'youtube' => ['icon' => 'fab fa-youtube', 'color' => '#FF0000'],
-                    'tiktok' => ['icon' => 'fab fa-tiktok', 'color' => '#000000'],
-                    'pinterest' => ['icon' => 'fab fa-pinterest', 'color' => '#BD081C'],
-                    'snapchat' => ['icon' => 'fab fa-snapchat', 'color' => '#FFFC00'],
-                    'telegram' => ['icon' => 'fab fa-telegram', 'color' => '#0088cc'],
-                ];
-
-                $networks = [];
-                $data = json_decode(json_encode($row->data), true) ?? [];
-
-                foreach ($socialNetworks as $network => $info) {
-                    $value = $data[$network] ?? '';
-                    if (!empty($value)) {
-                        $networks[] = sprintf(
-                            '<a href="%s" target="_blank" style="color: %s;"><i class="%s"></i></a>',
-                            $this->getSocialLink($network, $value),
-                            $info['color'],
-                            $info['icon']
-                        );
-                    }
-                }
-
-                return empty($networks) ? '' : implode(' ', $networks);
+            ->addColumn('sources', function ($row) {
+                return $row->sources_icons_html;
             })
             ->addColumn('responsible_name', function ($contact) {
                 return $contact->responsible->name ?? 'N/A';
@@ -86,12 +59,14 @@ class ContactDataTable extends DataTable
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
-            ->rawColumns(['name', 'action', 'current_sentiment', 'social_networks', 'status_id']);
+            ->rawColumns(['name', 'action', 'current_sentiment', 'sources', 'status_id']);
     }
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery()->with('currentSentiment.sentiment', 'status', 'responsible');
+        return $model->newQuery()->with(['contactSources' => function ($query) {
+            $query->whereIn('source_id', [1, 2]);
+        }]);
     }
 
     public function html(): HtmlBuilder
@@ -139,8 +114,8 @@ class ContactDataTable extends DataTable
                 ->addClass('select-filter')
                 ->searchable(true)
                 ->orderable(false),
-            Column::make('social_networks')
-                ->title('Redes')
+            Column::make('sources')
+                ->title('Sources')
                 ->className('text-center')
                 ->searchable(false)
                 ->orderable(false)
@@ -155,26 +130,24 @@ class ContactDataTable extends DataTable
         ];
     }
 
-    private function getSocialLink($network, $value)
+    private function getSourceColor($sourceName)
     {
-        if (filter_var($value, FILTER_VALIDATE_URL)) {
-            return $value;
-        }
-
-        $baseUrls = [
-            'whatsapp' => 'https://wa.me/',
-            'facebook' => 'https://facebook.com/',
-            'instagram' => 'https://instagram.com/',
-            'twitter' => 'https://twitter.com/',
-            'linkedin' => 'https://linkedin.com/in/',
-            'youtube' => 'https://youtube.com/',
-            'tiktok' => 'https://tiktok.com/@',
-            'pinterest' => 'https://pinterest.com/',
-            'snapchat' => 'https://snapchat.com/add/',
-            'telegram' => 'https://t.me/',
+        $colors = [
+            'whatsapp' => '#25D366',
+            'facebook' => '#1877F2',
+            'instagram' => '#E4405F',
+            'twitter' => '#1DA1F2',
+            'linkedin' => '#0A66C2',
+            'youtube' => '#FF0000',
+            'tiktok' => '#000000',
+            'pinterest' => '#BD081C',
+            'snapchat' => '#FFFC00',
+            'telegram' => '#0088cc',
+            'email' => '#D44638',
+            'phone' => '#118C7E',
         ];
 
-        return ($baseUrls[$network] ?? '') . $value;
+        return $colors[strtolower($sourceName)] ?? '#000000';
     }
 
     protected function filename(): string

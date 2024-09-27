@@ -12,4 +12,14 @@ class ContactSource extends Model
     use SoftDeletes;
 
     protected $fillable = ['contact_id', 'source_id', 'value'];
+
+    public function contact()
+    {
+        return $this->belongsTo(Contact::class);
+    }
+
+    public function source()
+    {
+        return $this->belongsTo(Source::class);
+    }
 }

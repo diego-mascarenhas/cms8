@@ -18,7 +18,7 @@ class Contact extends Model
     'team_id',
     'user_id',
     'name',
-    'channel_id',
+    'source_id',
     'birthday',
     'profile',
     'engagment',
@@ -192,5 +192,64 @@ class Contact extends Model
       'hours' => $hours,
       'minutes' => $minutes,
     ];
+  }
+
+  public function sources()
+  {
+    return $this->belongsToMany(Source::class, 'contact_sources');
+  }
+
+  public function primarySource()
+  {
+    return $this->belongsTo(Source::class, 'source_id');
+  }
+
+  public function getSourcesIconsHtmlAttribute()
+  {
+    $sourcesHtml = $this->sources->map(function ($source) {
+      $isPrimary = $source->id === $this->source_id;
+      $style = $isPrimary ? 'font-size: 1.2em;' : '';
+      $title = $isPrimary ? 'Primary Source: ' . $source->name : $source->name;
+      
+      $iconClass = in_array($source->icon, ['fa-envelope', 'fa-phone']) 
+        ? "fas {$source->icon}" 
+        : "fab {$source->icon}";
+      
+      return sprintf(
+        '<i class="%s" style="color: %s; %s" title="%s"></i>',
+        $iconClass,
+        $source->color,
+        $style,
+        $title
+      );
+    });
+
+    return $sourcesHtml->isEmpty() ? 'N/A' : $sourcesHtml->implode(' ');
+  }
+
+  public function contactSources()
+  {
+    return $this->hasMany(ContactSource::class);
+  }
+
+  public function email()
+  {
+    return $this->contactSources()->where('source_id', 1);
+  }
+
+  public function getEmailAttribute()
+  {
+    return $this->email()->value('value');
+  }
+
+  public function phone()
+  {
+    return $this->contactSources()
+      ->where('source_id', 2);
+  }
+
+  public function getPhoneAttribute()
+  {
+    return $this->phone()->value('value');
   }
 }
