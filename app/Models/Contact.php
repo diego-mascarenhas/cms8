@@ -196,7 +196,8 @@ class Contact extends Model
 
   public function sources()
   {
-    return $this->belongsToMany(Source::class, 'contact_sources');
+    return $this->belongsToMany(Source::class, 'contact_sources')
+                ->withPivot('value');
   }
 
   public function primarySource()
@@ -215,8 +216,12 @@ class Contact extends Model
         ? "fas {$source->icon}" 
         : "fab {$source->icon}";
       
+      $value = $source->pivot->value;
+      $url = $source->base_url . $value;
+      
       return sprintf(
-        '<i class="%s" style="color: %s; %s" title="%s"></i>',
+        '<a href="%s" target="_blank" style="margin-right: 8px;"><i class="%s" style="color: %s; %s" title="%s"></i></a>',
+        $url,
         $iconClass,
         $source->color,
         $style,
@@ -224,7 +229,7 @@ class Contact extends Model
       );
     });
 
-    return $sourcesHtml->isEmpty() ? 'N/A' : $sourcesHtml->implode(' ');
+    return $sourcesHtml->isEmpty() ? 'N/A' : $sourcesHtml->implode('');
   }
 
   public function contactSources()

@@ -107,19 +107,20 @@ class ContactDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('name')->title('Contacto'),
+            Column::make('name')->title('Nombre'),
             Column::make('current_sentiment')
-                ->title('Último estado')
+                ->title('Sentimiento')
                 ->className('text-center')
                 ->addClass('select-filter')
                 ->searchable(true)
-                ->orderable(false),
+                ->orderable(false)
+                ->width(150),
             Column::make('sources')
-                ->title('Sources')
+                ->title('Redes')
                 ->className('text-center')
                 ->searchable(false)
                 ->orderable(false)
-                ->width(200),
+                ->width(150),
             Column::make('responsible_name')->title('Asesor')->className('text-center'),
             Column::make('status_id')->title('Estado')->className('text-center'),
             Column::computed('action')->title('Acciones')->width(20)->className('text-center')
@@ -128,26 +129,6 @@ class ContactDataTable extends DataTable
                 ->width(30)
                 ->addClass('text-center'),
         ];
-    }
-
-    private function getSourceColor($sourceName)
-    {
-        $colors = [
-            'whatsapp' => '#25D366',
-            'facebook' => '#1877F2',
-            'instagram' => '#E4405F',
-            'twitter' => '#1DA1F2',
-            'linkedin' => '#0A66C2',
-            'youtube' => '#FF0000',
-            'tiktok' => '#000000',
-            'pinterest' => '#BD081C',
-            'snapchat' => '#FFFC00',
-            'telegram' => '#0088cc',
-            'email' => '#D44638',
-            'phone' => '#118C7E',
-        ];
-
-        return $colors[strtolower($sourceName)] ?? '#000000';
     }
 
     protected function filename(): string
