@@ -232,29 +232,16 @@ class Contact extends Model
     return $sourcesHtml->isEmpty() ? 'N/A' : $sourcesHtml->implode('');
   }
 
-  public function contactSources()
-  {
-    return $this->hasMany(ContactSource::class);
-  }
-
-  public function email()
-  {
-    return $this->contactSources()->where('source_id', 1);
-  }
-
   public function getEmailAttribute()
-  {
-    return $this->email()->value('value');
-  }
+{
+    $emailSource = $this->sources()->where('source_id', 1)->first();
 
-  public function phone()
+    return $emailSource ? $emailSource->pivot->value : null;
+}
+public function getPhoneAttribute()
   {
-    return $this->contactSources()
-      ->where('source_id', 2);
-  }
+    $phoneSource = $this->sources()->where('source_id', 2)->first();
 
-  public function getPhoneAttribute()
-  {
-    return $this->phone()->value('value');
+    return $phoneSource ? $phoneSource->pivot->value : null;
   }
 }

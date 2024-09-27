@@ -78,7 +78,7 @@
                                 <small>Primera compra</small>
                             </div>
                         </div>
-                        <div class="d-flex align-items-start mt-3 gap-2" style="min-width: 220px;">
+                        <div class="d-flex align-items-start mt-3 gap-2" style="min-width: 200px;">
                             <span class="badge bg-label-primary p-2 rounded"><i class='ti ti-currency-dollar ti-sm'></i></span>
                             <div>
                                 <p class="mb-0 fw-medium">
@@ -88,34 +88,42 @@
                             </div>
                         </div>
                     </div>
-                    <p class="mt-4 small text-uppercase text-muted">Details</p>
+                    <p class="mt-4 small text-uppercase text-muted">Detalles del contacto</p>
                     <div class="info-container">
                         <ul class="list-unstyled">
+                            @if ($data->user_id)
                             <li class="mb-2">
                                 <span class="fw-medium me-1">Username:</span>
-                                <span>
-                                    @if ($data->user_id)
-                                        {{ $data->username }}
-                                    @else
-                                        Sin acceso al sistema
-                                    @endif
-                                </span>
+                                <span>{{ $data->username }}</span>
                             </li>
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Billing Email:</span>
+                            @endif
+                            {{-- <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Billing email:</span>
                                 <span>Sin empresa vinculada</span>
-                            </li>
+                            </li> --}}
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Estado:</span>
                                 <span class="badge {{ $data->status->label_class }}">{{ $data->status->name }}</span>
                             </li>
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Contacto:</span>
-                                <span>(123) 456-7890</span>
+                                <span>
+                                    @if($data->phone)
+                                        @php
+                                            $phone = $data->phone;
+                                            $countryCode = substr($phone, 0, 2);
+                                            $restOfNumber = substr($phone, 2);
+                                            $formattedNumber = preg_replace("/(\d{3})(\d{3})(\d{3})/", "$1 $2 $3", $restOfNumber);
+                                        @endphp
+                                        +{{ $countryCode }} {{ $formattedNumber }}
+                                    @else
+                                        No disponible
+                                    @endif
+                                </span>
                             </li>
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">País:</span>
-                                <span>{{ $data->country->name ?? 'No asignado' }}</span>
+                                <span>{{ $data->country ?? 'No asignado' }}</span>
                             </li>
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Asesor:</span>
@@ -123,20 +131,27 @@
                             </li>
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Horarios:</span>
-                                <span>-</span>
+                                <span>Sin especificar</span>
                             </li>
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Redes:</span>
-                                <span>-</span>
+                                <span>{!! $data->sources_icons_html !!}</span>
                             </li>
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Canal favorito:</span>
-                                <span>-</span>
+                                <span>
+                                    @if($data->primarySource)
+                                        {{ $data->primarySource->name }}
+                                    @else
+                                        No hay canal favorito
+                                    @endif
+                                </span>
                             </li>
+                            {{-- //TODO - Cargo,profesión o título del contacto
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Cargo:</span>
                                 <span>-</span>
-                            </li>
+                            </li> --}}
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Fecha de nacimiento:</span>
                                 <span>
@@ -155,8 +170,8 @@
                         </ul>
                         <div class="d-flex justify-content-center">
                             <a href="javascript:;" class="btn btn-primary me-3" data-bs-target="#editUser"
-                                data-bs-toggle="modal">Edit</a>
-                            <a href="javascript:;" class="btn btn-label-danger suspend-user">Suspended</a>
+                                data-bs-toggle="modal">Editar</a>
+                            <a href="javascript:;" class="btn btn-label-danger suspend-user">Suspender</a>
                         </div>
                     </div>
                 </div>

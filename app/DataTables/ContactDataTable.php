@@ -25,11 +25,13 @@ class ContactDataTable extends DataTable
             ->addColumn('action', 'contact.action')
             ->setRowId('id')
             ->editColumn('name', function ($row) {
+                $emailValue = $row->email;
+
+                $contactInfo = $emailValue ? '<a href="mailto:' . $emailValue . '">' . $emailValue . '</a>' : '&nbsp;';
+
                 return '<div class="d-flex flex-column">
                             <span class="fw-medium text-body text-truncate">' . $row->name . '</span>
-                            <small class="text-muted">
-                                <a href="mailto:' . $row->email . '">' . $row->email . '</a>
-                            </small>
+                            <small class="text-muted">' . $contactInfo . '</small>
                         </div>';
             })
             ->addColumn('current_sentiment', function ($row) {
@@ -64,9 +66,7 @@ class ContactDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery()->with(['contactSources' => function ($query) {
-            $query->whereIn('source_id', [1, 2]);
-        }]);
+        return $model->newQuery();
     }
 
     public function html(): HtmlBuilder

@@ -12,7 +12,7 @@ class Source extends Model
 
     public function contacts()
     {
-        return $this->belongsToMany(Contact::class, 'contact_sources');
+        return $this->belongsToMany(Contact::class, 'contact_sources')->withPivot('value');
     }
 
     public function getIconHtmlAttribute()
