@@ -230,6 +230,39 @@
             </ul>
             <!--/ User Pills -->
 
+            <!-- Emotional History -->
+            <div class="card mb-4">
+                <h5 class="card-header d-flex justify-content-between align-items-center">
+                    Emotional History
+                    <i class="ti ti-info-circle text-muted cursor-pointer"></i>
+                </h5>
+                <div class="card-body">
+                    <ul class="timeline mb-0 ms-3">
+                        @foreach($data->sentimentHistories->sortByDesc('created_at')->take(5) as $sentimentHistory)
+                        <li class="timeline-item timeline-item-transparent">
+                            <span class="timeline-point timeline-point-transparent" style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">{{ $sentimentHistory->sentiment->emoji }}</span>
+                            <div class="timeline-event">
+                                <div class="timeline-header mb-1">
+                                    <h6 class="mb-0">{{ $sentimentHistory->notes }}</h6>
+                                    <small class="text-muted">
+                                        @if($sentimentHistory->created_at->diffInDays(now()) < 7)
+                                            {{ $sentimentHistory->created_at->diffForHumans() }}
+                                        @else
+                                            {{ $sentimentHistory->created_at->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}
+                                        @endif
+                                    </small>
+                                </div>
+                            </div>
+                        </li>
+                        @endforeach
+                    </ul>
+                    <div class="mt-4">
+                        <a href="#" class="btn btn-primary btn-sm">+ Añadir estado emocional</a>
+                    </div>
+                </div>
+            </div>
+            <!-- /Emotional History -->
+
             <!-- Project table -->
             <div class="card mb-4">
                 <h5 class="card-header">User's Projects List</h5>

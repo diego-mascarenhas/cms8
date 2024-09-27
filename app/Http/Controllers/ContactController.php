@@ -132,20 +132,24 @@ class ContactController extends Controller
 
     public function updateSentiment(Request $request, string $id)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'sentiment_id' => 'required|exists:contact_sentiments,id',
-            'notes' => 'nullable|string|max:255',
+            'notes' => 'required|string|max:255',
         ]);
-    
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
         $contact = Contact::findOrFail($id);
-    
+
         ContactSentimentHistory::create([
             'contact_id' => $contact->id,
             'sentiment_id' => $request->sentiment_id,
             'notes' => $request->notes,
         ]);
-    
-        return redirect()->route('contact-list')->with('success', 'Sentiment updated successfully.');
+
+        return response()->json(['message' => 'Sentiment updated successfully.']);
     }
 
     public function importExcel(Request $request)

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('contact_id')->constrained('contacts')->onDelete('cascade');
             $table->unsignedTinyInteger('sentiment_id');
             $table->foreign('sentiment_id')->references('id')->on('contact_sentiments')->onDelete('restrict');
-            $table->text('notes')->nullable();
+            $table->text('notes');
             $table->timestamps();
         });
     }

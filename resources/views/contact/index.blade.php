@@ -38,6 +38,42 @@
                 $('#updateSentimentForm').attr('action', url);
                 $('#updateSentimentModal').modal('show');
             });
+
+            $('#updateSentimentForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                var form = $(this);
+                var url = form.attr('action');
+                
+                // Reset previous errors
+                form.find('.is-invalid').removeClass('is-invalid');
+                form.find('.invalid-feedback').text('');
+                
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                    data: form.serialize(),
+                    success: function(response) {
+                        $('#updateSentimentModal').modal('hide');
+                        // Actualizar la tabla o mostrar un mensaje de éxito
+                        toastr.success(response.message);
+                        // Recargar la tabla de DataTables si es necesario
+                        // $('#contactsTable').DataTable().ajax.reload();
+                    },
+                    error: function(xhr) {
+                        if (xhr.status === 422) {
+                            var errors = xhr.responseJSON.errors;
+                            // Mostrar errores de validación
+                            $.each(errors, function(key, value) {
+                                $('#' + key).addClass('is-invalid');
+                                $('#' + key + '_error').text(value[0]);
+                            });
+                        } else {
+                            toastr.error('An error occurred. Please try again.');
+                        }
+                    }
+                });
+            });
         });
 
         $(function() {
@@ -300,9 +336,9 @@
                         <span class="d-none d-sm-inline-block">Importar</span>
                     </button>
                     <!-- <button class="btn btn-outline-secondary btn-sm waves-effect">
-                            <i class="ti ti-file-export me-sm-1"></i>
-                            <span class="d-none d-sm-inline-block">Exportar</span>
-                        </button> -->
+                                <i class="ti ti-file-export me-sm-1"></i>
+                                <span class="d-none d-sm-inline-block">Exportar</span>
+                            </button> -->
                 </div>
             </div>
             <div class="d-flex flex-column flex-md-row gap-3">
@@ -346,10 +382,12 @@
                                     </option>
                                 @endforeach
                             </select>
+                            <div class="invalid-feedback" id="sentiment_id_error"></div>
                         </div>
                         <div class="mb-3">
                             <label for="notes" class="form-label">Notas</label>
                             <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                            <div class="invalid-feedback" id="notes_error"></div>
                         </div>
                     </div>
                     <div class="modal-footer">
