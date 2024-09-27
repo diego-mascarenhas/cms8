@@ -92,7 +92,7 @@
                             </div>
                         </div>
                     </div>
-                    <p class="mt-4 small text-uppercase text-muted">Detalles del contacto</p>
+                    <p class="mt-4 small text-uppercase text-muted">Detalle</p>
                     <div class="info-container">
                         <ul class="list-unstyled">
                             @if ($data->user_id)
@@ -443,44 +443,5 @@
 
             document.getElementById('totalTime').textContent = formattedTime;
         }, 1000);
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('editUserForm');
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const formData = new FormData(form);
-
-                fetch(form.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        toastr.success(data.message);
-                        $('#editUser').modal('hide');
-                        // Update the page content with the new data
-                        updatePageContent(data.data);
-                    } else {
-                        toastr.error(data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    toastr.error('An error occurred. Please try again.');
-                });
-            });
-        });
-
-        function updatePageContent(data) {
-            // Update the relevant parts of the page with the new data
-            document.querySelector('h4.mb-1.mt-3').textContent = data.name;
-            document.querySelector('.user-info h4').textContent = data.name;
-            // Update other fields as necessary
-        }
     </script>
 @endpush
