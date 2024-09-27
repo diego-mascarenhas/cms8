@@ -190,7 +190,7 @@
 @endsection
 
 @push('modals')
-    {{-- @include('_partials/_modals/modal-edit-user') --}}
+    {{-- @include('_partials/_modals/modal-sentiment') --}}
 
     <!-- Modal Sentiment -->
     <div class="modal fade" id="updateSentimentModal" tabindex="-1" aria-hidden="true">
