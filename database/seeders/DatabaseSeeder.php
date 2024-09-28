@@ -25,10 +25,11 @@ class DatabaseSeeder extends Seeder
             LanguageSeeder::class,
             SourceSeeder::class,
             UserSeeder::class,
-            ContactStatusSeeder::class,
             EnterpriseTypeSeeder::class,
-            ContactSentimentSeeder::class,
             EnterpriseStatusSeeder::class,
+            EnterpriseSeeder::class,
+            ContactStatusSeeder::class,
+            ContactSentimentSeeder::class,
             ContactSeeder::class,
             ContactSourceSeeder::class,
 		]);

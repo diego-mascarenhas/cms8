@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
             $table->unsignedTinyInteger('type_id')->default(1);
-            $table->foreignId('assigned_to')->nullable()->constrained('users')->onDelete('set null');
             $table->string('referred_by')->nullable();
             $table->string('address')->nullable();
             $table->string('postal_code')->nullable();
@@ -31,6 +30,8 @@ return new class extends Migration
             $table->unsignedTinyInteger('payment_type_id')->nullable();
             $table->unsignedTinyInteger('invoice_type_id')->nullable();
             $table->unsignedTinyInteger('status_id')->default(1);
+            $table->foreignId('creator_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('responsible_id')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();
 

@@ -244,4 +244,10 @@ public function getPhoneAttribute()
 
     return $phoneSource ? $phoneSource->pivot->value : null;
   }
+
+  public function enterprises()
+  {
+    return $this->belongsToMany(Enterprise::class, 'contact_enterprise')
+                ->withPivot('position');
+  }
 }

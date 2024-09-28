@@ -148,7 +148,7 @@ class ClientDataTable extends DataTable
                 ->searchable(false)
                 ->orderable(false)
                 ->width(200),
-            Column::make('locality')->title('Mensajes')->className('text-center'),
+            Column::make('locality')->title('Ciudad')->className('text-center'),
             Column::make('status_id')->title('Estado')->className('text-center'),
             Column::computed('action')->title('Acciones')->width(20)->className('text-center')
                 ->exportable(false)

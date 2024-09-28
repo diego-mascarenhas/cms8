@@ -13,13 +13,8 @@ class EnterpriseStatusSeeder extends Seeder
     public function run(): void
     {
         $statuses = [
-            ['name' => 'Lead', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-info'],
-            ['name' => 'Follow Up', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-warning'],
-            ['name' => 'Conversion', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-info'],
-            ['name' => 'Close', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-info'],
-            ['name' => 'Active', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-success'],
-            ['name' => 'Lost', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-danger'],
-            ['name' => 'Finished', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-danger'],
+            ['id' => 1, 'name' => 'Inactive', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-danger'],
+            ['id' => 2, 'name' => 'Active', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-success'],
         ];
         
         foreach ($statuses as $status) {

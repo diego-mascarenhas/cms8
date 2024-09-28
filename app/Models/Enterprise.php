@@ -17,7 +17,6 @@ class Enterprise extends Model
         'name',
         'type_id',
         'user_id',
-        'assigned_to',
         'referred_by',
         'address',
         'postal_code',
@@ -29,9 +28,11 @@ class Enterprise extends Model
         'email',
         'website',
         'data',
-        'payment_method_id',
+        'payment_type_id',
         'invoice_type_id',
         'status_id',
+        'creator_id',
+        'responsible_id',
     ];
 
     protected $casts = [
@@ -41,7 +42,10 @@ class Enterprise extends Model
     protected static function booted()
     {
         static::addGlobalScope('team', function (Builder $builder) {
-            $builder->where('team_id', auth()->user()->currentTeam->id);
+            // Check if the user is authenticated before accessing currentTeam
+            if (auth()->check() && auth()->user()->currentTeam) {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
         });
     }
     public function scopeClients($query)
