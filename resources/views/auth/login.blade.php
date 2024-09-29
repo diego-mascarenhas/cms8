@@ -31,7 +31,7 @@ $configData = Helper::appClasses();
         <!-- Logo -->
         <div class="app-brand mb-4">
           <a href="{{url('/')}}" class="app-brand-link">
-            <span class="app-brand-logo demo">@include('_partials.macros',["height"=>20,"withbg"=>'fill: #fff;'])</span>
+            <span id="logo" class="app-brand-logo demo">@include('_partials.macros',["height"=>20,"withbg"=>'fill: #fff;'])</span>
           </a>
         </div>
         <!-- /Logo -->
@@ -101,3 +101,26 @@ $configData = Helper::appClasses();
   </div>
 </div>
 @endsection
+
+<style>
+  @keyframes vibrate {
+    0% { transform: translate(0); }
+    25% { transform: translate(-2px, 2px); }
+    50% { transform: translate(2px, -2px); }
+    75% { transform: translate(-2px, -2px); }
+    100% { transform: translate(0); }
+  }
+  .vibrate {
+    animation: vibrate 0.5s infinite;
+  }
+</style>
+
+<script>
+  setInterval(() => {
+    const logo = document.getElementById('logo');
+    logo.classList.add('vibrate');
+    setTimeout(() => {
+      logo.classList.remove('vibrate');
+    }, 500);
+  }, 300000);
+</script>
