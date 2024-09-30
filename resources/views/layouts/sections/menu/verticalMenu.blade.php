@@ -100,11 +100,14 @@ $configData = Helper::appClasses();
 </style>
 
 <script>
-  setInterval(() => {
-    const logo = document.getElementById('menu-logo');
-    logo.classList.add('vibrate');
-    setTimeout(() => {
-      logo.classList.remove('vibrate');
-    }, 500);
-  }, 3600000);
+  const animateLogo = {{ config('custom.animateLogo') ? 'true' : 'false' }};
+  if (animateLogo) {
+    setInterval(() => {
+      const logo = document.getElementById('menu-logo');
+      logo.classList.add('vibrate');
+      setTimeout(() => {
+        logo.classList.remove('vibrate');
+      }, 500);
+    }, 3600000);
+  }
 </script>

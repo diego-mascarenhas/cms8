@@ -14,7 +14,7 @@ $navbarDetached = ($navbarDetached ?? '');
 
       <!--  Brand demo (display only for navbar-full and hide on below xl) -->
       @if(isset($navbarFull))
-      <div class="navbar-brand app-brand demo d-none d-xl-flex py-0 me-4">
+      <div class="navbar-brand app-brand demo d-none d-xl-flex py-0 me-4" id="navbar-logo">
         <a href="{{url('/')}}" class="app-brand-link gap-2">
           <span class="app-brand-logo demo">
             @include('_partials.macros',["height"=>20])
@@ -518,3 +518,16 @@ $navbarDetached = ($navbarDetached ?? '');
     @endif
   </nav>
   <!-- / Navbar -->
+
+  <script>
+    const animateLogo = {{ config('custom.animateLogo') ? 'true' : 'false' }};
+    if (animateLogo) {
+      setInterval(() => {
+        const logo = document.getElementById('navbar-logo').querySelector('.app-brand-logo');
+        logo.classList.add('vibrate');
+        setTimeout(() => {
+          logo.classList.remove('vibrate');
+        }, 500);
+      }, 3600000);
+    }
+  </script>
