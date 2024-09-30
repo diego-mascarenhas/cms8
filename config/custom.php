@@ -34,6 +34,9 @@ return [
     //REVIEW - TeamManager true/false
     'TeamManager' => false,
     'animateLogo' => true, // options[Boolean]: true(default), false // To enable or disable logo animation
-    'showLanguageSelector' => true, // options[Boolean]: true(default), false // To enable or disable language selector
+    // 'showSearch' => true, // options[Boolean]: true(default), false // To enable or disable the search bar
+    // 'showLanguageSelector' => false, // options[Boolean]: true(default), false // To enable or disable the language selector
+    // 'showQuickAccess' => true, // options[Boolean]: true(default), false // To enable or disable quick access links
+    // 'showNotifications' => true, // options[Boolean]: true(default), false // To enable or disable notifications
   ],
 ];

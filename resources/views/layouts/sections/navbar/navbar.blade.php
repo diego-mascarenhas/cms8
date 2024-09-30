@@ -52,6 +52,7 @@ $navbarDetached = ($navbarDetached ?? '');
         @endif
         <ul class="navbar-nav flex-row align-items-center ms-auto">
           <!-- Language -->
+          @if($configData['showLanguageSelector'] == true)
           <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
               <i class='ti ti-language rounded-circle ti-md'></i>
@@ -87,15 +88,9 @@ $navbarDetached = ($navbarDetached ?? '');
                   <span class="align-middle">Portugués</span>
                 </a>
               </li>
-              <!--
-              <li>
-                <a class="dropdown-item {{ app()->getLocale() === 'ar' ? 'active' : '' }}" href="{{url('lang/ar')}}" data-language="ar" data-text-direction="rtl">
-                  <span class="align-middle">Arabic</span>
-                </a>
-              </li>
-              -->
             </ul>
           </li>
+          @endif
           <!--/ Language -->
 
           @if(isset($menuHorizontal))
@@ -135,6 +130,7 @@ $navbarDetached = ($navbarDetached ?? '');
           @endif
 
           <!-- Quick links  -->
+          @if($configData['showQuickAccess'] == true)
           <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
               <i class='ti ti-layout-grid-add ti-md'></i>
@@ -181,9 +177,11 @@ $navbarDetached = ($navbarDetached ?? '');
               </div>
             </div>
           </li>
+          @endif
           <!-- Quick links -->
 
           <!-- Notification -->
+          @if($configData['showNotifications'] == true)
           <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
               <i class="ti ti-bell ti-md"></i>
@@ -373,6 +371,7 @@ $navbarDetached = ($navbarDetached ?? '');
             </ul>
             -->
           </li>
+          @endif
           <!--/ Notification -->
 
           <!-- User -->
