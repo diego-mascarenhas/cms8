@@ -348,7 +348,6 @@ class RolesAndPermissionsSeeder extends Seeder
         // ]);
 
         $administratorRole->syncPermissions([
-            'chat.list',
             'client.index',
             'contact.index',
             'contact.list',

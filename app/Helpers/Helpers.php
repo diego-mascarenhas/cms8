@@ -30,7 +30,7 @@ class Helpers
       'menuCollapsed' => false,
       'footerFixed' => false,
       'showSearch' => true,
-      'showLanguageSelector' => false,
+      'showLanguageSelector' => true,
       'showQuickAccess' => true,
       'showNotifications' => false,
       'defaultLanguage'=>'es',
