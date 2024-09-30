@@ -128,7 +128,7 @@
             <div
                 class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
                 <div class="d-flex gap-2">
-                    <a href="{{ route('client.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
+                    <a href="{{ route('contact.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
                         <i class="ti ti-plus me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Añadir cliente</span>
                     </a>

@@ -72,7 +72,7 @@ class ContactSeeder extends Seeder
 
     // Create additional random contacts
     Contact::factory()
-      ->count(47)
+      ->count(147)
       ->create()
       ->each(function ($contact) use ($faker) {
         ContactSentimentHistory::create([

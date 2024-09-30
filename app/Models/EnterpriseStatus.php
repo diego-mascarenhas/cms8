@@ -11,6 +11,16 @@ class EnterpriseStatus extends Model
 
     public $timestamps = false;
 
+    public function status()
+    {
+        return $this->hasMany(Enterprise::class, 'status_id');
+    }
+    
+    public function list60s()
+    {
+        return $this->hasMany(List60::class, 'status_id');
+    }
+
     public static function getOptions($enterpriseTypeId = null)
     {
         $query = self::query();

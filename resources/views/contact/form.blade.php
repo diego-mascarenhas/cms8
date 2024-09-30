@@ -40,34 +40,12 @@
         <div class="col-12 mb-4">
             <div class="bs-stepper wizard-icons wizard-modern wizard-modern-icons-example mt-2">
                 <div class="bs-stepper-header">
-                    <div class="step" data-target="#account-details-modern">
-                        <button type="button" class="step-trigger">
-                            <span class="bs-stepper-icon">
-                                <i class="ti ti-building"></i>
-                            </span>
-                            <span class="bs-stepper-label">Detalle de la Empresa</span>
-                        </button>
-                    </div>
-                    <div class="line">
-                        <i class="ti ti-chevron-right"></i>
-                    </div>
                     <div class="step" data-target="#personal-info-modern">
                         <button type="button" class="step-trigger">
                             <span class="bs-stepper-icon">
                                 <i class="ti ti-user"></i>
                             </span>
                             <span class="bs-stepper-label">Información Personal</span>
-                        </button>
-                    </div>
-                    <div class="line">
-                        <i class="ti ti-chevron-right"></i>
-                    </div>
-                    <div class="step" data-target="#address-modern">
-                        <button type="button" class="step-trigger">
-                            <span class="bs-stepper-icon">
-                                <i class="ti ti-map-pin"></i>
-                            </span>
-                            <span class="bs-stepper-label">Domicilio</span>
                         </button>
                     </div>
                     <div class="line">
@@ -81,48 +59,34 @@
                             <span class="bs-stepper-label">Redes Sociales</span>
                         </button>
                     </div>
+                    <div class="line">
+                        <i class="ti ti-chevron-right"></i>
+                    </div>
+                    <div class="step" data-target="#account-details-modern">
+                        <button type="button" class="step-trigger">
+                            <span class="bs-stepper-icon">
+                                <i class="ti ti-building"></i>
+                            </span>
+                            <span class="bs-stepper-label">Detalle de la Empresa</span>
+                        </button>
+                    </div>
+                    <div class="line">
+                        <i class="ti ti-chevron-right"></i>
+                    </div>
+                    <div class="step" data-target="#address-modern">
+                        <button type="button" class="step-trigger">
+                            <span class="bs-stepper-icon">
+                                <i class="ti ti-map-pin"></i>
+                            </span>
+                            <span class="bs-stepper-label">Domicilio</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="bs-stepper-content">
                     <form id="contactForm" class="card-body" action="{{ route('contact.store') }}" method="POST">
                         @csrf
                         <input type="hidden" name="id" value="{{ $data->id ?? '' }}">
-                        <!-- Account Details -->
-                        <div id="account-details-modern" class="content">
-                            <div class="content-header mb-3">
-                                <h6 class="mb-0">Detalle de la Empresa</h6>
-                                <small>Datos de la empresa</small>
-                            </div>
-                            <div class="row g-3">
-                                <div class="col-sm-6">
-                                    <x-input-general id="name" label="Nombre de la empresa (*)"
-                                        value="{{ old('name', $data->name ?? '') }}" />
-                                </div>
-                                <div class="col-sm-6">
-                                    <x-enterprise-status-select :value="old('status_id', $data->status_id ?? '')" />
-                                </div>
-                                <div class="col-sm-6">
-                                    <x-input-general id="email" label="Email (*)"
-                                        value="{{ old('email', $data->email ?? '') }}" />
-                                </div>
-                                <div class="col-sm-6">
-                                    <x-input-general id="website" label="Website"
-                                        value="{{ old('website', $data->website ?? '') }}" />
-                                </div>
-                                <div class="col-sm-6">
-                                    <x-input-general id="phone" label="Teléfono"
-                                        value="{{ old('phone', $data->phone ?? '') }}" />
-                                </div>
-                                <div class="col-sm-6">
-                                    <x-input-general id="whatsapp" label="WhatsApp"
-                                        value="{{ old('whatsapp', $data->whatsapp ?? '') }}" />
-                                </div>
-                                <div class="col-12 d-flex">
-                                    <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
-                                    <button type="reset" class="btn btn-label-secondary"
-                                        onclick="location.href='{{ route('contact-list') }}'">Cancelar</button>
-                                </div>
-                            </div>
-                        </div>
+                        
                         <!-- Personal Info -->
                         <div id="personal-info-modern" class="content">
                             <div class="content-header mb-3">
@@ -131,12 +95,11 @@
                             </div>
                             <div class="row g-3">
                                 <div class="col-sm-6">
-                                    <x-input-general id="contact_name" label="Nombre del contacto"
-                                        value="{{ old('contact_name', $data->contact_name ?? '') }}" />
+                                    <x-input-general id="name" label="Nombre (*)"
+                                        value="{{ old('name', $data->name ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
-                                    <x-input-general id="contact_last_name" label="Apellido del contacto"
-                                        value="{{ old('contact_last_name', $data->contact_last_name ?? '') }}" />
+                                    <x-input-date id="birthday" label="Cumpleaños" value="{{ old('birthday', $data->date?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
                                     @php
@@ -151,6 +114,63 @@
                                     @endphp
                                     <x-input-select id="pais" label="País" :options="$paises"
                                         value="{{ old('pais', $data->pais ?? '') }}" />
+                                </div>
+                                <div class="col-12 d-flex">
+                                    <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
+                                    <button type="reset" class="btn btn-label-secondary"
+                                        onclick="location.href='{{ route('contact-list') }}'">Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Social Links -->
+                        <div id="social-links-modern" class="content">
+                            <div class="content-header mb-3">
+                                <h6 class="mb-0">Redes Sociales</h6>
+                                <small>Ingresa el link de tus redes sociales</small>
+                            </div>
+                            <div class="row g-3">
+                                @foreach (['whatsapp', 'facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'snapchat', 'telegram'] as $network)
+                                    <div class="col-sm-6">
+                                        <x-input-general id="{{ $network }}" label="{{ ucfirst($network) }}"
+                                            value="{{ old($network, $data->{$network} ?? '') }}" />
+                                    </div>
+                                @endforeach
+                                <div class="col-12 d-flex">
+                                    <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
+                                    <button type="reset" class="btn btn-label-secondary"
+                                        onclick="location.href='{{ route('contact-list') }}'">Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Account Details -->
+                        <div id="account-details-modern" class="content">
+                            <div class="content-header mb-3">
+                                <h6 class="mb-0">Detalle de la Empresa</h6>
+                                <small>Datos de la empresa</small>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <x-input-general id="enterprise_name" label="Nombre de la empresa"
+                                        value="{{ old('enterprise_name', $data->enterprise_name ?? '') }}" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <x-enterprise-status-select :value="old('status_id', $data->status_id ?? '')" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <x-input-general id="email" label="Email"
+                                        value="{{ old('email', $data->email ?? '') }}" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <x-input-general id="website" label="Website"
+                                        value="{{ old('website', $data->website ?? '') }}" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <x-input-general id="phone" label="Teléfono"
+                                        value="{{ old('phone', $data->phone ?? '') }}" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <x-input-general id="whatsapp" label="WhatsApp"
+                                        value="{{ old('whatsapp', $data->whatsapp ?? '') }}" />
                                 </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
@@ -182,26 +202,6 @@
                                     <x-input-general id="province" label="Provincia"
                                         value="{{ old('province', $data->province ?? '') }}" />
                                 </div>
-                                <div class="col-12 d-flex">
-                                    <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
-                                    <button type="reset" class="btn btn-label-secondary"
-                                        onclick="location.href='{{ route('contact-list') }}'">Cancelar</button>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Social Links -->
-                        <div id="social-links-modern" class="content">
-                            <div class="content-header mb-3">
-                                <h6 class="mb-0">Redes Sociales</h6>
-                                <small>Ingresa el link de tus redes sociales</small>
-                            </div>
-                            <div class="row g-3">
-                                @foreach (['whatsapp', 'facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'snapchat', 'telegram'] as $network)
-                                    <div class="col-sm-6">
-                                        <x-input-general id="{{ $network }}" label="{{ ucfirst($network) }}"
-                                            value="{{ old($network, $data->{$network} ?? '') }}" />
-                                    </div>
-                                @endforeach
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
                                     <button type="reset" class="btn btn-label-secondary"

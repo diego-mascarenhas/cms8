@@ -79,11 +79,17 @@ class Contact extends Model
     return $this->hasOne(ContactSentimentHistory::class)->latest();
   }
 
+  
+  public function list60s()
+  {
+    return $this->hasMany(List60::class, 'contact_id');
+  }
+
   public function status()
   {
     return $this->belongsTo(ContactStatus::class);
   }
-
+  
   public function getStatusLabelAttribute()
   {
     if ($this->status) {
@@ -196,8 +202,7 @@ class Contact extends Model
 
   public function sources()
   {
-    return $this->belongsToMany(Source::class, 'contact_sources')
-                ->withPivot('value');
+    return $this->belongsToMany(Source::class, 'contact_sources')->withPivot('value');
   }
 
   public function primarySource()
@@ -211,14 +216,12 @@ class Contact extends Model
       $isPrimary = $source->id === $this->source_id;
       $style = $isPrimary ? 'font-size: 1.2em;' : '';
       $title = $isPrimary ? 'Primary Source: ' . $source->name : $source->name;
-      
-      $iconClass = in_array($source->icon, ['fa-envelope', 'fa-phone']) 
-        ? "fas {$source->icon}" 
-        : "fab {$source->icon}";
-      
+
+      $iconClass = in_array($source->icon, ['fa-envelope', 'fa-phone']) ? "fas {$source->icon}" : "fab {$source->icon}";
+
       $value = $source->pivot->value;
       $url = $source->base_url . $value;
-      
+
       return sprintf(
         '<a href="%s" target="_blank" style="margin-right: 8px;"><i class="%s" style="color: %s; %s" title="%s"></i></a>',
         $url,
@@ -233,21 +236,24 @@ class Contact extends Model
   }
 
   public function getEmailAttribute()
-{
-    $emailSource = $this->sources()->where('source_id', 1)->first();
+  {
+    $emailSource = $this->sources()
+      ->where('source_id', 1)
+      ->first();
 
     return $emailSource ? $emailSource->pivot->value : null;
-}
-public function getPhoneAttribute()
+  }
+  public function getPhoneAttribute()
   {
-    $phoneSource = $this->sources()->where('source_id', 2)->first();
+    $phoneSource = $this->sources()
+      ->where('source_id', 2)
+      ->first();
 
     return $phoneSource ? $phoneSource->pivot->value : null;
   }
 
   public function enterprises()
   {
-    return $this->belongsToMany(Enterprise::class, 'contact_enterprise')
-                ->withPivot('position');
+    return $this->belongsToMany(Enterprise::class, 'contact_enterprise')->withPivot('position');
   }
 }

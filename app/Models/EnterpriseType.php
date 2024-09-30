@@ -22,4 +22,9 @@ class EnterpriseType extends Model
     {
         return $this->belongsTo(EnterpriseType::class);
     }
+
+    public function list60s()
+    {
+        return $this->hasMany(List60::class, 'type_id');
+    }
 }

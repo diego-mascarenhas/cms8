@@ -54,18 +54,19 @@ class ContactController extends Controller
 
     $request->validate([
       'name' => 'required|string|min:3|max:75',
-      'email' => 'required|email',
+      'birthday' => 'required|date',
     ]);
 
     $data['team_id'] = auth()->user()->currentTeam->id;
     $data['status_id'] = $request->status_id ?? 1;
+    $data['creator_id'] = auth()->user()->id;
 
     $data['data'] = $data;
 
-    Contact::updateOrCreate(['id' => $request->id], $data);
+    $contact = Contact::create($data);
 
     return redirect()
-      ->route('contact-list')
+      ->route('contact.show', $contact->id)
       ->with('success', 'Record saved successfully.');
   }
 
@@ -132,21 +133,16 @@ class ContactController extends Controller
     $contact = Contact::findOrFail($id);
     $validatedData = $request->validated();
 
-    // Actualizar la tabla contacts
     $contact->update($validatedData['contact']);
 
-    // Actualizar la tabla contact_sources
     foreach ($validatedData['sources'] as $source) {
-      $contact->sources()->updateOrCreate(
-        ['source_id' => $source['source_id']],
-        ['value' => $source['value']]
-      );
+      $contact->sources()->updateOrCreate(['source_id' => $source['source_id']], ['value' => $source['value']]);
     }
 
     return response()->json([
       'success' => true,
       'message' => 'Contact updated successfully.',
-      'data' => $contact->fresh()->load('sources')
+      'data' => $contact->fresh()->load('sources'),
     ]);
   }
 

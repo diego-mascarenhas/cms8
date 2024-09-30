@@ -22,7 +22,7 @@ class UserSeeder extends Seeder
         $user->categories()->attach([5001, 5002, 5003, 5004]);
 
         // Admin
-        $appUrl = env('APP_URL', 'localhost');
+        $appUrl = env('APP_URL', 'example.com');
         $parsedUrl = parse_url($appUrl, PHP_URL_HOST) ?? $appUrl;
 
         if (Str::startsWith($parsedUrl, 'www.'))

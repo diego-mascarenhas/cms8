@@ -49,6 +49,14 @@ class ClientController extends Controller
         $request->validate([
             'name' => 'required|string|min:3|max:75',
             'email' => 'required|email',
+            'website' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'whatsapp' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'postal_code' => 'nullable|string|max:20',
+            'locality' => 'nullable|string|max:50',
+            'province' => 'nullable|string|max:50',
+            'data' => 'nullable|array', 
         ]);
 
         $data['team_id'] = auth()->user()->currentTeam->id;
@@ -89,8 +97,7 @@ class ClientController extends Controller
 
         $enterpriseStatuses = EnterpriseStatus::getOptions(1);
 
-        $trackingId = $this->startActionTracking($id, 'edit');
-        return view('client.form', compact('data', 'enterpriseStatuses', 'trackingId'));
+        return view('client.form', compact('data', 'enterpriseStatuses'));
     }
 
     /**

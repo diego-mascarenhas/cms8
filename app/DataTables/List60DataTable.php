@@ -2,7 +2,7 @@
 
 namespace App\DataTables;
 
-use App\Models\Enterprise;
+use App\Models\List60;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -23,100 +23,48 @@ class List60DataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'list60.action')
             ->setRowId('id')
-            ->editColumn('name', function ($row) {
+            ->editColumn('contact_id', function ($row) {
+                $emailValue = $row->contact->email ?? null;
+
+                $contactInfo = $emailValue ? '<a href="mailto:' . $emailValue . '">' . $emailValue . '</a>' : '&nbsp;';
+
                 return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">' . $row->name . '</span>
-                            <small class="text-muted">
-                                <a href="mailto:' . $row->email . '">' . $row->email . '</a>
-                            </small>
+                            <span class="fw-medium text-body text-truncate">' . $row->contact->name . '</span>
+                            <small class="text-muted">' . $contactInfo . '</small>
                         </div>';
-            })
-            ->addColumn('social_networks', function ($row) {
-                $socialNetworks = [
-                    'whatsapp' => ['icon' => 'fab fa-whatsapp', 'color' => '#25D366'],
-                    'facebook' => ['icon' => 'fab fa-facebook', 'color' => '#1877F2'],
-                    'instagram' => ['icon' => 'fab fa-instagram', 'color' => '#E4405F'],
-                    'twitter' => ['icon' => 'fab fa-twitter', 'color' => '#1DA1F2'],
-                    'linkedin' => ['icon' => 'fab fa-linkedin', 'color' => '#0A66C2'],
-                    'youtube' => ['icon' => 'fab fa-youtube', 'color' => '#FF0000'],
-                    'tiktok' => ['icon' => 'fab fa-tiktok', 'color' => '#000000'],
-                    'pinterest' => ['icon' => 'fab fa-pinterest', 'color' => '#BD081C'],
-                    'snapchat' => ['icon' => 'fab fa-snapchat', 'color' => '#FFFC00'],
-                    'telegram' => ['icon' => 'fab fa-telegram', 'color' => '#0088cc'],
-                ];
-
-                $networks = [];
-                $data = json_decode(json_encode($row->data), true) ?? [];
-
-                foreach ($socialNetworks as $network => $info) {
-                    $value = $data[$network] ?? '';
-                    if (!empty($value)) {
-                        $networks[] = sprintf(
-                            '<a href="%s" target="_blank" style="color: %s;"><i class="%s"></i></a>',
-                            $this->getSocialLink($network, $value),
-                            $info['color'],
-                            $info['icon']
-                        );
-                    }
-                }
-
-                return empty($networks) ? '' : implode(' ', $networks);
             })
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
-            ->editColumn('type_id', function ($row) {
-                return $row->type->name;
+            ->addColumn('sources', function ($row) {
+                return $row->contact->sources_icons_html;
             })
-            ->rawColumns(['name', 'action', 'social_networks', 'status_id']);
+            ->editColumn('date_next', function ($row) {
+                return \Carbon\Carbon::parse($row->date_next)->translatedFormat('d F'); // Formato: día y mes
+            })
+            ->editColumn('type_id', function ($row) {
+                return $row->type->name ?? 'Sin tipo'; // Muestra el nombre del tipo o 'Sin tipo' si no existe
+            })
+            ->rawColumns(['name', 'action', 'contact_id', 'sources', 'status_id']);
     }
 
-    public function query(Enterprise $model): QueryBuilder
+    public function query(List60 $model): QueryBuilder
     {
-        // $user = auth()->user();
-
-        // $query = $model->list60s()->with('status');
-
-        // if ($user->can('list60.list'))
-        // {
-        //     return $query;
-        // }
-        // elseif ($user->hasRole('colab'))
-        // {
-        //     return $query->where('assigned_to', $user->id);
-        // }
-        // else
-        // {
-        //     return $query->whereRaw('1 = 0');
-        // }
-
-        return $model->newQuery()->with('status');
+        return $model->newQuery();
     }
 
     public function html(): HtmlBuilder
     {
         return $this->builder()
-            ->setTableId('list60-table')
+            ->setTableId('contact-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
-            ->dom('rtip')
-            ->orderBy(1, 'asc')
+            ->dom('frtip')
+            ->orderBy(4, direction: 'asc')
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'pageLength' => 60,
-                'paging' => false,
-                'initComplete' => "function() {
-                    var api = this.api();
-                    api.columns('.select-filter').every(function() {
-                        var column = this;
-
-                        $('.filter-status').on('click', function(e) {
-                            e.preventDefault();
-                            var status = $(this).data('status');
-                            api.column('status_id:name').search(status).draw();
-                        });
-                    });
-                }",
+                'paging' => false
             ]);
     }
 
@@ -124,17 +72,16 @@ class List60DataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('name')->title('Cliente'),
+            Column::make('contact_id')->title(value: 'Nombre'),
             Column::make('status_id')->title('Estado')->className('text-center'),
-            Column::make('social_networks')
-                ->title('Redes Sociales')
+            Column::make('sources')
+                ->title('Redes')
                 ->className('text-center')
                 ->searchable(false)
                 ->orderable(false)
-                ->width(200),
-            Column::make('locality')->title('Próximo contacto')->className('text-center'),
+                ->width(150),
+            Column::make('date_next')->title('Próximo contacto')->className('text-center'),
             Column::make('type_id')->title('Tipo')->className('text-center'),
-            Column::make('locality')->title('Negocio')->className('text-center'),
             Column::computed('action')->title('Acciones')->width(20)->className('text-center')
                 ->exportable(false)
                 ->printable(false)
@@ -143,30 +90,8 @@ class List60DataTable extends DataTable
         ];
     }
 
-    private function getSocialLink($network, $value)
-    {
-        if (filter_var($value, FILTER_VALIDATE_URL)) {
-            return $value;
-        }
-
-        $baseUrls = [
-            'whatsapp' => 'https://wa.me/',
-            'facebook' => 'https://facebook.com/',
-            'instagram' => 'https://instagram.com/',
-            'twitter' => 'https://twitter.com/',
-            'linkedin' => 'https://linkedin.com/in/',
-            'youtube' => 'https://youtube.com/',
-            'tiktok' => 'https://tiktok.com/@',
-            'pinterest' => 'https://pinterest.com/',
-            'snapchat' => 'https://snapchat.com/add/',
-            'telegram' => 'https://t.me/',
-        ];
-
-        return ($baseUrls[$network] ?? '') . $value;
-    }
-
     protected function filename(): string
     {
-        return 'Client_' . date('YmdHis');
+        return 'List60_' . date('YmdHis');
     }
 }

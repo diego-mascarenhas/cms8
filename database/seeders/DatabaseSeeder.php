@@ -32,6 +32,8 @@ class DatabaseSeeder extends Seeder
             ContactSentimentSeeder::class,
             ContactSeeder::class,
             ContactSourceSeeder::class,
+            List60StatusesSeeder::class,
+            List60Seeder::class,
 		]);
     }
 }

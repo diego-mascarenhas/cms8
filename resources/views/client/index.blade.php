@@ -31,24 +31,6 @@
 
     <script>
         $(function() {
-            let table = $('.datatable').DataTable();
-
-            $('#EmotionalState').on('change', function() {
-                let selectedValue = $(this).val();
-                table.column('.select-filter').search(selectedValue).draw();
-            });
-
-            $('#EnterpriseState').on('change', function() {
-                let selectedValue = $(this).val();
-                table.column('.enterprise-filter').search(selectedValue).draw();
-            });
-
-            $('.filter-status').on('click', function(e) {
-                e.preventDefault();
-                var status = $(this).data('status');
-                table.column('status_id:name').search(status).draw();
-            });
-
             $('#import-button').on('click', function() {
                 $('#importModal').modal('show');
             });
@@ -189,90 +171,10 @@
         </script>
     @endif
 
-    <div class="row g-4 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="content-left">
-                            <span>Leads</span>
-                            <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $totalLeads ?? 0 }}</h3>
-                                <p class="text-info mb-0">({{ $leadsPercentage ?? 0 }}%)</p>
-                            </div>
-                            <p class="mb-0">Total de Leads</p>
-                        </div>
-                        <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-info filter-status" data-status="1">
-                                <i class="ti ti-target ti-sm"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="content-left">
-                            <span>En seguimiento</span>
-                            <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $totalFollowUp ?? 0 }}</h3>
-                                <p class="text-warning mb-0">({{ $followUpPercentage ?? 0 }}%)</p>
-                            </div>
-                            <p class="mb-0">Total en seguimiento</p>
-                        </div>
-                        <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-warning filter-status" data-status="2">
-                                <i class="ti ti-arrows-left-right ti-sm"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="content-left">
-                            <span>Clientes</span>
-                            <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $totalClients ?? 0 }}</h3>
-                                <p class="text-success mb-0">({{ $clientsPercentage ?? 0 }}%)</p>
-                            </div>
-                            <p class="mb-0">Total de Clientes</p>
-                        </div>
-                        <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-success filter-status" data-status="5">
-                                <i class="ti ti-user-check ti-sm"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="content-left">
-                            <span>Terminados</span>
-                            <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $totalFinished ?? 0 }}</h3>
-                                <p class="text-danger mb-0">({{ $finishedPercentage ?? 0 }}%)</p>
-                            </div>
-                            <p class="mb-0">Total terminados</p>
-                        </div>
-                        <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-danger filter-status" data-status="7">
-                                <i class="ti ti-user-off ti-sm"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+        <div class="d-flex flex-column justify-content-center">
+            <h4 class="mb-1 mt-3">Clientes</h4>
+            <p class="text-muted">Gestiona y personaliza a tus clientes</p>
         </div>
     </div>
 
@@ -293,17 +195,6 @@
                             <i class="ti ti-file-export me-sm-1"></i>
                             <span class="d-none d-sm-inline-block">Exportar</span>
                         </button> -->
-                </div>
-            </div>
-            <div class="d-flex flex-column flex-md-row gap-3">
-                <div class="flex-grow-1">
-                    <select id="ContractedService" class="form-select text-capitalize">
-                        <option value=""> Selector de servicio contratado </option>
-                    </select>
-                </div>
-                <div class="flex-grow-1">
-                    <x-input-select-array id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
-                        placeholder="Selector de tipo de contacto" />
                 </div>
             </div>
         </div>

@@ -50,17 +50,6 @@
                     <div class="line">
                         <i class="ti ti-chevron-right"></i>
                     </div>
-                    <div class="step" data-target="#personal-info-modern">
-                        <button type="button" class="step-trigger">
-                            <span class="bs-stepper-icon">
-                                <i class="ti ti-user"></i>
-                            </span>
-                            <span class="bs-stepper-label">Información Personal</span>
-                        </button>
-                    </div>
-                    <div class="line">
-                        <i class="ti ti-chevron-right"></i>
-                    </div>
                     <div class="step" data-target="#address-modern">
                         <button type="button" class="step-trigger">
                             <span class="bs-stepper-icon">
@@ -195,7 +184,7 @@
                                 <small>Ingresa el link de tus redes sociales</small>
                             </div>
                             <div class="row g-3">
-                                @foreach (['whatsapp', 'facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'snapchat', 'telegram'] as $network)
+                                @foreach (['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'snapchat'] as $network)
                                     <div class="col-sm-6">
                                         <x-input-general id="{{ $network }}" label="{{ ucfirst($network) }}"
                                             value="{{ old($network, $data->{$network} ?? '') }}" />
