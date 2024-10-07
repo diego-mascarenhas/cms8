@@ -17,6 +17,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\EmailController;
+use App\Http\Controllers\EnterpriseOrganizationController;
 
 
 // auth
@@ -118,3 +119,8 @@ Route::middleware(['auth'])->group(function ()
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
+Route::get('/organization', [EnterpriseOrganizationController::class, 'index']);
+
+Route::get('/notes', function () {
+    return view('notes.index');
+})->name('notes.index');

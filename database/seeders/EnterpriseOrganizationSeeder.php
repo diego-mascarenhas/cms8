@@ -1,0 +1,391 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\EnterpriseOrganization;
+use App\Models\EnterpriseDepartment;
+use App\Models\Enterprise;
+use App\Models\User;
+
+class EnterpriseOrganizationSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $organizations = [
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Gestión de servicios',
+                'description' => 'Los últimos 3 días de cada mes se realizan las gestiones de servicios.',
+                'responsible_id' => 2,
+                'time_allocation' => '12 hs mensuales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Emisión de facturas',
+                'description' => 'Revisión de las facturas de los servicios y aprobación para que se facturen.',
+                'responsible_id' => 2,
+                'time_allocation' => '4 hs mensuales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Carga de facturas',
+                'description' => 'Carga de las facturas de compra al CMS con su respectivo vencimiento para poder gestionar los pagos.',
+                'responsible_id' => 2,
+                'time_allocation' => '4 hs mensuales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Preparación AFIP',
+                'description' => 'Subir todos los archivos al Cloud e informarle a la contadora.',
+                'responsible_id' => 2,
+                'time_allocation' => '4 hs mensuales',
+                'availability' => 'Antes del 10 de cada mes',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Ingreso de pagos',
+                'description' => 'Ingreso de pagos al sistema referenciándolo a su comprobante.',
+                'responsible_id' => 2,
+                'time_allocation' => '24 hs mensuales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Gestión de recursos',
+                'description' => 'Asignación de labores a cada recurso.',
+                'responsible_id' => 1,
+                'time_allocation' => 'Diario',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Pago a proveedores',
+                'description' => 'Los mismos se realizan los días jueves de 9 a 12 hs y viernes de 12 a 15 hs.',
+                'responsible_id' => 1,
+                'time_allocation' => 'Total de 12 hs al mes',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Pago de licencias',
+                'description' => 'Pago de licencias a proveedores del exterior.',
+                'responsible_id' => 1,
+                'time_allocation' => '4 hs al mes',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Pago de haberes',
+                'description' => 'Los mismos se realizan antes del 5 de cada mes.',
+                'responsible_id' => 1,
+                'time_allocation' => '1 h al mes',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Crear débito',
+                'description' => 'Crear archivo de débito automático antes del 7 de cada mes.',
+                'responsible_id' => 2,
+                'time_allocation' => '4 hs al mes',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Enviar débito',
+                'description' => 'Enviar archivo de débito automático al banco antes del 7 de cada mes.',
+                'responsible_id' => 1,
+                'time_allocation' => '1 h al mes',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Recibir débito',
+                'description' => 'Recibir archivo de débito automático y subirlo al CMS en sus 2 vencimientos.',
+                'responsible_id' => 1,
+                'time_allocation' => '1 h al mes',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Arqueo de caja',
+                'description' => 'Arqueo de caja semanal lunes a primera hora.',
+                'responsible_id' => 1,
+                'time_allocation' => '12 h al mes',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Aprobación presupuestos',
+                'description' => 'Revisión y aprobación de presupuestos.',
+                'responsible_id' => 1,
+                'time_allocation' => '4 h al mes',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 1,
+                'name' => 'Compra de Hardware',
+                'description' => 'Pedido de presupuestos y confección de compra.',
+                'responsible_id' => 2,
+                'time_allocation' => 'Bajo demanda',
+            ],
+
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Atención telefónica',
+                'description' => 'Atención telefónica de lunes a viernes de 8 a 18 hs.',
+                'responsible_id' => 3,
+                'time_allocation' => '60 hs semanales',
+                'availability' => 'Horario laboral',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Atención por WhatsApp',
+                'description' => 'Atención por WhatsApp de lunes a viernes de 8 a 18 hs.',
+                'responsible_id' => 3,
+                'time_allocation' => '60 hs semanales',
+                'availability' => 'Horario laboral',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Atención por email',
+                'description' => 'Atención por email de lunes a viernes de 8 a 18 hs.',
+                'responsible_id' => 3,
+                'time_allocation' => '60 hs semanales',
+                'availability' => 'Horario laboral',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Contacto con proveedores',
+                'description' => 'Envío de tickets a proveedores por problemas que puedan presentarse.',
+                'responsible_id' => 3,
+                'time_allocation' => 'Bajo demanda',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Atención guardias',
+                'description' => 'Atención 24x7.',
+                'responsible_id' => 3,
+                'time_allocation' => 'Extra laboral',
+                'availability' => '24x7',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Control de alertas',
+                'description' => 'Atención 24x7.',
+                'responsible_id' => 3,
+                'time_allocation' => 'Extra laboral',
+                'availability' => '24x7',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Creación de VPS',
+                'description' => 'Creación de VPS',
+                'responsible_id' => 2,
+                'time_allocation' => 'Bajo demanda',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Instalación de sistemas',
+                'description' => 'Instalación de los sistemas operativos',
+                'responsible_id' => 1,
+                'time_allocation' => 'Bajo demanda',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Tunning cPanel',
+                'description' => 'Configuración de cPanel según valores estipulados.',
+                'responsible_id' => 3,
+                'time_allocation' => 'Bajo demanda',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Tunning VPS',
+                'description' => 'Configuración de VPSs según valores estipulados.',
+                'responsible_id' => 1,
+                'time_allocation' => 'Bajo demanda',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Elección de hardware',
+                'description' => 'Averiguación y elección de hardware.',
+                'responsible_id' => 1,
+                'time_allocation' => 'Bajo demanda',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Cambio de hardware',
+                'description' => 'Reemplazo de hardware.',
+                'responsible_id' => 2,
+                'time_allocation' => 'Bajo demanda',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Control de hardware',
+                'description' => 'Control diario de alertas de hardware.',
+                'responsible_id' => 3,
+                'time_allocation' => '6 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Control de backups',
+                'description' => 'Control diario de backups de cPanel y VMware.',
+                'responsible_id' => 3,
+                'time_allocation' => '6 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Control de firewall',
+                'description' => 'Control diario de firewall.',
+                'responsible_id' => 3,
+                'time_allocation' => '6 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 2,
+                'name' => 'Gestión de VPN',
+                'description' => 'Gestión de usuarios de VPN.',
+                'responsible_id' => 3,
+                'time_allocation' => 'Bajo demanda',
+            ],
+
+            [
+                'enterprise_id' => 1,
+                'department_id' => 3,
+                'name' => 'Seguimiento de clientes',
+                'description' => 'Gestión comercial y seguimiento de clientes.',
+                'responsible_id' => 2,
+                'time_allocation' => '10 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 3,
+                'name' => 'Planificación de ventas',
+                'description' => 'Planificación de campañas y su retorno.',
+                'responsible_id' => 2,
+                'time_allocation' => '10 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 3,
+                'name' => 'Reporte de ventas',
+                'description' => 'Reporte de ventas semanal.',
+                'responsible_id' => 2,
+                'time_allocation' => '4 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 3,
+                'name' => 'Comunicados',
+                'description' => 'Comunicados y notificaciones a clientes.',
+                'responsible_id' => 2,
+                'time_allocation' => '4 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 3,
+                'name' => 'Reuniones',
+                'description' => 'Reuniones con clientes y proveedores.',
+                'responsible_id' => 2,
+                'time_allocation' => '4 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 3,
+                'name' => 'Envío de Newsletters',
+                'description' => 'Confección y envío de Newsletters.',
+                'responsible_id' => 2,
+                'time_allocation' => '2 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 3,
+                'name' => 'Presupuesto de Marketing',
+                'description' => 'Propuesta a administración para campañas de Marketing.',
+                'responsible_id' => 2,
+                'time_allocation' => '2 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 3,
+                'name' => 'Gestión de altas',
+                'description' => 'Gestión de nuevos servicios.',
+                'responsible_id' => 2,
+                'time_allocation' => 'Bajo demanda',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 3,
+                'name' => 'Gestión de bajas',
+                'description' => 'Comunicarse con el cliente y preguntar los motivos, luego gestionarlo.',
+                'responsible_id' => 2,
+                'time_allocation' => 'Bajo demanda',
+            ],
+
+            [
+                'enterprise_id' => 1,
+                'department_id' => 4,
+                'name' => 'Mantenimiento de Apps',
+                'description' => 'Mantenimiento de aplicaciones existentes.',
+                'responsible_id' => 1,
+                'time_allocation' => '6 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 4,
+                'name' => 'Modificaciones en nuestros sitios',
+                'description' => 'Cambios y correcciones en nuestros sitios.',
+                'responsible_id' => 3,
+                'time_allocation' => '6 hs semanales',
+            ],
+            [
+                'enterprise_id' => 1,
+                'department_id' => 4,
+                'name' => 'Sitios de clientes',
+                'description' => 'Cambios y correcciones en sitios de clientes.',
+                'responsible_id' => 3,
+                'time_allocation' => 'Bajo demanda',
+            ],
+        ];
+
+        foreach ($organizations as $item) {
+            if (!isset($departmentCounters[$item['department_id']])) {
+                $departmentCounters[$item['department_id']] = 1;
+            }
+
+            EnterpriseOrganization::create([
+                'enterprise_id' => $item['enterprise_id'],
+                'department_id' => $item['department_id'],
+                'name' => $item['name'],
+                'description' => $item['description'],
+                'responsible_id' => $item['responsible_id'],
+                'time_allocation' => $item['time_allocation'],
+                'availability' => $item['availability'] ?? null,
+                'order' => $departmentCounters[$item['department_id']]++
+            ]);
+        }
+    }
+}
