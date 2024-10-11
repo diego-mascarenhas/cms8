@@ -9,8 +9,9 @@ return new class extends Migration
     public function up()
     {
         Schema::create('countries', function (Blueprint $table) {
-            $table->string('code', 2)->primary(); // ISO 3166-1 alpha-2 codes
+            $table->unsignedSmallInteger('id')->primary(); // ISO 3166-1
             $table->string('name');
+            $table->string('code', 2)->unique(); // alfa-2 ISO 3166-1
         });
     }
 

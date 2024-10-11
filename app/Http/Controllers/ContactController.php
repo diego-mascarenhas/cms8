@@ -109,7 +109,7 @@ class ContactController extends Controller
   public function edit(string $id)
   {
     $row = Contact::find($id);
-
+    
     if (!$row) {
       return redirect()
         ->route('contact-list')
@@ -119,10 +119,8 @@ class ContactController extends Controller
     $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass()));
     $data->id = $id;
 
-    $enterpriseStatuses = ContactStatus::getOptions(1);
-
     $trackingId = $this->startActionTracking($id, 'edit');
-    return view('contact.form', compact('data', 'enterpriseStatuses', 'trackingId'));
+    return view('contact.form', compact('data', 'trackingId'));
   }
 
   /**

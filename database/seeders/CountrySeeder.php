@@ -10,32 +10,30 @@ class CountrySeeder extends Seeder
     public function run()
     {
         $countries = [
-            ['code' => 'ar', 'name' => 'Argentina'],
-            ['code' => 'au', 'name' => 'Australia'],
-            ['code' => 'br', 'name' => 'Brazil'],
-            ['code' => 'ca', 'name' => 'Canada'],
-            ['code' => 'dk', 'name' => 'Denmark'],
-            ['code' => 'fi', 'name' => 'Finland'],
-            ['code' => 'fr', 'name' => 'France'],
-            ['code' => 'de', 'name' => 'Germany'],
-            ['code' => 'it', 'name' => 'Italy'],
-            ['code' => 'jp', 'name' => 'Japan'],
-            ['code' => 'mx', 'name' => 'Mexico'],
-            ['code' => 'nl', 'name' => 'Netherlands'],
-            ['code' => 'no', 'name' => 'Norway'],
-            ['code' => 'pt', 'name' => 'Portugal'],
-            ['code' => 'es', 'name' => 'Spain'],
-            ['code' => 'se', 'name' => 'Sweden'],
-            ['code' => 'ch', 'name' => 'Switzerland'],
-            ['code' => 'gb', 'name' => 'United Kingdom'],
-            ['code' => 'us', 'name' => 'United States'],
+            ['id' => 724, 'name' => 'España', 'code' => 'ES'],
+            ['id' => 840, 'name' => 'Estados Unidos', 'code' => 'US'],
+            ['id' => 484, 'name' => 'México', 'code' => 'MX'],
+            ['id' => 32, 'name' => 'Argentina', 'code' => 'AR'],
+            ['id' => 152, 'name' => 'Chile', 'code' => 'CL'],
+            ['id' => 170, 'name' => 'Colombia', 'code' => 'CO'],
+            ['id' => 604, 'name' => 'Perú', 'code' => 'PE'],
+            ['id' => 862, 'name' => 'Venezuela', 'code' => 'VE'],
+            ['id' => 218, 'name' => 'Ecuador', 'code' => 'EC'],
+            ['id' => 591, 'name' => 'Panamá', 'code' => 'PA'],
+            ['id' => 188, 'name' => 'Costa Rica', 'code' => 'CR'],
+            ['id' => 320, 'name' => 'Guatemala', 'code' => 'GT'],
+            ['id' => 340, 'name' => 'Honduras', 'code' => 'HN'],
+            ['id' => 222, 'name' => 'El Salvador', 'code' => 'SV'],
+            ['id' => 558, 'name' => 'Nicaragua', 'code' => 'NI'],
+            ['id' => 214, 'name' => 'República Dominicana', 'code' => 'DO'],
+            ['id' => 192, 'name' => 'Cuba', 'code' => 'CU'],
+            ['id' => 858, 'name' => 'Uruguay', 'code' => 'UY'],
+            ['id' => 68, 'name' => 'Bolivia', 'code' => 'BO'],
+            ['id' => 600, 'name' => 'Paraguay', 'code' => 'PY'],
         ];
 
         foreach ($countries as $country) {
-            Country::create([
-                'code' => $country['code'],
-                'name' => $country['name'],
-            ]);
+            Country::create($country);
         }
     }
 }

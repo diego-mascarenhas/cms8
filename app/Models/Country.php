@@ -10,9 +10,9 @@ class Country extends Model
 
     public $timestamps = false;
     
-    protected $fillable = ['code', 'name'];
+    protected $fillable = ['id', 'name', 'code'];
 
-    protected $primaryKey = 'code';
+    protected $primaryKey = 'id';
 
     public $incrementing = false;
 

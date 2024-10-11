@@ -20,7 +20,7 @@ return new class extends Migration
             $table->date('birthday')->nullable();
             $table->text('profile')->nullable();
             $table->enum('engagment', ['cold', 'temperate', 'hot'])->default('temperate');
-            $table->string('country', 2)->default('es');
+            $table->unsignedSmallInteger('country')->default(724);
             $table->string('language', 2)->default('es');
             $table->foreignId('creator_id')->constrained('users');
             $table->foreignId('responsible_id')->nullable()->constrained('users');
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->foreign('source_id')->references('id')->on('sources')->onDelete('restrict');
-            $table->foreign('country')->references('code')->on('countries')->onDelete('restrict');
+            $table->foreign('country')->references('id')->on('countries')->onDelete('restrict');
             $table->foreign('language')->references('code')->on('languages')->onDelete('restrict');
             $table->foreign('status_id')->references('id')->on('contact_statuses')->onDelete('restrict');
         });

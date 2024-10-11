@@ -102,10 +102,12 @@
                                     <x-input-date id="birthday" label="Cumpleaños" value="{{ old('birthday', $data->birthday?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
-                                    Idioma
+                                    {{ $data->language }}
+                                    <x-language-select :value="$data->language ?? old('language')" />
                                 </div>
                                 <div class="col-sm-6">
-                                    País
+                                {{ $data->country }}
+                                    <x-country-select :value="old('country', $data->country ?? '')" />
                                 </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
