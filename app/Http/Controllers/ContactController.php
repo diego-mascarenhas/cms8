@@ -83,6 +83,7 @@ class ContactController extends Controller
       'responsible',
       'status',
       'country',
+      'language',
       'sentimentHistories.sentiment',
     ])->find($id);
 

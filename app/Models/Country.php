@@ -16,7 +16,7 @@ class Country extends Model
 
     public $incrementing = false;
 
-    protected $keyType = 'string';
+    protected $keyType = 'integer';
     
     public function setCodeAttribute($value)
     {

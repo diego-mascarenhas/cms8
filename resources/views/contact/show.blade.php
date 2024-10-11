@@ -131,10 +131,13 @@
                                     @endif
                                 </span>
                             </li>
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">País:</span>
-                                <span>{{ $data->country ?? 'No asignado' }}</span>
-                            </li>
+                            @php
+                                $countryName = $data->country ? (\App\Models\Country::find($data->country)->name ?? 'No asignado') : 'No asignado';
+                                $languageName = $data->language ? (\App\Models\Language::where('code', $data->language)->value('name') ?? 'No asignado') : 'No asignado';
+                            @endphp
+
+                            <p>País: {{ $countryName }}</p>
+                            <p>Idioma: {{ $languageName }}</p>
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Asesor:</span>
                                 <span>{{ $data->responsible->name ?? 'No asignado' }}</span>

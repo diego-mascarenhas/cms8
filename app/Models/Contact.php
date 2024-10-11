@@ -66,7 +66,12 @@ class Contact extends Model
 
   public function country()
   {
-    return $this->belongsTo(Country::class, 'country', 'code')->withDefault();
+    return $this->belongsTo(Country::class, 'country', 'id');
+  }
+
+  public function language()
+  {
+    return $this->belongsTo(Language::class, 'language', 'code');
   }
 
   public function sentimentHistories()
