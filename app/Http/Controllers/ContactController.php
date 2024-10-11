@@ -55,6 +55,8 @@ class ContactController extends Controller
     $request->validate([
       'name' => 'required|string|min:3|max:75',
       'birthday' => 'required|date',
+      'language' => 'required|exists:languages,code',
+      'country' => 'required|exists:countries,id',
     ]);
 
     $data['team_id'] = auth()->user()->currentTeam->id;

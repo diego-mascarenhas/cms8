@@ -9,14 +9,14 @@ class CountrySelect extends Component
 {
     public $name;
     public $id;
-    public $selected;
+    public $value;
     public $label;
 
-    public function __construct($name = 'country', $id = null, $selected = null, $label = 'País')
+    public function __construct($name = 'country', $id = null, $value = null, $label = 'País')
     {
         $this->name = $name;
         $this->id = $id ?? $name;
-        $this->selected = $selected;
+        $this->value = $value ?? 724;
         $this->label = $label;
     }
 
