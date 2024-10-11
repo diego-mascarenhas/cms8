@@ -20,7 +20,7 @@
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="modalEditUserStatus">Estado</label>
-                        <x-input-select-array id="status_id" :options="$enterpriseStatuses" :value="''"
+                        <x-input-select id="status_id" :options="$enterpriseStatuses" :value="''"
                             placeholder="Tipo de contacto" />
                     </div>
                     <div class="col-12 col-md-6">
@@ -31,7 +31,7 @@
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="modalEditUserPhone">Teléfono</label>
                         <div class="input-group">
-                            <span class="input-group-text">US (+1)</span>
+                            <span class="input-group-text">ES (+34)</span>
                             <input type="text" id="modalEditUserPhone" name="phone"
                                 class="form-control phone-number-mask" placeholder="202 555 0111"
                                 value="{{ $data->phone }}" />
@@ -109,6 +109,13 @@
                 const form = $(this);
                 const formData = new FormData(form[0]);
                 
+                // Asegúrate de que todos los campos select2 estén incluidos
+                $('.select2').each(function() {
+                    let name = $(this).attr('name');
+                    let value = $(this).val();
+                    formData.set(name, value);
+                });
+                
                 console.log('Form data being submitted:');
                 for (let [key, value] of formData.entries()) {
                     console.log(key, value);
@@ -136,7 +143,17 @@
                     error: function(xhr, status, error) {
                         console.error('AJAX request failed:', status, error);
                         console.log('Response:', xhr.responseText);
-                        toastr.error('An error occurred. Please try again.');
+                        if (xhr.status === 422) {
+                            let errors = xhr.responseJSON.errors;
+                            let errorMessage = 'Validation errors:';
+                            for (let field in errors) {
+                                errorMessage += `\n${field}: ${errors[field].join(', ')}`;
+                            }
+                            console.error(errorMessage);
+                            toastr.error(errorMessage);
+                        } else {
+                            toastr.error('An error occurred. Please try again.');
+                        }
                     }
                 });
             });

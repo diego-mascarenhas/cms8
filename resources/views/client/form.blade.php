@@ -127,18 +127,10 @@
                                         value="{{ old('contact_last_name', $data->contact_last_name ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
-                                    @php
-                                        $idiomas = ['Englés', 'Español', 'Francés', 'Italiano', 'Portugués'];
-                                    @endphp
-                                    <x-input-select id="idioma" label="Idioma" :options="$idiomas"
-                                        value="{{ old('idioma', $data->idioma ?? '') }}" />
+                                    Idioma
                                 </div>
                                 <div class="col-sm-6">
-                                    @php
-                                        $paises = ['España', 'Francia', 'Italia', 'Portugal', 'Resto del mundo'];
-                                    @endphp
-                                    <x-input-select id="pais" label="País" :options="$paises"
-                                        value="{{ old('pais', $data->pais ?? '') }}" />
+                                    País
                                 </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>

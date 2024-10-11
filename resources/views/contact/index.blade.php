@@ -157,7 +157,7 @@
             </div>
             <div class="d-flex flex-column flex-md-row gap-3">
                 <div class="flex-grow-1">
-                    <x-input-select-array id="EmotionalState" :options="$emotionalStates" :value="''"
+                    <x-input-select id="EmotionalState" :options="$emotionalStates" :value="''"
                         placeholder="Selector de estado emocional" />
                 </div>
                 <div class="flex-grow-1">
@@ -166,7 +166,7 @@
                     </select>
                 </div>
                 <div class="flex-grow-1">
-                    <x-input-select-array id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
+                    <x-input-select id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
                         placeholder="Selector de tipo de contacto" />
                 </div>
             </div>

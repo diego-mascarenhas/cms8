@@ -50,6 +50,8 @@
         <div class="d-flex align-content-center flex-wrap gap-3">
             <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-plus me-1"></i>Añadir informe</a>
+            <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
+                    class="ti ti-edit me-1"></i>Editar contacto</a>
             <a href="#" class="btn btn-info waves-effect waves-light"><i
                     class="ti ti-message-chatbot me-1"></i>Chat</a>
         </div>
@@ -177,9 +179,9 @@
                             </li>
                         </ul>
                         <div class="d-flex justify-content-center">
-                            <a href="javascript:;" class="btn btn-primary me-3" data-bs-target="#editUser"
-                                data-bs-toggle="modal">Editar</a>
-                            <a href="javascript:;" class="btn btn-label-danger suspend-user">Suspender</a>
+                            {{-- <a href="javascript:;" class="btn btn-primary me-3" data-bs-target="#editUser"
+                                data-bs-toggle="modal">Editar</a> --}}
+                            {{-- <a href="javascript:;" class="btn btn-label-danger suspend-user">Suspender</a> --}}
                         </div>
                     </div>
                 </div>
@@ -275,8 +277,8 @@
     </div>
 
     <!-- Modal -->
-    @include('_partials/_modals/modal-edit-user')
-    @include('_partials/_modals/modal-upgrade-plan')
+    {{-- @include('_partials/_modals/modal-edit-user') --}}
+    {{-- @include('_partials/_modals/modal-upgrade-plan') --}}
     <!-- /Modal -->
 @endsection
 

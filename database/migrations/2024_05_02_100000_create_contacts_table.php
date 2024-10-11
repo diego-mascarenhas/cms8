@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
             $table->unsignedTinyInteger('source_id')->nullable();
-            $table->datetime('birthday')->nullable();
+            $table->date('birthday')->nullable();
             $table->text('profile')->nullable();
             $table->enum('engagment', ['cold', 'temperate', 'hot'])->default('temperate');
             $table->string('country', 2)->default('es');
