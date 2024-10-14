@@ -24,14 +24,14 @@
     <script src="{{ asset('assets/vendor/libs/cleavejs/cleave.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/cleavejs/cleave-phone.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/@form-validation/umd/bundle/popular.min.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script>
+    <!-- <script src="{{ asset('assets/vendor/libs/@form-validation/umd/bundle/popular.min.js') }}"></script> -->
+    <!-- <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js') }}"></script> -->
+    <!-- <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script> -->
     <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
 @endsection
 
 @section('page-script')
-    <script src="{{ asset('assets/js/modal-edit-user.js') }}"></script>
+    <!-- <script src="{{ asset('assets/js/modal-edit-user.js') }}"></script> -->
     <script src="{{ asset('assets/js/app-user-view.js') }}"></script>
     <script src="{{ asset('assets/js/app-user-view-account.js') }}"></script>
 @endsection
@@ -395,8 +395,8 @@
             fetch(`/contact/end-action/${trackingId}`, {
                     method: 'POST',
                     headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                 }).then(response => response.json())
                 .then(data => {
@@ -438,12 +438,13 @@
             let minutes = Math.floor((totalSeconds % 3600) / 60);
             let seconds = totalSeconds % 60;
 
-            let formattedTime = `${seconds} segundos`;
-            if (minutes > 0) {
-                formattedTime = `${minutes} minutos, ${formattedTime}`;
-            }
+            let formattedTime;
             if (hours > 0) {
-                formattedTime = `${hours} horas, ${formattedTime}`;
+                formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            } else if (minutes > 0) {
+                formattedTime = `${minutes} minutos`;
+            } else {
+                formattedTime = `${seconds} segundos`;
             }
 
             document.getElementById('totalTime').textContent = formattedTime;

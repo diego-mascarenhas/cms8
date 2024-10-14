@@ -237,7 +237,7 @@ class Contact extends Model
       );
     });
 
-    return $sourcesHtml->isEmpty() ? 'N/A' : $sourcesHtml->implode('');
+    return $sourcesHtml->isEmpty() ? 'Sin especificar' : $sourcesHtml->implode('');
   }
 
   public function getEmailAttribute()

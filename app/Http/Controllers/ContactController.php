@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Validator;
 use App\Traits\TracksContactActions;
 use App\Http\Requests\UpdateContactRequest;
 
+use Carbon\Carbon;
+
 class ContactController extends Controller
 {
   use TracksContactActions;
@@ -118,6 +120,8 @@ class ContactController extends Controller
   public function edit(string $id)
   {
     $data = Contact::findOrFail($id);
+	
+	$data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
     $enterpriseStatuses = ContactStatus::getOptions();
     return view('contact.form', compact('data', 'enterpriseStatuses'));
   }
