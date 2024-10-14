@@ -52,7 +52,7 @@ $navbarDetached = ($navbarDetached ?? '');
         @endif
         <ul class="navbar-nav flex-row align-items-center ms-auto">
           <!-- Language -->
-          @if($configData['showLanguageSelector'] == true)
+          {{-- @if($configData['showLanguageSelector'] == true) --}}
           <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
               <i class='ti ti-language rounded-circle ti-md'></i>
@@ -90,7 +90,7 @@ $navbarDetached = ($navbarDetached ?? '');
               </li>
             </ul>
           </li>
-          @endif
+          {{-- @endif --}}
           <!--/ Language -->
 
           @if(isset($menuHorizontal))

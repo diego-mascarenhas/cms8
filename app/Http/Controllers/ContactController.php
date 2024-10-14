@@ -40,36 +40,42 @@ class ContactController extends Controller
    */
   public function create()
   {
-    $enterpriseStatuses = ContactStatus::getOptions(1);
-
-    return view('contact.form', compact('enterpriseStatuses'));
+    $enterpriseStatuses = ContactStatus::getOptions();
+    $data = new \stdClass();
+    return view('contact.form', compact('data', 'enterpriseStatuses'));
   }
 
   /**
    * Store a newly created resource in storage.
    */
-  public function store(Request $request)
+  public function store(UpdateContactRequest $request)
   {
-    $data = $request->except(['id', '_token']);
+    $data = $request->validated();
+    
+    $contactData = $data['contact'];
+    
+    $contactData['team_id'] = auth()->user()->currentTeam->id;
+    $contactData['creator_id'] = auth()->user()->id;
 
-    $request->validate([
-      'name' => 'required|string|min:3|max:75',
-      'birthday' => 'required|date',
-      'language' => 'required|exists:languages,code',
-      'country' => 'required|exists:countries,id',
-    ]);
+    $contact = Contact::create($contactData);
 
-    $data['team_id'] = auth()->user()->currentTeam->id;
-    $data['status_id'] = $request->status_id ?? 1;
-    $data['creator_id'] = auth()->user()->id;
+    if (!empty($data['sources'])) {
+        
+    }
 
-    $data['data'] = $data;
+    $message = 'Contact created successfully.';
 
-    $contact = Contact::create($data);
+    if ($request->ajax()) {
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => $contact->fresh(),
+        ]);
+    }
 
     return redirect()
-      ->route('contact.show', $contact->id)
-      ->with('success', 'Record saved successfully.');
+        ->route('contact.show', $contact->id)
+        ->with('success', $message);
   }
 
   /**
@@ -111,40 +117,40 @@ class ContactController extends Controller
    */
   public function edit(string $id)
   {
-    $row = Contact::find($id);
-    
-    if (!$row) {
-      return redirect()
-        ->route('contact-list')
-        ->with('error', 'Contact not found.');
-    }
-
-    $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass()));
-    $data->id = $id;
-
-    $trackingId = $this->startActionTracking($id, 'edit');
-    return view('contact.form', compact('data', 'trackingId'));
+    $data = Contact::findOrFail($id);
+    $enterpriseStatuses = ContactStatus::getOptions();
+    return view('contact.form', compact('data', 'enterpriseStatuses'));
   }
 
   /**
    * Update the specified resource in storage.
    */
-  public function update(UpdateContactRequest $request, string $id)
+  public function update(UpdateContactRequest $request, $id)
   {
+    $data = $request->validated();
+    
+    $contactData = $data['contact'];
+    
     $contact = Contact::findOrFail($id);
-    $validatedData = $request->validated();
+    $contact->update($contactData);
 
-    $contact->update($validatedData['contact']);
-
-    foreach ($validatedData['sources'] as $source) {
-      $contact->sources()->updateOrCreate(['source_id' => $source['source_id']], ['value' => $source['value']]);
+    if (!empty($data['sources'])) {
+        
     }
 
-    return response()->json([
-      'success' => true,
-      'message' => 'Contact updated successfully.',
-      'data' => $contact->fresh()->load('sources'),
-    ]);
+    $message = 'Contact updated successfully.';
+
+    if ($request->ajax()) {
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => $contact->fresh(),
+        ]);
+    }
+
+    return redirect()
+        ->route('contact.show', $contact->id)
+        ->with('success', $message);
   }
 
   /**

@@ -32,7 +32,7 @@ class Contact extends Model
 
   protected $casts = [
     'data' => 'object',
-    'birthday' => 'datetime',
+    'birthday' => 'date',
   ];
 
   protected static function booted()

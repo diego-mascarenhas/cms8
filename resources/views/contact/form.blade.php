@@ -34,6 +34,22 @@
         </div>
     </div>
 
+
+    @if ($errors->any())
+        <div class="alert alert-danger" role="alert">
+            <i class="ti ti-alert-circle"></i> Se encontraron errores en el formulario
+            @if (!app()->environment('production'))
+                <ul class="mb-0 mt-2">
+                    @foreach ($errors->all() as $error)
+                        @if (!str_contains($error, 'country'))
+                            <li>{{ $error }}</li>
+                        @endif
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+    @endif
+
     <!-- Modern -->
     <div class="row">
         <!-- Modern Icons Wizard -->
@@ -54,7 +70,7 @@
                     <div class="step" data-target="#social-links-modern">
                         <button type="button" class="step-trigger">
                             <span class="bs-stepper-icon"></span>
-                                <i class="ti ti-share"></i>
+                            <i class="ti ti-share"></i>
                             </span>
                             <span class="bs-stepper-label">Redes Sociales</span>
                         </button>
@@ -83,10 +99,13 @@
                     </div>
                 </div>
                 <div class="bs-stepper-content">
-                    <form id="contactForm" class="card-body" action="{{ route('contact.store') }}" method="POST">
+                    <form action="{{ isset($data->id) ? route('contact.update', $data->id) : route('contact.store') }}"
+                        method="POST">
                         @csrf
-                        <input type="hidden" name="id" value="{{ $data->id ?? '' }}">
-                        
+                        @if (isset($data->id))
+                            @method('PUT')
+                        @endif
+
                         <!-- Personal Info -->
                         <div id="personal-info-modern" class="content">
                             <div class="content-header mb-3">
@@ -99,13 +118,22 @@
                                         value="{{ old('name', $data->name ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
-                                    <x-input-date id="birthday" label="Cumpleaños" value="{{ old('birthday', $data->birthday?? '') }}" />
+                                    <label for="status_id" class="form-label">Tipo de contacto</label>
+                                    <x-input-select id="status_id" :options="$enterpriseStatuses" :value="old('status_id', $data->status_id ?? '')"
+                                        placeholder="Selector de tipo de contacto" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <x-input-date id="birthday" label="Cumpleaños"
+                                        value="{{ old('birthday', $data->birthday ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-language-select :value="$data->language ?? old('language')" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-country-select :value="$data->country ?? old('country')" />
+                                    @error('country')
+                                        <div class="text-danger mt-1">{{ $message }}</div>
+                                    @enderror
                                 </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
@@ -144,9 +172,6 @@
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise_name" label="Nombre de la empresa"
                                         value="{{ old('enterprise_name', $data->enterprise_name ?? '') }}" />
-                                </div>
-                                <div class="col-sm-6">
-                                    <x-enterprise-status-select :value="old('status_id', $data->status_id ?? '')" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-input-general id="email" label="Email"
@@ -213,49 +238,49 @@
 @endsection
 
 @push('scripts')
-<script>
-function endActionTracking(trackingId) {
-    fetch(`/contact/end-action/${trackingId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-    }).then(response => response.json())
-      .then(data => {
-        if (data.success) {
-            console.log('Acción finalizada correctamente');
-        } else {
-            console.error('Error al finalizar el seguimiento de la acción');
+    <script>
+        function endActionTracking(trackingId) {
+            fetch(`/contact/end-action/${trackingId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                }).then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Acción finalizada correctamente');
+                    } else {
+                        console.error('Error al finalizar el seguimiento de la acción');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                });
         }
-    }).catch(error => {
-        console.error('Error:', error);
-    });
-}
 
-document.addEventListener('DOMContentLoaded', function() {
-    const trackingId = {{ $trackingId ?? 'null' }};
-    
-    if (trackingId) {
-        document.getElementById('contactForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            endActionTracking(trackingId);
-            this.submit();
+        document.addEventListener('DOMContentLoaded', function() {
+            const trackingId = {{ $trackingId ?? 'null' }};
+
+            if (trackingId) {
+                document.getElementById('contactForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    endActionTracking(trackingId);
+                    this.submit();
+                });
+
+                window.addEventListener('beforeunload', function() {
+                    endActionTracking(trackingId);
+                });
+
+                const cancelButton = document.querySelector('button[onclick*="contact-list"]');
+                if (cancelButton) {
+                    cancelButton.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        endActionTracking(trackingId);
+                        location.href = '{{ route('contact-list') }}';
+                    });
+                }
+            }
         });
-
-        window.addEventListener('beforeunload', function() {
-            endActionTracking(trackingId);
-        });
-
-        const cancelButton = document.querySelector('button[onclick*="contact-list"]');
-        if (cancelButton) {
-            cancelButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                endActionTracking(trackingId);
-                location.href = '{{ route('contact-list') }}';
-            });
-        }
-    }
-});
-</script>
+    </script>
 @endpush
