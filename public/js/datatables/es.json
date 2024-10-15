@@ -210,7 +210,7 @@
             "info": "Los elementos seleccionados contienen diferentes valores para este registro. Para editar y establecer todos los elementos de este registro con el mismo valor, haga clic o pulse aquí, de lo contrario conservarán sus valores individuales."
         }
     },
-    "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+    "info": "Mostrando _START_ a _END_ de _TOTAL_",
     "stateRestore": {
         "creationModal": {
             "button": "Crear",

@@ -58,12 +58,12 @@
                             <span>Leads</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $totalLeads ?? 0 }}</h3>
-                                <p class="text-info mb-0">({{ $leadsPercentage ?? 0 }}%)</p>
+                                <p class="text-success mb-0">({{ $leadsPercentage ?? 0 }}%)</p>
                             </div>
                             <p class="mb-0">Total de Leads</p>
                         </div>
                         <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-info filter-status" data-status="1">
+                            <a href="#" class="avatar-initial rounded bg-label-success filter-status" data-status="1">
                                 <i class="ti ti-target ti-sm"></i>
                             </a>
                         </div>
@@ -100,12 +100,12 @@
                             <span>Clientes</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $totalClients ?? 0 }}</h3>
-                                <p class="text-success mb-0">({{ $clientsPercentage ?? 0 }}%)</p>
+                                <p class="text-primary mb-0">({{ $clientsPercentage ?? 0 }}%)</p>
                             </div>
                             <p class="mb-0">Total de Clientes</p>
                         </div>
                         <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-success filter-status" data-status="5">
+                            <a href="#" class="avatar-initial rounded bg-label-primary filter-status" data-status="5">
                                 <i class="ti ti-user-check ti-sm"></i>
                             </a>
                         </div>
@@ -118,15 +118,15 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>Terminados</span>
+                            <span>Finalizados</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $totalFinished ?? 0 }}</h3>
-                                <p class="text-danger mb-0">({{ $finishedPercentage ?? 0 }}%)</p>
+                                <p class="text-dark mb-0">({{ $finishedPercentage ?? 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Total terminados</p>
+                            <p class="mb-0">Total finalizados</p>
                         </div>
                         <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-danger filter-status" data-status="7">
+                            <a href="#" class="avatar-initial rounded bg-label-dark filter-status" data-status="6">
                                 <i class="ti ti-user-off ti-sm"></i>
                             </a>
                         </div>

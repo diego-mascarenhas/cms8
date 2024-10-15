@@ -11,254 +11,262 @@ use Carbon\Carbon;
 
 class Contact extends Model
 {
-  use HasFactory;
-  use SoftDeletes;
+	use HasFactory;
+	use SoftDeletes;
 
-  protected $fillable = [
-    'team_id',
-    'user_id',
-    'name',
-    'source_id',
-    'birthday',
-    'profile',
-    'engagment',
-    'country',
-    'language',
-    'creator_id',
-    'responsible_id',
-    'data',
-    'status_id',
-  ];
+	protected $fillable = [
+		'team_id',
+		'user_id',
+		'name',
+		'source_id',
+		'birthday',
+		'profile',
+		'engagment',
+		'country',
+		'language',
+		'creator_id',
+		'responsible_id',
+		'data',
+		'status_id',
+	];
 
-  protected $casts = [
-    'data' => 'object',
-    'birthday' => 'date',
-  ];
+	protected $casts = [
+		'data' => 'object',
+		'birthday' => 'date',
+	];
 
-  protected static function booted()
-  {
-    static::addGlobalScope('team', function (Builder $builder) {
-      if (auth()->check()) {
-        $builder->where('team_id', auth()->user()->currentTeam->id);
-      }
-    });
-  }
+	protected static function booted()
+	{
+		static::addGlobalScope('team', function (Builder $builder)
+		{
+			if (auth()->check())
+			{
+				$builder->where('team_id', auth()->user()->currentTeam->id);
+			}
+		});
+	}
 
-  public function team()
-  {
-    return $this->belongsTo(Team::class);
-  }
+	public function team()
+	{
+		return $this->belongsTo(Team::class);
+	}
 
-  public function user()
-  {
-    return $this->belongsTo(User::class);
-  }
+	public function user()
+	{
+		return $this->belongsTo(User::class);
+	}
 
-  public function creator()
-  {
-    return $this->belongsTo(User::class, 'creator_id');
-  }
+	public function creator()
+	{
+		return $this->belongsTo(User::class, 'creator_id');
+	}
 
-  public function responsible()
-  {
-    return $this->belongsTo(User::class, 'responsible_id');
-  }
+	public function responsible()
+	{
+		return $this->belongsTo(User::class, 'responsible_id');
+	}
 
-  public function country()
-  {
-    return $this->belongsTo(Country::class, 'country', 'id');
-  }
+	public function country()
+	{
+		return $this->belongsTo(Country::class, 'country', 'id');
+	}
 
-  public function language()
-  {
-    return $this->belongsTo(Language::class, 'language', 'code');
-  }
+	public function language()
+	{
+		return $this->belongsTo(Language::class, 'language', 'code');
+	}
 
-  public function sentimentHistories()
-  {
-    return $this->hasMany(ContactSentimentHistory::class);
-  }
+	public function sentimentHistories()
+	{
+		return $this->hasMany(ContactSentimentHistory::class);
+	}
 
-  public function currentSentiment()
-  {
-    return $this->hasOne(ContactSentimentHistory::class)->latest();
-  }
+	public function currentSentiment()
+	{
+		return $this->hasOne(ContactSentimentHistory::class)->latest();
+	}
 
-  
-  public function list60s()
-  {
-    return $this->hasMany(List60::class, 'contact_id');
-  }
 
-  public function status()
-  {
-    return $this->belongsTo(ContactStatus::class);
-  }
-  
-  public function getStatusLabelAttribute()
-  {
-    if ($this->status) {
-      return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
-    }
-    return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
-  }
+	public function list60s()
+	{
+		return $this->hasMany(List60::class, 'contact_id');
+	}
 
-  public static function getContactStats($teamId)
-  {
-    $statusLabels = [
-      1 => 'Leads',
-      2 => 'FollowUp',
-      6 => 'Clients',
-      7 => 'Finished',
-    ];
+	public function status()
+	{
+		return $this->belongsTo(ContactStatus::class);
+	}
 
-    $contactStats = self::where('team_id', $teamId)
-      ->whereIn('status_id', array_keys($statusLabels))
-      ->get()
-      ->groupBy('status_id')
-      ->map(function ($group) {
-        return $group->count();
-      });
+	public function getStatusLabelAttribute()
+	{
+		if ($this->status)
+		{
+			return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
+		}
+		return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
+	}
 
-    $totalContacts = $contactStats->sum();
+	public static function getContactStats($teamId)
+	{
+		$statusLabels = [
+			1 => 'Leads',
+			2 => 'FollowUp',
+			5 => 'Clients',
+			6 => 'Finished',
+		];
 
-    $data = ['totalContacts' => $totalContacts];
-    foreach ($statusLabels as $statusId => $label) {
-      $count = $contactStats[$statusId] ?? 0;
-      $percentage = $totalContacts > 0 ? round(($count / $totalContacts) * 100, 2) : 0;
-      $data["total$label"] = $count;
-      $data[lcfirst($label) . 'Percentage'] = $percentage;
-    }
+		$contactStats = self::where('team_id', $teamId)
+			->whereIn('status_id', array_keys($statusLabels))
+			->get()
+			->groupBy('status_id')
+			->map(function ($group)
+			{
+				return $group->count();
+			});
 
-    $defaultData = [
-      'totalContacts' => 0,
-      'totalLeads' => 0,
-      'leadsPercentage' => 0,
-      'totalClients' => 0,
-      'clientsPercentage' => 0,
-      'totalFollowUp' => 0,
-      'followUpPercentage' => 0,
-      'totalFinished' => 0,
-      'finishedPercentage' => 0,
-    ];
+		$totalContacts = $contactStats->sum();
 
-    $finalData = array_merge($defaultData, $data);
+		$data = ['totalContacts' => $totalContacts];
+		foreach ($statusLabels as $statusId => $label)
+		{
+			$count = $contactStats[$statusId] ?? 0;
+			$percentage = $totalContacts > 0 ? round(($count / $totalContacts) * 100, 2) : 0;
+			$data["total$label"] = $count;
+			$data[lcfirst($label) . 'Percentage'] = $percentage;
+		}
 
-    return $finalData;
-  }
+		$defaultData = [
+			'totalContacts' => 0,
+			'totalLeads' => 0,
+			'leadsPercentage' => 0,
+			'totalClients' => 0,
+			'clientsPercentage' => 0,
+			'totalFollowUp' => 0,
+			'followUpPercentage' => 0,
+			'totalFinished' => 0,
+			'finishedPercentage' => 0,
+		];
 
-  public function actions()
-  {
-    return $this->hasMany(UserContactAction::class, 'contact_id');
-  }
+		$finalData = array_merge($defaultData, $data);
 
-  public function calculateCurrentActionSeconds()
-  {
-    $latestAction = UserContactAction::where('contact_id', $this->id)
-      ->whereNull('end_time')
-      ->latest('start_time')
-      ->first();
+		return $finalData;
+	}
 
-    if (!$latestAction) {
-      return 0;
-    }
+	public function actions()
+	{
+		return $this->hasMany(UserContactAction::class, 'contact_id');
+	}
 
-    $startTime = $latestAction->start_time;
-    $endTime = Carbon::now();
+	public function calculateCurrentActionSeconds()
+	{
+		$latestAction = UserContactAction::where('contact_id', $this->id)
+			->whereNull('end_time')
+			->latest('start_time')
+			->first();
 
-    return $endTime->diffInSeconds($startTime);
-  }
+		if (!$latestAction)
+		{
+			return 0;
+		}
 
-  public function calculateTotalAccumulatedSeconds()
-  {
-    $completedActions = UserContactAction::where('contact_id', $this->id)
-      ->whereNotNull('end_time')
-      ->get();
+		$startTime = $latestAction->start_time;
+		$endTime = Carbon::now();
 
-    $totalSeconds = 0;
+		return $endTime->diffInSeconds($startTime);
+	}
 
-    foreach ($completedActions as $action) {
-      $totalSeconds += Carbon::parse($action->end_time)->diffInSeconds($action->start_time);
-    }
+	public function calculateTotalAccumulatedSeconds()
+	{
+		$completedActions = UserContactAction::where('contact_id', $this->id)
+			->whereNotNull('end_time')
+			->get();
 
-    $currentActionSeconds = $this->calculateCurrentActionSeconds();
-    $totalSeconds += $currentActionSeconds;
+		$totalSeconds = 0;
 
-    return $totalSeconds;
-  }
+		foreach ($completedActions as $action)
+		{
+			$totalSeconds += Carbon::parse($action->end_time)->diffInSeconds($action->start_time);
+		}
 
-  public static function getTotalTeamMinutes()
-  {
-    $totalTeamSeconds = self::sum('duration_seconds');
-    return round($totalTeamSeconds / 60);
-  }
+		$currentActionSeconds = $this->calculateCurrentActionSeconds();
+		$totalSeconds += $currentActionSeconds;
 
-  public static function getTotalTeamTime()
-  {
-    $totalMinutes = self::getTotalTeamMinutes();
-    $hours = floor($totalMinutes / 60);
-    $minutes = $totalMinutes % 60;
+		return $totalSeconds;
+	}
 
-    return [
-      'hours' => $hours,
-      'minutes' => $minutes,
-    ];
-  }
+	public static function getTotalTeamMinutes()
+	{
+		$totalTeamSeconds = self::sum('duration_seconds');
+		return round($totalTeamSeconds / 60);
+	}
 
-  public function sources()
-  {
-    return $this->belongsToMany(Source::class, 'contact_sources')->withPivot('value');
-  }
+	public static function getTotalTeamTime()
+	{
+		$totalMinutes = self::getTotalTeamMinutes();
+		$hours = floor($totalMinutes / 60);
+		$minutes = $totalMinutes % 60;
 
-  public function primarySource()
-  {
-    return $this->belongsTo(Source::class, 'source_id');
-  }
+		return [
+			'hours' => $hours,
+			'minutes' => $minutes,
+		];
+	}
 
-  public function getSourcesIconsHtmlAttribute()
-  {
-    $sourcesHtml = $this->sources->map(function ($source) {
-      $isPrimary = $source->id === $this->source_id;
-      $style = $isPrimary ? 'font-size: 1.2em;' : '';
-      $title = $isPrimary ? 'Primary Source: ' . $source->name : $source->name;
+	public function sources()
+	{
+		return $this->belongsToMany(Source::class, 'contact_sources')->withPivot('value');
+	}
 
-      $iconClass = in_array($source->icon, ['fa-envelope', 'fa-phone']) ? "fas {$source->icon}" : "fab {$source->icon}";
+	public function primarySource()
+	{
+		return $this->belongsTo(Source::class, 'source_id');
+	}
 
-      $value = $source->pivot->value;
-      $url = $source->base_url . $value;
+	public function getSourcesIconsHtmlAttribute()
+	{
+		$sourcesHtml = $this->sources->map(function ($source)
+		{
+			$isPrimary = $source->id === $this->source_id;
+			$style = $isPrimary ? 'font-size: 1.2em; margin-right: 12px;' : 'margin-right: 12px;';
+			$title = $isPrimary ? 'Primary Source: ' . $source->name : $source->name;
 
-      return sprintf(
-        '<a href="%s" target="_blank" style="margin-right: 8px;"><i class="%s" style="color: %s; %s" title="%s"></i></a>',
-        $url,
-        $iconClass,
-        $source->color,
-        $style,
-        $title
-      );
-    });
+			$iconClass = in_array($source->icon, ['fa-envelope', 'fa-phone']) ? "fas {$source->icon} fa-lg" : "fab {$source->icon} fa-lg";
 
-    return $sourcesHtml->isEmpty() ? 'Sin especificar' : $sourcesHtml->implode('');
-  }
+			$value = $source->pivot->value;
+			$url = $source->base_url . $value;
 
-  public function getEmailAttribute()
-  {
-    $emailSource = $this->sources()
-      ->where('source_id', 1)
-      ->first();
+			return sprintf(
+				'<a href="%s" target="_blank" style="%s"><i class="%s" style="color: %s;" title="%s"></i></a>',
+				$url,
+				$style,
+				$iconClass,
+				$source->color,
+				$title
+			);
+		});
 
-    return $emailSource ? $emailSource->pivot->value : null;
-  }
-  public function getPhoneAttribute()
-  {
-    $phoneSource = $this->sources()
-      ->where('source_id', 2)
-      ->first();
+		return $sourcesHtml->isEmpty() ? 'Sin especificar' : $sourcesHtml->implode('');
+	}
 
-    return $phoneSource ? $phoneSource->pivot->value : null;
-  }
+	public function getEmailAttribute()
+	{
+		$emailSource = $this->sources()
+			->where('source_id', 1)
+			->first();
 
-  public function enterprises()
-  {
-    return $this->belongsToMany(Enterprise::class, 'contact_enterprise')->withPivot('position');
-  }
+		return $emailSource ? $emailSource->pivot->value : null;
+	}
+	public function getPhoneAttribute()
+	{
+		$phoneSource = $this->sources()
+			->where('source_id', 2)
+			->first();
+
+		return $phoneSource ? $phoneSource->pivot->value : null;
+	}
+
+	public function enterprises()
+	{
+		return $this->belongsToMany(Enterprise::class, 'contact_enterprise')->withPivot('position');
+	}
 }

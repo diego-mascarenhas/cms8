@@ -20,7 +20,8 @@ class DashboardController extends Controller
                                ->from('contact_sentiment_histories')
                                ->groupBy('contact_id');
                   });
-        })->with(['currentSentiment' => function ($query) {
+        })->where('status_id', 5)
+        ->with(['currentSentiment' => function ($query) {
             $query->whereIn('sentiment_id', [1, 2]);
         }])->get();
     

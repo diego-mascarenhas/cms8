@@ -51,7 +51,7 @@ class ContactDataTable extends DataTable
                 return $row->sources_icons_html;
             })
             ->addColumn('responsible_name', function ($contact) {
-                return $contact->responsible->name ?? 'N/A';
+                return $contact->responsible->name ?? 'Sin asignar';
             })
             ->filterColumn('responsible_name', function($query, $keyword) {
                 $query->whereHas('responsible', function ($q) use ($keyword) {

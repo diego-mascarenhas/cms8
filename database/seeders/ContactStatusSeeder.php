@@ -13,13 +13,12 @@ class ContactStatusSeeder extends Seeder
     public function run(): void
     {
         $statuses = [
-            ['name' => 'Lead', 'label_class' => 'bg-label-info'],
-            ['name' => 'Follow Up', 'label_class' => 'bg-label-warning'],
-            ['name' => 'Conversion', 'label_class' => 'bg-label-info'],
-            ['name' => 'Close', 'label_class' => 'bg-label-info'],
-            ['name' => 'Active', 'label_class' => 'bg-label-success'],
-            ['name' => 'Lost', 'label_class' => 'bg-label-danger'],
-            ['name' => 'Finished', 'label_class' => 'bg-label-danger'],
+            ['name' => 'Lead', 'label_class' => 'bg-label-success'],
+            ['name' => 'En seguimiento', 'label_class' => 'bg-label-warning'],
+            ['name' => 'Conversión', 'label_class' => 'bg-label-info'],
+            ['name' => 'Perdido', 'label_class' => 'bg-label-danger'],
+            ['name' => 'Activo', 'label_class' => 'bg-label-primary'],
+            ['name' => 'Finalizado', 'label_class' => 'bg-label-dark'],
         ];
         
         foreach ($statuses as $status) {

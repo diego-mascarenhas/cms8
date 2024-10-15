@@ -45,7 +45,7 @@
                 @endif
             </h4>
             <p class="text-muted">
-                {{ Carbon\Carbon::parse($data->created_at)->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}</p>
+                Creado el {{ Carbon\Carbon::parse($data->created_at)->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
             <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
@@ -75,22 +75,23 @@
                     </div>
                     <div class="d-flex justify-content-around flex-wrap mt-3 pt-3 pb-4 border-bottom">
                         <div class="d-flex align-items-start me-4 mt-3 gap-2">
-                            <span class="badge bg-label-primary p-2 rounded"><i
-                                    class='ti ti-shopping-cart ti-sm'></i></span>
+                            <span class="badge bg-label-primary p-2 rounded">
+                                <i class='ti ti-user-plus ti-sm'></i>
+                            </span>
                             <div>
-                                <p class="mb-0 fw-medium">{{ Carbon\Carbon::parse($data->created_at)->format('d/m/Y') }}
-                                </p>
-                                <small>Primera compra</small>
+                                <p class="mb-0 fw-medium" style="line-height: 1.2;">{{ Carbon\Carbon::parse($data->updated_at)->format('d/m/Y') }}</p>
+                                <small style="line-height: 1.2;">Última actualización</small>
                             </div>
                         </div>
                         <div class="d-flex align-items-start mt-3 gap-2" style="min-width: 200px;">
-                            <span class="badge bg-label-primary p-2 rounded"><i
-                                    class='ti ti-currency-dollar ti-sm'></i></span>
+                            <span class="badge bg-label-primary p-2 rounded">
+                                <i class='ti ti-hourglass ti-sm'></i>
+                            </span>
                             <div>
-                                <p class="mb-0 fw-medium">
-                                    <span id="totalTime" class="mb-0 fw-medium">{{ $totalSeconds }} segundos</span>
+                                <p class="mb-0 fw-medium" style="line-height: 1.2;">
+                                    <span id="totalTime" class="mb-0 fw-medium" style="line-height: 1.2;">{{ $totalSeconds }} segundos</span>
                                 </p>
-                                <small>LTV</small>
+                                <small style="line-height: 1.2;">Tiempo dedicado</small>
                             </div>
                         </div>
                     </div>
@@ -252,7 +253,7 @@
                     </button>
                 </h5>
                 <div class="card-body">
-                    <ul class="timeline mb-0 ms-3">
+                    <ul class="timeline mb-4 ms-3">
                         @foreach ($data->sentimentHistories->sortByDesc('created_at')->take(5) as $sentimentHistory)
                             <li class="timeline-item timeline-item-transparent">
                                 <span class="timeline-point timeline-point-transparent"
@@ -271,6 +272,11 @@
                                 </div>
                             </li>
                         @endforeach
+                        <!-- Added a base to prevent the timeline from ending abruptly -->
+                        <li class="timeline-item timeline-item-transparent">
+                            <span class="timeline-point timeline-point-transparent"
+                                style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">•</span>
+                        </li>
                     </ul>
                 </div>
             </div>
