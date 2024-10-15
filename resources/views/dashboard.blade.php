@@ -158,7 +158,7 @@
         <!--/ Earning Reports -->
     </div>
 
-    <div class="row">
+    {{-- <div class="row">
         <!-- Activity Timeline -->
         <div class="col-lg-6 col-md-12">
             <div class="card">
@@ -243,6 +243,6 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> --}}
 
 @endsection

@@ -113,27 +113,31 @@
                                 <small>Ingresa la información del contacto principal</small>
                             </div>
                             <div class="row g-3">
-                                <div class="col-sm-6">
+                                <div class="col-sm-8">
                                     <x-input-general id="name" label="Nombre (*)"
                                         value="{{ old('name', $data->name ?? '') }}" />
                                 </div>
-                                <div class="col-sm-6">
+                                <div class="col-sm-4">
                                     <label for="status_id" class="form-label">Tipo de contacto</label>
                                     <x-input-select id="status_id" :options="$enterpriseStatuses" :value="old('status_id', $data->status_id ?? '')"
                                         placeholder="Selector de tipo de contacto" />
                                 </div>
-                                <div class="col-sm-6">
+                                <div class="col-sm-4">
                                     <x-input-date id="birthday" label="Cumpleaños"
                                         value="{{ old('birthday', $data->birthday ?? '') }}" />
                                 </div>
-                                <div class="col-sm-6">
+                                <div class="col-sm-4">
                                     <x-language-select :value="$data->language ?? old('language')" />
                                 </div>
-                                <div class="col-sm-6">
+                                <div class="col-sm-4">
                                     <x-country-select :value="$data->country ?? old('country')" />
                                     @error('country')
                                         <div class="text-danger mt-1">{{ $message }}</div>
                                     @enderror
+                                </div>
+                                <div class="col-sm-12">
+                                    <x-input-textarea id="profile" label="Profile" rows="3"
+                                        value="{{ old('profile', $data->profile ?? '') }}" />
                                 </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>

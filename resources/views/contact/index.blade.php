@@ -160,12 +160,12 @@
                     <x-input-select id="EmotionalState" :options="$emotionalStates" :value="''"
                         placeholder="Selector de estado emocional" />
                 </div>
-                <div class="flex-grow-1">
+                <div class="flex-grow-1" style="visibility: hidden;">
                     <select id="ContractedService" class="form-select">
                         <option value=""> Selector de servicio contratado </option>
                     </select>
                 </div>
-                <div class="flex-grow-1">
+                <div class="flex-grow-1" style="visibility: hidden;">
                     <x-input-select id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
                         placeholder="Selector de tipo de contacto" />
                 </div>
@@ -197,14 +197,14 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Actualizar Sentimiento</h5>
+                    <h5 class="modal-title">Añadir estado emocional</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="updateSentimentForm" method="POST">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="sentiment_id" class="form-label">Sentimiento</label>
+                            <label for="sentiment_id" class="form-label">Estado emocional</label>
                             <select class="form-select" id="sentiment_id" name="sentiment_id" required>
                                 <option value="" selected disabled>Selecciona un estado emocional</option>
                                 @foreach (App\Models\ContactSentiment::all() as $sentiment)
@@ -221,7 +221,6 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         <button type="submit" class="btn btn-primary">Actualizar</button>
                     </div>
                 </form>

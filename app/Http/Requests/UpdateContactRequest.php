@@ -20,6 +20,7 @@ class UpdateContactRequest extends FormRequest
             'status_id' => 'required|exists:contact_statuses,id',
             'country' => 'required|string|max:3',
             'language' => 'required|string|max:2',
+            'profile' => 'nullable|string',
         ];
 
         if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
@@ -46,6 +47,7 @@ class UpdateContactRequest extends FormRequest
             'status_id' => $validated['status_id'],
             'country' => $validated['country'],
             'language' => $validated['language'],
+            'profile' => $validated['profile'] ?? null,
         ];
 
         // $sourcesData = [
