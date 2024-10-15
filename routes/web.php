@@ -77,6 +77,7 @@ Route::middleware(['auth'])->group(function ()
     Route::resource('/user-list', UserManagement::class);
 
     // Contacts
+    Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
     Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
     Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
     Route::get('/contact/import', [contactController::class, 'showImportForm'])->name('contact.import');
@@ -90,7 +91,7 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
     
     Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
-    
+
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])
         ->middleware('role:admin,colaborator')

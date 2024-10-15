@@ -517,3 +517,7 @@ $navbarDetached = ($navbarDetached ?? '');
     @endif
   </nav>
   <!-- / Navbar -->
+
+  <div id="search-spinner" class="spinner-border text-primary d-none" role="status">
+    <span class="visually-hidden">Buscando...</span>
+  </div>

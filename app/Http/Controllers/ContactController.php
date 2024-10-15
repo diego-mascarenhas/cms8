@@ -349,4 +349,38 @@ class ContactController extends Controller
     $this->endActionTracking($trackingId);
     return response()->json(['success' => true]);
   }
+
+  public function search(Request $request)
+  {
+    $query = $request->input('q');
+    
+    $contacts = Contact::where('name', 'like', "%{$query}%")
+                       ->pluck('name');
+    
+    return response()->json($contacts);
+
+	// Hardcoded fake contacts for testing
+	// $fakeContacts = [
+	// 	[
+	// 		'id' => 1,
+	// 		'name' => 'Contacto de Prueba',
+	// 		'email' => 'prueba@ejemplo.com',
+	// 		'url' => 'javascript:;',
+	// 		'category' => 'contacts'
+	// 	],
+	// 	[
+	// 		'id' => 2,
+	// 		'name' => 'Otro Contacto',
+	// 		'email' => 'otro@ejemplo.com',
+	// 		'url' => 'javascript:;',
+	// 		'category' => 'contacts'
+	// 	]
+	// ];
+
+	// // Simulamos un pequeño retraso para imitar una búsqueda real
+	// sleep(1);
+
+	// // Devolvemos los contactos falsos como JSON
+	// return response()->json($fakeContacts);
+  }
 }
