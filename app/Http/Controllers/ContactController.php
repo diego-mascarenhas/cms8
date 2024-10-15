@@ -53,31 +53,30 @@ class ContactController extends Controller
   public function store(UpdateContactRequest $request)
   {
     $data = $request->validated();
-    
+
     $contactData = $data['contact'];
-    
+
     $contactData['team_id'] = auth()->user()->currentTeam->id;
     $contactData['creator_id'] = auth()->user()->id;
 
     $contact = Contact::create($contactData);
 
     if (!empty($data['sources'])) {
-        
     }
 
     $message = 'Contact created successfully.';
 
     if ($request->ajax()) {
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data' => $contact->fresh(),
-        ]);
+      return response()->json([
+        'success' => true,
+        'message' => $message,
+        'data' => $contact->fresh(),
+      ]);
     }
 
     return redirect()
-        ->route('contact.show', $contact->id)
-        ->with('success', $message);
+      ->route('contact.show', $contact->id)
+      ->with('success', $message);
   }
 
   /**
@@ -120,8 +119,8 @@ class ContactController extends Controller
   public function edit(string $id)
   {
     $data = Contact::findOrFail($id);
-	
-	$data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
+
+    $data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
     $enterpriseStatuses = ContactStatus::getOptions();
     return view('contact.form', compact('data', 'enterpriseStatuses'));
   }
@@ -132,29 +131,28 @@ class ContactController extends Controller
   public function update(UpdateContactRequest $request, $id)
   {
     $data = $request->validated();
-    
+
     $contactData = $data['contact'];
-    
+
     $contact = Contact::findOrFail($id);
     $contact->update($contactData);
 
     if (!empty($data['sources'])) {
-        
     }
 
     $message = 'Contact updated successfully.';
 
     if ($request->ajax()) {
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data' => $contact->fresh(),
-        ]);
+      return response()->json([
+        'success' => true,
+        'message' => $message,
+        'data' => $contact->fresh(),
+      ]);
     }
 
     return redirect()
-        ->route('contact.show', $contact->id)
-        ->with('success', $message);
+      ->route('contact.show', $contact->id)
+      ->with('success', $message);
   }
 
   /**
@@ -353,34 +351,73 @@ class ContactController extends Controller
   public function search(Request $request)
   {
     $query = $request->input('q');
-    
-    $contacts = Contact::where('name', 'like', "%{$query}%")
-                       ->pluck('name');
-    
-    return response()->json($contacts);
 
-	// Hardcoded fake contacts for testing
-	// $fakeContacts = [
-	// 	[
-	// 		'id' => 1,
-	// 		'name' => 'Contacto de Prueba',
-	// 		'email' => 'prueba@ejemplo.com',
-	// 		'url' => 'javascript:;',
-	// 		'category' => 'contacts'
-	// 	],
-	// 	[
-	// 		'id' => 2,
-	// 		'name' => 'Otro Contacto',
-	// 		'email' => 'otro@ejemplo.com',
-	// 		'url' => 'javascript:;',
-	// 		'category' => 'contacts'
-	// 	]
-	// ];
+    $members = Contact::where('name', 'like', "%{$query}%")
+      ->select('id', 'name', 'profile')
+      ->get()
+      ->map(function ($contact) {
+        return [
+          'name' => $contact->name,
+          'subtitle' => $contact->profile,
+          'src' => 'img/avatars/guru-meditating.jpg',
+          'url' => route('contact.show', $contact->id),
+        ];
+      });
 
-	// // Simulamos un pequeño retraso para imitar una búsqueda real
-	// sleep(1);
+    $data = [
+      'pages' => [
+        [
+          'name' => 'Humano CRM',
+          'icon' => 'ti-layout-grid',
+          'url' => 'dashboard/',
+        ],
+        [
+          'name' => 'Kanban',
+          'icon' => 'ti-layout-kanban',
+          'url' => 'app/kanban',
+        ],
+        [
+          'name' => 'Contactos',
+          'icon' => 'ti-users',
+          'url' => 'contact/list',
+        ],
+        [
+          'name' => 'Clientes',
+          'icon' => 'ti-user-heart',
+          'url' => 'client/list',
+        ],
+        [
+          'name' => 'Lista de 60',
+          'icon' => 'ti-list-check',
+          'url' => 'list60/list',
+        ],
+      ],
+      'files' => [
+        [
+          'name' => 'Class Attendance',
+          'subtitle' => 'By Tommy Shelby',
+          'src' => 'img/icons/misc/search-xls.png',
+          'meta' => '17kb',
+          'url' => 'javascript:;',
+        ],
+        [
+          'name' => 'Passport Image',
+          'subtitle' => 'By William Budd',
+          'src' => 'img/icons/misc/search-jpg.png',
+          'meta' => '35kb',
+          'url' => 'javascript:;',
+        ],
+        [
+          'name' => 'Class Notes',
+          'subtitle' => 'By Laurel Lance',
+          'src' => 'img/icons/misc/search-doc.png',
+          'meta' => '153kb',
+          'url' => 'javascript:;',
+        ],
+      ],
+      'members' => $members,
+    ];
 
-	// // Devolvemos los contactos falsos como JSON
-	// return response()->json($fakeContacts);
+    return response()->json($data);
   }
 }

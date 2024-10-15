@@ -432,16 +432,31 @@ if (typeof $ !== 'undefined') {
       };
 
       // Search JSON
-      var searchJson = 'search-vertical.json'; // For vertical layout
-      if ($('#layout-menu').hasClass('menu-horizontal')) {
-        var searchJson = 'search-horizontal.json'; // For vertical layout
-      }
+      // var searchJson = 'search-vertical.json'; // For vertical layout
+      // if ($('#layout-menu').hasClass('menu-horizontal')) {
+      //   var searchJson = 'search-horizontal.json'; // For vertical layout
+      // }
+      // // Search API AJAX call
+      // var searchData = $.ajax({
+      //   url: assetsPath + 'json/' + searchJson, //? Use your own search api instead
+      //   dataType: 'json',
+      //   async: false
+      // }).responseJSON;
+
       // Search API AJAX call
       var searchData = $.ajax({
-        url: assetsPath + 'json/' + searchJson, //? Use your own search api instead
+        url: '/contact/search',
         dataType: 'json',
-        async: false
+        async: false,
+        data: { q: '' },
+        success: function(searchData) {
+          console.log('Search data received:', searchData);
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error('Error loading search data:', textStatus, errorThrown);
+        }
       }).responseJSON;
+
       // Init typeahead on searchInput
       searchInput.each(function () {
         var $this = $(this);
@@ -536,18 +551,18 @@ if (typeof $ !== 'undefined') {
               source: filterConfig(searchData.members),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Members</h6>',
-                suggestion: function ({ name, src, subtitle }) {
+                suggestion: function ({ name, src, subtitle, url }) {
                   return (
                     '<a href="' +
-                    baseUrl +
-                    'app/user/view/account">' +
+                    url + '">' +
                     '<div class="d-flex align-items-center">' +
-                    '<img class="rounded-circle me-3" src="' +
+                    '<!-- <img class="rounded-circle me-3" src="' +
                     assetsPath +
                     src +
                     '" alt="' +
                     name +
-                    '" height="32">' +
+                    '" height="32"> --> ' +
+                    '<i class="ti ti-user me-2"></i>' +
                     '<div class="user-info">' +
                     '<h6 class="mb-0">' +
                     name +
