@@ -59,7 +59,7 @@
     </div>
 
     <div class="card">
-        <div class="card-header border-bottom">
+        <!-- <div class="card-header border-bottom">
             <div
                 class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
                 <div class="d-flex gap-2">
@@ -69,7 +69,7 @@
                     </a>
                 </div>
             </div>
-        </div>
+        </div> -->
         <div class="card-body">
             {{ $dataTable->table() }}
         </div>
