@@ -6,7 +6,6 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/animate-css/animate.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
@@ -16,79 +15,15 @@
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/bundle/popular.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/cleavejs/cleave.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/cleavejs/cleave-phone.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
 @endsection
 
 @section('page-script')
     <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
-
-    <script>
-        function deleteRecord(id, element) {
-            Swal.fire({
-                title: '¿Estás seguro de eliminar este contacto de la Lista de 60?',
-                icon: 'warning',
-                showCloseButton: false,
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch("{{ route('list60.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        }
-                    }).then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok.');
-                        }
-                        return response.json();
-                    }).then(data => {
-                        console.log('Response data:', data);
-
-                        const toastHTML = `
-                    <div id="toast-container" class="toast-top-right">
-                        <div class="toast toast-success" aria-live="polite" style="display: block;">
-                            <div class="toast-client">${data.success}</div>
-                        </div>
-                    </div>
-                `;
-                        document.body.insertAdjacentHTML('beforeend', toastHTML);
-                        var toastElement = document.getElementById('toast-container');
-                        var toast = new bootstrap.Toast(toastElement, {
-                            animation: true,
-                            delay: 3000,
-                            autohide: true
-                        });
-                        toast.show();
-
-                        const row = element.closest('tr');
-                        if (row) {
-                            row.classList.add('fade-out');
-                            row.addEventListener('transitionend', () => {
-                                row.remove();
-                            });
-                        } else {
-                            console.error('No se encontró la fila correspondiente.');
-                        }
-                    }).catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
-                    });
-                }
-            });
-        }
-    </script>
 @endsection
 
 <style>
@@ -152,3 +87,64 @@
     <script src="{{ asset('vendors/fullcalendar/lib/moment.min.js') }}"></script>
     <script src="{{ asset('js/moment/' . app()->getLocale() . '.js') }}"></script>
 @endsection
+
+@push('scripts')
+    <script>
+        function deleteRecord(id, element) {
+            Swal.fire({
+                title: '¿Estás seguro de eliminar este contacto de la Lista de 60?',
+                icon: 'warning',
+                showCloseButton: true,
+                showCancelButton: false,
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch("{{ route('list60.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok.');
+                        }
+                        return response.json();
+                    }).then(data => {
+                        console.log('Response data:', data);
+
+                        const toastHTML = `
+                    <div id="toast-container" class="toast-top-right">
+                        <div class="toast toast-success" aria-live="polite" style="display: block;">
+                            <div class="toast-client">${data.success}</div>
+                        </div>
+                    </div>
+                `;
+                        document.body.insertAdjacentHTML('beforeend', toastHTML);
+                        var toastElement = document.getElementById('toast-container');
+                        var toast = new bootstrap.Toast(toastElement, {
+                            animation: true,
+                            delay: 3000,
+                            autohide: true
+                        });
+                        toast.show();
+
+                        const row = element.closest('tr');
+                        if (row) {
+                            row.classList.add('fade-out');
+                            row.addEventListener('transitionend', () => {
+                                row.remove();
+                            });
+                        } else {
+                            console.error('No se encontró la fila correspondiente.');
+                        }
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+@endpush

@@ -40,10 +40,15 @@ class List60DataTable extends DataTable
                 return $row->contact->sources_icons_html;
             })
             ->editColumn('date_next', function ($row) {
-                return \Carbon\Carbon::parse($row->date_next)->translatedFormat('d F'); // Formato: día y mes
+                return \Carbon\Carbon::parse($row->date_next)->translatedFormat('d F');
             })
             ->editColumn('type_id', function ($row) {
-                return $row->type->name ?? 'Sin tipo'; // Muestra el nombre del tipo o 'Sin tipo' si no existe
+                return $row->type->name ?? 'Sin definir';
+            })
+            ->filterColumn('contact_id', function($query, $keyword) {
+                $query->whereHas('contact', function ($q) use ($keyword) {
+                    $q->where('name', 'like', "%{$keyword}%");
+                });
             })
             ->rawColumns(['name', 'action', 'contact_id', 'sources', 'status_id']);
     }
@@ -72,7 +77,7 @@ class List60DataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('contact_id')->title(value: 'Nombre'),
+            Column::make('contact_id')->title(value: 'Nombre')->orderable(false),
             Column::make('status_id')->title('Estado')->className('text-center'),
             Column::make('sources')
                 ->title('Redes')
