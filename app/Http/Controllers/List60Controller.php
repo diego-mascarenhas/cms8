@@ -3,15 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\List60DataTable;
-use App\Models\Enterprise;
+use App\Models\List60;
 use Illuminate\Http\Request;
-use Dotlogics\Grapesjs\App\Traits\EditorTrait;
-use Illuminate\Support\Facades\Auth;
 
 class List60Controller extends Controller
 {
-    use EditorTrait;
-
     public function index(List60DataTable $dataTable)
     {
         if (!auth()->user()->currentTeam)
@@ -27,7 +23,7 @@ class List60Controller extends Controller
      */
     public function create()
     {
-        return view('client.form');
+        //
     }
 
     /**
@@ -35,21 +31,7 @@ class List60Controller extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->except(['id', '_token']);
-
-        $request->validate([
-            'name' => 'required|string|min:3|max:25',
-        ]);
-
-        $data['team_id'] = auth()->user()->currentTeam->id;
-        $data['status'] = $request->has('status') ? 1 : 0;
-
-        Enterprise::updateOrCreate(
-            ['id' => $request->id],
-            $data
-        );
-
-        return redirect()->route('client-list')->with('success', 'Record saved successfully.');
+        //
     }
 
     /**
@@ -57,14 +39,7 @@ class List60Controller extends Controller
      */
     public function show(string $id)
     {
-        $page = Enterprise::find($id);
-
-        if (!$page)
-        {
-            return redirect()->route('client.index')->with('error', 'Page not found.');
-        }
-
-        return view('page.show', compact('page'));
+        //
     }
 
     /**
@@ -72,14 +47,7 @@ class List60Controller extends Controller
      */
     public function edit(string $id)
     {
-        $data = Enterprise::find($id);
-
-        if (!$data)
-        {
-            return redirect()->route('client-list')->with('error', 'Client not found.');
-        }
-
-        return view('client.form', compact('data'));
+        //
     }
 
     /**
@@ -95,15 +63,10 @@ class List60Controller extends Controller
      */
     public function destroy(string $id)
     {
-        $model = Enterprise::findOrFail($id);
+        $model = List60::findOrFail($id);
 
         $model->delete();
 
-        return response()->json(['success' => 'The record has been deleted.'], 200);
-    }
-
-    public function editor(Request $request, Enterprise $page)
-    {
-        return $this->show_gjs_editor($request, $page);
+        return response()->json(['success' => 'El contacto se ha eliminado de la Lista de 60'], 200);
     }
 }

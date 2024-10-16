@@ -110,6 +110,7 @@ Route::middleware(['auth'])->group(function ()
 
     // List60
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
+    Route::delete('/list60/{id}', [List60Controller::class, 'destroy'])->name('list60.destroy');
 
     // Chat
     Route::get('/chat', [ChatController::class, 'index'])->name('chat');

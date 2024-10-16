@@ -32,7 +32,7 @@
     <script>
         function deleteRecord(id, element) {
             Swal.fire({
-                title: '¿Estás seguro de que deseas eliminar este registro?',
+                title: '¿Estás seguro de eliminar este contacto de la Lista de 60?',
                 icon: 'warning',
                 showCloseButton: false,
                 showCancelButton: true,
@@ -42,7 +42,7 @@
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch("{{ route('client.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                    fetch("{{ route('list60.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
                         method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json',
