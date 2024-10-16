@@ -60,7 +60,7 @@
                                 <h3 class="mb-0 me-2">{{ $totalLeads ?? 0 }}</h3>
                                 <p class="text-success mb-0">({{ $leadsPercentage ?? 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Total de Leads</p>
+                            <p class="mb-0">Total de leads</p>
                         </div>
                         <div class="avatar">
                             <a href="#" class="avatar-initial rounded bg-label-success filter-status" data-status="1">
@@ -102,7 +102,7 @@
                                 <h3 class="mb-0 me-2">{{ $totalClients ?? 0 }}</h3>
                                 <p class="text-primary mb-0">({{ $clientsPercentage ?? 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Total de Clientes</p>
+                            <p class="mb-0">Total de clientes</p>
                         </div>
                         <div class="avatar">
                             <a href="#" class="avatar-initial rounded bg-label-primary filter-status" data-status="5">
@@ -245,7 +245,7 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <!-- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button> -->
                         <button type="submit" class="btn btn-primary">Importar</button>
                     </div>
                 </form>
