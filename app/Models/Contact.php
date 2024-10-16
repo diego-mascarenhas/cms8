@@ -66,6 +66,11 @@ class Contact extends Model
 		return $this->belongsTo(User::class, 'responsible_id');
 	}
 
+	public function enterprise()
+	{
+		return $this->belongsTo(Enterprise::class, 'responsible_id');
+	}
+
 	public function country()
 	{
 		return $this->belongsTo(Country::class, 'country', 'id');

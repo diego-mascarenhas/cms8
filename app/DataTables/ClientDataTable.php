@@ -24,11 +24,10 @@ class ClientDataTable extends DataTable
             ->addColumn('action', 'client.action')
             ->setRowId('id')
             ->editColumn('name', function ($row) {
+                $responsibleName = $row->responsible ? $row->responsible->name : 'Sin responsable asignado';
                 return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">' . $row->name . '</span>
-                            <small class="text-muted">
-                                <a href="mailto:' . $row->email . '">' . $row->email . '</a>
-                            </small>
+                            <span class="fw-medium text-body text-truncate">' . e($responsibleName) . '</span>
+                            <small class="text-muted">' . e($row->name) . '</small>
                         </div>';
             })
             ->addColumn('current_sentiment', function ($row) {
@@ -100,7 +99,7 @@ class ClientDataTable extends DataTable
         //     return $query->whereRaw('1 = 0');
         // }
 
-        return $model->newQuery()->with('status');
+        return $model->newQuery()->with('status', 'responsible');
     }
 
     public function html(): HtmlBuilder

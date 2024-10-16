@@ -31,7 +31,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('invoice_type_id')->nullable();
             $table->unsignedTinyInteger('status_id')->default(1);
             $table->foreignId('creator_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('responsible_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->unsignedBigInteger('responsible_id')->nullable();
             $table->timestamps();
             $table->softDeletes();
 
@@ -39,6 +39,7 @@ return new class extends Migration
             $table->foreign('payment_type_id')->references('id')->on('payment_types')->onDelete('cascade');
             $table->foreign('invoice_type_id')->references('id')->on('invoice_types')->onDelete('cascade');
             $table->foreign('status_id')->references('id')->on('enterprise_statuses')->onDelete('restrict');
+            $table->foreign('responsible_id')->references('id')->on('contacts')->onDelete('cascade');
         });
     }
 

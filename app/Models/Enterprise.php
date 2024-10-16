@@ -67,6 +67,11 @@ class Enterprise extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function responsible()
+    {
+        return $this->belongsTo(Contact::class, 'responsible_id');
+    }
     
     public function type()
     {

@@ -78,7 +78,7 @@
                     <div class="line">
                         <i class="ti ti-chevron-right"></i>
                     </div>
-                    <div class="step" data-target="#account-details-modern">
+                    <!-- <div class="step" data-target="#account-details-modern">
                         <button type="button" class="step-trigger">
                             <span class="bs-stepper-icon">
                                 <i class="ti ti-building"></i>
@@ -88,7 +88,7 @@
                     </div>
                     <div class="line">
                         <i class="ti ti-chevron-right"></i>
-                    </div>
+                    </div> -->
                     <div class="step" data-target="#address-modern">
                         <button type="button" class="step-trigger">
                             <span class="bs-stepper-icon">
@@ -166,7 +166,7 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- Account Details -->
+                        <!-- Account Details
                         <div id="account-details-modern" class="content">
                             <div class="content-header mb-3">
                                 <h6 class="mb-0">Detalle de la Empresa</h6>
@@ -175,7 +175,7 @@
                             <div class="row g-3">
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise_name" label="Nombre de la empresa"
-                                        value="{{ old('enterprise_name', $data->enterprise_name ?? '') }}" />
+                                        value="{{ old('enterprise_name', $data->enterprise->name ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-input-general id="email" label="Email"
@@ -200,6 +200,7 @@
                                 </div>
                             </div>
                         </div>
+                        -->
                         <!-- Address -->
                         <div id="address-modern" class="content">
                             <div class="content-header mb-3">
