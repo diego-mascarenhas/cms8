@@ -20,7 +20,7 @@ class ContactSeeder extends Seeder
     // Create manual contacts
     $manualContacts = [
       [
-        'team_id' => 1,
+        'team_id' => 2,
         'name' => 'Diego',
         'position' => 'CEO',
         'birthday' => '1975-11-25',
@@ -30,7 +30,7 @@ class ContactSeeder extends Seeder
         'status_id' => 5,
       ],
       [
-        'team_id' => 1,
+        'team_id' => 2,
         'name' => 'Pablo',
         'position' => 'CTO',
         'birthday' => '1976-01-11',
@@ -40,7 +40,7 @@ class ContactSeeder extends Seeder
         'status_id' => 5,
       ],
       [
-        'team_id' => 1,
+        'team_id' => 2,
         'name' => 'Lucio',
         'position' => 'CTO',
         'birthday' => '1976-01-11',
@@ -50,7 +50,7 @@ class ContactSeeder extends Seeder
         'status_id' => 5,
       ],
       [
-        'team_id' => 1,
+        'team_id' => 2,
         'name' => 'Victoria',
         'position' => 'CTO',
         'birthday' => '1976-01-11',

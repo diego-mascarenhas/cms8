@@ -33,10 +33,10 @@ class UserSeeder extends Seeder
 
         $user->ownedTeams()->create([
             'name' => "Demo's Team",
-            'personal_team' => true,
+            'personal_team' => false,
         ]);
-
         $user->teams()->attach(1);
+        $user->update(['current_team_id' => 1]); 
 
         // Colaborator
         $user = User::factory()->create([
@@ -44,6 +44,8 @@ class UserSeeder extends Seeder
             'email' => 'colaborator@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
+            'current_team_id' => 1,
+            
         ]);
         $user->assignRole(3);
         $user->categories()->attach([5001]);
@@ -55,6 +57,7 @@ class UserSeeder extends Seeder
             'email' => 'editor@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
+            'current_team_id' => 1,
         ]);
         $user->assignRole(4);
         $user->categories()->attach([5001]);
@@ -66,6 +69,7 @@ class UserSeeder extends Seeder
             'email' => 'auditor@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
+            'current_team_id' => 1,
         ]);
         $user->assignRole(5);
         $user->categories()->attach([5001]);
@@ -77,6 +81,7 @@ class UserSeeder extends Seeder
             'email' => 'technical@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
+            'current_team_id' => 1,
         ]);
         $user->assignRole(6);
         $user->categories()->attach([5001]);
@@ -88,6 +93,7 @@ class UserSeeder extends Seeder
             'email' => 'client@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
+            'current_team_id' => 1,
         ]);
         $user->assignRole(7);
         $user->categories()->attach([5001]);
@@ -99,6 +105,7 @@ class UserSeeder extends Seeder
             'email' => 'user@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
+            'current_team_id' => 1,
         ]);
         $user->assignRole(8);
         $user->categories()->attach([5001]);
@@ -110,6 +117,7 @@ class UserSeeder extends Seeder
             'email' => 'guest@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
+            'current_team_id' => 1,
         ]);
         $user->assignRole(9);
         $user->categories()->attach([5001]);
@@ -122,5 +130,6 @@ class UserSeeder extends Seeder
         ]);
 
         $revision->teams()->attach(2);
+        $revision->update(['current_team_id' => 2]); 
     }
 }

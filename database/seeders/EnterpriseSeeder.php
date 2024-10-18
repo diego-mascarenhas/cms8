@@ -11,7 +11,7 @@ class EnterpriseSeeder extends Seeder
     {
         $enterprises = [
             [
-                'team_id' => 1,
+                'team_id' => 2,
                 'name' => 'Revision Alpha',
                 'type_id' => 1,
                 'referred_by' => null,
