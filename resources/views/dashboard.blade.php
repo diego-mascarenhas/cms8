@@ -78,7 +78,7 @@
                                 </h5>
                                 <p class="mb-2">Vas viento en popa!</p>
                                 <h4 class="text-primary mb-1">$48.9k</h4>
-                                <a href="javascript:;" class="btn btn-sm btn-primary">Pasar a Nivel 5</a>
+                                <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary">Pasar a Nivel 5</a>
                             </div>
                         </div>
                         <div class="col-5 text-center text-sm-left">

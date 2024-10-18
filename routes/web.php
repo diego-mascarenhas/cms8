@@ -121,6 +121,7 @@ Route::middleware(['auth'])->group(function ()
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
+Route::view('/strategy', 'strategy.index')->name('strategy.index');
 Route::get('/organization', [EnterpriseOrganizationController::class, 'index']);
 
 Route::get('/notes', function () {
