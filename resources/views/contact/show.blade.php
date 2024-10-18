@@ -95,8 +95,7 @@
                             </div>
                         </div>
                     </div>
-                    <p class="mt-4 small text-uppercase text-muted">Detalle</p>
-                    <div class="info-container">
+                    <div class="mt-4 info-container">
                         <ul class="list-unstyled">
                             @if ($data->user_id)
                                 <li class="mb-2">
@@ -230,57 +229,90 @@
         <!-- User Content -->
         <div class="col-xl-8 col-lg-7 col-md-7 order-0 order-md-1">
             <!-- User Pills -->
-            <ul class="nav nav-pills flex-column flex-md-row mb-4">
-                <li class="nav-item"><a class="nav-link active" href="javascript:void(0);"><i
-                            class="ti ti-user-check ti-xs me-1"></i>Account</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url('app/user/view/security') }}"><i
-                            class="ti ti-lock ti-xs me-1"></i>Security</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url('app/user/view/billing') }}"><i
-                            class="ti ti-currency-dollar ti-xs me-1"></i>Billing & Plans</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url('app/user/view/notifications') }}"><i
-                            class="ti ti-bell ti-xs me-1"></i>Notifications</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url('app/user/view/connections') }}"><i
-                            class="ti ti-link ti-xs me-1"></i>Connections</a></li>
+            <ul class="nav nav-pills flex-column flex-md-row mb-4" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active" id="general-tab" data-bs-toggle="tab" href="#general" role="tab" aria-controls="general" aria-selected="true">
+                        <i class="ti ti-user ti-xs me-1"></i>General
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="emotional-balance-tab" data-bs-toggle="tab" href="#emotional-balance" role="tab" aria-controls="emotional-balance" aria-selected="false">
+                        <i class="ti ti-mood-happy ti-xs me-1"></i>Balance emocional
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="evolution-tab" data-bs-toggle="tab" href="#evolution" role="tab" aria-controls="evolution" aria-selected="false">
+                        <i class="ti ti-chart-line ti-xs me-1"></i>Evolución
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="billing-tab" data-bs-toggle="tab" href="#billing" role="tab" aria-controls="billing" aria-selected="false">
+                        <i class="ti ti-map-pin ti-xs me-1"></i>Dirección y facturación
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="scheduled-tab" data-bs-toggle="tab" href="#scheduled" role="tab" aria-controls="scheduled" aria-selected="false">
+                        <i class="ti ti-bell ti-xs me-1"></i>Programado
+                    </a>
+                </li>
             </ul>
             <!--/ User Pills -->
 
-            <!-- Emotional History -->
-            <div class="card mb-4">
-                <h5 class="card-header d-flex justify-content-between align-items-center">
-                    Emotional History
-                    <button type="button" class="btn btn-primary btn-sm add-sentiment-btn">
-                        + Añadir estado emocional
-                    </button>
-                </h5>
-                <div class="card-body">
-                    <ul class="timeline mb-4 ms-3">
-                        @foreach ($data->sentimentHistories->sortByDesc('created_at')->take(5) as $sentimentHistory)
-                            <li class="timeline-item timeline-item-transparent">
-                                <span class="timeline-point timeline-point-transparent"
-                                    style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">{!! $sentimentHistory->sentiment->emoji !!}</span>
-                                <div class="timeline-event">
-                                    <div class="timeline-header mb-1">
-                                        <h6 class="mb-0">{{ $sentimentHistory->notes }}</h6>
-                                        <small class="text-muted">
-                                            @if ($sentimentHistory->created_at->diffInDays(now()) < 7)
-                                                {{ $sentimentHistory->created_at->diffForHumans() }}
-                                            @else
-                                                {{ $sentimentHistory->created_at->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}
-                                            @endif
-                                        </small>
-                                    </div>
-                                </div>
-                            </li>
-                        @endforeach
-                        <!-- Added a base to prevent the timeline from ending abruptly -->
-                        <li class="timeline-item timeline-item-transparent">
-                            <span class="timeline-point timeline-point-transparent"
-                                style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">•</span>
-                        </li>
-                    </ul>
+            <div id="myTabContent">
+                <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+                    <!-- Emotional History -->
+                    <div class="card mb-4">
+                        <h5 class="card-header d-flex justify-content-between align-items-center">
+                            Emotional History
+                            <button type="button" class="btn btn-primary btn-sm add-sentiment-btn">
+                                + Añadir estado emocional
+                            </button>
+                        </h5>
+                        <div class="card-body">
+                            <ul class="timeline mb-4 ms-3">
+                                @foreach ($data->sentimentHistories->sortByDesc('created_at')->take(5) as $sentimentHistory)
+                                    <li class="timeline-item timeline-item-transparent">
+                                        <span class="timeline-point timeline-point-transparent"
+                                            style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">{!! $sentimentHistory->sentiment->emoji !!}</span>
+                                        <div class="timeline-event">
+                                            <div class="timeline-header mb-1">
+                                                <h6 class="mb-0">{{ $sentimentHistory->notes }}</h6>
+                                                <small class="text-muted">
+                                                    @if ($sentimentHistory->created_at->diffInDays(now()) < 7)
+                                                        {{ $sentimentHistory->created_at->diffForHumans() }}
+                                                    @else
+                                                        {{ $sentimentHistory->created_at->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}
+                                                    @endif
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </li>
+                                @endforeach
+                                <!-- Added a base to prevent the timeline from ending abruptly -->
+                                <li class="timeline-item timeline-item-transparent">
+                                    <span class="timeline-point timeline-point-transparent"
+                                        style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">•</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- /Emotional History -->
+                </div>
+                <div class="tab-pane fade" id="emotional-balance" role="tabpanel" aria-labelledby="emotional-balance-tab">
+                    Balance emocional
+                </div>
+                <div class="tab-pane fade" id="evolution" role="tabpanel" aria-labelledby="evolution-tab">
+                    Evolución
+                </div>
+                <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
+                    Dirección y facturación
+                </div>
+                <div class="tab-pane fade" id="scheduled" role="tabpanel" aria-labelledby="scheduled-tab">
+                    Programado
                 </div>
             </div>
-            <!-- /Emotional History -->
+
+            
         </div>
         <!--/ User Content -->
     </div>
