@@ -15,6 +15,12 @@
 
 @section('page-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-user-view.css') }}" />
+
+    <style>
+        .tab-content {
+            border: none !important;
+        }
+    </style>
 @endsection
 
 @section('vendor-script')
@@ -65,8 +71,9 @@
                 <div class="card-body">
                     <div class="user-avatar-section">
                         <div class=" d-flex align-items-center flex-column">
-                            <img class="img-fluid rounded mb-3 pt-1 mt-4" src="https://ui-avatars.com/api/?format=svg&name={{ $data->name }}"
-                                height="100" width="100" alt="User avatar" />
+                            <img class="img-fluid rounded mb-3 pt-1 mt-4"
+                                src="https://ui-avatars.com/api/?format=svg&name={{ $data->name }}" height="100"
+                                width="100" alt="User avatar" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>
                                 <span class="badge bg-label-secondary mt-1">Customer ID #{{ $data->id }}</span>
@@ -79,7 +86,8 @@
                                 <i class='ti ti-user-plus ti-sm'></i>
                             </span>
                             <div>
-                                <p class="mb-0 fw-medium" style="line-height: 1.2;">{{ Carbon\Carbon::parse($data->updated_at)->format('d/m/Y') }}</p>
+                                <p class="mb-0 fw-medium" style="line-height: 1.2;">
+                                    {{ Carbon\Carbon::parse($data->updated_at)->format('d/m/Y') }}</p>
                                 <small style="line-height: 1.2;">Última actualización</small>
                             </div>
                         </div>
@@ -89,7 +97,8 @@
                             </span>
                             <div>
                                 <p class="mb-0 fw-medium" style="line-height: 1.2;">
-                                    <span id="totalTime" class="mb-0 fw-medium" style="line-height: 1.2;">{{ $totalSeconds }} segundos</span>
+                                    <span id="totalTime" class="mb-0 fw-medium"
+                                        style="line-height: 1.2;">{{ $totalSeconds }} segundos</span>
                                 </p>
                                 <small style="line-height: 1.2;">Tiempo dedicado</small>
                             </div>
@@ -132,8 +141,13 @@
                                 </span>
                             </li>
                             @php
-                                $countryName = $data->country ? (\App\Models\Country::find($data->country)->name ?? 'No asignado') : 'No asignado';
-                                $languageName = $data->language ? (\App\Models\Language::where('code', $data->language)->value('name') ?? 'No asignado') : 'No asignado';
+                                $countryName = $data->country
+                                    ? \App\Models\Country::find($data->country)->name ?? 'No asignado'
+                                    : 'No asignado';
+                                $languageName = $data->language
+                                    ? \App\Models\Language::where('code', $data->language)->value('name') ??
+                                        'No asignado'
+                                    : 'No asignado';
                             @endphp
 
                             <p>País: {{ $countryName }}</p>
@@ -231,88 +245,67 @@
             <!-- User Pills -->
             <ul class="nav nav-pills flex-column flex-md-row mb-4" id="myTab" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link active" id="general-tab" data-bs-toggle="tab" href="#general" role="tab" aria-controls="general" aria-selected="true">
+                    <a class="nav-link active" id="general-tab" data-bs-toggle="tab" href="#general" role="tab"
+                        aria-controls="general" aria-selected="true">
                         <i class="ti ti-user ti-xs me-1"></i>General
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="emotional-balance-tab" data-bs-toggle="tab" href="#emotional-balance" role="tab" aria-controls="emotional-balance" aria-selected="false">
+                    <a class="nav-link" id="emotional-balance-tab" data-bs-toggle="tab" href="#emotional-balance"
+                        role="tab" aria-controls="emotional-balance" aria-selected="false">
                         <i class="ti ti-mood-happy ti-xs me-1"></i>Balance emocional
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="evolution-tab" data-bs-toggle="tab" href="#evolution" role="tab" aria-controls="evolution" aria-selected="false">
+                    <a class="nav-link" id="evolution-tab" data-bs-toggle="tab" href="#evolution" role="tab"
+                        aria-controls="evolution" aria-selected="false">
                         <i class="ti ti-chart-line ti-xs me-1"></i>Evolución
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="billing-tab" data-bs-toggle="tab" href="#billing" role="tab" aria-controls="billing" aria-selected="false">
-                        <i class="ti ti-map-pin ti-xs me-1"></i>Dirección y facturación
+                    <a class="nav-link" id="balance-tab" data-bs-toggle="tab" href="#balance" role="tab"
+                        aria-controls="balance" aria-selected="false">
+                        <i class="ti ti-wallet ti-xs me-1"></i>Saldo
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="scheduled-tab" data-bs-toggle="tab" href="#scheduled" role="tab" aria-controls="scheduled" aria-selected="false">
+                    <a class="nav-link" id="billing-tab" data-bs-toggle="tab" href="#billing" role="tab"
+                        aria-controls="billing" aria-selected="false">
+                        <i class="ti ti-map-pin ti-xs me-1"></i>Facturación
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="scheduled-tab" data-bs-toggle="tab" href="#scheduled" role="tab"
+                        aria-controls="scheduled" aria-selected="false">
                         <i class="ti ti-bell ti-xs me-1"></i>Programado
                     </a>
                 </li>
             </ul>
             <!--/ User Pills -->
 
-            <div id="myTabContent">
+            <div class="tab-content">
                 <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
-                    <!-- Emotional History -->
-                    <div class="card mb-4">
-                        <h5 class="card-header d-flex justify-content-between align-items-center">
-                            Emotional History
-                            <button type="button" class="btn btn-primary btn-sm add-sentiment-btn">
-                                + Añadir estado emocional
-                            </button>
-                        </h5>
-                        <div class="card-body">
-                            <ul class="timeline mb-4 ms-3">
-                                @foreach ($data->sentimentHistories->sortByDesc('created_at')->take(5) as $sentimentHistory)
-                                    <li class="timeline-item timeline-item-transparent">
-                                        <span class="timeline-point timeline-point-transparent"
-                                            style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">{!! $sentimentHistory->sentiment->emoji !!}</span>
-                                        <div class="timeline-event">
-                                            <div class="timeline-header mb-1">
-                                                <h6 class="mb-0">{{ $sentimentHistory->notes }}</h6>
-                                                <small class="text-muted">
-                                                    @if ($sentimentHistory->created_at->diffInDays(now()) < 7)
-                                                        {{ $sentimentHistory->created_at->diffForHumans() }}
-                                                    @else
-                                                        {{ $sentimentHistory->created_at->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}
-                                                    @endif
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </li>
-                                @endforeach
-                                <!-- Added a base to prevent the timeline from ending abruptly -->
-                                <li class="timeline-item timeline-item-transparent">
-                                    <span class="timeline-point timeline-point-transparent"
-                                        style="background: none; font-size: 1.5em; display: flex; align-items: center; justify-content: center;">•</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                    <!-- /Emotional History -->
+                    @include('contact.partials.general')
                 </div>
-                <div class="tab-pane fade" id="emotional-balance" role="tabpanel" aria-labelledby="emotional-balance-tab">
-                    Balance emocional
+                <div class="tab-pane fade" id="emotional-balance" role="tabpanel"
+                    aria-labelledby="emotional-balance-tab">
+                    @include('contact.partials.emotional')
                 </div>
                 <div class="tab-pane fade" id="evolution" role="tabpanel" aria-labelledby="evolution-tab">
-                    Evolución
+                    @include('contact.partials.evolution')
+                </div>
+                <div class="tab-pane fade" id="balance" role="tabpanel" aria-labelledby="balance-tab">
+                    @include('contact.partials.balance')
                 </div>
                 <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
-                    Dirección y facturación
+                    @include('contact.partials.billing')
                 </div>
                 <div class="tab-pane fade" id="scheduled" role="tabpanel" aria-labelledby="scheduled-tab">
-                    Programado
+                    @include('contact.partials.scheduled')
                 </div>
             </div>
 
-            
+
         </div>
         <!--/ User Content -->
     </div>
