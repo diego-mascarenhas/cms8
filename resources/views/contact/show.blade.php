@@ -55,8 +55,8 @@
                 Creado el {{ Carbon\Carbon::parse($data->created_at)->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
-            <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
-                    class="ti ti-plus me-1"></i>Añadir informe</a>
+            <!-- <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
+                    class="ti ti-plus me-1"></i>Añadir informe</a> -->
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             <a href="#" class="btn btn-info waves-effect waves-light"><i

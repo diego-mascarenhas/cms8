@@ -127,27 +127,27 @@
         <h5 class="card-action-title mb-0">Dirección de Facturación</h5>
         <div class="card-action-element">
             <button class="btn btn-primary btn-sm edit-address" type="button" data-bs-toggle="modal"
-                data-bs-target="#addNewAddress">Editar dirección</button>
+                data-bs-target="#addNewAddress"><i class="ti ti-edit ti-xs me-1"></i>Editar dirección</button>
         </div>
     </div>
     <div class="card-body">
         <div class="row">
             <div class="col-xl-7 col-12">
                 <dl class="row mb-0">
-                    <dt class="col-sm-4 mb-2 fw-medium text-nowrap">Nombre de la Empresa:</dt>
-                    <dd class="col-sm-8">{{ config('variables.templateName') }}</dd>
+                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre de la Empresa:</dt>
+                    <dd class="col-sm-7">{{ config('variables.templateName') }}</dd>
 
-                    <dt class="col-sm-4 mb-2 fw-medium text-nowrap">Email de Facturación:</dt>
-                    <dd class="col-sm-8">usuario@ejemplo.com</dd>
+                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Email de Facturación:</dt>
+                    <dd class="col-sm-7">usuario@ejemplo.com</dd>
 
-                    <dt class="col-sm-4 mb-2 fw-medium text-nowrap">ID de Impuestos:</dt>
-                    <dd class="col-sm-8">IMP-357378</dd>
+                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">ID de Impuestos:</dt>
+                    <dd class="col-sm-7">IMP-357378</dd>
 
-                    <dt class="col-sm-4 mb-2 fw-medium text-nowrap">Número de IVA:</dt>
-                    <dd class="col-sm-8">SDF754K77</dd>
+                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Número de IVA:</dt>
+                    <dd class="col-sm-7">SDF754K77</dd>
 
-                    <dt class="col-sm-4 mb-2 fw-medium text-nowrap">Dirección de Facturación:</dt>
-                    <dd class="col-sm-8">100 Planta de Agua <br>Avenida, Edificio 1303<br> Isla Wake</dd>
+                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Dirección de Facturación:</dt>
+                    <dd class="col-sm-7">100 Planta de Agua <br>Avenida, Edificio 1303<br> Isla Wake</dd>
                 </dl>
             </div>
             <div class="col-xl-5 col-12">
