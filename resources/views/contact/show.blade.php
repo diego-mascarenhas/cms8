@@ -18,7 +18,8 @@
 
     <style>
         .tab-content {
-            border: none !important;
+            padding: 0 !important;
+            background: transparent !important;
         }
     </style>
 @endsection
@@ -76,11 +77,11 @@
                                 width="100" alt="User avatar" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>
-                                <span class="badge bg-label-secondary mt-1">Customer ID #{{ $data->id }}</span>
+                                <span class="badge bg-label-secondary mt-1">Cliente ID #{{ $data->id }}</span>
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex justify-content-around flex-wrap mt-3 pt-3 pb-4 border-bottom">
+                    <div class="d-flex justify-content-start flex-wrap mt-3 pt-3 pb-4 border-bottom">
                         <div class="d-flex align-items-start me-4 mt-3 gap-2">
                             <span class="badge bg-label-primary p-2 rounded">
                                 <i class='ti ti-user-plus ti-sm'></i>
@@ -107,7 +108,7 @@
                     <div class="mt-4 info-container">
                         <ul class="list-unstyled">
                             @if ($data->user_id)
-                                <li class="mb-2">
+                                <li class="mb-2 pt-1">
                                     <span class="fw-medium me-1">Username:</span>
                                     <span>{{ $data->username }}</span>
                                 </li>
@@ -150,8 +151,14 @@
                                     : 'No asignado';
                             @endphp
 
-                            <p>País: {{ $countryName }}</p>
-                            <p>Idioma: {{ $languageName }}</p>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">País:</span>
+                                <span>{{ $countryName }}</span>
+                            </li>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Idioma:</span>
+                                <span>{{ $languageName }}</span>
+                            </li>
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Asesor:</span>
                                 <span>{{ $data->responsible->name ?? 'No asignado' }}</span>
@@ -190,7 +197,7 @@
                                     @endif
                                 </span>
                             </li>
-                            <li class="pt-1">
+                            <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Superior:</span>
                                 <span>{{ $data->creator->name ?? 'No asignado' }}</span>
                             </li>
@@ -253,7 +260,7 @@
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="emotional-balance-tab" data-bs-toggle="tab" href="#emotional-balance"
                         role="tab" aria-controls="emotional-balance" aria-selected="false">
-                        <i class="ti ti-mood-happy ti-xs me-1"></i>Balance emocional
+                        <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones 
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -481,3 +488,6 @@
         }, 1000);
     </script>
 @endpush
+
+
+

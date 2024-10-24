@@ -74,8 +74,8 @@ $evolutionSteps = [
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th>Fecha inicio</th>
-                        <th>Fecha final</th>
+                        <th>Inicio</th>
+                        <th>Final</th>
                         <th>Servicio</th>
                         <th>Paso</th>
                         <th>Objetivo</th>

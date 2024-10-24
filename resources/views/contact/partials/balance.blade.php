@@ -7,31 +7,26 @@ $balanceData = [
 ];
 
 $invoices = [
-    ['id' => '#5036', 'status' => 'pending', 'client' => 'Andrew Burns', 'email' => 'andrew@example.org', 'total' => '$3171', 'date' => '2024-08-19', 'balance' => '-$205'],
-    ['id' => '#5035', 'status' => 'draft', 'client' => 'Dana Carey', 'email' => 'dana@example.net', 'total' => '$4263', 'date' => '2024-08-20', 'balance' => '$762'],
-    ['id' => '#5034', 'status' => 'paid', 'client' => 'Tammy Sanchez', 'email' => 'tammy@example.com', 'total' => '$4838', 'date' => '2024-08-10', 'balance' => 'Paid'],
-    ['id' => '#5033', 'status' => 'paid', 'client' => 'Lori Wells', 'email' => 'lori@example.org', 'total' => '$2869', 'date' => '2024-08-12', 'balance' => 'Paid'],
-    ['id' => '#5032', 'status' => 'paid', 'client' => 'Richard Payne', 'email' => 'richard@example.com', 'total' => '$5181', 'date' => '2024-08-31', 'balance' => 'Paid'],
-    ['id' => '#5031', 'status' => 'paid', 'client' => 'Jennifer Summers', 'email' => 'jennifer@example.net', 'total' => '$3313', 'date' => '2024-08-21', 'balance' => 'Paid'],
-    ['id' => '#5030', 'status' => 'paid', 'client' => 'Justin Richardson', 'email' => 'justin@example.com', 'total' => '$5565', 'date' => '2024-08-07', 'balance' => 'Paid'],
-    ['id' => '#5029', 'status' => 'paid', 'client' => 'Nicholas Tanner', 'email' => 'nicholas@example.com', 'total' => '$3851', 'date' => '2024-08-29', 'balance' => 'Paid'],
-    ['id' => '#5028', 'status' => 'pending', 'client' => 'Crystal Mayo', 'email' => 'crystal@example.com', 'total' => '$3325', 'date' => '2024-08-18', 'balance' => '$361'],
-    ['id' => '#5027', 'status' => 'paid', 'client' => 'Mary Garcia', 'email' => 'mary@example.com', 'total' => '$2719', 'date' => '2024-08-13', 'balance' => 'Paid'],
+    ['id' => '#5036', 'status' => 'pendiente', 'client' => 'Andrew Burns', 'email' => 'andrew@example.org', 'total' => '3171€', 'date' => '19/08/2024', 'balance' => '-205€'],
+    ['id' => '#5035', 'status' => 'pendiente', 'client' => 'Dana Carey', 'email' => 'dana@example.net', 'total' => '4263€', 'date' => '20/08/2024', 'balance' => '762€'],
+    ['id' => '#5034', 'status' => 'pagado', 'client' => 'Tammy Sanchez', 'email' => 'tammy@example.com', 'total' => '4838€', 'date' => '10/08/2024', 'balance' => 'Pagado'],
+    ['id' => '#5033', 'status' => 'pagado', 'client' => 'Lori Wells', 'email' => 'lori@example.org', 'total' => '2869€', 'date' => '12/08/2024', 'balance' => 'Pagado'],
+    ['id' => '#5032', 'status' => 'pagado', 'client' => 'Richard Payne', 'email' => 'richard@example.com', 'total' => '5181€', 'date' => '31/08/2024', 'balance' => 'Pagado'],
+    ['id' => '#5031', 'status' => 'pagado', 'client' => 'Jennifer Summers', 'email' => 'jennifer@example.net', 'total' => '3313€', 'date' => '21/08/2024', 'balance' => 'Pagado'],
+    ['id' => '#5030', 'status' => 'pagado', 'client' => 'Justin Richardson', 'email' => 'justin@example.com', 'total' => '5565€', 'date' => '07/08/2024', 'balance' => 'Pagado'],
+    ['id' => '#5029', 'status' => 'pagado', 'client' => 'Nicholas Tanner', 'email' => 'nicholas@example.com', 'total' => '3851€', 'date' => '29/08/2024', 'balance' => 'Pagado'],
+    ['id' => '#5028', 'status' => 'pendiente', 'client' => 'Crystal Mayo', 'email' => 'crystal@example.com', 'total' => '3325€', 'date' => '18/08/2024', 'balance' => '361€'],
+    ['id' => '#5027', 'status' => 'pagado', 'client' => 'Mary Garcia', 'email' => 'mary@example.com', 'total' => '2719€', 'date' => '13/08/2024', 'balance' => 'Pagado'],
 ];
 @endphp
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Saldo</h5>
-        <div class="dropdown">
-            <button class="btn btn-link p-0" type="button" id="balanceInfo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <i class="ti ti-info-circle"></i>
-            </button>
-            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="balanceInfo">
-                <p class="dropdown-item-text">Ingresos y gastos del cliente con su histórico</p>
-            </div>
-        </div>
-    </div>
+<div class="card mb-4">
+    <h5 class="card-header d-flex justify-content-between align-items-center">
+        Saldo
+        <button type="button" class="btn btn-primary btn-sm">
+            + Crear factura
+        </button>
+    </h5>
     <div class="card-body">
         <div class="row mb-4">
             <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
@@ -87,39 +82,22 @@ $invoices = [
                 </div>
             </div>
         </div>
-        
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <label for="showEntries">Show</label>
-                <select id="showEntries" class="form-select form-select-sm d-inline-block w-auto">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-                <label for="showEntries">entries</label>
-            </div>
-            <button class="btn btn-primary btn-sm">+ Create Invoice</button>
-        </div>
 
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th></th>
                         <th>#</th>
-                        <th>STATUS</th>
-                        <th>CLIENT</th>
-                        <th>TOTAL</th>
-                        <th>ISSUED DATE</th>
-                        <th>BALANCE</th>
-                        <th>ACTIONS</th>
+                        <th>Estado</th>
+                        <th>Cliente</th>
+                        <th>Total</th>
+                        <th>Vencimiento</th>
+                        <th>Balance</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($invoices as $invoice)
                     <tr>
-                        <td><input type="checkbox"></td>
                         <td>{{ $invoice['id'] }}</td>
                         <td>
                             <span class="badge bg-label-{{ $invoice['status'] == 'paid' ? 'success' : ($invoice['status'] == 'pending' ? 'warning' : 'secondary') }}">
@@ -144,17 +122,6 @@ $invoices = [
                                 {{ $invoice['balance'] }}
                             </span>
                         </td>
-                        <td>
-                            <div class="dropdown">
-                                <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
-                                    <i class="ti ti-dots-vertical"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="javascript:void(0);"><i class="ti ti-pencil me-1"></i> Edit</a>
-                                    <a class="dropdown-item" href="javascript:void(0);"><i class="ti ti-trash me-1"></i> Delete</a>
-                                </div>
-                            </div>
-                        </td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -162,7 +129,7 @@ $invoices = [
         </div>
 
         <div class="d-flex justify-content-between align-items-center mt-3">
-            <div>Showing 1 to 10 of 50 entries</div>
+            <div>Mostrando 1 a 10 de 50</div>
             <nav aria-label="Page navigation">
                 <ul class="pagination justify-content-center">
                     <li class="page-item"><a class="page-link" href="#"><i class="ti ti-chevrons-left"></i></a></li>
