@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/apex-charts/apex-charts.css') }}" />
 @endsection
 
 @section('page-style')
@@ -17,7 +16,6 @@
 @endsection
 
 @section('vendor-script')
-    <script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/swiper/swiper.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
@@ -146,14 +144,38 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 col-md-4 d-flex flex-column align-self-end">
-                            <div class="d-flex gap-2 align-items-center mb-2 pb-1 flex-wrap">
-                                <div class="badge rounded bg-label-success">+4.2%</div>
+                        <div class="col-12">
+                            <div class="sentiment-chart">
+                                <div class="d-flex align-items-end justify-content-between" style="height: 200px;">
+                                    @foreach($sentimentData as $index => $sentiment)
+                                        <div class="sentiment-column text-center">
+                                            <div class="sentiment-bar" 
+                                                style="height: {{ ($sentiment['count'] && max(array_column($sentimentData, 'count'))) ? ($sentiment['count'] / max(array_column($sentimentData, 'count'))) * 100 : 0 }}%">
+                                                <span class="sentiment-count">{{ $sentiment['count'] }}</span>
+                                            </div>
+                                            <div class="sentiment-emoji mt-2">
+                                                @switch($index)
+                                                    @case(0)
+                                                        😡
+                                                        @break
+                                                    @case(1)
+                                                        🙁
+                                                        @break
+                                                    @case(2)
+                                                        😐
+                                                        @break
+                                                    @case(3)
+                                                        🙂
+                                                        @break
+                                                    @case(4)
+                                                        🥳
+                                                        @break
+                                                @endswitch
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
                             </div>
-                            <small>Comparación con la semana pasada</small>
-                        </div>
-                        <div class="col-12 col-md-8">
-                            <div id="weeklyEarningReports"></div>
                         </div>
                     </div>
                 </div>
@@ -250,3 +272,46 @@
     </div> --}}
 
 @endsection
+
+<style>
+.sentiment-chart {
+    padding: 1rem 0;
+}
+
+.sentiment-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 10px;
+}
+
+.sentiment-bar {
+    width: 60px;
+    background-color: #696cff;
+    border-radius: 8px;
+    position: relative;
+    min-height: 30px;
+    transition: height 0.3s ease;
+}
+
+.sentiment-count {
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #566a7f;
+    font-weight: 600;
+}
+
+.sentiment-emoji {
+    font-size: 1.8rem;
+    margin-top: 1rem;
+}
+
+.sentiment-column:nth-child(1) .sentiment-bar { background-color: #ff4d4f; }
+.sentiment-column:nth-child(2) .sentiment-bar { background-color: #ffa39e; }
+.sentiment-column:nth-child(3) .sentiment-bar { background-color: #ffd666; }
+.sentiment-column:nth-child(4) .sentiment-bar { background-color: #95de64; }
+.sentiment-column:nth-child(5) .sentiment-bar { background-color: #52c41a; }
+</style>
