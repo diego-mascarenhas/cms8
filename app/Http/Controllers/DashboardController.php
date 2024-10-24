@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\UserContactAction;
+use App\Models\Client;
+use App\Models\List60;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -24,7 +27,10 @@ class DashboardController extends Controller
         ->with(['currentSentiment' => function ($query) {
             $query->whereIn('sentiment_id', [1, 2]);
         }])->get();
+
+        $today = Carbon::today();
+        $clientsToContactToday = List60::whereDate('date_next', $today)->count();
     
-        return view('dashboard', compact('totalTeamMinutes', 'dangerousContacts'));
+        return view('dashboard', compact('totalTeamMinutes', 'dangerousContacts', 'clientsToContactToday'));
     }
 }

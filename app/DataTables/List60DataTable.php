@@ -24,13 +24,11 @@ class List60DataTable extends DataTable
             ->addColumn('action', 'list60.action')
             ->setRowId('id')
             ->editColumn('contact_id', function ($row) {
-                $emailValue = $row->contact->email ?? null;
-
-                $contactInfo = $emailValue ? '<a href="mailto:' . $emailValue . '">' . $emailValue . '</a>' : '&nbsp;';
+                $companyName = $row->contact->enterprise ? e($row->contact->enterprise->name) : '';
 
                 return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">' . $row->contact->name . '</span>
-                            <small class="text-muted">' . $contactInfo . '</small>
+                            <span class="fw-medium text-body text-truncate">' . e($row->contact->name) . '</span>
+                            <small class="text-muted">' . ($companyName ?: '&nbsp;') . '</small>
                         </div>';
             })
             ->editColumn('status_id', function ($row) {

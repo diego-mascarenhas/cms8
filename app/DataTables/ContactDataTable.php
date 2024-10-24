@@ -25,13 +25,11 @@ class ContactDataTable extends DataTable
             ->addColumn('action', 'contact.action')
             ->setRowId('id')
             ->editColumn('name', function ($row) {
-                $emailValue = $row->email;
-
-                $contactInfo = $emailValue ? '<a href="mailto:' . $emailValue . '">' . $emailValue . '</a>' : '&nbsp;';
+                $companyName = $row->enterprise ? e($row->enterprise->name) : '';
 
                 return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">' . $row->name . '</span>
-                            <small class="text-muted">' . $contactInfo . '</small>
+                            <span class="fw-medium text-body text-truncate">' . e($row->name) . '</span>
+                            <small class="text-muted">' . ($companyName ?: '&nbsp;') . '</small>
                         </div>';
             })
             ->addColumn('current_sentiment', function ($row) {

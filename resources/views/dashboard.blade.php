@@ -58,11 +58,11 @@
                     </div>
                     <div class="d-flex align-items-center gap-3">
                         <span class="bg-label-warning p-2 rounded">
-                            <i class='ti ti-discount-check ti-xl'></i>
+                            <a href="{{ route('list60-list') }}" class="text-warning"><i class='ti ti-discount-check ti-xl'></i></a>
                         </span>
                         <div class="content-right">
                             <p class="mb-0">Clientes a hablar hoy</p>
-                            <h4 class="text-warning mb-0">17</h4>
+                            <h4 class="text-warning mb-0">{{ $clientsToContactToday }}</h4>
                         </div>
                     </div>
                 </div>
@@ -112,8 +112,12 @@
                                 <td class="pt-2">
                                     <div class="d-flex justify-content-start align-items-center @if($loop->first) mt-lg-4 @endif">
                                         <div class="d-flex flex-column">
-                                            <h6 class="mb-0"><a href="{{ route('contact.show', $contact->id) }}">{{ $contact->name }}</a></h6>
-                                            <small class="text-truncate text-muted"><a href="mailto:{{ $contact->email }}">{{ $contact->email }}</a></small>
+                                            <h6 class="mb-0">
+                                                <a href="{{ route('contact.show', $contact->id) }}">{{ $contact->name }}</a>
+                                            </h6>
+                                            @if($contact->enterprise) <!-- Verifica si el contacto tiene una empresa -->
+                                                <small class="text-truncate text-muted">{{ $contact->enterprise->name }}</small> <!-- Muestra el nombre de la empresa -->
+                                            @endif
                                         </div>
                                     </div>
                                 </td>
@@ -131,9 +135,9 @@
         </div>
         <!--/ Clients in danger -->
 
-        <!-- Earning Reports -->
+        <!-- Emotional Balance -->
         <div class="col-lg-8 mb-4">
-            <div class="card h-100">
+            <div class="card mb-4">
                 <div class="card-header pb-0 d-flex justify-content-between mb-lg-n4">
                     <div class="card-title mb-0">
                         <h5 class="mb-0">Balance emocional</h5>
@@ -155,7 +159,7 @@
                 </div>
             </div>
         </div>
-        <!--/ Earning Reports -->
+        <!--/ Emotional Balance -->
     </div>
 
     {{-- <div class="row">

@@ -38,14 +38,14 @@ class ClientDataTable extends DataTable
                     $url = $this->ensureProtocol($row->website);
                     return '<a href="' . e($url) . '" target="_blank" rel="noopener noreferrer">' . e($row->website) . '</a>';
                 }
-                return 'N/A';
+                return '';
             })
             ->editColumn('phone', function ($row) {
                 if ($row->phone) {
                     $phoneNumber = preg_replace('/[^0-9+]/', '', $row->phone);
                     return '<a href="tel:' . e($phoneNumber) . '">' . e($row->phone) . '</a>';
                 }
-                return 'N/A';
+                return '';
             })
             ->rawColumns(['name', 'action', 'current_sentiment', 'social_networks', 'status_id', 'website', 'phone']);
     }
