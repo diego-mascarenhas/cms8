@@ -50,6 +50,17 @@
         </div>
     @endif
 
+    @if(request()->has('debug') && config('app.debug'))
+        <div class="alert" role="alert" style="background-color: black; color: #00ff00; font-family: monospace; border: 1px solid #00ff00;">
+            <h4 class="alert-heading" style="color: #00ff00;"><i class="ti ti-bug"></i> Debug Information</h4>
+            <p>This information is visible because the 'debug' parameter is present in the URL and the application is running locally.</p>
+            <hr style="border-color: #00ff00;">
+            <pre class="mb-0" style="white-space: pre-wrap; word-break: break-all; background-color: black; color: #00ff00; border: none;">
+{{ var_export($data->toArray(), true) }}
+            </pre>
+        </div>
+    @endif
+
     <!-- Modern -->
     <div class="row">
         <!-- Modern Icons Wizard -->
@@ -78,17 +89,17 @@
                     <div class="line">
                         <i class="ti ti-chevron-right"></i>
                     </div>
-                    <!-- <div class="step" data-target="#account-details-modern">
+                    <div class="step" data-target="#account-details-modern">
                         <button type="button" class="step-trigger">
                             <span class="bs-stepper-icon">
                                 <i class="ti ti-building"></i>
                             </span>
-                            <span class="bs-stepper-label">Detalle de la Empresa</span>
+                            <span class="bs-stepper-label">Datos de la Empresa</span>
                         </button>
                     </div>
                     <div class="line">
                         <i class="ti ti-chevron-right"></i>
-                    </div> -->
+                    </div>
                     <div class="step" data-target="#address-modern">
                         <button type="button" class="step-trigger">
                             <span class="bs-stepper-icon">
@@ -166,7 +177,7 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- Account Details
+                        <!-- Account Details -->
                         <div id="account-details-modern" class="content">
                             <div class="content-header mb-3">
                                 <h6 class="mb-0">Detalle de la Empresa</h6>
@@ -174,24 +185,26 @@
                             </div>
                             <div class="row g-3">
                                 <div class="col-sm-6">
-                                    <x-input-general id="enterprise_name" label="Nombre de la empresa"
-                                        value="{{ old('enterprise_name', $data->enterprise->name ?? '') }}" />
+                                    <x-input-general id="enterprise[name]" name="enterprise[name]"
+                                        label="Nombre de la empresa"
+                                        value="{{ old('enterprise.name', $data->enterprise->name ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
-                                    <x-input-general id="email" label="Email"
-                                        value="{{ old('email', $data->email ?? '') }}" />
+                                    <x-input-general id="enterprise[website]" name="enterprise[website]" label="Website"
+                                        value="{{ old('enterprise.website', $data->enterprise->website ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
-                                    <x-input-general id="website" label="Website"
-                                        value="{{ old('website', $data->website ?? '') }}" />
+                                    <x-input-general id="enterprise[phone]" name="enterprise[phone]" label="Teléfono"
+                                        value="{{ old('enterprise.phone', $data->enterprise->phone ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
-                                    <x-input-general id="phone" label="Teléfono"
-                                        value="{{ old('phone', $data->phone ?? '') }}" />
+                                    <x-input-general id="enterprise[email]" name="enterprise[email]" label="Email"
+                                        value="{{ old('enterprise.email', $data->enterprise->email ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
-                                    <x-input-general id="whatsapp" label="WhatsApp"
-                                        value="{{ old('whatsapp', $data->whatsapp ?? '') }}" />
+                                    <x-input-general id="enterprise[whatsapp]" name="enterprise[whatsapp]"
+                                        label="WhatsApp"
+                                        value="{{ old('enterprise.whatsapp', $data->enterprise->whatsapp ?? '') }}" />
                                 </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
@@ -200,7 +213,6 @@
                                 </div>
                             </div>
                         </div>
-                        -->
                         <!-- Address -->
                         <div id="address-modern" class="content">
                             <div class="content-header mb-3">

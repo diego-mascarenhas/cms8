@@ -14,18 +14,18 @@ return new class extends Migration
         Schema::create('enterprises', function (Blueprint $table) {
             $table->id();
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
-            $table->string('name');
             $table->unsignedTinyInteger('type_id')->default(1);
+            $table->string('name');
+            $table->string('website')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
+            $table->string('whatsapp')->nullable();
             $table->string('referred_by')->nullable();
             $table->string('address')->nullable();
             $table->string('postal_code')->nullable();
             $table->string('locality')->nullable();
             $table->string('province')->nullable();
             $table->string('country')->nullable();
-            $table->string('phone')->nullable();
-            $table->string('whatsapp')->nullable();
-            $table->string('email')->nullable();
-            $table->string('website')->nullable();
             $table->json('data')->nullable(); // Add this line
             $table->unsignedTinyInteger('payment_type_id')->nullable();
             $table->unsignedTinyInteger('invoice_type_id')->nullable();

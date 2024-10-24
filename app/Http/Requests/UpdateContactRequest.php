@@ -16,13 +16,18 @@ class UpdateContactRequest extends FormRequest
 
     public function rules()
     {
-        $rules = [
+        return [
             'name' => 'required|string|max:255',
             'birthday' => 'nullable|date',
             'status_id' => 'required|exists:contact_statuses,id',
             'country' => 'required|string|max:3',
             'language' => 'required|string|max:2',
             'profile' => 'nullable|string',
+            'enterprise.name' => 'nullable|string|max:255',
+            'enterprise.website' => 'nullable|url|max:255',
+            'enterprise.phone' => 'nullable|string|max:20',
+            'enterprise.email' => 'nullable|email|max:255',
+            'enterprise.whatsapp' => 'nullable|string|max:20',
         ];
 
         // if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
@@ -42,7 +47,7 @@ class UpdateContactRequest extends FormRequest
     public function validated($key = null, $default = null)
     {
         $validated = parent::validated();
-        
+
         $contactData = [
             'name' => $validated['name'],
             'birthday' => $validated['birthday'],
@@ -54,47 +59,33 @@ class UpdateContactRequest extends FormRequest
 
         $contact = Contact::findOrFail($this->route('id'));
 
-        $enterpriseStatus = $validated['status_id'] == 5 ? 2 : 1;
-    
-        if ($validated['status_id'] == 5)
-        {
-            $enterprise = Enterprise::withTrashed()->firstWhere('responsible_id', $contact->id);
-    
-            if ($enterprise)
-            {
-                if ($enterprise->trashed())
-                {
-                    $enterprise->restore();
-                }
-
-                $enterprise->update([
-                    'name' => $validated['enterprise_name'] ?? $enterprise->name,
-                    'status_id' => $enterpriseStatus
-                ]);
-            }
-            else
-            {
-                $enterprise = Enterprise::create([
-                    'responsible_id' => $contact->id,
-                    'name' => $validated['enterprise_name'] ?? $contact->name,
-                    'team_id' => $contact->team_id,
-                    'status_id' => $enterpriseStatus
-                ]);
-            }
-    
-            $contactData['enterprise_id'] = $enterprise->id;
+        $enterpriseData = [];
+        if (isset($validated['enterprise'])) {
+            $enterpriseData = [
+                'name' => $validated['enterprise']['name'] ?? $contact->name,
+                'website' => $validated['enterprise']['website'] ?? null,
+                'phone' => $validated['enterprise']['phone'] ?? null,
+                'email' => $validated['enterprise']['email'] ?? null,
+                'whatsapp' => $validated['enterprise']['whatsapp'] ?? null,
+                'status_id' => $validated['status_id'] == 5 ? 2 : 1,
+                'responsible_id' => $contact->id
+            ];
         }
-        else
-        {
-            $enterprise = Enterprise::where('responsible_id', $contact->id)->first();
-            
-            if ($enterprise)
-            {
-                $enterprise->update(['status_id' => $enterpriseStatus]);
-            }
 
-            $contactData['enterprise_id'] = null;
+        $enterprise = Enterprise::withTrashed()->firstWhere('responsible_id', $contact->id);
+
+        if ($enterprise) {
+            if ($enterprise->trashed()) {
+                $enterprise->restore();
+            }
+            $enterprise->update($enterpriseData);
+        } else {
+            $enterpriseData['responsible_id'] = $contact->id;
+            $enterpriseData['team_id'] = $contact->team_id;
+            $enterprise = Enterprise::create($enterpriseData);
         }
+
+        $contactData['enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
 
         // $sourcesData = [
         //     ['source_id' => 1, 'value' => $validated['email']],

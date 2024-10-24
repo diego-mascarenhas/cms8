@@ -30,54 +30,24 @@ class ClientDataTable extends DataTable
                             <small class="text-muted">' . e($row->name) . '</small>
                         </div>';
             })
-            ->addColumn('current_sentiment', function ($row) {
-                if ($row->currentSentiment) {
-                    return $row->currentSentiment->sentiment->emoji;
-                }
-                return '🤔';
-            })
-            ->filterColumn('current_sentiment', function($query, $keyword) {
-                if ($keyword !== '') {
-                    $query->whereHas('currentSentiment', function($q) use ($keyword) {
-                        $q->where('sentiment_id', $keyword);
-                    });
-                }
-            })
-            ->addColumn('social_networks', function ($row) {
-                $socialNetworks = [
-                    'whatsapp' => ['icon' => 'fab fa-whatsapp', 'color' => '#25D366'],
-                    'facebook' => ['icon' => 'fab fa-facebook', 'color' => '#1877F2'],
-                    'instagram' => ['icon' => 'fab fa-instagram', 'color' => '#E4405F'],
-                    'twitter' => ['icon' => 'fab fa-twitter', 'color' => '#1DA1F2'],
-                    'linkedin' => ['icon' => 'fab fa-linkedin', 'color' => '#0A66C2'],
-                    'youtube' => ['icon' => 'fab fa-youtube', 'color' => '#FF0000'],
-                    'tiktok' => ['icon' => 'fab fa-tiktok', 'color' => '#000000'],
-                    'pinterest' => ['icon' => 'fab fa-pinterest', 'color' => '#BD081C'],
-                    'snapchat' => ['icon' => 'fab fa-snapchat', 'color' => '#FFFC00'],
-                    'telegram' => ['icon' => 'fab fa-telegram', 'color' => '#0088cc'],
-                ];
-
-                $networks = [];
-                $data = json_decode(json_encode($row->data), true) ?? [];
-
-                foreach ($socialNetworks as $network => $info) {
-                    $value = $data[$network] ?? '';
-                    if (!empty($value)) {
-                        $networks[] = sprintf(
-                            '<a href="%s" target="_blank" style="color: %s;"><i class="%s"></i></a>',
-                            $this->getSocialLink($network, $value),
-                            $info['color'],
-                            $info['icon']
-                        );
-                    }
-                }
-
-                return empty($networks) ? '' : implode(' ', $networks);
-            })
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
-            ->rawColumns(['name', 'action', 'current_sentiment', 'social_networks', 'status_id']);
+            ->editColumn('website', function ($row) {
+                if ($row->website) {
+                    $url = $this->ensureProtocol($row->website);
+                    return '<a href="' . e($url) . '" target="_blank" rel="noopener noreferrer">' . e($row->website) . '</a>';
+                }
+                return 'N/A';
+            })
+            ->editColumn('phone', function ($row) {
+                if ($row->phone) {
+                    $phoneNumber = preg_replace('/[^0-9+]/', '', $row->phone);
+                    return '<a href="tel:' . e($phoneNumber) . '">' . e($row->phone) . '</a>';
+                }
+                return 'N/A';
+            })
+            ->rawColumns(['name', 'action', 'current_sentiment', 'social_networks', 'status_id', 'website', 'phone']);
     }
 
     public function query(Enterprise $model): QueryBuilder
@@ -141,12 +111,20 @@ class ClientDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')->title('Cliente'),
-            Column::make('social_networks')
-                ->title('Redes Sociales')
+            Column::make('phone')
+                ->title('Teléfono')
                 ->className('text-center')
-                ->searchable(false)
-                ->orderable(false)
-                ->width(200),
+                ->searchable(true)
+                ->orderable(true)
+                ->exportable(true)
+                ->printable(true),
+            Column::make('website')
+                ->title('Sitio Web')
+                ->className('text-center')
+                ->searchable(true)
+                ->orderable(true)
+                ->exportable(true)
+                ->printable(true),
             Column::make('locality')->title('Ciudad')->className('text-center'),
             Column::make('status_id')->title('Estado')->className('text-center'),
             Column::computed('action')->title('Acciones')->width(20)->className('text-center')
@@ -157,30 +135,16 @@ class ClientDataTable extends DataTable
         ];
     }
 
-    private function getSocialLink($network, $value)
-    {
-        if (filter_var($value, FILTER_VALIDATE_URL)) {
-            return $value;
-        }
-
-        $baseUrls = [
-            'whatsapp' => 'https://wa.me/',
-            'facebook' => 'https://facebook.com/',
-            'instagram' => 'https://instagram.com/',
-            'twitter' => 'https://twitter.com/',
-            'linkedin' => 'https://linkedin.com/in/',
-            'youtube' => 'https://youtube.com/',
-            'tiktok' => 'https://tiktok.com/@',
-            'pinterest' => 'https://pinterest.com/',
-            'snapchat' => 'https://snapchat.com/add/',
-            'telegram' => 'https://t.me/',
-        ];
-
-        return ($baseUrls[$network] ?? '') . $value;
-    }
-
     protected function filename(): string
     {
         return 'Client_' . date('YmdHis');
+    }
+
+    private function ensureProtocol($url)
+    {
+        if (!preg_match("~^(?:f|ht)tps?://~i", $url)) {
+            $url = "https://" . $url;
+        }
+        return $url;
     }
 }

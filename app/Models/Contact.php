@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\UserContactAction;
 use Carbon\Carbon;
 
@@ -68,7 +69,7 @@ class Contact extends Model
 
 	public function enterprise()
 	{
-		return $this->belongsTo(Enterprise::class, 'responsible_id');
+		return $this->hasOne(Enterprise::class, 'responsible_id');
 	}
 
 	public function country()
@@ -270,8 +271,10 @@ class Contact extends Model
 		return $phoneSource ? $phoneSource->pivot->value : null;
 	}
 
-	public function enterprises()
+	public function enterprises(): BelongsToMany
 	{
-		return $this->belongsToMany(Enterprise::class, 'contact_enterprise')->withPivot('position');
+		return $this->belongsToMany(Enterprise::class, 'contact_enterprise')
+					->withPivot('position')
+					->withTimestamps();
 	}
 }

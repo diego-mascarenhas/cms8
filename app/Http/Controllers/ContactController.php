@@ -120,9 +120,9 @@ class ContactController extends Controller
 	/**
 	 * Show the form for editing the specified resource.
 	 */
-	public function edit(string $id)
+	public function edit($id)
 	{
-		$data = Contact::findOrFail($id);
+		$data = Contact::with('enterprise')->findOrFail($id);
 
 		$data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
 		$enterpriseStatuses = ContactStatus::getOptions();

@@ -14,11 +14,8 @@ class ContactSeeder extends Seeder
   {
     $faker = Faker::create();
 
-    // Create Brandty enterprise
-    $brandty = \App\Models\Enterprise::where('name', 'Brandty')->first();
 
-    // Create manual contacts
-    $manualContacts = [
+    $revisionContacts = [
       [
         'team_id' => 2,
         'name' => 'Diego',
@@ -59,6 +56,27 @@ class ContactSeeder extends Seeder
         'responsible_id' => 2,
         'status_id' => 5,
       ],
+    ];
+
+    foreach ($revisionContacts as $contactData) {
+      $contact = Contact::create([
+        'team_id' => $contactData['team_id'],
+        'name' => $contactData['name'],
+        'creator_id' => $contactData['creator_id'],
+        'responsible_id' => $contactData['responsible_id'],
+        'status_id' => $contactData['status_id'],
+      ]);
+
+      // Relate contact to revision
+      $contact->enterprises()->attach(1, ['position' => $faker->jobTitle]);
+    }
+
+    
+    // Create Brandty enterprise
+    $brandty = \App\Models\Enterprise::where('name', 'Brandty')->first();
+
+    // Create manual contacts
+    $manualContacts = [
       [
         'team_id' => 1,
         'name' => 'Guzmán',
@@ -101,7 +119,7 @@ class ContactSeeder extends Seeder
       ]);
 
       // Relate contact to Brandty
-      $contact->enterprises()->attach(1, ['position' => $faker->jobTitle]);
+      $contact->enterprises()->attach(2, ['position' => $faker->jobTitle]);
 
       ContactSentimentHistory::create([
         'contact_id' => $contact->id,
