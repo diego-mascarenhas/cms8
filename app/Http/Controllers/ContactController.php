@@ -131,7 +131,7 @@ class ContactController extends Controller
 		$enterpriseStatuses = ContactStatus::getOptions();
 		$socialSources = Source::getOptions();
 
-		return view('contact.form', compact('data', 'enterpriseStatuses'));
+		return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources'));
 	}
 
 	/**
@@ -139,6 +139,7 @@ class ContactController extends Controller
 	 */
 	public function update(UpdateContactRequest $request, $id)
 	{
+		dd($request->all());
 		$data = $request->validated();
 
 		$contactData = $data['contact'];
