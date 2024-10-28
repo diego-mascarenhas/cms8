@@ -71,6 +71,14 @@ class ContactSeeder extends Seeder
       $contact->enterprises()->attach(1, ['position' => $faker->jobTitle]);
     }
 
+    $enterprise = \App\Models\Enterprise::find(1);
+      
+    if ($enterprise)
+    {
+        $enterprise->responsible_id = 1;
+        $enterprise->save();
+    }
+
     
     // Create Brandty enterprise
     $brandty = \App\Models\Enterprise::where('name', 'Brandty')->first();
@@ -120,6 +128,59 @@ class ContactSeeder extends Seeder
 
       // Relate contact to Brandty
       $contact->enterprises()->attach(2, ['position' => $faker->jobTitle]);
+
+      $enterprise = \App\Models\Enterprise::find(2);
+      
+      if ($enterprise)
+      {
+          $enterprise->responsible_id = 5;
+          $enterprise->save();
+      }
+
+      ContactSentimentHistory::create([
+        'contact_id' => $contact->id,
+        'sentiment_id' => ContactSentiment::inRandomOrder()->first()->id,
+        'notes' => $faker->sentence,
+      ]);
+    }
+
+    
+    // Create Generator Landing enterprise
+    $brandty = \App\Models\Enterprise::where('name', 'Generator Landing')->first();
+
+    // Create manual contacts
+    $manualContacts = [
+      [
+        'team_id' => 1,
+        'name' => 'Lluis Sarda',
+        'position' => 'CEO',
+        'birthday' => '1985-05-15',
+        'profile' => 'Experienced entrepreneur and marketing expert.',
+        'creator_id' => 2,
+        'responsible_id' => 2,
+        'status_id' => 5,
+      ],
+    ];
+
+    foreach ($manualContacts as $contactData) {
+      $contact = Contact::create([
+        'team_id' => $contactData['team_id'],
+        'name' => $contactData['name'],
+        'creator_id' => $contactData['creator_id'],
+        'responsible_id' => $contactData['responsible_id'],
+        'status_id' => $contactData['status_id'],
+      ]);
+
+      // Relate contact to Generator Landing
+      $contact->enterprises()->attach(3, ['position' => $faker->jobTitle]);
+
+      $enterprise = \App\Models\Enterprise::find(3);
+      
+      if ($enterprise)
+      {
+          $enterprise->responsible_id = 8;
+          $enterprise->save();
+      }
 
       ContactSentimentHistory::create([
         'contact_id' => $contact->id,

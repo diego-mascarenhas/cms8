@@ -28,20 +28,11 @@ class UpdateContactRequest extends FormRequest
             'enterprise.phone' => 'nullable|string|max:20',
             'enterprise.email' => 'nullable|email|max:255',
             'enterprise.whatsapp' => 'nullable|string|max:20',
+            'source_id' => 'array',
+            'source_id.*' => 'required|exists:sources,id',
+            'source_value' => 'array',
+            'source_value.*' => 'required|string|max:255',
         ];
-
-        // if ($this->isMethod('PUT') || $this->isMethod('PATCH')) {
-        //     $contact = Contact::findOrFail($this->route('id'));
-        //     if ($contact->status_id == 5) {
-        //         $rules['status_id'] = 'required|in:5';
-        //     }
-        // }
-
-        // if ($this->input('status_id') == 5) {
-        //     $rules['enterprise_name'] = 'required|string|max:255';
-        // }
-
-        return $rules;
     }
 
     public function validated($key = null, $default = null)
@@ -87,17 +78,27 @@ class UpdateContactRequest extends FormRequest
 
         $contactData['enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
 
-        // $sourcesData = [
-        //     ['source_id' => 1, 'value' => $validated['email']],
-        // ];
-        // if (!empty($validated['phone'])) {
-        //     $sourcesData[] = ['source_id' => 2, 'value' => $validated['phone']];
-        // }
-        
         $sourcesData = [];
+        if (isset($validated['source_id']) && isset($validated['source_value'])) {
+            foreach ($validated['source_id'] as $key => $sourceId) {
+                if (isset($validated['source_value'][$key])) {
+                    $sourcesData[] = [
+                        'source_id' => $sourceId,
+                        'value' => $validated['source_value'][$key]
+                    ];
+                }
+            }
+        }
+
+        $contact->sources()->detach();
+
+        foreach ($sourcesData as $source) {
+            $contact->sources()->attach($source['source_id'], ['value' => $source['value']]);
+        }
 
         return [
             'contact' => $contactData,
+            'enterprise' => $enterpriseData,
             'sources' => $sourcesData,
         ];
     }

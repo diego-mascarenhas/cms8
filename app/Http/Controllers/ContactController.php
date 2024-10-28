@@ -139,7 +139,6 @@ class ContactController extends Controller
 	 */
 	public function update(UpdateContactRequest $request, $id)
 	{
-		dd($request->all());
 		$data = $request->validated();
 
 		$contactData = $data['contact'];

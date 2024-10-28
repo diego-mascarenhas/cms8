@@ -80,8 +80,8 @@
                     </div>
                     <div class="step" data-target="#social-links-modern">
                         <button type="button" class="step-trigger">
-                            <span class="bs-stepper-icon"></span>
-                            <i class="ti ti-share"></i>
+                            <span class="bs-stepper-icon">
+                                <i class="ti ti-share"></i>
                             </span>
                             <span class="bs-stepper-label">Redes Sociales</span>
                         </button>
@@ -191,7 +191,7 @@
                                     newRow.innerHTML = `
                                         <div class="col-sm-4">
                                             <label for="social_network_new" class="form-label">Red Social</label>
-                                            <select id="social_network_new" class="form-select" name="sources[new]">
+                                            <select id="social_network_new" class="form-select" name="source_id[]">
                                                 <option value="">Selecciona una red social</option>
                                                 @foreach ($socialSources as $socialSource)
                                                     <option value="{{ $socialSource['id'] }}">{{ $socialSource['name'] }}</option>
@@ -199,7 +199,8 @@
                                             </select>
                                         </div>
                                         <div class="col-sm-6">
-                                            <x-input-general id="social_link_new" label="Enlace de la red social" value="" name="pivot_value[new]" />
+                                            <label for="social_link_new" class="form-label">Enlace de la red social</label>
+                                            <input type="text" class="form-control" id="social_link_new" name="source_value[]" value="">
                                         </div>
                                         <div class="col-sm-2">
                                             <br><button type="button" class="btn btn-danger remove-social-link">Eliminar</button>
@@ -355,6 +356,7 @@
         });
     </script>
 @endpush
+
 
 
 
