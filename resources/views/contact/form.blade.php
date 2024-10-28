@@ -157,26 +157,83 @@
                                 </div>
                             </div>
                         </div>
+                        
                         <!-- Social Links -->
                         <div id="social-links-modern" class="content">
                             <div class="content-header mb-3">
                                 <h6 class="mb-0">Redes Sociales</h6>
                                 <small>Ingresa el link de tus redes sociales</small>
                             </div>
-                            <div class="row g-3">
-                                @foreach (['whatsapp', 'facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok', 'pinterest', 'snapchat', 'telegram'] as $network)
+                            <div class="row g-3" id="social-links-container">
+                                @foreach ($data->sources as $source)
                                     <div class="col-sm-6">
-                                        <x-input-general id="{{ $network }}" label="{{ ucfirst($network) }}"
-                                            value="{{ old($network, $data->{$network} ?? '') }}" />
+                                        <label for="social_network_{{ $source->id }}" class="form-label">Red Social</label>
+                                        <select id="social_network_{{ $source->id }}" class="form-select" name="sources[{{ $source->id }}]">
+                                            <option value="">Selecciona una red social</option>
+                                            <option value="whatsapp" {{ $source->id == 3 ? 'selected' : '' }}>WhatsApp</option>
+                                            <option value="facebook" {{ $source->id == 4 ? 'selected' : '' }}>Facebook</option>
+                                            <option value="instagram" {{ $source->id == 5 ? 'selected' : '' }}>Instagram</option>
+                                            <option value="twitter" {{ $source->id == 6 ? 'selected' : '' }}>Twitter</option>
+                                            <option value="linkedin" {{ $source->id == 7 ? 'selected' : '' }}>LinkedIn</option>
+                                            <option value="youtube" {{ $source->id == 8 ? 'selected' : '' }}>YouTube</option>
+                                            <option value="tiktok" {{ $source->id == 9 ? 'selected' : '' }}>TikTok</option>
+                                            <option value="pinterest" {{ $source->id == 10 ? 'selected' : '' }}>Pinterest</option>
+                                            <option value="snapchat" {{ $source->id == 11 ? 'selected' : '' }}>Snapchat</option>
+                                            <option value="telegram" {{ $source->id == 12 ? 'selected' : '' }}>Telegram</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <x-input-general id="social_link_{{ $source->id }}" label="Enlace de la red social" value="{{ $source->pivot->value ?? '' }}" name="pivot_value[{{ $source->id }}]" />
                                     </div>
                                 @endforeach
-                                <div class="col-12 d-flex">
-                                    <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
-                                    <button type="reset" class="btn btn-label-secondary"
-                                        onclick="location.href='{{ route('contact-list') }}'">Cancelar</button>
-                                </div>
+                            </div>
+                            <div class="col-12 d-flex">
+                                <button type="button" class="btn btn-secondary me-1" id="add-social-link">Agregar otra red social</button>
+                            </div>
+                            <div class="col-12 d-flex">
+                                <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
+                                <button type="reset" class="btn btn-label-secondary"
+                                    onclick="location.href='{{ route('contact-list') }}'">Cancelar</button>
                             </div>
                         </div>
+
+                        <script>
+                            document.getElementById('add-social-link').addEventListener('click', function() {
+                                const container = document.getElementById('social-links-container');
+                                const newInput = document.createElement('div');
+                                newInput.classList.add('row', 'g-3');
+                                newInput.innerHTML = `
+                                    <div class="col-sm-6">
+                                        <label for="social_network" class="form-label">Red Social</label>
+                                        <select id="social_network" class="form-select">
+                                            <option value="">Selecciona una red social</option>
+                                            <option value="whatsapp">WhatsApp</option>
+                                            <option value="facebook">Facebook</option>
+                                            <option value="instagram">Instagram</option>
+                                            <option value="twitter">Twitter</option>
+                                            <option value="linkedin">LinkedIn</option>
+                                            <option value="youtube">YouTube</option>
+                                            <option value="tiktok">TikTok</option>
+                                            <option value="pinterest">Pinterest</option>
+                                            <option value="snapchat">Snapchat</option>
+                                            <option value="telegram">Telegram</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <x-input-general id="social_link" label="Enlace de la red social" value="" />
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" class="btn btn-danger remove-social-link">Eliminar</button>
+                                    </div>
+                                `;
+                                container.appendChild(newInput);
+
+                                // Agregar evento para eliminar la fila
+                                newInput.querySelector('.remove-social-link').addEventListener('click', function() {
+                                    container.removeChild(newInput);
+                                });
+                            });
+                        </script>
                         <!-- Account Details -->
                         <div id="account-details-modern" class="content">
                             <div class="content-header mb-3">
@@ -301,3 +358,4 @@
         });
     </script>
 @endpush
+

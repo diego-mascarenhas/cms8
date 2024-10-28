@@ -8,6 +8,7 @@ use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
 use App\Models\ContactSentiment;
 use App\Models\Country;
+use App\Models\Source;
 use Illuminate\Http\Request;
 use Spatie\SimpleExcel\SimpleExcelReader;
 use Illuminate\Support\Facades\Storage;
@@ -43,8 +44,11 @@ class ContactController extends Controller
 	 */
 	public function create()
 	{
-		$enterpriseStatuses = ContactStatus::getOptions();
 		$data = new \stdClass();
+
+		$enterpriseStatuses = ContactStatus::getOptions();
+		$socialSources = Source::getOptions();
+
 		return view('contact.form', compact('data', 'enterpriseStatuses'));
 	}
 
@@ -122,10 +126,11 @@ class ContactController extends Controller
 	 */
 	public function edit($id)
 	{
-		$data = Contact::with('enterprise')->findOrFail($id);
-
+		$data = Contact::with('enterprise', 'sources')->findOrFail($id);
 		$data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
 		$enterpriseStatuses = ContactStatus::getOptions();
+		$socialSources = Source::getOptions();
+
 		return view('contact.form', compact('data', 'enterpriseStatuses'));
 	}
 
