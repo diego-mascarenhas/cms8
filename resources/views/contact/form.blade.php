@@ -170,9 +170,11 @@
                                 </button>
                             </div>
                             <div class="row g-3 mt-2 mb-2" id="social-links-container">
-                                @foreach ($data->sources as $source)
-                                    <x-social-link :source="$source" :socialSources="$socialSources" />
-                                @endforeach
+                                @if(isset($data->sources) && $data->sources->count() > 0)
+                                    @foreach ($data->sources as $source)
+                                        <x-social-link :source="$source" :socialSources="$socialSources" />
+                                    @endforeach
+                                @endif
                             </div>
                             <div class="col-12 d-flex">
                                 <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>

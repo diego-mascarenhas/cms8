@@ -49,7 +49,7 @@ class ContactController extends Controller
 		$enterpriseStatuses = ContactStatus::getOptions();
 		$socialSources = Source::getOptions();
 
-		return view('contact.form', compact('data', 'enterpriseStatuses'));
+		return view('contact.form', compact('data', 'enterpriseStatuses', 'socialSources'));
 	}
 
 	/**
@@ -145,10 +145,6 @@ class ContactController extends Controller
 
 		$contact = Contact::findOrFail($id);
 		$contact->update($contactData);
-
-		if (!empty($data['sources']))
-		{
-		}
 
 		$message = 'Contact updated successfully.';
 
