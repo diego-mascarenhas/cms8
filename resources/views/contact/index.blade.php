@@ -340,36 +340,14 @@
                     processData: false,
                     contentType: false,
                     success: function(response) {
-                        $('#importModal').modal('hide');
-                        Swal.fire({
-                            title: 'Importación completada',
-                            text: `Importados: ${response.processed}, Actualizados: ${response.updated || 0}, Duplicados: ${response.duplicates || 0}`,
-                            icon: 'success',
-                            confirmButtonText: 'OK',
-                            showCancelButton: false,
-                            showDenyButton: false,
-                            buttonsStyling: false,
-                            customClass: {
-                                confirmButton: 'btn btn-primary'
-                            }
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                table.ajax.reload();
-                            }
-                        });
+                        window.location.href = '{{ route('contact.import') }}';
                     },
                     error: function(response) {
                         Swal.fire({
                             title: 'Error',
                             text: 'Hubo un problema al importar el archivo.',
                             icon: 'error',
-                            confirmButtonText: 'OK',
-                            showCancelButton: false,
-                            showDenyButton: false,
-                            buttonsStyling: false,
-                            customClass: {
-                                confirmButton: 'btn btn-primary'
-                            }
+                            confirmButtonText: 'OK'
                         });
                     }
                 });

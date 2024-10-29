@@ -210,115 +210,10 @@ class ContactController extends Controller
 		]);
 
 		$file = $request->file('excel_file');
-		$path = $file->store('temp');
-		$fullPath = Storage::path($path);
+		$fileName = $file->getClientOriginalName();
+		$file->store('temp');
 
-		$extension = $file->getContactOriginalExtension();
-
-		try
-		{
-			if ($extension == 'csv')
-			{
-				$excel = SimpleExcelReader::create($fullPath, 'csv');
-			}
-			else
-			{
-				$excel = SimpleExcelReader::create($fullPath);
-			}
-
-			$rawData = [];
-			$processedData = [];
-			$updatedCount = 0;
-			$duplicateCount = 0;
-			$headers = null;
-
-			foreach ($excel->getRows() as $index => $row)
-			{
-				$rawData[] = $row;
-
-				if ($index === 0)
-				{
-					if ($this->isHeaderRow($row))
-					{
-						$headers = array_map([$this, 'normalizeHeader'], array_keys($row));
-						continue; // Skip header row
-					}
-				}
-
-				$values = array_values(array_filter($row));
-
-				if (count($values) >= 2)
-				{
-					// At least name and email
-					$contact = $this->detectFields($values);
-					$contact['team_id'] = Auth::user()->currentTeam->id;
-
-					if ($headers)
-					{
-						$additionalData = array_slice($values, 3);
-						$additionalDataAssoc = [];
-
-						// Ensure both arrays have the same length
-						for ($i = 0; $i < count($additionalData); $i++)
-						{
-							if (isset($headers[$i + 3]))
-							{
-								$additionalDataAssoc[$headers[$i + 3]] = $additionalData[$i];
-							}
-						}
-
-						$contact['data'] = !empty($additionalDataAssoc) ? $additionalDataAssoc : null;
-					}
-					else
-					{
-						$additionalData = array_slice($values, 3);
-						$contact['data'] = !empty($additionalData) ? $additionalData : null;
-					}
-
-					$validator = Validator::make($contact, [
-						'name' => 'required|string',
-						'email' => 'required|email',
-						'phone' => 'nullable',
-					]);
-
-					if ($validator->fails())
-					{
-						continue; // Skip this row if validation fails
-					}
-
-					$existingContact = Contact::where('email', $contact['email'])
-						->where('team_id', $contact['team_id'])
-						->first();
-
-					if ($existingContact)
-					{
-						$existingContact->update($contact);
-						$updatedCount++;
-					}
-					else
-					{
-						Contact::create($contact);
-						$processedData[] = $contact;
-					}
-				}
-			}
-
-			Storage::delete($path);
-
-			return response()->json([
-				'message' => 'Importación completada con éxito',
-				'processed' => count($processedData),
-				'updated' => $updatedCount,
-				'duplicates' => $duplicateCount,
-				'data' => $processedData,
-				'rawData' => $rawData,
-			]);
-		}
-		catch (\Exception $e)
-		{
-			Storage::delete($path);
-			return response()->json(['error' => $e->getMessage()], 500);
-		}
+		return redirect()->route('contact.import')->with('fileName', $fileName);
 	}
 
 	private function detectFields($values)
@@ -456,5 +351,11 @@ class ContactController extends Controller
 		];
 
 		return response()->json($data);
+	}
+
+	public function showImport()
+	{
+		$fileName = session('fileName');
+		return view('contact.import', compact('fileName'));
 	}
 }
