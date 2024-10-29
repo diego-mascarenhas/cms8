@@ -4,9 +4,10 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ContactDataTable;
 use App\Models\Contact;
-use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
+use App\Models\ContactSource;
 use App\Models\ContactSentiment;
+use App\Models\ContactSentimentHistory;
 use App\Models\Country;
 use App\Models\Source;
 use Illuminate\Http\Request;
@@ -65,10 +66,6 @@ class ContactController extends Controller
 		$contactData['creator_id'] = auth()->user()->id;
 
 		$contact = Contact::create($contactData);
-
-		if (!empty($data['sources']))
-		{
-		}
 
 		$message = 'Contact created successfully.';
 
@@ -203,17 +200,110 @@ class ContactController extends Controller
 		]);
 	}
 
-	public function importExcel(Request $request)
+	public function UploadFile(Request $request)
 	{
 		$request->validate([
-			'excel_file' => 'required|file|mimes:xlsx,xls,csv',
+			'file' => 'required|file|mimes:xlsx,xls,csv',
 		]);
 
-		$file = $request->file('excel_file');
+		$file = $request->file('file');
 		$fileName = $file->getClientOriginalName();
-		$file->store('temp');
+		$extension = $file->getClientOriginalExtension();
+		$teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
 
-		return redirect()->route('contact.import')->with('fileName', $fileName);
+		$file->storeAs('contact/import', $teamUserId);
+	}
+
+	public function showImportForm()
+	{
+		$fileName = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
+		$filePath = storage_path('app/contact/import/' . $fileName);
+
+		if (!file_exists($filePath)) {
+			return view('contact.import');
+		}
+
+		$spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($filePath);
+		$worksheet = $spreadsheet->getActiveSheet();
+		$rows = $worksheet->toArray();
+
+		$contacts = [];
+		
+		for ($i = 1; $i < count($rows); $i++)
+		{
+			$row = $rows[$i];
+			
+			if (!empty(array_filter($row)))
+			{
+				$contact = $this->detectFields($row);
+				
+				if ($contact['email'] || $contact['phone'])
+				{
+					$contacts[] = $contact;
+					
+					$this->updateContact(
+						$contact['email'],
+						$contact['phone'],
+						$contact['name']
+					);
+				}
+			}
+		}
+
+		dd([
+			'contacts' => $contacts,
+			'total_contacts' => count($contacts)
+		]);
+	}
+
+	protected function updateContact($email, $phone, $name = null)
+	{
+		$contactData = [
+			'name' => 'Test ' .$name,
+			'status_id' => 1,
+			'team_id' => auth()->user()->currentTeam->id,
+			'creator_id' => auth()->user()->id,
+		];
+
+		$contactSources = [];
+		if ($email) {
+			$contactSources[] = [
+				'source_id' => 1,
+				'value' => $email
+			];
+		}
+		if ($phone) {
+			$contactSources[] = [
+				'source_id' => 2,
+				'value' => $phone
+			];
+		}
+
+		try {
+			$contact = Contact::where('team_id', auth()->user()->currentTeam->id)
+				->whereHas('sources', function ($query) use ($email) {
+					$query->where('source_id', 1)
+						  ->where('value', $email);
+				})
+				->firstOrFail();
+		} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+			$contact = Contact::create($contactData);
+
+			foreach ($contactSources as $source) {
+				ContactSource::create([
+					'contact_id' => $contact->id,
+					'source_id' => $source['source_id'],
+					'value' => $source['value']
+				]);
+			}
+		}
+
+		return $contact;
+	}
+
+	public function showImport()
+	{
+		return view('contact.import');
 	}
 
 	private function detectFields($values)
@@ -224,23 +314,25 @@ class ContactController extends Controller
 			'phone' => null,
 		];
 
-		foreach ($values as $value)
-		{
-			if (filter_var($value, FILTER_VALIDATE_EMAIL))
-			{
+		foreach ($values as $index => $value) {
+			if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
 				$contact['email'] = $value;
+				unset($values[$index]);
+				break;
 			}
-			elseif (preg_match('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/', $value))
-			{
-				$contact['phone'] = $value;
-			}
-			else
-			{
-				$contact['name'] = $value;
-			}
+		}
 
-			if ($contact['name'] && $contact['email'])
-			{
+		foreach ($values as $index => $value) {
+			if (preg_match('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/', $value)) {
+				$contact['phone'] = $value;
+				unset($values[$index]);
+				break;
+			}
+		}
+
+		foreach ($values as $value) {
+			if (!empty($value) && $value !== $contact['email'] && $value !== $contact['phone']) {
+				$contact['name'] = $value;
 				break;
 			}
 		}
@@ -266,11 +358,6 @@ class ContactController extends Controller
 		$header = iconv('UTF-8', 'ASCII//TRANSLIT', $header);
 		$header = preg_replace('/[^a-z0-9_]/', '_', $header);
 		return $header;
-	}
-
-	public function showImportForm()
-	{
-		return view('contact.import');
 	}
 
 	public function endAction($trackingId)
@@ -351,11 +438,5 @@ class ContactController extends Controller
 		];
 
 		return response()->json($data);
-	}
-
-	public function showImport()
-	{
-		$fileName = session('fileName');
-		return view('contact.import', compact('fileName'));
 	}
 }

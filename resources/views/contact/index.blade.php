@@ -240,8 +240,8 @@
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="excel_file" class="form-label">Archivo Excel</label>
-                            <input type="file" class="form-control" id="excel_file" name="excel_file" required>
+                            <label for="file" class="form-label">Archivo Excel</label>
+                            <input type="file" class="form-control" id="file" name="file" required>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -334,7 +334,7 @@
                 var formData = new FormData(this);
 
                 $.ajax({
-                    url: '{{ route('contact.import-excel') }}',
+                    url: '{{ route('contact.upload-file') }}',
                     type: 'POST',
                     data: formData,
                     processData: false,

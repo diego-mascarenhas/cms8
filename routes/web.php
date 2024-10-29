@@ -80,8 +80,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
     Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
     Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
-    Route::get('/contact/import', [ContactController::class, 'showImport'])->name('contact.import');
-    Route::post('/contact/import-excel', [contactController::class, 'importExcel'])->name('contact.import-excel');
+    Route::post('/contact/upload-file', [contactController::class, 'UploadFile'])->name('contact.upload-file');
+    Route::get('/contact/import', [ContactController::class, 'showImportForm'])->name('contact.import');
 
     Route::get('/contact/create', [contactController::class, 'create'])->name('contact.create');
     Route::get('/contact/{id}', [contactController::class, 'show'])->name('contact.show');
