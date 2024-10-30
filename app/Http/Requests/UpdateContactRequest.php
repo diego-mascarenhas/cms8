@@ -51,7 +51,8 @@ class UpdateContactRequest extends FormRequest
         $contact = Contact::findOrFail($this->route('id'));
 
         $enterpriseData = [];
-        if (isset($validated['enterprise'])) {
+        if (isset($validated['enterprise']))
+        {
             $enterpriseData = [
                 'name' => $validated['enterprise']['name'] ?? $contact->name,
                 'website' => $validated['enterprise']['website'] ?? null,
@@ -65,12 +66,16 @@ class UpdateContactRequest extends FormRequest
 
         $enterprise = Enterprise::withTrashed()->firstWhere('responsible_id', $contact->id);
 
-        if ($enterprise) {
-            if ($enterprise->trashed()) {
+        if ($enterprise)
+        {
+            if ($enterprise->trashed())
+            {
                 $enterprise->restore();
             }
             $enterprise->update($enterpriseData);
-        } else {
+        }
+        else
+        {
             $enterpriseData['responsible_id'] = $contact->id;
             $enterpriseData['team_id'] = $contact->team_id;
             $enterprise = Enterprise::create($enterpriseData);
@@ -79,9 +84,12 @@ class UpdateContactRequest extends FormRequest
         $contactData['enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
 
         $sourcesData = [];
-        if (isset($validated['source_id']) && isset($validated['source_value'])) {
-            foreach ($validated['source_id'] as $key => $sourceId) {
-                if (isset($validated['source_value'][$key])) {
+        if (isset($validated['source_id']) && isset($validated['source_value']))
+        {
+            foreach ($validated['source_id'] as $key => $sourceId)
+            {
+                if (isset($validated['source_value'][$key]))
+                {
                     $sourcesData[] = [
                         'source_id' => $sourceId,
                         'value' => $validated['source_value'][$key]
@@ -92,7 +100,8 @@ class UpdateContactRequest extends FormRequest
 
         $contact->sources()->detach();
 
-        foreach ($sourcesData as $source) {
+        foreach ($sourcesData as $source)
+        {
             $contact->sources()->attach($source['source_id'], ['value' => $source['value']]);
         }
 

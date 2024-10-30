@@ -240,7 +240,7 @@
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="file" class="form-label">Archivo Excel</label>
+                            <label for="file" class="form-label">Archivo</label>
                             <input type="file" class="form-control" id="file" name="file" required>
                         </div>
                     </div>

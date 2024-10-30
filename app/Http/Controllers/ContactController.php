@@ -219,7 +219,8 @@ class ContactController extends Controller
 		$fileName = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
 		$filePath = storage_path('app/contact/import/' . $fileName);
 
-		if (!file_exists($filePath)) {
+		if (!file_exists($filePath))
+		{
 			return view('contact.import');
 		}
 
@@ -228,68 +229,99 @@ class ContactController extends Controller
 		$rows = $worksheet->toArray();
 
 		$contacts = [];
-		
-		for ($i = 1; $i < count($rows); $i++)
+		$totalImported = 0;
+
+		foreach ($rows as $row)
 		{
-			$row = $rows[$i];
-			
 			if (!empty(array_filter($row)))
 			{
 				$contact = $this->detectFields($row);
-				
+
 				if ($contact['email'] || $contact['phone'])
 				{
 					$contacts[] = $contact;
-					
-					$this->updateContact(
+
+					$newContact = $this->updateContact(
 						$contact['email'],
 						$contact['phone'],
-						$contact['name']
+						$contact['name'],
+						$contact['socials']
 					);
+
+					if ($newContact->wasRecentlyCreated)
+					{
+						$totalImported++;
+					}
 				}
 			}
 		}
 
-		dd([
-			'contacts' => $contacts,
-			'total_contacts' => count($contacts)
-		]);
+		$message = $totalImported . ' contactos importados con éxito.';
+
+		return redirect()
+			->route('contact-list')
+			->with('success', $message);
 	}
 
-	protected function updateContact($email, $phone, $name = null)
+	protected function updateContact($email, $phone, $name = null, $socials = [])
 	{
 		$contactData = [
-			'name' => 'Test ' .$name,
+			'name' => $name,
 			'status_id' => 1,
 			'team_id' => auth()->user()->currentTeam->id,
 			'creator_id' => auth()->user()->id,
 		];
 
 		$contactSources = [];
-		if ($email) {
+		
+		if ($email)
+		{
 			$contactSources[] = [
 				'source_id' => 1,
 				'value' => $email
 			];
 		}
-		if ($phone) {
+		if ($phone)
+		{
 			$contactSources[] = [
 				'source_id' => 2,
 				'value' => $phone
 			];
 		}
 
-		try {
+		foreach ($socials as $sourceId => $value)
+		{
+			$contactSources[] = [
+				'source_id' => $sourceId,
+				'value' => $value
+			];
+		}
+
+		try
+		{
 			$contact = Contact::where('team_id', auth()->user()->currentTeam->id)
-				->whereHas('sources', function ($query) use ($email) {
-					$query->where('source_id', 1)
-						  ->where('value', $email);
+				->where(function ($query) use ($email, $phone) {
+					if ($email) {
+						$query->whereHas('sources', function ($subQuery) use ($email) {
+							$subQuery->where('source_id', 1)
+									  ->where('value', $email);
+						});
+					}
+					if ($phone) {
+						$query->orWhereHas('sources', function ($subQuery) use ($phone) {
+							$subQuery->where('source_id', 2)
+									  ->where('value', $phone);
+						});
+					}
 				})
 				->firstOrFail();
-		} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+		}
+		catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e)
+		{
 			$contact = Contact::create($contactData);
 
-			foreach ($contactSources as $source) {
+			foreach ($contactSources as $source)
+			{
 				ContactSource::create([
 					'contact_id' => $contact->id,
 					'source_id' => $source['source_id'],
@@ -301,39 +333,52 @@ class ContactController extends Controller
 		return $contact;
 	}
 
-	public function showImport()
-	{
-		return view('contact.import');
-	}
-
 	private function detectFields($values)
 	{
 		$contact = [
 			'name' => null,
 			'email' => null,
 			'phone' => null,
+			'socials' => [],
 		];
 
-		foreach ($values as $index => $value) {
-			if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
+		$sources = Source::all()->keyBy('id');
+
+		foreach ($values as $index => $value)
+		{
+			if (filter_var($value, FILTER_VALIDATE_EMAIL))
+			{
 				$contact['email'] = $value;
 				unset($values[$index]);
-				break;
+				continue;
 			}
 		}
 
-		foreach ($values as $index => $value) {
-			if (preg_match('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/', $value)) {
+		foreach ($values as $index => $value)
+		{
+			if (preg_match('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/', $value))
+			{
 				$contact['phone'] = $value;
 				unset($values[$index]);
-				break;
+				continue;
 			}
 		}
 
-		foreach ($values as $value) {
-			if (!empty($value) && $value !== $contact['email'] && $value !== $contact['phone']) {
-				$contact['name'] = $value;
-				break;
+		foreach ($values as $value)
+		{
+			if (!empty($value) && $value !== $contact['email'] && $value !== $contact['phone'])
+			{
+				foreach ($sources as $source)
+				{
+					if (strpos($value, $source->base_url) === 0)
+					{
+						$contact['socials'][$source->id] = str_replace($source->base_url, '', $value);
+					}
+				}
+				if (is_null($contact['name']))
+				{
+					$contact['name'] = $value;
+				}
 			}
 		}
 
@@ -371,13 +416,12 @@ class ContactController extends Controller
 		$query = $request->input('q');
 
 		$members = Contact::where('name', 'like', "%{$query}%")
-			->select('id', 'name', 'profile')
+			->select('id', 'name', 'created_at')
 			->get()
-			->map(function ($contact)
-			{
+			->map(function ($contact) {
 				return [
 					'name' => $contact->name,
-					'subtitle' => $contact->profile,
+					'subtitle' => 'Creado el ' . $contact->created_at->format('d-m-Y H:i:s') . ' hs',
 					'src' => 'img/avatars/guru-meditating.jpg',
 					'url' => route('contact.show', $contact->id),
 				];
