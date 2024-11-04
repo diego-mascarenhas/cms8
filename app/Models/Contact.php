@@ -230,28 +230,47 @@ class Contact extends Model
 
 	public function getSourcesIconsHtmlAttribute()
 	{
-		$sourcesHtml = $this->sources->map(function ($source)
-		{
+		if ($this->sources->isEmpty()) {
+			return 'Sin especificar';
+		}
+
+		$html = '<div class="social-icons">';
+		
+		foreach ($this->sources as $source) {
 			$isPrimary = $source->id === $this->source_id;
-			$style = $isPrimary ? 'font-size: 1.2em; margin-right: 12px;' : 'margin-right: 12px;';
 			$title = $isPrimary ? 'Primary Source: ' . $source->name : $source->name;
-
 			$iconClass = in_array($source->icon, ['fa-envelope', 'fa-phone']) ? "fas {$source->icon} fa-lg" : "fab {$source->icon} fa-lg";
+			$url = $source->base_url . $source->pivot->value;
 
-			$value = $source->pivot->value;
-			$url = $source->base_url . $value;
-
-			return sprintf(
-				'<a href="%s" target="_blank" style="%s"><i class="%s" style="color: %s;" title="%s"></i></a>',
+			$html .= sprintf(
+				'<a href="%s" target="_blank" class="%s" title="%s"><i class="%s" style="color: %s;"></i></a>',
 				$url,
-				$style,
+				$isPrimary ? 'primary-source' : '',
+				$title,
 				$iconClass,
-				$source->color,
-				$title
+				$source->color
 			);
-		});
+		}
 
-		return $sourcesHtml->isEmpty() ? 'Sin especificar' : $sourcesHtml->implode('');
+		$html .= '</div><style>
+			.social-icons {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+				align-items: center;
+				justify-content: center;
+				min-width: 80px;
+				width: 100%;
+			}
+			.social-icons a {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				min-width: 20px;
+			}
+		</style>';
+
+		return $html;
 	}
 
 	public function getEmailAttribute()

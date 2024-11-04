@@ -179,82 +179,7 @@
 
 @push('scripts')
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
-@endpush
 
-@section('vendor-script')
-    <script src="{{ asset('vendors/data-tables/js/jquery.dataTables.min.js') }}"></script>
-    <script src="{{ asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js') }}"></script>
-    <script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
-    <script src="{{ asset('vendors/fullcalendar/lib/moment.min.js') }}"></script>
-    <script src="{{ asset('js/moment/' . app()->getLocale() . '.js') }}"></script>
-@endsection
-
-@push('modals')
-    {{-- @include('_partials/_modals/modal-sentiment') --}}
-
-    <!-- Modal Sentiment -->
-    <div class="modal fade" id="updateSentimentModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Añadir estado emocional</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="updateSentimentForm" method="POST">
-                    @csrf
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="sentiment_id" class="form-label">Estado emocional</label>
-                            <select class="form-select" id="sentiment_id" name="sentiment_id" required>
-                                <option value="" selected disabled>Selecciona un estado emocional</option>
-                                @foreach (App\Models\ContactSentiment::all() as $sentiment)
-                                    <option value="{{ $sentiment->id }}">{{ $sentiment->name }} {{ $sentiment->emoji }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="invalid-feedback" id="sentiment_id_error"></div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Notas</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                            <div class="invalid-feedback" id="notes_error"></div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Actualizar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal for Import -->
-    <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="importModalLabel">Importar Contactos</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="importForm" enctype="multipart/form-data">
-                    @csrf
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="file" class="form-label">Archivo</label>
-                            <input type="file" class="form-control" id="file" name="file" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <!-- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button> -->
-                        <button type="submit" class="btn btn-primary">Importar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-@endpush
-
-@push('scripts')
     <script>
         $(document).ready(function() {
             $(document).on('click', '.edit-sentiment', function() {
@@ -412,5 +337,140 @@
                 }
             });
         }
+
+        function addToList(id, element) {
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "¿Deseas agregar este contacto a la Lista de 60?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, agregar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then(function (result) {
+                if (result.value) {
+                    fetch('/list60', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            contact_id: id
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.error,
+                                customClass: {
+                                    confirmButton: 'btn btn-primary'
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Éxito!',
+                                text: data.success,
+                                customClass: {
+                                    confirmButton: 'btn btn-success'
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Ha ocurrido un error al procesar la solicitud',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            }
+                        });
+                    });
+                }
+            });
+        }
     </script>
+@endpush
+
+@section('vendor-script')
+    <script src="{{ asset('vendors/data-tables/js/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js') }}"></script>
+    <script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
+    <script src="{{ asset('vendors/fullcalendar/lib/moment.min.js') }}"></script>
+    <script src="{{ asset('js/moment/' . app()->getLocale() . '.js') }}"></script>
+@endsection
+
+@push('modals')
+    {{-- @include('_partials/_modals/modal-sentiment') --}}
+
+    <!-- Modal Sentiment -->
+    <div class="modal fade" id="updateSentimentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Añadir estado emocional</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="updateSentimentForm" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="sentiment_id" class="form-label">Estado emocional</label>
+                            <select class="form-select" id="sentiment_id" name="sentiment_id" required>
+                                <option value="" selected disabled>Selecciona un estado emocional</option>
+                                @foreach (App\Models\ContactSentiment::all() as $sentiment)
+                                    <option value="{{ $sentiment->id }}">{{ $sentiment->name }} {{ $sentiment->emoji }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="invalid-feedback" id="sentiment_id_error"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notas</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                            <div class="invalid-feedback" id="notes_error"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Actualizar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Import -->
+    <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importModalLabel">Importar Contactos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="importForm" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">Archivo</label>
+                            <input type="file" class="form-control" id="file" name="file" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <!-- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button> -->
+                        <button type="submit" class="btn btn-primary">Importar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endpush

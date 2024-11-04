@@ -13,7 +13,7 @@ return new class extends Migration
             $table->unsignedBigInteger('contact_id');
             $table->unsignedTinyInteger('type_id')->default(1);
             $table->dateTime('date_next');
-            $table->text('notes');
+            $table->text('notes')->nullable();
             $table->unsignedTinyInteger('status_id')->default(1);
             $table->timestamps();
 
