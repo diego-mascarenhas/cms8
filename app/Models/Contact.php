@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\UserContactAction;
 use Carbon\Carbon;
+use App\Traits\HasSourceIcons;
 
 class Contact extends Model
 {
 	use HasFactory;
 	use SoftDeletes;
+	use HasSourceIcons;
 
 	protected $fillable = [
 		'team_id',
@@ -226,51 +228,6 @@ class Contact extends Model
 	public function primarySource()
 	{
 		return $this->belongsTo(Source::class, 'source_id');
-	}
-
-	public function getSourcesIconsHtmlAttribute()
-	{
-		if ($this->sources->isEmpty()) {
-			return 'Sin especificar';
-		}
-
-		$html = '<div class="social-icons">';
-		
-		foreach ($this->sources as $source) {
-			$isPrimary = $source->id === $this->source_id;
-			$title = $isPrimary ? 'Primary Source: ' . $source->name : $source->name;
-			$iconClass = in_array($source->icon, ['fa-envelope', 'fa-phone']) ? "fas {$source->icon} fa-lg" : "fab {$source->icon} fa-lg";
-			$url = $source->base_url . $source->pivot->value;
-
-			$html .= sprintf(
-				'<a href="%s" target="_blank" class="%s" title="%s"><i class="%s" style="color: %s;"></i></a>',
-				$url,
-				$isPrimary ? 'primary-source' : '',
-				$title,
-				$iconClass,
-				$source->color
-			);
-		}
-
-		$html .= '</div><style>
-			.social-icons {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 8px;
-				align-items: center;
-				justify-content: center;
-				min-width: 80px;
-				width: 100%;
-			}
-			.social-icons a {
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				min-width: 20px;
-			}
-		</style>';
-
-		return $html;
 	}
 
 	public function getEmailAttribute()

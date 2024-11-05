@@ -59,7 +59,7 @@
                     class="ti ti-plus me-1"></i>Añadir informe</a> -->
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
-            <a href="#" class="btn btn-info waves-effect waves-light"><i
+            <a href="{{ route('chat-list') }}" class="btn btn-info waves-effect waves-light"><i
                     class="ti ti-message-chatbot me-1"></i>Chat</a>
         </div>
     </div>

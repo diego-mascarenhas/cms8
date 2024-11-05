@@ -11,7 +11,6 @@ use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ClientController;
@@ -115,7 +114,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Chat
     Route::get('/chat', [ChatController::class, 'index'])->name('chat');
-    Route::get('/chat/list', [WhatsAppController::class, 'index'])->name('chat-list');
+    Route::get('/chat/list', [ChatController::class, 'index'])->name('chat-list');
 
 });
 
