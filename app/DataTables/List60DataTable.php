@@ -64,6 +64,7 @@ class List60DataTable extends DataTable
             ->minifiedAjax()
             ->dom('frtip')
             ->orderBy(4, direction: 'asc')
+            ->responsive(true)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'pageLength' => 60,
@@ -75,21 +76,37 @@ class List60DataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('contact_id')->title(value: 'Nombre')->orderable(false),
-            Column::make('status_id')->title('Estado')->className('text-center'),
+            Column::make('contact_id')
+                ->title(value: 'Nombre')
+                ->addClass('all')
+                ->orderable(false),
+            Column::make('status_id')
+                ->title('Estado')
+                ->className('text-center')
+                ->addClass('min-phone'),
             Column::make('sources')
                 ->title('Redes')
                 ->className('text-center')
+                ->addClass('min-phone')
                 ->searchable(false)
                 ->orderable(false)
                 ->width(150),
-            Column::make('date_next')->title('Próximo contacto')->className('text-center'),
-            Column::make('type_id')->title('Tipo')->className('text-center'),
-            Column::computed('action')->title('Acciones')->width(20)->className('text-center')
-                ->exportable(false)
-                ->printable(false)
-                ->width(30)
-                ->addClass('text-center'),
+            Column::make('date_next')
+                ->title('Próximo contacto')
+                ->className('text-center')
+                ->addClass('min-tablet'),
+            Column::make('type_id')
+                ->title('Tipo')
+                ->className('text-center')
+                ->addClass('min-phone'),
+            Column::computed('action')
+                ->title('Acciones')
+            ->width(20)
+            ->className('text-center')
+            ->addClass('all')
+            ->exportable(false)
+            ->printable(false)
+            ->width(30),
         ];
     }
 

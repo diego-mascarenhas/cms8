@@ -80,6 +80,7 @@ class ClientDataTable extends DataTable
             ->minifiedAjax()
             ->dom('frtip')
             ->orderBy(1, 'asc')
+            ->responsive(true)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'initComplete' => "function() {
@@ -110,10 +111,13 @@ class ClientDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('name')->title('Cliente'),
+            Column::make('name')
+                ->title('Cliente')
+                ->addClass('all'),
             Column::make('phone')
                 ->title('Teléfono')
                 ->className('text-center')
+                ->addClass('min-tablet')
                 ->searchable(true)
                 ->orderable(true)
                 ->exportable(true)
@@ -121,17 +125,27 @@ class ClientDataTable extends DataTable
             Column::make('website')
                 ->title('Sitio Web')
                 ->className('text-center')
+                ->addClass('min-desktop')
                 ->searchable(true)
                 ->orderable(true)
                 ->exportable(true)
                 ->printable(true),
-            Column::make('locality')->title('Ciudad')->className('text-center'),
-            Column::make('status_id')->title('Estado')->className('text-center'),
-            Column::computed('action')->title('Acciones')->width(20)->className('text-center')
+            Column::make('locality')
+                ->title('Ciudad')
+                ->className('text-center')
+                ->addClass('min-phone'),
+            Column::make('status_id')
+                ->title('Estado')
+                ->className('text-center')
+                ->addClass('min-tablet'),
+            Column::computed('action')
+                ->title('Acciones')
+                ->width(20)
+                ->className('text-center')
+                ->addClass('all')
                 ->exportable(false)
                 ->printable(false)
-                ->width(30)
-                ->addClass('text-center'),
+                ->width(30),
         ];
     }
 
