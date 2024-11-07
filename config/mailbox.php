@@ -38,7 +38,7 @@ return [
      * when they match one of your mailboxes. To store all incoming
      * messages, modify this value.
      */
-    'only_store_matching_emails' => true,
+    'only_store_matching_emails' => false,
 
     /*
      * Some services do not have their own authentication methods to

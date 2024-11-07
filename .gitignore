@@ -412,7 +412,6 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
-yarn.lock
 .env
 .env.backup
 .env.local
@@ -420,9 +419,10 @@ yarn.lock
 .phpunit.result.cache
 *.homestead.php
 Homestea
-composer.lock
 package-lock.json
 v1
+# composer.lock
+# yarn.lock
 
 # NPM Compiled
 # /public/hot

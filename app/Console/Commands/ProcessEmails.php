@@ -26,7 +26,7 @@ class ProcessEmails extends Command
      */
     public function handle()
     {
-        $this->info('Procesando correos...');
+        $this->info('Processing emails...');
 
         try {
             $config = [
@@ -48,10 +48,10 @@ class ProcessEmails extends Command
             $messages = $folder->messages()->all()->get();
 
             foreach($messages as $message) {
-                $this->info("Procesando correo: " . $message->getSubject());
+                $this->info($message->getFrom() . ': ' . $message->getSubject());
             }
             
-            $this->info('Correos procesados correctamente.');
+            $this->info('Emails processed successfully.');
             
         } catch (\Exception $e) {
             $this->error('Error: ' . $e->getMessage());

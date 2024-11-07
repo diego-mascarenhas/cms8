@@ -25,7 +25,8 @@
     "twilio/sdk": "^8.2",
     "webklex/php-imap": "*",
     "yajra/laravel-datatables": "^10.1",
-    "yajra/laravel-datatables-oracle": "^10.11"
+    "yajra/laravel-datatables-oracle": "^10.11",
+    "zbateson/mail-mime-parser": "^2.4"
   },
   "require-dev": {
     "laravel/pint": "^1.0",

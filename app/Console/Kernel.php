@@ -28,6 +28,10 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('app:register-application')->dailyAt('23:59');
 
+        $schedule->command('emails:get')
+                ->everyMinute()
+                ->withoutOverlapping();
+
         $schedule->command('update:host-metrics')
             ->everyFiveMinutes()
             ->when(function ()
@@ -49,30 +53,30 @@ class Kernel extends ConsoleKernel
                 return !empty(env('WHM_SERVERS'));
             });
 
-        $schedule->command('fetch:bruler-data')
-            ->hourly()
-            ->when(function ()
-            {
-                return !empty(env('BRULER_API_KEY'));
-            });
+        // $schedule->command('fetch:bruler-data')
+        //     ->hourly()
+        //     ->when(function ()
+        //     {
+        //         return !empty(env('BRULER_API_KEY'));
+        //     });
 
-        $schedule->command('db:seed', [
-            '--class' => 'ImportDataSeeder',
-        ])->dailyAt('07:00')
-            ->timezone('Europe/Madrid')
-            ->onOneServer()
-            ->withoutOverlapping()
-            ->runInBackground()
-            ->before(function ()
-            {
-                Log::info('Starting the ImportDataSeeder task.');
-            })
-            ->after(function ()
-            {
-                Log::info('Finished the ImportDataSeeder task.');
-            });
+        // $schedule->command('db:seed', [
+        //     '--class' => 'ImportDataSeeder',
+        // ])->dailyAt('07:00')
+        //     ->timezone('Europe/Madrid')
+        //     ->onOneServer()
+        //     ->withoutOverlapping()
+        //     ->runInBackground()
+        //     ->before(function ()
+        //     {
+        //         Log::info('Starting the ImportDataSeeder task.');
+        //     })
+        //     ->after(function ()
+        //     {
+        //         Log::info('Finished the ImportDataSeeder task.');
+        //     });
 
-        $schedule->job(new \App\Jobs\SendBalanceEmail())->monthlyOn(1, '00:00');
+        // $schedule->job(new \App\Jobs\SendBalanceEmail())->monthlyOn(1, '00:00');
     }
 
     /**

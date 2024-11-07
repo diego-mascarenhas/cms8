@@ -18,38 +18,24 @@ class ChatController extends Controller
 
 	public function handleIncomingEmail(InboundEmail $email)
 	{
-		// Opción 1: Usar Log para registrar en storage/logs/laravel.log
-		Log::info('Correo recibido:', [
-			'asunto' => $email->subject(),
-			'de' => $email->from(),
-			'contenido' => $email->text()
-		]);
+		try {
+			// Log para debug
+			Log::info('Correo recibido:', [
+				'asunto' => $email->subject(),
+				'de' => $email->from(),
+				'contenido' => $email->text()
+			]);
 
-		// Opción 2: Escribir en un archivo específico
-		// $log = "Fecha: " . now() . "\n";
-		// $log .= "Asunto: " . $email->subject() . "\n";
-		// $log .= "De: " . $email->from() . "\n";
-		// $log .= "Contenido: " . $email->text() . "\n";
-		// $log .= "------------------------\n";
-		
-		// file_put_contents(
-		// 	storage_path('logs/emails.log'),
-		// 	$log,
-		// 	FILE_APPEND
-		// );
+			// Guardar el email en la tabla mailbox_inbound_emails
+			$inboundEmail = InboundEmail::fromMessage($email->message);
+			$inboundEmail->save();
 
-		// // Opción 3: Guardar en base de datos
-		// \App\Models\EmailLog::create([
-		// 	'subject' => $email->subject(),
-		// 	'from' => $email->from(),
-		// 	'content' => $email->text(),
-		// 	'received_at' => now()
-		// ]);
+			Log::info('Email guardado correctamente en la base de datos con ID: ' . $inboundEmail->id);
 
-		// // Opción 4: Enviar una notificación
-		// \Illuminate\Support\Facades\Notification::route('mail', 'tu@email.com')
-		// 	->notify(new \App\Notifications\NewEmailReceived($email));
-
-		return true; // Indica que el email fue procesado correctamente
+			return true;
+		} catch (\Exception $e) {
+			Log::error('Error al procesar el email: ' . $e->getMessage());
+			return false;
+		}
 	}
 }
