@@ -27,6 +27,13 @@
 			"permission": "chat.list"
 		},
 		{
+			"url": "mail/list",
+			"name": "Mail",
+			"icon": "menu-icon tf-icons ti ti-mail",
+			"slug": "mail-list",
+			"permission": "mail.list"
+		},
+		{
 			"url": "service/list",
 			"name": "Services",
 			"icon": "menu-icon tf-icons ti ti-rocket",

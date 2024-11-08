@@ -3,933 +3,641 @@
 @section('title', 'Chat')
 
 @section('vendor-style')
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/quill/katex.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/quill/editor.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.css') }}" />
 @endsection
 
 @section('page-style')
-    <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/app-email.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/app-chat.css') }}" />
 @endsection
 
 @section('vendor-script')
-    <script src="{{ asset('assets/vendor/libs/quill/katex.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/quill/quill.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/block-ui/block-ui.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.js') }}"></script>
 @endsection
 
 @section('page-script')
-    <script src="{{ asset('assets/js/app-email.js') }}"></script>
+    <script src="{{ asset('assets/js/app-chat.js') }}"></script>
 @endsection
 
 @section('content')
-    <div class="app-email card">
+    <div class="app-chat card overflow-hidden">
         <div class="row g-0">
-            <!-- Email Sidebar -->
-            <div class="col app-email-sidebar border-end flex-grow-0" id="app-email-sidebar">
-                <div class="btn-compost-wrapper d-grid">
-                    <button class="btn btn-primary btn-compose" data-bs-toggle="modal" data-bs-target="#emailComposeSidebar"
-                        id="emailComposeSidebarLabel">Compose</button>
+            <!-- Sidebar Left -->
+            <div class="col app-chat-sidebar-left app-sidebar overflow-hidden" id="app-chat-sidebar-left">
+                <div
+                    class="chat-sidebar-left-user sidebar-header d-flex flex-column justify-content-center align-items-center flex-wrap px-4 pt-5">
+                    <div class="avatar avatar-xl avatar-online">
+                        <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar" class="rounded-circle">
+                    </div>
+                    <h5 class="mt-2 mb-0">John Doe</h5>
+                    <span>Admin</span>
+                    <i class="ti ti-x ti-sm cursor-pointer close-sidebar" data-bs-toggle="sidebar" data-overlay
+                        data-target="#app-chat-sidebar-left"></i>
                 </div>
-                <!-- Email Filters -->
-                <div class="email-filters py-2">
-                    <!-- Email Filters: Folder -->
-                    <ul class="email-filter-folders list-unstyled mb-4">
-                        <li class="active d-flex justify-content-between" data-target="inbox">
-                            <a href="javascript:void(0);" class="d-flex flex-wrap align-items-center">
-                                <i class="ti ti-mail ti-sm"></i>
-                                <span class="align-middle ms-2">Inbox</span>
-                            </a>
-                            <div class="badge bg-label-primary rounded-pill badge-center">4</div>
+                <div class="sidebar-body px-4 pb-4">
+                    <div class="my-4">
+                        <small class="text-muted text-uppercase">About</small>
+                        <textarea id="chat-sidebar-left-user-about" class="form-control chat-sidebar-left-user-about mt-3" rows="4"
+                            maxlength="120">Dessert chocolate cake lemon drops jujubes. Biscuit cupcake ice cream bear claw brownie brownie marshmallow.</textarea>
+                    </div>
+                    <div class="my-4">
+                        <small class="text-muted text-uppercase">Status</small>
+                        <div class="d-grid gap-2 mt-3">
+                            <div class="form-check form-check-success">
+                                <input name="chat-user-status" class="form-check-input" type="radio" value="active"
+                                    id="user-active" checked>
+                                <label class="form-check-label" for="user-active">Active</label>
+                            </div>
+                            <div class="form-check form-check-danger">
+                                <input name="chat-user-status" class="form-check-input" type="radio" value="busy"
+                                    id="user-busy">
+                                <label class="form-check-label" for="user-busy">Busy</label>
+                            </div>
+                            <div class="form-check form-check-warning">
+                                <input name="chat-user-status" class="form-check-input" type="radio" value="away"
+                                    id="user-away">
+                                <label class="form-check-label" for="user-away">Away</label>
+                            </div>
+                            <div class="form-check form-check-secondary">
+                                <input name="chat-user-status" class="form-check-input" type="radio" value="offline"
+                                    id="user-offline">
+                                <label class="form-check-label" for="user-offline">Offline</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="my-4">
+                        <small class="text-muted text-uppercase">Settings</small>
+                        <ul class="list-unstyled d-grid gap-2 me-3 mt-3">
+                            <li class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class='ti ti-message me-1 ti-sm'></i>
+                                    <span class="align-middle">Two-step Verification</span>
+                                </div>
+                                <label class="switch switch-primary me-4 switch-sm">
+                                    <input type="checkbox" class="switch-input" checked="" />
+                                    <span class="switch-toggle-slider">
+                                        <span class="switch-on"></span>
+                                        <span class="switch-off"></span>
+                                    </span>
+                                </label>
+                            </li>
+                            <li class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class='ti ti-bell me-1 ti-sm'></i>
+                                    <span class="align-middle">Notification</span>
+                                </div>
+                                <label class="switch switch-primary me-4 switch-sm">
+                                    <input type="checkbox" class="switch-input" />
+                                    <span class="switch-toggle-slider">
+                                        <span class="switch-on"></span>
+                                        <span class="switch-off"></span>
+                                    </span>
+                                </label>
+                            </li>
+                            <li>
+                                <i class="ti ti-user-plus me-1 ti-sm"></i>
+                                <span class="align-middle">Invite Friends</span>
+                            </li>
+                            <li>
+                                <i class="ti ti-trash me-1 ti-sm"></i>
+                                <span class="align-middle">Delete Account</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="d-flex mt-4">
+                        <button class="btn btn-primary" data-bs-toggle="sidebar" data-overlay
+                            data-target="#app-chat-sidebar-left">Logout</button>
+                    </div>
+                </div>
+            </div>
+            <!-- /Sidebar Left-->
+
+            <!-- Chat & Contacts -->
+            <div class="col app-chat-contacts app-sidebar flex-grow-0 overflow-hidden border-end" id="app-chat-contacts">
+                <div class="sidebar-header">
+                    <div class="d-flex align-items-center me-3 me-lg-0">
+                        <div class="flex-shrink-0 avatar avatar-online me-3" data-bs-toggle="sidebar"
+                            data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">
+                            <img class="user-avatar rounded-circle cursor-pointer"
+                                src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar">
+                        </div>
+                        <div class="flex-grow-1 input-group input-group-merge rounded-pill">
+                            <span class="input-group-text" id="basic-addon-search31"><i class="ti ti-search"></i></span>
+                            <input type="text" class="form-control chat-search-input" placeholder="Search..."
+                                aria-label="Search..." aria-describedby="basic-addon-search31">
+                        </div>
+                    </div>
+                    <i class="ti ti-x cursor-pointer d-lg-none d-block position-absolute mt-2 me-1 top-0 end-0"
+                        data-overlay data-bs-toggle="sidebar" data-target="#app-chat-contacts"></i>
+                </div>
+                <hr class="container-m-nx m-0">
+                <div class="sidebar-body">
+
+                    <div class="chat-contact-list-item-title">
+                        <h5 class="text-primary mb-0 px-4 pt-3 pb-2">Chats</h5>
+                    </div>
+                    <!-- Chats -->
+                    <ul class="list-unstyled chat-contact-list" id="chat-list">
+                        <li class="chat-contact-list-item chat-list-item-0 d-none">
+                            <h6 class="text-muted mb-0">No Chats Found</h6>
                         </li>
-                        <li class="d-flex" data-target="sent">
-                            <a href="javascript:void(0);" class="d-flex flex-wrap align-items-center">
-                                <i class="ti ti-send ti-sm"></i>
-                                <span class="align-middle ms-2">Sent</span>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-online">
+                                    <img src="{{ asset('assets/img/avatars/13.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Waldemar Mannering</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Refer friends. Get
+                                        rewards.</p>
+                                </div>
+                                <small class="text-muted mb-auto">5 Minutes</small>
                             </a>
                         </li>
-                        <li class="d-flex" data-target="draft">
-                            <a href="javascript:void(0);" class="d-flex flex-wrap align-items-center">
-                                <i class="ti ti-file ti-sm"></i>
-                                <span class="align-middle ms-2">Draft</span>
+                        <li class="chat-contact-list-item active">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-offline">
+                                    <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Felecia Rower</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">I will purchase it for
+                                        sure. 👍</p>
+                                </div>
+                                <small class="text-muted mb-auto">30 Minutes</small>
                             </a>
                         </li>
-                        <li class="d-flex justify-content-between" data-target="starred">
-                            <a href="javascript:void(0);" class="d-flex flex-wrap align-items-center">
-                                <i class="ti ti-star ti-sm"></i>
-                                <span class="align-middle ms-2">Starred</span>
-                            </a>
-                            <div class="badge bg-label-warning rounded-pill badge-center">10</div>
-                        </li>
-                        <li class="d-flex align-items-center" data-target="spam">
-                            <a href="javascript:void(0);" class="d-flex flex-wrap align-items-center">
-                                <i class="ti ti-info-circle ti-sm"></i>
-                                <span class="align-middle ms-2">Spam</span>
-                            </a>
-                        </li>
-                        <li class="d-flex align-items-center" data-target="trash">
-                            <a href="javascript:void(0);" class="d-flex flex-wrap align-items-center">
-                                <i class="ti ti-trash ti-sm"></i>
-                                <span class="align-middle ms-2">Trash</span>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-busy">
+                                    <span class="avatar-initial rounded-circle bg-label-success">CM</span>
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Calvin Moore</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">If it takes long you can
+                                        mail inbox user</p>
+                                </div>
+                                <small class="text-muted mb-auto">1 Day</small>
                             </a>
                         </li>
                     </ul>
-                    <!-- Email Filters: Sources -->
-                    <div class="email-filter-labels">
-                        <small class="fw-normal text-uppercase text-muted m-4">Redes</small>
-                        <ul class="list-unstyled mb-0 mt-2">
-                            @foreach($sources as $source)
-                            <li data-target="{{ Str::lower($source->name) }}">
-                                <a href="javascript:void(0);">
-                                    <i class="{{ in_array($source->icon, ['fa-envelope', 'fa-phone']) ? 'fas' : 'fab' }} {{ $source->icon }}" 
-                                       style="color: {{ $source->color }};">
-                                    </i>
-                                    <span class="align-middle ms-2">{{ $source->name }}</span>
-                                </a>
-                            </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                    <!--/ Email Filters -->
+                    <!-- Contacts -->
+                    <ul class="list-unstyled chat-contact-list mb-0" id="contact-list">
+                        <li class="chat-contact-list-item chat-contact-list-item-title">
+                            <h5 class="text-primary mb-0">Contacts</h5>
+                        </li>
+                        <li class="chat-contact-list-item contact-list-item-0 d-none">
+                            <h6 class="text-muted mb-0">No Contacts Found</h6>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-offline">
+                                    <img src="{{ asset('assets/img/avatars/4.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Natalie Maxwell</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">UI/UX Designer</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-busy">
+                                    <img src="{{ asset('assets/img/avatars/5.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Jess Cook</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Business Analyst</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="avatar d-block flex-shrink-0">
+                                    <span class="avatar-initial rounded-circle bg-label-primary">LM</span>
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Louie Mason</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Resource Manager</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-busy">
+                                    <img src="{{ asset('assets/img/avatars/7.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Krystal Norton</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Business Executive</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-offline">
+                                    <img src="{{ asset('assets/img/avatars/8.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Stacy Garrison</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Marketing Ninja</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="avatar d-block flex-shrink-0">
+                                    <span class="avatar-initial rounded-circle bg-label-success">CM</span>
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Calvin Moore</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">UX Engineer</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-busy">
+                                    <img src="{{ asset('assets/img/avatars/10.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Mary Giles</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Account Department</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-offline">
+                                    <img src="{{ asset('assets/img/avatars/13.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Waldemar Mannering</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">AWS Support</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="avatar d-block flex-shrink-0">
+                                    <span class="avatar-initial rounded-circle bg-label-danger">AJ</span>
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Amy Johnson</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Frontend Developer</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-offline">
+                                    <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">Felecia Rower</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Cloud Engineer</p>
+                                </div>
+                            </a>
+                        </li>
+                        <li class="chat-contact-list-item">
+                            <a class="d-flex align-items-center">
+                                <div class="flex-shrink-0 avatar avatar-busy">
+                                    <img src="{{ asset('assets/img/avatars/11.png') }}" alt="Avatar"
+                                        class="rounded-circle">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="chat-contact-name text-truncate m-0">William Stephens</h6>
+                                    <p class="chat-contact-status text-muted text-truncate mb-0">Backend Developer</p>
+                                </div>
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </div>
-            <!--/ Email Sidebar -->
+            <!-- /Chat contacts -->
 
-            <!-- Emails List -->
-            <div class="col app-emails-list">
-                <div class="shadow-none border-0">
-                    <div class="emails-list-header p-3 py-lg-3 py-2">
-                        <!-- Email List: Search -->
+            <!-- Chat History -->
+            <div class="col app-chat-history bg-body">
+                <div class="chat-history-wrapper">
+                    <div class="chat-history-header border-bottom">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center w-100">
-                                <i class="ti ti-menu-2 ti-sm cursor-pointer d-block d-lg-none me-3" data-bs-toggle="sidebar"
-                                    data-target="#app-email-sidebar" data-overlay></i>
-                                <div class="mb-0 mb-lg-2 w-100">
-                                    <div class="input-group input-group-merge shadow-none">
-                                        <span class="input-group-text border-0 ps-0" id="email-search">
-                                            <i class="ti ti-search"></i>
-                                        </span>
-                                        <input type="text" class="form-control email-search-input border-0"
-                                            placeholder="Search mail" aria-label="Search mail"
-                                            aria-describedby="email-search">
-                                    </div>
+                            <div class="d-flex overflow-hidden align-items-center">
+                                <i class="ti ti-menu-2 ti-sm cursor-pointer d-lg-none d-block me-2"
+                                    data-bs-toggle="sidebar" data-overlay data-target="#app-chat-contacts"></i>
+                                <div class="flex-shrink-0 avatar">
+                                    <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
+                                        class="rounded-circle" data-bs-toggle="sidebar" data-overlay
+                                        data-target="#app-chat-sidebar-right">
+                                </div>
+                                <div class="chat-contact-info flex-grow-1 ms-2">
+                                    <h6 class="m-0">Felecia Rower</h6>
+                                    <small class="user-status text-muted">NextJS developer</small>
                                 </div>
                             </div>
-                            <div class="d-flex align-items-center mb-0 mb-md-2">
-                                <i
-                                    class="ti ti-rotate-clockwise ti-sm rotate-180 scaleX-n1-rtl cursor-pointer email-refresh me-2"></i>
+                            <div class="d-flex align-items-center">
+                                <i class="ti ti-phone-call cursor-pointer d-sm-block d-none me-3"></i>
+                                <i class="ti ti-video cursor-pointer d-sm-block d-none me-3"></i>
+                                <i class="ti ti-search cursor-pointer d-sm-block d-none me-3"></i>
                                 <div class="dropdown d-flex align-self-center">
-                                    <button class="btn p-0" type="button" id="emailsActions" data-bs-toggle="dropdown"
-                                        aria-haspopup="true" aria-expanded="false">
-                                        <i class="ti ti-dots-vertical ti-sm"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="emailsActions">
-                                        <a class="dropdown-item" href="javascript:void(0)">Mark as read</a>
-                                        <a class="dropdown-item" href="javascript:void(0)">Mark as unread</a>
-                                        <a class="dropdown-item" href="javascript:void(0)">Delete</a>
-                                        <a class="dropdown-item" href="javascript:void(0)">Archive</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <hr class="mx-n3 emails-list-header-hr">
-                        <!-- Email List: Actions -->
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center">
-                                <div class="form-check mb-0 me-2">
-                                    <input class="form-check-input" type="checkbox" id="email-select-all">
-                                    <label class="form-check-label" for="email-select-all"></label>
-                                </div>
-                                <i class="ti ti-trash ti-sm email-list-delete cursor-pointer me-2"></i>
-                                <i class="ti ti-mail-opened ti-sm email-list-read cursor-pointer me-2"></i>
-                                <div class="dropdown me-2">
-                                    <button class="btn p-0" type="button" id="dropdownMenuFolderOne"
+                                    <button class="btn p-0" type="button" id="chat-header-actions"
                                         data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <i class="ti ti-folder ti-sm"></i>
+                                        <i class="ti ti-dots-vertical"></i>
                                     </button>
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuFolderOne">
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="ti ti-info-circle ti-xs me-1"></i>
-                                            <span class="align-middle">Spam</span>
-                                        </a>
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="ti ti-file ti-xs me-1"></i>
-                                            <span class="align-middle">Draft</span>
-                                        </a>
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="ti ti-trash ti-xs me-1"></i>
-                                            <span class="align-middle">Trash</span>
-                                        </a>
+                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="chat-header-actions">
+                                        <a class="dropdown-item" href="javascript:void(0);">View Contact</a>
+                                        <a class="dropdown-item" href="javascript:void(0);">Mute Notifications</a>
+                                        <a class="dropdown-item" href="javascript:void(0);">Block Contact</a>
+                                        <a class="dropdown-item" href="javascript:void(0);">Clear Chat</a>
+                                        <a class="dropdown-item" href="javascript:void(0);">Report</a>
                                     </div>
                                 </div>
-                                <div class="dropdown">
-                                    <button class="btn p-0" type="button" id="dropdownLabelOne"
-                                        data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <i class="ti ti-tag ti-sm"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownLabelOne">
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="badge badge-dot bg-success me-1"></i>
-                                            <span class="align-middle">Workshop</span>
-                                        </a>
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="badge badge-dot bg-primary me-1"></i>
-                                            <span class="align-middle">Company</span>
-                                        </a>
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="badge badge-dot bg-info me-1"></i>
-                                            <span class="align-middle">Important</span>
-                                        </a>
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="badge badge-dot bg-danger me-1"></i>
-                                            <span class="align-middle">Private</span>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div
-                                class="email-pagination d-sm-flex d-none align-items-center flex-wrap justify-content-between justify-sm-content-end">
-                                <span class="d-sm-block d-none mx-3 text-muted">1-10 of 653</span>
-                                <i
-                                    class="email-prev ti ti-chevron-left ti-sm scaleX-n1-rtl cursor-pointer text-muted me-2"></i>
-                                <i class="email-next ti ti-chevron-right ti-sm scaleX-n1-rtl cursor-pointer"></i>
                             </div>
                         </div>
                     </div>
-                    <hr class="container-m-nx m-0">
-                    <!-- Email List: Items -->
-                    <div class="email-list pt-0">
-                        <ul class="list-unstyled m-0">
-                            <li class="email-list-item" data-starred="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-1">
-                                        <label class="form-check-label" for="email-1"></label>
+                    <div class="chat-history-body bg-body">
+                        <ul class="list-unstyled chat-history">
+                            <li class="chat-message chat-message-right">
+                                <div class="d-flex overflow-hidden">
+                                    <div class="chat-message-wrapper flex-grow-1">
+                                        <div class="chat-message-text">
+                                            <p class="mb-0">How can we help? We're here for you! 😄</p>
+                                        </div>
+                                        <div class="text-end text-muted mt-1">
+                                            <i class='ti ti-checks ti-xs me-1 text-success'></i>
+                                            <small>10:00 AM</small>
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/1.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Chandler Bing</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Focused impactful
-                                            open issues from the project of GitHub</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-danger d-none d-md-inline-block me-2"
-                                            data-label="private"></span>
-                                        <small class="email-list-item-time text-muted">08:40 AM</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-read"> <i
-                                                    class='ti ti-mail-opened ti-sm'></i> </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
+                                    <div class="user-avatar flex-shrink-0 ms-3">
+                                        <div class="avatar avatar-sm">
+                                            <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar"
+                                                class="rounded-circle">
+                                        </div>
                                     </div>
                                 </div>
                             </li>
-                            <li class="email-list-item email-marked-read" data-sent="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-2">
-                                        <label class="form-check-label" for="email-2"></label>
+                            <li class="chat-message">
+                                <div class="d-flex overflow-hidden">
+                                    <div class="user-avatar flex-shrink-0 me-3">
+                                        <div class="avatar avatar-sm">
+                                            <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
+                                                class="rounded-circle">
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/2.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Ross Geller</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, Dessert
-                                            soufflé tootsie roll soufflé carrot cake halvah jelly.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-info d-none d-md-inline-block me-2"
-                                            data-label="important"></span>
-                                        <small class="email-list-item-time text-muted">10:12 AM</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
+                                    <div class="chat-message-wrapper flex-grow-1">
+                                        <div class="chat-message-text">
+                                            <p class="mb-0">Hey John, I am looking for the best admin template.</p>
+                                            <p class="mb-0">Could you please help me to find it out? 🤔</p>
+                                        </div>
+                                        <div class="chat-message-text mt-2">
+                                            <p class="mb-0">It should be Bootstrap 5 compatible.</p>
+                                        </div>
+                                        <div class="text-muted mt-1">
+                                            <small>10:02 AM</small>
+                                        </div>
                                     </div>
                                 </div>
                             </li>
-                            <li class="email-list-item" data-draft="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-3">
-                                        <label class="form-check-label" for="email-3"></label>
+                            <li class="chat-message chat-message-right">
+                                <div class="d-flex overflow-hidden">
+                                    <div class="chat-message-wrapper flex-grow-1">
+                                        <div class="chat-message-text">
+                                            <p class="mb-0">
+                                                {{ config('variables.templateName') ? config('variables.templateName') : 'TemplateName' }}
+                                                has all the components you'll ever need in a app.</p>
+                                        </div>
+                                        <div class="text-end text-muted mt-1">
+                                            <i class='ti ti-checks ti-xs me-1 text-success'></i>
+                                            <small>10:03 AM</small>
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <div class="avatar avatar-sm d-block flex-shrink-0 me-sm-3 me-2">
-                                        <span class="avatar-initial rounded-circle bg-label-success">BS</span>
-                                    </div>
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Barney Stinson</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, Soufflé
-                                            apple pie caramels soufflé tiramisu bear claw.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-attachment ti ti-paperclip ti-xs cursor-pointer me-2 float-end float-sm-none"></span>
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-primary d-none d-md-inline-block me-2"
-                                            data-label="company"></span>
-                                        <small class="email-list-item-time text-muted">12:44 AM</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-read"> <i
-                                                    class='ti ti-mail-opened ti-sm'></i> </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
+                                    <div class="user-avatar flex-shrink-0 ms-3">
+                                        <div class="avatar avatar-sm">
+                                            <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar"
+                                                class="rounded-circle">
+                                        </div>
                                     </div>
                                 </div>
                             </li>
-                            <li class="email-list-item email-marked-read" data-starred="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-4">
-                                        <label class="form-check-label" for="email-4"></label>
+                            <li class="chat-message">
+                                <div class="d-flex overflow-hidden">
+                                    <div class="user-avatar flex-shrink-0 me-3">
+                                        <div class="avatar avatar-sm">
+                                            <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
+                                                class="rounded-circle">
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/3.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Pheobe Buffay</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, Tart
-                                            croissant jujubes gummies macaroon Icing sweet.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-success d-none d-md-inline-block me-2"
-                                            data-label="work"></span>
-                                        <small class="email-list-item-time text-muted">Yesterday</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
+                                    <div class="chat-message-wrapper flex-grow-1">
+                                        <div class="chat-message-text">
+                                            <p class="mb-0">Looks clean and fresh UI. 😃</p>
+                                        </div>
+                                        <div class="chat-message-text mt-2">
+                                            <p class="mb-0">It's perfect for my next project.</p>
+                                        </div>
+                                        <div class="chat-message-text mt-2">
+                                            <p class="mb-0">How can I purchase it?</p>
+                                        </div>
+                                        <div class="text-muted mt-1">
+                                            <small>10:05 AM</small>
+                                        </div>
                                     </div>
                                 </div>
                             </li>
-                            <li class="email-list-item email-marked-read" data-spam="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-5">
-                                        <label class="form-check-label" for="email-5"></label>
+                            <li class="chat-message chat-message-right">
+                                <div class="d-flex overflow-hidden">
+                                    <div class="chat-message-wrapper flex-grow-1">
+                                        <div class="chat-message-text">
+                                            <p class="mb-0">Thanks, you can purchase it.</p>
+                                        </div>
+                                        <div class="text-end text-muted mt-1">
+                                            <i class='ti ti-checks ti-xs me-1 text-success'></i>
+                                            <small>10:06 AM</small>
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/4.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Ted Mosby</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, I love
-                                            Pudding cookie chocolate sweet tiramisu jujubes I love danish.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-primary d-none d-md-inline-block me-2"
-                                            data-label="company"></span>
-                                        <small class="email-list-item-time text-muted">Yesterday</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
+                                    <div class="user-avatar flex-shrink-0 ms-3">
+                                        <div class="avatar avatar-sm">
+                                            <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar"
+                                                class="rounded-circle">
+                                        </div>
                                     </div>
                                 </div>
                             </li>
-                            <li class="email-list-item" data-trash="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-6">
-                                        <label class="form-check-label" for="email-6"></label>
+                            <li class="chat-message">
+                                <div class="d-flex overflow-hidden">
+                                    <div class="user-avatar flex-shrink-0 me-3">
+                                        <div class="avatar avatar-sm">
+                                            <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
+                                                class="rounded-circle">
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <div class="avatar avatar-sm d-block flex-shrink-0 me-sm-3 me-2">
-                                        <span class="avatar-initial rounded-circle bg-label-info">Sk</span>
-                                    </div>
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Stacy Cooper</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, I love
-                                            danish. Cupcake I love carrot cake sugar plum I love.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-info d-none d-md-inline-block me-2"
-                                            data-label="work"></span>
-                                        <small class="email-list-item-time text-muted">5 May</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-read"> <i
-                                                    class='ti ti-mail-opened ti-sm'></i> </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
+                                    <div class="chat-message-wrapper flex-grow-1">
+                                        <div class="chat-message-text">
+                                            <p class="mb-0">I will purchase it for sure. 👍</p>
+                                        </div>
+                                        <div class="chat-message-text mt-2">
+                                            <p class="mb-0">Thanks.</p>
+                                        </div>
+                                        <div class="text-muted mt-1">
+                                            <small>10:08 AM</small>
+                                        </div>
                                     </div>
                                 </div>
                             </li>
-                            <li class="email-list-item email-marked-read" data-draft="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-7">
-                                        <label class="form-check-label" for="email-7"></label>
+                            <li class="chat-message chat-message-right">
+                                <div class="d-flex overflow-hidden">
+                                    <div class="chat-message-wrapper flex-grow-1">
+                                        <div class="chat-message-text">
+                                            <p class="mb-0">Great, Feel free to get in touch.</p>
+                                        </div>
+                                        <div class="text-end text-muted mt-1">
+                                            <i class='ti ti-checks ti-xs me-1 text-success'></i>
+                                            <small>10:10 AM</small>
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/5.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Rachel Green</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy,
-                                            Chocolate cake pudding chocolate bar ice cream bonbon lollipop.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-primary d-none d-md-inline-block me-2"
-                                            data-label="company"></span>
-                                        <small class="email-list-item-time text-muted">15 May</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
+                                    <div class="user-avatar flex-shrink-0 ms-3">
+                                        <div class="avatar avatar-sm">
+                                            <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar"
+                                                class="rounded-circle">
+                                        </div>
                                     </div>
                                 </div>
                             </li>
-                            <li class="email-list-item email-marked-read" data-starred="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-8">
-                                        <label class="form-check-label" for="email-8"></label>
+                            <li class="chat-message">
+                                <div class="d-flex overflow-hidden">
+                                    <div class="user-avatar flex-shrink-0 me-3">
+                                        <div class="avatar avatar-sm">
+                                            <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
+                                                class="rounded-circle">
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/6.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Grace Shelby</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, Icing
-                                            gummi bears ice cream croissant dessert wafer.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-attachment ti ti-paperclip ti-xs cursor-pointer me-2 float-end float-sm-none"></span>
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-danger d-none d-md-inline-block me-2"
-                                            data-label="private"></span>
-                                        <small class="email-list-item-time text-muted">20 Apr</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
+                                    <div class="chat-message-wrapper flex-grow-1">
+                                        <div class="chat-message-text">
+                                            <p class="mb-0">Do you have design files for
+                                                {{ config('variables.templateName') ? config('variables.templateName') : 'TemplateName' }}?
+                                            </p>
+                                        </div>
+                                        <div class="text-muted mt-1">
+                                            <small>10:15 AM</small>
+                                        </div>
                                     </div>
                                 </div>
                             </li>
-                            <li class="email-list-item email-marked-read" data-spam="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-9">
-                                        <label class="form-check-label" for="email-9"></label>
+                            <li class="chat-message chat-message-right">
+                                <div class="d-flex overflow-hidden">
+                                    <div class="chat-message-wrapper flex-grow-1 w-50">
+                                        <div class="chat-message-text">
+                                            <p class="mb-0">Yes that's correct documentation file, Design files are
+                                                included with the template.</p>
+                                        </div>
+                                        <div class="text-end text-muted mt-1">
+                                            <i class='ti ti-checks ti-xs me-1'></i>
+                                            <small>10:15 AM</small>
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <div class="avatar avatar-sm d-block flex-shrink-0 me-sm-3 me-2">
-                                        <span class="avatar-initial rounded-circle bg-label-danger">JF</span>
-                                    </div>
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Jacob Frye</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy,
-                                            Chocolate cake pudding chocolate bar ice cream Sweet.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-info d-none d-md-inline-block me-2"
-                                            data-label="important"></span>
-                                        <small class="email-list-item-time text-muted">25 Mar</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item email-marked-read" data-trash="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-10">
-                                        <label class="form-check-label" for="email-10"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/9.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Alistair Crowley </span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, I love
-                                            danish. Cupcake I love carrot cake sugar plum I love.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-primary d-none d-md-inline-block me-2"
-                                            data-label="company"></span>
-                                        <small class="email-list-item-time text-muted">25 Feb</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
+                                    <div class="user-avatar flex-shrink-0 ms-3">
+                                        <div class="avatar avatar-sm">
+                                            <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar"
+                                                class="rounded-circle">
+                                        </div>
                                     </div>
                                 </div>
                             </li>
                         </ul>
-                        <ul class="list-unstyled m-0">
-                            <li class="email-list-empty text-center d-none">No items found.</li>
-                        </ul>
                     </div>
-                </div>
-                <div class="app-overlay"></div>
-            </div>
-            <!-- /Emails List -->
-
-            <!-- Email View -->
-            <div class="col app-email-view flex-grow-0 bg-body" id="app-email-view">
-                <div class="card shadow-none border-0 rounded-0 app-email-view-header p-3 py-md-3 py-2">
-                    <!-- Email View : Title  bar-->
-                    <div class="d-flex justify-content-between align-items-center py-2">
-                        <div class="d-flex align-items-center overflow-hidden">
-                            <i class="ti ti-chevron-left ti-sm cursor-pointer me-2" data-bs-toggle="sidebar"
-                                data-target="#app-email-view"></i>
-                            <h6 class="text-truncate mb-0 me-2">Focused impactful open issues</h6>
-                            <span class="badge bg-label-danger rounded-pill">Private</span>
-                        </div>
-                        <!-- Email View : Action  bar-->
-                        <div class="d-flex align-items-center">
-                            <i class='ti ti-printer ti-sm mt-1 cursor-pointer d-sm-block d-none'></i>
-                            <div class="dropdown ms-3">
-                                <button class="btn p-0" type="button" id="dropdownMoreOptions"
-                                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <i class="ti ti-dots-vertical ti-sm"></i>
+                    <!-- Chat message form -->
+                    <div class="chat-history-footer shadow-sm">
+                        <form class="form-send-message d-flex justify-content-between align-items-center ">
+                            <input class="form-control message-input border-0 me-3 shadow-none"
+                                placeholder="Type your message here">
+                            <div class="message-actions d-flex align-items-center">
+                                <i class="speech-to-text ti ti-microphone ti-sm cursor-pointer"></i>
+                                <label for="attach-doc" class="form-label mb-0">
+                                    <i class="ti ti-photo ti-sm cursor-pointer mx-3"></i>
+                                    <input type="file" id="attach-doc" hidden>
+                                </label>
+                                <button class="btn btn-primary d-flex send-msg-btn">
+                                    <i class="ti ti-send me-md-1 me-0"></i>
+                                    <span class="align-middle d-md-inline-block d-none">Send</span>
                                 </button>
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMoreOptions">
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="ti ti-mail ti-xs me-1"></i>
-                                        <span class="align-middle">Mark as unread</span>
-                                    </a>
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="ti ti-mail-opened ti-xs me-1"></i>
-                                        <span class="align-middle">Mark as unread</span>
-                                    </a>
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="ti ti-star ti-sm me-1"></i>
-                                        <span class="align-middle">Add star</span>
-                                    </a>
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="ti ti-calendar ti-xs me-1"></i>
-                                        <span class="align-middle">Create Event</span>
-                                    </a>
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="ti ti-volume-off ti-xs me-1"></i>
-                                        <span class="align-middle">Mute</span>
-                                    </a>
-                                    <a class="dropdown-item d-sm-none d-block" href="javascript:void(0)">
-                                        <i class="ti ti-printer ti-xs me-1"></i>
-                                        <span class="align-middle">Print</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <hr class="app-email-view-hr mx-n3 mb-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <i class='ti ti-trash ti-sm cursor-pointer me-3' data-bs-toggle="sidebar"
-                                data-target="#app-email-view"></i>
-                            <i class='ti ti-mail-opened ti-sm cursor-pointer me-3'></i>
-                            <div class="dropdown me-3">
-                                <button class="btn p-0" type="button" id="dropdownMenuFolderTwo"
-                                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <i class="ti ti-folder ti-sm"></i>
-                                </button>
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuFolderTwo">
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="ti ti-info-circle ti-xs me-1"></i>
-                                        <span class="align-middle">Spam</span>
-                                    </a>
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="ti ti-pencil ti-xs me-1"></i>
-                                        <span class="align-middle">Draft</span>
-                                    </a>
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="ti ti-trash ti-xs me-1"></i>
-                                        <span class="align-middle">Trash</span>
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="dropdown me-3">
-                                <button class="btn p-0" type="button" id="dropdownLabelTwo" data-bs-toggle="dropdown"
-                                    aria-haspopup="true" aria-expanded="false">
-                                    <i class="ti ti-tag ti-sm"></i>
-                                </button>
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownLabelTwo">
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="badge badge-dot bg-success me-1"></i>
-                                        <span class="align-middle">Workshop</span>
-                                    </a>
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="badge badge-dot bg-primary me-1"></i>
-                                        <span class="align-middle">Company</span>
-                                    </a>
-                                    <a class="dropdown-item" href="javascript:void(0)">
-                                        <i class="badge badge-dot bg-info me-1"></i>
-                                        <span class="align-middle">Important</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center flex-wrap justify-content-end">
-                            <span class="d-sm-block d-none mx-3 text-muted">1-10 of 653</span>
-                            <i class="ti ti-chevron-left ti-sm scaleX-n1-rtl cursor-pointer text-muted me-2"></i>
-                            <i class="ti ti-chevron-right ti-sm scaleX-n1-rtl cursor-pointer"></i>
-                        </div>
-                    </div>
-                </div>
-                <hr class="m-0">
-                <!-- Email View : Content-->
-                <div class="app-email-view-content py-4">
-                    <p class="email-earlier-msgs text-center text-muted cursor-pointer mb-5">1 Earlier Message</p>
-                    <!-- Email View : Previous mails-->
-                    <div class="card email-card-prev mx-sm-4 mx-3">
-                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
-                            <div class="d-flex align-items-center mb-sm-0 mb-3">
-                                <img src="{{ asset('assets/img/avatars/2.png') }}" alt="user-avatar"
-                                    class="flex-shrink-0 rounded-circle me-3" height="40" width="40" />
-                                <div class="flex-grow-1 ms-1">
-                                    <h6 class="m-0">Ross Geller</h6>
-                                    <small class="text-muted">rossGeller@email.com</small>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <p class="mb-0 me-3 text-muted">June 20th 2020, 08:30 AM</p>
-                                <i class="ti ti-paperclip cursor-pointer me-2"></i>
-                                <i class="email-list-item-bookmark ti ti-star ti-sm cursor-pointer me-2"></i>
-                                <div class="dropdown me-3 d-flex align-self-center">
-                                    <button class="btn p-0" type="button" id="dropdownEmailOne"
-                                        data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <i class="ti ti-dots-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownEmailOne">
-                                        <a class="dropdown-item scroll-to-reply" href="javascript:void(0)">
-                                            <i class="ti ti-corner-up-left me-1"></i>
-                                            <span class="align-middle">Reply</span>
-                                        </a>
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="ti ti-corner-up-right me-1"></i>
-                                            <span class="align-middle">Forward</span>
-                                        </a>
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="ti ti-alert-octagon me-1"></i>
-                                            <span class="align-middle">Report</span>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <p class="fw-medium">Greetings!</p>
-                            <p>
-                                It is a long established fact that a reader will be distracted by the readable content
-                                of a
-                                page when looking at its layout.The point of using Lorem Ipsum is that it has a
-                                more-or-less
-                                normal distribution of letters, as opposed to using 'Content here, content here',making
-                                it
-                                look like readable English.
-                            </p>
-                            <p>
-                                There are many variations of passages of Lorem Ipsum available, but the majority have
-                                suffered alteration in some form, by injected humour, or randomised words which don't
-                                look
-                                even slightly believable.
-                            </p>
-                            <p class="mb-0">Sincerely yours,</p>
-                            <p class="fw-medium mb-0">Envato Design Team</p>
-                            <hr>
-                            <p class="email-attachment-title mb-2">Attachments</p>
-                            <div class="cursor-pointer">
-                                <i class="ti ti-file"></i>
-                                <span class="align-middle ms-1">report.xlsx</span>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Email View : Last mail-->
-                    <div class="card email-card-last mx-sm-4 mx-3 mt-4">
-                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
-                            <div class="d-flex align-items-center mb-sm-0 mb-3">
-                                <img src="{{ asset('assets/img/avatars/1.png') }}" alt="user-avatar"
-                                    class="flex-shrink-0 rounded-circle me-3" height="40" width="40" />
-                                <div class="flex-grow-1 ms-1">
-                                    <h6 class="m-0">Chandler Bing</h6>
-                                    <small class="text-muted">iAmAhoot@email.com</small>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <p class="mb-0 me-3 text-muted">June 20th 2020, 08:10 AM</p>
-                                <i class="ti ti-paperclip cursor-pointer me-2"></i>
-                                <i class="email-list-item-bookmark ti ti-star ti-sm cursor-pointer me-2"></i>
-                                <div class="dropdown me-3 d-flex align-self-center">
-                                    <button class="btn p-0" type="button" id="dropdownEmailTwo"
-                                        data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <i class="ti ti-dots-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownEmailTwo">
-                                        <a class="dropdown-item scroll-to-reply" href="javascript:void(0)">
-                                            <i class="ti ti-corner-up-left me-1"></i>
-                                            <span class="align-middle">Reply</span>
-                                        </a>
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="ti ti-corner-up-right me-1"></i>
-                                            <span class="align-middle">Forward</span>
-                                        </a>
-                                        <a class="dropdown-item" href="javascript:void(0)">
-                                            <i class="ti ti-alert-octagon me-1"></i>
-                                            <span class="align-middle">Report</span>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <p class="fw-medium">Greetings!</p>
-                            <p>
-                                It is a long established fact that a reader will be distracted by the readable content
-                                of a
-                                page when looking at its layout.The point of using Lorem Ipsum is that it has a
-                                more-or-less
-                                normal distribution of letters, as opposed to using 'Content here, content here',making
-                                it
-                                look like readable English.
-                            </p>
-                            <p>
-                                There are many variations of passages of Lorem Ipsum available, but the majority have
-                                suffered alteration in some form, by injected humour, or randomised words which don't
-                                look
-                                even slightly believable.
-                            </p>
-                            <p class="mb-0">Sincerely yours,</p>
-                            <p class="fw-medium mb-0">Envato Design Team</p>
-                            <hr>
-                            <p class="email-attachment-title mb-2">Attachments</p>
-                            <div class="cursor-pointer">
-                                <i class="ti ti-file"></i>
-                                <span class="align-middle ms-1">report.xlsx</span>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Email View : Reply mail-->
-                    <div class="email-reply card mt-4 mx-sm-4 mx-3">
-                        <h6 class="card-header border-0">Reply to Ross Geller</h6>
-                        <div class="card-body pt-0 px-3">
-                            <div class="d-flex justify-content-start">
-                                <div class="email-reply-toolbar border-0 w-100 ps-0">
-                                    <span class="ql-formats me-0">
-                                        <button class="ql-bold"></button>
-                                        <button class="ql-italic"></button>
-                                        <button class="ql-underline"></button>
-                                        <button class="ql-list" value="ordered"></button>
-                                        <button class="ql-list" value="bullet"></button>
-                                        <button class="ql-link"></button>
-                                        <button class="ql-image"></button>
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="email-reply-editor"></div>
-                            <div class="d-flex justify-content-end align-items-center">
-                                <div class="me-3">
-                                    <label class="cursor-pointer" for="attach-file-1"><i
-                                            class="ti ti-paperclip me-2"></i><span
-                                            class="align-middle">Attachments</span></label>
-                                    <input type="file" name="file-input" class="d-none" id="attach-file-1">
-
-                                </div>
-                                <button class="btn btn-primary">
-                                    <i class="ti ti-send ti-xs me-1"></i>
-                                    <span class="align-middle">Send</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Email View -->
-        </div>
-
-        <!-- Compose Email -->
-        <div class="app-email-compose modal" id="emailComposeSidebar" tabindex="-1"
-            aria-labelledby="emailComposeSidebarLabel" aria-hidden="true">
-            <div class="modal-dialog m-0 me-md-4 mb-4 modal-lg">
-                <div class="modal-content p-0">
-                    <div class="modal-header py-3 bg-body">
-                        <h5 class="modal-title fs-5">Compose Mail</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body flex-grow-1 pb-sm-0 p-4 py-2">
-                        <form class="email-compose-form">
-                            <div class="email-compose-to d-flex justify-content-between align-items-center">
-                                <label class="form-label mb-0" for="emailContacts">To:</label>
-                                <div class="select2-primary border-0 shadow-none flex-grow-1 mx-2">
-                                    <select class="select2 select-email-contacts form-select" id="emailContacts"
-                                        name="emailContacts" multiple>
-                                        <option data-avatar="1.png" value="Jane Foster">Jane Foster</option>
-                                        <option data-avatar="3.png" value="Donna Frank">Donna Frank</option>
-                                        <option data-avatar="5.png" value="Gabrielle Robertson">Gabrielle Robertson
-                                        </option>
-                                        <option data-avatar="7.png" value="Lori Spears">Lori Spears</option>
-                                        <option data-avatar="9.png" value="Sandy Vega">Sandy Vega</option>
-                                        <option data-avatar="11.png" value="Cheryl May">Cheryl May</option>
-                                    </select>
-                                </div>
-                                <div class="email-compose-toggle-wrapper">
-                                    <a class="email-compose-toggle-cc" href="javascript:void(0);">Cc |</a>
-                                    <a class="email-compose-toggle-bcc" href="javascript:void(0);">Bcc</a>
-                                </div>
-                            </div>
-
-                            <div class="email-compose-cc d-none">
-                                <hr class="container-m-nx my-2">
-                                <div class="d-flex align-items-center">
-                                    <label for="email-cc" class="form-label mb-0">Cc: </label>
-                                    <input type="text" class="form-control border-0 shadow-none flex-grow-1 mx-2"
-                                        id="email-cc" placeholder="someone@email.com">
-                                </div>
-                            </div>
-                            <div class="email-compose-bcc d-none">
-                                <hr class="container-m-nx my-2">
-                                <div class="d-flex align-items-center">
-                                    <label for="email-bcc" class="form-label mb-0">Bcc: </label>
-                                    <input type="text" class="form-control border-0 shadow-none flex-grow-1 mx-2"
-                                        id="email-bcc" placeholder="someone@email.com">
-                                </div>
-                            </div>
-                            <hr class="container-m-nx my-2">
-                            <div class="email-compose-subject d-flex align-items-center mb-2">
-                                <label for="email-subject" class="form-label mb-0">Subject:</label>
-                                <input type="text" class="form-control border-0 shadow-none flex-grow-1 mx-2"
-                                    id="email-subject" placeholder="Project Details">
-                            </div>
-                            <div class="email-compose-message container-m-nx">
-                                <div class="d-flex justify-content-end">
-                                    <div class="email-editor-toolbar border-bottom-0 w-100">
-                                        <span class="ql-formats me-0">
-                                            <button class="ql-bold"></button>
-                                            <button class="ql-italic"></button>
-                                            <button class="ql-underline"></button>
-                                            <button class="ql-list" value="ordered"></button>
-                                            <button class="ql-list" value="bullet"></button>
-                                            <button class="ql-link"></button>
-                                            <button class="ql-image"></button>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="email-editor"></div>
-                            </div>
-                            <hr class="container-m-nx mt-0 mb-2">
-                            <div class="email-compose-actions d-flex justify-content-between align-items-center mt-3 mb-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="btn-group">
-                                        <button type="reset" class="btn btn-primary" data-bs-dismiss="modal"
-                                            aria-label="Close"><i class="ti ti-send ti-xs me-1"></i>Send</button>
-                                        <button type="button"
-                                            class="btn btn-primary dropdown-toggle dropdown-toggle-split"
-                                            data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                            <span class="visually-hidden">Send Options</span>
-                                        </button>
-                                        <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="javascript:void(0);">Schedule send</a></li>
-                                            <li><a class="dropdown-item" href="javascript:void(0);">Save draft</a></li>
-                                        </ul>
-                                    </div>
-                                    <label for="attach-file"><i class="ti ti-paperclip cursor-pointer ms-2"></i></label>
-                                    <input type="file" name="file-input" class="d-none" id="attach-file">
-                                </div>
-                                <div class="d-flex align-items-center">
-                                    <div class="dropdown">
-                                        <button class="btn p-0" type="button" id="dropdownMoreActions"
-                                            data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                            <i class="ti ti-dots-vertical"></i>
-                                        </button>
-                                        <ul class="dropdown-menu" aria-labelledby="dropdownMoreActions">
-                                            <li><button type="button" class="dropdown-item">Add Label</button></li>
-                                            <li><button type="button" class="dropdown-item">Plain text mode</button></li>
-                                            <li>
-                                                <hr class="dropdown-divider">
-                                            </li>
-                                            <li><button type="button" class="dropdown-item">Print</button></li>
-                                            <li><button type="button" class="dropdown-item">Check Spelling</button></li>
-                                        </ul>
-                                    </div>
-                                    <button type="reset" class="btn" data-bs-dismiss="modal" aria-label="Close"><i
-                                            class="ti ti-trash"></i></button>
-                                </div>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
+            <!-- /Chat History -->
+
+            <!-- Sidebar Right -->
+            <div class="col app-chat-sidebar-right app-sidebar overflow-hidden" id="app-chat-sidebar-right">
+                <div
+                    class="sidebar-header d-flex flex-column justify-content-center align-items-center flex-wrap px-4 pt-5">
+                    <div class="avatar avatar-xl avatar-online">
+                        <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar" class="rounded-circle">
+                    </div>
+                    <h6 class="mt-2 mb-0">Felecia Rower</h6>
+                    <span>NextJS Developer</span>
+                    <i class="ti ti-x ti-sm cursor-pointer close-sidebar d-block" data-bs-toggle="sidebar" data-overlay
+                        data-target="#app-chat-sidebar-right"></i>
+                </div>
+                <div class="sidebar-body px-4 pb-4">
+                    <div class="my-4">
+                        <small class="text-muted text-uppercase">About</small>
+                        <p class="mb-0 mt-3">A Next. js developer is a software developer who uses the Next. js framework
+                            alongside ReactJS to build web applications.</p>
+                    </div>
+                    <div class="my-4">
+                        <small class="text-muted text-uppercase">Personal Information</small>
+                        <ul class="list-unstyled d-grid gap-2 mt-3">
+                            <li class="d-flex align-items-center">
+                                <i class='ti ti-mail ti-sm'></i>
+                                <span class="align-middle ms-2">josephGreen@email.com</span>
+                            </li>
+                            <li class="d-flex align-items-center">
+                                <i class='ti ti-phone-call ti-sm'></i>
+                                <span class="align-middle ms-2">+1(123) 456 - 7890</span>
+                            </li>
+                            <li class="d-flex align-items-center">
+                                <i class='ti ti-clock ti-sm'></i>
+                                <span class="align-middle ms-2">Mon - Fri 10AM - 8PM</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="mt-4">
+                        <small class="text-muted text-uppercase">Options</small>
+                        <ul class="list-unstyled d-grid gap-2 mt-3">
+                            <li class="cursor-pointer d-flex align-items-center">
+                                <i class='ti ti-badge ti-sm'></i>
+                                <span class="align-middle ms-2">Add Tag</span>
+                            </li>
+                            <li class="cursor-pointer d-flex align-items-center">
+                                <i class='ti ti-star ti-sm'></i>
+                                <span class="align-middle ms-2">Important Contact</span>
+                            </li>
+                            <li class="cursor-pointer d-flex align-items-center">
+                                <i class='ti ti-photo ti-sm'></i>
+                                <span class="align-middle ms-2">Shared Media</span>
+                            </li>
+                            <li class="cursor-pointer d-flex align-items-center">
+                                <i class='ti ti-trash ti-sm'></i>
+                                <span class="align-middle ms-2">Delete Contact</span>
+                            </li>
+                            <li class="cursor-pointer d-flex align-items-center">
+                                <i class='ti ti-ban ti-sm'></i>
+                                <span class="align-middle ms-2">Block Contact</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <!-- /Sidebar Right -->
+
+            <div class="app-overlay"></div>
         </div>
-        <!-- /Compose Email -->
     </div>
 @endsection

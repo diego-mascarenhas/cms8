@@ -17,6 +17,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\EnterpriseOrganizationController;
+use App\Http\Controllers\MailController;
 
 
 // auth
@@ -115,6 +116,9 @@ Route::middleware(['auth'])->group(function ()
     // Chat
     Route::get('/chat', [ChatController::class, 'index'])->name('chat');
     Route::get('/chat/list', [ChatController::class, 'index'])->name('chat-list');
+
+    // Mail
+    Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
 
 });
 

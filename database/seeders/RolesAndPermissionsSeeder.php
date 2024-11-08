@@ -43,6 +43,15 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'chat.update']);
         Permission::create(['name' => 'chat.destroy']);
 
+        Permission::create(['name' => 'mail.index']);
+        Permission::create(['name' => 'mail.list']);
+        Permission::create(['name' => 'mail.create']);
+        Permission::create(['name' => 'mail.show']);
+        Permission::create(['name' => 'mail.edit']);
+        Permission::create(['name' => 'mail.store']);
+        Permission::create(['name' => 'mail.update']);
+        Permission::create(['name' => 'mail.destroy']);
+
         Permission::create(['name' => 'service.index']);
         Permission::create(['name' => 'service.list']);
         Permission::create(['name' => 'service.create']);
@@ -217,6 +226,7 @@ class RolesAndPermissionsSeeder extends Seeder
         //     'chat.store',
         //     'chat.update',
         //     'chat.destroy',
+        //     'mail.list',
         //     'service.index',
         //     'service.list',
         //     'service.create',
@@ -349,6 +359,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $administratorRole->syncPermissions([
             'chat.list',
+            'mail.list',
             'client.index',
             'contact.index',
             'contact.list',
@@ -373,6 +384,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'user.list',
             'today.list',
             'chat.list',
+            'mail.list',
             'service.list',
             'client.list',
             'list60.list',

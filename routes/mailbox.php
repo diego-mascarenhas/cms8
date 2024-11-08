@@ -1,9 +1,9 @@
 <?php
 
 use BeyondCode\Mailbox\Facades\Mailbox;
-use App\Http\Controllers\ChatController;
+use App\Http\Controllers\MailController;
 
-Mailbox::from('*', [ChatController::class, 'handleIncomingEmail']); 
+Mailbox::from('*', [MailController::class, 'handleIncomingEmail']); 
 
 // Mailbox::from('*@empresa.com', [ChatController::class, 'handleIncomingEmail']);
 
