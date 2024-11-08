@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Email')
+@section('title', 'Chat')
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/quill/katex.css') }}" />
@@ -75,34 +75,20 @@
                             </a>
                         </li>
                     </ul>
-                    <!-- Email Filters: Labels -->
+                    <!-- Email Filters: Sources -->
                     <div class="email-filter-labels">
-                        <small class="fw-normal text-uppercase text-muted m-4">Labels</small>
+                        <small class="fw-normal text-uppercase text-muted m-4">Redes</small>
                         <ul class="list-unstyled mb-0 mt-2">
-                            <li data-target="work">
+                            @foreach($sources as $source)
+                            <li data-target="{{ Str::lower($source->name) }}">
                                 <a href="javascript:void(0);">
-                                    <span class="badge badge-dot bg-success"></span>
-                                    <span class="align-middle ms-2">Work</span>
+                                    <i class="{{ in_array($source->icon, ['fa-envelope', 'fa-phone']) ? 'fas' : 'fab' }} {{ $source->icon }}" 
+                                       style="color: {{ $source->color }};">
+                                    </i>
+                                    <span class="align-middle ms-2">{{ $source->name }}</span>
                                 </a>
                             </li>
-                            <li data-target="company">
-                                <a href="javascript:void(0);">
-                                    <span class="badge badge-dot bg-primary"></span>
-                                    <span class="align-middle ms-2">Company</span>
-                                </a>
-                            </li>
-                            <li data-target="important">
-                                <a href="javascript:void(0);">
-                                    <span class="badge badge-dot bg-info"></span>
-                                    <span class="align-middle ms-2">Important</span>
-                                </a>
-                            </li>
-                            <li data-target="private">
-                                <a href="javascript:void(0);">
-                                    <span class="badge badge-dot bg-danger"></span>
-                                    <span class="align-middle ms-2">Private</span>
-                                </a>
-                            </li>
+                            @endforeach
                         </ul>
                     </div>
                     <!--/ Email Filters -->
@@ -215,343 +201,59 @@
                     <!-- Email List: Items -->
                     <div class="email-list pt-0">
                         <ul class="list-unstyled m-0">
-                            <li class="email-list-item" data-starred="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-1">
-                                        <label class="form-check-label" for="email-1"></label>
+                            @forelse($emails as $index => $email)
+                                <li class="email-list-item email-marked-read" data-starred="false" data-bs-toggle="sidebar" data-target="#app-email-view">
+                                    <div class="d-flex align-items-center">
+                                        <div class="form-check mb-0">
+                                            <input class="email-list-item-input form-check-input" type="checkbox" id="email-{{ $index }}">
+                                            <label class="form-check-label" for="email-{{ $index }}"></label>
+                                        </div>
+                                        <i class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
+                                        
+                                        {{-- Avatar/Initials --}}
+                                        @php
+                                            $fromName = is_array($email['from']) ? array_values($email['from'])[0] : $email['from'];
+                                            $initials = collect(explode(' ', $fromName))->map(function($word) { 
+                                                return strtoupper(substr($word, 0, 1)); 
+                                            })->take(2)->join('');
+                                        @endphp
+                                        <div class="avatar avatar-sm d-block flex-shrink-0 me-sm-3 me-2">
+                                            <span class="avatar-initial rounded-circle bg-label-primary">{{ $initials }}</span>
+                                        </div>
+
+                                        <div class="email-list-item-content ms-2 ms-sm-0 me-2">
+                                            <span class="h6 email-list-item-username me-2">{{ $fromName }}</span>
+                                            <span class="email-list-item-subject d-xl-inline-block d-block">
+                                                {{ $email['subject'] }}
+                                            </span>
+                                        </div>
+
+                                        <div class="email-list-item-meta ms-auto d-flex align-items-center">
+                                            @if(!empty($email['attachments']))
+                                                <span class="email-list-item-attachment ti ti-paperclip ti-xs cursor-pointer me-2"></span>
+                                            @endif
+                                            
+                                            <small class="email-list-item-time text-muted text-truncate me-2" style="min-width: 70px; max-width: 100px;">
+                                                {{ \Carbon\Carbon::parse($email['date'])->diffForHumans(\Carbon\Carbon::now(), true) }} ago
+                                            </small>
+                                            
+                                            <ul class="list-inline email-list-item-actions text-nowrap mb-0">
+                                                <li class="list-inline-item email-read">
+                                                    <i class='ti ti-mail-opened ti-sm'></i>
+                                                </li>
+                                                <li class="list-inline-item email-delete">
+                                                    <i class='ti ti-trash ti-sm'></i>
+                                                </li>
+                                                <li class="list-inline-item">
+                                                    <i class="ti ti-archive ti-sm"></i>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/1.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Chandler Bing</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Focused impactful
-                                            open issues from the project of GitHub</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-danger d-none d-md-inline-block me-2"
-                                            data-label="private"></span>
-                                        <small class="email-list-item-time text-muted">08:40 AM</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-read"> <i
-                                                    class='ti ti-mail-opened ti-sm'></i> </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item email-marked-read" data-sent="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-2">
-                                        <label class="form-check-label" for="email-2"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/2.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Ross Geller</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, Dessert
-                                            soufflé tootsie roll soufflé carrot cake halvah jelly.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-info d-none d-md-inline-block me-2"
-                                            data-label="important"></span>
-                                        <small class="email-list-item-time text-muted">10:12 AM</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item" data-draft="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-3">
-                                        <label class="form-check-label" for="email-3"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <div class="avatar avatar-sm d-block flex-shrink-0 me-sm-3 me-2">
-                                        <span class="avatar-initial rounded-circle bg-label-success">BS</span>
-                                    </div>
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Barney Stinson</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, Soufflé
-                                            apple pie caramels soufflé tiramisu bear claw.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-attachment ti ti-paperclip ti-xs cursor-pointer me-2 float-end float-sm-none"></span>
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-primary d-none d-md-inline-block me-2"
-                                            data-label="company"></span>
-                                        <small class="email-list-item-time text-muted">12:44 AM</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-read"> <i
-                                                    class='ti ti-mail-opened ti-sm'></i> </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item email-marked-read" data-starred="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-4">
-                                        <label class="form-check-label" for="email-4"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/3.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Pheobe Buffay</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, Tart
-                                            croissant jujubes gummies macaroon Icing sweet.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-success d-none d-md-inline-block me-2"
-                                            data-label="work"></span>
-                                        <small class="email-list-item-time text-muted">Yesterday</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item email-marked-read" data-spam="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-5">
-                                        <label class="form-check-label" for="email-5"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/4.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Ted Mosby</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, I love
-                                            Pudding cookie chocolate sweet tiramisu jujubes I love danish.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-primary d-none d-md-inline-block me-2"
-                                            data-label="company"></span>
-                                        <small class="email-list-item-time text-muted">Yesterday</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item" data-trash="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-6">
-                                        <label class="form-check-label" for="email-6"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <div class="avatar avatar-sm d-block flex-shrink-0 me-sm-3 me-2">
-                                        <span class="avatar-initial rounded-circle bg-label-info">Sk</span>
-                                    </div>
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Stacy Cooper</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, I love
-                                            danish. Cupcake I love carrot cake sugar plum I love.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-info d-none d-md-inline-block me-2"
-                                            data-label="work"></span>
-                                        <small class="email-list-item-time text-muted">5 May</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-read"> <i
-                                                    class='ti ti-mail-opened ti-sm'></i> </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item email-marked-read" data-draft="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-7">
-                                        <label class="form-check-label" for="email-7"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/5.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Rachel Green</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy,
-                                            Chocolate cake pudding chocolate bar ice cream bonbon lollipop.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-primary d-none d-md-inline-block me-2"
-                                            data-label="company"></span>
-                                        <small class="email-list-item-time text-muted">15 May</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item email-marked-read" data-starred="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-8">
-                                        <label class="form-check-label" for="email-8"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/6.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Grace Shelby</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, Icing
-                                            gummi bears ice cream croissant dessert wafer.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-attachment ti ti-paperclip ti-xs cursor-pointer me-2 float-end float-sm-none"></span>
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-danger d-none d-md-inline-block me-2"
-                                            data-label="private"></span>
-                                        <small class="email-list-item-time text-muted">20 Apr</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item email-marked-read" data-spam="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-9">
-                                        <label class="form-check-label" for="email-9"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <div class="avatar avatar-sm d-block flex-shrink-0 me-sm-3 me-2">
-                                        <span class="avatar-initial rounded-circle bg-label-danger">JF</span>
-                                    </div>
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Jacob Frye</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy,
-                                            Chocolate cake pudding chocolate bar ice cream Sweet.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-info d-none d-md-inline-block me-2"
-                                            data-label="important"></span>
-                                        <small class="email-list-item-time text-muted">25 Mar</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="email-list-item email-marked-read" data-trash="true" data-bs-toggle="sidebar"
-                                data-target="#app-email-view">
-                                <div class="d-flex align-items-center">
-                                    <div class="form-check mb-0">
-                                        <input class="email-list-item-input form-check-input" type="checkbox"
-                                            id="email-10">
-                                        <label class="form-check-label" for="email-10"></label>
-                                    </div>
-                                    <i
-                                        class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3"></i>
-                                    <img src="{{ asset('assets/img/avatars/9.png') }}" alt="user-avatar"
-                                        class="d-block flex-shrink-0 rounded-circle me-sm-3 me-2" height="32"
-                                        width="32" />
-                                    <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">Alistair Crowley </span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block"> Hey Katy, I love
-                                            danish. Cupcake I love carrot cake sugar plum I love.</span>
-                                    </div>
-                                    <div class="email-list-item-meta ms-auto d-flex align-items-center">
-                                        <span
-                                            class="email-list-item-label badge badge-dot bg-primary d-none d-md-inline-block me-2"
-                                            data-label="company"></span>
-                                        <small class="email-list-item-time text-muted">25 Feb</small>
-                                        <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-unread"> <i class='ti ti-mail ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item email-delete"> <i class='ti ti-trash ti-sm'></i>
-                                            </li>
-                                            <li class="list-inline-item"> <i class="ti ti-archive ti-sm"></i> </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </li>
-                        </ul>
-                        <ul class="list-unstyled m-0">
-                            <li class="email-list-empty text-center d-none">No items found.</li>
+                                </li>
+                            @empty
+                                <li class="email-list-empty text-center">No hay correos disponibles.</li>
+                            @endforelse
                         </ul>
                     </div>
                 </div>
