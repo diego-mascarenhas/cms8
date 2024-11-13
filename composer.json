@@ -13,6 +13,7 @@
     "fakerphp/faker": "^1.23",
     "guzzlehttp/guzzle": "^7.8",
     "jd-dotlogics/laravel-grapesjs": "^3.4",
+    "laravel/cashier": "^15.4",
     "laravel/framework": "^10.23",
     "laravel/jetstream": "^4.3",
     "laravel/sanctum": "^3.2",

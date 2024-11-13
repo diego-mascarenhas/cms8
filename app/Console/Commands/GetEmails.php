@@ -63,6 +63,7 @@ class GetEmails extends Command
 
             foreach ($messages as $message)
             {
+                dd($message);
                 // Get the complete Message-ID
                 $messageId = $message->getMessageId();
 
@@ -109,7 +110,7 @@ class GetEmails extends Command
 
                     $inboundEmail->forceFill([
                         'message_id' => $messageId,
-                        'message' => $message->getRawBody()
+                        'message' => $messageId . "\r\n" . $message->getRawBody()
                     ]);
 
                     $inboundEmail->save();
