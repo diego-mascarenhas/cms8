@@ -5,7 +5,7 @@ $configData = Helper::appClasses();
 
 @extends('layouts/blankLayout')
 
-@section('title', 'Reset Password')
+@section('title', __('auth.reset_password.title'))
 
 @section('page-style')
 {{-- Page Css files --}}
@@ -34,13 +34,13 @@ $configData = Helper::appClasses();
           </a>
         </div>
         <!-- /Logo -->
-        <h3 class="mb-1">Reset Password 🔒</h3>
+        <h3 class="mb-1">{{ __('auth.reset_password.heading') }}</h3>
         <form id="formAuthentication" class="mb-3" action="{{ route('password.update') }}" method="POST">
           @csrf
           <input type="hidden" name="token" value="{{ $request->route('token') }}">
 
           <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
+            <label for="email" class="form-label">{{ __('auth.reset_password.email') }}</label>
             <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" placeholder="john@example.com" value="{{Request()->email}}" readonly />
             @error('email')
             <span class="invalid-feedback" role="alert">
@@ -50,7 +50,7 @@ $configData = Helper::appClasses();
           </div>
 
           <div class="mb-3 form-password-toggle">
-            <label class="form-label" for="password">New Password</label>
+            <label class="form-label" for="password">{{ __('auth.reset_password.new_password') }}</label>
             <div class="input-group input-group-merge @error('password') is-invalid @enderror">
               <input type="password" id="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" aria-describedby="password" autofocus />
               <span class="input-group-text cursor-pointer">
@@ -64,7 +64,7 @@ $configData = Helper::appClasses();
             @enderror
           </div>
           <div class="mb-3 form-password-toggle">
-            <label class="form-label" for="confirm-password">Confirm Password</label>
+            <label class="form-label" for="confirm-password">{{ __('auth.reset_password.confirm_password') }}</label>
             <div class="input-group input-group-merge">
               <input type="password" id="confirm-password" class="form-control" name="password_confirmation" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" aria-describedby="password" />
               <span class="input-group-text cursor-pointer">
@@ -73,13 +73,13 @@ $configData = Helper::appClasses();
             </div>
           </div>
           <button type="submit" class="btn btn-primary d-grid w-100 mb-3">
-            Set new password
+            {{ __('auth.reset_password.set_password') }}
           </button>
           <div class="text-center">
             @if (Route::has('login'))
             <a href="{{ route('login') }}">
               <i class="ti ti-chevron-left scaleX-n1-rtl"></i>
-              Back to login
+              {{ __('auth.reset_password.back_to_login') }}
             </a>
             @endif
           </div>

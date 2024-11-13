@@ -5,7 +5,7 @@ $configData = Helper::appClasses();
 
 @extends('layouts/blankLayout')
 
-@section('title', 'Forgot Password')
+@section('title', __('auth.forgot_password.title'))
 
 @section('page-style')
 {{-- Page Css files --}}
@@ -34,8 +34,8 @@ $configData = Helper::appClasses();
           </a>
         </div>
         <!-- /Logo -->
-        <h3 class="mb-1">Forgot Password? 🔒</h3>
-        <p class="mb-4">Enter your email and we'll send you instructions to reset your password</p>
+        <h3 class="mb-1">{{ __('auth.forgot_password.heading') }}</h3>
+        <p class="mb-4">{{ __('auth.forgot_password.description') }}</p>
 
         @if (session('status'))
         <div class="mb-1 text-success">
@@ -46,21 +46,23 @@ $configData = Helper::appClasses();
         <form id="formAuthentication" class="mb-3" action="{{ route('password.email') }}" method="POST">
           @csrf
           <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" placeholder="john@example.com" autofocus>
+            <label for="email" class="form-label">{{ __('auth.forgot_password.email') }}</label>
+            <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" placeholder="{{ __('auth.forgot_password.email_placeholder') }}" autofocus>
             @error('email')
             <span class="invalid-feedback" role="alert">
               <span class="fw-medium">{{ $message }}</span>
             </span>
             @enderror
           </div>
-          <button type="submit" class="btn btn-primary d-grid w-100">Send Reset Link</button>
+          <button type="submit" class="btn btn-primary d-grid w-100">
+            {{ __('auth.forgot_password.send_reset_link') }}
+          </button>
         </form>
         <div class="text-center">
           @if (Route::has('login'))
           <a href="{{ route('login') }}" class="d-flex align-items-center justify-content-center">
             <i class="ti ti-chevron-left scaleX-n1-rtl"></i>
-            Back to login
+            {{ __('auth.forgot_password.back_to_login') }}
           </a>
           @endif
         </div>

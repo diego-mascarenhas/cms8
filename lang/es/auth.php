@@ -1,20 +1,74 @@
 <?php
 
+declare(strict_types=1);
+
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | Authentication Language Lines
-    |--------------------------------------------------------------------------
-    |
-    | The following language lines are used during authentication for various
-    | messages that we need to display to the user. You are free to modify
-    | these language lines according to your application's requirements.
-    |
-    */
-
-    'failed' => 'Estas credenciales no coinciden con nuestros registros.',
-    'password' => 'La contraseña proporcionada es incorrecta.',
-    'throttle' => 'Demasiados intentos de inicio de sesión. Por favor, inténtelo de nuevo en :seconds segundos.',
-
+    'confirm_password' => [
+        'confirm_button' => 'Confirmar Contraseña',
+        'description'    => 'Por favor, confirma tu contraseña para continuar.',
+        'enter_password' => 'Ingresa tu Contraseña',
+        'title'          => 'Confirmar Contraseña',
+    ],
+    'failed'           => 'Estas credenciales no coinciden con nuestros registros.',
+    'forgot_password'  => [
+        'back_to_login'     => 'Volver al inicio de sesión',
+        'description'       => 'Ingresa tu correo electrónico y te enviaremos las instrucciones para restablecer tu contraseña',
+        'email'             => 'Correo electrónico',
+        'email_placeholder' => 'juan@ejemplo.com',
+        'heading'           => '¿Olvidaste tu contraseña? 🔒',
+        'send_reset_link'   => 'Enviar enlace de recuperación',
+        'title'             => 'Recuperar Contraseña',
+    ],
+    'login'            => [
+        'create_account'    => 'Crear una cuenta',
+        'description'       => 'Inicia sesión con tu cuenta y comienza la aventura',
+        'email'             => 'Correo electrónico',
+        'email_placeholder' => 'juan@ejemplo.com',
+        'forgot_password'   => '¿Olvidaste tu contraseña?',
+        'new_platform'      => '¿Nuevo en nuestra plataforma?',
+        'password'          => 'Contraseña',
+        'remember_me'       => 'Recordarme',
+        'sign_in'           => 'Iniciar sesión',
+        'title'             => 'Iniciar Sesión',
+        'welcome'           => '¡Bienvenido a :name! 👋',
+    ],
+    'password'         => 'La contraseña es incorrecta.',
+    'register'         => [
+        'already_account'      => '¿Ya tienes una cuenta?',
+        'confirm_password'     => 'Confirmar Contraseña',
+        'description'          => '¡Haz que la gestión de tu aplicación sea fácil y divertida!',
+        'email'                => 'Correo electrónico',
+        'email_placeholder'    => 'juan@ejemplo.com',
+        'heading'              => 'La aventura comienza aquí 🚀',
+        'password'             => 'Contraseña',
+        'privacy_policy'       => 'política de privacidad',
+        'sign_in'              => 'Inicia sesión',
+        'sign_up'              => 'Registrarse',
+        'terms'                => 'términos',
+        'terms_agree'          => 'Acepto la',
+        'title'                => 'Página de Registro',
+        'username'             => 'Nombre de usuario',
+        'username_placeholder' => 'juanperez',
+    ],
+    'reset_password'   => [
+        'back_to_login'    => 'Volver al inicio de sesión',
+        'confirm_password' => 'Confirmar Contraseña',
+        'email'            => 'Correo electrónico',
+        'heading'          => 'Restablecer Contraseña 🔒',
+        'new_password'     => 'Nueva Contraseña',
+        'set_password'     => 'Establecer nueva contraseña',
+        'title'            => 'Restablecer Contraseña',
+    ],
+    'throttle'         => 'Demasiados intentos de acceso. Por favor intente nuevamente en :seconds segundos.',
+    'two_factor'       => [
+        'auth_description'     => 'Por favor, confirma el acceso a tu cuenta ingresando el código de autenticación proporcionado por tu aplicación de autenticación.',
+        'code_label'           => 'Código',
+        'heading'              => 'Verificación en Dos Pasos 💬',
+        'login_button'         => 'Iniciar sesión',
+        'recovery_code_label'  => 'Código de Recuperación',
+        'recovery_description' => 'Por favor, confirma el acceso a tu cuenta ingresando uno de tus códigos de recuperación de emergencia.',
+        'title'                => 'Verificación en Dos Pasos',
+        'use_authentication'   => 'Usar código de autenticación',
+        'use_recovery'         => 'Usar código de recuperación',
+    ],
 ];

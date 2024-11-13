@@ -5,7 +5,7 @@ $configData = Helper::appClasses();
 
 @extends('layouts/blankLayout')
 
-@section('title', 'Register Page')
+@section('title', __('auth.register.title'))
 
 @section('page-style')
 {{-- Page Css files --}}
@@ -35,14 +35,14 @@ $configData = Helper::appClasses();
           </a>
         </div>
         <!-- /Logo -->
-        <h3 class="mb-1">Adventure starts here 🚀</h3>
-        <p class="mb-4">Make your app management easy and fun!</p>
+        <h3 class="mb-1">{{ __('auth.register.heading') }}</h3>
+        <p class="mb-4">{{ __('auth.register.description') }}</p>
 
         <form id="formAuthentication" class="mb-3" action="{{ route('register') }}" method="POST">
           @csrf
           <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control @error('name') is-invalid @enderror" id="username" name="name" placeholder="johndoe" autofocus value="{{ old('name') }}" />
+            <label for="username" class="form-label">{{ __('auth.register.username') }}</label>
+            <input type="text" class="form-control @error('name') is-invalid @enderror" id="username" name="name" placeholder="{{ __('auth.register.username_placeholder') }}" autofocus value="{{ old('name') }}" />
             @error('name')
             <span class="invalid-feedback" role="alert">
               <span class="fw-medium">{{ $message }}</span>
@@ -50,8 +50,8 @@ $configData = Helper::appClasses();
             @enderror
           </div>
           <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" placeholder="john@example.com" value="{{ old('email') }}" />
+            <label for="email" class="form-label">{{ __('auth.register.email') }}</label>
+            <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" placeholder="{{ __('auth.register.email_placeholder') }}" value="{{ old('email') }}" />
             @error('email')
             <span class="invalid-feedback" role="alert">
               <span class="fw-medium">{{ $message }}</span>
@@ -59,7 +59,7 @@ $configData = Helper::appClasses();
             @enderror
           </div>
           <div class="mb-3 form-password-toggle">
-            <label class="form-label" for="password">Password</label>
+            <label class="form-label" for="password">{{ __('auth.register.password') }}</label>
             <div class="input-group input-group-merge @error('password') is-invalid @enderror">
               <input type="password" id="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" aria-describedby="password" />
               <span class="input-group-text cursor-pointer">
@@ -74,7 +74,7 @@ $configData = Helper::appClasses();
           </div>
 
           <div class="mb-3 form-password-toggle">
-            <label class="form-label" for="password-confirm">Confirm Password</label>
+            <label class="form-label" for="password-confirm">{{ __('auth.register.confirm_password') }}</label>
             <div class="input-group input-group-merge">
               <input type="password" id="password-confirm" class="form-control" name="password_confirmation" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" aria-describedby="password" />
               <span class="input-group-text cursor-pointer">
@@ -87,9 +87,9 @@ $configData = Helper::appClasses();
               <div class="form-check @error('terms') is-invalid @enderror">
                 <input class="form-check-input @error('terms') is-invalid @enderror" type="checkbox" id="terms" name="terms" />
                 <label class="form-check-label" for="terms">
-                  I agree to the
-                  <a href="{{ route('policy.show') }}" target="_blank">privacy policy</a> &
-                  <a href="{{ route('terms.show') }}" target="_blank">terms</a>
+                  {{ __('auth.register.terms_agree') }}
+                  <a href="{{ route('policy.show') }}" target="_blank">{{ __('auth.register.privacy_policy') }}</a> &
+                  <a href="{{ route('terms.show') }}" target="_blank">{{ __('auth.register.terms') }}</a>
                 </label>
               </div>
               @error('terms')
@@ -99,14 +99,14 @@ $configData = Helper::appClasses();
               @enderror
             </div>
           @endif
-          <button type="submit" class="btn btn-primary d-grid w-100">Sign up</button>
+          <button type="submit" class="btn btn-primary d-grid w-100">{{ __('auth.register.sign_up') }}</button>
         </form>
 
         <p class="text-center mt-2">
-          <span>Already have an account?</span>
+          <span>{{ __('auth.register.already_account') }}</span>
           @if (Route::has('login'))
           <a href="{{ route('login') }}">
-            <span>Sign in instead</span>
+            <span>{{ __('auth.register.sign_in') }}</span>
           </a>
           @endif
         </p>

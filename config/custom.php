@@ -31,6 +31,7 @@ return [
       'layoutNavbarOptions',
       'themes',
     ], // To show/hide customizer options
+    'showRegister' => false,
     //REVIEW - TeamManager true/false
     'TeamManager' => false,
     'animateLogo' => true, // options[Boolean]: true(default), false // To enable or disable logo animation

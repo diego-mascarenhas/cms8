@@ -5,7 +5,7 @@ $configData = Helper::appClasses();
 
 @extends('layouts/blankLayout')
 
-@section('title', 'Login')
+@section('title', __('auth.login.title'))
 
 @section('page-style')
 {{-- Page Css files --}}
@@ -30,13 +30,11 @@ $configData = Helper::appClasses();
       <div class="w-px-400 mx-auto">
         <!-- Logo -->
         <div class="app-brand mb-4">
-          <a href="{{url('/')}}" class="app-brand-link">
             <span id="logo" class="app-brand-logo demo">@include('_partials.macros',["height"=>20,"withbg"=>'fill: #fff;'])</span>
-          </a>
         </div>
         <!-- /Logo -->
-        <h3 class="mb-1">Welcome to {{config('variables.templateName')}}! 👋</h3>
-        <p class="mb-4">Please sign-in to your account and start the adventure</p>
+        <h3 class="mb-1">{{ __('auth.login.welcome', ['name' => config('variables.templateName')]) }}</h3>
+        <p class="mb-4">{{ __('auth.login.description') }}</p>
 
         @if (session('status'))
         <div class="alert alert-success mb-1 rounded-0" role="alert">
@@ -49,8 +47,8 @@ $configData = Helper::appClasses();
         <form id="formAuthentication" class="mb-3" action="{{ route('login') }}" method="POST">
           @csrf
           <div class="mb-3">
-            <label for="login-email" class="form-label">Email</label>
-            <input type="text" class="form-control @error('email') is-invalid @enderror" id="login-email" name="email" placeholder="john@example.com" autofocus value="{{ old('email') }}">
+            <label for="login-email" class="form-label">{{ __('auth.login.email') }}</label>
+            <input type="text" class="form-control @error('email') is-invalid @enderror" id="login-email" name="email" placeholder="{{ __('auth.login.email_placeholder') }}" autofocus value="{{ old('email') }}">
             @error('email')
             <span class="invalid-feedback" role="alert">
               <span class="fw-medium">{{ $message }}</span>
@@ -59,10 +57,10 @@ $configData = Helper::appClasses();
           </div>
           <div class="mb-3 form-password-toggle">
             <div class="d-flex justify-content-between">
-              <label class="form-label" for="login-password">Password</label>
+              <label class="form-label" for="login-password">{{ __('auth.login.password') }}</label>
               @if (Route::has('password.request'))
               <a href="{{ route('password.request') }}">
-                <small>Forgot Password?</small>
+                <small>{{ __('auth.login.forgot_password') }}</small>
               </a>
               @endif
             </div>
@@ -80,21 +78,21 @@ $configData = Helper::appClasses();
             <div class="form-check">
               <input class="form-check-input" type="checkbox" id="remember-me" name="remember" {{ old('remember') ? 'checked' : '' }}>
               <label class="form-check-label" for="remember-me">
-                Remember Me
+                {{ __('auth.login.remember_me') }}
               </label>
             </div>
           </div>
-          <button class="btn btn-primary d-grid w-100" type="submit">Sign in</button>
+          <button class="btn btn-primary d-grid w-100" type="submit">{{ __('auth.login.sign_in') }}</button>
         </form>
 
+        @if (Route::has('register') && config('custom.custom.showRegister'))
         <p class="text-center">
-          <span>New on our platform?</span>
-          @if (Route::has('register'))
+          <span>{{ __('auth.login.new_platform') }}</span>
           <a href="{{ route('register') }}">
-            <span>Create an account</span>
+            <span>{{ __('auth.login.create_account') }}</span>
           </a>
-          @endif
         </p>
+        @endif
       </div>
     </div>
     <!-- /Login -->
