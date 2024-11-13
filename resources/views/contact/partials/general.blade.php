@@ -1,4 +1,5 @@
-<div class="row g-4">
+
+<div class="row g-4 opacity-50">
     <div class="col-lg-8">
         <div class="row g-4">
             <!-- CAC Card -->

@@ -20,7 +20,7 @@ $invoices = [
 ];
 @endphp
 
-<div class="card mb-4">
+<div class="card mb-4 opacity-50">
     <h5 class="card-header d-flex justify-content-between align-items-center">
         Saldo
         <button type="button" class="btn btn-primary btn-sm">

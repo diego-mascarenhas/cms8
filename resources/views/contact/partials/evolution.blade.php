@@ -52,7 +52,7 @@ $evolutionSteps = [
 ];
 @endphp
 
-<div class="card">
+<div class="card opacity-50">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Evolución en servicios</h5>
         <div class="dropdown">

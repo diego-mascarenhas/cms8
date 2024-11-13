@@ -67,7 +67,7 @@ class ContactController extends Controller
 
 		$contact = Contact::create($contactData);
 
-		$message = 'Contact created successfully.';
+		$message = __('messages.success.created');
 
 		if ($request->ajax())
 		{
@@ -102,7 +102,7 @@ class ContactController extends Controller
 		{
 			return redirect()
 				->route('contact-list')
-				->with('error', 'Contact not found.');
+				->with('error', __('messages.errors.not_found'));
 		}
 
 		$sentiments = ContactSentiment::all();
@@ -143,7 +143,7 @@ class ContactController extends Controller
 		$contact = Contact::findOrFail($id);
 		$contact->update($contactData);
 
-		$message = 'Contact updated successfully.';
+		$message = __('messages.success.updated');
 
 		if ($request->ajax())
 		{
@@ -168,7 +168,7 @@ class ContactController extends Controller
 
 		$model->delete();
 
-		return response()->json(['success' => 'The record has been deleted.'], 200);
+		return response()->json(['success' => __('messages.success.deleted')], 200);
 	}
 
 	public function updateSentiment(Request $request, string $id)
@@ -194,7 +194,7 @@ class ContactController extends Controller
 		$newSentiment = ContactSentiment::find($request->sentiment_id);
 
 		return response()->json([
-			'message' => 'Sentiment updated successfully.',
+			'message' => __('messages.success.sentiment_updated'),
 			'newEmoji' => $newSentiment->emoji,
 			'contactId' => $contact->id,
 		]);

@@ -18,7 +18,7 @@ class UserSeeder extends Seeder
             'email' => 'diego.mascarenhas@icloud.com',
             'password' => '$2y$10$9His4IIPh5nFp0TSilz.h.0DLLE4DzhX1Os2y0QHwt.a19s6whxyC',
         ]);
-        $revision->assignRole([1, 2]);
+        $revision->assignRole([1, 2, 10]);
         $revision->categories()->attach([5001, 5002, 5003, 5004]);
 
         // Admin

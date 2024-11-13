@@ -61,6 +61,7 @@
                 altInput: true,
                 altFormat: dateFormat,
                 defaultDate: initialValue,
+                monthSelectorType: 'static',
                 onReady: function(selectedDates, dateStr, instance) {
                     if (initialValue) {
                         instance.setDate(initialValue, true);

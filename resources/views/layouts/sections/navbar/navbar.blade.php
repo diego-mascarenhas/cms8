@@ -44,7 +44,7 @@ $navbarDetached = ($navbarDetached ?? '');
           <div class="nav-item navbar-search-wrapper mb-0">
             <a class="nav-item nav-link search-toggler d-flex align-items-center px-0" href="javascript:void(0);">
               <i class="ti ti-search ti-md me-2"></i>
-              <span class="d-none d-md-inline-block text-muted">Search (Ctrl+/)</span>
+              <span class="d-none d-md-inline-block text-muted">{{ __('app.search_with_shortcut') }}</span>
             </a>
           </div>
         </div>
@@ -60,32 +60,32 @@ $navbarDetached = ($navbarDetached ?? '');
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
                 <a class="dropdown-item {{ app()->getLocale() === 'en' ? 'active' : '' }}" href="{{url('lang/en')}}" data-language="en" data-text-direction="ltr">
-                  <span class="align-middle">English</span>
+                  <span class="align-middle">{{ __('app.languages.english') }}</span>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item {{ app()->getLocale() === 'es' ? 'active' : '' }}" href="{{url('lang/es')}}" data-language="es" data-text-direction="ltr">
-                  <span class="align-middle">Español</span>
+                  <span class="align-middle">{{ __('app.languages.spanish') }}</span>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item {{ app()->getLocale() === 'fr' ? 'active' : '' }}" href="{{url('lang/fr')}}" data-language="fr" data-text-direction="ltr">
-                  <span class="align-middle">French</span>
+                  <span class="align-middle">{{ __('app.languages.french') }}</span>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item {{ app()->getLocale() === 'de' ? 'active' : '' }}" href="{{url('lang/de')}}" data-language="de" data-text-direction="ltr">
-                  <span class="align-middle">German</span>
+                  <span class="align-middle">{{ __('app.languages.german') }}</span>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item {{ app()->getLocale() === 'it' ? 'active' : '' }}" href="{{url('lang/it')}}" data-language="it" data-text-direction="ltr">
-                  <span class="align-middle">Italiano</span>
+                  <span class="align-middle">{{ __('app.languages.italian') }}</span>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item {{ app()->getLocale() === 'pt' ? 'active' : '' }}" href="{{url('lang/pt')}}" data-language="pt" data-text-direction="ltr">
-                  <span class="align-middle">Portugués</span>
+                  <span class="align-middle">{{ __('app.languages.portuguese') }}</span>
                 </a>
               </li>
             </ul>
@@ -111,17 +111,17 @@ $navbarDetached = ($navbarDetached ?? '');
             <ul class="dropdown-menu dropdown-menu-end dropdown-styles">
               <li>
                 <a class="dropdown-item" href="javascript:void(0);" data-theme="light">
-                  <span class="align-middle"><i class='ti ti-sun me-2'></i>Light</span>
+                  <span class="align-middle">{{ __('app.theme.light') }}</span>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item" href="javascript:void(0);" data-theme="dark">
-                  <span class="align-middle"><i class="ti ti-moon me-2"></i>Dark</span>
+                  <span class="align-middle">{{ __('app.theme.dark') }}</span>
                 </a>
               </li>
               <li>
                 <a class="dropdown-item" href="javascript:void(0);" data-theme="system">
-                  <span class="align-middle"><i class="ti ti-device-desktop me-2"></i>System</span>
+                  <span class="align-middle">{{ __('app.theme.system') }}</span>
                 </a>
               </li>
             </ul>
@@ -138,7 +138,7 @@ $navbarDetached = ($navbarDetached ?? '');
             <div class="dropdown-menu dropdown-menu-end py-0">
               <div class="dropdown-menu-header border-bottom">
                 <div class="dropdown-header d-flex align-items-center py-3">
-                  <h5 class="text-body mb-0 me-auto">Shortcuts</h5>
+                  <h5 class="text-body mb-0 me-auto">{{ __('app.shortcuts.title') }}</h5>
                 </div>
               </div>
               <div class="dropdown-shortcuts-list scrollable-container">
@@ -147,15 +147,15 @@ $navbarDetached = ($navbarDetached ?? '');
                     <span class="dropdown-shortcuts-icon rounded-circle mb-2">
                       <i class="ti ti-calendar fs-4"></i>
                     </span>
-                    <a href="{{url('app/calendar')}}" class="stretched-link">Calendar</a>
-                    <small class="text-muted mb-0">Appointments</small>
+                    <a href="{{url('app/calendar')}}" class="stretched-link">{{ __('app.shortcuts.calendar') }}</a>
+                    <small class="text-muted mb-0">{{ __('app.shortcuts.appointments') }}</small>
                   </div>
                   <div class="dropdown-shortcuts-item col">
                     <span class="dropdown-shortcuts-icon rounded-circle mb-2">
                       <i class="ti ti-file-invoice fs-4"></i>
                     </span>
-                    <a href="{{url('app/invoice/list')}}" class="stretched-link">Invoice App</a>
-                    <small class="text-muted mb-0">Manage Accounts</small>
+                    <a href="{{url('app/invoice/list')}}" class="stretched-link">{{ __('app.shortcuts.invoice_app') }}</a>
+                    <small class="text-muted mb-0">{{ __('app.shortcuts.manage_accounts') }}</small>
                   </div>
                 </div>
                 <div class="row row-bordered overflow-visible g-0">
@@ -163,15 +163,15 @@ $navbarDetached = ($navbarDetached ?? '');
                     <span class="dropdown-shortcuts-icon rounded-circle mb-2">
                       <i class="ti ti-users fs-4"></i>
                     </span>
-                    <a href="{{url('user-management')}}" class="stretched-link">User App</a>
-                    <small class="text-muted mb-0">Manage Users</small>
+                    <a href="{{url('user-management')}}" class="stretched-link">{{ __('app.shortcuts.user_app') }}</a>
+                    <small class="text-muted mb-0">{{ __('app.shortcuts.manage_users') }}</small>
                   </div>
                   <div class="dropdown-shortcuts-item col">
                     <span class="dropdown-shortcuts-icon rounded-circle mb-2">
                       <i class="ti ti-settings fs-4"></i>
                     </span>
-                    <a href="{{url('pages/account-settings-account')}}" class="stretched-link">Setting</a>
-                    <small class="text-muted mb-0">Account Settings</small>
+                    <a href="{{url('pages/account-settings-account')}}" class="stretched-link">{{ __('app.shortcuts.settings') }}</a>
+                    <small class="text-muted mb-0">{{ __('app.shortcuts.account_settings') }}</small>
                   </div>
                 </div>
               </div>
@@ -414,14 +414,14 @@ $navbarDetached = ($navbarDetached ?? '');
               <li>
                 <a class="dropdown-item" href="{{ Route::has('profile.show') ? route('profile.show') : url('pages/profile-user') }}">
                   <i class="ti ti-user-check me-2 ti-sm"></i>
-                  <span class="align-middle">My Profile</span>
+                  <span class="align-middle">{{ __('app.profile.my_profile') }}</span>
                 </a>
               </li>
               @if (Auth::check() && Laravel\Jetstream\Jetstream::hasApiFeatures())
               <li>
                 <a class="dropdown-item" href="{{ route('api-tokens.index') }}">
                   <i class='ti ti-key me-2 ti-sm'></i>
-                  <span class="align-middle">API Tokens</span>
+                  <span class="align-middle">{{ __('app.profile.api_tokens') }}</span>
                 </a>
               </li>
               @endif
@@ -440,7 +440,7 @@ $navbarDetached = ($navbarDetached ?? '');
                 <div class="dropdown-divider"></div>
               </li>
               <li>
-                <h6 class="dropdown-header">Manage Team</h6>
+                <h6 class="dropdown-header">{{ __('app.profile.team.manage') }}</h6>
               </li>
               <li>
                 <div class="dropdown-divider"></div>
@@ -449,7 +449,7 @@ $navbarDetached = ($navbarDetached ?? '');
               <li>
                   <a class="dropdown-item" href="{{ route('teams.show', Auth::user()->currentTeam->id) }}">
                       <i class='ti ti-settings me-2'></i>
-                      <span class="align-middle">Team Settings</span>
+                      <span class="align-middle">{{ __('app.profile.team.settings') }}</span>
                   </a>
               </li>
               @endif
@@ -457,7 +457,7 @@ $navbarDetached = ($navbarDetached ?? '');
               <li>
                 <a class="dropdown-item" href="{{ route('teams.create') }}">
                   <i class='ti ti-user me-2'></i>
-                  <span class="align-middle">Create New Team</span>
+                  <span class="align-middle">{{ __('app.profile.team.create') }}</span>
                 </a>
               </li>
               @endcan
@@ -466,7 +466,7 @@ $navbarDetached = ($navbarDetached ?? '');
                 <div class="dropdown-divider"></div>
               </li>
               <li>
-                <h6 class="dropdown-header">Switch Teams</h6>
+                <h6 class="dropdown-header">{{ __('app.profile.team.switch') }}</h6>
               </li>
               <li>
                 <div class="dropdown-divider"></div>
@@ -487,7 +487,7 @@ $navbarDetached = ($navbarDetached ?? '');
               <li>
                 <a class="dropdown-item" href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                   <i class='ti ti-logout me-2'></i>
-                  <span class="align-middle">Logout</span>
+                  <span class="align-middle">{{ __('app.profile.logout') }}</span>
                 </a>
               </li>
               <form method="POST" id="logout-form" action="{{ route('logout') }}">
@@ -497,7 +497,7 @@ $navbarDetached = ($navbarDetached ?? '');
               <li>
                 <a class="dropdown-item" href="{{ Route::has('login') ? route('login') : url('auth/login-basic') }}">
                   <i class='ti ti-login me-2'></i>
-                  <span class="align-middle">Login</span>
+                  <span class="align-middle">{{ __('app.profile.login') }}</span>
                 </a>
               </li>
               @endif
@@ -509,7 +509,7 @@ $navbarDetached = ($navbarDetached ?? '');
 
       <!-- Search Small Screens -->
       <div class="navbar-search-wrapper search-input-wrapper {{ isset($menuHorizontal) ? $containerNav : '' }} d-none">
-        <input type="text" class="form-control search-input {{ isset($menuHorizontal) ? '' : $containerNav }} border-0" placeholder="Search..." aria-label="Search...">
+        <input type="text" class="form-control search-input {{ isset($menuHorizontal) ? '' : $containerNav }} border-0" placeholder="{{ __('app.search') }}..." aria-label="Search...">
         <i class="ti ti-x ti-sm search-toggler cursor-pointer"></i>
       </div>
       @if(isset($navbarDetached) && $navbarDetached == '')
@@ -519,5 +519,5 @@ $navbarDetached = ($navbarDetached ?? '');
   <!-- / Navbar -->
 
   <div id="search-spinner" class="spinner-border text-primary d-none" role="status">
-    <span class="visually-hidden">Buscando...</span>
+    <span class="visually-hidden">{{ __('app.searching') }}...</span>
   </div>

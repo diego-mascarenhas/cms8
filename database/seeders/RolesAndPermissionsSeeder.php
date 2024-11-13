@@ -358,8 +358,6 @@ class RolesAndPermissionsSeeder extends Seeder
         // ]);
 
         $administratorRole->syncPermissions([
-            'chat.list',
-            'mail.list',
             'client.index',
             'contact.index',
             'contact.list',
@@ -446,6 +444,14 @@ class RolesAndPermissionsSeeder extends Seeder
         $userRole->syncPermissions([
             'profile.show',
             'profile.edit',
+            'profile.update',
+            'password.update',
+        ]);
+
+        $userRole = Role::create(['name' => 'developer']);
+        $userRole->syncPermissions([
+            'chat.list',
+            'mail.list',
             'profile.update',
             'password.update',
         ]);

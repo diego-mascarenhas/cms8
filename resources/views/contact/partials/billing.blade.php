@@ -1,5 +1,5 @@
 <!-- Current Plan -->
-<div class="card mb-4">
+<div class="card mb-4 opacity-50">
     <h5 class="card-header">Plan Actual</h5>
     <div class="card-body">
         <div class="row">
@@ -46,7 +46,7 @@
 <!-- /Current Plan -->
 
 <!-- Payment Methods -->
-<div class="card card-action mb-4">
+<div class="card card-action mb-4 opacity-50">
     <div class="card-header align-items-center">
         <h5 class="card-action-title mb-0">Métodos de Pago</h5>
         <div class="card-action-element">
@@ -122,7 +122,7 @@
 <!--/ Payment Methods -->
 
 <!-- Billing Address -->
-<div class="card card-action mb-4">
+<div class="card card-action mb-4 opacity-50">
     <div class="card-header align-items-center">
         <h5 class="card-action-title mb-0">Dirección de Facturación</h5>
         <div class="card-action-element">
