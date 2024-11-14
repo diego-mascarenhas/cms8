@@ -77,6 +77,10 @@ class Kernel extends ConsoleKernel
         //     });
 
         // $schedule->job(new \App\Jobs\SendBalanceEmail())->monthlyOn(1, '00:00');
+
+        $schedule->command('stripe:suspend-overdue')
+                ->daily()
+                ->at('03:00');
     }
 
     /**
