@@ -21,6 +21,15 @@ class UserSeeder extends Seeder
         $revision->assignRole([1, 2, 10]);
         $revision->categories()->attach([5001, 5002, 5003, 5004]);
 
+        $humano = User::factory()->create([
+            'name' => 'Victor Gómez',
+            'phone' => 34665086080,
+            'email' => 'victor@machbel.com',
+            'password' => '$2y$10$FcK76MqjsbRMzQeDyqSO3ujezrf7NLQWoZlQuxtvlWHogq9ULJKoi',
+        ]);
+        $humano->assignRole([1, 2, 10]);
+        $revision->categories()->attach([5001]);
+
         // Admin
         $user = User::factory()->create([
             'name' => 'Admin',
@@ -130,6 +139,15 @@ class UserSeeder extends Seeder
         ]);
 
         $revision->teams()->attach(2);
-        $revision->update(['current_team_id' => 2]); 
+        $revision->update(['current_team_id' => 2]);
+
+        // Team humano
+        $humano->ownedTeams()->create([
+            'name' => "Humano's Team",
+            'personal_team' => false,
+        ]);
+
+        $humano->teams()->attach(3);
+        $humano->update(['current_team_id' => 2]);
     }
 }

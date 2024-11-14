@@ -48,7 +48,9 @@ class UpdateContactRequest extends FormRequest
             'profile' => $validated['profile'] ?? null,
         ];
 
-        $contact = Contact::findOrFail($this->route('id'));
+        $contact = $this->route('id') 
+            ? Contact::findOrFail($this->route('id'))
+            : new Contact();
 
         $enterpriseData = [];
         if (isset($validated['enterprise']))
@@ -74,9 +76,8 @@ class UpdateContactRequest extends FormRequest
             }
             $enterprise->update($enterpriseData);
         }
-        else
+        else if ($validated['status_id'] == 5)
         {
-            $enterpriseData['responsible_id'] = $contact->id;
             $enterpriseData['team_id'] = $contact->team_id;
             $enterprise = Enterprise::create($enterpriseData);
         }
