@@ -185,9 +185,9 @@
                                 <span class="dropdown-shortcuts-icon rounded-circle mb-2">
                                     <i class="ti ti-settings fs-4"></i>
                                 </span>
-                                <a href="{{ url('pages/account-settings-account') }}"
-                                    class="stretched-link">{{ __('app.shortcuts.settings') }}</a>
-                                <small class="text-muted mb-0">{{ __('app.shortcuts.account_settings') }}</small>
+                                <a href="{{ url('account-management') }}"
+                                    class="stretched-link">{{ __('app.shortcuts.accounts') }}</a>
+                                <small class="text-muted mb-0">{{ __('app.shortcuts.accounts_settings') }}</small>
                             </div>
                         </div>
                     </div>

@@ -33,7 +33,9 @@ return [
         'user_app' => 'User App',
         'manage_users' => 'Manage Users',
         'settings' => 'Setting',
-        'account_settings' => 'Account Settings'
+        'account_settings' => 'Account Settings',
+        'accounts' => 'Accounts',
+        'accounts_settings' => 'Accounts Settings'
     ],
     'profile' => [
         'my_profile' => 'My Profile',

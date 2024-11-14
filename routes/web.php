@@ -1,11 +1,12 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\language\LanguageController;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\laravel_example\UserManagement;
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
@@ -75,6 +76,8 @@ Route::middleware(['auth'])->group(function ()
     // User Management
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
     Route::resource('/user-list', UserManagement::class);
+
+    Route::get('/account-management', [AccountController::class, 'index'])->name('account-management');
 
     // Contacts
     Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
