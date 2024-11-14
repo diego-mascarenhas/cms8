@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\Team;
 use Hash;
-use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
@@ -44,7 +44,10 @@ class UserSeeder extends Seeder
             'name' => "Demo's Team",
             'personal_team' => false,
         ]);
-        $user->teams()->attach(1);
+        $user->teams()->attach(1, [
+            'role' => 'admin',
+            'created_at' => now()
+        ]);
         $user->update(['current_team_id' => 1]); 
 
         // Colaborator
@@ -138,7 +141,10 @@ class UserSeeder extends Seeder
             'personal_team' => false,
         ]);
 
-        $revision->teams()->attach(2);
+        $revision->teams()->attach(2, [
+            'role' => 'admin',
+            'created_at' => now()
+        ]);
         $revision->update(['current_team_id' => 2]);
 
         // Team humano
@@ -147,7 +153,16 @@ class UserSeeder extends Seeder
             'personal_team' => false,
         ]);
 
-        $humano->teams()->attach(3);
-        $humano->update(['current_team_id' => 2]);
+        $humano->teams()->attach(3, [
+            'role' => 'admin',
+            'created_at' => now()
+        ]);
+        $humano->update(['current_team_id' => 3]);
+
+        // Asing User to Team
+        $team = Team::find(3);
+        $team->users()->attach($revision->id, [
+            'role' => 'admin'
+        ]);
     }
 }

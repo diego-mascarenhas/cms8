@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'welcome' => 'Bienvenido a HUMANO!',
+    'welcome' => '¡Bienvenido a HUMANO!',
     'dashboard' => 'Cuadro de mando',
     'search' => 'Buscar',
     'search_with_shortcut' => 'Buscar (Ctrl+/)',
