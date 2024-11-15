@@ -19,7 +19,11 @@ class ShowStripeSubscriptions extends Command
         Stripe::setApiKey($stripeKey);
 
         try {
-            $subscriptions = Subscription::all(['limit' => 100]);
+            $subscriptions = Subscription::all([
+                'limit' => 100,
+                'status' => 'all', // canceled, active, past_due
+                // 'expand' => ['data.customer']
+            ]);
             
             if ($subscriptions->count() === 0) {
                 $this->warn("No subscriptions found");
