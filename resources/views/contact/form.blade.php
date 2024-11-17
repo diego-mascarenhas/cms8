@@ -75,39 +75,41 @@
                             <span class="bs-stepper-label">Información Personal</span>
                         </button>
                     </div>
-                    <div class="line">
-                        <i class="ti ti-chevron-right"></i>
-                    </div>
-                    <div class="step" data-target="#social-links-modern">
-                        <button type="button" class="step-trigger">
-                            <span class="bs-stepper-icon">
-                                <i class="ti ti-share"></i>
-                            </span>
-                            <span class="bs-stepper-label">Redes Sociales</span>
-                        </button>
-                    </div>
-                    <div class="line">
-                        <i class="ti ti-chevron-right"></i>
-                    </div>
-                    <div class="step" data-target="#account-details-modern">
-                        <button type="button" class="step-trigger">
-                            <span class="bs-stepper-icon">
-                                <i class="ti ti-building"></i>
-                            </span>
-                            <span class="bs-stepper-label">Datos de la Empresa</span>
-                        </button>
-                    </div>
-                    <div class="line">
-                        <i class="ti ti-chevron-right"></i>
-                    </div>
-                    <div class="step" data-target="#address-modern">
-                        <button type="button" class="step-trigger">
-                            <span class="bs-stepper-icon">
-                                <i class="ti ti-map-pin"></i>
-                            </span>
-                            <span class="bs-stepper-label">Domicilio</span>
-                        </button>
-                    </div>
+                    @if(isset($data->id))
+                        <div class="line">
+                            <i class="ti ti-chevron-right"></i>
+                        </div>
+                        <div class="step" data-target="#social-links-modern">
+                            <button type="button" class="step-trigger">
+                                <span class="bs-stepper-icon">
+                                    <i class="ti ti-share"></i>
+                                </span>
+                                <span class="bs-stepper-label">Redes Sociales</span>
+                            </button>
+                        </div>
+                        <div class="line">
+                            <i class="ti ti-chevron-right"></i>
+                        </div>
+                        <div class="step" data-target="#account-details-modern">
+                            <button type="button" class="step-trigger">
+                                <span class="bs-stepper-icon">
+                                    <i class="ti ti-building"></i>
+                                </span>
+                                <span class="bs-stepper-label">Datos de la Empresa</span>
+                            </button>
+                        </div>
+                        <div class="line">
+                            <i class="ti ti-chevron-right"></i>
+                        </div>
+                        <div class="step" data-target="#address-modern">
+                            <button type="button" class="step-trigger">
+                                <span class="bs-stepper-icon">
+                                    <i class="ti ti-map-pin"></i>
+                                </span>
+                                <span class="bs-stepper-label">Domicilio</span>
+                            </button>
+                        </div>
+                    @endif
                 </div>
                 <div class="bs-stepper-content">
                     <form action="{{ isset($data->id) ? route('contact.update', $data->id) : route('contact.store') }}"
