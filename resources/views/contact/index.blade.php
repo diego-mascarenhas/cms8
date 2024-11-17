@@ -339,6 +339,7 @@
         }
 
         function addToList(id, element) {
+            event.preventDefault();
             Swal.fire({
                 title: '¿Estás seguro?',
                 text: "¿Deseas agregar este contacto a la Lista de 60?",
@@ -375,6 +376,15 @@
                                 }
                             });
                         } else {
+                            const iconElement = element.querySelector('i.ti-list-check');
+                            const linkElement = element;
+                            
+                            if (linkElement && iconElement) {
+                                linkElement.className = 'text-success';
+                                linkElement.removeAttribute('href');
+                                linkElement.removeAttribute('onclick');
+                            }
+                            
                             Swal.fire({
                                 icon: 'success',
                                 title: '¡Éxito!',

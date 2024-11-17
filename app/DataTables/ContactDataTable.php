@@ -22,7 +22,9 @@ class ContactDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'contact.action')
+            ->addColumn('action', function ($contact) {
+                return view('contact.action', compact('contact'));
+            })
             ->setRowId('id')
             ->editColumn('name', function ($row) {
                 $companyName = $row->enterprise ? e($row->enterprise->name) : '';
@@ -64,7 +66,7 @@ class ContactDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery();
+        return $model->newQuery()->with('list60');
     }
 
     public function html(): HtmlBuilder

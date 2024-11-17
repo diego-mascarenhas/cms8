@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\UserContactAction;
 use Carbon\Carbon;
 use App\Traits\HasSourceIcons;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Contact extends Model
 {
@@ -252,5 +253,15 @@ class Contact extends Model
 		return $this->belongsToMany(Enterprise::class, 'contact_enterprise')
 					->withPivot('position')
 					->withTimestamps();
+	}
+
+	public function list60(): HasOne
+	{
+		return $this->hasOne(List60::class);
+	}
+
+	public function isInList60(): bool
+	{
+		return $this->list60()->exists();
 	}
 }

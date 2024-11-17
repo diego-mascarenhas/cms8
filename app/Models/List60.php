@@ -15,7 +15,7 @@ class List60 extends Model
 
 	public function contact()
 	{
-		return $this->belongsTo(Contact::class, 'contact_id');
+		return $this->belongsTo(Contact::class);
 	}
 
 	public function type()
