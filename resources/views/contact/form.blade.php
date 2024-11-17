@@ -130,8 +130,7 @@
                                 </div>
                                 <div class="col-sm-4">
                                     <label for="status_id" class="form-label">Tipo de contacto</label>
-                                    <x-input-select id="status_id" :options="$enterpriseStatuses" :value="old('status_id', $data->status_id ?? '')"
-                                        placeholder="Selector de tipo de contacto" />
+                                    <x-input-select id="status_id" :options="$enterpriseStatuses" :value="old('status_id', $data->status_id ?? '')" />
                                 </div>
                                 <div class="col-sm-4">
                                     <x-input-date id="birthday" label="Cumpleaños"

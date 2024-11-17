@@ -33,22 +33,28 @@ class List60Controller extends Controller
      */
     public function store(Request $request)
     {
-        try {
-            if (!$request->has('contact_id')) {
+        try
+        {
+            if (!$request->has('contact_id'))
+            {
                 return response()->json([
                     'error' => 'El ID del contacto es requerido'
                 ], 400);
             }
 
-            $totalContacts = List60::count();
-            if ($totalContacts >= 60) {
+            $totalContacts = List60::join('contacts', 'list60.contact_id', '=', 'contacts.id')
+                ->where('contacts.team_id', auth()->user()->currentTeam->id)
+                ->count();
+            if ($totalContacts >= 60)
+            {
                 return response()->json([
                     'error' => 'La lista ya tiene 60 contactos'
                 ], 400);
             }
 
             $existingContact = List60::where('contact_id', $request->contact_id)->first();
-            if ($existingContact) {
+            if ($existingContact)
+            {
                 return response()->json([
                     'error' => 'El contacto ya está en la Lista de 60'
                 ], 400);
@@ -56,9 +62,11 @@ class List60Controller extends Controller
 
             $nextDate = now();
             $businessDays = 0;
-            while ($businessDays < 7) {
+            while ($businessDays < 7)
+            {
                 $nextDate = $nextDate->addDay();
-                if (!$nextDate->isWeekend()) {
+                if (!$nextDate->isWeekend())
+                {
                     $businessDays++;
                 }
             }
@@ -72,7 +80,9 @@ class List60Controller extends Controller
                 'success' => 'Contacto agregado exitosamente a la Lista de 60'
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e)
+        {
             \Log::error('Error al agregar contacto a Lista60: ' . $e->getMessage());
             return response()->json([
                 'error' => 'No se pudo agregar el contacto a la Lista de 60: ' . $e->getMessage()
