@@ -39,8 +39,7 @@ class LeadController extends Controller
             
             Log::channel('leads')->info($logMessage);
 
-            // Enviar el email
-            Mail::to('hola@humano.app')->send(new LeadNotification($validated));
+            // Mail::to('hola@humano.app')->send(new LeadNotification($validated));
             
             return view('lead.success');
         } catch (\Exception $e) {
