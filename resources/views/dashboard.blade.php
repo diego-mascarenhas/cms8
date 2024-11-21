@@ -51,7 +51,7 @@
                         </span>
                         <div class="content-right">
                             <p class="mb-0">Resultados</p>
-                            <h4 class="text-info mb-0">82%</h4>
+                            <h4 class="text-info mb-0">{{ rand(60, 100) }}%</h4>
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-3">
@@ -75,8 +75,8 @@
                                 <h5 class="card-title mb-0">Felicitaciones {{ explode(' ', auth()->user()->name)[0] }}! 🎉
                                 </h5>
                                 <p class="mb-2">Vas viento en popa!</p>
-                                <h4 class="text-primary mb-1">$48.9k</h4>
-                                <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary">Pasar a Nivel 5</a>
+                                <h4 class="text-primary mb-1">{{ number_format(rand(50000, 999999), 2, ',', '.') }}€</h4>
+                                <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary">Pasar de Nivel</a>
                             </div>
                         </div>
                         <div class="col-5 text-center text-sm-left">

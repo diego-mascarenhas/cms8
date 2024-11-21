@@ -487,7 +487,7 @@ class ContactController extends Controller
 	public function updateNotes(Request $request, $id)
 	{
 		$contact = Contact::findOrFail($id);
-		$data = $contact->data ?? [];
+		$data = (array) ($contact->data ?? new \stdClass());
 		$data['notes'] = $request->input('notes');
 		
 		$contact->update([

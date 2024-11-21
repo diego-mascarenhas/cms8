@@ -71,8 +71,8 @@
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Notas</h5>
-                <button class="btn btn-icon btn-sm" onclick="toggleNotesEdit()">
-                    <i class="ti ti-device-floppy"></i>
+                <button class="btn btn-warning btn-xs" onclick="toggleNotesEdit()">
+                    <i class="ti ti-device-floppy me-1"></i>Guardar
                 </button>
             </div>
             <div class="card-body">
