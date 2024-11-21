@@ -19,6 +19,7 @@ use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\MailController;
+use App\Http\Controllers\LeadController;
 
 
 // auth
@@ -135,3 +136,6 @@ Route::get('/organization', [EnterpriseOrganizationController::class, 'index']);
 Route::get('/notes', function () {
     return view('notes.index');
 })->name('notes.index');
+
+Route::get('/lead', [LeadController::class, 'create'])->name('lead.create');
+Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
