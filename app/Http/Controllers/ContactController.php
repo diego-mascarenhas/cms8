@@ -483,4 +483,20 @@ class ContactController extends Controller
 
 		return response()->json($data);
 	}
+
+	public function updateNotes(Request $request, $id)
+	{
+		$contact = Contact::findOrFail($id);
+		$data = $contact->data ?? [];
+		$data['notes'] = $request->input('notes');
+		
+		$contact->update([
+			'data' => $data
+		]);
+
+		return response()->json([
+			'success' => true,
+			'message' => 'Notas actualizadas correctamente'
+		]);
+	}
 }

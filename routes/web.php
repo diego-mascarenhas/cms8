@@ -94,6 +94,7 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
     
     Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
+    Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
 
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])

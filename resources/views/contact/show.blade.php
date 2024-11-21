@@ -370,6 +370,32 @@
     <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
 
     <script>
+        function toggleNotesEdit() {
+            const notes = document.getElementById('contact-notes').value;
+            const contactId = window.location.pathname.split('/')[2];
+
+            fetch(`/contact/${contactId}/notes`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    notes: notes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    toastr.success('Notas guardadas correctamente');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                toastr.error('Error al guardar las notas');
+            });
+        }
+
         $(document).ready(function() {
             $('.add-sentiment-btn').on('click', function() {
                 $('#updateSentimentModal').modal('show');

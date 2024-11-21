@@ -1,5 +1,5 @@
 
-<div class="row g-4 opacity-50">
+<div class="row g-4">
     <div class="col-lg-8">
         <div class="row g-4">
             <!-- CAC Card -->
@@ -15,8 +15,8 @@
                             <span>CAC</span>
                         </div>
                         <h6 class="card-title mb-1">Semana pasada</h6>
-                        <h4 class="card-title mb-1">194,54€</h4>
-                        <small class="text-danger fw-semibold"><i class="ti ti-arrow-down-right"></i> 12.2%</small>
+                        <h4 class="card-title mb-1">0€</h4>
+                        <small class="text-danger fw-semibold"><i class="ti ti-arrow-down-right"></i> 0%</small>
                     </div>
                 </div>
             </div>
@@ -34,14 +34,14 @@
                             <span>LTV</span>
                         </div>
                         <h6 class="card-title mb-1">Acumulado</h6>
-                        <h4 class="card-title mb-1">2431,67€</h4>
-                        <small class="text-success fw-semibold"><i class="ti ti-arrow-up-right"></i> 25.2%</small>
+                        <h4 class="card-title mb-1">0€</h4>
+                        <small class="text-success fw-semibold"><i class="ti ti-arrow-up-right"></i> 0%</small>
                     </div>
                 </div>
             </div>
 
             <!-- Files -->
-            <div class="col-12">
+            <div class="col-12 opacity-50">
                 <div class="card">
                     <div class="card-body">
                         <ul class="list-unstyled mb-0">
@@ -69,56 +69,14 @@
     <!-- Notes -->
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Notas</h5>
+                <button class="btn btn-icon btn-sm" onclick="toggleNotesEdit()">
+                    <i class="ti ti-device-floppy"></i>
+                </button>
             </div>
             <div class="card-body">
-                <dl class="row mb-0">
-                    <div class="mb-3">
-                        <strong>Objetivo:</strong>
-                        <p></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <strong>Bloqueos:</strong>
-                        <p></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <strong>Situación personal:</strong>
-                        <p></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <strong>Dónde vive:</strong>
-                        <p></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <strong>Estilo de vida:</strong>
-                        <p></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <strong>Pasatiempos:</strong>
-                        <p></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <strong>Deportes:</strong>
-                        <p></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <strong>Relaciones personales:</strong>
-                        <p></p>
-                    </div>
-
-                    <div class="mb-3">
-                        <strong>Relación con el dinero:</strong>
-                        <p></p>
-                    </div>
-                </dl>
+                <textarea id="contact-notes" class="form-control" rows="10" placeholder="Escribe tus notas aquí...">{{ $data->data->notes ?? '' }}</textarea>
             </div>
         </div>
     </div>
