@@ -36,7 +36,7 @@
                 </div>
                 <h1 class="success-title text-center">¡Gracias!</h1>
                 <p class="success-message">
-                    En breve recibirás noticias nuestras 😉
+                    En menos de 48 hs recibirás noticias nuestras 😉
                 </p>
             </div>
         </div>

@@ -1,6 +1,6 @@
 @extends('layouts/blankLayout')
 
-@section('title', 'Crear Lead')
+@section('title', 'Conocer Humano.app')
 
 @section('page-style')
 {{-- Page Css files --}}
@@ -20,7 +20,8 @@
         <!-- /Logo -->
         <div class="card">
             <div class="card-body">
-                <h4 class="mb-3">Formulario de Contacto</h4>
+                <h4 class="mb-2">¡Quiero escalar mi negocio hasta la luna y más allá!</h4>
+                <p class="mb-4" style="color: #566a7f;">Rellena este formulario para hacerlo realidad</p>
                 <form method="POST" action="{{ route('lead.store') }}">
                     @csrf
                     <div class="mb-3">
