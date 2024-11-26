@@ -83,7 +83,7 @@ return [
     |
     */
 
-  'locale' => 'en',
+  'locale' => 'es',
 
   /*
     |--------------------------------------------------------------------------
@@ -109,7 +109,7 @@ return [
     |
     */
 
-  'faker_locale' => 'en_US',
+  'faker_locale' => 'es_ES',
 
   /*
     |--------------------------------------------------------------------------
@@ -173,6 +173,7 @@ return [
     App\Providers\MenuServiceProvider::class,
     Yajra\DataTables\DataTablesServiceProvider::class,
     Spatie\Permission\PermissionServiceProvider::class,
+    App\Providers\BladeServiceProvider::class,
   ])->toArray(),
 
   /*

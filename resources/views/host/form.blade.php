@@ -38,7 +38,7 @@
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select-array id="type_id" label="Type" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+				<x-input-select id="type_id" label="Type" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
 			</div>
 			
 			<div class="col-md-6">
@@ -52,14 +52,14 @@
 				<x-input-general id="private_ip" label="Private IP" value="{{ old('private_ip', $data->private_ip?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select-array id="private_connection_id" label="Connection" :options="$data->devices" value="{{ old('private_connection_id', $data->private_connection_id ?? '') }}" />
+				<x-input-select id="private_connection_id" label="Connection" :options="$data->devices" value="{{ old('private_connection_id', $data->private_connection_id ?? '') }}" />
 			</div>
 			
 			<div class="col-md-6">
 				<x-input-general id="public_ip" label="Public IP" value="{{ old('public_ip', $data->public_ip?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select-array id="public_connection_id" label="Connection" :options="$data->devices" value="{{ old('public_connection_id', $data->public_connection_id ?? '') }}" />
+				<x-input-select id="public_connection_id" label="Connection" :options="$data->devices" value="{{ old('public_connection_id', $data->public_connection_id ?? '') }}" />
 			</div>
 		</div>
 		<hr class="my-4 mx-n4" />

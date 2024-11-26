@@ -17,6 +17,7 @@ return [
     'contentLayout' => 'compact', // options[String]: 'compact', 'wide' (compact=container-xxl, wide=container-fluid)
     'navbarType' => 'sticky', // options[String]: 'sticky', 'static', 'hidden' (Only for vertical Layout)
     'footerFixed' => false, // options[Boolean]: false(default), true // Footer Fixed
+    'showFooter' => false, // options[Boolean]: true(default), false // Show or hide footer
     'menuFixed' => true, // options[Boolean]: true(default), false // Layout(menu) Fixed (Only for vertical Layout)
     'menuCollapsed' => false, // options[Boolean]: false(default), true // Show menu collapsed, (Only for vertical Layout)
     'headerType' => 'fixed', // options[String]: 'static', 'fixed' (for horizontal layout only)
@@ -30,7 +31,13 @@ return [
       'layoutNavbarOptions',
       'themes',
     ], // To show/hide customizer options
+    'showRegister' => false,
     //REVIEW - TeamManager true/false
     'TeamManager' => false,
+    'animateLogo' => true, // options[Boolean]: true(default), false // To enable or disable logo animation
+    // 'showSearch' => true, // options[Boolean]: true(default), false // To enable or disable the search bar
+    // 'showLanguageSelector' => false, // options[Boolean]: true(default), false // To enable or disable the language selector
+    // 'showQuickAccess' => true, // options[Boolean]: true(default), false // To enable or disable quick access links
+    // 'showNotifications' => true, // options[Boolean]: true(default), false // To enable or disable notifications
   ],
 ];

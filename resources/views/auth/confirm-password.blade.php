@@ -6,7 +6,7 @@ $configData = Helper::appClasses();
 
 @extends('layouts/blankLayout')
 
-@section('title', 'Confirm Password')
+@section('title', __('auth.confirm_password.title'))
 
 @section('page-style')
 {{-- Page Css files --}}
@@ -35,12 +35,12 @@ $configData = Helper::appClasses();
           </a>
         </div>
         <!-- /Logo -->
-        <h3 class="mb-1">Confirm Password</h3>
-        <p class="text-start mb-4">Please confirm your password before continuing.</p>
+        <h3 class="mb-1">{{ __('auth.confirm_password.title') }}</h3>
+        <p class="text-start mb-4">{{ __('auth.confirm_password.description') }}</p>
         <form id="twoStepsForm" action="{{ route('password.confirm') }}" method="POST">
           @csrf
           <div class="mb-3 form-password-toggle">
-            <label class="form-label" for="password">Enter Password</label>
+            <label class="form-label" for="password">{{ __('auth.confirm_password.enter_password') }}</label>
             <div class="input-group input-group-merge @error('password') is-invalid @enderror">
               <input type="password" id="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" aria-describedby="password" />
               <span class="input-group-text cursor-pointer">
@@ -53,7 +53,7 @@ $configData = Helper::appClasses();
             </span>
             @enderror
           </div>
-          <button type="submit" class="btn btn-primary d-grid w-100 mb-3">Confirm Password</button>
+          <button type="submit" class="btn btn-primary d-grid w-100 mb-3">{{ __('auth.confirm_password.confirm_button') }}</button>
         </form>
       </div>
     </div>

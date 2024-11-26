@@ -1,111 +1,169 @@
 <!-- Edit User Modal -->
 <div class="modal fade" id="editUser" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-simple modal-edit-user">
-    <div class="modal-content p-3 p-md-5">
-      <div class="modal-body">
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        <div class="text-center mb-4">
-          <h3 class="mb-2">Edit User Information</h3>
-          <p class="text-muted">Updating user details will receive a privacy audit.</p>
-        </div>
-        <form id="editUserForm" class="row g-3" onsubmit="return false">
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="modalEditUserFirstName">First Name</label>
-            <input type="text" id="modalEditUserFirstName" name="modalEditUserFirstName" class="form-control" placeholder="John" />
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="modalEditUserLastName">Last Name</label>
-            <input type="text" id="modalEditUserLastName" name="modalEditUserLastName" class="form-control" placeholder="Doe" />
-          </div>
-          <div class="col-12">
-            <label class="form-label" for="modalEditUserName">Username</label>
-            <input type="text" id="modalEditUserName" name="modalEditUserName" class="form-control" placeholder="john.doe.007" />
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="modalEditUserEmail">Email</label>
-            <input type="text" id="modalEditUserEmail" name="modalEditUserEmail" class="form-control" placeholder="example@domain.com" />
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="modalEditUserStatus">Status</label>
-            <select id="modalEditUserStatus" name="modalEditUserStatus" class="select2 form-select" aria-label="Default select example">
-              <option selected>Status</option>
-              <option value="1">Active</option>
-              <option value="2">Inactive</option>
-              <option value="3">Suspended</option>
-            </select>
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="modalEditTaxID">Tax ID</label>
-            <input type="text" id="modalEditTaxID" name="modalEditTaxID" class="form-control modal-edit-tax-id" placeholder="123 456 7890" />
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="modalEditUserPhone">Phone Number</label>
-            <div class="input-group">
-              <span class="input-group-text">US (+1)</span>
-              <input type="text" id="modalEditUserPhone" name="modalEditUserPhone" class="form-control phone-number-mask" placeholder="202 555 0111" />
+    <div class="modal-dialog modal-lg modal-simple modal-edit-user">
+        <div class="modal-content p-3 p-md-5">
+            <div class="modal-body">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="text-center mb-4">
+                    <h3 class="mb-2">Editar Información del Usuario</h3>
+                    <p class="text-muted">La actualización de los detalles del usuario recibirá una auditoría de
+                        privacidad.</p>
+                </div>
+                <form id="editUserForm" class="row g-3" action="{{ route('contact.update', $data->id) }}"
+                    method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="modalEditUserFirstName">Nombre</label>
+                        <input type="text" id="modalEditUserFirstName" name="name" class="form-control"
+                            placeholder="John" value="{{ $data->name }}" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="modalEditUserStatus">Estado</label>
+                        <x-input-select id="status_id" :options="$enterpriseStatuses" :value="''"
+                            placeholder="Tipo de contacto" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="modalEditUserEmail">Email</label>
+                        <input type="email" id="modalEditUserEmail" name="email" class="form-control"
+                            placeholder="example@domain.com" value="{{ $data->email }}" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="modalEditUserPhone">Teléfono</label>
+                        <div class="input-group">
+                            <span class="input-group-text">ES (+34)</span>
+                            <input type="text" id="modalEditUserPhone" name="phone"
+                                class="form-control phone-number-mask" placeholder="202 555 0111"
+                                value="{{ $data->phone }}" />
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="modalEditUserLanguage">Idioma</label>
+                        <select id="modalEditUserLanguage" name="language" class="select2 form-select">
+                            <option value="en" {{ $data->language == 'en' ? 'selected' : '' }}>Inglés</option>
+                            <option value="es" {{ $data->language == 'es' ? 'selected' : '' }}>Español</option>
+                            <option value="fr" {{ $data->language == 'fr' ? 'selected' : '' }}>Francés</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="modalEditUserCountry">País</label>
+                        <select id="modalEditUserCountry" name="country" class="select2 form-select"
+                            data-allow-clear="true">
+                            <option value="">Seleccionar</option>
+                            @foreach ($countries as $country)
+                                <option value="{{ $country->code }}"
+                                    {{ $data->country == $country->code ? 'selected' : '' }}>{{ $country->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-12 text-center">
+                        <button type="submit" class="btn btn-primary me-sm-3 me-1">Enviar</button>
+                        <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal"
+                            aria-label="Close">Cancelar</button>
+                    </div>
+                </form>
             </div>
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="modalEditUserLanguage">Language</label>
-            <select id="modalEditUserLanguage" name="modalEditUserLanguage" class="select2 form-select" multiple>
-              <option value="">Select</option>
-              <option value="english" selected>English</option>
-              <option value="spanish">Spanish</option>
-              <option value="french">French</option>
-              <option value="german">German</option>
-              <option value="dutch">Dutch</option>
-              <option value="hebrew">Hebrew</option>
-              <option value="sanskrit">Sanskrit</option>
-              <option value="hindi">Hindi</option>
-            </select>
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label" for="modalEditUserCountry">Country</label>
-            <select id="modalEditUserCountry" name="modalEditUserCountry" class="select2 form-select" data-allow-clear="true">
-              <option value="">Select</option>
-              <option value="Australia">Australia</option>
-              <option value="Bangladesh">Bangladesh</option>
-              <option value="Belarus">Belarus</option>
-              <option value="Brazil">Brazil</option>
-              <option value="Canada">Canada</option>
-              <option value="China">China</option>
-              <option value="France">France</option>
-              <option value="Germany">Germany</option>
-              <option value="India">India</option>
-              <option value="Indonesia">Indonesia</option>
-              <option value="Israel">Israel</option>
-              <option value="Italy">Italy</option>
-              <option value="Japan">Japan</option>
-              <option value="Korea">Korea, Republic of</option>
-              <option value="Mexico">Mexico</option>
-              <option value="Philippines">Philippines</option>
-              <option value="Russia">Russian Federation</option>
-              <option value="South Africa">South Africa</option>
-              <option value="Thailand">Thailand</option>
-              <option value="Turkey">Turkey</option>
-              <option value="Ukraine">Ukraine</option>
-              <option value="United Arab Emirates">United Arab Emirates</option>
-              <option value="United Kingdom">United Kingdom</option>
-              <option value="United States">United States</option>
-            </select>
-          </div>
-          <div class="col-12">
-            <label class="switch">
-              <input type="checkbox" class="switch-input">
-              <span class="switch-toggle-slider">
-                <span class="switch-on"></span>
-                <span class="switch-off"></span>
-              </span>
-              <span class="switch-label">Use as a billing address?</span>
-            </label>
-          </div>
-          <div class="col-12 text-center">
-            <button type="submit" class="btn btn-primary me-sm-3 me-1">Submit</button>
-            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="modal" aria-label="Close">Cancel</button>
-          </div>
-        </form>
-      </div>
+        </div>
     </div>
-  </div>
 </div>
 <!--/ Edit User Modal -->
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded');
+
+            // Evento para cuando se abre el modal
+            $('#editUser').on('show.bs.modal', function (e) {
+                console.log('Modal is about to be shown');
+                const modal = $(this);
+                console.log('Modal content:', modal.html());
+                
+                // Log de los valores iniciales del formulario
+                const form = modal.find('#editUserForm');
+                if (form.length) {
+                    console.log('Form found in modal');
+                    const formData = new FormData(form[0]);
+                    console.log('Initial form data:');
+                    for (let [key, value] of formData.entries()) {
+                        console.log(key, value);
+                    }
+                } else {
+                    console.error('Form not found in modal');
+                }
+            });
+
+            // Evento para el clic en el botón de envío
+            $(document).on('click', '#editUserForm button[type="submit"]', function(e) {
+                e.preventDefault();
+                console.log('Submit button clicked');
+                $('#editUserForm').submit();
+            });
+
+            // Evento para el envío del formulario
+            $(document).on('submit', '#editUserForm', function(e) {
+                e.preventDefault();
+                console.log('Form submit event triggered');
+                
+                const form = $(this);
+                const formData = new FormData(form[0]);
+                
+                // Asegúrate de que todos los campos select2 estén incluidos
+                $('.select2').each(function() {
+                    let name = $(this).attr('name');
+                    let value = $(this).val();
+                    formData.set(name, value);
+                });
+                
+                console.log('Form data being submitted:');
+                for (let [key, value] of formData.entries()) {
+                    console.log(key, value);
+                }
+
+                $.ajax({
+                    url: form.attr('action'),
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(response) {
+                        console.log('AJAX request successful:', response);
+                        if (response.success) {
+                            toastr.success(response.message);
+                            $('#editUser').modal('hide');
+                            updatePageContent(response.data);
+                        } else {
+                            toastr.error(response.message || 'An error occurred');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX request failed:', status, error);
+                        console.log('Response:', xhr.responseText);
+                        if (xhr.status === 422) {
+                            let errors = xhr.responseJSON.errors;
+                            let errorMessage = 'Validation errors:';
+                            for (let field in errors) {
+                                errorMessage += `\n${field}: ${errors[field].join(', ')}`;
+                            }
+                            console.error(errorMessage);
+                            toastr.error(errorMessage);
+                        } else {
+                            toastr.error('An error occurred. Please try again.');
+                        }
+                    }
+                });
+            });
+        });
+
+        function updatePageContent(data) {
+            console.log('Updating page content with:', data);
+            // Actualiza los elementos relevantes de la página con los nuevos datos
+            if (data.name) $('.user-info h4').text(data.name);
+            // Actualiza otros campos según sea necesario
+        }
+    </script>
+@endpush

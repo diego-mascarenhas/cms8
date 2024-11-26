@@ -8,7 +8,7 @@ $configData = Helper::appClasses();
   @if(!isset($navbarFull))
   <div class="app-brand demo">
     <a href="{{url('/')}}" class="app-brand-link">
-      <span class="app-brand-logo demo">
+      <span id="menu-logo" class="app-brand-logo demo">
         @include('_partials.macros',["height"=>20])
       </span>
       <span class="app-brand-text demo menu-text fw-bold">{{config('variables.templateName')}}</span>
@@ -85,3 +85,29 @@ $configData = Helper::appClasses();
   </ul>
 
 </aside>
+
+<style>
+  @keyframes vibrate {
+    0% { transform: translate(0); }
+    25% { transform: translate(-2px, 2px); }
+    50% { transform: translate(2px, -2px); }
+    75% { transform: translate(-2px, -2px); }
+    100% { transform: translate(0); }
+  }
+  .vibrate {
+    animation: vibrate 0.5s infinite;
+  }
+</style>
+
+<script>
+  const animateLogo = {{ config('custom.animateLogo') ? 'true' : 'false' }};
+  if (animateLogo) {
+    setInterval(() => {
+      const logo = document.getElementById('menu-logo');
+      logo.classList.add('vibrate');
+      setTimeout(() => {
+        logo.classList.remove('vibrate');
+      }, 500);
+    }, 3600000);
+  }
+</script>

@@ -432,16 +432,31 @@ if (typeof $ !== 'undefined') {
       };
 
       // Search JSON
-      var searchJson = 'search-vertical.json'; // For vertical layout
-      if ($('#layout-menu').hasClass('menu-horizontal')) {
-        var searchJson = 'search-horizontal.json'; // For vertical layout
-      }
+      // var searchJson = 'search-vertical.json'; // For vertical layout
+      // if ($('#layout-menu').hasClass('menu-horizontal')) {
+      //   var searchJson = 'search-horizontal.json'; // For vertical layout
+      // }
+      // // Search API AJAX call
+      // var searchData = $.ajax({
+      //   url: assetsPath + 'json/' + searchJson, //? Use your own search api instead
+      //   dataType: 'json',
+      //   async: false
+      // }).responseJSON;
+
       // Search API AJAX call
       var searchData = $.ajax({
-        url: assetsPath + 'json/' + searchJson, //? Use your own search api instead
+        url: '/contact/search',
         dataType: 'json',
-        async: false
+        async: false,
+        data: { q: '' },
+        success: function(searchData) {
+          console.log('Search data received:', searchData);
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error('Error loading search data:', textStatus, errorThrown);
+        }
       }).responseJSON;
+
       // Init typeahead on searchInput
       searchInput.each(function () {
         var $this = $(this);
@@ -456,78 +471,78 @@ if (typeof $ !== 'undefined') {
               }
             },
             // ? Add/Update blocks as per need
-            // Pages
-            {
-              name: 'pages',
-              display: 'name',
-              limit: 5,
-              source: filterConfig(searchData.pages),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Pages</h6>',
-                suggestion: function ({ url, icon, name }) {
-                  return (
-                    '<a href="' +
-                    baseUrl +
-                    url +
-                    '">' +
-                    '<div>' +
-                    '<i class="ti ' +
-                    icon +
-                    ' me-2"></i>' +
-                    '<span class="align-middle">' +
-                    name +
-                    '</span>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Pages</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> No Results Found</p>' +
-                  '</div>'
-              }
-            },
-            // Files
-            {
-              name: 'files',
-              display: 'name',
-              limit: 4,
-              source: filterConfig(searchData.files),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Files</h6>',
-                suggestion: function ({ src, name, subtitle, meta }) {
-                  return (
-                    '<a href="javascript:;">' +
-                    '<div class="d-flex w-50">' +
-                    '<img class="me-3" src="' +
-                    assetsPath +
-                    src +
-                    '" alt="' +
-                    name +
-                    '" height="32">' +
-                    '<div class="w-75">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '<small class="text-muted">' +
-                    meta +
-                    '</small>' +
-                    '</a>'
-                  );
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Files</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> No Results Found</p>' +
-                  '</div>'
-              }
-            },
+            // // Pages
+            // {
+            //   name: 'pages',
+            //   display: 'name',
+            //   limit: 5,
+            //   source: filterConfig(searchData.pages),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Pages</h6>',
+            //     suggestion: function ({ url, icon, name }) {
+            //       return (
+            //         '<a href="' +
+            //         baseUrl +
+            //         url +
+            //         '">' +
+            //         '<div>' +
+            //         '<i class="ti ' +
+            //         icon +
+            //         ' me-2"></i>' +
+            //         '<span class="align-middle">' +
+            //         name +
+            //         '</span>' +
+            //         '</div>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Pages</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> No Results Found</p>' +
+            //       '</div>'
+            //   }
+            // },
+            // // Files
+            // {
+            //   name: 'files',
+            //   display: 'name',
+            //   limit: 4,
+            //   source: filterConfig(searchData.files),
+            //   templates: {
+            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Files</h6>',
+            //     suggestion: function ({ src, name, subtitle, meta }) {
+            //       return (
+            //         '<a href="javascript:;">' +
+            //         '<div class="d-flex w-50">' +
+            //         '<img class="me-3" src="' +
+            //         assetsPath +
+            //         src +
+            //         '" alt="' +
+            //         name +
+            //         '" height="32">' +
+            //         '<div class="w-75">' +
+            //         '<h6 class="mb-0">' +
+            //         name +
+            //         '</h6>' +
+            //         '<small class="text-muted">' +
+            //         subtitle +
+            //         '</small>' +
+            //         '</div>' +
+            //         '</div>' +
+            //         '<small class="text-muted">' +
+            //         meta +
+            //         '</small>' +
+            //         '</a>'
+            //       );
+            //     },
+            //     notFound:
+            //       '<div class="not-found px-3 py-2">' +
+            //       '<h6 class="suggestions-header text-primary mb-2">Files</h6>' +
+            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> No Results Found</p>' +
+            //       '</div>'
+            //   }
+            // },
             // Members
             {
               name: 'members',
@@ -535,19 +550,19 @@ if (typeof $ !== 'undefined') {
               limit: 4,
               source: filterConfig(searchData.members),
               templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Members</h6>',
-                suggestion: function ({ name, src, subtitle }) {
+                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
+                suggestion: function ({ name, src, subtitle, url }) {
                   return (
                     '<a href="' +
-                    baseUrl +
-                    'app/user/view/account">' +
+                    url + '">' +
                     '<div class="d-flex align-items-center">' +
-                    '<img class="rounded-circle me-3" src="' +
+                    '<!-- <img class="rounded-circle me-3" src="' +
                     assetsPath +
                     src +
                     '" alt="' +
                     name +
-                    '" height="32">' +
+                    '" height="32"> --> ' +
+                    '<i class="ti ti-user me-2"></i>' +
                     '<div class="user-info">' +
                     '<h6 class="mb-0">' +
                     name +
@@ -562,8 +577,8 @@ if (typeof $ !== 'undefined') {
                 },
                 notFound:
                   '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Members</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> No Results Found</p>' +
+                  '<h6 class="suggestions-header text-primary mb-2">Contactos</h6>' +
+                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
                   '</div>'
               }
             }
@@ -614,3 +629,108 @@ if (typeof $ !== 'undefined') {
     }
   });
 }
+
+// Contact Search Functionality
+$(function () {
+  var searchInput = $('.search-input');
+
+  // Function to fetch search results
+  function fetchSearchResults(query) {
+    return $.ajax({
+      url: '/contact/search',
+      method: 'GET',
+      data: { q: query },
+      dataType: 'json'
+    });
+  }
+
+  // Filter configuration for typeahead
+  var filterConfig = function () {
+    return function findMatches(q, cb) {
+      if (q.length >= 3) {
+        fetchSearchResults(q).then(function (response) {
+          console.log('Response received:', response);
+          
+          if (Array.isArray(response)) {
+            let matches = response.map(function (contact) {
+              return {
+                name: contact.name,
+                email: contact.email,
+                url: contact.url,
+                category: 'contacts'
+              };
+            });
+            console.log('Processed matches:', matches);
+            cb(matches);
+          } else {
+            console.error('Received data does not have the expected format:', response);
+            cb([]);
+          }
+        }).catch(function(error) {
+          console.error('Search error:', error);
+          cb([]);
+        });
+      } else {
+        cb([]);
+      }
+    };
+  };
+
+  // Typeahead initialization
+  searchInput.typeahead(
+    {
+      hint: false,
+      highlight: true,
+      minLength: 1
+    },
+    {
+      name: 'contacts',
+      source: filterConfig(),
+      limit: 10,
+      display: 'name',
+      templates: {
+        empty: '<div class="tt-suggestion">No se encontraron resultados</div>',
+        suggestion: function(data) {
+          return '<div>' + data.name + ' - ' + data.email + '</div>';
+        }
+      }
+    }
+  ).on('typeahead:render', function() {
+    console.log('Typeahead rendered');
+  }).on('typeahead:select', function(ev, suggestion) {
+    console.log('Selection:', suggestion);
+    if (suggestion && suggestion.url) {
+      window.location.href = suggestion.url;
+    }
+  });
+
+  // Handle Enter key press
+  searchInput.on('keydown', function(e) {
+    if (e.which === 13) { // Enter key
+      e.preventDefault();
+      var currentSelection = $('.tt-suggestion.tt-cursor');
+      if (currentSelection.length) {
+        var url = currentSelection.find('a').attr('href');
+        if (url) {
+          window.location.href = url;
+        }
+      } else {
+        // If no suggestion is highlighted, navigate to the first result
+        var firstSuggestion = $('.tt-suggestion:first');
+        if (firstSuggestion.length) {
+          var firstUrl = firstSuggestion.find('a').attr('href');
+          if (firstUrl) {
+            window.location.href = firstUrl;
+          }
+        }
+      }
+    }
+  });
+
+  // Additional logs for debugging
+  searchInput.on('typeahead:asyncrequest', function() {
+    console.log('Typeahead async request initiated');
+  }).on('typeahead:asyncreceive', function(event, suggestion, async, dataset) {
+    console.log('Typeahead async received:', suggestion);
+  });
+});

@@ -13,8 +13,70 @@ return [
     |
     */
 
-    'failed' => 'These credentials do not match our records.',
-    'password' => 'The provided password is incorrect.',
-    'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
+    'login' => [
+        'title' => 'Login',
+        'welcome' => 'Welcome to :name! 👋',
+        'description' => 'Please sign-in to your account and start the adventure',
+        'email' => 'Email',
+        'email_placeholder' => 'john@example.com',
+        'password' => 'Password',
+        'forgot_password' => 'Forgot Password?',
+        'remember_me' => 'Remember Me',
+        'sign_in' => 'Sign in',
+        'new_platform' => 'New on our platform?',
+        'create_account' => 'Create an account',
+    ],
+    'confirm_password' => [
+        'title' => 'Confirm Password',
+        'description' => 'Please confirm your password before continuing.',
+        'enter_password' => 'Enter Password',
+        'confirm_button' => 'Confirm Password'
+    ],
+    'register' => [
+        'title' => 'Register Page',
+        'heading' => 'Adventure starts here 🚀',
+        'description' => 'Make your app management easy and fun!',
+        'username' => 'Username',
+        'username_placeholder' => 'johndoe',
+        'email' => 'Email',
+        'email_placeholder' => 'john@example.com',
+        'password' => 'Password',
+        'confirm_password' => 'Confirm Password',
+        'terms_agree' => 'I agree to the',
+        'privacy_policy' => 'privacy policy',
+        'terms' => 'terms',
+        'sign_up' => 'Sign up',
+        'already_account' => 'Already have an account?',
+        'sign_in' => 'Sign in instead'
+    ],
+    'forgot_password' => [
+        'title' => 'Forgot Password',
+        'heading' => 'Forgot Password? 🔒',
+        'description' => 'Enter your email and we\'ll send you instructions to reset your password',
+        'email' => 'Email',
+        'email_placeholder' => 'john@example.com',
+        'send_reset_link' => 'Send Reset Link',
+        'back_to_login' => 'Back to login'
+    ],
+    'reset_password' => [
+        'title' => 'Reset Password',
+        'heading' => 'Reset Password 🔒',
+        'email' => 'Email',
+        'new_password' => 'New Password',
+        'confirm_password' => 'Confirm Password',
+        'set_password' => 'Set new password',
+        'back_to_login' => 'Back to login'
+    ],
+    'two_factor' => [
+        'title' => 'Two Step Verification',
+        'heading' => 'Two Step Verification 💬',
+        'auth_description' => 'Please confirm access to your account by entering the authentication code provided by your authenticator application.',
+        'recovery_description' => 'Please confirm access to your account by entering one of your emergency recovery codes.',
+        'code_label' => 'Code',
+        'recovery_code_label' => 'Recovery Code',
+        'use_recovery' => 'Use a recovery code',
+        'use_authentication' => 'Use an authentication code',
+        'login_button' => 'Log in'
+    ],
 
 ];

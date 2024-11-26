@@ -1261,6 +1261,45 @@ TemplateCustomizer.LANGUAGES = {
     content_label: 'Inhalt',
     layout_navbar_label: 'Art der Navigationsleiste',
     direction_label: 'Richtung'
+  },
+  es: {
+    panel_header: 'Personalizador de Plantillas',
+    panel_sub_header: 'Personaliza y previsualiza en tiempo real',
+    theming_header: 'Tematización',
+    style_label: 'Estilo (Modo)',
+    theme_label: 'Temas',
+    layout_header: 'Diseño',
+    layout_label: 'Menú (Navegación)',
+    layout_header_label: 'Tipos de Encabezado',
+    content_label: 'Contenido',
+    layout_navbar_label: 'Tipo de Barra de Navegación',
+    direction_label: 'Dirección'
+  },
+  it: {
+      panel_header: 'Personalizzatore di Modelli',
+      panel_sub_header: 'Personalizza e visualizza in tempo reale',
+      theming_header: 'Tematizzazione',
+      style_label: 'Stile (Modalità)',
+      theme_label: 'Temi',
+      layout_header: 'Layout',
+      layout_label: 'Menu (Navigazione)',
+      layout_header_label: 'Tipi di Intestazione',
+      content_label: 'Contenuto',
+      layout_navbar_label: 'Tipo di Navbar',
+      direction_label: 'Direzione'
+  },
+  pt: {
+      panel_header: 'Personalizador de Modelos',
+      panel_sub_header: 'Personalize e visualize em tempo real',
+      theming_header: 'Tematização',
+      style_label: 'Estilo (Modo)',
+      theme_label: 'Temas',
+      layout_header: 'Layout',
+      layout_label: 'Menu (Navegação)',
+      layout_header_label: 'Tipos de Cabeçalho',
+      content_label: 'Conteúdo',
+      layout_navbar_label: 'Tipo de Navbar',
+      direction_label: 'Direção'
   }
 };
 

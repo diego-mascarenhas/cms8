@@ -29,17 +29,21 @@ class Helpers
       'menuFixed' => true,
       'menuCollapsed' => false,
       'footerFixed' => false,
+      'showSearch' => true,
+      'showLanguageSelector' => true,
+      'showQuickAccess' => false,
+      'showNotifications' => false,
+      'defaultLanguage'=>'es',
       'customizerControls' => [
         'rtl',
-      'style',
-      'headerType',
-      'contentLayout',
-      'layoutCollapsed',
-      'showDropdownOnHover',
-      'layoutNavbarOptions',
-      'themes',
-      ],
-      //   'defaultLanguage'=>'en',
+        'style',
+        'headerType',
+        'contentLayout',
+        'layoutCollapsed',
+        'showDropdownOnHover',
+        'layoutNavbarOptions',
+        'themes',
+        ],
     ];
 
     // if any key missing of array from custom.php file it will be merge and set a default value from dataDefault array and store in data variable
@@ -61,6 +65,10 @@ class Helpers
       'myRTLMode' => [true, false],
       'menuFixed' => [true, false],
       'footerFixed' => [true, false],
+      'showSearch' => [true, false],
+      'showLanguageSelector' => [true, false],
+      'showQuickAccess' => [true, false],
+      'showNotifications' => [true, false],
       'customizerControls' => [],
       'defaultLanguage'=>array('en'=>'en','es'=>'es','fr'=>'fr','de'=>'de','it'=>'it','pt'=>'pt'),
     ];
@@ -113,6 +121,11 @@ class Helpers
       'navbarType' => $data['navbarType'],
       'menuFixed' => $data['menuFixed'],
       'footerFixed' => $data['footerFixed'],
+      'showSearch' => $data['showSearch'],
+      'showLanguageSelector' => $data['showLanguageSelector'],
+      'showQuickAccess' => $data['showQuickAccess'],
+      'showNotifications' => $data['showNotifications'],
+      'defaultLanguage' => $data['defaultLanguage'],
       'customizerControls' => $data['customizerControls'],
     ];
 

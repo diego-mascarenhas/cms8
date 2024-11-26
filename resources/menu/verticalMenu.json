@@ -27,11 +27,25 @@
 			"permission": "chat.list"
 		},
 		{
+			"url": "mail/list",
+			"name": "Mail",
+			"icon": "menu-icon tf-icons ti ti-mail",
+			"slug": "mail-list",
+			"permission": "mail.list"
+		},
+		{
 			"url": "service/list",
 			"name": "Services",
 			"icon": "menu-icon tf-icons ti ti-rocket",
 			"slug": "service-list",
 			"permission": "service.list"
+		},
+		{
+			"url": "contact/list",
+			"name": "Contacts",
+			"icon": "menu-icon tf-icons ti ti-users",
+			"slug": "contact-list",
+			"permission": "contact.list"
 		},
 		{
 			"url": "client/list",

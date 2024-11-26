@@ -5,7 +5,7 @@ $configData = Helper::appClasses();
 
 @extends('layouts/blankLayout')
 
-@section('title', '2 Factor Challenge')
+@section('title', __('auth.two_factor.title'))
 
 @section('page-style')
 {{-- Page Css files --}}
@@ -36,14 +36,14 @@ $configData = Helper::appClasses();
           </a>
         </div>
         <!-- /Logo -->
-        <h3 class="mb-1">Two Step Verification 💬</h3>
+        <h3 class="mb-1">{{ __('auth.two_factor.heading') }}</h3>
         <div x-data="{ recovery: false }">
           <div class="mb-3" x-show="! recovery">
-            Please confirm access to your account by entering the authentication code provided by your authenticator application.
+            {{ __('auth.two_factor.auth_description') }}
           </div>
 
           <div class="mb-3" x-show="recovery">
-            Please confirm access to your account by entering one of your emergency recovery codes.
+            {{ __('auth.two_factor.recovery_description') }}
           </div>
 
           <x-validation-errors class="mb-1" />
@@ -52,25 +52,29 @@ $configData = Helper::appClasses();
             @csrf
 
             <div class="mb-3" x-show="! recovery">
-              <x-label class="form-label" value="{{ __('Code') }}" />
+              <x-label class="form-label" value="{{ __('auth.two_factor.code_label') }}" />
               <x-input class="{{ $errors->has('code') ? 'is-invalid' : '' }}" type="text" inputmode="numeric" name="code" autofocus x-ref="code" autocomplete="one-time-code" />
               <x-input-error for="code"></x-input-error>
             </div>
 
             <div class="mb-3" x-show="recovery">
-              <x-label class="form-label" value="{{ __('Recovery Code') }}" />
+              <x-label class="form-label" value="{{ __('auth.two_factor.recovery_code_label') }}" />
               <x-input class="{{ $errors->has('recovery_code') ? 'is-invalid' : '' }}" type="text" name="recovery_code" x-ref="recovery_code" autocomplete="one-time-code" />
               <x-input-error for="recovery_code"></x-input-error>
             </div>
 
             <div class="d-flex justify-content-end my-2 gap-2">
               <div x-show="! recovery" x-on:click="recovery = true; $nextTick(() => { $refs.recovery_code.focus()})">
-                <button type="button" class="btn btn-outline-secondary me-1">Use a recovery code</button>
+                <button type="button" class="btn btn-outline-secondary me-1">
+                  {{ __('auth.two_factor.use_recovery') }}
+                </button>
               </div>
               <div x-cloak x-show="recovery" x-on:click="recovery = false; $nextTick(() => { $refs.code.focus() })">
-                <button type="button" class="btn btn-outline-secondary me-1">Use an authentication code</button>
+                <button type="button" class="btn btn-outline-secondary me-1">
+                  {{ __('auth.two_factor.use_authentication') }}
+                </button>
               </div>
-              <x-button>Log in</x-button>
+              <x-button>{{ __('auth.two_factor.login_button') }}</x-button>
             </div>
           </form>
         </div>

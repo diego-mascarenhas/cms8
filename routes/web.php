@@ -1,20 +1,25 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\language\LanguageController;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\laravel_example\UserManagement;
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\EmailController;
+use App\Http\Controllers\EnterpriseOrganizationController;
+use App\Http\Controllers\MailController;
+use App\Http\Controllers\LeadController;
 
 
 // auth
@@ -73,10 +78,33 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
     Route::resource('/user-list', UserManagement::class);
 
+    Route::get('/account-management', [AccountController::class, 'index'])->name('account-management');
+
+    // Contacts
+    Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
+    Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
+    Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
+    Route::post('/contact/upload-file', [contactController::class, 'UploadFile'])->name('contact.upload-file');
+    Route::get('/contact/import', [ContactController::class, 'showImportForm'])->name('contact.import');
+
+    Route::get('/contact/create', [contactController::class, 'create'])->name('contact.create');
+    Route::get('/contact/{id}', [contactController::class, 'show'])->name('contact.show');
+    Route::get('/contact/{id}/edit', [contactController::class, 'edit'])->name('contact.edit');
+    Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
+    Route::put('/contact/{id}', [ContactController::class, 'update'])->name('contact.update');
+    Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
+    
+    Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
+    Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
+
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])
         ->middleware('role:admin,colaborator')
         ->name('client-list');
+        
+    Route::post('/client/end-action/{id}', [ClientController::class, 'endAction'])->name('client.end-action');
+    Route::get('/client/import', [ClientController::class, 'showImportForm'])->name('client.import');
+    Route::post('/client/import-excel', [ClientController::class, 'importExcel'])->name('client.import-excel');
 
     Route::get('/client/create', [ClientController::class, 'create'])->name('client.create');
     Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');
@@ -85,10 +113,29 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
 
+    // List60
+    Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
+    Route::post('/list60', [List60Controller::class, 'store'])->name('list60.store');
+    Route::delete('/list60/{id}', [List60Controller::class, 'destroy'])->name('list60.destroy');
+
     // Chat
     Route::get('/chat', [ChatController::class, 'index'])->name('chat');
-    Route::get('/chat/list', [WhatsAppController::class, 'index'])->name('chat-list');
+    Route::get('/chat/list', [ChatController::class, 'index'])->name('chat-list');
+
+    // Mail
+    Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
+
 });
 
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
+
+Route::view('/strategy', 'strategy.index')->name('strategy.index');
+Route::get('/organization', [EnterpriseOrganizationController::class, 'index']);
+
+Route::get('/notes', function () {
+    return view('notes.index');
+})->name('notes.index');
+
+Route::get('/lead', [LeadController::class, 'create'])->name('lead.create');
+Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');

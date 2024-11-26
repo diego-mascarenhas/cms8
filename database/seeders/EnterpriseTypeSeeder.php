@@ -15,17 +15,17 @@ class EnterpriseTypeSeeder extends Seeder
     {
         EnterpriseType::create([
             'id' => 1,
-            'name' => 'Client'
+            'name' => 'Cliente'
         ]);
         
         EnterpriseType::create([
             'id' => 2,
-            'name' => 'Supplier'
+            'name' => 'Proveedor'
         ]);
 
         EnterpriseType::create([
             'id' => 3,
-            'name' => 'Partnership'
+            'name' => 'Alianza'
         ]);
     }
 }
