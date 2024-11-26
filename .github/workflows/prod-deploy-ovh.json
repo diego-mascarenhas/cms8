@@ -1,0 +1,11 @@
+[
+  {
+    "name": "OVH Production",
+    "ip": "pnsdzrx.cluster027.hosting.ovh.net",
+    "username": "pnsdzrx",
+    "port": "22",
+    "path": "/homez.2000/pnsdzrx/www",
+    "beforeHooks": "php artisan down && php artisan config:cache && php artisan route:cache && php artisan view:cache",
+    "afterHooks": "php artisan up"
+  }
+] 
