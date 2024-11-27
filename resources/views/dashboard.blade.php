@@ -172,16 +172,16 @@
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-borderless">
-                            <thead>
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th class="text-center">Estado</th>
-                                    <th class="text-center">Sentimiento</th>
-                                    <th class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @if(isset($todayContacts) && $todayContacts->count() > 0 && $todayContacts->first()->contact)
+                            @if(isset($todayContacts) && $todayContacts->count() > 0 && $todayContacts->first()->contact)
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th class="text-center">Estado</th>
+                                        <th class="text-center">Sentimiento</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                     @foreach($todayContacts as $contact)
                                         @if($contact->contact)
                                             <tr>
@@ -209,7 +209,9 @@
                                             </tr>
                                         @endif
                                     @endforeach
-                                @else
+                                </tbody>
+                            @else
+                                <tbody>
                                     <tr>
                                         <td colspan="4" class="text-center py-4">
                                             <i class="ti ti-checkbox text-success ti-3x mb-3"></i>
@@ -217,8 +219,8 @@
                                             <p class="text-muted">Has completado todas las tareas programadas para hoy</p>
                                         </td>
                                     </tr>
-                                @endif
-                            </tbody>
+                                </tbody>
+                            @endif
                         </table>
                     </div>
                 </div>
