@@ -72,12 +72,18 @@ class DashboardController extends Controller
         // Count leads from last 7 days
         $recentLeadsCount = Contact::where('created_at', '>=', now()->subDays(7))->count();
 
+        // Get contacts to follow up today
+        $todayContacts = List60::with(['contact.enterprise', 'contact.currentSentiment.sentiment'])
+            ->whereDate('date_next', Carbon::today())
+            ->get();
+
         return view('dashboard', compact(
             'totalTeamMinutes', 
             'dangerousContacts', 
             'clientsToContactToday', 
             'sentimentData',
-            'recentLeadsCount'
+            'recentLeadsCount',
+            'todayContacts'
         ));
     }
 }
