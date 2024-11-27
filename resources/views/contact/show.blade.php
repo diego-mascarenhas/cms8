@@ -115,31 +115,21 @@
                                     <span>{{ $data->username }}</span>
                                 </li>
                             @endif
-                            {{-- <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Billing email:</span>
-                                <span>Sin empresa vinculada</span>
-                            </li> --}}
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Estado:</span>
                                 <span class="badge {{ $data->status->label_class }}">{{ $data->status->name }}</span>
                             </li>
                             <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Contacto:</span>
+                                <span class="fw-medium me-1">Redes:</span>
+                                <span>{!! $data->sources_icons_html !!}</span>
+                            </li>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Canal favorito:</span>
                                 <span>
-                                    @if ($data->phone)
-                                        @php
-                                            $phone = $data->phone;
-                                            $countryCode = substr($phone, 0, 2);
-                                            $restOfNumber = substr($phone, 2);
-                                            $formattedNumber = preg_replace(
-                                                '/(\d{3})(\d{3})(\d{3})/',
-                                                "$1 $2 $3",
-                                                $restOfNumber,
-                                            );
-                                        @endphp
-                                        +{{ $countryCode }} {{ $formattedNumber }}
+                                    @if ($data->primarySource)
+                                        {{ $data->primarySource->name }}
                                     @else
-                                        No disponible
+                                        No hay canal favorito
                                     @endif
                                 </span>
                             </li>
@@ -169,25 +159,6 @@
                                 <span class="fw-medium me-1">Horarios:</span>
                                 <span>Sin especificar</span>
                             </li>
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Redes:</span>
-                                <span>{!! $data->sources_icons_html !!}</span>
-                            </li>
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Canal favorito:</span>
-                                <span>
-                                    @if ($data->primarySource)
-                                        {{ $data->primarySource->name }}
-                                    @else
-                                        No hay canal favorito
-                                    @endif
-                                </span>
-                            </li>
-                            {{-- //TODO - Cargo,profesión o título del contacto
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Cargo:</span>
-                                <span>-</span>
-                            </li> --}}
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Fecha de nacimiento:</span>
                                 <span>

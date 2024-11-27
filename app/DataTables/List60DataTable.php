@@ -53,7 +53,15 @@ class List60DataTable extends DataTable
 
     public function query(List60 $model): QueryBuilder
     {
-        return $model->newQuery()->whereHas('contact');
+        return $model->newQuery()
+            ->whereHas('contact')
+            ->with([
+                'contact.enterprise',
+                'contact.sources',
+                'contact.status',
+                'status',
+                'type'
+            ]);
     }
 
     public function html(): HtmlBuilder

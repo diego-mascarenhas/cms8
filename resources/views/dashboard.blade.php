@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Analytics')
+@section('title', __('app.dashboard'))
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/apex-charts/apex-charts.css') }}" />
@@ -121,30 +121,39 @@
                 <div class="table-responsive">
                     <table class="table table-borderless border-top">
                         <tbody>
-                            @foreach ($dangerousContacts as $contact)
-                                <tr>
-                                    <td class="pt-2">
-                                        <div
-                                            class="d-flex justify-content-start align-items-center @if ($loop->first) mt-lg-4 @endif">
-                                            <div class="d-flex flex-column">
-                                                <h6 class="mb-0">
-                                                    <a
-                                                        href="{{ route('contact.show', $contact->id) }}">{{ $contact->name }}</a>
-                                                </h6>
-                                                @if ($contact->enterprise)
-                                                    <small class="text-muted">{{ $contact->enterprise->name }}</small>
-                                                @endif
+                            @if(isset($dangerousContacts) && $dangerousContacts->count() > 0)
+                                @foreach($dangerousContacts as $contact)
+                                    <tr>
+                                        <td class="pt-2">
+                                            <div
+                                                class="d-flex justify-content-start align-items-center @if ($loop->first) mt-lg-4 @endif">
+                                                <div class="d-flex flex-column">
+                                                    <h6 class="mb-0">
+                                                        <a
+                                                            href="{{ route('contact.show', $contact->id) }}">{{ $contact->name }}</a>
+                                                    </h6>
+                                                    @if ($contact->enterprise)
+                                                        <small class="text-muted">{{ $contact->enterprise->name }}</small>
+                                                    @endif
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-end @if ($loop->first) pt-2 @endif">
-                                        <div class="user-progress @if ($loop->first) mt-lg-4 @endif">
-                                            <p class="mb-0 fw-medium" style="font-size: 1.5em;">
-                                                {{ $contact->currentSentiment->sentiment->emoji }}</p>
-                                        </div>
+                                        </td>
+                                        <td class="text-end @if ($loop->first) pt-2 @endif">
+                                            <div class="user-progress @if ($loop->first) mt-lg-4 @endif">
+                                                <p class="mb-0 fw-medium" style="font-size: 1.5em;">
+                                                    {{ $contact->currentSentiment->sentiment->emoji }}</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            @else
+                                <tr>
+                                    <td colspan="2" class="text-center py-4">
+                                        <i class="ti ti-mood-smile text-success ti-2x mb-2"></i>
+                                        <p class="mb-0">No hay clientes en situación de riesgo</p>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @endif
                         </tbody>
                     </table>
                 </div>
@@ -153,18 +162,17 @@
 
         <!-- Today's Contacts -->
         <div class="col-lg-8 order-lg-1">
-            <!-- Today's Contacts -->
             <div class="card mb-4">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <div class="card-title mb-0">
-                        <h5 class="m-0 me-2">Contactos para hablar hoy</h5>
+                        <h5 class="m-0 me-2">Contactos para hoy</h5>
                         <small class="text-muted">Lista de seguimiento diario</small>
                     </div>
                 </div>
                 <div class="card-body">
-                    @if ($todayContacts->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-borderless">
+                    <div class="table-responsive">
+                        <table class="table table-borderless">
+                            @if(isset($todayContacts) && $todayContacts->count() > 0 && $todayContacts->first()->contact)
                                 <thead>
                                     <tr>
                                         <th>Nombre</th>
@@ -174,45 +182,47 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($todayContacts as $contact)
-                                        <tr>
-                                            <td>
-                                                <div class="d-flex flex-column">
-                                                    <h6 class="mb-0">
-                                                        <a
-                                                            href="{{ route('contact.show', $contact->contact->id) }}">{{ $contact->contact->name }}</a>
-                                                    </h6>
-                                                    @if ($contact->contact->enterprise)
-                                                        <small
-                                                            class="text-muted">{{ $contact->contact->enterprise->name }}</small>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge rounded-pill {{ $contact->status->label_class }}">
-                                                    {{ $contact->status->name }}
-                                                </span>
-                                            </td>
-                                            <td class="text-center">
-                                                {{ $contact->contact->currentSentiment->sentiment->emoji }}</td>
-                                            <td class="text-center">
-                                                <a href="{{ route('contact.show', $contact->contact->id) }}"
-                                                    class="btn btn-sm btn-primary rounded-pill">
-                                                    <i class="ti ti-phone-call me-1"></i>Contactar
-                                                </a>
-                                            </td>
-                                        </tr>
+                                    @foreach($todayContacts as $contact)
+                                        @if($contact->contact)
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex flex-column">
+                                                        <h6 class="mb-0">
+                                                            <a href="{{ route('contact.show', $contact->contact->id) }}">{{ $contact->contact->name }}</a>
+                                                        </h6>
+                                                        @if($contact->contact->enterprise)
+                                                            <small class="text-muted">{{ $contact->contact->enterprise->name }}</small>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge rounded-pill {{ $contact->status->label_class }}">
+                                                        {{ $contact->status->name }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">{{ $contact->contact->currentSentiment->sentiment->emoji ?? '' }}</td>
+                                                <td class="text-center">
+                                                    <a href="{{ route('contact.show', $contact->contact->id) }}" class="btn btn-sm btn-primary rounded-pill">
+                                                        <i class="ti ti-phone-call me-1"></i>Contactar
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @endif
                                     @endforeach
                                 </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <div class="text-center py-5">
-                            <i class="ti ti-checkbox text-success ti-6x mb-3"></i>
-                            <h5>¡Todo al día!</h5>
-                            <p class="text-muted">Has completado todas las tareas programadas para hoy</p>
-                        </div>
-                    @endif
+                            @else
+                                <tbody>
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4">
+                                            <i class="ti ti-checkbox text-success ti-3x mb-3"></i>
+                                            <h5>¡Todo al día!</h5>
+                                            <p class="text-muted">Has completado todas las tareas programadas para hoy</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            @endif
+                        </table>
+                    </div>
                 </div>
             </div>
 

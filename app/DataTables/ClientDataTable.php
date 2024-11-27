@@ -23,53 +23,57 @@ class ClientDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'client.action')
             ->setRowId('id')
-            ->editColumn('name', function ($row) {
+            ->editColumn('name', function ($row)
+            {
                 $responsibleName = $row->responsible ? $row->responsible->name : 'Sin responsable asignado';
                 return '<div class="d-flex flex-column">
                             <span class="fw-medium text-body text-truncate">' . e($responsibleName) . '</span>
                             <small class="text-muted">' . e($row->name) . '</small>
                         </div>';
             })
-            ->editColumn('status_id', function ($row) {
+            ->addColumn('current_sentiment', function ($row)
+            {
+                if ($row->responsible && $row->responsible->currentSentiment)
+                {
+                    return '<span style="font-size: 1.5em;">' . $row->responsible->currentSentiment->sentiment->emoji . '</span>';
+                }
+                return '<span style="font-size: 1.5em;">🤔</span>';
+            })
+            ->addColumn('sources', function ($row)
+            {
+                if ($row->responsible)
+                {
+                    return $row->responsible->sources_icons_html;
+                }
+                return '';
+            })
+            ->addColumn('responsible_name', function ($contact)
+            {
+                return $contact->responsible->name ?? 'Sin asignar';
+            })
+            ->filterColumn('responsible_name', function ($query, $keyword)
+            {
+                $query->whereHas('responsible', function ($q) use ($keyword)
+                {
+                    $q->where('name', 'like', "%{$keyword}%");
+                });
+            })
+            ->editColumn('status_id', function ($row)
+            {
                 return $row->status_label;
             })
-            ->editColumn('website', function ($row) {
-                if ($row->website) {
-                    $url = $this->ensureProtocol($row->website);
-                    return '<a href="' . e($url) . '" target="_blank" rel="noopener noreferrer">' . e($row->website) . '</a>';
-                }
-                return '';
-            })
-            ->editColumn('phone', function ($row) {
-                if ($row->phone) {
-                    $phoneNumber = preg_replace('/[^0-9+]/', '', $row->phone);
-                    return '<a href="tel:' . e($phoneNumber) . '">' . e($row->phone) . '</a>';
-                }
-                return '';
-            })
-            ->rawColumns(['name', 'action', 'current_sentiment', 'social_networks', 'status_id', 'website', 'phone']);
+            ->rawColumns(['name', 'action', 'current_sentiment', 'sources', 'status_id', 'website', 'phone']);
     }
 
     public function query(Enterprise $model): QueryBuilder
     {
-        // $user = auth()->user();
-
-        // $query = $model->clients()->with('status');
-
-        // if ($user->can('client.list'))
-        // {
-        //     return $query;
-        // }
-        // elseif ($user->hasRole('colab'))
-        // {
-        //     return $query->where('assigned_to', $user->id);
-        // }
-        // else
-        // {
-        //     return $query->whereRaw('1 = 0');
-        // }
-
-        return $model->newQuery()->with('status', 'responsible');
+        return $model->newQuery()
+            ->with([
+                'responsible',
+                'responsible.currentSentiment.sentiment',
+                'responsible.sources',
+                'status'
+            ]);
     }
 
     public function html(): HtmlBuilder
@@ -114,26 +118,26 @@ class ClientDataTable extends DataTable
             Column::make('name')
                 ->title('Cliente')
                 ->addClass('all'),
-            Column::make('phone')
-                ->title('Teléfono')
+            Column::make('current_sentiment')
+                ->title('Sentimiento')
                 ->className('text-center')
-                ->addClass('min-tablet')
+                ->addClass('select-filter min-tablet')
                 ->searchable(true)
-                ->orderable(true)
-                ->exportable(true)
-                ->printable(true),
-            Column::make('website')
-                ->title('Sitio Web')
+                ->orderable(false)
+                ->width(150),
+            Column::make('sources')
+                ->title('Redes')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->searchable(false)
+                ->orderable(false)
+                ->width(150),
+            Column::make('responsible_name')
+                ->title('Asesor')
                 ->className('text-center')
                 ->addClass('min-desktop')
-                ->searchable(true)
-                ->orderable(true)
-                ->exportable(true)
-                ->printable(true),
-            Column::make('locality')
-                ->title('Ciudad')
-                ->className('text-center')
-                ->addClass('min-phone'),
+                ->searchable(false)
+                ->orderable(false),
             Column::make('status_id')
                 ->title('Estado')
                 ->className('text-center')
@@ -156,7 +160,8 @@ class ClientDataTable extends DataTable
 
     private function ensureProtocol($url)
     {
-        if (!preg_match("~^(?:f|ht)tps?://~i", $url)) {
+        if (!preg_match("~^(?:f|ht)tps?://~i", $url))
+        {
             $url = "https://" . $url;
         }
         return $url;
