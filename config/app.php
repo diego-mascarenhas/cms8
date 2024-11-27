@@ -141,7 +141,8 @@ return [
 
   'maintenance' => [
     'driver' => 'file',
-    // 'store'  => 'redis',
+    'path' => storage_path('framework/maintenance.php'),
+    'template' => 'pages/misc-under-maintenance',
   ],
 
   /*
