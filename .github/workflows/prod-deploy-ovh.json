@@ -1,7 +1,7 @@
 [
   {
     "name": "OVH Production",
-    "ip": "pnsdzrx.cluster027.hosting.ovh.net",
+    "ip": "ssh.cluster027.hosting.ovh.net",
     "username": "pnsdzrx",
     "port": "22",
     "path": "/homez.2000/pnsdzrx/www",
