@@ -9,6 +9,7 @@ return [
     'today' => 'Hoy',
     'chat' => 'Chat',
     'services' => 'Servicios',
+    'contacts' => 'Contactos',
     'clients' => 'Clientes',
     'list60' => 'Lista de 60',
     'languages' => [

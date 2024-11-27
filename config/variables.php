@@ -4,7 +4,7 @@ return [
 	"creatorName" => "Humano",
 	"creatorUrl" => "https://www.linkedin.com/in/diego-mascarenhas/",
 	"templateName" => "HUMANO",
-	"templateSuffix" => "humano",
+	// "templateSuffix" => "v0.9",
 	"templateVersion" => "2.0.1",
 	"templateFree" => false,
 	"templateDescription" => "Start your development with a Dashboard for Bootstrap 5",
