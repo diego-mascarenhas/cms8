@@ -46,12 +46,12 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-3">
-                        <span class="bg-label-info p-2 rounded">
-                            <i class='ti ti-bulb ti-xl'></i>
+                        <span class="bg-label-success p-2 rounded">
+                            <i class='ti ti-target ti-xl'></i>
                         </span>
                         <div class="content-right">
-                            <p class="mb-0">Resultados</p>
-                            <h4 class="text-info mb-0">{{ rand(60, 100) }}%</h4>
+                            <p class="mb-0">Contactos recientes</p>
+                            <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-3">

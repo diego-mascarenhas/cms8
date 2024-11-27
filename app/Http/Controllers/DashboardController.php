@@ -69,6 +69,15 @@ class DashboardController extends Controller
             ];
         }
 
-        return view('dashboard', compact('totalTeamMinutes', 'dangerousContacts', 'clientsToContactToday', 'sentimentData'));
+        // Count leads from last 7 days
+        $recentLeadsCount = Contact::where('created_at', '>=', now()->subDays(7))->count();
+
+        return view('dashboard', compact(
+            'totalTeamMinutes', 
+            'dangerousContacts', 
+            'clientsToContactToday', 
+            'sentimentData',
+            'recentLeadsCount'
+        ));
     }
 }
