@@ -24,6 +24,7 @@
                 <p class="mb-4" style="color: #566a7f;">Rellena este formulario para hacerlo realidad</p>
                 <form method="POST" action="{{ route('lead.store') }}">
                     @csrf
+                    <input type="hidden" name="team_id" value="3">
                     <div class="mb-3">
                         <label class="form-label" for="basic-default-fullname">Nombre</label>
                         <input type="text" class="form-control @error('name') is-invalid @enderror" 
