@@ -18,7 +18,7 @@ class ContactSeeder extends Seeder
     $revisionContacts = [
       [
         'team_id' => 2,
-        'name' => 'Diego',
+        'name' => 'Diego Mascarenhas',
         'position' => 'CEO',
         'birthday' => '1975-11-25',
         'profile' => 'Software Artisan & Freaky ;-)',
@@ -28,19 +28,19 @@ class ContactSeeder extends Seeder
       ],
       [
         'team_id' => 2,
-        'name' => 'Pablo',
-        'position' => 'CMO',
-        'birthday' => '1976-01-11',
-        'profile' => 'Marketing an Sales.',
+        'name' => 'Carla de Loureiro',
+        'position' => 'CTO',
+        'birthday' => '1976-09-24',
+        'profile' => 'Developer Senior',
         'creator_id' => 1,
         'responsible_id' => 2,
         'status_id' => 5,
       ],
       [
         'team_id' => 2,
-        'name' => 'Lucio',
+        'name' => 'Lucio Buxal',
         'position' => 'TSS',
-        'profile' => 'Technical Support Specialist.',
+        'profile' => 'Technical Support Specialist',
         'creator_id' => 1,
         'responsible_id' => 2,
         'status_id' => 5,
@@ -49,7 +49,7 @@ class ContactSeeder extends Seeder
         'team_id' => 2,
         'name' => 'Victoria',
         'position' => 'ADM',
-        'profile' => 'Administrative Manager.',
+        'profile' => 'Administrative Manager',
         'creator_id' => 1,
         'responsible_id' => 2,
         'status_id' => 5,
@@ -137,7 +137,20 @@ class ContactSeeder extends Seeder
 
       ContactSentimentHistory::create([
         'contact_id' => $contact->id,
-        'sentiment_id' => ContactSentiment::inRandomOrder()->first()->id,
+        'sentiment_id' => (function() {
+            $rand = rand(1, 100);
+            if ($rand <= 80) {
+                return ContactSentiment::whereIn('id', [3, 4, 5])
+                    ->inRandomOrder()
+                    ->first()
+                    ->id;
+            } else {
+                return ContactSentiment::whereIn('id', [1, 2])
+                    ->inRandomOrder()
+                    ->first()
+                    ->id;
+            }
+        })(),
         'notes' => $faker->sentence,
       ]);
     }
@@ -182,7 +195,20 @@ class ContactSeeder extends Seeder
 
       ContactSentimentHistory::create([
         'contact_id' => $contact->id,
-        'sentiment_id' => ContactSentiment::inRandomOrder()->first()->id,
+        'sentiment_id' => (function() {
+            $rand = rand(1, 100);
+            if ($rand <= 80) {
+                return ContactSentiment::whereIn('id', [3, 4, 5])
+                    ->inRandomOrder()
+                    ->first()
+                    ->id;
+            } else {
+                return ContactSentiment::whereIn('id', [1, 2])
+                    ->inRandomOrder()
+                    ->first()
+                    ->id;
+            }
+        })(),
         'notes' => $faker->sentence,
       ]);
     }
@@ -194,7 +220,20 @@ class ContactSeeder extends Seeder
       ->each(function ($contact) use ($faker) {
         ContactSentimentHistory::create([
           'contact_id' => $contact->id,
-          'sentiment_id' => ContactSentiment::inRandomOrder()->first()->id,
+          'sentiment_id' => (function() {
+              $rand = rand(1, 100);
+              if ($rand <= 80) {
+                  return ContactSentiment::whereIn('id', [3, 4, 5])
+                      ->inRandomOrder()
+                      ->first()
+                      ->id;
+              } else {
+                  return ContactSentiment::whereIn('id', [1, 2])
+                      ->inRandomOrder()
+                      ->first()
+                      ->id;
+              }
+          })(),
           'notes' => $faker->sentence,
         ]);
       });

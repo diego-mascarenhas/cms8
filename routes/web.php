@@ -71,7 +71,7 @@ Route::middleware(['auth'])->group(function ()
    Route::get('/dashboard', function ()
     {
         return redirect()->route('dashboard');
-    })->name('dashboard');
+    });
 
     // User Management
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
