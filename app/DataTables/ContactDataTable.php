@@ -3,7 +3,6 @@
 namespace App\DataTables;
 
 use App\Models\Contact;
-use App\Models\Source;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -66,7 +65,14 @@ class ContactDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery()->with('list60');
+        return $model->newQuery()->with([
+            'list60',
+            'enterprise',
+            'currentSentiment.sentiment',
+            'status',
+            'sources',
+            'responsible'
+        ]);
     }
 
     public function html(): HtmlBuilder
