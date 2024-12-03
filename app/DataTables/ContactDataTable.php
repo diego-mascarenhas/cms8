@@ -66,12 +66,12 @@ class ContactDataTable extends DataTable
     public function query(Contact $model): QueryBuilder
     {
         return $model->newQuery()->with([
-            'list60',
-            'enterprise',
+            'list60:id,contact_id',
+            'enterprise:id,name',
             'currentSentiment.sentiment',
-            'status',
-            'sources',
-            'responsible'
+            'status:id,name',
+            'sources:id,name,icon,color',
+            'responsible:id,name'
         ]);
     }
 
