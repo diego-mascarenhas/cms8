@@ -190,8 +190,11 @@ class ContactController extends Controller
 
 		if ($contact->list60)
 		{
+			$newStatus = min($contact->list60->status_id + 1, 3);
+			
 			$contact->list60->update([
-				'date_next' => now()->addDays(15)
+				'date_next' => now()->addDays(21),
+				'status_id' => $newStatus
 			]);
 		}
 
