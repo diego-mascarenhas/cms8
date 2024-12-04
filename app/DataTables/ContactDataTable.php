@@ -69,7 +69,7 @@ class ContactDataTable extends DataTable
             'list60:id,contact_id',
             'enterprise:id,name',
             'currentSentiment.sentiment',
-            'status:id,name',
+            'status',
             'sources:id,name,icon,color',
             'responsible:id,name'
         ]);
