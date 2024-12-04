@@ -102,10 +102,11 @@ class ContactController extends Controller
 				->with('error', __('messages.errors.not_found'));
 		}
 
-		$sentiments = ContactSentiment::all();
 		$trackingId = $this->startActionTracking($id, 'show');
-		$totalSeconds = $data->calculateTotalAccumulatedSeconds();
+		session()->flash('tracking_id', $trackingId);
 
+		$sentiments = ContactSentiment::all();
+		$totalSeconds = $data->calculateTotalAccumulatedSeconds();
 		$enterpriseStatuses = ContactStatus::getOptions();
 		$countries = Country::orderBy('name')->get();
 
@@ -419,8 +420,16 @@ class ContactController extends Controller
 
 	public function endAction($trackingId)
 	{
-		$this->endActionTracking($trackingId);
-		return response()->json(['success' => true]);
+		if (!$trackingId) {
+			return response()->json(['success' => false, 'message' => 'No tracking ID provided']);
+		}
+
+		try {
+			$this->endActionTracking($trackingId);
+			return response()->json(['success' => true]);
+		} catch (\Exception $e) {
+			return response()->json(['success' => false, 'message' => 'Error ending tracking']);
+		}
 	}
 
 	public function search(Request $request)

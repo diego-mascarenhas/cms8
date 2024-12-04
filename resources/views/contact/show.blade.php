@@ -485,6 +485,17 @@
 
             document.getElementById('totalTime').textContent = formattedTime;
         }, 1000);
+
+        @if(session('tracking_id'))
+            window.addEventListener('beforeunload', function() {
+                fetch('{{ route("contact.end-action", session("tracking_id")) }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                });
+            });
+        @endif
     </script>
 @endpush
 
