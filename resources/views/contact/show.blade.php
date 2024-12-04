@@ -427,59 +427,14 @@
             }
         }
 
-        // Old version of action tracking - Deprecated
-        /*
-        function endActionTracking(trackingId) {
-            fetch(`/contact/end-action/${trackingId}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Content-Type': 'application/json',
-                    },
-                }).then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        console.log('Action completed successfully');
-                    } else {
-                        console.error('Error ending action tracking');
-                    }
-                }).catch(error => {
-                    console.error('Error:', error);
-                });
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const trackingId = {{ $trackingId ?? 'null' }};
-
-            if (trackingId) {
-                window.addEventListener('beforeunload', function() {
-                    endActionTracking(trackingId);
-                });
-
-                document.body.addEventListener('click', function(e) {
-                    if (e.target.tagName === 'A' && e.target.href && !e.target.href.startsWith(window
-                            .location.origin + window.location.pathname)) {
-                        e.preventDefault();
-                        endActionTracking(trackingId);
-                        setTimeout(() => {
-                            window.location.href = e.target.href;
-                        }, 100);
-                    }
-                });
-            }
-        });
-        */
-
-        @if(session('tracking_id'))
-            window.addEventListener('beforeunload', function() {
-                fetch(`{{ route("contact.end-action", session("tracking_id")) }}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
-                });
+        window.addEventListener('beforeunload', function() {
+            fetch(`{{ route("contact.end-action", session("tracking_id")) }}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
             });
-        @endif
+        });
 
         let totalSeconds = {{ $totalSeconds }};
         setInterval(() => {
