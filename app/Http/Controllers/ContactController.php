@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Traits\TracksContactActions;
 use App\Http\Requests\UpdateContactRequest;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 use Carbon\Carbon;
 
@@ -525,5 +526,54 @@ class ContactController extends Controller
 			'success' => true,
 			'message' => 'Notas actualizadas correctamente'
 		]);
+	}
+
+	public function importMapping()
+	{
+		// Aquí puedes preparar cualquier dato necesario para la vista
+		// Por ejemplo, podrías pasar una lista de campos disponibles para mapear
+		$availableFields = ['name', 'email', 'phone', 'address']; // Ejemplo de campos
+
+		return view('contact.import', compact('availableFields'));
+	}
+
+	public function uploadFileForMapping(Request $request)
+	{
+		$request->validate([
+			'file' => 'required|file|mimes:xlsx,xls,csv',
+		]);
+
+		$file = $request->file('file');
+		$teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
+
+		// Almacenar el archivo
+		$file->storeAs('contact/import', $teamUserId);
+
+		// Leer el archivo almacenado
+		$filePath = storage_path('app/contact/import/' . $teamUserId);
+		$spreadsheet = IOFactory::load($filePath);
+		$worksheet = $spreadsheet->getActiveSheet();
+		
+		// Obtener los datos
+		$rows = $worksheet->toArray();
+		$headers = array_shift($rows); // Primera fila como encabezados
+
+		// Obtener los campos disponibles para mapear
+		$availableFields = [
+			'name' => 'Nombre',
+			'email' => 'Email',
+			'phone' => 'Teléfono',
+			// Agrega aquí más campos según necesites
+		];
+
+		return view('contact.map', compact('headers', 'rows', 'availableFields'));
+	}
+
+	public function processMapping(Request $request)
+	{
+		// Aquí procesas el mapeo y guardas los datos en la base de datos
+		// Por ejemplo, podrías iterar sobre los datos y crear nuevos contactos
+
+		return redirect()->route('contact-list')->with('success', 'Contactos importados correctamente.');
 	}
 }

@@ -145,14 +145,18 @@
                         <i class="ti ti-plus me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Añadir contacto</span>
                     </a>
-                    <button id="import-button" class="btn btn-outline-secondary btn-sm waves-effect">
+                    {{-- <button id="import-button" class="btn btn-outline-secondary btn-sm waves-effect">
                         <i class="ti ti-file-import me-sm-1"></i>
                         <span class="d-none d-sm-inline-block">Importar</span>
-                    </button>
+                    </button> --}}
+                    <a href="{{ route('contact.import-mapping') }}" class="btn btn-outline-secondary btn-sm waves-effect">
+                        <i class="ti ti-file-import me-sm-1"></i>
+                        <span class="d-none d-sm-inline-block">Importar</span>
+                    </a>
                     <!-- <button class="btn btn-outline-secondary btn-sm waves-effect">
-                                    <i class="ti ti-file-export me-sm-1"></i>
-                                    <span class="d-none d-sm-inline-block">Exportar</span>
-                                </button> -->
+                        <i class="ti ti-file-export me-sm-1"></i>
+                        <span class="d-none d-sm-inline-block">Exportar</span>
+                    </button> -->
                 </div>
             </div>
             <div class="d-flex flex-column flex-md-row gap-3">
