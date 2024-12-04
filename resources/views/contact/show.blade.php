@@ -427,6 +427,8 @@
             }
         }
 
+        // Old version of action tracking - Deprecated
+        /*
         function endActionTracking(trackingId) {
             fetch(`/contact/end-action/${trackingId}`, {
                     method: 'POST',
@@ -437,9 +439,9 @@
                 }).then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        console.log('Acción finalizada correctamente');
+                        console.log('Action completed successfully');
                     } else {
-                        console.error('Error al finalizar el seguimiento de la acción');
+                        console.error('Error ending action tracking');
                     }
                 }).catch(error => {
                     console.error('Error:', error);
@@ -466,7 +468,17 @@
                 });
             }
         });
+        */
 
+        window.addEventListener('beforeunload', function() {
+            fetch('{{ route("contact.end-action", session("tracking_id")) }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            });
+        });
+        
         let totalSeconds = {{ $totalSeconds }};
         setInterval(() => {
             totalSeconds++;
@@ -485,17 +497,6 @@
 
             document.getElementById('totalTime').textContent = formattedTime;
         }, 1000);
-
-        @if(session('tracking_id'))
-            window.addEventListener('beforeunload', function() {
-                fetch('{{ route("contact.end-action", session("tracking_id")) }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
-                });
-            });
-        @endif
     </script>
 @endpush
 
