@@ -103,7 +103,12 @@ class ContactController extends Controller
 		}
 
 		$trackingId = $this->startActionTracking($id, 'show');
-		session()->flash('tracking_id', $trackingId);
+		
+		session([
+			'tracking_id' => $trackingId,
+			'viewing_contact_id' => $id,
+			'previous_url' => url()->current()
+		]);
 
 		$sentiments = ContactSentiment::all();
 		$totalSeconds = $data->calculateTotalAccumulatedSeconds();
