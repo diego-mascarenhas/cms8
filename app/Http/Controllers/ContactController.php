@@ -11,9 +11,6 @@ use App\Models\ContactSentimentHistory;
 use App\Models\Country;
 use App\Models\Source;
 use Illuminate\Http\Request;
-use Spatie\SimpleExcel\SimpleExcelReader;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use App\Traits\TracksContactActions;
 use App\Http\Requests\UpdateContactRequest;
@@ -191,6 +188,13 @@ class ContactController extends Controller
 			'notes' => $request->notes,
 		]);
 
+		if ($contact->list60)
+		{
+			$contact->list60->update([
+				'date_next' => now()->addDays(15)
+			]);
+		}
+
 		$newSentiment = ContactSentiment::find($request->sentiment_id);
 
 		return response()->json([
@@ -273,7 +277,7 @@ class ContactController extends Controller
 		];
 
 		$contactSources = [];
-		
+
 		if ($email)
 		{
 			$contactSources[] = [
@@ -300,17 +304,22 @@ class ContactController extends Controller
 		try
 		{
 			$contact = Contact::where('team_id', auth()->user()->currentTeam->id)
-				->where(function ($query) use ($email, $phone) {
-					if ($email) {
-						$query->whereHas('sources', function ($subQuery) use ($email) {
+				->where(function ($query) use ($email, $phone)
+				{
+					if ($email)
+					{
+						$query->whereHas('sources', function ($subQuery) use ($email)
+						{
 							$subQuery->where('source_id', 1)
-									  ->where('value', $email);
+								->where('value', $email);
 						});
 					}
-					if ($phone) {
-						$query->orWhereHas('sources', function ($subQuery) use ($phone) {
+					if ($phone)
+					{
+						$query->orWhereHas('sources', function ($subQuery) use ($phone)
+						{
 							$subQuery->where('source_id', 2)
-									  ->where('value', $phone);
+								->where('value', $phone);
 						});
 					}
 				})
@@ -418,7 +427,8 @@ class ContactController extends Controller
 		$members = Contact::where('name', 'like', "%{$query}%")
 			->select('id', 'name', 'created_at')
 			->get()
-			->map(function ($contact) {
+			->map(function ($contact)
+			{
 				return [
 					'name' => $contact->name,
 					'subtitle' => 'Creado el ' . $contact->created_at->format('d-m-Y H:i:s') . ' hs',
@@ -489,7 +499,7 @@ class ContactController extends Controller
 		$contact = Contact::findOrFail($id);
 		$data = (array) ($contact->data ?? new \stdClass());
 		$data['notes'] = $request->input('notes');
-		
+
 		$contact->update([
 			'data' => $data
 		]);
