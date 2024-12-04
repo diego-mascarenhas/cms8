@@ -84,6 +84,7 @@ class ContactDataTable extends DataTable
             ->dom('frtip')
             ->orderBy(1, 'asc')
             ->responsive(true)
+            ->processing(false)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'initComplete' => "function() {
