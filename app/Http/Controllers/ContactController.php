@@ -11,12 +11,10 @@ use App\Models\ContactSentimentHistory;
 use App\Models\Country;
 use App\Models\Source;
 use Illuminate\Http\Request;
-use Spatie\SimpleExcel\SimpleExcelReader;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use App\Traits\TracksContactActions;
 use App\Http\Requests\UpdateContactRequest;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 use Carbon\Carbon;
 
@@ -105,10 +103,16 @@ class ContactController extends Controller
 				->with('error', __('messages.errors.not_found'));
 		}
 
-		$sentiments = ContactSentiment::all();
 		$trackingId = $this->startActionTracking($id, 'show');
-		$totalSeconds = $data->calculateTotalAccumulatedSeconds();
 
+		session([
+			'tracking_id' => $trackingId,
+			'viewing_contact_id' => $id,
+			'previous_url' => url()->current()
+		]);
+
+		$sentiments = ContactSentiment::all();
+		$totalSeconds = $data->calculateTotalAccumulatedSeconds();
 		$enterpriseStatuses = ContactStatus::getOptions();
 		$countries = Country::orderBy('name')->get();
 
@@ -190,6 +194,16 @@ class ContactController extends Controller
 			'sentiment_id' => $request->sentiment_id,
 			'notes' => $request->notes,
 		]);
+
+		if ($contact->list60)
+		{
+			$newStatus = min($contact->list60->status_id + 1, 3);
+
+			$contact->list60->update([
+				'date_next' => now()->addDays(21),
+				'status_id' => $newStatus
+			]);
+		}
 
 		$newSentiment = ContactSentiment::find($request->sentiment_id);
 
@@ -273,7 +287,7 @@ class ContactController extends Controller
 		];
 
 		$contactSources = [];
-		
+
 		if ($email)
 		{
 			$contactSources[] = [
@@ -300,17 +314,22 @@ class ContactController extends Controller
 		try
 		{
 			$contact = Contact::where('team_id', auth()->user()->currentTeam->id)
-				->where(function ($query) use ($email, $phone) {
-					if ($email) {
-						$query->whereHas('sources', function ($subQuery) use ($email) {
+				->where(function ($query) use ($email, $phone)
+				{
+					if ($email)
+					{
+						$query->whereHas('sources', function ($subQuery) use ($email)
+						{
 							$subQuery->where('source_id', 1)
-									  ->where('value', $email);
+								->where('value', $email);
 						});
 					}
-					if ($phone) {
-						$query->orWhereHas('sources', function ($subQuery) use ($phone) {
+					if ($phone)
+					{
+						$query->orWhereHas('sources', function ($subQuery) use ($phone)
+						{
 							$subQuery->where('source_id', 2)
-									  ->where('value', $phone);
+								->where('value', $phone);
 						});
 					}
 				})
@@ -407,8 +426,20 @@ class ContactController extends Controller
 
 	public function endAction($trackingId)
 	{
-		$this->endActionTracking($trackingId);
-		return response()->json(['success' => true]);
+		if (!$trackingId)
+		{
+			return response()->json(['success' => false, 'message' => 'No tracking ID provided']);
+		}
+
+		try
+		{
+			$this->endActionTracking($trackingId);
+			return response()->json(['success' => true]);
+		}
+		catch (\Exception $e)
+		{
+			return response()->json(['success' => false, 'message' => 'Error ending tracking']);
+		}
 	}
 
 	public function search(Request $request)
@@ -418,7 +449,8 @@ class ContactController extends Controller
 		$members = Contact::where('name', 'like', "%{$query}%")
 			->select('id', 'name', 'created_at')
 			->get()
-			->map(function ($contact) {
+			->map(function ($contact)
+			{
 				return [
 					'name' => $contact->name,
 					'subtitle' => 'Creado el ' . $contact->created_at->format('d-m-Y H:i:s') . ' hs',
@@ -489,7 +521,7 @@ class ContactController extends Controller
 		$contact = Contact::findOrFail($id);
 		$data = (array) ($contact->data ?? new \stdClass());
 		$data['notes'] = $request->input('notes');
-		
+
 		$contact->update([
 			'data' => $data
 		]);
@@ -498,5 +530,110 @@ class ContactController extends Controller
 			'success' => true,
 			'message' => 'Notas actualizadas correctamente'
 		]);
+	}
+
+	public function importMapping()
+	{
+		$availableFields = ['name', 'email', 'phone'];
+
+		return view('contact.import', compact('availableFields'));
+	}
+
+	public function uploadFileForMapping(Request $request)
+	{
+		$request->validate([
+			'file' => 'required|file|mimes:xlsx,xls,csv',
+		]);
+
+		$file = $request->file('file');
+		$teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
+
+		$file->storeAs('contact/import', $teamUserId);
+
+		$filePath = storage_path('app/contact/import/' . $teamUserId);
+		$spreadsheet = IOFactory::load($filePath);
+		$worksheet = $spreadsheet->getActiveSheet();
+
+		$rows = $worksheet->toArray();
+		$headers = array_shift($rows);
+
+		$availableFields = [
+			'name' => 'Nombre',
+			'email' => 'Email',
+			'phone' => 'Teléfono',
+		];
+
+		return view('contact.map', compact('headers', 'rows', 'availableFields'));
+	}
+
+	public function processMapping(Request $request)
+	{
+		$teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
+		$filePath = storage_path('app/contact/import/' . $teamUserId);
+
+		$spreadsheet = IOFactory::load($filePath);
+		$worksheet = $spreadsheet->getActiveSheet();
+		$rows = $worksheet->toArray();
+
+		$headers = array_shift($rows);
+		$mapping = $request->input('mapping', []);
+
+		$contactsCreated = 0;
+
+		foreach ($rows as $row)
+		{
+			$mappedRow = [];
+			$sources = [];
+
+			foreach ($mapping as $columnIndex => $field)
+			{
+				if (!empty($field))
+				{
+					$value = $row[$columnIndex] ?? null;
+
+					if ($field === 'email' && !empty($value))
+					{
+						$sources[] = [
+							'source_id' => 1,
+							'value' => $value
+						];
+					}
+					else if ($field === 'phone' && !empty($value))
+					{
+						$sources[] = [
+							'source_id' => 2,
+							'value' => $value
+						];
+					}
+					else
+					{
+						$mappedRow[$field] = $value;
+					}
+				}
+			}
+
+			if (!empty($mappedRow) || !empty($sources))
+			{
+				$contact = Contact::create(array_merge($mappedRow, [
+					'team_id' => auth()->user()->currentTeam->id,
+					'creator_id' => auth()->user()->id,
+					'status_id' => 1
+				]));
+
+				foreach ($sources as $source)
+				{
+					ContactSource::create([
+						'contact_id' => $contact->id,
+						'source_id' => $source['source_id'],
+						'value' => $source['value']
+					]);
+				}
+
+				$contactsCreated++;
+			}
+		}
+
+		return redirect()->route('contact-list')
+			->with('success', $contactsCreated . ' contactos importados correctamente.');
 	}
 }

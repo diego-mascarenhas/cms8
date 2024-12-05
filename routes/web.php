@@ -85,6 +85,12 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
     Route::post('/contact/upload-file', [contactController::class, 'UploadFile'])->name('contact.upload-file');
     Route::get('/contact/import', [ContactController::class, 'showImportForm'])->name('contact.import');
+    
+    Route::get('/contacts/import-mapping', action: [ContactController::class, 'importMapping'])->name('contact.import-mapping');
+    Route::post('/contact/upload-file-mapping', [ContactController::class, 'uploadFileForMapping'])
+    ->name('contact.upload-file-mapping');
+    Route::post('/contact/process-mapping', [ContactController::class, 'processMapping'])
+        ->name('contact.process-mapping');
 
     Route::get('/contact/create', [contactController::class, 'create'])->name('contact.create');
     Route::get('/contact/{id}', [contactController::class, 'show'])->name('contact.show');

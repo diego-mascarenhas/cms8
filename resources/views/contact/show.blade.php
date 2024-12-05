@@ -427,44 +427,13 @@
             }
         }
 
-        function endActionTracking(trackingId) {
-            fetch(`/contact/end-action/${trackingId}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Content-Type': 'application/json',
-                    },
-                }).then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        console.log('Acción finalizada correctamente');
-                    } else {
-                        console.error('Error al finalizar el seguimiento de la acción');
-                    }
-                }).catch(error => {
-                    console.error('Error:', error);
-                });
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const trackingId = {{ $trackingId ?? 'null' }};
-
-            if (trackingId) {
-                window.addEventListener('beforeunload', function() {
-                    endActionTracking(trackingId);
-                });
-
-                document.body.addEventListener('click', function(e) {
-                    if (e.target.tagName === 'A' && e.target.href && !e.target.href.startsWith(window
-                            .location.origin + window.location.pathname)) {
-                        e.preventDefault();
-                        endActionTracking(trackingId);
-                        setTimeout(() => {
-                            window.location.href = e.target.href;
-                        }, 100);
-                    }
-                });
-            }
+        window.addEventListener('beforeunload', function() {
+            fetch(`{{ route("contact.end-action", session("tracking_id")) }}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            });
         });
 
         let totalSeconds = {{ $totalSeconds }};

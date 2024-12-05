@@ -73,6 +73,7 @@ class List60DataTable extends DataTable
             ->dom('frtip')
             ->orderBy(4, direction: 'asc')
             ->responsive(true)
+            ->processing(false)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'pageLength' => 60,
