@@ -91,57 +91,57 @@
 @push('scripts')
     <script>
         function deleteRecord(id, element) {
+            event.preventDefault();
             Swal.fire({
-                title: '¿Estás seguro de eliminar este contacto de la Lista de 60?',
+                title: '¿Estás seguro?',
+                text: "¿Deseas eliminar este contacto de la Lista de 60?",
                 icon: 'warning',
-                showCloseButton: true,
-                showCancelButton: false,
-                confirmButtonColor: '#3085d6',
-                confirmButtonText: 'Sí, eliminar'
-            }).then((result) => {
-                if (result.isConfirmed) {
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then(function (result) {
+                if (result.value) {
                     fetch("{{ route('list60.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
                         method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         }
-                    }).then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok.');
-                        }
-                        return response.json();
-                    }).then(data => {
-                        console.log('Response data:', data);
-
-                        const toastHTML = `
-                    <div id="toast-container" class="toast-top-right">
-                        <div class="toast toast-success" aria-live="polite" style="display: block;">
-                            <div class="toast-client">${data.success}</div>
-                        </div>
-                    </div>
-                `;
-                        document.body.insertAdjacentHTML('beforeend', toastHTML);
-                        var toastElement = document.getElementById('toast-container');
-                        var toast = new bootstrap.Toast(toastElement, {
-                            animation: true,
-                            delay: 3000,
-                            autohide: true
-                        });
-                        toast.show();
-
+                    })
+                    .then(response => response.json())
+                    .then(data => {
                         const row = element.closest('tr');
                         if (row) {
                             row.classList.add('fade-out');
                             row.addEventListener('transitionend', () => {
                                 row.remove();
                             });
-                        } else {
-                            console.error('No se encontró la fila correspondiente.');
                         }
-                    }).catch(error => {
+                        
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: data.success,
+                            customClass: {
+                                confirmButton: 'btn btn-success'
+                            }
+                        });
+                    })
+                    .catch(error => {
                         console.error('Error:', error);
-                        Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Ha ocurrido un error al eliminar el registro',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            }
+                        });
                     });
                 }
             });
