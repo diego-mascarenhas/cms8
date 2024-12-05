@@ -557,6 +557,17 @@ class ContactController extends Controller
 		$rows = $worksheet->toArray();
 		$headers = array_shift($rows);
 
+		$rows = array_filter($rows, function ($row)
+		{
+			return array_filter($row, function ($cell)
+			{
+				return !empty($cell) && $cell !== '' && $cell !== null;
+			});
+		});
+
+		$rows = array_values($rows);
+		shuffle($rows);
+
 		$availableFields = [
 			'name' => 'Nombre',
 			'email' => 'Email',
@@ -612,12 +623,21 @@ class ContactController extends Controller
 				}
 			}
 
-			if (!empty($mappedRow) || !empty($sources))
+			$additionalData = ['import' => []];
+			foreach ($headers as $index => $header) {
+				$value = $row[$index] ?? null;
+				if (!empty($value)) {
+					$additionalData['import'][$header] = $value;
+				}
+			}
+
+			if (!empty($mappedRow['name']))
 			{
 				$contact = Contact::create(array_merge($mappedRow, [
 					'team_id' => auth()->user()->currentTeam->id,
 					'creator_id' => auth()->user()->id,
-					'status_id' => 1
+					'status_id' => 1,
+					'data' => $additionalData
 				]));
 
 				foreach ($sources as $source)
