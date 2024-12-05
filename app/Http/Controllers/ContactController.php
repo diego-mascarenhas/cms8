@@ -104,7 +104,7 @@ class ContactController extends Controller
 		}
 
 		$trackingId = $this->startActionTracking($id, 'show');
-		
+
 		session([
 			'tracking_id' => $trackingId,
 			'viewing_contact_id' => $id,
@@ -198,7 +198,7 @@ class ContactController extends Controller
 		if ($contact->list60)
 		{
 			$newStatus = min($contact->list60->status_id + 1, 3);
-			
+
 			$contact->list60->update([
 				'date_next' => now()->addDays(21),
 				'status_id' => $newStatus
@@ -426,14 +426,18 @@ class ContactController extends Controller
 
 	public function endAction($trackingId)
 	{
-		if (!$trackingId) {
+		if (!$trackingId)
+		{
 			return response()->json(['success' => false, 'message' => 'No tracking ID provided']);
 		}
 
-		try {
+		try
+		{
 			$this->endActionTracking($trackingId);
 			return response()->json(['success' => true]);
-		} catch (\Exception $e) {
+		}
+		catch (\Exception $e)
+		{
 			return response()->json(['success' => false, 'message' => 'Error ending tracking']);
 		}
 	}
@@ -530,9 +534,7 @@ class ContactController extends Controller
 
 	public function importMapping()
 	{
-		// Aquí puedes preparar cualquier dato necesario para la vista
-		// Por ejemplo, podrías pasar una lista de campos disponibles para mapear
-		$availableFields = ['name', 'email', 'phone', 'address']; // Ejemplo de campos
+		$availableFields = ['name', 'email', 'phone'];
 
 		return view('contact.import', compact('availableFields'));
 	}
@@ -546,24 +548,19 @@ class ContactController extends Controller
 		$file = $request->file('file');
 		$teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
 
-		// Almacenar el archivo
 		$file->storeAs('contact/import', $teamUserId);
 
-		// Leer el archivo almacenado
 		$filePath = storage_path('app/contact/import/' . $teamUserId);
 		$spreadsheet = IOFactory::load($filePath);
 		$worksheet = $spreadsheet->getActiveSheet();
-		
-		// Obtener los datos
-		$rows = $worksheet->toArray();
-		$headers = array_shift($rows); // Primera fila como encabezados
 
-		// Obtener los campos disponibles para mapear
+		$rows = $worksheet->toArray();
+		$headers = array_shift($rows);
+
 		$availableFields = [
 			'name' => 'Nombre',
 			'email' => 'Email',
 			'phone' => 'Teléfono',
-			// Agrega aquí más campos según necesites
 		];
 
 		return view('contact.map', compact('headers', 'rows', 'availableFields'));
@@ -571,9 +568,72 @@ class ContactController extends Controller
 
 	public function processMapping(Request $request)
 	{
-		// Aquí procesas el mapeo y guardas los datos en la base de datos
-		// Por ejemplo, podrías iterar sobre los datos y crear nuevos contactos
+		$teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
+		$filePath = storage_path('app/contact/import/' . $teamUserId);
 
-		return redirect()->route('contact-list')->with('success', 'Contactos importados correctamente.');
+		$spreadsheet = IOFactory::load($filePath);
+		$worksheet = $spreadsheet->getActiveSheet();
+		$rows = $worksheet->toArray();
+
+		$headers = array_shift($rows);
+		$mapping = $request->input('mapping', []);
+
+		$contactsCreated = 0;
+
+		foreach ($rows as $row)
+		{
+			$mappedRow = [];
+			$sources = [];
+
+			foreach ($mapping as $columnIndex => $field)
+			{
+				if (!empty($field))
+				{
+					$value = $row[$columnIndex] ?? null;
+
+					if ($field === 'email' && !empty($value))
+					{
+						$sources[] = [
+							'source_id' => 1,
+							'value' => $value
+						];
+					}
+					else if ($field === 'phone' && !empty($value))
+					{
+						$sources[] = [
+							'source_id' => 2,
+							'value' => $value
+						];
+					}
+					else
+					{
+						$mappedRow[$field] = $value;
+					}
+				}
+			}
+
+			if (!empty($mappedRow) || !empty($sources))
+			{
+				$contact = Contact::create(array_merge($mappedRow, [
+					'team_id' => auth()->user()->currentTeam->id,
+					'creator_id' => auth()->user()->id,
+					'status_id' => 1
+				]));
+
+				foreach ($sources as $source)
+				{
+					ContactSource::create([
+						'contact_id' => $contact->id,
+						'source_id' => $source['source_id'],
+						'value' => $source['value']
+					]);
+				}
+
+				$contactsCreated++;
+			}
+		}
+
+		return redirect()->route('contact-list')
+			->with('success', $contactsCreated . ' contactos importados correctamente.');
 	}
 }
