@@ -14,6 +14,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('type_id')->default(1);
             $table->dateTime('date_next');
             $table->text('notes')->nullable();
+            $table->foreignId('responsible_id')->nullable()->constrained('users');
             $table->unsignedTinyInteger('status_id')->default(1);
             $table->timestamps();
 

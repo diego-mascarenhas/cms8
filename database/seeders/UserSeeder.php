@@ -27,7 +27,7 @@ class UserSeeder extends Seeder
             'email' => 'victor@machbel.com',
             'password' => '$2y$10$FcK76MqjsbRMzQeDyqSO3ujezrf7NLQWoZlQuxtvlWHogq9ULJKoi',
         ]);
-        $humano->assignRole([1, 2, 10]);
+        $humano->assignRole([1, 2]);
         $revision->categories()->attach([5001]);
 
         // Admin

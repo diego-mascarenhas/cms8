@@ -391,6 +391,16 @@
         @endif
         <!--/ Notification -->
 
+        <!-- WhatsApp Support -->
+        @if(config('app.whatsapp_support'))
+            <li class="nav-item me-3 me-xl-1">
+                <a class="nav-link" href="https://wa.me/{{ trim(config('app.whatsapp_support')) }}" target="_blank" 
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" title="Soporte por WhatsApp">
+                    <i class="ti ti-brand-whatsapp ti-md"></i>
+                </a>
+            </li>
+        @endif
+
         <!-- User -->
         <li class="nav-item navbar-dropdown dropdown-user dropdown">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class List60 extends Model
 {
@@ -11,7 +12,17 @@ class List60 extends Model
 
 	protected $table = 'list60';
 
-	protected $fillable = ['contact_id', 'type_id', 'date_next', 'notes', 'status_id'];
+	protected $fillable = ['contact_id', 'type_id', 'date_next', 'notes', 'status_id', 'responsible_id'];
+
+	public function responsible()
+	{
+		return $this->belongsTo(User::class, 'responsible_id');
+	}
+
+	public function scopeMyResponsibilities($query)
+	{
+		return $query->where('responsible_id', auth()->id());
+	}
 
 	public function contact()
 	{
