@@ -147,6 +147,30 @@ class UserSeeder extends Seeder
         ]);
         $revision->update(['current_team_id' => 2]);
 
+        // Lucas Luna - revision alpha
+        $lucas = User::factory()->create([
+            'name' => 'Lucas Luna Claraso',
+            'email' => 'lucaslunaclaraso@gmail.com',
+            'password' => Hash::make('Passw0rd!'),
+            'email_verified_at' => now(),
+            'current_team_id' => 2,
+        ]);
+        $lucas->assignRole(2);
+        $lucas->categories()->attach([5001]);
+        $lucas->teams()->attach(2);
+
+        // Jesica Lorente - revision alpha
+        $jesica = User::factory()->create([
+            'name' => 'Jesica Lorente',
+            'email' => 'jesicalorente@selltion.com',
+            'password' => Hash::make('Passw0rd!'),
+            'email_verified_at' => now(),
+            'current_team_id' => 2,
+        ]);
+        $jesica->assignRole(2);
+        $jesica->categories()->attach([5001]);
+        $jesica->teams()->attach(2);
+
         // Team humano
         $humano->ownedTeams()->create([
             'name' => "Humano's Team",
