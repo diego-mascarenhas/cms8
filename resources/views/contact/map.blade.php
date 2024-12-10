@@ -35,7 +35,7 @@
                                             <option value="">No importar esta columna</option>
                                             @foreach($availableFields as $field => $label)
                                                 <option value="{{ $field }}" 
-                                                    {{ $header === 'First Name' && $field === 'name' ? 'selected' : '' }}
+                                                    {{ in_array($header, ['First Name', 'Middle Name', 'Last Name']) && $field === 'name' ? 'selected' : '' }}
                                                     {{ $header === 'E-mail 1 - Value' && $field === 'email' ? 'selected' : '' }}
                                                     {{ $header === 'Phone 1 - Value' && $field === 'phone' ? 'selected' : '' }}>
                                                     {{ $label }}

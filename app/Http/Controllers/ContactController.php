@@ -591,36 +591,35 @@ class ContactController extends Controller
 
 		$contactsCreated = 0;
 
-		foreach ($rows as $row)
-		{
+		foreach ($rows as $row) {
 			$mappedRow = [];
 			$sources = [];
+			$nameParts = [];
 
-			foreach ($mapping as $columnIndex => $field)
-			{
-				if (!empty($field))
-				{
+			foreach ($mapping as $columnIndex => $field) {
+				if (!empty($field)) {
 					$value = $row[$columnIndex] ?? null;
 
-					if ($field === 'email' && !empty($value))
-					{
+					if ($field === 'name') {
+						$nameParts[] = trim($value);
+					}
+					else if ($field === 'email' && !empty($value)) {
 						$sources[] = [
 							'source_id' => 1,
 							'value' => $value
 						];
 					}
-					else if ($field === 'phone' && !empty($value))
-					{
+					else if ($field === 'phone' && !empty($value)) {
 						$sources[] = [
 							'source_id' => 2,
 							'value' => $value
 						];
 					}
-					else
-					{
-						$mappedRow[$field] = $value;
-					}
 				}
+			}
+
+			if (!empty($nameParts)) {
+				$mappedRow['name'] = implode(' ', array_filter($nameParts));
 			}
 
 			$additionalData = ['import' => []];
