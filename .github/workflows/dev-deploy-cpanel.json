@@ -1,19 +1,8 @@
 [
     {
         "name": "Humano",
-        "ip": "46.24.172.69",
+        "ip": "vps-55427b82.vps.ovh.net",
         "username": "humano",
-        "password": "",
-        "port": "22",
-        "beforeHooks": "php artisan migrate:fresh --seed",
-        "afterHooks": "php artisan app:register-application",
-        "path": "./public_html"
-    },
-    {
-        "name": "Humano-Dev",
-        "ip": "46.24.172.69",
-        "username": "revdev",
-        "password": "",
         "port": "22",
         "beforeHooks": "php artisan migrate:fresh --seed",
         "afterHooks": "php artisan app:register-application",

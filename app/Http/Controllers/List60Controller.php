@@ -42,8 +42,10 @@ class List60Controller extends Controller
                 ], 400);
             }
 
-            $totalContacts = List60::join('contacts', 'list60.contact_id', '=', 'contacts.id')
+            $totalContacts = List60::withoutGlobalScope('responsible')
+                ->join('contacts', 'list60.contact_id', '=', 'contacts.id')
                 ->where('contacts.team_id', auth()->user()->currentTeam->id)
+                ->where('list60.responsible_id', auth()->id())
                 ->count();
             if ($totalContacts >= 60)
             {
@@ -62,6 +64,7 @@ class List60Controller extends Controller
 
             $nextDate = now();
             $businessDays = 0;
+            
             while ($businessDays < 7)
             {
                 $nextDate = $nextDate->addDay();
@@ -74,6 +77,7 @@ class List60Controller extends Controller
             $list60 = new List60();
             $list60->contact_id = $request->contact_id;
             $list60->date_next = $nextDate;
+            $list60->responsible_id = auth()->id();
             $list60->save();
 
             return response()->json([

@@ -287,7 +287,7 @@
             event.preventDefault();
             Swal.fire({
                 title: '¿Estás seguro?',
-                text: "¿Deseas eliminar este registro?",
+                text: "¿Deseas eliminar este contacto?",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Sí, eliminar',
