@@ -194,4 +194,11 @@ return [
     'DataTables' => Yajra\DataTables\Facades\DataTables::class,
   ])->toArray(),
 
+  /*
+    |--------------------------------------------------------------------------
+    | WhatsApp Support Number
+    |--------------------------------------------------------------------------
+    */
+  'whatsapp_support' => env('WHATSAPP_SUPPORT_NUMBER', ''),
+
 ];
