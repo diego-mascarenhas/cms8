@@ -22,6 +22,7 @@ class List60Factory extends Factory
             'type_id' => $this->faker->numberBetween(1, 2),
             'date_next' => $this->faker->dateTimeBetween('now', '+1 month'),
             'notes' => $this->faker->sentence(),
+            'responsible_id' => $this->faker->numberBetween(3, 5),
             'status_id' => $this->faker->numberBetween(1, 5),
         ];
     }
