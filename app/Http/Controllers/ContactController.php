@@ -17,6 +17,9 @@ use App\Http\Requests\UpdateContactRequest;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 use Carbon\Carbon;
+use Stripe\Stripe;
+use Stripe\Customer;
+use Stripe\PaymentMethod;
 
 class ContactController extends Controller
 {
@@ -94,6 +97,7 @@ class ContactController extends Controller
 			'country',
 			'language',
 			'sentimentHistories.sentiment',
+			'enterprise'
 		])->find($id);
 
 		if (!$data)
@@ -101,6 +105,62 @@ class ContactController extends Controller
 			return redirect()
 				->route('contact-list')
 				->with('error', __('messages.errors.not_found'));
+		}
+
+		$stripeData = null;
+		if ($data->enterprise && $data->enterprise->code) {
+			try {
+				Stripe::setApiKey(config('services.stripe.secret'));
+				
+				// Retrieve customer
+				$customer = Customer::retrieve([
+					'id' => $data->enterprise->code,
+					'expand' => ['subscriptions']
+				]);
+
+				// Retrieve payment methods
+				$paymentMethods = PaymentMethod::all([
+					'customer' => $customer->id,
+					'type' => 'card'
+				]);
+
+				$stripeData = [
+					'customer' => [
+						'name' => $customer->name,
+						'email' => $customer->email,
+						'created' => Carbon::createFromTimestamp($customer->created)->format('d/m/Y'),
+					],
+					'subscription' => null,
+					'payment_method' => null
+				];
+
+				// Get active subscription
+				if ($customer->subscriptions && !empty($customer->subscriptions->data)) {
+					$subscription = $customer->subscriptions->data[0];
+					$stripeData['subscription'] = [
+						'status' => $subscription->status,
+						'current_period_end' => Carbon::createFromTimestamp($subscription->current_period_end)->format('d/m/Y'),
+						'amount' => $subscription->items->data[0]->price->unit_amount / 100,
+						'currency' => strtoupper($subscription->items->data[0]->price->currency),
+						'days_remaining' => Carbon::now()->diffInDays(Carbon::createFromTimestamp($subscription->current_period_end)),
+						'total_days' => 30
+					];
+				}
+
+				// Get payment method
+				if (!empty($paymentMethods->data)) {
+					$card = $paymentMethods->data[0]->card;
+					$stripeData['payment_method'] = [
+						'brand' => $card->brand,
+						'last4' => $card->last4,
+						'exp_month' => $card->exp_month,
+						'exp_year' => $card->exp_year,
+					];
+				}
+
+			} catch (\Exception $e) {
+				\Log::error('Error fetching Stripe data: ' . $e->getMessage());
+			}
 		}
 
 		$trackingId = $this->startActionTracking($id, 'show');
@@ -118,7 +178,7 @@ class ContactController extends Controller
 
 		return view(
 			'contact.show',
-			compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries')
+			compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData')
 		);
 	}
 
