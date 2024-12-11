@@ -80,7 +80,7 @@
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>
                                 @if ($data->enterprise && $data->enterprise->code)
-                                    <span class="badge bg-label-secondary mt-1">Código #{{ $data->enterprise->code }}</span>
+                                    <span class="badge bg-label-secondary mt-1">#{{ $data->enterprise->code }}</span>
                                 @endif
                             </div>
                         </div>

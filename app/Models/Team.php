@@ -41,4 +41,46 @@ class Team extends JetstreamTeam
         'updated' => TeamUpdated::class,
         'deleted' => TeamDeleted::class,
     ];
+
+    public function settings()
+    {
+        return $this->hasMany(TeamSetting::class);
+    }
+
+    public function getSetting($key, $default = null)
+    {
+        return $this->settings()->where('key', $key)->first()?->value ?? $default;
+    }
+
+    public function setSetting($key, $value, $options = [])
+    {
+        $defaultOptions = [
+            'type' => 'string',
+            'group' => 'general',
+            'is_encrypted' => false,
+            'description' => null
+        ];
+
+        $options = array_merge($defaultOptions, $options);
+
+        $setting = $this->settings()->firstOrNew(['key' => $key]);
+        
+        // Primero establecemos todas las propiedades excepto el valor
+        $setting->fill([
+            'type' => $options['type'],
+            'group' => $options['group'],
+            'is_encrypted' => $options['is_encrypted'],
+            'description' => $options['description']
+        ]);
+
+        // Guardamos primero para asegurarnos de que is_encrypted esté establecido
+        if (!$setting->exists) {
+            $setting->save();
+        }
+
+        // Ahora establecemos el valor, que activará el mutador con is_encrypted ya establecido
+        $setting->value = $value;
+        
+        return $setting->save();
+    }
 }
