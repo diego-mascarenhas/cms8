@@ -15,6 +15,7 @@ class Enterprise extends Model
     protected $fillable = [
         'team_id',
         'name',
+        'code',
         'type_id',
         'referred_by',
         'address',
@@ -145,5 +146,23 @@ class Enterprise extends Model
         $finalData = array_merge($defaultData, $data);
 
         return $finalData;
+    }
+
+    /**
+     * Get the Stripe customer ID
+     */
+    public function getStripeCustomerId()
+    {
+        return $this->code_type === 'stripe_customer' ? $this->code : null;
+    }
+
+    /**
+     * Set the Stripe customer ID
+     */
+    public function setStripeCustomerId($customerId)
+    {
+        $this->code = $customerId;
+        $this->code_type = 'stripe_customer';
+        return $this;
     }
 }

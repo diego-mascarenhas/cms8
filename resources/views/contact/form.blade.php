@@ -123,7 +123,7 @@
                         <div id="personal-info-modern" class="content">
                             <div class="content-header mb-3">
                                 <h6 class="mb-0">Información Personal</h6>
-                                <small>Ingresa la información del contacto principal</small>
+                                <small>Información del contacto principal</small>
                             </div>
                             <div class="row g-3">
                                 <div class="col-sm-8">
@@ -164,7 +164,7 @@
                             <div class="content-header mb-3 d-flex justify-content-between">
                                 <div>
                                     <h6 class="mb-0">Redes Sociales</h6>
-                                    <!-- <small>Ingresa el link de tus redes sociales</small> -->
+                                    <small>Link a redes sociales</small>
                                 </div>
                                 <button type="button" id="add-social-link" class="btn btn-primary btn-sm add-sentiment-btn">
                                     + Añadir red social
@@ -224,8 +224,8 @@
                         <!-- Account Details -->
                         <div id="account-details-modern" class="content">
                             <div class="content-header mb-3">
-                                <h6 class="mb-0">Detalle de la Empresa</h6>
-                                <small>Datos de la empresa</small>
+                                <h6 class="mb-0">Datos de la Empresa</h6>
+                                <small>Datos específicos de la empresa</small>
                             </div>
                             <div class="row g-3">
                                 <div class="col-sm-6">
@@ -234,16 +234,21 @@
                                         value="{{ old('enterprise.name', $data->enterprise->name ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
+                                    <x-input-general id="enterprise[code]" name="enterprise[code]"
+                                        label="Código de Stripe"
+                                        value="{{ old('enterprise.code', $data->enterprise->code ?? '') }}" />
+                                </div>
+                                <div class="col-sm-6">
                                     <x-input-general id="enterprise[website]" name="enterprise[website]" label="Website"
                                         value="{{ old('enterprise.website', $data->enterprise->website ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
-                                    <x-input-general id="enterprise[phone]" name="enterprise[phone]" label="Teléfono"
-                                        value="{{ old('enterprise.phone', $data->enterprise->phone ?? '') }}" />
-                                </div>
-                                <div class="col-sm-6">
                                     <x-input-general id="enterprise[email]" name="enterprise[email]" label="Email"
                                         value="{{ old('enterprise.email', $data->enterprise->email ?? '') }}" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <x-input-general id="enterprise[phone]" name="enterprise[phone]" label="Teléfono"
+                                        value="{{ old('enterprise.phone', $data->enterprise->phone ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise[whatsapp]" name="enterprise[whatsapp]"
@@ -261,7 +266,7 @@
                         <div id="address-modern" class="content">
                             <div class="content-header mb-3">
                                 <h6 class="mb-0">Domicilio</h6>
-                                <small>Ingresa tu domicilio</small>
+                                <small>Domicilio de la empresa</small>
                             </div>
                             <div class="row g-3">
                                 <div class="col-sm-6">

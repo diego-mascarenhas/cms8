@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Stripe\Stripe;
 use Stripe\Customer;
+use Stripe\Invoice;
+use Stripe\PaymentMethod;
 
 class ShowStripeCustomer extends Command
 {
@@ -20,10 +22,11 @@ class ShowStripeCustomer extends Command
             $customerId = $this->argument('customerId');
             $customer = Customer::retrieve([
                 'id' => $customerId,
-                'expand' => ['subscriptions']
+                'expand' => ['subscriptions', 'default_source']
             ]);
 
-            $this->info("Customer Details:");
+            // Customer Details
+            $this->info("\n📋 Customer Details:");
             $this->table(['Field', 'Value'], [
                 ['ID', $customer->id],
                 ['Email', $customer->email],
@@ -33,8 +36,33 @@ class ShowStripeCustomer extends Command
                 ['Active Subscriptions', $customer->subscriptions->count()],
             ]);
 
+            // Payment Methods
+            $this->info("\n💳 Payment Methods:");
+            $paymentMethods = PaymentMethod::all([
+                'customer' => $customerId,
+                'type' => 'card'
+            ]);
+
+            if ($paymentMethods->count() > 0) {
+                $rows = [];
+                foreach ($paymentMethods as $pm) {
+                    $rows[] = [
+                        $pm->id,
+                        $pm->card->brand,
+                        "**** {$pm->card->last4}",
+                        "{$pm->card->exp_month}/{$pm->card->exp_year}",
+                        $pm->id === $customer->default_source ? 'Yes' : 'No'
+                    ];
+                }
+                $this->table(
+                    ['ID', 'Brand', 'Last 4', 'Expiration', 'Default'],
+                    $rows
+                );
+            }
+
+            // Subscriptions
             if ($customer->subscriptions->count() > 0) {
-                $this->info("\nSubscriptions:");
+                $this->info("\n📅 Subscriptions:");
                 $rows = [];
                 foreach ($customer->subscriptions->data as $subscription) {
                     $rows[] = [
@@ -46,11 +74,37 @@ class ShowStripeCustomer extends Command
                             strtoupper($subscription->items->data[0]->price->currency)
                     ];
                 }
-                
                 $this->table(
                     ['ID', 'Product', 'Status', 'Next Payment', 'Price'],
                     $rows
                 );
+            }
+
+            // Invoices
+            $this->info("\n📑 Recent Invoices:");
+            $invoices = Invoice::all([
+                'customer' => $customerId,
+                'limit' => 5,
+                'expand' => ['data.payment_intent']
+            ]);
+
+            if ($invoices->count() > 0) {
+                $rows = [];
+                foreach ($invoices as $invoice) {
+                    $rows[] = [
+                        $invoice->number,
+                        date('Y-m-d', $invoice->created),
+                        $invoice->amount_paid / 100 . ' ' . strtoupper($invoice->currency),
+                        $invoice->status,
+                        $invoice->payment_intent ? $invoice->payment_intent->status : 'N/A'
+                    ];
+                }
+                $this->table(
+                    ['Number', 'Date', 'Amount', 'Status', 'Payment Status'],
+                    $rows
+                );
+            } else {
+                $this->info("No invoices found");
             }
 
         } catch (\Exception $e) {
