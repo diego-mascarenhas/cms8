@@ -450,6 +450,16 @@
                         <span class="align-middle">{{ __('app.profile.my_profile') }}</span>
                     </a>
                 </li>
+
+                @if (auth()->user()->ownsTeam(auth()->user()->currentTeam))
+                    <li>
+                        <a class="dropdown-item" href="{{ route('team-settings.edit', auth()->user()->currentTeam->id) }}">
+                            <i class="ti ti-settings-dollar me-2 ti-sm"></i>
+                            <span class="align-middle">Stripe Settings</span>
+                        </a>
+                    </li>
+                @endif
+
                 @if (Auth::check() && Laravel\Jetstream\Jetstream::hasApiFeatures())
                     <li>
                         <a class="dropdown-item" href="{{ route('api-tokens.index') }}">

@@ -79,7 +79,9 @@
                                 width="100" alt="User avatar" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>
-                                <span class="badge bg-label-secondary mt-1">Cliente ID #{{ $data->id }}</span>
+                                @if ($data->enterprise && $data->enterprise->code)
+                                    <span class="badge bg-label-secondary mt-1">#{{ $data->enterprise->code }}</span>
+                                @endif
                             </div>
                         </div>
                     </div>

@@ -41,4 +41,42 @@ class Team extends JetstreamTeam
         'updated' => TeamUpdated::class,
         'deleted' => TeamDeleted::class,
     ];
+
+    public function settings()
+    {
+        return $this->hasMany(TeamSetting::class);
+    }
+
+    public function getSetting($key, $default = null)
+    {
+        return $this->settings()->where('key', $key)->first()?->value ?? $default;
+    }
+
+    public function setSetting($key, $value, $options = [])
+    {
+        $defaultOptions = [
+            'type' => 'string',
+            'group' => 'general',
+            'is_encrypted' => false
+        ];
+
+        $options = array_merge($defaultOptions, $options);
+
+        $setting = $this->settings()->firstOrNew(['key' => $key]);
+
+        $setting->fill([
+            'type' => $options['type'],
+            'group' => $options['group'],
+            'is_encrypted' => $options['is_encrypted']
+        ]);
+
+        if (!$setting->exists)
+        {
+            $setting->save();
+        }
+
+        $setting->value = $value;
+
+        return $setting->save();
+    }
 }

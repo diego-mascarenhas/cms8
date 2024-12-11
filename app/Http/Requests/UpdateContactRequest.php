@@ -24,6 +24,7 @@ class UpdateContactRequest extends FormRequest
             'language' => 'required|string|max:2',
             'profile' => 'nullable|string',
             'enterprise.name' => 'nullable|string|max:255',
+            'enterprise.code' => 'nullable|string|max:255',
             'enterprise.website' => 'nullable|url|max:255',
             'enterprise.phone' => 'nullable|string|max:20',
             'enterprise.email' => 'nullable|email|max:255',
@@ -57,6 +58,7 @@ class UpdateContactRequest extends FormRequest
         {
             $enterpriseData = [
                 'name' => $validated['enterprise']['name'] ?? $contact->name,
+                'code' => $validated['enterprise']['code'] ?? $contact->code,
                 'website' => $validated['enterprise']['website'] ?? null,
                 'phone' => $validated['enterprise']['phone'] ?? null,
                 'email' => $validated['enterprise']['email'] ?? null,

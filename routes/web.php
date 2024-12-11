@@ -20,6 +20,7 @@ use App\Http\Controllers\EmailController;
 use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\TeamSettingController;
 
 
 // auth
@@ -72,7 +73,11 @@ Route::middleware(['auth'])->group(function ()
     {
         return redirect()->route('dashboard');
     });
-
+    
+    // Team Settings
+    Route::get('/team/{team}/settings', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
+    Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
+    
     // User Management
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
     Route::resource('/user-list', UserManagement::class);
@@ -129,7 +134,6 @@ Route::middleware(['auth'])->group(function ()
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
-
 });
 
 // Testing

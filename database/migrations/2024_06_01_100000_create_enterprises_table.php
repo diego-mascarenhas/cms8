@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->unsignedTinyInteger('type_id')->default(1);
             $table->string('name');
+            $table->string('code')->nullable();
             $table->string('website')->nullable();
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
@@ -34,6 +35,8 @@ return new class extends Migration
             $table->unsignedBigInteger('responsible_id')->nullable();
             $table->timestamps();
             $table->softDeletes();
+
+            $table->index(['code']);
 
             $table->foreign('type_id')->references('id')->on('enterprise_types')->onDelete('cascade');
             $table->foreign('payment_type_id')->references('id')->on('payment_types')->onDelete('cascade');
