@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Team;
-use Illuminate\Http\Request;
 use App\Http\Requests\UpdateTeamSettingsRequest;
 
 class TeamSettingController extends Controller
 {
     public function edit(Team $team)
     {
+        $this->authorize('update', $team);
+
         $settings = [
             'stripe' => [
                 'title' => 'Stripe Integration',
@@ -43,9 +44,14 @@ class TeamSettingController extends Controller
 
     public function update(UpdateTeamSettingsRequest $request, Team $team)
     {
-        foreach ($request->validated() as $group => $settings) {
-            foreach ($settings as $key => $value) {
-                if (!empty($value)) {
+        $this->authorize('update', $team);
+
+        foreach ($request->validated() as $group => $settings)
+        {
+            foreach ($settings as $key => $value)
+            {
+                if (!empty($value))
+                {
                     $team->setSetting($key, $value, [
                         'group' => $group,
                         'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook']),
@@ -56,6 +62,6 @@ class TeamSettingController extends Controller
 
         return redirect()
             ->back()
-            ->with('success', 'Team settings updated successfully.');
+            ->with('success', 'La configuración de Stripe se actualizó correctamente.');
     }
-} 
+}

@@ -64,8 +64,7 @@ class Team extends JetstreamTeam
         $options = array_merge($defaultOptions, $options);
 
         $setting = $this->settings()->firstOrNew(['key' => $key]);
-        
-        // Primero establecemos todas las propiedades excepto el valor
+
         $setting->fill([
             'type' => $options['type'],
             'group' => $options['group'],
@@ -73,14 +72,13 @@ class Team extends JetstreamTeam
             'description' => $options['description']
         ]);
 
-        // Guardamos primero para asegurarnos de que is_encrypted esté establecido
-        if (!$setting->exists) {
+        if (!$setting->exists)
+        {
             $setting->save();
         }
 
-        // Ahora establecemos el valor, que activará el mutador con is_encrypted ya establecido
         $setting->value = $value;
-        
+
         return $setting->save();
     }
 }

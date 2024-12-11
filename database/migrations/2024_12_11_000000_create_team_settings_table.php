@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('type')->default('string'); // string, boolean, json, integer, etc
             $table->string('group')->default('general'); // stripe, aws, email, etc
             $table->boolean('is_encrypted')->default(false);
-            $table->text('description')->nullable();
             $table->timestamps();
 
             $table->unique(['team_id', 'key']);
