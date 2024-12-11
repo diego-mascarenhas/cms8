@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('contacts', function (Blueprint $table) {
             $table->id();
+            $table->string('code')->nullable();
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
@@ -28,6 +29,8 @@ return new class extends Migration
             $table->unsignedTinyInteger('status_id')->default(1);
             $table->timestamps();
             $table->softDeletes();
+
+            $table->index(['code']);
 
             $table->foreign('source_id')->references('id')->on('sources')->onDelete('restrict');
             $table->foreign('country')->references('id')->on('countries')->onDelete('restrict');
