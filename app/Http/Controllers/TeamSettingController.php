@@ -36,7 +36,6 @@ class TeamSettingController extends Controller
                     ]
                 ]
             ],
-            // Puedes agregar más grupos aquí
         ];
 
         return view('team-settings.edit', compact('team', 'settings'));

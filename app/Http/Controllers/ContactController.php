@@ -20,6 +20,7 @@ use Carbon\Carbon;
 use Stripe\Stripe;
 use Stripe\Customer;
 use Stripe\PaymentMethod;
+use Stripe\Invoice;
 
 class ContactController extends Controller
 {
@@ -118,7 +119,14 @@ class ContactController extends Controller
 					'expand' => ['subscriptions']
 				]);
 
-				// Retrieve payment methods
+				// Get invoices
+				$invoices = Invoice::all([
+					'customer' => $customer->id,
+					'limit' => 10, // Last 10 invoices
+					'status' => 'paid' // Only paid invoices
+				]);
+
+				// Get payment methods
 				$paymentMethods = PaymentMethod::all([
 					'customer' => $customer->id,
 					'type' => 'card'
@@ -131,10 +139,11 @@ class ContactController extends Controller
 						'created' => Carbon::createFromTimestamp($customer->created)->format('d/m/Y'),
 					],
 					'subscription' => null,
-					'payment_method' => null
+					'payment_method' => null,
+					'invoices' => []
 				];
 
-				// Get active subscription
+				// Process active subscription
 				if ($customer->subscriptions && !empty($customer->subscriptions->data)) {
 					$subscription = $customer->subscriptions->data[0];
 					$stripeData['subscription'] = [
@@ -147,7 +156,7 @@ class ContactController extends Controller
 					];
 				}
 
-				// Get payment method
+				// Process payment method
 				if (!empty($paymentMethods->data)) {
 					$card = $paymentMethods->data[0]->card;
 					$stripeData['payment_method'] = [
@@ -155,6 +164,58 @@ class ContactController extends Controller
 						'last4' => $card->last4,
 						'exp_month' => $card->exp_month,
 						'exp_year' => $card->exp_year,
+					];
+				}
+
+				// Process invoices
+				foreach ($invoices->data as $invoice) {
+					$stripeData['invoices'][] = [
+						'number' => $invoice->number,
+						'amount' => $invoice->amount_paid / 100, // Convert from cents
+						'currency' => strtoupper($invoice->currency),
+						'status' => $invoice->status,
+						'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
+						'pdf' => $invoice->invoice_pdf
+					];
+				}
+
+				// Calculate metrics
+				$totalPaid = 0;
+				$totalUnpaid = 0;
+				$firstInvoiceDate = null;
+				
+				if (!empty($invoices->data)) {
+					foreach ($invoices->data as $invoice) {
+						if ($invoice->status === 'paid') {
+							$totalPaid += $invoice->amount_paid / 100;
+						} else {
+							$totalUnpaid += $invoice->amount_due / 100;
+						}
+						
+						// Track first invoice date for customer age calculation
+						if (!$firstInvoiceDate || $invoice->created < $firstInvoiceDate) {
+							$firstInvoiceDate = $invoice->created;
+						}
+					}
+
+					// Calculate customer lifetime in months
+					$lifetimeMonths = $firstInvoiceDate ? 
+						Carbon::createFromTimestamp($firstInvoiceDate)->diffInMonths(Carbon::now()) + 1 : 0;
+
+					// Calculate LTV (total revenue / number of months)
+					$ltv = $lifetimeMonths > 0 ? $totalPaid / $lifetimeMonths : $totalPaid;
+
+					// Calculate CAC (assuming a base acquisition cost plus monthly marketing spend)
+					$baseAcquisitionCost = 500; // Example fixed cost per customer
+					$monthlyMarketingSpend = 100; // Example monthly marketing spend per customer
+					$cac = $baseAcquisitionCost + ($monthlyMarketingSpend * $lifetimeMonths);
+					
+					$stripeData['metrics'] = [
+						'total_paid' => number_format($totalPaid, 2),
+						'unpaid' => number_format($totalUnpaid, 2),
+						'ltv' => number_format($ltv, 2),
+						'cac' => number_format($cac, 2),
+						'lifetime_months' => $lifetimeMonths
 					];
 				}
 

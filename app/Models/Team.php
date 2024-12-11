@@ -57,8 +57,7 @@ class Team extends JetstreamTeam
         $defaultOptions = [
             'type' => 'string',
             'group' => 'general',
-            'is_encrypted' => false,
-            'description' => null
+            'is_encrypted' => false
         ];
 
         $options = array_merge($defaultOptions, $options);
@@ -68,8 +67,7 @@ class Team extends JetstreamTeam
         $setting->fill([
             'type' => $options['type'],
             'group' => $options['group'],
-            'is_encrypted' => $options['is_encrypted'],
-            'description' => $options['description']
+            'is_encrypted' => $options['is_encrypted']
         ]);
 
         if (!$setting->exists)

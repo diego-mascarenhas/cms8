@@ -2,21 +2,21 @@
 <div class="card mb-4">
     <h5 class="card-header">Plan Actual</h5>
     <div class="card-body">
-        @if($stripeData && $stripeData['subscription'])
+        @if ($stripeData && $stripeData['subscription'])
             <div class="row">
                 <div class="col-xl-6 order-1 order-xl-0">
-                    <div class="mb-2">
-                        <h6 class="mb-1">Tu Plan Actual es {{ ucfirst($stripeData['subscription']['status']) }}</h6>
-                        <p>Un comienzo simple para todos</p>
-                    </div>
                     <div class="mb-2 pt-1">
                         <h6 class="mb-1">Activo hasta el {{ $stripeData['subscription']['current_period_end'] }}</h6>
                         <p>Te enviaremos una notificación al vencimiento de la suscripción</p>
                     </div>
                     <div class="mb-3 pt-1">
                         <h6 class="mb-1">
-                            <span class="me-2">{{ $stripeData['subscription']['amount'] }} {{ $stripeData['subscription']['currency'] }} por mes</span>
-                            <span class="badge bg-label-primary">Popular</span>
+                            <span class="me-2">{{ number_format($stripeData['subscription']['amount'], 2) }}
+                                {{ $stripeData['subscription']['currency'] }} por mes</span>
+                            <span
+                                class="badge bg-label-{{ $stripeData['subscription']['status'] === 'active' ? 'success' : 'warning' }}">
+                                {{ ucfirst($stripeData['subscription']['status']) }}
+                            </span>
                         </h6>
                         <p>Plan estándar para pequeñas y medianas empresas</p>
                     </div>
@@ -38,12 +38,12 @@
                         <p>Quedan 6 días hasta que tu plan requiera actualización</p>
                     </div>
                 </div>
-                <div class="col-12 order-2 order-xl-0 d-flex flex-wrap gap-2">
+                <!-- <div class="col-12 order-2 order-xl-0 d-flex flex-wrap gap-2">
                     <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#upgradePlanModal">
                         Actualizar Plan
                     </button>
                     <button class="btn btn-label-danger cancel-subscription">Cancelar Suscripción</button>
-                </div>
+                </div> -->
             </div>
         @else
             <div class="alert alert-warning" role="alert">
@@ -59,19 +59,19 @@
 <div class="card card-action mb-4">
     <div class="card-header align-items-center">
         <h5 class="card-action-title mb-0">Métodos de Pago</h5>
-        <div class="card-action-element">
+        <!-- <div class="card-action-element">
             <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#addNewCCModal">
                 <i class="ti ti-plus ti-xs me-1"></i>Agregar Tarjeta
             </button>
-        </div>
+        </div> -->
     </div>
     <div class="card-body">
         <div class="added-cards">
-            @if($stripeData && $stripeData['payment_method'])
+            @if ($stripeData && $stripeData['payment_method'])
                 <div class="cardMaster border p-3 rounded mb-3">
                     <div class="d-flex justify-content-between flex-sm-row flex-column">
                         <div class="card-information">
-                            <img class="mb-3 img-fluid" 
+                            <img class="mb-3 img-fluid"
                                 src="{{ asset('assets/img/icons/payments/' . strtolower($stripeData['payment_method']['brand']) . '.png') }}"
                                 alt="{{ $stripeData['payment_method']['brand'] }}">
                             <h6 class="mb-2 pt-1">{{ $stripeData['customer']['name'] }}</h6>
@@ -81,15 +81,16 @@
                             </span>
                         </div>
                         <div class="d-flex flex-column text-start text-lg-end">
+                            <!--
                             <div class="d-flex order-sm-0 order-1 mt-3">
                                 <button class="btn btn-label-primary me-3" data-bs-toggle="modal"
                                     data-bs-target="#editCCModal">Editar</button>
                                 <button class="btn btn-label-secondary">Eliminar</button>
                             </div>
+                             -->
                             <small class="mt-sm-auto mt-2 order-sm-1 order-0">
-                                La tarjeta vence el {{ sprintf('%02d/%d', 
-                                    $stripeData['payment_method']['exp_month'],
-                                    $stripeData['payment_method']['exp_year']) }}
+                                La tarjeta vence el
+                                {{ sprintf('%02d/%d', $stripeData['payment_method']['exp_month'], $stripeData['payment_method']['exp_year']) }}
                             </small>
                         </div>
                     </div>

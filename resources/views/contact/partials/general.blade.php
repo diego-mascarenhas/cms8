@@ -1,4 +1,3 @@
-
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="row g-4">
@@ -14,9 +13,16 @@
                             </div>
                             <span>CAC</span>
                         </div>
-                        <h6 class="card-title mb-1">Semana pasada</h6>
-                        <h4 class="card-title mb-1">0€</h4>
-                        <small class="text-danger fw-semibold"><i class="ti ti-arrow-down-right"></i> 0%</small>
+                        <h6 class="card-title mb-1">Coste de adquisición</h6>
+                        <h4 class="card-title mb-1">{{ $stripeData['metrics']['cac'] ?? '0.00' }}€</h4>
+                        @if(isset($stripeData['metrics']['cac_trend']))
+                            <small class="{{ $stripeData['metrics']['cac_trend'] > 0 ? 'text-danger' : 'text-success' }} fw-semibold">
+                                <i class="ti ti-arrow-{{ $stripeData['metrics']['cac_trend'] > 0 ? 'up' : 'down' }}-right"></i> 
+                                {{ abs($stripeData['metrics']['cac_trend']) }}%
+                            </small>
+                        @else
+                            <small class="text-muted fw-semibold">Sin datos previos</small>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -33,9 +39,16 @@
                             </div>
                             <span>LTV</span>
                         </div>
-                        <h6 class="card-title mb-1">Acumulado</h6>
-                        <h4 class="card-title mb-1">0€</h4>
-                        <small class="text-success fw-semibold"><i class="ti ti-arrow-up-right"></i> 0%</small>
+                        <h6 class="card-title mb-1">Valor del tiempo de vida</h6>
+                        <h4 class="card-title mb-1">{{ $stripeData['metrics']['ltv'] ?? '0.00' }}€</h4>
+                        @if(isset($stripeData['metrics']['ltv_trend']))
+                            <small class="{{ $stripeData['metrics']['ltv_trend'] > 0 ? 'text-success' : 'text-danger' }} fw-semibold">
+                                <i class="ti ti-arrow-{{ $stripeData['metrics']['ltv_trend'] > 0 ? 'up' : 'down' }}-right"></i> 
+                                {{ abs($stripeData['metrics']['ltv_trend']) }}%
+                            </small>
+                        @else
+                            <small class="text-muted fw-semibold">Sin datos previos</small>
+                        @endif
                     </div>
                 </div>
             </div>
