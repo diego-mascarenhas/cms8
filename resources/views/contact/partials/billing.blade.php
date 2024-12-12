@@ -1,12 +1,13 @@
 <!-- Current Plan -->
 <div class="card mb-4">
-    <h5 class="card-header">Plan Actual</h5>
+    <h5 class="card-header">{{ $stripeData['subscription']['product_name'] ?? 'Plan' }}</h5>
     <div class="card-body">
         @if ($stripeData && $stripeData['subscription'])
             <div class="row">
                 <div class="col-xl-6 order-1 order-xl-0">
                     <div class="mb-2 pt-1">
                         <h6 class="mb-1">Activo hasta el {{ \Carbon\Carbon::createFromTimestamp($stripeData['subscription']['current_period_end'])->format('d/m/Y') }}</h6>
+                        <p>Enviaremos una notificación al vencimiento de la suscripción</p>
                     </div>
                     <div class="mb-3 pt-1">
                         <h6 class="mb-1">
@@ -134,14 +135,17 @@
     <div class="card-body">
         @if ($stripeData && isset($stripeData['customer']))
             <div class="row">
-                <div class="col-xl-7 col-12">
+                <div class="col-xl-6 col-12">
                     <dl class="row mb-0">
                         <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre de la Empresa:</dt>
                         <dd class="col-sm-7">{{ $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
 
                         <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Email de Facturación:</dt>
                         <dd class="col-sm-7">{{ $stripeData['customer']['email'] ?? 'No especificado' }}</dd>
-
+                    </dl>
+                </div>
+                <div class="col-xl-6 col-12">
+                    <dl class="row mb-0">
                         <dt class="col-sm-5 mb-2 fw-medium text-nowrap">ID de Impuestos:</dt>
                         <dd class="col-sm-7">
                             @if(isset($stripeData['customer']['tax_ids']) && !empty($stripeData['customer']['tax_ids']))

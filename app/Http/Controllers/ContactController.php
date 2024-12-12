@@ -21,6 +21,7 @@ use Stripe\Stripe;
 use Stripe\Customer;
 use Stripe\PaymentMethod;
 use Stripe\Invoice;
+use Stripe\Product;
 
 class ContactController extends Controller
 {
@@ -197,6 +198,10 @@ class ContactController extends Controller
 				if ($customer->subscriptions && !empty($customer->subscriptions->data))
 				{
 					$subscription = $customer->subscriptions->data[0];
+					
+					// Get product details
+					$product = Product::retrieve($subscription->items->data[0]->plan->product);
+					
 					$stripeData['subscription'] = [
 						'status' => $subscription->status,
 						'current_period_start' => $subscription->current_period_start,
@@ -206,6 +211,7 @@ class ContactController extends Controller
 						'interval' => $subscription->items->data[0]->plan->interval,
 						'interval_count' => $subscription->items->data[0]->plan->interval_count,
 						'product_id' => $subscription->items->data[0]->plan->product,
+						'product_name' => $product->name, // Agregamos el nombre del producto
 						'collection_method' => $subscription->collection_method,
 						'days_until_due' => $subscription->days_until_due
 					];
