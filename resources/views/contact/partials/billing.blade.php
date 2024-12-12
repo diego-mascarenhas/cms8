@@ -106,50 +106,45 @@
 <!--/ Payment Methods -->
 
 <!-- Billing Address -->
-<div class="card card-action mb-4 opacity-50">
+<div class="card card-action mb-4">
     <div class="card-header align-items-center">
         <h5 class="card-action-title mb-0">Dirección de Facturación</h5>
-        <div class="card-action-element">
-            <button class="btn btn-primary btn-sm edit-address" type="button" data-bs-toggle="modal"
-                data-bs-target="#addNewAddress"><i class="ti ti-edit ti-xs me-1"></i>Editar dirección</button>
-        </div>
     </div>
     <div class="card-body">
-        <div class="row">
-            <div class="col-xl-7 col-12">
-                <dl class="row mb-0">
-                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre de la Empresa:</dt>
-                    <dd class="col-sm-7">{{ config('variables.templateName') }}</dd>
+        @if ($stripeData && isset($stripeData['customer']))
+            <div class="row">
+                <div class="col-xl-7 col-12">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre de la Empresa:</dt>
+                        <dd class="col-sm-7">{{ $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
 
-                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Email de Facturación:</dt>
-                    <dd class="col-sm-7">usuario@ejemplo.com</dd>
+                        <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Email de Facturación:</dt>
+                        <dd class="col-sm-7">{{ $stripeData['customer']['email'] ?? 'No especificado' }}</dd>
 
-                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">ID de Impuestos:</dt>
-                    <dd class="col-sm-7">IMP-357378</dd>
+                        <dt class="col-sm-5 mb-2 fw-medium text-nowrap">ID de Impuestos:</dt>
+                        <dd class="col-sm-7">
+                            @if(isset($stripeData['customer']['tax_ids']) && !empty($stripeData['customer']['tax_ids']))
+                                @foreach($stripeData['customer']['tax_ids'] as $taxId)
+                                    <div class="d-flex align-items-center">
+                                        {{ strtoupper($taxId['type']) }}: {{ $taxId['value'] }}
+                                        <small class="ms-2 text-muted">({{ $taxId['country'] }})</small>
+                                    </div>
+                                @endforeach
+                            @else
+                                No especificado
+                            @endif
+                        </dd>
 
-                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Número de IVA:</dt>
-                    <dd class="col-sm-7">SDF754K77</dd>
-
-                    <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Dirección de Facturación:</dt>
-                    <dd class="col-sm-7">100 Planta de Agua <br>Avenida, Edificio 1303<br> Isla Wake</dd>
-                </dl>
+                        <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Cliente desde:</dt>
+                        <dd class="col-sm-7">{{ $stripeData['customer']['created'] }}</dd>
+                    </dl>
+                </div>
             </div>
-            <div class="col-xl-5 col-12">
-                <dl class="row mb-0">
-                    <dt class="col-sm-4 mb-2 fw-medium text-nowrap">Contacto:</dt>
-                    <dd class="col-sm-8">+1 (605) 977-32-65</dd>
-
-                    <dt class="col-sm-4 mb-2 fw-medium text-nowrap">País:</dt>
-                    <dd class="col-sm-8">Isla Wake</dd>
-
-                    <dt class="col-sm-4 mb-2 fw-medium text-nowrap">Estado:</dt>
-                    <dd class="col-sm-8">Capholim</dd>
-
-                    <dt class="col-sm-4 mb-2 fw-medium text-nowrap">Código Postal:</dt>
-                    <dd class="col-sm-8">403114</dd>
-                </dl>
+        @else
+            <div class="alert alert-info mb-0">
+                <p class="mb-0">No hay información de facturación disponible.</p>
             </div>
-        </div>
+        @endif
     </div>
 </div>
 <!--/ Billing Address -->

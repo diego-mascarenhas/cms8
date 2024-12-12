@@ -117,8 +117,9 @@ class ContactController extends Controller
 			'invoices' => [],
 			'metrics' => null
 		];
-		
-		if ($team->getSetting('stripe_secret')) {
+
+		if ($team->getSetting('stripe_secret'))
+		{
 			$stripeData = [
 				'public_key' => $team->getSetting('stripe_public'),
 				'secret_key' => $team->getSetting('stripe_secret'),
@@ -129,26 +130,35 @@ class ContactController extends Controller
 				'invoices' => [],
 				'metrics' => null
 			];
-		
-			if ($data->enterprise && $data->enterprise->code) {
-				try {
+
+			if ($data->enterprise && $data->enterprise->code)
+			{
+				try
+				{
 					Stripe::setApiKey($team->getSetting('stripe_secret'));
 					// ... rest of the Stripe code ...
-				} catch (\Exception $e) {
+				}
+				catch (\Exception $e)
+				{
 					\Log::error('Error fetching Stripe data: ' . $e->getMessage());
 				}
 			}
 		}
 
-		if ($data->enterprise && $data->enterprise->code && $team->getSetting('stripe_secret')) {
-			try {
+		if ($data->enterprise && $data->enterprise->code && $team->getSetting('stripe_secret'))
+		{
+			try
+			{
 				// Set secret key for backend operations
 				Stripe::setApiKey($team->getSetting('stripe_secret'));
-				
+
 				// Retrieve customer
 				$customer = Customer::retrieve([
 					'id' => $data->enterprise->code,
-					'expand' => ['subscriptions']
+					'expand' => [
+						'subscriptions',
+						'tax_ids'
+					]
 				]);
 
 				// Get invoices
@@ -169,6 +179,13 @@ class ContactController extends Controller
 						'name' => $customer->name,
 						'email' => $customer->email,
 						'created' => Carbon::createFromTimestamp($customer->created)->format('d/m/Y'),
+						'tax_ids' => array_map(function($taxId) {
+							return [
+								'type' => $taxId->type,
+								'value' => $taxId->value,
+								'country' => $taxId->country
+							];
+						}, $customer->tax_ids->data)
 					],
 					'subscription' => null,
 					'payment_method' => null,
@@ -176,7 +193,8 @@ class ContactController extends Controller
 				];
 
 				// Process active subscription
-				if ($customer->subscriptions && !empty($customer->subscriptions->data)) {
+				if ($customer->subscriptions && !empty($customer->subscriptions->data))
+				{
 					$subscription = $customer->subscriptions->data[0];
 					$stripeData['subscription'] = [
 						'status' => $subscription->status,
@@ -189,7 +207,8 @@ class ContactController extends Controller
 				}
 
 				// Process payment method
-				if (!empty($paymentMethods->data)) {
+				if (!empty($paymentMethods->data))
+				{
 					$card = $paymentMethods->data[0]->card;
 					$stripeData['payment_method'] = [
 						'brand' => $card->brand,
@@ -200,7 +219,8 @@ class ContactController extends Controller
 				}
 
 				// Process invoices
-				foreach ($invoices->data as $invoice) {
+				foreach ($invoices->data as $invoice)
+				{
 					$stripeData['invoices'][] = [
 						'number' => $invoice->number,
 						'amount' => $invoice->amount_paid / 100, // Convert from cents
@@ -215,23 +235,29 @@ class ContactController extends Controller
 				$totalPaid = 0;
 				$totalUnpaid = 0;
 				$firstInvoiceDate = null;
-				
-				if (!empty($invoices->data)) {
-					foreach ($invoices->data as $invoice) {
-						if ($invoice->status === 'paid') {
+
+				if (!empty($invoices->data))
+				{
+					foreach ($invoices->data as $invoice)
+					{
+						if ($invoice->status === 'paid')
+						{
 							$totalPaid += $invoice->amount_paid / 100;
-						} else {
+						}
+						else
+						{
 							$totalUnpaid += $invoice->amount_due / 100;
 						}
-						
+
 						// Track first invoice date for customer age calculation
-						if (!$firstInvoiceDate || $invoice->created < $firstInvoiceDate) {
+						if (!$firstInvoiceDate || $invoice->created < $firstInvoiceDate)
+						{
 							$firstInvoiceDate = $invoice->created;
 						}
 					}
 
 					// Calculate customer lifetime in months
-					$lifetimeMonths = $firstInvoiceDate ? 
+					$lifetimeMonths = $firstInvoiceDate ?
 						Carbon::createFromTimestamp($firstInvoiceDate)->diffInMonths(Carbon::now()) + 1 : 0;
 
 					// Calculate LTV (total revenue / number of months)
@@ -241,7 +267,7 @@ class ContactController extends Controller
 					$baseAcquisitionCost = 500; // Example fixed cost per customer
 					$monthlyMarketingSpend = 100; // Example monthly marketing spend per customer
 					$cac = $baseAcquisitionCost + ($monthlyMarketingSpend * $lifetimeMonths);
-					
+
 					$stripeData['metrics'] = [
 						'total_paid' => number_format($totalPaid, 2),
 						'unpaid' => number_format($totalUnpaid, 2),
@@ -251,7 +277,9 @@ class ContactController extends Controller
 					];
 				}
 
-			} catch (\Exception $e) {
+			}
+			catch (\Exception $e)
+			{
 				\Log::error('Error fetching Stripe data: ' . $e->getMessage());
 			}
 		}
@@ -744,25 +772,31 @@ class ContactController extends Controller
 
 		$contactsCreated = 0;
 
-		foreach ($rows as $row) {
+		foreach ($rows as $row)
+		{
 			$mappedRow = [];
 			$sources = [];
 			$nameParts = [];
 
-			foreach ($mapping as $columnIndex => $field) {
-				if (!empty($field)) {
+			foreach ($mapping as $columnIndex => $field)
+			{
+				if (!empty($field))
+				{
 					$value = $row[$columnIndex] ?? null;
 
-					if ($field === 'name') {
+					if ($field === 'name')
+					{
 						$nameParts[] = trim($value);
 					}
-					else if ($field === 'email' && !empty($value)) {
+					else if ($field === 'email' && !empty($value))
+					{
 						$sources[] = [
 							'source_id' => 1,
 							'value' => $value
 						];
 					}
-					else if ($field === 'phone' && !empty($value)) {
+					else if ($field === 'phone' && !empty($value))
+					{
 						$sources[] = [
 							'source_id' => 2,
 							'value' => $value
@@ -771,14 +805,17 @@ class ContactController extends Controller
 				}
 			}
 
-			if (!empty($nameParts)) {
+			if (!empty($nameParts))
+			{
 				$mappedRow['name'] = implode(' ', array_filter($nameParts));
 			}
 
 			$additionalData = ['import' => []];
-			foreach ($headers as $index => $header) {
+			foreach ($headers as $index => $header)
+			{
 				$value = $row[$index] ?? null;
-				if (!empty($value)) {
+				if (!empty($value))
+				{
 					$additionalData['import'][$header] = $value;
 				}
 			}
