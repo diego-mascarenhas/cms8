@@ -14,28 +14,43 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Total team minutes
-        $totalTeamSeconds = UserContactAction::sum('duration_seconds');
+        // We get the first team of the user (or the active team if you have that logic)
+        $activeTeam = auth()->user()->teams->first();
+
+        if (!$activeTeam)
+        {
+            return 0;
+        }
+
+        $totalTeamSeconds = UserContactAction::whereHas('contact', function ($query) use ($activeTeam)
+        {
+            $query->where('team_id', $activeTeam->id);
+        })->sum('duration_seconds');
+
         $totalTeamMinutes = round($totalTeamSeconds / 60);
 
-        $dangerousContacts = Contact::whereHas('sentimentHistories', function ($query) {
+        $dangerousContacts = Contact::whereHas('sentimentHistories', function ($query)
+        {
             $query->whereIn('sentiment_id', [1, 2])
-                  ->whereIn('id', function ($subQuery) {
-                      $subQuery->selectRaw('MAX(id)')
-                               ->from('contact_sentiment_histories')
-                               ->groupBy('contact_id');
-                  });
+                ->whereIn('id', function ($subQuery)
+                {
+                    $subQuery->selectRaw('MAX(id)')
+                        ->from('contact_sentiment_histories')
+                        ->groupBy('contact_id');
+                });
         })->where('status_id', 5)
-        ->with(['currentSentiment' => function ($query) {
-            $query->whereIn('sentiment_id', [1, 2]);
-        }])->get();
+            ->with(['currentSentiment' => function ($query)
+            {
+                $query->whereIn('sentiment_id', [1, 2]);
+            }])->get();
 
         // Clients to contact today
         $today = Carbon::today();
         $clientsToContactToday = List60::whereDate('date_next', $today)->count();
 
         // Get latest sentiment for each contact
-        $contacts = Contact::with(['currentSentiment' => function($query) {
+        $contacts = Contact::with(['currentSentiment' => function ($query)
+        {
             $query->latest();
         }])->get();
 
@@ -54,15 +69,18 @@ class DashboardController extends Controller
         ];
 
         // Ensure all sentiments are represented
-        foreach ($sentiments as $id => $name) {
-            if (!isset($sentimentCounts[$id])) {
+        foreach ($sentiments as $id => $name)
+        {
+            if (!isset($sentimentCounts[$id]))
+            {
                 $sentimentCounts[$id] = 0;
             }
         }
 
         // Prepare data for view
         $sentimentData = [];
-        foreach ($sentiments as $id => $name) {
+        foreach ($sentiments as $id => $name)
+        {
             $sentimentData[] = [
                 'label' => $name,
                 'count' => $sentimentCounts[$id],
@@ -78,9 +96,9 @@ class DashboardController extends Controller
             ->get();
 
         return view('dashboard', compact(
-            'totalTeamMinutes', 
-            'dangerousContacts', 
-            'clientsToContactToday', 
+            'totalTeamMinutes',
+            'dangerousContacts',
+            'clientsToContactToday',
             'sentimentData',
             'recentLeadsCount',
             'todayContacts'
