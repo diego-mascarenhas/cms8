@@ -1,49 +1,48 @@
 <!-- Current Plan -->
 <div class="card mb-4">
-    <h5 class="card-header">{{ $stripeData['subscription']['product_name'] ?? 'Plan' }}</h5>
+    <h5 class="card-header">Servicios</h5>
     <div class="card-body">
-        @if ($stripeData && $stripeData['subscription'])
-            <div class="row">
-                <div class="col-xl-6 order-1 order-xl-0">
-                    <div class="mb-2 pt-1">
-                        <h6 class="mb-1">Activo hasta el {{ \Carbon\Carbon::createFromTimestamp($stripeData['subscription']['current_period_end'])->format('d/m/Y') }}</h6>
-                        <p>Enviaremos una notificación al vencimiento de la suscripción</p>
-                    </div>
-                    <div class="mb-3 pt-1">
-                        <h6 class="mb-1">
-                            <span class="me-2">{{ number_format($stripeData['subscription']['amount'], 2) }}
-                                {{ $stripeData['subscription']['currency'] }}/{{ $stripeData['subscription']['interval'] === 'year' ? 'año' : 'mes' }}</span>
-                            <span
-                                class="badge bg-label-{{ $stripeData['subscription']['status'] === 'active' ? 'success' : 'warning' }}">
-                                {{ ucfirst($stripeData['subscription']['status']) }}
-                            </span>
-                        </h6>
-                        @if($stripeData['subscription']['collection_method'] === 'send_invoice')
-                            <small class="text-muted">
-                                Facturación por adelantado, pago a {{ $stripeData['subscription']['days_until_due'] }} días
-                            </small>
-                        @endif
-                    </div>
-                </div>
-                <div class="col-xl-6 order-0 order-xl-0">
-                    @if($stripeData['subscription']['status'] === 'active' && 
-                        isset($stripeData['subscription']['current_period_start']) && 
-                        isset($stripeData['subscription']['current_period_end']))
-                        @php
-                            $start = \Carbon\Carbon::createFromTimestamp($stripeData['subscription']['current_period_start']);
-                            $end = \Carbon\Carbon::createFromTimestamp($stripeData['subscription']['current_period_end']);
-                            $now = \Carbon\Carbon::now();
-                            $totalDays = $start->diffInDays($end);
-                            $usedDays = $start->diffInDays($now);
-                            $remainingDays = $end->diffInDays($now);
-                            $progressPercentage = ($usedDays / $totalDays) * 100;
-                        @endphp
-                        <div class="plan-statistics">
-                            <div class="d-flex justify-content-between">
-                                <h6 class="mb-1">Días</h6>
-                                <h6 class="mb-1">{{ $usedDays }} de {{ $totalDays }} Días</h6>
+        @if ($stripeData && isset($stripeData['subscriptions']))
+            @if(!empty($stripeData['subscriptions']))
+                @foreach($stripeData['subscriptions'] as $subscription)
+                    <div class="card shadow-none bg-lighter mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h6 class="mb-0">{{ $subscription['product_name'] }}</h6>
+                                    @if(isset($subscription['description']))
+                                        <small class="text-muted d-block mt-1">{{ $subscription['description'] }}</small>
+                                    @endif
+                                    <small class="text-muted d-block mt-1">
+                                        {{ \Carbon\Carbon::createFromTimestamp($subscription['created'])->format('d M, Y') }}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-label-{{ $subscription['status'] === 'active' ? 'success' : ($subscription['status'] === 'past_due' ? 'danger' : 'warning') }}">
+                                        {{ $subscription['status_translated'] }}
+                                    </span>
+                                    <small class="text-muted d-block mt-2">
+                                        {{ number_format($subscription['amount'], 2) }} 
+                                        {{ $subscription['currency'] }}/{{ $subscription['interval'] === 'year' ? 'año' : 'mes' }}
+                                    </small>
+                                </div>
                             </div>
-                            <div class="progress mb-1" style="height: 10px;">
+                            
+                            @php
+                                $start = \Carbon\Carbon::createFromTimestamp($subscription['current_period_start']);
+                                $end = \Carbon\Carbon::createFromTimestamp($subscription['current_period_end']);
+                                $now = \Carbon\Carbon::now();
+                                $totalDays = $start->diffInDays($end);
+                                $usedDays = $start->diffInDays($now);
+                                $remainingDays = $end->diffInDays($now);
+                                $progressPercentage = ($usedDays / $totalDays) * 100;
+                            @endphp
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span>{{ $usedDays }} de {{ $totalDays }} Días</span>
+                                <span>{{ $remainingDays }} días restantes</span>
+                            </div>
+                            <div class="progress mb-1" style="height: 6px;">
                                 <div class="progress-bar" role="progressbar" 
                                     style="width: {{ round($progressPercentage) }}%"
                                     aria-valuenow="{{ $progressPercentage }}" 
@@ -51,25 +50,22 @@
                                     aria-valuemax="100">
                                 </div>
                             </div>
-                            <p>Quedan {{ $remainingDays }} días en tu período actual</p>
+                            
+                            @if($subscription['collection_method'] === 'send_invoice')
+                                <small class="text-muted d-block mt-2">
+                                    Facturación por adelantado, pago a {{ $subscription['days_until_due'] }} días
+                                </small>
+                            @endif
                         </div>
-                    @else
-                        <div class="alert alert-warning" role="alert">
-                            <h5 class="alert-heading mb-2">¡Necesitamos tu atención!</h5>
-                            <span>Tu suscripción no está activa</span>
-                        </div>
-                    @endif
+                    </div>
+                @endforeach
+            @else
+                <div class="alert alert-warning" role="alert">
+                    <span>Este cliente no tiene suscripciones registradas</span>
                 </div>
-                <!-- <div class="col-12 order-2 order-xl-0 d-flex flex-wrap gap-2">
-                    <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#upgradePlanModal">
-                        Actualizar Plan
-                    </button>
-                    <button class="btn btn-label-danger cancel-subscription">Cancelar Suscripción</button>
-                </div> -->
-            </div>
+            @endif
         @else
             <div class="alert alert-warning" role="alert">
-                <h6 class="alert-heading mb-2">No hay información de Stripe disponible</h6>
                 <p class="mb-0">Este contacto no tiene una cuenta de Stripe asociada.</p>
             </div>
         @endif
@@ -135,32 +131,30 @@
     <div class="card-body">
         @if ($stripeData && isset($stripeData['customer']))
             <div class="row">
-                <div class="col-xl-6 col-12">
+                <div class="col-xl-8 col-12">
                     <dl class="row mb-0">
-                        <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Nombre de la Empresa:</dt>
-                        <dd class="col-sm-7">{{ $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
+                        <dt class="col-sm-3 mb-2 fw-medium text-nowrap">Razón Social:</dt>
+                        <dd class="col-sm-9">{{ $stripeData['customer']['name'] ?? 'No especificado' }}</dd>
 
-                        <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Email de Facturación:</dt>
-                        <dd class="col-sm-7">{{ $stripeData['customer']['email'] ?? 'No especificado' }}</dd>
+                        <dt class="col-sm-3 mb-2 fw-medium text-nowrap">Email:</dt>
+                        <dd class="col-sm-9">{{ $stripeData['customer']['email'] ?? 'No especificado' }}</dd>
                     </dl>
                 </div>
-                <div class="col-xl-6 col-12">
+                <div class="col-xl-4 col-12">
                     <dl class="row mb-0">
-                        <dt class="col-sm-5 mb-2 fw-medium text-nowrap">ID de Impuestos:</dt>
-                        <dd class="col-sm-7">
-                            @if(isset($stripeData['customer']['tax_ids']) && !empty($stripeData['customer']['tax_ids']))
-                                @foreach($stripeData['customer']['tax_ids'] as $taxId)
-                                    <div class="d-flex align-items-center">
-                                        {{ strtoupper($taxId['type']) }}: {{ $taxId['value'] }}
-                                        <small class="ms-2 text-muted">({{ $taxId['country'] }})</small>
-                                    </div>
-                                @endforeach
-                            @else
-                                No especificado
-                            @endif
-                        </dd>
+                        @if(isset($stripeData['customer']['tax_ids']) && !empty($stripeData['customer']['tax_ids']))
+                            @foreach($stripeData['customer']['tax_ids'] as $taxId)
+                                <dt class="col-sm-5 mb-2 fw-medium text-nowrap">{{ strtoupper($taxId['type']) }}:</dt>
+                                <dd class="col-sm-7">{{ $taxId['value'] }}
+                                    <small class="ms-2 text-muted">({{ $taxId['country'] }})</small>
+                                </dd>
+                            @endforeach
+                        @else
+                            <dt class="col-sm-5 mb-2 fw-medium text-nowrap">CIF:</dt>
+                            <dd class="col-sm-7">No especificado</dd>
+                        @endif
 
-                        <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Cliente desde:</dt>
+                        <dt class="col-sm-5 mb-2 fw-medium text-nowrap">Fecha de alta:</dt>
                         <dd class="col-sm-7">{{ $stripeData['customer']['created'] }}</dd>
                     </dl>
                 </div>
