@@ -117,6 +117,12 @@
                                     <span>{{ $data->username }}</span>
                                 </li>
                             @endif
+                            @if($data->enterprise)
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Empresa:</span>
+                                <span>{{ $data->enterprise->name }}</span>
+                            </li>
+                            @endif
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Estado:</span>
                                 <span class="badge {{ $data->status->label_class }}">{{ $data->status->name }}</span>
