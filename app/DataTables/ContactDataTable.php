@@ -67,7 +67,7 @@ class ContactDataTable extends DataTable
     {
         return $model->newQuery()->with([
             'list60:id,contact_id',
-            'enterprise:id,name',
+            'enterprise',
             'currentSentiment.sentiment',
             'status',
             'sources',
