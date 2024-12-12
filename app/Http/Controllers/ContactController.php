@@ -157,10 +157,11 @@ class ContactController extends Controller
 					'id' => $data->enterprise->code,
 					'expand' => [
 						'subscriptions',
+						'subscriptions.data.items',
 						'tax_ids'
 					]
 				]);
-
+				
 				// Get invoices
 				$invoices = Invoice::all([
 					'customer' => $customer->id,
@@ -198,11 +199,15 @@ class ContactController extends Controller
 					$subscription = $customer->subscriptions->data[0];
 					$stripeData['subscription'] = [
 						'status' => $subscription->status,
-						'current_period_end' => Carbon::createFromTimestamp($subscription->current_period_end)->format('d/m/Y'),
+						'current_period_start' => $subscription->current_period_start,
+						'current_period_end' => $subscription->current_period_end,
 						'amount' => $subscription->items->data[0]->price->unit_amount / 100,
 						'currency' => strtoupper($subscription->items->data[0]->price->currency),
-						'days_remaining' => Carbon::now()->diffInDays(Carbon::createFromTimestamp($subscription->current_period_end)),
-						'total_days' => 30
+						'interval' => $subscription->items->data[0]->plan->interval,
+						'interval_count' => $subscription->items->data[0]->plan->interval_count,
+						'product_id' => $subscription->items->data[0]->plan->product,
+						'collection_method' => $subscription->collection_method,
+						'days_until_due' => $subscription->days_until_due
 					];
 				}
 

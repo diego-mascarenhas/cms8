@@ -6,37 +6,58 @@
             <div class="row">
                 <div class="col-xl-6 order-1 order-xl-0">
                     <div class="mb-2 pt-1">
-                        <h6 class="mb-1">Activo hasta el {{ $stripeData['subscription']['current_period_end'] }}</h6>
-                        <p>Te enviaremos una notificación al vencimiento de la suscripción</p>
+                        <h6 class="mb-1">Activo hasta el {{ \Carbon\Carbon::createFromTimestamp($stripeData['subscription']['current_period_end'])->format('d/m/Y') }}</h6>
                     </div>
                     <div class="mb-3 pt-1">
                         <h6 class="mb-1">
                             <span class="me-2">{{ number_format($stripeData['subscription']['amount'], 2) }}
-                                {{ $stripeData['subscription']['currency'] }} por mes</span>
+                                {{ $stripeData['subscription']['currency'] }}/{{ $stripeData['subscription']['interval'] === 'year' ? 'año' : 'mes' }}</span>
                             <span
                                 class="badge bg-label-{{ $stripeData['subscription']['status'] === 'active' ? 'success' : 'warning' }}">
                                 {{ ucfirst($stripeData['subscription']['status']) }}
                             </span>
                         </h6>
-                        <p>Plan estándar para pequeñas y medianas empresas</p>
+                        @if($stripeData['subscription']['collection_method'] === 'send_invoice')
+                            <small class="text-muted">
+                                Facturación por adelantado, pago a {{ $stripeData['subscription']['days_until_due'] }} días
+                            </small>
+                        @endif
                     </div>
                 </div>
                 <div class="col-xl-6 order-0 order-xl-0">
-                    <div class="alert alert-warning" role="alert">
-                        <h5 class="alert-heading mb-2">¡Necesitamos tu atención!</h5>
-                        <span>Tu plan requiere actualización</span>
-                    </div>
-                    <div class="plan-statistics">
-                        <div class="d-flex justify-content-between">
-                            <h6 class="mb-1">Días</h6>
-                            <h6 class="mb-1">24 de 30 Días</h6>
+                    @if($stripeData['subscription']['status'] === 'active' && 
+                        isset($stripeData['subscription']['current_period_start']) && 
+                        isset($stripeData['subscription']['current_period_end']))
+                        @php
+                            $start = \Carbon\Carbon::createFromTimestamp($stripeData['subscription']['current_period_start']);
+                            $end = \Carbon\Carbon::createFromTimestamp($stripeData['subscription']['current_period_end']);
+                            $now = \Carbon\Carbon::now();
+                            $totalDays = $start->diffInDays($end);
+                            $usedDays = $start->diffInDays($now);
+                            $remainingDays = $end->diffInDays($now);
+                            $progressPercentage = ($usedDays / $totalDays) * 100;
+                        @endphp
+                        <div class="plan-statistics">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="mb-1">Días</h6>
+                                <h6 class="mb-1">{{ $usedDays }} de {{ $totalDays }} Días</h6>
+                            </div>
+                            <div class="progress mb-1" style="height: 10px;">
+                                <div class="progress-bar" role="progressbar" 
+                                    style="width: {{ round($progressPercentage) }}%"
+                                    aria-valuenow="{{ $progressPercentage }}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                </div>
+                            </div>
+                            <p>Quedan {{ $remainingDays }} días en tu período actual</p>
                         </div>
-                        <div class="progress mb-1" style="height: 10px;">
-                            <div class="progress-bar w-75" role="progressbar" aria-valuenow="75" aria-valuemin="0"
-                                aria-valuemax="100"></div>
+                    @else
+                        <div class="alert alert-warning" role="alert">
+                            <h5 class="alert-heading mb-2">¡Necesitamos tu atención!</h5>
+                            <span>Tu suscripción no está activa</span>
                         </div>
-                        <p>Quedan 6 días hasta que tu plan requiera actualización</p>
-                    </div>
+                    @endif
                 </div>
                 <!-- <div class="col-12 order-2 order-xl-0 d-flex flex-wrap gap-2">
                     <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#upgradePlanModal">
