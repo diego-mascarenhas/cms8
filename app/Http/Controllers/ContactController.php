@@ -110,14 +110,34 @@ class ContactController extends Controller
 
 		$team = auth()->user()->currentTeam;
 
-		$stripeData = null;
+		$stripeData = [
+			'subscription' => null,
+			'customer' => null,
+			'payment_method' => null,
+			'invoices' => [],
+			'metrics' => null
+		];
 		
 		if ($team->getSetting('stripe_secret')) {
 			$stripeData = [
 				'public_key' => $team->getSetting('stripe_public'),
 				'secret_key' => $team->getSetting('stripe_secret'),
 				'webhook_secret' => $team->getSetting('stripe_webhook'),
+				'subscription' => null,
+				'customer' => null,
+				'payment_method' => null,
+				'invoices' => [],
+				'metrics' => null
 			];
+		
+			if ($data->enterprise && $data->enterprise->code) {
+				try {
+					Stripe::setApiKey($team->getSetting('stripe_secret'));
+					// ... rest of the Stripe code ...
+				} catch (\Exception $e) {
+					\Log::error('Error fetching Stripe data: ' . $e->getMessage());
+				}
+			}
 		}
 
 		if ($data->enterprise && $data->enterprise->code && $team->getSetting('stripe_secret')) {
