@@ -49,11 +49,13 @@ class UpdateContactRequest extends FormRequest
             'profile' => $validated['profile'] ?? null,
         ];
 
-        $contact = $this->route('id') 
+        $contact = $this->route('id')
             ? Contact::findOrFail($this->route('id'))
             : new Contact();
 
         $enterpriseData = [];
+        $sourcesData = [];
+
         if (isset($validated['enterprise']))
         {
             $enterpriseData = [
@@ -68,44 +70,49 @@ class UpdateContactRequest extends FormRequest
             ];
         }
 
-        $enterprise = Enterprise::withTrashed()->firstWhere('responsible_id', $contact->id);
-
-        if ($enterprise)
+        if ($contact->exists)
         {
-            if ($enterprise->trashed())
+            $enterprise = Enterprise::withTrashed()
+                ->where('responsible_id', $contact->id)
+                ->where('team_id', $contact->team_id)
+                ->first();
+
+            if ($enterprise)
             {
-                $enterprise->restore();
-            }
-            $enterprise->update($enterpriseData);
-        }
-        else if ($validated['status_id'] == 5)
-        {
-            $enterpriseData['team_id'] = $contact->team_id;
-            $enterprise = Enterprise::create($enterpriseData);
-        }
-
-        $contactData['enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
-
-        $sourcesData = [];
-        if (isset($validated['source_id']) && isset($validated['source_value']))
-        {
-            foreach ($validated['source_id'] as $key => $sourceId)
-            {
-                if (isset($validated['source_value'][$key]))
+                if ($enterprise->trashed())
                 {
-                    $sourcesData[] = [
-                        'source_id' => $sourceId,
-                        'value' => $validated['source_value'][$key]
-                    ];
+                    $enterprise->restore();
+                }
+                $enterprise->update($enterpriseData);
+            }
+            else if ($validated['status_id'] == 5)
+            {
+                $enterpriseData['team_id'] = $contact->team_id;
+                $enterprise = Enterprise::create($enterpriseData);
+            }
+
+            $contactData['enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
+
+            if (isset($validated['source_id']) && isset($validated['source_value']))
+            {
+                foreach ($validated['source_id'] as $key => $sourceId)
+                {
+                    if (isset($validated['source_value'][$key]))
+                    {
+                        $sourcesData[] = [
+                            'source_id' => $sourceId,
+                            'value' => $validated['source_value'][$key]
+                        ];
+                    }
                 }
             }
-        }
 
-        $contact->sources()->detach();
+            $contact->sources()->detach();
 
-        foreach ($sourcesData as $source)
-        {
-            $contact->sources()->attach($source['source_id'], ['value' => $source['value']]);
+            foreach ($sourcesData as $source)
+            {
+                $contact->sources()->attach($source['source_id'], ['value' => $source['value']]);
+            }
         }
 
         return [
