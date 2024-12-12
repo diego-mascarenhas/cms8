@@ -194,27 +194,44 @@ class ContactController extends Controller
 					'invoices' => []
 				];
 
-				// Process active subscription
+				// Process subscriptions
 				if ($customer->subscriptions && !empty($customer->subscriptions->data))
 				{
-					$subscription = $customer->subscriptions->data[0];
+					$stripeData['subscriptions'] = [];
 					
-					// Get product details
-					$product = Product::retrieve($subscription->items->data[0]->plan->product);
-					
-					$stripeData['subscription'] = [
-						'status' => $subscription->status,
-						'current_period_start' => $subscription->current_period_start,
-						'current_period_end' => $subscription->current_period_end,
-						'amount' => $subscription->items->data[0]->price->unit_amount / 100,
-						'currency' => strtoupper($subscription->items->data[0]->price->currency),
-						'interval' => $subscription->items->data[0]->plan->interval,
-						'interval_count' => $subscription->items->data[0]->plan->interval_count,
-						'product_id' => $subscription->items->data[0]->plan->product,
-						'product_name' => $product->name, // Agregamos el nombre del producto
-						'collection_method' => $subscription->collection_method,
-						'days_until_due' => $subscription->days_until_due
-					];
+					foreach ($customer->subscriptions->data as $subscription) 
+					{
+						// Get product details for each subscription
+						$product = Product::retrieve($subscription->items->data[0]->plan->product);
+						
+						$statusTranslations = [
+							'active' => 'Activo',
+							'past_due' => 'Pago Vencido',
+							'canceled' => 'Cancelado',
+							'incomplete' => 'Incompleto',
+							'incomplete_expired' => 'Expirado',
+							'trialing' => 'En Prueba',
+							'unpaid' => 'No Pagado'
+						];
+
+						$stripeData['subscriptions'][] = [
+							'id' => $subscription->id,
+							'status' => $subscription->status,
+							'status_translated' => $statusTranslations[$subscription->status] ?? ucfirst($subscription->status),
+							'current_period_start' => $subscription->current_period_start,
+							'current_period_end' => $subscription->current_period_end,
+							'amount' => $subscription->items->data[0]->price->unit_amount / 100,
+							'currency' => strtoupper($subscription->items->data[0]->price->currency),
+							'interval' => $subscription->items->data[0]->plan->interval,
+							'interval_count' => $subscription->items->data[0]->plan->interval_count,
+							'product_id' => $subscription->items->data[0]->plan->product,
+							'product_name' => $product->name,
+							'description' => $subscription->description ?? null,
+							'created' => $subscription->created,
+							'collection_method' => $subscription->collection_method,
+							'days_until_due' => $subscription->days_until_due
+						];
+					}
 				}
 
 				// Process payment method
@@ -275,8 +292,8 @@ class ContactController extends Controller
 					$ltv = $lifetimeMonths > 0 ? $totalPaid / $lifetimeMonths : $totalPaid;
 
 					// Calculate CAC (assuming a base acquisition cost plus monthly marketing spend)
-					$baseAcquisitionCost = 500; // Example fixed cost per customer
-					$monthlyMarketingSpend = 100; // Example monthly marketing spend per customer
+					$baseAcquisitionCost = 50; // Coste de adquisición por cliente (50€)
+					$monthlyMarketingSpend = 10; // Gasto mensual en marketing por cliente (10€)
 					$cac = $baseAcquisitionCost + ($monthlyMarketingSpend * $lifetimeMonths);
 
 					$stripeData['metrics'] = [

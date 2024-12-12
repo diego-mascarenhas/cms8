@@ -1,9 +1,11 @@
 <div class="card mb-4">
     <h5 class="card-header d-flex justify-content-between align-items-center">
         Saldo
-        <button type="button" class="btn btn-primary btn-sm">
+        <a href="https://dashboard.stripe.com/invoices/create?customer={{ $data->enterprise->code }}" 
+           target="_blank" 
+           class="btn btn-primary btn-sm">
             + Crear factura
-        </button>
+        </a>
     </h5>
     <div class="card-body">
         <!-- Balance Stats -->
@@ -43,7 +45,7 @@
                     </div>
                     <div>
                         <h4 class="mb-0">{{ $stripeData['metrics']['unpaid'] ?? '0.00' }}€</h4>
-                        <small class="text-muted">Impagado</small>
+                        <small class="text-muted">Impago</small>
                     </div>
                 </div>
             </div>
