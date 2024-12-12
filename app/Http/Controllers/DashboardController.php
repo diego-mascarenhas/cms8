@@ -4,40 +4,62 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
-use App\Models\ContactSentimentHistory;
 use App\Models\UserContactAction;
-use App\Models\Client;
 use App\Models\List60;
+
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        // Total team minutes
-        $totalTeamSeconds = UserContactAction::sum('duration_seconds');
+        // Get active team
+        $activeTeam = auth()->user()->currentTeam ?? auth()->user()->teams->first();
+
+        if (!$activeTeam)
+        {
+            return redirect()->back()->with('error', 'No team assigned');
+        }
+
+        // Calculate total team minutes
+        $totalTeamSeconds = UserContactAction::whereHas('contact', function ($query) use ($activeTeam)
+        {
+            $query->where('team_id', $activeTeam->id);
+        })->whereNotNull('duration_seconds')
+            ->sum('duration_seconds');
+
         $totalTeamMinutes = round($totalTeamSeconds / 60);
 
-        $dangerousContacts = Contact::whereHas('sentimentHistories', function ($query) {
-            $query->whereIn('sentiment_id', [1, 2])
-                  ->whereIn('id', function ($subQuery) {
-                      $subQuery->selectRaw('MAX(id)')
-                               ->from('contact_sentiment_histories')
-                               ->groupBy('contact_id');
-                  });
-        })->where('status_id', 5)
-        ->with(['currentSentiment' => function ($query) {
-            $query->whereIn('sentiment_id', [1, 2]);
-        }])->get();
+        // Filter dangerous contacts by team
+        $dangerousContacts = Contact::where('team_id', $activeTeam->id)
+            ->whereHas('sentimentHistories', function ($query)
+            {
+                $query->whereIn('sentiment_id', [1, 2])
+                    ->whereIn('id', function ($subQuery)
+                    {
+                        $subQuery->selectRaw('MAX(id)')
+                            ->from('contact_sentiment_histories')
+                            ->groupBy('contact_id');
+                    });
+            })->where('status_id', 5)
+            ->with(['currentSentiment' => function ($query)
+            {
+                $query->whereIn('sentiment_id', [1, 2]);
+            }])->get();
 
-        // Clients to contact today
+        // Clients to contact today (filtered by team)
         $today = Carbon::today();
-        $clientsToContactToday = List60::whereDate('date_next', $today)->count();
+        $clientsToContactToday = List60::whereHas('contact', function ($query) use ($activeTeam)
+        {
+            $query->where('team_id', $activeTeam->id);
+        })->whereDate('date_next', $today)->count();
 
-        // Get latest sentiment for each contact
-        $contacts = Contact::with(['currentSentiment' => function($query) {
-            $query->latest();
-        }])->get();
+        // Get latest sentiment for each contact (filtered by team)
+        $contacts = Contact::where('team_id', $activeTeam->id)
+            ->with(['currentSentiment' => function ($query)
+            {
+                $query->latest();
+            }])->get();
 
         // Count current sentiments
         $sentimentCounts = $contacts->pluck('currentSentiment.sentiment_id')
@@ -54,33 +76,42 @@ class DashboardController extends Controller
         ];
 
         // Ensure all sentiments are represented
-        foreach ($sentiments as $id => $name) {
-            if (!isset($sentimentCounts[$id])) {
+        foreach ($sentiments as $id => $name)
+        {
+            if (!isset($sentimentCounts[$id]))
+            {
                 $sentimentCounts[$id] = 0;
             }
         }
 
         // Prepare data for view
         $sentimentData = [];
-        foreach ($sentiments as $id => $name) {
+        foreach ($sentiments as $id => $name)
+        {
             $sentimentData[] = [
                 'label' => $name,
                 'count' => $sentimentCounts[$id],
             ];
         }
 
-        // Count leads from last 7 days
-        $recentLeadsCount = Contact::where('created_at', '>=', now()->subDays(7))->count();
+        // Count leads from last 7 days (filtered by team)
+        $recentLeadsCount = Contact::where('team_id', $activeTeam->id)
+            ->where('created_at', '>=', now()->subDays(7))
+            ->count();
 
-        // Get contacts to follow up today
+        // Get contacts to follow up today (filtered by team)
         $todayContacts = List60::with(['contact.enterprise', 'contact.currentSentiment.sentiment'])
+            ->whereHas('contact', function ($query) use ($activeTeam)
+            {
+                $query->where('team_id', $activeTeam->id);
+            })
             ->whereDate('date_next', Carbon::today())
             ->get();
 
         return view('dashboard', compact(
-            'totalTeamMinutes', 
-            'dangerousContacts', 
-            'clientsToContactToday', 
+            'totalTeamMinutes',
+            'dangerousContacts',
+            'clientsToContactToday',
             'sentimentData',
             'recentLeadsCount',
             'todayContacts'

@@ -9,8 +9,6 @@ use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-use Carbon\Carbon;
-
 class ContactDataTable extends DataTable
 {
     /**
@@ -67,7 +65,7 @@ class ContactDataTable extends DataTable
     {
         return $model->newQuery()->with([
             'list60:id,contact_id',
-            'enterprise:id,name',
+            'enterprise',
             'currentSentiment.sentiment',
             'status',
             'sources',
@@ -146,7 +144,7 @@ class ContactDataTable extends DataTable
                 ->title('Acciones')
                 ->width(20)
                 ->className('text-center')
-                ->addClass('all')
+                ->addClass('min-desktop')
                 ->exportable(false)
                 ->printable(false)
                 ->width(30),
