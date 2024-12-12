@@ -1,11 +1,13 @@
 <div class="card mb-4">
     <h5 class="card-header d-flex justify-content-between align-items-center">
         Saldo
-        <a href="https://dashboard.stripe.com/invoices/create?customer={{ $data->enterprise->code }}" 
-           target="_blank" 
-           class="btn btn-primary btn-sm">
-            + Crear factura
-        </a>
+        @if(!empty($enterprise->code))
+            <a href="https://dashboard.stripe.com/invoices/create?customer={{ $enterprise->code }}" 
+               target="_blank" 
+               class="btn btn-primary btn-sm">
+                + Crear facturax
+            </a>
+        @endif
     </h5>
     <div class="card-body">
         <!-- Balance Stats -->
