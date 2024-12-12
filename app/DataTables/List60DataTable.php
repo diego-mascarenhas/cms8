@@ -38,7 +38,7 @@ class List60DataTable extends DataTable
                 return $row->contact->sources_icons_html;
             })
             ->editColumn('date_next', function ($row) {
-                return \Carbon\Carbon::parse($row->date_next)->translatedFormat('d F');
+                return Carbon::parse($row->date_next)->translatedFormat('d F');
             })
             ->editColumn('type_id', function ($row) {
                 return $row->type->name ?? 'Sin definir';
@@ -96,23 +96,23 @@ class List60DataTable extends DataTable
             Column::make('sources')
                 ->title('Redes')
                 ->className('text-center')
-                ->addClass('min-phone')
+                ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false)
                 ->width(150),
             Column::make('date_next')
                 ->title('Próximo contacto')
                 ->className('text-center')
-                ->addClass('min-tablet'),
+                ->addClass('min-phone'),
             Column::make('type_id')
                 ->title('Tipo')
                 ->className('text-center')
-                ->addClass('min-phone'),
+                ->addClass('min-desktop'),
             Column::computed('action')
                 ->title('Acciones')
             ->width(20)
             ->className('text-center')
-            ->addClass('all')
+            ->addClass('min-desktop')
             ->exportable(false)
             ->printable(false)
             ->width(30),

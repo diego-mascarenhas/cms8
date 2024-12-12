@@ -9,8 +9,6 @@ use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-use Carbon\Carbon;
-
 class ClientDataTable extends DataTable
 {
     /**
@@ -129,14 +127,14 @@ class ClientDataTable extends DataTable
             Column::make('sources')
                 ->title('Redes')
                 ->className('text-center')
-                ->addClass('min-phone')
+                ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false)
                 ->width(150),
             Column::make('responsible_name')
                 ->title('Asesor')
                 ->className('text-center')
-                ->addClass('min-desktop')
+                ->addClass('min-tablet')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('status_id')
@@ -147,7 +145,7 @@ class ClientDataTable extends DataTable
                 ->title('Acciones')
                 ->width(20)
                 ->className('text-center')
-                ->addClass('all')
+                ->addClass('min-desktop')
                 ->exportable(false)
                 ->printable(false)
                 ->width(30),

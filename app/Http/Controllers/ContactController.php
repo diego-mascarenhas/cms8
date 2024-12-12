@@ -108,10 +108,22 @@ class ContactController extends Controller
 				->with('error', __('messages.errors.not_found'));
 		}
 
+		$team = auth()->user()->currentTeam;
+
 		$stripeData = null;
-		if ($data->enterprise && $data->enterprise->code) {
+		
+		if ($team->getSetting('stripe_secret')) {
+			$stripeData = [
+				'public_key' => $team->getSetting('stripe_public'),
+				'secret_key' => $team->getSetting('stripe_secret'),
+				'webhook_secret' => $team->getSetting('stripe_webhook'),
+			];
+		}
+
+		if ($data->enterprise && $data->enterprise->code && $team->getSetting('stripe_secret')) {
 			try {
-				Stripe::setApiKey(config('services.stripe.secret'));
+				// Set secret key for backend operations
+				Stripe::setApiKey($team->getSetting('stripe_secret'));
 				
 				// Retrieve customer
 				$customer = Customer::retrieve([
