@@ -83,7 +83,7 @@
             </div>
 
             <!-- View sales -->
-            <div class="col-12 col-md-4 mb-4 mb-md-4 mb-lg-3 mb-sm-2 opacity-50">
+            <div class="col-12 col-md-4 mb-4 mb-md-4 mb-lg-3 mb-sm-2 {{ auth()->user()->current_team_id !== 2 ? 'opacity-50' : '' }}">
                 <div class="card">
                     <div class="d-flex align-items-end row">
                         <div class="col-7">
@@ -91,8 +91,17 @@
                                 <h5 class="card-title mb-0">¡Felicitaciones {{ explode(' ', auth()->user()->name)[0] }}! 🎉
                                 </h5>
                                 <p class="mb-2">¡Vas viento en popa!</p>
-                                <h4 class="text-primary mb-1">{{ number_format(rand(50000, 999999), 2, ',', '.') }}€</h4>
-                                <button class="btn btn-sm btn-primary disabled">Pasar de Nivel</button>
+                                <h4 class="text-primary mb-1">{{ number_format($totalBalance, 2, ',', '.') }}€</h4>
+                                <p class="text-muted mb-2">
+                                    Ingresos este mes: {{ number_format($currentMonthRevenue, 2, ',', '.') }}€<br>
+                                    Ingresos mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
+                                </p>
+                                @if(auth()->user()->current_team_id === 2)
+                                    <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary">Strategia</a>
+                                    <a href="{{ route('enterprise.organization.index') }}" class="btn btn-sm btn-primary ms-2">Organización</a>
+                                @else
+                                    <button class="btn btn-sm btn-primary disabled">Pasar de Nivel</button>
+                                @endif
                             </div>
                         </div>
                         <div class="col-5 text-center text-sm-left">

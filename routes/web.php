@@ -140,7 +140,7 @@ Route::middleware(['auth'])->group(function ()
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
 Route::view('/strategy', 'strategy.index')->name('strategy.index');
-Route::get('/organization', [EnterpriseOrganizationController::class, 'index']);
+Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('enterprise.organization.index');
 
 Route::get('/notes', function () {
     return view('notes.index');
