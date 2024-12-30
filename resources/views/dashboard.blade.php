@@ -91,10 +91,9 @@
                                 <h5 class="card-title mb-0">¡Felicitaciones {{ explode(' ', auth()->user()->name)[0] }}! 🎉
                                 </h5>
                                 <p class="mb-2">¡Vas viento en popa!</p>
-                                <h4 class="text-primary mb-1">{{ number_format($totalBalance, 2, ',', '.') }}€</h4>
+                                <h4 class="text-primary mb-1">{{ number_format($currentMonthRevenue, 2, ',', '.') }}€</h4>
                                 <p class="text-muted mb-2">
-                                    Ingresos este mes: {{ number_format($currentMonthRevenue, 2, ',', '.') }}€<br>
-                                    Ingresos mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
+                                    Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
                                 </p>
                                 @if(auth()->user()->current_team_id === 2)
                                     <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary">Strategia</a>

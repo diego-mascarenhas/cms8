@@ -17,6 +17,11 @@ class DashboardController extends Controller
     {
         // Get active team
         $activeTeam = auth()->user()->currentTeam ?? auth()->user()->teams->first();
+        
+        // Initialize Stripe variables
+        $totalBalance = 0;
+        $currentMonthRevenue = 0;
+        $lastMonthRevenue = 0;
 
         if (!$activeTeam)
         {
@@ -110,10 +115,6 @@ class DashboardController extends Controller
             ->whereDate('date_next', Carbon::today())
             ->get();
 
-        // Get Stripe balance and current month revenue
-        $totalBalance = 0;
-        $currentMonthRevenue = 0;
-
         if ($activeTeam && $activeTeam->getSetting('stripe_secret'))
         {
             try
@@ -144,28 +145,10 @@ class DashboardController extends Controller
                     'limit' => 100
                 ]);
                 
-                \Log::info('Stripe Invoices:', [
-                    'invoices' => collect($invoices->data)->map(function($invoice) {
-                        return [
-                            'id' => $invoice->id,
-                            'amount' => $invoice->amount_paid / 100,
-                            'created' => date('Y-m-d H:i:s', $invoice->created),
-                            'paid_at' => date('Y-m-d H:i:s', $invoice->status_transitions->paid_at ?? $invoice->created),
-                            'status' => $invoice->status
-                        ];
-                    })
-                ]);
-                
                 // Filter invoices by payment date
                 $currentMonthInvoices = collect($invoices->data)->filter(function($invoice) use ($startOfCurrentMonth) {
                     $paidAt = $invoice->status_transitions->paid_at ?? $invoice->created;
-                    $isCurrentMonth = $paidAt >= $startOfCurrentMonth;
-                    
-                    \Log::info("Invoice {$invoice->id} paid_at: " . date('Y-m-d H:i:s', $paidAt) . 
-                             " amount: " . ($invoice->total / 100) . 
-                             " isCurrentMonth: " . ($isCurrentMonth ? 'true' : 'false'));
-                    
-                    return $isCurrentMonth;
+                    return $paidAt >= $startOfCurrentMonth;
                 });
                 
                 $lastMonthInvoices = collect($invoices->data)->filter(function($invoice) use ($startOfLastMonth, $endOfLastMonth) {
@@ -174,34 +157,13 @@ class DashboardController extends Controller
                 });
                 
                 // Use total instead of amount_paid for external payments
-                $currentMonthRevenue = $currentMonthInvoices->sum('total') / 100;
-                $lastMonthRevenue = $lastMonthInvoices->sum('total') / 100;
+                if ($currentMonthInvoices->isNotEmpty()) {
+                    $currentMonthRevenue = $currentMonthInvoices->sum('total') / 100;
+                }
                 
-                \Log::info('Current Month Invoices:', [
-                    'invoices' => $currentMonthInvoices->map(function($invoice) {
-                        return [
-                            'id' => $invoice->id,
-                            'amount' => $invoice->total / 100,
-                            'paid_at' => date('Y-m-d H:i:s', $invoice->status_transitions->paid_at ?? $invoice->created),
-                            'payment_type' => $invoice->payment_intent ? 'stripe' : 'external'
-                        ];
-                    })
-                ]);
-                
-                \Log::info('Last Month Invoices:', [
-                    'invoices' => $lastMonthInvoices->map(function($invoice) {
-                        return [
-                            'id' => $invoice->id,
-                            'amount' => $invoice->amount_paid / 100,
-                            'paid_at' => date('Y-m-d H:i:s', $invoice->status_transitions->paid_at ?? $invoice->created)
-                        ];
-                    })
-                ]);
-                
-                \Log::info('Calculated Revenue:', [
-                    'currentMonthRevenue' => $currentMonthRevenue,
-                    'lastMonthRevenue' => $lastMonthRevenue
-                ]);
+                if ($lastMonthInvoices->isNotEmpty()) {
+                    $lastMonthRevenue = $lastMonthInvoices->sum('total') / 100;
+                }
             }
             catch (\Exception $e)
             {
@@ -216,7 +178,6 @@ class DashboardController extends Controller
             'sentimentData',
             'recentLeadsCount',
             'todayContacts',
-            'totalBalance',
             'currentMonthRevenue',
             'lastMonthRevenue'
         ));
