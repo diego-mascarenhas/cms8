@@ -3,7 +3,7 @@ name: OVH (Prod)
 on:
   push:
     branches:
-      - main
+      - main-canceled
 
 jobs:
   create-deployment-artifacts:
