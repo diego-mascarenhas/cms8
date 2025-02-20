@@ -3,7 +3,7 @@
 return [
 	"creatorName" => "Humano",
 	"creatorUrl" => "https://www.linkedin.com/in/diego-mascarenhas/",
-	"templateName" => "HUMANO",
+	"templateName" => env('APP_NAME', 'HUMANO'),
 	// "templateSuffix" => "v0.9",
 	"templateVersion" => "2.0.1",
 	"templateFree" => false,

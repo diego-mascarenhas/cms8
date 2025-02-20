@@ -671,7 +671,7 @@ class ContactController extends Controller
 		$data = [
 			'pages' => [
 				[
-					'name' => 'Humano CRM',
+					'name' => config('variables.templateName') . ' CRM',
 					'icon' => 'ti-layout-grid',
 					'url' => 'dashboard/',
 				],

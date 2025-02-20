@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'welcome' => 'Welcome to HUMANO!',
+    'welcome' => 'Welcome to ' . config('variables.templateName') . '!',
     'dashboard' => 'Dashboard',
     'search' => 'Search',
     'search_with_shortcut' => 'Search (Ctrl+/)',
