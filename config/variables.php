@@ -25,5 +25,8 @@ return [
 	"twitterUrl" => "https://x.com/devcraftsman",
 	"githubUrl" => "https://github.com/diego-mascarenhas",
 	"dribbbleUrl" => "",
-	"instagramUrl" => ""
+	"instagramUrl" => "",
+	'logo' => [
+		'path' => env('APP_LOGO_PATH', 'assets/logo.png')
+	]
 ];
