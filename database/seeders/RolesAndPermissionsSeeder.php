@@ -207,6 +207,12 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'projects.tasks']);
         Permission::create(['name' => 'projects.calendar']);
 
+        Permission::create(['name' => 'pages.edit']);
+
+        Permission::create(['name' => 'mkt.category.list']);
+        Permission::create(['name' => 'mkt.message.list']);
+        Permission::create(['name' => 'mkt.template.list']);
+
         $rootRole = Role::create(['name' => 'root']);
         $rootRole->syncPermissions([
             'user.management',
@@ -474,6 +480,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'mail.list',
             'profile.update',
             'password.update',
+            'pages.edit',
+            'mkt.category.list',
+            'mkt.message.list',
+            'mkt.template.list'
         ]);
     }
 }

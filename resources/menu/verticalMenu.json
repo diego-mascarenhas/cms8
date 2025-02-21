@@ -201,6 +201,41 @@
 			"icon": "menu-icon tf-icons ti ti-calendar",
 			"slug": "projects-calendar",
 			"permission": "projects.calendar"
+		},
+		{
+			"menuHeader": "Web Site"
+		},
+		{
+			"url": "pages/1/editor",
+			"name": "Landing Page",
+			"icon": "menu-icon tf-icons ti ti-globe",
+			"slug": "page-edit",
+			"target": "blank",
+			"permission": "pages.edit"
+		},
+		{
+			"menuHeader": "Mkt"
+		},
+		{	
+			"url": "mkt/category/list",
+			"name": "Categories",
+			"icon": "menu-icon tf-icons ti ti-list",
+			"slug": "mkt-category-list",
+			"permission": "mkt.category.list"
+		},
+		{
+			"url": "mkt/message/list",
+			"name": "Mensajes",
+			"icon": "menu-icon tf-icons ti ti-send",
+			"slug": "mkt-message-list",
+			"permission": "mkt.message.list"
+		},
+		{
+			"url": "mkt/template/list",
+			"name": "Templates",
+			"icon": "menu-icon tf-icons ti ti-template",
+			"slug": "mkt-template-list",
+			"permission": "mkt.template.list"		
 		}
 	]
 }
