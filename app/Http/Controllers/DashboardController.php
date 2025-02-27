@@ -8,6 +8,8 @@ use App\Models\UserContactAction;
 use App\Models\List60;
 
 use Carbon\Carbon;
+use Stripe\Stripe;
+use Stripe\Balance;
 
 class DashboardController extends Controller
 {
@@ -15,6 +17,11 @@ class DashboardController extends Controller
     {
         // Get active team
         $activeTeam = auth()->user()->currentTeam ?? auth()->user()->teams->first();
+        
+        // Initialize Stripe variables
+        $totalBalance = 0;
+        $currentMonthRevenue = 0;
+        $lastMonthRevenue = 0;
 
         if (!$activeTeam)
         {
@@ -108,13 +115,71 @@ class DashboardController extends Controller
             ->whereDate('date_next', Carbon::today())
             ->get();
 
+        if ($activeTeam && $activeTeam->getSetting('stripe_secret'))
+        {
+            try
+            {
+                Stripe::setApiKey($activeTeam->getSetting('stripe_secret'));
+                
+                // Get balance
+                $balance = Balance::retrieve();
+                \Log::info('Stripe Balance:', ['balance' => $balance]);
+                $availableBalance = collect($balance->available)->sum('amount') / 100;
+                $pendingBalance = collect($balance->pending)->sum('amount') / 100;
+                $totalBalance = $availableBalance + $pendingBalance;
+
+                // Get current and last month revenue
+                $startOfCurrentMonth = Carbon::now()->startOfMonth()->timestamp;
+                $startOfLastMonth = Carbon::now()->subMonth()->startOfMonth()->timestamp;
+                $endOfLastMonth = Carbon::now()->subMonth()->endOfMonth()->timestamp;
+                
+                \Log::info('Date ranges:', [
+                    'current_month_start' => date('Y-m-d H:i:s', $startOfCurrentMonth),
+                    'last_month_start' => date('Y-m-d H:i:s', $startOfLastMonth),
+                    'last_month_end' => date('Y-m-d H:i:s', $endOfLastMonth)
+                ]);
+                
+                // Get all paid invoices
+                $invoices = \Stripe\Invoice::all([
+                    'status' => 'paid',
+                    'limit' => 100
+                ]);
+                
+                // Filter invoices by payment date
+                $currentMonthInvoices = collect($invoices->data)->filter(function($invoice) use ($startOfCurrentMonth) {
+                    $paidAt = $invoice->status_transitions->paid_at ?? $invoice->created;
+                    return $paidAt >= $startOfCurrentMonth;
+                });
+                
+                $lastMonthInvoices = collect($invoices->data)->filter(function($invoice) use ($startOfLastMonth, $endOfLastMonth) {
+                    $paidAt = $invoice->status_transitions->paid_at ?? $invoice->created;
+                    return $paidAt >= $startOfLastMonth && $paidAt <= $endOfLastMonth;
+                });
+                
+                // Use total instead of amount_paid for external payments
+                if ($currentMonthInvoices->isNotEmpty()) {
+                    $currentMonthRevenue = $currentMonthInvoices->sum('total') / 100;
+                }
+                
+                if ($lastMonthInvoices->isNotEmpty()) {
+                    $lastMonthRevenue = $lastMonthInvoices->sum('total') / 100;
+                }
+            }
+            catch (\Exception $e)
+            {
+                \Log::error('Error fetching Stripe data: ' . $e->getMessage());
+            }
+        }
+
         return view('dashboard', compact(
             'totalTeamMinutes',
             'dangerousContacts',
             'clientsToContactToday',
             'sentimentData',
             'recentLeadsCount',
-            'todayContacts'
+            'todayContacts',
+            'currentMonthRevenue',
+            'lastMonthRevenue'
         ));
     }
 }

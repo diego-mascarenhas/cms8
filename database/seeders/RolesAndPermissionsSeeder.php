@@ -196,6 +196,22 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'campaign.update']);
         Permission::create(['name' => 'campaign.destroy']);
 
+        Permission::create(['name' => 'projects.index']);
+        Permission::create(['name' => 'projects.list']);
+        Permission::create(['name' => 'projects.create']);
+        Permission::create(['name' => 'projects.show']);
+        Permission::create(['name' => 'projects.edit']);
+        Permission::create(['name' => 'projects.store']);
+        Permission::create(['name' => 'projects.update']);
+        Permission::create(['name' => 'projects.destroy']);
+        Permission::create(['name' => 'projects.tasks']);
+        Permission::create(['name' => 'projects.calendar']);
+
+        Permission::create(['name' => 'pages.edit']);
+
+        Permission::create(['name' => 'mkt.category.list']);
+        Permission::create(['name' => 'mkt.message.list']);
+        Permission::create(['name' => 'mkt.template.list']);
 
         $rootRole = Role::create(['name' => 'root']);
         $rootRole->syncPermissions([
@@ -375,6 +391,16 @@ class RolesAndPermissionsSeeder extends Seeder
             'client.update',
             'client.destroy',
             'list60.list',
+            'projects.index',
+            'projects.list',
+            'projects.create',
+            'projects.show',
+            'projects.edit',
+            'projects.store',
+            'projects.update',
+            'projects.destroy',
+            'projects.tasks',
+            'projects.calendar',
         ]);
 
         $colaboratorRole = Role::create(['name' => 'colaborator']);
@@ -454,6 +480,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'mail.list',
             'profile.update',
             'password.update',
+            'pages.edit',
+            'mkt.category.list',
+            'mkt.message.list',
+            'mkt.template.list'
         ]);
     }
 }

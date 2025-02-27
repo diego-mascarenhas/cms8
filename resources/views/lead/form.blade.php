@@ -1,6 +1,6 @@
 @extends('layouts/blankLayout')
 
-@section('title', 'Conocer Humano.app')
+@section('title', 'Conocer ' . config('variables.templateName'))
 
 @section('page-style')
 {{-- Page Css files --}}

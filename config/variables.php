@@ -3,7 +3,7 @@
 return [
 	"creatorName" => "Humano",
 	"creatorUrl" => "https://www.linkedin.com/in/diego-mascarenhas/",
-	"templateName" => "HUMANO",
+	"templateName" => env('APP_NAME', 'HUMANO'),
 	// "templateSuffix" => "v0.9",
 	"templateVersion" => "2.0.1",
 	"templateFree" => false,
@@ -25,5 +25,8 @@ return [
 	"twitterUrl" => "https://x.com/devcraftsman",
 	"githubUrl" => "https://github.com/diego-mascarenhas",
 	"dribbbleUrl" => "",
-	"instagramUrl" => ""
+	"instagramUrl" => "",
+	'logo' => [
+		'path' => env('APP_LOGO_PATH', 'assets/logo.png')
+	]
 ];

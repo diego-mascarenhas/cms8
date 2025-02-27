@@ -3,7 +3,7 @@ name: cPanel (Dev)
 on:
   push:
     branches:
-      - dev
+      - dev-canceled
 
 jobs:
   create-deployment-artifacts:

@@ -140,7 +140,7 @@ Route::middleware(['auth'])->group(function ()
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
 Route::view('/strategy', 'strategy.index')->name('strategy.index');
-Route::get('/organization', [EnterpriseOrganizationController::class, 'index']);
+Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('enterprise.organization.index');
 
 Route::get('/notes', function () {
     return view('notes.index');
@@ -148,3 +148,7 @@ Route::get('/notes', function () {
 
 Route::get('/lead', [LeadController::class, 'create'])->name('lead.create');
 Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
+
+// Editor
+Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
+Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');

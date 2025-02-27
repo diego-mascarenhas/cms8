@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'welcome' => 'Willkommen bei HUMANO!',
+    'welcome' => "Willkommen bei " . config('variables.templateName') . "!",
     'dashboard' => 'Armaturenbrett',
     'today' => 'Heute',
     'chat' => 'Chat',
