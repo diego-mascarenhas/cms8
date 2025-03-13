@@ -12,14 +12,6 @@ use Carbon\Carbon;
 
 class ProjectDataTable extends DataTable
 {
-    protected $isDashboard = false;
-
-    public function forDashboard($value = true)
-    {
-        $this->isDashboard = $value;
-        return $this;
-    }
-
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
@@ -33,9 +25,9 @@ class ProjectDataTable extends DataTable
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
-            ->editColumn('category_id', function ($data) {
-                return $data->category->name;
-            })
+            // ->editColumn('category_id', function ($data) {
+            //     return $data->category->name;
+            // })
             ->filterColumn('category_id', function ($query, $keyword) {
                 $query->whereHas('category', function ($q) use ($keyword) {
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
@@ -47,70 +39,107 @@ class ProjectDataTable extends DataTable
             ->editColumn('end_date', function ($data) {
                 return Carbon::parse($data->end_date)->format('d-m-Y');
             })
-            ->editColumn('status', function ($data) {
-                return $data->status_label;
+            ->addColumn('responsible_name', function ($contact) {
+                return $contact->responsible->name ?? 'Sin asignar';
             })
-            ->rawColumns(['action', 'status']);
+            ->filterColumn('responsible_name', function($query, $keyword) {
+                $query->whereHas('responsible', function ($q) use ($keyword) {
+                    $q->where('name', 'like', "%{$keyword}%");
+                });
+            })
+            ->editColumn('status_id', function ($row) {
+                return $row->status_label;
+            })
+            ->rawColumns(['action', 'status_id']);
     }
 
     public function query(Project $model): QueryBuilder
     {
-        $query = $model->newQuery();
-
-        if ($this->isDashboard) {
-            $query->where('status', 9)
-                  ->orderBy('created_at', 'desc')
-                  ->limit(5);
-        }
-
-        return $query;
+        return $model->newQuery()->with([
+            'client',
+            'responsible:id,name',
+        ]);
     }
 
     public function html(): HtmlBuilder
     {
-        $builder = $this->builder()
-                        ->setTableId('project-table')
-                        ->columns($this->getColumns())
-                        ->minifiedAjax()
-                        ->responsive(true)
-                        ->orderBy(0);
+        return $this->builder()
+            ->setTableId('project-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(1, 'asc')
+            ->responsive(true)
+            ->processing(false)
+            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->parameters([
+                'initComplete' => "function() {
+                    var api = this.api();
+                    api.columns('.select-filter').every(function() {
+                        var column = this;
+                        $('#EmotionalState').on('change', function() {
+                            var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                            column.search(val ? val : '', true, false).draw();
+                        });
 
-        if ($this->isDashboard) {
-            $builder->dom('rtip'); // Hide the search box
-            $builder->columns($this->getDashboardColumns());
-        } else {
-            $builder->dom('frtip'); // Show the search box
-        }
-
-        return $builder;
+                        $('.filter-status').on('click', function(e) {
+                            e.preventDefault();
+                            var status = $(this).data('status');
+                            api.column('status_id:name').search(status).draw();
+                        });
+                    });
+                }",
+                'drawCallback' => "function() {
+                    $('#EmotionalState').off('change').on('change', function() {
+                        $('#contact-table').DataTable().columns('.select-filter').search($(this).val()).draw();
+                    });
+                }",
+            ]);
     }
 
     public function getColumns(): array
     {
         return [
-            Column::make('id')->title('#')->responsivePriority(-1),
-            Column::make('name')->title('Name'),
-            Column::make('enterprise_id')->title('Client')->responsivePriority(1),
-            Column::make('category_id')->title('Category')->responsivePriority(2),
-            Column::make('start_date')->title('Start')->className('text-center')->responsivePriority(3),
-            Column::make('end_date')->title('End')->className('text-center')->responsivePriority(4),
-            Column::make('status')->title('Status')->className('text-center')->responsivePriority(5),
-            Column::computed('action')->title('Action')
-                  ->exportable(false)
-                  ->printable(false)
-                  ->width(60)
-                  ->addClass('text-center')
-                  ->responsivePriority(-1)
-        ];
-    }
-
-    public function getDashboardColumns(): array
-    {
-        return [
-            Column::make('name')->title('Name'),
-            Column::make('start_date')->title('Start')->className('text-center')->responsivePriority(1),
-            Column::make('end_date')->title('End')->className('text-center')->responsivePriority(2),
-            Column::make('status')->title('Status')->className('text-center')->responsivePriority(3),
+            Column::make('id')->hidden(),
+            Column::make('name')
+                ->title('Nombre')
+                ->addClass('all'),
+            Column::make('enterprise_id')
+                ->title('Client')
+                ->addClass('min-tablet')
+                ->searchable(true)
+                ->orderable(false),
+            Column::make('category_id')
+                ->title('Category')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->searchable(true)
+                ->orderable(false)
+                ->width(150),
+            Column::make('responsible_name')
+                ->title('Responsable')
+                ->className('text-center')
+                ->addClass('min-desktop')
+                ->searchable(false)
+                ->orderable(false),
+            Column::make('end_date')
+                ->title('Entrega')
+                ->className('text-center')
+                ->addClass('min-desktop')
+                ->searchable(false)
+                ->orderable(false),
+            Column::make('status_id')
+                ->title('Estado')
+                ->className('text-center')
+                ->addClass('min-tablet'),
+            Column::computed('action')
+                ->title('Acciones')
+                ->width(20)
+                ->className('text-center')
+                ->addClass('min-desktop')
+                ->exportable(false)
+                ->printable(false)
+                ->width(30),
         ];
     }
 

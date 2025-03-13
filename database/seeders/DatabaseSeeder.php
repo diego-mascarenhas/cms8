@@ -36,6 +36,7 @@ class DatabaseSeeder extends Seeder
             EnterpriseOrganizationSeeder::class,
             List60StatusesSeeder::class,
             List60Seeder::class,
+            ProjectStatusSeeder::class,
 		]);
     }
 }

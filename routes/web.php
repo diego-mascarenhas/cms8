@@ -21,6 +21,7 @@ use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\TeamSettingController;
+use App\Http\Controllers\ProjectController;
 
 
 // auth
@@ -134,6 +135,15 @@ Route::middleware(['auth'])->group(function ()
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
+
+    // Projects
+    Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');
+    Route::get('/project/create', [ProjectController::class, 'create'])->name('project.create');
+    Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
+    Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
+    Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
+    Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
+    Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
 });
 
 // Testing
