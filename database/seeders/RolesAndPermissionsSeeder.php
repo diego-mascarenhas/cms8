@@ -432,6 +432,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.edit',
             'profile.update',
             'password.update',
+            'project.index',
         ]);
 
         $editorRole = Role::create(['name' => 'auditor']);
