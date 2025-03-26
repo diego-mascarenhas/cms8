@@ -175,32 +175,32 @@
 			"menuHeader": "Projects"
 		},
 		{
-			"url": "projects/list",
+			"url": "project/list",
 			"name": "All Projects",
 			"icon": "menu-icon tf-icons ti ti-folder",
-			"slug": "projects-list",
-			"permission": "projects.list"
+			"slug": "project-list",
+			"permission": "project.list"
 		},
 		{
-			"url": "projects/create",
+			"url": "project/create",
 			"name": "New Project",
 			"icon": "menu-icon tf-icons ti ti-folder-plus",
-			"slug": "projects-create",
-			"permission": "projects.create"
+			"slug": "project-create",
+			"permission": "project.create"
 		},
 		{
-			"url": "projects/tasks",
+			"url": "project/tasks",
 			"name": "Tasks",
 			"icon": "menu-icon tf-icons ti ti-checklist",
-			"slug": "projects-tasks",
-			"permission": "projects.tasks"
+			"slug": "project-tasks",
+			"permission": "project.tasks"
 		},
 		{
 			"url": "projects/calendar",
 			"name": "Calendar",
 			"icon": "menu-icon tf-icons ti ti-calendar",
-			"slug": "projects-calendar",
-			"permission": "projects.calendar"
+			"slug": "project-calendar",
+			"permission": "project.calendar"
 		},
 		{
 			"menuHeader": "Web Site"

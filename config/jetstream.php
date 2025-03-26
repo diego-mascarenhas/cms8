@@ -78,4 +78,9 @@ return [
 
     'profile_photo_disk' => 'public',
 
+    'roles' => [
+        'admin' => 'Administrator',
+        'editor' => 'Editor',
+    ],
+
 ];

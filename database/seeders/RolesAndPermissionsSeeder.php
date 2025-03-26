@@ -196,16 +196,16 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'campaign.update']);
         Permission::create(['name' => 'campaign.destroy']);
 
-        Permission::create(['name' => 'projects.index']);
-        Permission::create(['name' => 'projects.list']);
-        Permission::create(['name' => 'projects.create']);
-        Permission::create(['name' => 'projects.show']);
-        Permission::create(['name' => 'projects.edit']);
-        Permission::create(['name' => 'projects.store']);
-        Permission::create(['name' => 'projects.update']);
-        Permission::create(['name' => 'projects.destroy']);
-        Permission::create(['name' => 'projects.tasks']);
-        Permission::create(['name' => 'projects.calendar']);
+        Permission::create(['name' => 'project.index']);
+        Permission::create(['name' => 'project.list']);
+        Permission::create(['name' => 'project.create']);
+        Permission::create(['name' => 'project.show']);
+        Permission::create(['name' => 'project.edit']);
+        Permission::create(['name' => 'project.store']);
+        Permission::create(['name' => 'project.update']);
+        Permission::create(['name' => 'project.destroy']);
+        Permission::create(['name' => 'project.tasks']);
+        Permission::create(['name' => 'project.calendar']);
 
         Permission::create(['name' => 'pages.edit']);
 
@@ -391,16 +391,16 @@ class RolesAndPermissionsSeeder extends Seeder
             'client.update',
             'client.destroy',
             'list60.list',
-            'projects.index',
-            'projects.list',
-            'projects.create',
-            'projects.show',
-            'projects.edit',
-            'projects.store',
-            'projects.update',
-            'projects.destroy',
-            'projects.tasks',
-            'projects.calendar',
+            'project.index',
+            'project.list',
+            'project.create',
+            'project.show',
+            'project.edit',
+            'project.store',
+            'project.update',
+            'project.destroy',
+            'project.tasks',
+            'project.calendar',
         ]);
 
         $colaboratorRole = Role::create(['name' => 'colaborator']);
@@ -432,6 +432,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.edit',
             'profile.update',
             'password.update',
+            'project.index',
         ]);
 
         $editorRole = Role::create(['name' => 'auditor']);
