@@ -4,7 +4,7 @@
     @endif
     @if (auth()->user()->can('project.create'))
         <a href="{{ route('project.create', ['client_id' => $id]) }}" class="text-body">
-            <i class="ti ti-plus ti-sm" title="Create Project"></i>
+            <i class="tf-icons ti ti-folder-plus ti-sm" title="Create Project"></i>
         </a>
     @endif
 </div>
