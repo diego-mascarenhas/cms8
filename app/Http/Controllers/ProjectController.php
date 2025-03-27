@@ -6,9 +6,8 @@ use App\DataTables\ProjectDataTable;
 use App\Models\Project;
 use App\Models\Category;
 use Illuminate\Http\Request;
-use stdClass;
-use Carbon\Carbon;
-use Log;
+use App\Models\Enterprise;
+use App\Models\User;
 
 class ProjectController extends Controller
 {
@@ -22,7 +21,10 @@ class ProjectController extends Controller
      */
     public function create()
     {
-        //
+        $enterprise_id = request('client_id');
+        $categories = Category::getOptions(6000);
+
+        return view('project.form', compact('enterprise_id', 'categories'));
     }
 
     /**
@@ -41,12 +43,14 @@ class ProjectController extends Controller
             ['id' => $request->id],
             [
                 'name' => $data['name'],
-                'type_id' => $data['type_id'],
+                'enterprise_id' => $data['enterprise_id'],
+                'category_id' => $data['category_id'],
                 'description' => $data['description'],
+                'responsible_id' => auth()->id()
             ]
         );
 
-        return redirect()->route('app-project-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('project-list')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -62,15 +66,11 @@ class ProjectController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Project::find($id);
-        $data->types = Category::getOptions(40);
+        $data = Project::findOrFail($id);
+        $categories = Category::getOptions(6000);
+        $enterprise_id = $data->enterprise_id;
 
-        if (!$data)
-        {
-            return redirect()->route('app-project-list')->with('error', 'Service not found.');
-        }
-
-        return view('project.form', compact('data'));
+        return view('project.form', compact('data', 'enterprise_id', 'categories'));
     }
 
     /**
@@ -78,7 +78,23 @@ class ProjectController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $data = $request->except(['_token', '_method']);
+        
+        $request->validate([
+            'name' => 'required|string|min:3|max:25',
+            'description' => 'required|string|min:3|max:255',
+        ]);
+
+        $project = Project::findOrFail($id);
+        $project->update([
+            'name' => $data['name'],
+            'enterprise_id' => $data['enterprise_id'],
+            'category_id' => $data['category_id'],
+            'description' => $data['description'],
+            'responsible_id' => auth()->id()
+        ]);
+
+        return redirect()->route('project-list')->with('success', 'Project updated successfully.');
     }
 
     /**

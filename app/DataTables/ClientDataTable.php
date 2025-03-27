@@ -23,10 +23,9 @@ class ClientDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('name', function ($row)
             {
-                $responsibleName = $row->responsible ? $row->responsible->name : 'Sin responsable asignado';
                 return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">' . e($responsibleName) . '</span>
-                            <small class="text-muted">' . e($row->name) . '</small>
+                            <span class="fw-medium text-body text-truncate">' . e($row->name) . '</span>
+                            <small class="text-muted">' . e($row->responsible->name ?? 'Sin asignar') . '</small>
                         </div>';
             })
             ->addColumn('current_sentiment', function ($row)
@@ -39,11 +38,7 @@ class ClientDataTable extends DataTable
             })
             ->addColumn('sources', function ($row)
             {
-                if ($row->responsible)
-                {
-                    return $row->responsible->sources_icons_html;
-                }
-                return '';
+                return $row->responsible ? $row->responsible->sources_icons_html : '';
             })
             ->addColumn('responsible_name', function ($contact)
             {
@@ -67,7 +62,7 @@ class ClientDataTable extends DataTable
     {
         return $model->newQuery()
             ->with([
-                'responsible',
+                'responsible:id,name',
                 'responsible.currentSentiment.sentiment',
                 'responsible.sources',
                 'status'
@@ -132,7 +127,7 @@ class ClientDataTable extends DataTable
                 ->orderable(false)
                 ->width(150),
             Column::make('responsible_name')
-                ->title('Asesor')
+                ->title('Administrador')
                 ->className('text-center')
                 ->addClass('min-tablet')
                 ->searchable(false)

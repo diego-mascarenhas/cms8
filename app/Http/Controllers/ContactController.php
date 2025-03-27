@@ -67,6 +67,7 @@ class ContactController extends Controller
 
 		$contactData['team_id'] = auth()->user()->currentTeam->id;
 		$contactData['creator_id'] = auth()->user()->id;
+		$contactData['responsible_id'] = $request->responsible_id;
 
 		$contact = Contact::create($contactData);
 
@@ -162,7 +163,7 @@ class ContactController extends Controller
 						'tax_ids'
 					]
 				]);
-				
+
 				// Get invoices
 				$invoices = Invoice::all([
 					'customer' => $customer->id,
@@ -181,7 +182,8 @@ class ContactController extends Controller
 						'name' => $customer->name,
 						'email' => $customer->email,
 						'created' => Carbon::createFromTimestamp($customer->created)->format('d/m/Y'),
-						'tax_ids' => array_map(function($taxId) {
+						'tax_ids' => array_map(function ($taxId)
+						{
 							return [
 								'type' => $taxId->type,
 								'value' => $taxId->value,
@@ -198,12 +200,12 @@ class ContactController extends Controller
 				if ($customer->subscriptions && !empty($customer->subscriptions->data))
 				{
 					$stripeData['subscriptions'] = [];
-					
-					foreach ($customer->subscriptions->data as $subscription) 
+
+					foreach ($customer->subscriptions->data as $subscription)
 					{
 						// Get product details for each subscription
 						$product = Product::retrieve($subscription->items->data[0]->plan->product);
-						
+
 						$statusTranslations = [
 							'active' => 'Activo',
 							'past_due' => 'Pago Vencido',
@@ -350,8 +352,10 @@ class ContactController extends Controller
 	public function update(UpdateContactRequest $request, $id)
 	{
 		$data = $request->validated();
-
 		$contactData = $data['contact'];
+
+		// Add responsible_id to the update data
+		$contactData['responsible_id'] = $request->responsible_id;
 
 		$contact = Contact::findOrFail($id);
 		$contact->update($contactData);
