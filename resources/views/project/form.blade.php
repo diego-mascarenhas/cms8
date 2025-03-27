@@ -41,13 +41,14 @@
 	<form class="card-body" action="{{ route('project.store') }}" method="POST">
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
+		<input type="hidden" name="enterprise_id" value="{{ $enterprise_id }}">
 		
 		<div class="row g-3">
 			<div class="col-md-6">
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select-array id="type_id" label="Category" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+				<x-input-select id="category_id" label="Categoría" :options="$categories" value="{{ old('category_id', $data->category_id ?? '') }}" />
 			</div>
 			<div class="col-md-12">
 				<x-input-textarea id="description" label="Description (*)" value="{{ old('description', $data->description?? '') }}" />
@@ -57,7 +58,7 @@
 
 		<div class="pt-4">
 			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('app-project-list') }}'">Cancel</button>
+			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('project-list') }}'">Cancel</button>
 		</div>
 	</form>
 </div>

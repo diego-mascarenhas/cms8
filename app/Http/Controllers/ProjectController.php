@@ -6,9 +6,7 @@ use App\DataTables\ProjectDataTable;
 use App\Models\Project;
 use App\Models\Category;
 use Illuminate\Http\Request;
-use stdClass;
-use Carbon\Carbon;
-use Log;
+use App\Models\Enterprise;
 
 class ProjectController extends Controller
 {
@@ -22,7 +20,10 @@ class ProjectController extends Controller
      */
     public function create()
     {
-        //
+        $enterprise_id = request('client_id');
+        $categories = Category::getOptions(6000);
+
+        return view('project.form', compact('enterprise_id', 'categories'));
     }
 
     /**
@@ -41,12 +42,14 @@ class ProjectController extends Controller
             ['id' => $request->id],
             [
                 'name' => $data['name'],
-                'type_id' => $data['type_id'],
+                'enterprise_id' => $data['enterprise_id'],
+                'category_id' => $data['category_id'],
                 'description' => $data['description'],
+                'responsible_id' => auth()->id()
             ]
         );
 
-        return redirect()->route('app-project-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('project-list')->with('success', 'Record saved successfully.');
     }
 
     /**
