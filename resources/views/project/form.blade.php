@@ -50,6 +50,13 @@
 			<div class="col-md-6">
 				<x-input-select id="category_id" label="Categoría" :options="$categories" value="{{ old('category_id', $data->category_id ?? '') }}" />
 			</div>
+			<div class="col-md-6">
+				<x-team-users-select 
+					id="responsible_id" 
+					label="Responsible" 
+					:selected="old('responsible_id', $data->responsible_id ?? '')" 
+				/>
+			</div>
 			<div class="col-md-12">
 				<x-input-textarea id="description" label="Description (*)" value="{{ old('description', $data->description?? '') }}" />
 			</div>
