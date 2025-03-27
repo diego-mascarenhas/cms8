@@ -33,6 +33,7 @@ class UpdateContactRequest extends FormRequest
             'source_id.*' => 'required|exists:sources,id',
             'source_value' => 'array',
             'source_value.*' => 'required|string|max:255',
+            'responsible_id' => 'required|exists:users,id',
         ];
     }
 

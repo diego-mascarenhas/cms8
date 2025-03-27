@@ -126,9 +126,16 @@
                                 <small>Información del contacto principal</small>
                             </div>
                             <div class="row g-3">
-                                <div class="col-sm-8">
+                                <div class="col-sm-4">
                                     <x-input-general id="name" label="Nombre (*)"
                                         value="{{ old('name', $data->name ?? '') }}" />
+                                </div>
+                                <div class="col-sm-4">
+                                    <x-team-users-select 
+                                        id="responsible_id" 
+                                        label="Asesor"
+                                        :selected="old('responsible_id', $data->responsible_id ?? '')"
+                                    />
                                 </div>
                                 <div class="col-sm-4">
                                     <label for="status_id" class="form-label">Tipo de contacto</label>
