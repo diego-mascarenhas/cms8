@@ -15,8 +15,16 @@ class ProjectStatus extends Model
         return $query->get()->map(function ($status) {
             return [
                 'id' => $status->id,
-                'name' => $status->name,
+                'name' => $status->translated_name,
             ];
         });
+    }
+
+    /**
+     * Get the translated status name
+     */
+    public function getTranslatedNameAttribute()
+    {
+        return __("project_status.{$this->name}");
     }
 }

@@ -67,13 +67,23 @@
 				<x-input-general id="price" label="Precio" type="number" step="0.01" value="{{ old('price', $data->price ?? '') }}" />
 			</div>
 			<div class="col-md-3">
-				<x-input-general id="discount" label="Descuento" type="number" step="0.01" value="{{ old('discount', $data->discount ?? '0') }}" />
+				<x-input-general id="discount" label="Descuento (%)" type="number" step="1" min="0" max="20" pattern="\d*" value="{{ old('discount', intval($data->discount ?? 0)) }}" />
 			</div>
 			<div class="col-md-3">
 				<x-input-general id="cost" label="Costo" type="number" step="0.01" value="{{ old('cost', $data->cost ?? '') }}" />
 			</div>
 			<div class="col-md-3">
 				<x-input-select id="status_id" label="Estado" :options="$statuses" value="{{ old('status_id', $data->status_id ?? '1') }}" />
+			</div>
+			
+			<div class="col-md-3">
+				<x-input-date id="start_date" label="Fecha inicio" 
+					value="{{ old('start_date', $data->start_date ?? '') }}" />
+			</div>
+			
+			<div class="col-md-3">
+				<x-input-date id="end_date" label="Fecha finalización" 
+					value="{{ old('end_date', $data->end_date ?? '') }}" />
 			</div>
 			
 			<div class="col-md-6">
@@ -88,8 +98,7 @@
 				<x-input-textarea id="description" label="Description (*)" value="{{ old('description', $data->description?? '') }}" />
 			</div>
 		</div>
-		<hr class="my-4 mx-n4" />
-
+		
 		<div class="pt-4">
 			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
 			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('project-list') }}'">Cancel</button>

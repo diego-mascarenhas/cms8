@@ -564,5 +564,17 @@
     "Marketing": "Marketing",
     "New Project": "Nuevo Proyecto",
     "All Projects": "Todos los Proyectos",
-    "Mkt": "Marketing"
+    "Mkt": "Marketing",
+    "project_status.BUDGET": "Presupuesto",
+    "project_status.BUDGETED": "Presupuestado",
+    "project_status.AUTHORIZED": "Autorizado",
+    "project_status.SENT": "Enviado",
+    "project_status.RECEIVED": "Recibido",
+    "project_status.APPROVED": "Aprobado",
+    "project_status.WAITING_FOR_RESPONSE": "Esperando respuesta",
+    "project_status.IN_PROGRESS": "En progreso",
+    "project_status.FINISHED": "Finalizado",
+    "project_status.TO_INVOICE": "Para facturar",
+    "project_status.INVOICED": "Facturado",
+    "project_status.NOT_APPROVED": "No aprobado"
 }

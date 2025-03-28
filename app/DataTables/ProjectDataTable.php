@@ -25,9 +25,9 @@ class ProjectDataTable extends DataTable
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
-            // ->editColumn('category_id', function ($data) {
-            //     return $data->category->name;
-            // })
+            ->editColumn('category_id', function ($data) {
+                return $data->category->name;
+            })
             ->filterColumn('category_id', function ($query, $keyword) {
                 $query->whereHas('category', function ($q) use ($keyword) {
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
