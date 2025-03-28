@@ -35,8 +35,9 @@ class ProjectController extends Controller
         $data = $request->except(['id', '_token']);
 
         $request->validate([
-            'name' => 'required|string|min:3|max:25',
+            'name' => 'required|string|min:3|max:255',
             'description' => 'required|string|min:3|max:255',
+            'enterprise_id' => 'required|exists:enterprises,id',
         ]);
 
         Project::updateOrCreate(
@@ -81,7 +82,7 @@ class ProjectController extends Controller
         $data = $request->except(['_token', '_method']);
         
         $request->validate([
-            'name' => 'required|string|min:3|max:25',
+            'name' => 'required|string|min:3|max:255',
             'description' => 'required|string|min:3|max:255',
         ]);
 
