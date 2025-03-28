@@ -134,7 +134,8 @@
                                     <x-team-users-select 
                                         id="responsible_id" 
                                         label="Asesor"
-                                        :selected="old('responsible_id', $data->responsible_id ?? '')"
+                                        :selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
+                                        show-null="false"
                                     />
                                 </div>
                                 <div class="col-sm-4">
