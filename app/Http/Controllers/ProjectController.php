@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ProjectDataTable;
 use App\Models\Project;
 use App\Models\Category;
+use App\Models\ProjectStatus;
 use Illuminate\Http\Request;
 use App\Models\Enterprise;
 use App\Models\User;
@@ -23,8 +24,14 @@ class ProjectController extends Controller
     {
         $enterprise_id = request('client_id');
         $categories = Category::getOptions(6000);
+        $statuses = ProjectStatus::select('id', 'name')->get()->map(function($status) {
+            return [
+                'id' => $status->id,
+                'name' => $status->name
+            ];
+        })->toArray();
 
-        return view('project.form', compact('enterprise_id', 'categories'));
+        return view('project.form', compact('enterprise_id', 'categories', 'statuses'));
     }
 
     /**
@@ -38,6 +45,11 @@ class ProjectController extends Controller
             'name' => 'required|string|min:3|max:255',
             'description' => 'required|string|min:3|max:255',
             'enterprise_id' => 'required|exists:enterprises,id',
+            'responsible_id' => 'required|exists:users,id',
+            'price' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'cost' => 'nullable|numeric|min:0',
+            'status_id' => 'required|exists:project_statuses,id',
         ]);
 
         Project::updateOrCreate(
@@ -47,7 +59,11 @@ class ProjectController extends Controller
                 'enterprise_id' => $data['enterprise_id'],
                 'category_id' => $data['category_id'],
                 'description' => $data['description'],
-                'responsible_id' => auth()->id()
+                'responsible_id' => $data['responsible_id'],
+                'price' => $data['price'] ?? null,
+                'discount' => $data['discount'] ?? 0,
+                'cost' => $data['cost'] ?? null,
+                'status_id' => $data['status_id'] ?? 1,
             ]
         );
 
@@ -70,8 +86,14 @@ class ProjectController extends Controller
         $data = Project::findOrFail($id);
         $categories = Category::getOptions(6000);
         $enterprise_id = $data->enterprise_id;
+        $statuses = ProjectStatus::select('id', 'name')->get()->map(function($status) {
+            return [
+                'id' => $status->id,
+                'name' => $status->name
+            ];
+        })->toArray();
 
-        return view('project.form', compact('data', 'enterprise_id', 'categories'));
+        return view('project.form', compact('data', 'enterprise_id', 'categories', 'statuses'));
     }
 
     /**
@@ -84,6 +106,11 @@ class ProjectController extends Controller
         $request->validate([
             'name' => 'required|string|min:3|max:255',
             'description' => 'required|string|min:3|max:255',
+            'responsible_id' => 'required|exists:users,id',
+            'price' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            'cost' => 'nullable|numeric|min:0',
+            'status_id' => 'required|exists:project_statuses,id',
         ]);
 
         $project = Project::findOrFail($id);
@@ -92,7 +119,11 @@ class ProjectController extends Controller
             'enterprise_id' => $data['enterprise_id'],
             'category_id' => $data['category_id'],
             'description' => $data['description'],
-            'responsible_id' => auth()->id()
+            'responsible_id' => $data['responsible_id'],
+            'price' => $data['price'] ?? $project->price,
+            'discount' => $data['discount'] ?? $project->discount,
+            'cost' => $data['cost'] ?? $project->cost,
+            'status_id' => $data['status_id'] ?? $project->status_id,
         ]);
 
         return redirect()->route('project-list')->with('success', 'Project updated successfully.');
