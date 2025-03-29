@@ -67,18 +67,12 @@
 
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="responsible_id" class="form-label">Responsible</label>
-                                    <select id="responsible_id" name="responsible_id" class="select2 form-select @error('responsible_id') is-invalid @enderror" data-allow-clear="false" required>
-                                        <option value="">Select Responsible</option>
-                                        @foreach ($contacts as $contact)
-                                            <option value="{{ $contact['id'] }}" @if (old('responsible_id', $data->responsible_id ?? '') == $contact['id']) selected @endif>
-                                                {{ $contact['name'] }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('responsible_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
+                                    <x-team-users-select 
+                                        id="responsible_id" 
+                                        label="Responsible"
+                                        :selected="old('responsible_id', $data->responsible_id ?? '')"
+                                        show-null="false"
+                                    />
                                 </div>
                             </div>
 
