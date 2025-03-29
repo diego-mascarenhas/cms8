@@ -207,5 +207,14 @@
   "project_status.FINISHED": "Finished",
   "project_status.TO_INVOICE": "To invoice",
   "project_status.INVOICED": "Invoiced",
-  "project_status.NOT_APPROVED": "Not approved"
+  "project_status.NOT_APPROVED": "Not approved",
+  "Ongoing Projects": "Ongoing Projects",
+  "Current active projects": "Current active projects",
+  "View All": "View All",
+  "Project": "Project",
+  "Client": "Client",
+  "Status": "Status",
+  "Responsible": "Responsible",
+  "No ongoing projects": "No ongoing projects",
+  "All projects are completed or not yet started": "All projects are completed or not yet started"
 }

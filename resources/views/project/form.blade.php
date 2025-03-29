@@ -63,6 +63,7 @@
 				<x-input-select id="category_id" label="Categoría" :options="$categories" value="{{ old('category_id', $data->category_id ?? '') }}" />
 			</div>
 			
+			@if(auth()->user()->hasRole('admin'))
 			<div class="col-md-3">
 				<x-input-general id="price" label="Precio" type="number" step="0.01" value="{{ old('price', $data->price ?? '') }}" />
 			</div>
@@ -75,7 +76,28 @@
 			<div class="col-md-3">
 				<x-input-select id="status_id" label="Estado" :options="$statuses" value="{{ old('status_id', $data->status_id ?? '1') }}" />
 			</div>
+			@else
+			<div class="col-md-4">
+				<x-input-select id="status_id" label="Estado" :options="$statuses" value="{{ old('status_id', $data->status_id ?? '1') }}" />
+			</div>
+			<div class="col-md-4">
+				<x-input-date id="start_date" label="Fecha inicio" 
+					value="{{ old('start_date', $data->start_date ?? '') }}" />
+			</div>
+			<div class="col-md-4">
+				<x-input-date id="end_date" label="Fecha finalización" 
+					value="{{ old('end_date', $data->end_date ?? '') }}" />
+			</div>
+			<div class="col-md-12">
+				<x-team-users-select 
+					id="responsible_id" 
+					label="Responsible" 
+					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())" 
+				/>
+			</div>
+			@endif
 			
+			@if(auth()->user()->hasRole('admin'))
 			<div class="col-md-3">
 				<x-input-date id="start_date" label="Fecha inicio" 
 					value="{{ old('start_date', $data->start_date ?? '') }}" />
@@ -93,6 +115,7 @@
 					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())" 
 				/>
 			</div>
+			@endif
 			
 			<div class="col-md-12">
 				<x-input-textarea id="description" label="Description (*)" value="{{ old('description', $data->description?? '') }}" />

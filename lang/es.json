@@ -576,5 +576,14 @@
     "project_status.FINISHED": "Finalizado",
     "project_status.TO_INVOICE": "Para facturar",
     "project_status.INVOICED": "Facturado",
-    "project_status.NOT_APPROVED": "No aprobado"
+    "project_status.NOT_APPROVED": "No aprobado",
+    "Ongoing Projects": "Proyectos en curso",
+    "Current active projects": "Proyectos activos actuales",
+    "View All": "Ver todos",
+    "Project": "Proyecto",
+    "Client": "Cliente",
+    "Status": "Estado",
+    "Responsible": "Responsable",
+    "No ongoing projects": "No hay proyectos en curso",
+    "All projects are completed or not yet started": "Todos los proyectos están completados o aún no han comenzado"
 }
