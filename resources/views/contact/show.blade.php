@@ -59,6 +59,10 @@
                     class="ti ti-plus me-1"></i>Añadir informe</a> -->
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
+            @can('project.create')
+            <a href="{{ route('project.create') }}" class="btn btn-success waves-effect waves-light"><i
+                    class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
+            @endcan
             @can('chat.list')
             <a href="{{ route('chat-list') }}" class="btn btn-info waves-effect waves-light"><i
                     class="ti ti-message-chatbot me-1"></i>Chat</a>

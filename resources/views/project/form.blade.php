@@ -123,8 +123,10 @@
 		</div>
 		
 		<div class="pt-4">
-			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('project-list') }}'">Cancel</button>
+			<div class="col-12 d-flex">
+				<button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
+				<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('project-list') }}'">Cancelar</button>
+			</div>
 		</div>
 	</form>
 </div>

@@ -47,6 +47,7 @@ class ProjectController extends Controller
             'status_id' => 'required|exists:project_statuses,id',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
         Project::updateOrCreate(
@@ -54,7 +55,7 @@ class ProjectController extends Controller
             [
                 'name' => $data['name'],
                 'enterprise_id' => $data['enterprise_id'],
-                'category_id' => $data['category_id'],
+                'category_id' => $data['category_id'] ?? null,
                 'description' => $data['description'],
                 'responsible_id' => $data['responsible_id'],
                 'price' => $data['price'] ?? null,
@@ -110,13 +111,14 @@ class ProjectController extends Controller
             'status_id' => 'required|exists:project_statuses,id',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
         $project = Project::findOrFail($id);
         $project->update([
             'name' => $data['name'],
             'enterprise_id' => $data['enterprise_id'],
-            'category_id' => $data['category_id'],
+            'category_id' => $data['category_id'] ?? null,
             'description' => $data['description'],
             'responsible_id' => $data['responsible_id'],
             'price' => $data['price'] ?? $project->price,

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 
 class Project extends Model
 {
@@ -26,6 +27,19 @@ class Project extends Model
         'created_at',
         'updated_at'
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check() && auth()->user()->currentTeam)
+            {
+                $builder->whereHas('client', function($query) {
+                    $query->where('team_id', auth()->user()->currentTeam->id);
+                });
+            }
+        });
+    }
 
     public function category()
     {

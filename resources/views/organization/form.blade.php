@@ -112,9 +112,9 @@
                                 </div>
                             </div>
 
-                            <div class="col-12 d-flex justify-content-between">
+                            <div class="col-12 d-flex">
+                                <button type="submit" class="btn btn-primary me-sm-3 me-1">{{ isset($data->id) ? 'Update' : 'Create' }}</button>
                                 <button type="button" class="btn btn-label-secondary" onclick="window.location.href='{{ route('organization.index') }}'">Cancel</button>
-                                <button type="submit" class="btn btn-primary">{{ isset($data->id) ? 'Update' : 'Create' }}</button>
                             </div>
                         </div>
                     </form>
