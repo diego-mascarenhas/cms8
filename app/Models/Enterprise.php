@@ -47,6 +47,10 @@ class Enterprise extends Model
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
+        
+        static::addGlobalScope('activeClients', function (Builder $builder) {
+            $builder->where('status_id', 2);
+        });
     }
     public function scopeClients($query)
     {
