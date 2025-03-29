@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\EnterpriseOrganization;
 use App\Models\EnterpriseDepartment;
-use App\Models\Enterprise;
+use App\Models\Team;
 use App\Models\User;
 
 class EnterpriseOrganizationSeeder extends Seeder
@@ -17,7 +17,7 @@ class EnterpriseOrganizationSeeder extends Seeder
     {
         $organizations = [
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Gestión de servicios',
                 'description' => 'Los últimos 3 días de cada mes se realizan las gestiones de servicios.',
@@ -25,7 +25,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '12 hs mensuales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Emisión de facturas',
                 'description' => 'Revisión de las facturas de los servicios y aprobación para que se facturen.',
@@ -33,7 +33,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '4 hs mensuales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Carga de facturas',
                 'description' => 'Carga de las facturas de compra al CMS con su respectivo vencimiento para poder gestionar los pagos.',
@@ -41,7 +41,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '4 hs mensuales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Preparación AFIP',
                 'description' => 'Subir todos los archivos al Cloud e informarle a la contadora.',
@@ -50,7 +50,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'availability' => 'Antes del 10 de cada mes',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Ingreso de pagos',
                 'description' => 'Ingreso de pagos al sistema referenciándolo a su comprobante.',
@@ -58,7 +58,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '24 hs mensuales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Gestión de recursos',
                 'description' => 'Asignación de labores a cada recurso.',
@@ -66,7 +66,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Diario',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Pago a proveedores',
                 'description' => 'Los mismos se realizan los días jueves de 9 a 12 hs y viernes de 12 a 15 hs.',
@@ -74,7 +74,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Total de 12 hs al mes',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Pago de licencias',
                 'description' => 'Pago de licencias a proveedores del exterior.',
@@ -82,7 +82,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '4 hs al mes',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Pago de haberes',
                 'description' => 'Los mismos se realizan antes del 5 de cada mes.',
@@ -90,7 +90,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '1 h al mes',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Crear débito',
                 'description' => 'Crear archivo de débito automático antes del 7 de cada mes.',
@@ -98,7 +98,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '4 hs al mes',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Enviar débito',
                 'description' => 'Enviar archivo de débito automático al banco antes del 7 de cada mes.',
@@ -106,7 +106,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '1 h al mes',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Recibir débito',
                 'description' => 'Recibir archivo de débito automático y subirlo al CMS en sus 2 vencimientos.',
@@ -114,7 +114,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '1 h al mes',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Arqueo de caja',
                 'description' => 'Arqueo de caja semanal lunes a primera hora.',
@@ -122,7 +122,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '12 h al mes',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Aprobación presupuestos',
                 'description' => 'Revisión y aprobación de presupuestos.',
@@ -130,7 +130,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '4 h al mes',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 1,
                 'name' => 'Compra de Hardware',
                 'description' => 'Pedido de presupuestos y confección de compra.',
@@ -139,7 +139,7 @@ class EnterpriseOrganizationSeeder extends Seeder
             ],
 
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Atención telefónica',
                 'description' => 'Atención telefónica de lunes a viernes de 8 a 18 hs.',
@@ -148,7 +148,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'availability' => 'Horario laboral',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Atención por WhatsApp',
                 'description' => 'Atención por WhatsApp de lunes a viernes de 8 a 18 hs.',
@@ -157,7 +157,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'availability' => 'Horario laboral',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Atención por email',
                 'description' => 'Atención por email de lunes a viernes de 8 a 18 hs.',
@@ -166,7 +166,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'availability' => 'Horario laboral',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Contacto con proveedores',
                 'description' => 'Envío de tickets a proveedores por problemas que puedan presentarse.',
@@ -174,7 +174,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Bajo demanda',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Atención guardias',
                 'description' => 'Atención 24x7.',
@@ -183,7 +183,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'availability' => '24x7',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Control de alertas',
                 'description' => 'Atención 24x7.',
@@ -192,7 +192,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'availability' => '24x7',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Creación de VPS',
                 'description' => 'Creación de VPS',
@@ -200,7 +200,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Bajo demanda',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Instalación de sistemas',
                 'description' => 'Instalación de los sistemas operativos',
@@ -208,7 +208,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Bajo demanda',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Tunning cPanel',
                 'description' => 'Configuración de cPanel según valores estipulados.',
@@ -216,7 +216,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Bajo demanda',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Tunning VPS',
                 'description' => 'Configuración de VPSs según valores estipulados.',
@@ -224,7 +224,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Bajo demanda',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Elección de hardware',
                 'description' => 'Averiguación y elección de hardware.',
@@ -232,7 +232,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Bajo demanda',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Cambio de hardware',
                 'description' => 'Reemplazo de hardware.',
@@ -240,7 +240,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Bajo demanda',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Control de hardware',
                 'description' => 'Control diario de alertas de hardware.',
@@ -248,7 +248,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '6 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Control de backups',
                 'description' => 'Control diario de backups de cPanel y VMware.',
@@ -256,7 +256,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '6 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Control de firewall',
                 'description' => 'Control diario de firewall.',
@@ -264,7 +264,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '6 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 2,
                 'name' => 'Gestión de VPN',
                 'description' => 'Gestión de usuarios de VPN.',
@@ -273,7 +273,7 @@ class EnterpriseOrganizationSeeder extends Seeder
             ],
 
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 3,
                 'name' => 'Seguimiento de clientes',
                 'description' => 'Gestión comercial y seguimiento de clientes.',
@@ -281,7 +281,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '10 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 3,
                 'name' => 'Planificación de ventas',
                 'description' => 'Planificación de campañas y su retorno.',
@@ -289,7 +289,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '10 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 3,
                 'name' => 'Reporte de ventas',
                 'description' => 'Reporte de ventas semanal.',
@@ -297,7 +297,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '4 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 3,
                 'name' => 'Comunicados',
                 'description' => 'Comunicados y notificaciones a clientes.',
@@ -305,7 +305,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '4 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 3,
                 'name' => 'Reuniones',
                 'description' => 'Reuniones con clientes y proveedores.',
@@ -313,7 +313,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '4 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 3,
                 'name' => 'Envío de Newsletters',
                 'description' => 'Confección y envío de Newsletters.',
@@ -321,7 +321,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '2 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 3,
                 'name' => 'Presupuesto de Marketing',
                 'description' => 'Propuesta a administración para campañas de Marketing.',
@@ -329,7 +329,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '2 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 3,
                 'name' => 'Gestión de altas',
                 'description' => 'Gestión de nuevos servicios.',
@@ -337,7 +337,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => 'Bajo demanda',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 3,
                 'name' => 'Gestión de bajas',
                 'description' => 'Comunicarse con el cliente y preguntar los motivos, luego gestionarlo.',
@@ -346,7 +346,7 @@ class EnterpriseOrganizationSeeder extends Seeder
             ],
 
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 4,
                 'name' => 'Mantenimiento de Apps',
                 'description' => 'Mantenimiento de aplicaciones existentes.',
@@ -354,7 +354,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '6 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 4,
                 'name' => 'Modificaciones en nuestros sitios',
                 'description' => 'Cambios y correcciones en nuestros sitios.',
@@ -362,7 +362,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'time_allocation' => '6 hs semanales',
             ],
             [
-                'enterprise_id' => 1,
+                'team_id' => 1,
                 'department_id' => 4,
                 'name' => 'Sitios de clientes',
                 'description' => 'Cambios y correcciones en sitios de clientes.',
@@ -371,13 +371,15 @@ class EnterpriseOrganizationSeeder extends Seeder
             ],
         ];
 
+        $departmentCounters = [];
+
         foreach ($organizations as $item) {
             if (!isset($departmentCounters[$item['department_id']])) {
                 $departmentCounters[$item['department_id']] = 1;
             }
 
             EnterpriseOrganization::create([
-                'enterprise_id' => $item['enterprise_id'],
+                'team_id' => $item['team_id'],
                 'department_id' => $item['department_id'],
                 'name' => $item['name'],
                 'description' => $item['description'],

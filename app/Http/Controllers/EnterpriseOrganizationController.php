@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\EnterpriseDepartment;
 use App\Models\EnterpriseOrganization;
+use App\Models\Contact;
 use Illuminate\Http\Request;
 
 class EnterpriseOrganizationController extends Controller
@@ -16,11 +17,13 @@ class EnterpriseOrganizationController extends Controller
 
         foreach ($departments as $department) {
             $postits = EnterpriseOrganization::where('department_id', $department->id)
+                ->where('team_id', auth()->user()->currentTeam->id)
                 ->with('responsible')
                 ->orderBy('order')
                 ->get()
                 ->map(function ($organization) use ($department) {
                     return [
+                        'id' => $organization->id,
                         'header' => $organization->name,
                         'author' => $organization->responsible->name ?? 'N/A',
                         'content' => $organization->description,
@@ -34,5 +37,131 @@ class EnterpriseOrganizationController extends Controller
         }
 
         return view('organization.index', compact('departmentPostits'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        $data = new \stdClass();
+        $departments = EnterpriseDepartment::all()->map(function ($department) {
+            return [
+                'id' => $department->id,
+                'name' => $department->name
+            ];
+        });
+        
+        $contacts = Contact::orderBy('name')->get()->map(function ($contact) {
+            return [
+                'id' => $contact->id,
+                'name' => $contact->name
+            ];
+        });
+
+        return view('organization.form', compact('data', 'departments', 'contacts'));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'department_id' => 'required|exists:enterprise_departments,id',
+            'responsible_id' => 'required|exists:contacts,id',
+            'time_allocation' => 'required|string|max:255',
+            'availability' => 'nullable|string|max:255',
+        ]);
+
+        // Find the highest order for this department
+        $maxOrder = EnterpriseOrganization::where('department_id', $request->department_id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->max('order');
+        
+        EnterpriseOrganization::create([
+            'name' => $request->name,
+            'description' => $request->description,
+            'department_id' => $request->department_id,
+            'team_id' => auth()->user()->currentTeam->id,
+            'responsible_id' => $request->responsible_id,
+            'time_allocation' => $request->time_allocation,
+            'availability' => $request->availability,
+            'order' => ($maxOrder ?? 0) + 1
+        ]);
+
+        return redirect()->route('organization.index')->with('success', 'Task created successfully.');
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit($id)
+    {
+        $data = EnterpriseOrganization::where('id', $id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->firstOrFail();
+        
+        $departments = EnterpriseDepartment::all()->map(function ($department) {
+            return [
+                'id' => $department->id,
+                'name' => $department->name
+            ];
+        });
+        
+        $contacts = Contact::orderBy('name')->get()->map(function ($contact) {
+            return [
+                'id' => $contact->id,
+                'name' => $contact->name
+            ];
+        });
+
+        return view('organization.form', compact('data', 'departments', 'contacts'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'department_id' => 'required|exists:enterprise_departments,id',
+            'responsible_id' => 'required|exists:contacts,id',
+            'time_allocation' => 'required|string|max:255',
+            'availability' => 'nullable|string|max:255',
+        ]);
+
+        $organization = EnterpriseOrganization::where('id', $id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->firstOrFail();
+        
+        $organization->update([
+            'name' => $request->name,
+            'description' => $request->description,
+            'department_id' => $request->department_id,
+            'responsible_id' => $request->responsible_id,
+            'time_allocation' => $request->time_allocation,
+            'availability' => $request->availability,
+        ]);
+
+        return redirect()->route('organization.index')->with('success', 'Task updated successfully.');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy($id)
+    {
+        $organization = EnterpriseOrganization::where('id', $id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->firstOrFail();
+            
+        $organization->delete();
+
+        return redirect()->route('organization.index')->with('success', 'Task deleted successfully.');
     }
 }

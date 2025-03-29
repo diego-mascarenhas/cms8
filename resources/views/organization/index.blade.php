@@ -31,6 +31,35 @@
 
 @section('page-script')
     <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
+    <script>
+        // Display success message if exists
+        @if(session('success'))
+            toastr.success('{{ session('success') }}');
+        @endif
+
+        // Confirmation for delete
+        $(document).on('click', '.btn-delete', function(e) {
+            e.preventDefault();
+            var form = $(this).closest('form');
+            
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                customClass: {
+                    confirmButton: 'btn btn-primary',
+                    cancelButton: 'btn btn-outline-danger ms-1'
+                },
+                buttonsStyling: false
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    </script>
 @endsection
 
 <style>
@@ -50,6 +79,7 @@
         min-height: 200px;
         display: flex;
         flex-direction: column;
+        position: relative;
     }
 
     .post-it:hover {
@@ -77,6 +107,23 @@
         font-size: 0.9em;
         color: #007bff;
     }
+
+    .post-it-actions {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: none;
+    }
+
+    .post-it:hover .post-it-actions {
+        display: flex;
+    }
+
+    .post-it-actions .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        margin-left: 0.25rem;
+    }
 </style>
 
 @section('content')
@@ -84,6 +131,11 @@
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">Organización</h4>
             <p class="text-muted">Organización por departamentos</p>
+        </div>
+        <div class="mt-3 mt-md-0">
+            <a href="{{ route('organization.create') }}" class="btn btn-primary">
+                <i class="ti ti-plus me-1"></i> Create New Task
+            </a>
         </div>
     </div>
 
@@ -106,6 +158,19 @@
                                 @if (!empty($postit['availability']))
                                     ({{ $postit['availability'] }})
                                 @endif
+                            </div>
+                            
+                            <div class="post-it-actions">
+                                <a href="{{ route('organization.edit', $postit['id']) }}" class="btn btn-sm btn-icon btn-primary">
+                                    <i class="ti ti-pencil"></i>
+                                </a>
+                                <form action="{{ route('organization.destroy', $postit['id']) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="button" class="btn btn-sm btn-icon btn-danger btn-delete">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     @endforeach

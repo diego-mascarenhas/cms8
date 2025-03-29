@@ -150,7 +150,8 @@ Route::middleware(['auth'])->group(function ()
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
 
 Route::view('/strategy', 'strategy.index')->name('strategy.index');
-Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('enterprise.organization.index');
+Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');
+Route::resource('organization', EnterpriseOrganizationController::class)->except(['index', 'show']);
 
 Route::get('/notes', function () {
     return view('notes.index');
