@@ -118,9 +118,60 @@
     <!-- Hour chart End  -->
 
     <div class="row">
-        <!-- Clients in danger -->
+        <!-- Emotional Balance and Dangerous Clients (right column) -->
         <div class="col-lg-4 order-lg-2 mb-4 mb-lg-0">
-            <div class="card h-100">
+            <!-- Emotional Balance -->
+            <div class="card mb-4">
+                <div class="card-header pb-0 d-flex justify-content-between mb-lg-n4">
+                    <div class="card-title mb-0">
+                        <h5 class="mb-0">Balance emocional</h5>
+                        <small class="text-muted">¡Bravo! Estás en el buen camino</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="sentiment-chart">
+                                <div class="d-flex align-items-end justify-content-between">
+                                    @foreach ($sentimentData as $index => $sentiment)
+                                        <div class="sentiment-column text-center">
+                                            <div class="sentiment-bar" style="height: calc({{ $sentiment['count'] && max(array_column($sentimentData, 'count')) ? ($sentiment['count'] / max(array_column($sentimentData, 'count'))) * 150 : 0 }}px)">
+                                                <span class="sentiment-count">{{ $sentiment['count'] }}</span>
+                                            </div>
+                                            <div class="sentiment-emoji mt-2">
+                                                @switch($index)
+                                                    @case(0)
+                                                        😡
+                                                    @break
+
+                                                    @case(1)
+                                                        🙁
+                                                    @break
+
+                                                    @case(2)
+                                                        😐
+                                                    @break
+
+                                                    @case(3)
+                                                        🙂
+                                                    @break
+
+                                                    @case(4)
+                                                        🥳
+                                                    @break
+                                                @endswitch
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clients in danger -->
+            <div class="card">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <div class="card-title mb-0">
                         <h5 class="m-0 me-2">Clientes en peligro</h5>
@@ -168,8 +219,99 @@
             </div>
         </div>
 
-        <!-- Today's Contacts -->
+        <!-- Main Content Column -->
         <div class="col-lg-8 order-lg-1">
+            <!-- Ongoing Projects -->
+            @if(isset($ongoingProjects))
+            <div class="card mb-4">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="m-0 me-2">{{ __('Ongoing Projects') }}</h5>
+                        <small class="text-muted">{{ __('Current active projects') }}</small>
+                    </div>
+                    <div class="dropdown">
+                        <a href="{{ route('project-list') }}" class="btn btn-primary btn-sm">
+                            <i class="ti ti-list ti-xs me-1"></i>{{ __('View All') }}
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-borderless border-top">
+                            <thead>
+                                <tr>
+                                    <th>{{ __('Project') }}</th>
+                                    <th class="text-center">{{ __('Client') }}</th>
+                                    <th class="text-center">{{ __('Status') }}</th>
+                                    <th class="text-center">{{ __('Progress') }}</th>
+                                    <th class="text-center">{{ __('Responsible') }}</th>
+                                    <th class="text-center">{{ __('Actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($ongoingProjects as $project)
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <h6 class="mb-0 text-truncate" style="max-width: 180px;">{{ $project->name }}</h6>
+                                                <small class="text-muted">{{ $project->start_date ? \Carbon\Carbon::parse($project->start_date)->format('d M Y') : 'N/A' }}</small>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex flex-column">
+                                                <span>{{ $project->client->name ?? 'N/A' }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            {!! $project->status_label !!}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex justify-content-center align-items-center gap-3">
+                                                @php
+                                                    // Calculate days remaining
+                                                    $progress = 0;
+                                                    $today = \Carbon\Carbon::now();
+                                                    $endDate = $project->end_date ? \Carbon\Carbon::parse($project->end_date) : null;
+                                                    $startDate = $project->start_date ? \Carbon\Carbon::parse($project->start_date) : null;
+                                                    
+                                                    if ($startDate && $endDate) {
+                                                        $totalDays = $startDate->diffInDays($endDate);
+                                                        $daysElapsed = $startDate->diffInDays($today);
+                                                        $progress = $totalDays > 0 ? min(100, round(($daysElapsed / $totalDays) * 100)) : 0;
+                                                    }
+                                                @endphp
+                                                <div class="progress w-100" style="height: 8px;">
+                                                    <div class="progress-bar" role="progressbar" style="width: {{ $progress }}%" aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                                <small class="fw-semibold">{{ $progress }}%</small>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            {{ $project->responsible->name ?? 'N/A' }}
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="{{ route('project.edit', $project->id) }}" class="btn btn-sm btn-icon">
+                                                <i class="ti ti-pencil text-primary"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4">
+                                            <i class="ti ti-mood-check text-success ti-3x mb-3"></i>
+                                            <h5>{{ __('No ongoing projects') }}</h5>
+                                            <p class="text-muted">{{ __('All projects are completed or not yet started') }}</p>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            <!-- Today's Contacts (Restored) -->
             <div class="card mb-4">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <div class="card-title mb-0">
@@ -230,56 +372,6 @@
                                 </tbody>
                             @endif
                         </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Emotional Balance -->
-            <div class="card">
-                <div class="card-header pb-0 d-flex justify-content-between mb-lg-n4">
-                    <div class="card-title mb-0">
-                        <h5 class="mb-0">Balance emocional</h5>
-                        <small class="text-muted">¡Bravo! Estás en el buen camino</small>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="sentiment-chart">
-                                <div class="d-flex align-items-end justify-content-between">
-                                    @foreach ($sentimentData as $index => $sentiment)
-                                        <div class="sentiment-column text-center">
-                                            <div class="sentiment-bar" style="height: calc({{ $sentiment['count'] && max(array_column($sentimentData, 'count')) ? ($sentiment['count'] / max(array_column($sentimentData, 'count'))) * 150 : 0 }}px)">
-                                                <span class="sentiment-count">{{ $sentiment['count'] }}</span>
-                                            </div>
-                                            <div class="sentiment-emoji mt-2">
-                                                @switch($index)
-                                                    @case(0)
-                                                        😡
-                                                    @break
-
-                                                    @case(1)
-                                                        🙁
-                                                    @break
-
-                                                    @case(2)
-                                                        😐
-                                                    @break
-
-                                                    @case(3)
-                                                        🙂
-                                                    @break
-
-                                                    @case(4)
-                                                        🥳
-                                                    @break
-                                                @endswitch
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>

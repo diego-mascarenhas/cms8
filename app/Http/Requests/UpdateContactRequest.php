@@ -86,7 +86,7 @@ class UpdateContactRequest extends FormRequest
                 }
                 $enterprise->update($enterpriseData);
             }
-            else if ($validated['status_id'] == 5)
+            else if (!empty($validated['enterprise']['name']))
             {
                 $enterpriseData['team_id'] = $contact->team_id;
                 $enterprise = Enterprise::create($enterpriseData);

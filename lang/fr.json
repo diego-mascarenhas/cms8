@@ -179,6 +179,7 @@
   "Automation": "Automatisation",
   "Today": "Aujourd'hui",
   "Services": "Services",
+  "Contacts": "Contacts",
   "Clients": "Clients",
   "List of 60": "Liste de 60",
   "Tasks": "Tâches",
@@ -191,5 +192,19 @@
   "Funnel": "Entonnoir",
   "Automations": "Automatisations",
   "Integrations": "Intégrations",
-  "Campaigns": "Campagnes"
+  "Campaigns": "Campagnes",
+  "New Project": "Nouveau Projet",
+  "All Projects": "Tous les Projets",
+  "project_status.BUDGET": "Budget",
+  "project_status.BUDGETED": "Budgétisé",
+  "project_status.AUTHORIZED": "Autorisé",
+  "project_status.SENT": "Envoyé",
+  "project_status.RECEIVED": "Reçu",
+  "project_status.APPROVED": "Approuvé",
+  "project_status.WAITING_FOR_RESPONSE": "En attente de réponse",
+  "project_status.IN_PROGRESS": "En cours",
+  "project_status.FINISHED": "Terminé",
+  "project_status.TO_INVOICE": "À facturer",
+  "project_status.INVOICED": "Facturé",
+  "project_status.NOT_APPROVED": "Non approuvé"
 }

@@ -17,62 +17,62 @@ class ProjectStatusSeeder extends Seeder
         $statuses = [
             [
                 'id' => 1,
-                'name' => 'Budget',
+                'name' => 'BUDGET',
                 'label_class' => 'bg-label-primary'
             ],
             [
                 'id' => 2,
-                'name' => 'Budgeted',
+                'name' => 'BUDGETED',
                 'label_class' => 'bg-label-warning'
             ],
             [
                 'id' => 3,
-                'name' => 'Authorized',
+                'name' => 'AUTHORIZED',
                 'label_class' => 'bg-label-success'
             ],
             [
                 'id' => 4,
-                'name' => 'Sent',
+                'name' => 'SENT',
                 'label_class' => 'bg-label-info'
             ],
             [
                 'id' => 5,
-                'name' => 'Received',
+                'name' => 'RECEIVED',
                 'label_class' => 'bg-label-info'
             ],
             [
                 'id' => 7,
-                'name' => 'Approved',
+                'name' => 'APPROVED',
                 'label_class' => 'bg-label-success'
             ],
             [
                 'id' => 8,
-                'name' => 'Waiting for response',
+                'name' => 'WAITING_FOR_RESPONSE',
                 'label_class' => 'bg-label-warning'
             ],
             [
                 'id' => 9,
-                'name' => 'In progress',
+                'name' => 'IN_PROGRESS',
                 'label_class' => 'bg-label-primary'
             ],
             [
                 'id' => 10,
-                'name' => 'Finished',
+                'name' => 'FINISHED',
                 'label_class' => 'bg-label-success'
             ],
             [
                 'id' => 11,
-                'name' => 'To invoice',
+                'name' => 'TO_INVOICE',
                 'label_class' => 'bg-label-warning'
             ],
             [
                 'id' => 12,
-                'name' => 'Invoiced',
+                'name' => 'INVOICED',
                 'label_class' => 'bg-label-success'
             ],
             [
                 'id' => 13,
-                'name' => 'Not approved',
+                'name' => 'NOT_APPROVED',
                 'label_class' => 'bg-label-danger'
             ],
         ];

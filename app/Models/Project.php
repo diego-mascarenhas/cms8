@@ -51,7 +51,7 @@ class Project extends Model
     {
         if ($this->status)
         {
-            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
+            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->translated_name . '</span>';
         }
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
     }

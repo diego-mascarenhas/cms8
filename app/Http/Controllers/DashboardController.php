@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\UserContactAction;
 use App\Models\List60;
+use App\Models\Project;
 
 use Carbon\Carbon;
 use Stripe\Stripe;
@@ -115,6 +116,13 @@ class DashboardController extends Controller
             ->whereDate('date_next', Carbon::today())
             ->get();
 
+        // Retrieve ongoing projects (IN_PROGRESS)
+        $ongoingProjects = Project::with(['client', 'responsible', 'status'])
+            ->where('status_id', 9) // IN_PROGRESS status
+            ->latest('updated_at')
+            ->take(5)
+            ->get();
+
         if ($activeTeam && $activeTeam->getSetting('stripe_secret'))
         {
             try
@@ -179,7 +187,8 @@ class DashboardController extends Controller
             'recentLeadsCount',
             'todayContacts',
             'currentMonthRevenue',
-            'lastMonthRevenue'
+            'lastMonthRevenue',
+            'ongoingProjects'
         ));
     }
 }

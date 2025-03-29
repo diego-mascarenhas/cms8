@@ -1,15 +1,15 @@
-@props(['id', 'label', 'selected' => null, 'showNull' => false])
+@props(['id', 'label', 'selected' => null, 'allowNull' => true])
 
 <div class="form-group">
     <label for="{{ $id }}">{{ $label }}</label>
     <select id="{{ $id }}" name="{{ $id }}" class="form-control @error($id) is-invalid @enderror">
-        @if($showNull)
+        @if($allowNull)
             <option value="">Select {{ $label }}</option>
         @endif
         
-        @foreach(auth()->user()->currentTeam->allUsers() as $user)
-            <option value="{{ $user->id }}" {{ $selected == $user->id ? 'selected' : '' }}>
-                {{ $user->name }}
+        @foreach($options as $clientId => $clientName)
+            <option value="{{ $clientId }}" {{ $selected == $clientId ? 'selected' : '' }}>
+                {{ $clientName }}
             </option>
         @endforeach
     </select>
