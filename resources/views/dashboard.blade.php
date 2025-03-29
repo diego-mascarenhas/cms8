@@ -97,7 +97,7 @@
                                 </p>
                                 @if(auth()->user()->current_team_id === 2)
                                     <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary">Strategia</a>
-                                    <a href="{{ route('enterprise.organization.index') }}" class="btn btn-sm btn-primary ms-2">Organización</a>
+                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary ms-2">Organización</a>
                                 @else
                                     <button class="btn btn-sm btn-primary disabled">Pasar de Nivel</button>
                                 @endif

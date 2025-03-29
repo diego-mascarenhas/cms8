@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('enterprise_organizations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('enterprise_id')->constrained('enterprises')->onDelete('cascade');
+            $table->foreignId('team_id')->constrained('teams')->onDelete('cascade');
             $table->unsignedTinyInteger('department_id');
             $table->string('name');
             $table->text('description');
@@ -35,6 +35,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('enterprise_departments');
+        Schema::dropIfExists('enterprise_organizations');
     }
 };

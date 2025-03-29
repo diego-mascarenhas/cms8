@@ -10,7 +10,7 @@ class EnterpriseOrganization extends Model
     use HasFactory;
 
     protected $fillable = [
-        'enterprise_id',
+        'team_id',
         'department_id',
         'name',
         'description',
@@ -25,9 +25,9 @@ class EnterpriseOrganization extends Model
         return $this->belongsTo(EnterpriseDepartment::class);
     }
 
-    public function enterprise()
+    public function team()
     {
-        return $this->belongsTo(Enterprise::class);
+        return $this->belongsTo(Team::class);
     }
 
     public function responsible()
