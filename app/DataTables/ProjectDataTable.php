@@ -26,7 +26,7 @@ class ProjectDataTable extends DataTable
                 });
             })
             ->editColumn('category_id', function ($data) {
-                return $data->category->name;
+                return $data->category ? $data->category->name : 'Sin categoría';
             })
             ->filterColumn('category_id', function ($query, $keyword) {
                 $query->whereHas('category', function ($q) use ($keyword) {
