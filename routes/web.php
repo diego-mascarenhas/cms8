@@ -22,7 +22,7 @@ use App\Http\Controllers\MailController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\ProjectController;
-
+use App\Http\Controllers\KanbanController;
 
 // auth
 Route::middleware([
@@ -156,6 +156,9 @@ Route::resource('organization', EnterpriseOrganizationController::class)->except
 Route::get('/notes', function () {
     return view('notes.index');
 })->name('notes.index');
+
+// Kanban
+Route::get('/kanban', [KanbanController::class, 'index'])->name('kanban');
 
 Route::get('/lead', [LeadController::class, 'create'])->name('lead.create');
 Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
