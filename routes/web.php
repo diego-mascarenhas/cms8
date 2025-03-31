@@ -22,7 +22,8 @@ use App\Http\Controllers\MailController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\ProjectController;
-
+use App\Http\Controllers\KanbanController;
+use App\Http\Controllers\TaskController;
 
 // auth
 Route::middleware([
@@ -144,6 +145,15 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
+
+    // Task Routes
+    Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');
+    Route::get('/task/create', [TaskController::class, 'create'])->name('task.create');
+    Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
+    Route::get('/task/{id}/edit', [TaskController::class, 'edit'])->name('task.edit');
+    Route::post('/task', [TaskController::class, 'store'])->name('task.store');
+    Route::put('/task/{id}', [TaskController::class, 'update'])->name('task.update');
+    Route::delete('/task/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
 });
 
 // Testing
@@ -156,6 +166,9 @@ Route::resource('organization', EnterpriseOrganizationController::class)->except
 Route::get('/notes', function () {
     return view('notes.index');
 })->name('notes.index');
+
+// Kanban
+Route::get('/kanban', [KanbanController::class, 'index'])->name('kanban');
 
 Route::get('/lead', [LeadController::class, 'create'])->name('lead.create');
 Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
