@@ -61,6 +61,7 @@ class ClientDataTable extends DataTable
     public function query(Enterprise $model): QueryBuilder
     {
         return $model->newQuery()
+            ->activeClients()
             ->with([
                 'responsible:id,name',
                 'responsible.currentSentiment.sentiment',
@@ -159,5 +160,10 @@ class ClientDataTable extends DataTable
             $url = "https://" . $url;
         }
         return $url;
+    }
+
+    public function scopeActiveClients($query)
+    {
+        return $query->where('status_id', 2);
     }
 }
