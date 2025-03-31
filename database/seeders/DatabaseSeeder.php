@@ -37,6 +37,8 @@ class DatabaseSeeder extends Seeder
             List60StatusesSeeder::class,
             List60Seeder::class,
             ProjectStatusSeeder::class,
+            TaskStatusSeeder::class,
+            TaskSeeder::class,
 		]);
     }
 }

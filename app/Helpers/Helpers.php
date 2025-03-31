@@ -32,7 +32,7 @@ class Helpers
       'showSearch' => true,
       'showLanguageSelector' => true,
       'showQuickAccess' => false,
-      'showNotifications' => false,
+      'showNotifications' => true,
       'defaultLanguage'=>'es',
       'customizerControls' => [
         'rtl',

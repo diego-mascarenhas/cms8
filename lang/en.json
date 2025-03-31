@@ -216,5 +216,9 @@
   "Status": "Status",
   "Responsible": "Responsible",
   "No ongoing projects": "No ongoing projects",
-  "All projects are completed or not yet started": "All projects are completed or not yet started"
+  "All projects are completed or not yet started": "All projects are completed or not yet started",
+  "TO_DO": "To Do",
+  "IN_PROGRESS": "In Progress",
+  "REVIEW": "Review",
+  "DONE": "Done"
 }
