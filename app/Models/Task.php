@@ -50,9 +50,14 @@ class Task extends Model
     public function getStatusLabelAttribute()
     {
         if ($this->status) {
-            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
+            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->translated_name . '</span>';
         }
-        return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
+        return '<span class="badge rounded-pill bg-label-secondary">' . __('task_status.UNKNOWN') . '</span>';
+    }
+
+    public function getTranslatedStatusAttribute()
+    {
+        return $this->status ? $this->status->translated_name : __('task_status.UNKNOWN');
     }
 
     public function scopePendingForUser($query, $userId)

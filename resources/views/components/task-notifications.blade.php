@@ -31,7 +31,9 @@
                                 <div>
                                     <h6 class="mb-1">{{ Str::limit($task->title, 30) }}</h6>
                                     <p class="mb-0">Due date: {{ Carbon\Carbon::parse($task->due_date)->format('d-m-Y') }}</p>
-                                    <small class="text-muted">Status: {{ $task->status->name }}</small>
+                                    <div class="mt-1">
+                                        {!! $task->status_label !!}
+                                    </div>
                                 </div>
                                 <div class="ms-2">
                                     <a href="{{ route('task.edit', $task->id) }}" class="test-bodyx">

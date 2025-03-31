@@ -586,8 +586,8 @@
     "Responsible": "Responsable",
     "No ongoing projects": "No hay proyectos en curso",
     "All projects are completed or not yet started": "Todos los proyectos están completados o aún no han comenzado",
-    "TO_DO": "Por Hacer",
-    "IN_PROGRESS": "En Progreso",
-    "REVIEW": "En Revisión",
-    "DONE": "Completado"
+    "task_status.TO_DO": "Por Hacer",
+    "task_status.IN_PROGRESS": "En Progreso",
+    "task_status.REVIEW": "En Revisión",
+    "task_status.DONE": "Completado"
 }

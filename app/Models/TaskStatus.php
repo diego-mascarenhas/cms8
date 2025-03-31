@@ -14,9 +14,14 @@ class TaskStatus extends Model
         return self::orderBy('order')->get()->map(function ($status) {
             return [
                 'id' => $status->id,
-                'name' => __("task_status.{$status->name}"),
+                'name' => $status->translated_name,
             ];
         });
+    }
+
+    public function getTranslatedNameAttribute()
+    {
+        return __("task_status.{$this->name}");
     }
 
     public function getLabelClassAttribute()

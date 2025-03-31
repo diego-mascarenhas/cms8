@@ -217,8 +217,8 @@
   "Responsible": "Responsible",
   "No ongoing projects": "No ongoing projects",
   "All projects are completed or not yet started": "All projects are completed or not yet started",
-  "TO_DO": "To Do",
-  "IN_PROGRESS": "In Progress",
-  "REVIEW": "Review",
-  "DONE": "Done"
+  "task_status.TO_DO": "To Do",
+  "task_status.IN_PROGRESS": "In Progress",
+  "task_status.REVIEW": "Review",
+  "task_status.DONE": "Done"
 }
