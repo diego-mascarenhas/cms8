@@ -95,44 +95,6 @@ class ProjectController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        $data = $request->except(['_token', '_method']);
-        
-        $request->validate([
-            'name' => 'required|string|min:3|max:255',
-            'description' => 'required|string|min:3|max:255',
-            'responsible_id' => 'required|exists:users,id',
-            'price' => 'nullable|numeric|min:0',
-            'discount' => 'nullable|integer|min:0|max:20',
-            'cost' => 'nullable|numeric|min:0',
-            'status_id' => 'required|exists:project_statuses,id',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'category_id' => 'nullable|exists:categories,id',
-        ]);
-
-        $project = Project::findOrFail($id);
-        $project->update([
-            'name' => $data['name'],
-            'enterprise_id' => $data['enterprise_id'],
-            'category_id' => $data['category_id'] ?? null,
-            'description' => $data['description'],
-            'responsible_id' => $data['responsible_id'],
-            'price' => $data['price'] ?? $project->price,
-            'discount' => $data['discount'] ?? $project->discount,
-            'cost' => $data['cost'] ?? $project->cost,
-            'status_id' => $data['status_id'] ?? $project->status_id,
-            'start_date' => $data['start_date'] ?? $project->start_date,
-            'end_date' => $data['end_date'] ?? $project->end_date,
-        ]);
-
-        return redirect()->route('project-list')->with('success', 'Project updated successfully.');
-    }
-
-    /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)

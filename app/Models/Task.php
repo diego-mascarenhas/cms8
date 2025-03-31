@@ -13,13 +13,14 @@ class Task extends Model
 
     protected $fillable = [
         'team_id',
+        'category_id',
         'responsible_id',
         'title',
         'description',
         'start_date',
         'due_date',
-        'order',
-        'status_id'
+        'status_id',
+        'order'
     ];
 
     protected $casts = [

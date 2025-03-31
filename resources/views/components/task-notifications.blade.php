@@ -9,9 +9,9 @@
     <ul class="dropdown-menu dropdown-menu-end py-0">
         <li class="dropdown-menu-header border-bottom">
             <div class="dropdown-header d-flex align-items-center py-3">
-                <h5 class="text-body mb-0 me-auto">Pending Tasks</h5>
-                <a href="{{ route('task.index') }}" class="text-body">
-                    <i class="ti ti-list fs-4"></i>
+                <h5 class="text-body mb-0 me-auto">My Tasks</h5>
+                <a href="{{ route('task.create') }}" class="text-body">
+                    <i class="ti ti-plus fs-4"></i>
                 </a>
             </div>
         </li>
@@ -27,10 +27,17 @@
                                     </span>
                                 </div>
                             </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1">{{ Str::limit($task->title, 30) }}</h6>
-                                <p class="mb-0">Due date: {{ Carbon\Carbon::parse($task->due_date)->format('d-m-Y') }}</p>
-                                <small class="text-muted">Status: {{ $task->status->name }}</small>
+                            <div class="flex-grow-1 d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ Str::limit($task->title, 30) }}</h6>
+                                    <p class="mb-0">Due date: {{ Carbon\Carbon::parse($task->due_date)->format('d-m-Y') }}</p>
+                                    <small class="text-muted">Status: {{ $task->status->name }}</small>
+                                </div>
+                                <div class="ms-2">
+                                    <a href="{{ route('task.edit', $task->id) }}" class="test-bodyx">
+                                        <i class="ti ti-edit ti-sm"></i>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </li>
@@ -38,19 +45,17 @@
                     <li class="list-group-item list-group-item-action dropdown-notifications-item">
                         <div class="d-flex">
                             <div class="flex-grow-1 text-center py-3">
-                                <p class="mb-0">No pending tasks</p>
+                                <p class="mb-0">No pending tasks for me</p>
                             </div>
                         </div>
                     </li>
                 @endforelse
             </ul>
         </li>
-        @if($pendingTasks->count() > 0)
-            <li class="dropdown-menu-footer border-top">
-                <a href="{{ route('task.index') }}" class="dropdown-item d-flex justify-content-center p-2 h-px-40 mb-1 align-items-center">
-                    View all tasks
-                </a>
-            </li>
-        @endif
+        <li class="dropdown-menu-footer border-top">
+            <a href="{{ route('task.index') }}" class="dropdown-item d-flex justify-content-center p-2 h-px-40 mb-1 align-items-center">
+                View all tasks
+            </a>
+        </li>
     </ul>
 </li> 

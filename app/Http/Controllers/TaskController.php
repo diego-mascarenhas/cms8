@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\TaskDataTable;
 use App\Models\Task;
 use App\Models\TaskStatus;
+use App\Models\Category;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
@@ -14,38 +15,64 @@ class TaskController extends Controller
         return $dataTable->render('task.index');
     }
 
-    public function store(Request $request)
+    public function create()
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'user_id' => 'required|exists:users,id',
-            'team_id' => 'required|exists:teams,id',
-            'start_date' => 'required|date',
-            'due_date' => 'required|date|after_or_equal:start_date',
-            'status_id' => 'required|exists:task_statuses,id',
-            'order' => 'nullable|integer',
-        ]);
+        $categories = Category::getOptions(5000);
+        $statuses = TaskStatus::getOptions();
 
-        Task::create($request->all());
-
-        return redirect()->route('task.index')->with('success', 'Task created successfully');
+        return view('task.form', compact('categories', 'statuses'));
     }
 
-    public function update(Request $request, Task $task)
+    public function store(Request $request)
     {
+        $data = $request->except(['id', '_token']);
+
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'user_id' => 'required|exists:users,id',
+            'description' => 'required|string',
+            'responsible_id' => 'required|exists:users,id',
             'start_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:start_date',
             'status_id' => 'required|exists:task_statuses,id',
-            'order' => 'nullable|integer',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
-        $task->update($request->all());
+        Task::updateOrCreate(
+            ['id' => $request->id],
+            [
+                'title' => $data['title'],
+                'description' => $data['description'],
+                'category_id' => $data['category_id'] ?? null,
+                'responsible_id' => $data['responsible_id'],
+                'start_date' => $data['start_date'] ?? null,
+                'due_date' => $data['due_date'] ?? null,
+                'order' => 0,
+                'status_id' => $data['status_id'] ?? 1,
+                'team_id' => auth()->user()->currentTeam->id,
+            ]
+        );
+        
+        return redirect()->route('task.index')->with('success', 'Record saved successfully.');
+    }
 
-        return redirect()->route('task.index')->with('success', 'Task updated successfully');
+    public function show(string $id)
+    {
+        $task = Task::with(['responsible', 'status', 'category'])
+            ->findOrFail($id);
+            
+        return view('task.show', compact('task'));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        $data = Task::findOrFail($id);
+        $categories = Category::getOptions(6000);
+        $enterprise_id = $data->enterprise_id;
+        $statuses = TaskStatus::getOptions();
+
+        return view('task.form', compact('data', 'categories', 'statuses'));
     }
 } 
