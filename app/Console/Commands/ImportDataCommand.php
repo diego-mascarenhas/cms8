@@ -155,6 +155,8 @@ class ImportDataCommand extends Command
 
             '5. Enterprises' => DB::connection('mysql_tmp')->table('empresas')
                 ->where('grupo', env('CMS_GROUP'))
+                ->where('id_categoria', 2)
+                ->where('estado', 2)
                 ->select('id', 'empresa', 'id_categoria', 'telefono', 'email', 'estado'),
 
             // Add other cases for different types...
@@ -322,7 +324,9 @@ class ImportDataCommand extends Command
 
         try {
             $query = DB::connection('mysql_tmp')->table('empresas')
-                ->where('grupo', env('CMS_GROUP'));
+                ->where('grupo', env('CMS_GROUP'))
+                ->where('id_categoria', 2)
+                ->where('estado', 2);
 
             if ($id) {
                 $query->where('id', $id);
