@@ -150,6 +150,10 @@ class ImportDataCommand extends Command
                 ->where('grupo', env('CMS_GROUP'))
                 ->select('id', 'categoria', 'padre', 'estado'),
 
+            '5. Enterprises' => DB::connection('mysql_tmp')->table('empresas')
+                ->where('grupo', env('CMS_GROUP'))
+                ->select('id', 'empresa', 'id_categoria', 'telefono', 'email', 'estado'),
+
             // Add other cases for different types...
             
             default => throw new \Exception('Invalid type selected'),
@@ -199,6 +203,7 @@ class ImportDataCommand extends Command
             $result = match($type) {
                 '1. Users' => $this->importUsers($id),
                 '2. Categories' => $this->importCategories($id),
+                '5. Enterprises' => $this->importEnterprises($id),
                 // ... other cases
                 default => throw new \Exception('Invalid type selected'),
             };
@@ -296,6 +301,99 @@ class ImportDataCommand extends Command
         } catch (\Exception $e) {
             $this->newLine();
             throw new \Exception("Error importing contacts: " . $e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    protected function importEnterprises($id = null)
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+            'message' => null
+        ];
+
+        try {
+            $query = DB::connection('mysql_tmp')->table('empresas')
+                ->where('grupo', env('CMS_GROUP'));
+
+            if ($id) {
+                $query->where('id', $id);
+            }
+
+            $enterprises = $query->get();
+
+            if ($enterprises->isEmpty()) {
+                $stats['message'] = 'No records found matching the criteria.';
+                return $stats;
+            }
+
+            $bar = $this->output->createProgressBar(count($enterprises));
+            $bar->start();
+
+            foreach ($enterprises as $data) {
+                $existingEnterprise = DB::table('enterprises')->where('id', $data->id)->first();
+
+                if ($data->id_categoria == 3 || $data->id_categoria == 463) {
+                    $type_id = 2; // Supplier
+                } elseif ($data->id_categoria == 100 || $data->id_categoria == 464) {
+                    $type_id = 3; // Partnership
+                } else {
+                    $type_id = 1; // Client
+                }
+
+                // Verificamos si el contacto responsable existe
+                $contactId = $data->id_contacto ?? null;
+                $responsibleExists = false;
+                
+                if ($contactId) {
+                    $responsibleExists = DB::table('contacts')->where('id', $contactId)->exists();
+                    if (!$responsibleExists) {
+                        $this->warn("Contact with ID {$contactId} does not exist for enterprise {$data->id}");
+                        $contactId = null;
+                    }
+                }
+
+                $enterpriseData = [
+                    'id' => $data->id,
+                    'name' => $data->empresa,
+                    'type_id' => $type_id,
+                    'responsible_id' => $contactId,
+                    'referred_by' => $data->referido ?? null,
+                    'address' => $data->domicilio ?? null,
+                    'postal_code' => $data->codigo_postal ?? null,
+                    'locality' => $data->localidad ?? null,
+                    'province' => $data->provincia ?? null,
+                    'country' => $data->pais ?? null,
+                    'phone' => $data->telefono ?? null,
+                    'whatsapp' => $data->whatsapp ?? null,
+                    'email' => $data->email ?? null,
+                    'website' => $data->web ?? null,
+                    //'payment_type_id' => $data->id_forma_pago ?? null,
+                    //'invoice_type_id' => $data->id_factura_tipo ?? null,
+                    'status_id' => $data->estado,
+                    'created_at' => $data->fecha_alta,
+                    'updated_at' => $data->fecha_modificacion,
+                    'team_id' => env('CMS_TEAM_ID'),
+                ];
+
+                if (!$existingEnterprise) {
+                    DB::table('enterprises')->insert($enterpriseData);
+                    $stats['imported']++;
+                } else {
+                    DB::table('enterprises')->where('id', $existingEnterprise->id)->update($enterpriseData);
+                    $stats['updated']++;
+                }
+
+                $bar->advance();
+            }
+
+            $bar->finish();
+            $this->newLine();
+        } catch (\Exception $e) {
+            $this->newLine();
+            throw new \Exception("Error importing enterprises: " . $e->getMessage());
         }
 
         return $stats;
