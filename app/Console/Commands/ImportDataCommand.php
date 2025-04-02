@@ -271,7 +271,7 @@ class ImportDataCommand extends Command
                     'source_id' => null,
                     'birthday' => null,
                     'profile' => null,
-                    'country' => 724,
+                    'country' => 32,
                     'language' => 'es',
                     'creator_id' => 1,
                     'responsible_id' => null,
