@@ -47,11 +47,8 @@ class Enterprise extends Model
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
-        
-        static::addGlobalScope('activeClients', function (Builder $builder) {
-            $builder->where('status_id', 2);
-        });
     }
+
     public function scopeClients($query)
     {
         return $query->where('type_id', 1);
@@ -168,5 +165,10 @@ class Enterprise extends Model
         $this->code = $customerId;
         $this->code_type = 'stripe_customer';
         return $this;
+    }
+
+    public function scopeActiveClients($query)
+    {
+        return $query->where('status_id', 2);
     }
 }
