@@ -144,6 +144,9 @@ class ImportDataCommand extends Command
                 ->whereNotNull('id_empresa')
                 ->where('area_privada', '!=', 6)
                 ->where('id', '>', 2)
+                ->whereNotNull('nombre')
+                ->where('nombre', '!=', '')
+                ->whereRaw("TRIM(nombre) != ''")
                 ->select('id', 'email', 'nombre', 'apellido', 'estado'),
 
             '2. Categories' => DB::connection('mysql_tmp')->table('categorias_generales')
@@ -238,7 +241,10 @@ class ImportDataCommand extends Command
                 ->where('grupo', env('CMS_GROUP'))
                 ->whereNotNull('id_empresa')
                 ->where('area_privada', '!=', 6)
-                ->where('id', '>', 2);
+                ->where('id', '>', 2)
+                ->whereNotNull('nombre')
+                ->where('nombre', '!=', '')
+                ->whereRaw("TRIM(nombre) != ''");
 
             if ($id) {
                 $query->where('id', $id);
@@ -279,7 +285,7 @@ class ImportDataCommand extends Command
                         'phone' => $cleaned_phone,
                         'email' => $data->email,
                     ]),
-                    'status_id' => 1,
+                    'status_id' => 5,
                     'created_at' => $data->fecha_alta,
                     'updated_at' => $data->fecha_modificacion,
                 ];
@@ -343,15 +349,62 @@ class ImportDataCommand extends Command
                     $type_id = 1; // Client
                 }
 
-                // Verificamos si el contacto responsable existe
-                $contactId = $data->id_contacto ?? null;
-                $responsibleExists = false;
-                
-                if ($contactId) {
-                    $responsibleExists = DB::table('contacts')->where('id', $contactId)->exists();
-                    if (!$responsibleExists) {
-                        $this->warn("Contact with ID {$contactId} does not exist for enterprise {$data->id}");
-                        $contactId = null;
+                // Obtenemos el ID del contacto responsable
+                $contactId = null;
+                if (!empty($data->id_contacto)) {
+                    // Verificamos si existe directamente en la tabla contacts
+                    $contactExists = DB::table('contacts')->where('id', $data->id_contacto)->exists();
+                    
+                    if ($contactExists) {
+                        $contactId = $data->id_contacto;
+                        $this->info("Found contact with ID {$contactId} for enterprise {$data->id}");
+                    } else {
+                        // Si no existe, lo importamos desde la base de datos original
+                        $contactData = DB::connection('mysql_tmp')
+                            ->table('contactos')
+                            ->where('id', $data->id_contacto)
+                            ->first();
+                        
+                        if ($contactData) {
+                            // Verificar si el contacto tiene nombre
+                            if (!empty(trim($contactData->nombre))) {
+                                $phone = $contactData->celular ?? $contactData->telefono ?? null;
+                                $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
+                                if (!empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0) {
+                                    $cleaned_phone = '54' . $cleaned_phone;
+                                }
+                                
+                                $newContactData = [
+                                    'id' => $contactData->id,
+                                    'team_id' => env('CMS_TEAM_ID'),
+                                    'user_id' => null,
+                                    'name' => $contactData->nombre . ' ' . $contactData->apellido,
+                                    'source_id' => null,
+                                    'birthday' => null,
+                                    'profile' => null,
+                                    'engagment' => 'temperate',
+                                    'country' => 32,
+                                    'language' => 'es',
+                                    'creator_id' => 1,
+                                    'responsible_id' => null,
+                                    'data' => json_encode([
+                                        'phone' => $cleaned_phone,
+                                        'email' => $contactData->email,
+                                    ]),
+                                    'status_id' => 5,
+                                    'created_at' => $contactData->fecha_alta,
+                                    'updated_at' => $contactData->fecha_modificacion,
+                                ];
+                                
+                                DB::table('contacts')->insert($newContactData);
+                                $contactId = $contactData->id;
+                                $this->info("Contact with ID {$contactId} was imported for enterprise {$data->id}");
+                            } else {
+                                $this->warn("Contact with ID {$data->id_contacto} has no name, skipping import");
+                            }
+                        } else {
+                            $this->warn("Contact with ID {$data->id_contacto} not found in source database");
+                        }
                     }
                 }
 
