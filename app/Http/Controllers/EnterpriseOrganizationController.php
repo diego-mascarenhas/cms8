@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\EnterpriseDepartment;
 use App\Models\EnterpriseOrganization;
-use App\Models\Contact;
 use Illuminate\Http\Request;
 
 class EnterpriseOrganizationController extends Controller
@@ -116,7 +115,7 @@ class EnterpriseOrganizationController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'department_id' => 'required|exists:enterprise_departments,id',
-            'responsible_id' => 'required|exists:contacts,id',
+            'responsible_id' => 'required|exists:users,id',
             'time_allocation' => 'required|string|max:255',
             'availability' => 'nullable|string|max:255',
         ]);
