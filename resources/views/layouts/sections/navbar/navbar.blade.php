@@ -289,7 +289,7 @@
                   </span></a>
               </li>
               -->
-                @if ((Auth::User() && Laravel\Jetstream\Jetstream::hasTeamFeatures() && config('custom.TeamManager')) || Auth::user()->hasRole('developer'))
+                @if ((Auth::User() && Laravel\Jetstream\Jetstream::hasTeamFeatures() && config('custom.TeamManager')) || Auth::user()->hasRole('admin'))
                     <li>
                         <div class="dropdown-divider"></div>
                     </li>
