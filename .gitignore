@@ -426,8 +426,8 @@ package-lock.json
 # NPM Compiled
 /public/hot
 /public/storage
-public/mix-manifest.json
-public/js/laravel-user-management.js
-public/assets/js/
-public/assets/vendor/
-public/assets/css/
+# public/mix-manifest.json
+# public/js/laravel-user-management.js
+# public/assets/js/
+# public/assets/vendor/
+# public/assets/css/

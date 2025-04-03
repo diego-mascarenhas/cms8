@@ -581,6 +581,38 @@ if (typeof $ !== 'undefined') {
                   '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
                   '</div>'
               }
+            },
+            {
+              name: 'enterprises',
+              display: 'name',
+              limit: 4,
+              source: filterConfig(searchData.enterprises),
+              templates: {
+                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
+                suggestion: function ({ name, src, subtitle, url }) {
+                  return (
+                    '<a href="' +
+                    url + '">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="ti ti-building me-2"></i>' +
+                    '<div class="user-info">' +
+                    '<h6 class="mb-0">' +
+                    name +
+                    '</h6>' +
+                    '<small class="text-muted">' +
+                    subtitle +
+                    '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    '</a>'
+                  );
+                },
+                notFound:
+                  '<div class="not-found px-3 py-2">' +
+                  '<h6 class="suggestions-header text-primary mb-2">Empresas</h6>' +
+                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Empresa no encontrada</p>' +
+                  '</div>'
+              }
             }
           )
           //On typeahead result render.
