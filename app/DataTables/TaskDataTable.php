@@ -39,10 +39,12 @@ class TaskDataTable extends DataTable
 
     public function query(Task $model): QueryBuilder
     {
-        return $model->newQuery()->with([
-            'responsible:id,name',
-            'status'
-        ]);
+        return $model->newQuery()
+            ->with([
+                'responsible:id,name',
+                'status'
+            ])
+            ->defaultOrder();
     }
 
     public function html(): HtmlBuilder
@@ -55,6 +57,7 @@ class TaskDataTable extends DataTable
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(false)
+            ->ordering(false)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'initComplete' => "function() {
