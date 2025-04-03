@@ -386,11 +386,12 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 0 10px;
+        padding: 0 5px;
     }
 
     .sentiment-bar {
-        width: 60px;
+        width: 100%;
+        max-width: 60px;
         background-color: #696cff;
         border-radius: 8px;
         position: relative;
@@ -405,11 +406,12 @@
         transform: translateX(-50%);
         color: #566a7f;
         font-weight: 600;
+        font-size: 0.875rem;
     }
 
     .sentiment-emoji {
-        font-size: 1.8rem;
-        margin-top: 1rem;
+        font-size: 1.5rem;
+        margin-top: 0.5rem;
     }
 
     .sentiment-column:nth-child(1) .sentiment-bar {
@@ -433,12 +435,29 @@
     }
 
     .sentiment-chart .d-flex {
-        height: 200px !important;
+        height: 150px !important;
         margin-top: 2rem;
     }
 
-    .sentiment-bar {
-        height: 100%;
-        max-height: 250px; /* Ajusta este valor según necesites */
+    @media (max-width: 576px) {
+        .sentiment-column {
+            padding: 0 2px;
+        }
+        
+        .sentiment-bar {
+            max-width: 40px;
+        }
+
+        .sentiment-count {
+            font-size: 0.75rem;
+        }
+
+        .sentiment-emoji {
+            font-size: 1.2rem;
+        }
+
+        .sentiment-chart .d-flex {
+            height: 120px !important;
+        }
     }
 </style>
