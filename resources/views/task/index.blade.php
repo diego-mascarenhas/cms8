@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Tasks')
+@section('title', __('Tasks'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -43,8 +43,8 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Tasks</h4>
-        <p class="text-muted">Task Management</p>
+        <h4 class="mb-1 mt-3">{{ __('Tasks') }}</h4>
+        <p class="text-muted">{{ __('Task Management') }}</p>
     </div>
 </div>
 
@@ -77,13 +77,15 @@
 <script>
     function deleteRecord(id, element) {
         Swal.fire({
-            title: 'Are you sure you want to delete this record?',
-            text: 'This action cannot be undone',
+            title: "{{ __('Are you sure you want to delete this record?') }}",
+            text: "{{ __('This action cannot be undone') }}",
             icon: 'warning',
             showCloseButton: false,
-            showCancelButton: false,
+            showCancelButton: true,
             confirmButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete'
+            cancelButtonColor: '#d33',
+            confirmButtonText: "{{ __('Yes, delete') }}",
+            cancelButtonText: "{{ __('Cancel') }}"
         }).then((result) => {
             if (result.isConfirmed) {
                 fetch("{{ route('project.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
@@ -123,11 +125,15 @@
                             row.remove();
                         });
                     } else {
-                        console.error('No se encontró la fila correspondiente.');
+                        console.error("{{ __('Could not find the corresponding row.') }}");
                     }
                 }).catch(error => {
                     console.error('Error:', error);
-                    Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
+                    Swal.fire(
+                        "{{ __('Error') }}", 
+                        "{{ __('An error occurred while deleting the record') }}", 
+                        'error'
+                    );
                 });
             }
         });

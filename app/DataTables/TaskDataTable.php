@@ -18,7 +18,7 @@ class TaskDataTable extends DataTable
             ->addColumn('action', 'task.action')
             ->setRowId('id')
             ->editColumn('responsible_id', function ($data) {
-                return $data->responsible->name ?? 'Sin asignar';
+                return $data->responsible->name ?? __('Unassigned');
             })
             ->filterColumn('responsible_id', function($query, $keyword) {
                 $query->whereHas('responsible', function ($q) use ($keyword) {
@@ -76,31 +76,31 @@ class TaskDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('title')
-                ->title('Title')
+                ->title(__('Title'))
                 ->addClass('all'),
             Column::make('responsible_id')
-                ->title('Assigned To')
+                ->title(__('Responsible'))
                 ->addClass('min-tablet')
                 ->searchable(true)
                 ->orderable(false),
             Column::make('start_date')
-                ->title('Start Date')
+                ->title(__('Start date'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('due_date')
-                ->title('Due Date')
+                ->title(__('Due date'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('status_id')
-                ->title('Status')
+                ->title(__('Status'))
                 ->className('text-center')
                 ->addClass('min-tablet'),
             Column::computed('action')
-                ->title('Actions')
+                ->title(__('Actions'))
                 ->width(20)
                 ->className('text-center')
                 ->addClass('min-desktop')

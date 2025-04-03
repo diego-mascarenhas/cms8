@@ -111,34 +111,34 @@ class ClientDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')
-                ->title('Cliente')
+                ->title(__('Client'))
                 ->addClass('all'),
             Column::make('current_sentiment')
-                ->title('Sentimiento')
+                ->title(__('Sentiment'))
                 ->className('text-center')
                 ->addClass('select-filter min-tablet')
                 ->searchable(true)
                 ->orderable(false)
                 ->width(150),
             Column::make('sources')
-                ->title('Redes')
+                ->title(__('Networks'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false)
                 ->width(150),
             Column::make('responsible_name')
-                ->title('Administrador')
+                ->title(__('Administrator'))
                 ->className('text-center')
                 ->addClass('min-tablet')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('status_id')
-                ->title('Estado')
+                ->title(__('Status'))
                 ->className('text-center')
                 ->addClass('min-tablet'),
             Column::computed('action')
-                ->title('Acciones')
+                ->title(__('Actions'))
                 ->width(20)
                 ->className('text-center')
                 ->addClass('min-desktop')
