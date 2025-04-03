@@ -420,15 +420,14 @@ yarn-error.log
 *.homestead.php
 Homestea
 package-lock.json
-v1
 # composer.lock
 # yarn.lock
 
 # NPM Compiled
-# /public/hot
-# /public/storage
-# public/mix-manifest.json
-# public/js/laravel-user-management.js
-# public/assets/js/
-# public/assets/vendor/
-# public/assets/css/
+/public/hot
+/public/storage
+public/mix-manifest.json
+public/js/laravel-user-management.js
+public/assets/js/
+public/assets/vendor/
+public/assets/css/

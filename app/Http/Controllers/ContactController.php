@@ -672,6 +672,19 @@ class ContactController extends Controller
 				];
 			});
 
+		$enterprises = \App\Models\Enterprise::where('name', 'like', "%{$query}%")
+			->select('id', 'name', 'created_at', 'responsible_id')
+			->get()
+			->map(function ($enterprise)
+			{
+				return [
+					'name' => $enterprise->name,
+					'subtitle' => 'Empresa creada el ' . $enterprise->created_at->format('d-m-Y H:i:s') . ' hs',
+					'src' => 'img/icons/brands/enterprise.png',
+					'url' => $enterprise->responsible_id ? route('contact.show', $enterprise->responsible_id) : '#',
+				];
+			});
+
 		$data = [
 			'pages' => [
 				[
@@ -724,6 +737,7 @@ class ContactController extends Controller
 				],
 			],
 			'members' => $members,
+			'enterprises' => $enterprises,
 		];
 
 		return response()->json($data);
