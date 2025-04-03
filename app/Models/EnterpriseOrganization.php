@@ -32,6 +32,6 @@ class EnterpriseOrganization extends Model
 
     public function responsible()
     {
-        return $this->belongsTo(Contact::class, 'responsible_id');
+        return $this->belongsTo(User::class, 'responsible_id');
     }
 }

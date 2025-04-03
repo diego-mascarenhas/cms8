@@ -66,14 +66,11 @@
                             </div>
 
                             <div class="col-md-6">
-                                <div class="form-group">
-                                    <x-team-users-select 
-                                        id="responsible_id" 
-                                        label="Responsible"
-                                        :selected="old('responsible_id', $data->responsible_id ?? '')"
-                                        show-null="false"
-                                    />
-                                </div>
+                                <x-team-users-select 
+                                    id="responsible_id" 
+                                    label="Responsible (*)" 
+                                    :selected="old('responsible_id', $data->responsible_id ?? auth()->id())" 
+                                />
                             </div>
 
                             <div class="col-md-3">
@@ -99,7 +96,7 @@
                             <div class="col-md-12">
                                 <div class="form-group">
                                     <label for="description" class="form-label">Description</label>
-                                    <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="4" required>{{ old('description', $data->description ?? '') }}</textarea>
+                                    <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="16" required>{{ old('description', $data->description ?? '') }}</textarea>
                                     @error('description')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror

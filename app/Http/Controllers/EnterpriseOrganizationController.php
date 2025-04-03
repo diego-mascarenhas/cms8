@@ -51,15 +51,8 @@ class EnterpriseOrganizationController extends Controller
                 'name' => $department->name
             ];
         });
-        
-        $contacts = Contact::orderBy('name')->get()->map(function ($contact) {
-            return [
-                'id' => $contact->id,
-                'name' => $contact->name
-            ];
-        });
 
-        return view('organization.form', compact('data', 'departments', 'contacts'));
+        return view('organization.form', compact('data', 'departments'));
     }
 
     /**
@@ -71,7 +64,7 @@ class EnterpriseOrganizationController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'department_id' => 'required|exists:enterprise_departments,id',
-            'responsible_id' => 'required|exists:contacts,id',
+            'responsible_id' => 'required|exists:users,id',
             'time_allocation' => 'required|string|max:255',
             'availability' => 'nullable|string|max:255',
         ]);
@@ -110,15 +103,8 @@ class EnterpriseOrganizationController extends Controller
                 'name' => $department->name
             ];
         });
-        
-        $contacts = Contact::orderBy('name')->get()->map(function ($contact) {
-            return [
-                'id' => $contact->id,
-                'name' => $contact->name
-            ];
-        });
 
-        return view('organization.form', compact('data', 'departments', 'contacts'));
+        return view('organization.form', compact('data', 'departments'));
     }
 
     /**

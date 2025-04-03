@@ -59,6 +59,24 @@
                 }
             });
         });
+
+        // Function to open content modal
+        function openContentModal(title, content) {
+            content = content.replace(/\\n/g, '<br>');
+            Swal.fire({
+                title: title,
+                html: '<div class="text-start">' + content + '</div>',
+                width: '600px',
+                showCloseButton: false,
+                confirmButtonText: 'Cerrar',
+                customClass: {
+                    confirmButton: 'btn btn-secondary',
+                    popup: 'swal2-modal-custom'
+                },
+                buttonsStyling: false,
+                padding: '1em 2em 2em 2em'
+            });
+        }
     </script>
 @endsection
 
@@ -113,16 +131,37 @@
         top: 10px;
         right: 10px;
         display: none;
+        gap: 8px;
     }
 
     .post-it:hover .post-it-actions {
         display: flex;
     }
 
-    .post-it-actions .btn {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.75rem;
-        margin-left: 0.25rem;
+    .post-it-actions i {
+        font-size: 16px;
+        color: #666;
+        cursor: pointer;
+        transition: color 0.2s ease;
+    }
+
+    .post-it-actions i:hover {
+        color: #333;
+    }
+
+    .post-it-actions form {
+        margin: 0;
+        padding: 0;
+        display: inline;
+    }
+
+    .swal2-modal-custom {
+        padding-top: 1em !important;
+    }
+
+    .swal2-modal-custom .swal2-title {
+        margin-top: 0;
+        padding-top: 0;
     }
 </style>
 
@@ -150,8 +189,8 @@
                         <div class="post-it" style="background-color: {{ $postit['color'] }};">
                             <div class="post-it-header">{{ $postit['header'] }}</div>
                             <div class="post-it-date">{{ $postit['author'] }}</div>
-                            <div class="post-it-content">
-                                {{ $postit['content'] }}
+                            <div class="post-it-content" onclick="openContentModal('{{ $postit['header'] }}', `{{ addslashes(str_replace(["\r\n", "\r", "\n"], "\\n", $postit['content'])) }}`)">
+                                {{ Str::limit($postit['content'], 100, '...') }}
                             </div>
                             <div class="post-it-tag">
                                 {{ $postit['time_allocation'] }}
@@ -161,15 +200,14 @@
                             </div>
                             
                             <div class="post-it-actions">
-                                <a href="{{ route('organization.edit', $postit['id']) }}" class="btn btn-sm btn-icon btn-primary">
+                                <i class="ti ti-eye" onclick="openContentModal('{{ $postit['header'] }}', `{{ addslashes(str_replace(["\r\n", "\r", "\n"], "\\n", $postit['content'])) }}`)"></i>
+                                <a href="{{ route('organization.edit', $postit['id']) }}">
                                     <i class="ti ti-pencil"></i>
                                 </a>
                                 <form action="{{ route('organization.destroy', $postit['id']) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="button" class="btn btn-sm btn-icon btn-danger btn-delete">
-                                        <i class="ti ti-trash"></i>
-                                    </button>
+                                    <i class="ti ti-trash btn-delete" style="color: #dc3545;"></i>
                                 </form>
                             </div>
                         </div>
