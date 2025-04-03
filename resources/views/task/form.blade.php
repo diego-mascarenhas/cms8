@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', ' Tasks')
+@section('title', __('Tasks'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
@@ -31,8 +31,8 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">Tasks/</span> {{ isset($data->id) ? 'Edit' : 'Create' }}</h4>
-        <p class="text-muted">Track your tasks</p>
+		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Tasks') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }}</h4>
+        <p class="text-muted">{{ __('Track your tasks') }}</p>
     </div>
 </div>
 

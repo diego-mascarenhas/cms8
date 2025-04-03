@@ -68,4 +68,15 @@ class Task extends Model
             })
             ->orderBy('due_date', 'asc');
     }
+
+    /**
+     * Default ordering for tasks
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeDefaultOrder($query)
+    {
+        return $query->orderBy('status_id', 'asc')->orderBy('due_date', 'asc');
+    }
 } 

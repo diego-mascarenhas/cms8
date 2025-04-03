@@ -48,7 +48,7 @@ class ContactDataTable extends DataTable
                 return $row->sources_icons_html;
             })
             ->addColumn('responsible_name', function ($contact) {
-                return $contact->responsible->name ?? 'Sin asignar';
+                return $contact->responsible->name ?? __('Unassigned');
             })
             ->filterColumn('responsible_name', function($query, $keyword) {
                 $query->whereHas('responsible', function ($q) use ($keyword) {
@@ -114,34 +114,34 @@ class ContactDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')
-                ->title('Nombre')
+                ->title(__('Name'))
                 ->addClass('all'),
             Column::make('current_sentiment')
-                ->title('Sentimiento')
+                ->title(__('Sentiment'))
                 ->className('text-center')
                 ->addClass('select-filter min-tablet')
                 ->searchable(true)
                 ->orderable(false)
                 ->width(150),
             Column::make('sources')
-                ->title('Redes')
+                ->title(__('Networks'))
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->searchable(false)
                 ->orderable(false)
                 ->width(150),
             Column::make('responsible_name')
-                ->title('Asesor')
+                ->title(__('Advisor'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('status_id')
-                ->title('Estado')
+                ->title(__('Status'))
                 ->className('text-center')
                 ->addClass('min-tablet'),
             Column::computed('action')
-                ->title('Acciones')
+                ->title(__('Actions'))
                 ->width(20)
                 ->className('text-center')
                 ->addClass('min-desktop')

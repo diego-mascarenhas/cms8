@@ -41,7 +41,7 @@ class List60DataTable extends DataTable
                 return Carbon::parse($row->date_next)->translatedFormat('d F');
             })
             ->editColumn('type_id', function ($row) {
-                return $row->type->name ?? 'Sin definir';
+                return $row->type->name ?? __('Undefined');
             })
             ->filterColumn('contact_id', function($query, $keyword) {
                 $query->whereHas('contact', function ($q) use ($keyword) {
@@ -86,36 +86,36 @@ class List60DataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('contact_id')
-                ->title(value: 'Nombre')
+                ->title(value: __('Name'))
                 ->addClass('all')
                 ->orderable(false),
             Column::make('status_id')
-                ->title('Estado')
+                ->title(__('Status'))
                 ->className('text-center')
                 ->addClass('min-phone'),
             Column::make('sources')
-                ->title('Redes')
+                ->title(__('Networks'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false)
                 ->width(150),
             Column::make('date_next')
-                ->title('Próximo contacto')
+                ->title(__('Next contact'))
                 ->className('text-center')
                 ->addClass('min-phone'),
             Column::make('type_id')
-                ->title('Tipo')
+                ->title(__('Type'))
                 ->className('text-center')
                 ->addClass('min-desktop'),
             Column::computed('action')
-                ->title('Acciones')
-            ->width(20)
-            ->className('text-center')
-            ->addClass('min-desktop')
-            ->exportable(false)
-            ->printable(false)
-            ->width(30),
+                ->title(__('Actions'))
+                ->width(20)
+                ->className('text-center')
+                ->addClass('min-desktop')
+                ->exportable(false)
+                ->printable(false)
+                ->width(30),
         ];
     }
 
