@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Hash;
 use Log;
 use Exception;
+use App\Models\Module;
 
 class ImportDataCommand extends Command
 {
@@ -64,12 +65,13 @@ class ImportDataCommand extends Command
             4 => '4. Payment Accounts',
             5 => '5. Enterprises',
             6 => '6. Services',
-            7 => '7. Projects',
-            8 => '8. Invoices',
-            9 => '9. Payments',
-            10 => '10. Communications',
-            11 => '11. Import All',
-            12 => '12. Exit'
+            7 => '6.1. Service Categories',
+            8 => '7. Projects',
+            9 => '8. Invoices',
+            10 => '9. Payments',
+            11 => '10. Communications',
+            12 => '11. Import All',
+            13 => '12. Exit'
         ]);
     }
 
@@ -163,9 +165,15 @@ class ImportDataCommand extends Command
                 ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
                 ->where('servicios.grupo', env('CMS_GROUP'))
                 ->where('servicios.estado', '>', 0)
+                ->where('servicios.operacion', 'V')
                 ->select('servicios.id', 'servicios.id_empresa', 'servicios.id_categoria', 
                          'servicios.descripcion', 'servicios.valor', 'servicios.frecuencia',
                          'servicios.operacion', 'servicios_hosting.user', 'servicios.estado'),
+
+            '6.1. Service Categories' => DB::connection('mysql_tmp')->table('categorias_generales')
+                ->where('grupo', env('CMS_GROUP'))
+                ->where('estado', '>', 0)
+                ->select('id', 'categoria as name', 'padre as parent_id', 'descripcion as description', 'estado as status'),
 
             // Add other cases for different types...
             
@@ -192,12 +200,12 @@ class ImportDataCommand extends Command
         while (true) {
             $choice = $this->showMainMenu();
 
-            if ($choice === '12. Exit') {
+            if ($choice === '13. Exit') {
                 $this->info('Goodbye!');
                 break;
             }
 
-            if ($choice === '11. Import All') {
+            if ($choice === '12. Import All') {
                 if ($this->confirm('Are you sure you want to import ALL data?')) {
                     $this->importAll();
                 }
@@ -218,6 +226,7 @@ class ImportDataCommand extends Command
                 '2. Categories' => $this->importCategories($id),
                 '5. Enterprises' => $this->importEnterprises($id),
                 '6. Services' => $this->importServices($id),
+                '6.1. Service Categories' => $this->importServiceCategories($id),
                 // ... other cases
                 default => throw new \Exception('Invalid type selected'),
             };
@@ -474,6 +483,16 @@ class ImportDataCommand extends Command
         ];
 
         try {
+            // Buscar el módulo de servicios
+            $serviceModule = \App\Models\Module::where('key', 'services')->first();
+            
+            if (!$serviceModule) {
+                throw new \Exception("El módulo 'services' no existe. Ejecute primero el seeder de módulos.");
+            }
+            
+            // Primero importamos/actualizamos las categorías
+            $this->importServiceCategories();
+            
             $query = DB::connection('mysql_tmp')
                 ->table('servicios')
                 ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
@@ -514,20 +533,35 @@ class ImportDataCommand extends Command
                     continue;
                 }
 
-                // Verificar si existe la categoría o asignar 4000 como predeterminada
+                // Verificar si existe la categoría o asignar una predeterminada (4000)
                 $categoryId = 4000; // Categoría predeterminada
-                $categoryExists = DB::table('categories')->where('id', $data->id_categoria)->exists();
+                $categoryExists = DB::table('categories')
+                    ->where('id', $data->id_categoria)
+                    ->exists();
+                
                 if ($categoryExists) {
+                    // Si la categoría existe, verificamos que tenga el module_id del módulo de servicios
+                    $category = DB::table('categories')->where('id', $data->id_categoria)->first();
+                    
+                    if (!$category->module_id) {
+                        // Si no tiene module_id, actualizamos la categoría
+                        DB::table('categories')
+                            ->where('id', $data->id_categoria)
+                            ->update(['module_id' => $serviceModule->id]);
+                        
+                        $this->info("Categoría {$data->id_categoria} actualizada con module_id {$serviceModule->id}");
+                    }
+                    
                     $categoryId = $data->id_categoria;
                 } else {
-                    $this->warn("Category with ID {$data->id_categoria} not found, assigning default category 4000 for service {$data->id}");
+                    $this->warn("Categoría con ID {$data->id_categoria} no encontrada, asignando categoría predeterminada 4000 para el servicio {$data->id}");
                 }
 
                 $cleaned_description = strip_tags($data->descripcion);
 
                 $serviceData = [
                     'id' => $data->id,
-                    'category_id' => 4000, //$categoryId,
+                    'category_id' => $categoryId,
                     'enterprise_id' => $data->id_empresa,
                     'operation' => 'Sell', // Siempre será Sell ya que filtramos por 'V'
                     'desctiption' => $cleaned_description, // Respetar el nombre del campo como está en la migración
@@ -566,6 +600,87 @@ class ImportDataCommand extends Command
         } catch (\Exception $e) {
             $this->newLine();
             throw new \Exception("Error importing services: " . $e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Importa las categorías para el módulo de servicios
+     */
+    protected function importServiceCategories($id = null)
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+            'message' => null
+        ];
+
+        try {
+            // Buscar el módulo de servicios
+            $serviceModule = \App\Models\Module::where('key', 'services')->first();
+            
+            if (!$serviceModule) {
+                throw new \Exception("El módulo 'services' no existe. Ejecute primero el seeder de módulos.");
+            }
+
+            $query = DB::connection('mysql_tmp')->table('categorias_generales')
+                ->where('grupo', env('CMS_GROUP'))
+                ->where('estado', '>', 0);
+
+            if ($id) {
+                $query->where('id', $id);
+            }
+
+            $categories = $query->get();
+
+            if ($categories->isEmpty()) {
+                $stats['message'] = 'No se encontraron categorías para importar.';
+                return $stats;
+            }
+
+            $bar = $this->output->createProgressBar(count($categories));
+            $bar->start();
+
+            foreach ($categories as $data) {
+                $existingCategory = DB::table('categories')->where('id', $data->id)->first();
+
+                $categoryData = [
+                    'id' => $data->id,
+                    'name' => $data->categoria,
+                    'module_id' => $serviceModule->id,
+                    'parent_id' => $data->padre > 0 ? $data->padre : null,
+                    'description' => strip_tags($data->descripcion ?? ''),
+                    'data' => json_encode([
+                        'currency_id' => $data->id_moneda ?? null,
+                        'price' => $data->valor ?? null,
+                        'discount' => $data->descuento ?? null,
+                        'frequency' => $data->frecuencia ?? null,
+                    ]),
+                    'order' => $data->orden ?? 0,
+                    'status' => $data->estado ?? 1,
+                    'created_at' => $data->fecha_alta ?? now(),
+                    'updated_at' => $data->fecha_modificacion ?? now(),
+                ];
+
+                if (!$existingCategory) {
+                    DB::table('categories')->insert($categoryData);
+                    $stats['imported']++;
+                    $this->info("Categoría {$data->id} importada: {$data->categoria}");
+                } else {
+                    DB::table('categories')->where('id', $existingCategory->id)->update($categoryData);
+                    $stats['updated']++;
+                    $this->info("Categoría {$data->id} actualizada: {$data->categoria}");
+                }
+
+                $bar->advance();
+            }
+
+            $bar->finish();
+            $this->newLine();
+        } catch (\Exception $e) {
+            $this->newLine();
+            throw new \Exception("Error importando categorías de servicios: " . $e->getMessage());
         }
 
         return $stats;

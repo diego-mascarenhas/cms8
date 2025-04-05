@@ -79,4 +79,73 @@ class Team extends JetstreamTeam
 
         return $setting->save();
     }
+
+    /**
+     * Get the modules enabled for this team.
+     */
+    public function modules()
+    {
+        return $this->belongsToMany(Module::class)
+            ->withPivot('settings', 'status')
+            ->withTimestamps();
+    }
+
+    /**
+     * Check if a specific module is active for this team.
+     */
+    public function hasModule($moduleKey)
+    {
+        return $this->modules()
+            ->where('key', $moduleKey)
+            ->where('module_team.status', 1)
+            ->exists();
+    }
+
+    /**
+     * Enable a module for this team.
+     */
+    public function enableModule($moduleKey, $settings = null)
+    {
+        $module = Module::where('key', $moduleKey)->first();
+        
+        if (!$module) {
+            return false;
+        }
+
+        $existingPivot = $this->modules()
+            ->where('modules.id', $module->id)
+            ->first();
+
+        if ($existingPivot) {
+            $this->modules()->updateExistingPivot($module->id, [
+                'status' => 1,
+                'settings' => $settings ? json_encode($settings) : $existingPivot->pivot->settings,
+            ]);
+        } else {
+            $this->modules()->attach($module->id, [
+                'status' => 1,
+                'settings' => $settings ? json_encode($settings) : null,
+            ]);
+        }
+
+        return true;
+    }
+
+    /**
+     * Disable a module for this team.
+     */
+    public function disableModule($moduleKey)
+    {
+        $module = Module::where('key', $moduleKey)->first();
+        
+        if (!$module) {
+            return false;
+        }
+
+        $this->modules()->updateExistingPivot($module->id, [
+            'status' => 0,
+        ]);
+
+        return true;
+    }
 }
