@@ -159,6 +159,14 @@ class ImportDataCommand extends Command
                 ->where('estado', 2)
                 ->select('id', 'empresa', 'id_categoria', 'telefono', 'email', 'estado'),
 
+            '6. Services' => DB::connection('mysql_tmp')->table('servicios')
+                ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
+                ->where('servicios.grupo', env('CMS_GROUP'))
+                ->where('servicios.estado', '>', 0)
+                ->select('servicios.id', 'servicios.id_empresa', 'servicios.id_categoria', 
+                         'servicios.descripcion', 'servicios.valor', 'servicios.frecuencia',
+                         'servicios.operacion', 'servicios_hosting.user', 'servicios.estado'),
+
             // Add other cases for different types...
             
             default => throw new \Exception('Invalid type selected'),
@@ -209,6 +217,7 @@ class ImportDataCommand extends Command
                 '1. Users' => $this->importUsers($id),
                 '2. Categories' => $this->importCategories($id),
                 '5. Enterprises' => $this->importEnterprises($id),
+                '6. Services' => $this->importServices($id),
                 // ... other cases
                 default => throw new \Exception('Invalid type selected'),
             };
@@ -451,6 +460,112 @@ class ImportDataCommand extends Command
         } catch (\Exception $e) {
             $this->newLine();
             throw new \Exception("Error importing enterprises: " . $e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    protected function importServices($id = null)
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+            'message' => null
+        ];
+
+        try {
+            $query = DB::connection('mysql_tmp')
+                ->table('servicios')
+                ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
+                ->where('servicios.grupo', env('CMS_GROUP'))
+                ->where('servicios.estado', '>', 0)
+                ->where('servicios.operacion', 'V') // Solo importar servicios de venta
+                ->select('servicios.*', 'servicios_hosting.user');
+
+            if ($id) {
+                $query->where('servicios.id', $id);
+            }
+
+            $services = $query->get();
+
+            if ($services->isEmpty()) {
+                $stats['message'] = 'No services found matching the criteria.';
+                return $stats;
+            }
+
+            $bar = $this->output->createProgressBar(count($services));
+            $bar->start();
+
+            // Pre-cargar empresas existentes en un array para verificación más rápida
+            $enterpriseIds = $services->pluck('id_empresa')->unique()->toArray();
+            $existingEnterprises = DB::table('enterprises')->whereIn('id', $enterpriseIds)->pluck('id')->toArray();
+            
+            $this->info("Verificando " . count($enterpriseIds) . " empresas...");
+            $this->info("Encontradas " . count($existingEnterprises) . " empresas existentes");
+
+            foreach ($services as $data) {
+                $existingService = DB::table('services')->where('id', $data->id)->first();
+
+                // Verificar si existe la empresa
+                $enterpriseExists = in_array($data->id_empresa, $existingEnterprises);
+                if (!$enterpriseExists) {
+                    $this->warn("Enterprise with ID {$data->id_empresa} not found, skipping service {$data->id}");
+                    $bar->advance();
+                    continue;
+                }
+
+                // Verificar si existe la categoría o asignar 4000 como predeterminada
+                $categoryId = 4000; // Categoría predeterminada
+                $categoryExists = DB::table('categories')->where('id', $data->id_categoria)->exists();
+                if ($categoryExists) {
+                    $categoryId = $data->id_categoria;
+                } else {
+                    $this->warn("Category with ID {$data->id_categoria} not found, assigning default category 4000 for service {$data->id}");
+                }
+
+                $cleaned_description = strip_tags($data->descripcion);
+
+                $serviceData = [
+                    'id' => $data->id,
+                    'category_id' => 4000, //$categoryId,
+                    'enterprise_id' => $data->id_empresa,
+                    'operation' => 'Sell', // Siempre será Sell ya que filtramos por 'V'
+                    'desctiption' => $cleaned_description, // Respetar el nombre del campo como está en la migración
+                    'data' => json_encode(['user' => $data->user]),
+                    'currency_id' => $data->id_moneda,
+                    'price' => $data->valor,
+                    'discount' => $data->descuento,
+                    'frequency' => $data->frecuencia,
+                    'last_billed' => $data->ultima,
+                    'next_billing' => $data->proxima,
+                    'expires_at' => $data->caduca,
+                    'status' => $data->estado,
+                    'created_at' => $data->fecha_alta,
+                    'updated_at' => $data->fecha_modificacion,
+                ];
+
+                try {
+                    if (!$existingService) {
+                        DB::table('services')->insert($serviceData);
+                        $stats['imported']++;
+                        $this->info("Service with ID {$data->id} imported");
+                    } else {
+                        DB::table('services')->where('id', $existingService->id)->update($serviceData);
+                        $stats['updated']++;
+                        $this->info("Service with ID {$data->id} updated");
+                    }
+                } catch (\Exception $e) {
+                    $this->error("Error al importar servicio {$data->id}: " . $e->getMessage());
+                }
+
+                $bar->advance();
+            }
+
+            $bar->finish();
+            $this->newLine();
+        } catch (\Exception $e) {
+            $this->newLine();
+            throw new \Exception("Error importing services: " . $e->getMessage());
         }
 
         return $stats;

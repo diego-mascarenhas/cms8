@@ -14,6 +14,13 @@ class CategorySeeder extends Seeder
     public function run()
     {
         Category::create([
+            'id' => 4000,
+            'name' => 'Services',
+            'parent_id' => null,
+            'status' => 1
+        ]);
+        
+        Category::create([
             'id' => 5000,
             'name' => 'Messages',
             'parent_id' => null,
