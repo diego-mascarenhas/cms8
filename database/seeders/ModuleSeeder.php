@@ -8,185 +8,170 @@ use App\Models\Team;
 
 class ModuleSeeder extends Seeder
 {
+    protected $coreModules = [
+        'dashboard' => [
+            'name' => 'Dashboard',
+            'icon' => 'dashboard',
+            'description' => 'Main dashboard and analytics',
+        ],
+        'users' => [
+            'name' => 'Users',
+            'icon' => 'users',
+            'description' => 'User management module',
+        ],
+        'settings' => [
+            'name' => 'Settings',
+            'icon' => 'cog',
+            'description' => 'System settings module',
+        ],
+        'tasks' => [
+            'name' => 'Tasks',
+            'icon' => 'tasks',
+            'description' => 'Task management module',
+        ],
+        'contacts' => [
+            'name' => 'Contacts',
+            'icon' => 'address-book',
+            'description' => 'Contact management module',
+        ],
+        'enterprises' => [
+            'name' => 'Enterprises',
+            'icon' => 'building',
+            'description' => 'Enterprise management module',
+        ],
+        'projects' => [
+            'name' => 'Projects',
+            'icon' => 'project-diagram',
+            'description' => 'Project management module',
+        ],
+        'services' => [
+            'name' => 'Services',
+            'icon' => 'server',
+            'description' => 'Service management module',
+        ],
+    ];
+    
+    protected $additionalModules = [
+        'invoices' => [
+            'name' => 'Invoices',
+            'icon' => 'file-invoice',
+            'description' => 'Invoice management module',
+        ],
+        'payments' => [
+            'name' => 'Payments',
+            'icon' => 'money-bill',
+            'description' => 'Payment management module',
+        ],
+        'communications' => [
+            'name' => 'Communications',
+            'icon' => 'comments',
+            'description' => 'Communications management module',
+        ],
+        'notes' => [
+            'name' => 'Notes',
+            'icon' => 'sticky-note',
+            'description' => 'Notes management module',
+        ],
+        'tickets' => [
+            'name' => 'Tickets',
+            'icon' => 'ticket-alt',
+            'description' => 'Support ticket management module',
+        ],
+        'events' => [
+            'name' => 'Events',
+            'icon' => 'calendar',
+            'description' => 'Events management module',
+        ],
+        'landings' => [
+            'name' => 'Landings',
+            'icon' => 'pager',
+            'description' => 'Landing pages management module',
+        ],
+        'multimedia' => [
+            'name' => 'Multimedia',
+            'icon' => 'photo-video',
+            'description' => 'Multimedia files management module',
+        ],
+        'marketing' => [
+            'name' => 'Marketing',
+            'icon' => 'bullhorn',
+            'description' => 'Marketing tools and campaigns module',
+        ],
+        'hosting' => [
+            'name' => 'Hosting',
+            'icon' => 'server',
+            'description' => 'Hosting management module',
+        ],
+    ];
+    
+    protected $teamModules = [
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting'],
+        2 => ['invoices', 'payments', 'communications', 'tickets', 'marketing'],
+        3 => ['invoices', 'payments', 'communications', 'tickets', 'marketing'],
+    ];
+
     public function run()
     {
-        $modules = [
-            // Módulos core (1-7)
-            [
-                'name' => 'Dashboard',
-                'key' => 'dashboard',
-                'icon' => 'dashboard',
-                'description' => 'Main dashboard and analytics',
-                'is_core' => true,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Users',
-                'key' => 'users',
-                'icon' => 'users',
-                'description' => 'User management module',
-                'is_core' => true,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Settings',
-                'key' => 'settings',
-                'icon' => 'cog',
-                'description' => 'System settings module',
-                'is_core' => true,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Contacts',
-                'key' => 'contacts',
-                'icon' => 'address-book',
-                'description' => 'Contact management module',
-                'is_core' => true,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Enterprises',
-                'key' => 'enterprises',
-                'icon' => 'building',
-                'description' => 'Enterprise management module',
-                'is_core' => true,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Projects',
-                'key' => 'projects',
-                'icon' => 'project-diagram',
-                'description' => 'Project management module',
-                'is_core' => true,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Services',
-                'key' => 'services',
-                'icon' => 'server',
-                'description' => 'Service management module',
-                'is_core' => true,
-                'status' => 1,
-            ],
-            
-            // Módulos adicionales (8-18)
-            [
-                'name' => 'Invoices',
-                'key' => 'invoices',
-                'icon' => 'file-invoice',
-                'description' => 'Invoice management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Payments',
-                'key' => 'payments',
-                'icon' => 'money-bill',
-                'description' => 'Payment management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Communications',
-                'key' => 'communications',
-                'icon' => 'comments',
-                'description' => 'Communications management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Tasks',
-                'key' => 'tasks',
-                'icon' => 'tasks',
-                'description' => 'Task management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Notes',
-                'key' => 'notes',
-                'icon' => 'sticky-note',
-                'description' => 'Notes management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Tickets',
-                'key' => 'tickets',
-                'icon' => 'ticket-alt',
-                'description' => 'Support ticket management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Events',
-                'key' => 'events',
-                'icon' => 'calendar',
-                'description' => 'Events management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Landings',
-                'key' => 'landings',
-                'icon' => 'pager',
-                'description' => 'Landing pages management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Multimedia',
-                'key' => 'multimedia',
-                'icon' => 'photo-video',
-                'description' => 'Multimedia files management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Marketing',
-                'key' => 'marketing',
-                'icon' => 'bullhorn',
-                'description' => 'Marketing tools and campaigns module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Hosting',
-                'key' => 'hosting',
-                'icon' => 'server',
-                'description' => 'Hosting management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-        ];
-
-        foreach ($modules as $moduleData) {
+        $this->command->info('Creando módulos...');
+        
+        foreach ($this->coreModules as $key => $moduleData) {
             Module::firstOrCreate(
-                ['key' => $moduleData['key']],
-                $moduleData
+                ['key' => $key],
+                [
+                    'name' => $moduleData['name'],
+                    'key' => $key,
+                    'icon' => $moduleData['icon'],
+                    'description' => $moduleData['description'],
+                    'is_core' => true,
+                    'status' => 1,
+                ]
             );
+            $this->command->info("Módulo core '{$moduleData['name']}' creado o actualizado");
         }
-
-        // Activar módulos core para todos los equipos existentes
+        
+        foreach ($this->additionalModules as $key => $moduleData) {
+            Module::firstOrCreate(
+                ['key' => $key],
+                [
+                    'name' => $moduleData['name'],
+                    'key' => $key,
+                    'icon' => $moduleData['icon'],
+                    'description' => $moduleData['description'],
+                    'is_core' => false,
+                    'status' => 1,
+                ]
+            );
+            $this->command->info("Módulo adicional '{$moduleData['name']}' creado o actualizado");
+        }
+        
         $teams = Team::all();
-        $coreModules = Module::where('is_core', true)->get();
+        $coreModuleObjects = Module::where('is_core', true)->get();
         
         foreach ($teams as $team) {
-            foreach ($coreModules as $module) {
+            $this->command->info("Habilitando módulos core para equipo '{$team->name}'");
+            
+            foreach ($coreModuleObjects as $module) {
                 $team->enableModule($module->key);
-                $this->command->info("Core module {$module->name} enabled for team {$team->name}");
             }
         }
         
-        // Activar todos los módulos para el equipo admin (ID = 1)
-        $adminTeam = Team::find(1);
-        if ($adminTeam) {
-            $nonCoreModules = Module::where('is_core', false)->get();
+        foreach ($this->teamModules as $teamId => $moduleKeys) {
+            $team = Team::find($teamId);
             
-            foreach ($nonCoreModules as $module) {
-                $adminTeam->enableModule($module->key);
-                $this->command->info("Additional module {$module->name} enabled for admin team");
+            if ($team) {
+                $this->command->info("Habilitando módulos adicionales para equipo '{$team->name}'");
+                
+                foreach ($moduleKeys as $moduleKey) {
+                    $module = Module::where('key', $moduleKey)->first();
+                    
+                    if ($module) {
+                        $team->enableModule($moduleKey);
+                        $this->command->info("- Módulo '{$module->name}' habilitado");
+                    }
+                }
             }
         }
+        
+        $this->command->info('Configuración de módulos completada.');
     }
 } 
