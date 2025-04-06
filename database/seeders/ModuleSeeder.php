@@ -144,16 +144,16 @@ class ModuleSeeder extends Seeder
             $this->command->info("Módulo adicional '{$moduleData['name']}' creado o actualizado");
         }
         
-        $teams = Team::all();
-        $coreModuleObjects = Module::where('is_core', true)->get();
+        // $teams = Team::all();
+        // $coreModuleObjects = Module::where('is_core', true)->get();
         
-        foreach ($teams as $team) {
-            $this->command->info("Habilitando módulos core para equipo '{$team->name}'");
+        // foreach ($teams as $team) {
+        //     $this->command->info("Habilitando módulos core para equipo '{$team->name}'");
             
-            foreach ($coreModuleObjects as $module) {
-                $team->enableModule($module->key);
-            }
-        }
+        //     foreach ($coreModuleObjects as $module) {
+        //         $team->enableModule($module->key);
+        //     }
+        // }
         
         foreach ($this->teamModules as $teamId => $moduleKeys) {
             $team = Team::find($teamId);
