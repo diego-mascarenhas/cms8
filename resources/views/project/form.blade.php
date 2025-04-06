@@ -60,7 +60,12 @@
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="category_id" label="Categoría" :options="$categories" value="{{ old('category_id', $data->category_id ?? '') }}" />
+				<x-module-categories-select 
+					id="category_id" 
+					label="Categoría" 
+					moduleKey="projects"
+					:selected="old('category_id', $data->category_id ?? '')" 
+				/>
 			</div>
 			
 			@if(auth()->user()->hasRole('admin'))
