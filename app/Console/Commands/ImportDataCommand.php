@@ -65,13 +65,12 @@ class ImportDataCommand extends Command
             4 => '4. Payment Accounts',
             5 => '5. Enterprises',
             6 => '6. Services',
-            7 => '6.1. Service Categories',
-            8 => '7. Projects',
-            9 => '8. Invoices',
-            10 => '9. Payments',
-            11 => '10. Communications',
-            12 => '11. Import All',
-            13 => '12. Exit'
+            7 => '7. Projects',
+            8 => '8. Invoices',
+            9 => '9. Payments',
+            10 => '10. Communications',
+            11 => '11. Import All',
+            12 => '12. Exit'
         ]);
     }
 
@@ -153,6 +152,7 @@ class ImportDataCommand extends Command
 
             '2. Categories' => DB::connection('mysql_tmp')->table('categorias_generales')
                 ->where('grupo', env('CMS_GROUP'))
+                ->where('padre', 10)
                 ->select('id', 'categoria', 'padre', 'estado'),
 
             '5. Enterprises' => DB::connection('mysql_tmp')->table('empresas')
@@ -170,13 +170,22 @@ class ImportDataCommand extends Command
                          'servicios.descripcion', 'servicios.valor', 'servicios.frecuencia',
                          'servicios.operacion', 'servicios_hosting.user', 'servicios.estado'),
 
-            '6.1. Service Categories' => DB::connection('mysql_tmp')->table('categorias_generales')
+            '7. Projects' => DB::connection('mysql_tmp')->table('proyectos')
                 ->where('grupo', env('CMS_GROUP'))
-                ->where('estado', '>', 0)
-                ->select('id', 'categoria as name', 'padre as parent_id', 'descripcion as description', 'estado as status'),
+                ->select('id', 'nombre', 'id_empresa', 'estado'),
 
-            // Add other cases for different types...
-            
+            '8. Invoices' => DB::connection('mysql_tmp')->table('facturas')
+                ->where('grupo', env('CMS_GROUP'))
+                ->select('id', 'id_empresa', 'id_factura_tipo', 'estado'),
+
+            '9. Payments' => DB::connection('mysql_tmp')->table('pagos')
+                ->where('grupo', env('CMS_GROUP'))
+                ->select('id', 'id_empresa', 'id_forma_pago', 'estado'),
+
+            '10. Communications' => DB::connection('mysql_tmp')->table('comunicaciones')
+                ->where('grupo', env('CMS_GROUP'))
+                ->select('id', 'id_empresa', 'id_comunicacion_tipo', 'estado'),
+
             default => throw new \Exception('Invalid type selected'),
         };
 
@@ -200,12 +209,12 @@ class ImportDataCommand extends Command
         while (true) {
             $choice = $this->showMainMenu();
 
-            if ($choice === '13. Exit') {
+            if ($choice === '12. Exit') {
                 $this->info('Goodbye!');
                 break;
             }
 
-            if ($choice === '12. Import All') {
+            if ($choice === '11. Import All') {
                 if ($this->confirm('Are you sure you want to import ALL data?')) {
                     $this->importAll();
                 }
@@ -226,8 +235,10 @@ class ImportDataCommand extends Command
                 '2. Categories' => $this->importCategories($id),
                 '5. Enterprises' => $this->importEnterprises($id),
                 '6. Services' => $this->importServices($id),
-                '6.1. Service Categories' => $this->importServiceCategories($id),
-                // ... other cases
+                '7. Projects' => $this->importProjects($id),
+                '8. Invoices' => $this->importInvoices($id),
+                '9. Payments' => $this->importPayments($id),
+                '10. Communications' => $this->importCommunications($id),
                 default => throw new \Exception('Invalid type selected'),
             };
 
@@ -490,9 +501,6 @@ class ImportDataCommand extends Command
                 throw new \Exception("El módulo 'services' no existe. Ejecute primero el seeder de módulos.");
             }
             
-            // Primero importamos/actualizamos las categorías
-            $this->importServiceCategories();
-            
             $query = DB::connection('mysql_tmp')
                 ->table('servicios')
                 ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
@@ -606,9 +614,9 @@ class ImportDataCommand extends Command
     }
 
     /**
-     * Importa las categorías para el módulo de servicios
+     * Importa las categorías desde el sistema antiguo
      */
-    protected function importServiceCategories($id = null)
+    protected function importCategories($id = null)
     {
         $stats = [
             'imported' => 0,
@@ -617,15 +625,16 @@ class ImportDataCommand extends Command
         ];
 
         try {
-            // Buscar el módulo de servicios
+            // Buscar el módulo de servicios para asignar a las categorías
             $serviceModule = \App\Models\Module::where('key', 'services')->first();
             
             if (!$serviceModule) {
-                throw new \Exception("El módulo 'services' no existe. Ejecute primero el seeder de módulos.");
+                $this->warn("El módulo 'services' no existe. Las categorías se importarán sin módulo asignado.");
             }
 
             $query = DB::connection('mysql_tmp')->table('categorias_generales')
                 ->where('grupo', env('CMS_GROUP'))
+                ->where('padre', 10)
                 ->where('estado', '>', 0);
 
             if ($id) {
@@ -648,7 +657,7 @@ class ImportDataCommand extends Command
                 $categoryData = [
                     'id' => $data->id,
                     'name' => $data->categoria,
-                    'module_id' => $serviceModule->id,
+                    'module_id' => $serviceModule ? $serviceModule->id : null,
                     'parent_id' => $data->padre > 0 ? $data->padre : null,
                     'description' => strip_tags($data->descripcion ?? ''),
                     'data' => json_encode([
@@ -680,7 +689,7 @@ class ImportDataCommand extends Command
             $this->newLine();
         } catch (\Exception $e) {
             $this->newLine();
-            throw new \Exception("Error importando categorías de servicios: " . $e->getMessage());
+            throw new \Exception("Error importando categorías: " . $e->getMessage());
         }
 
         return $stats;
