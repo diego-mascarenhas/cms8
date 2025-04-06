@@ -44,34 +44,71 @@
                 }
             }
             
-            // Obtener el módulo y categorías
+            // Obtener el módulo
             $module = $moduleKey ? \App\Models\Module::where('key', $moduleKey)->first() : null;
             
-            // Si tenemos un módulo, buscamos sus categorías
+            // Obtener todas las categorías activas para este módulo (grupos y subcategorías)
             if ($module) {
-                $categories = \App\Models\Category::where('module_id', $module->id)
+                $query = \App\Models\Category::where('module_id', $module->id)
+                    ->where('status', 1)
                     ->where(function($query) {
                         $query->whereNull('team_id')
                             ->orWhere('team_id', auth()->user()->currentTeam->id);
-                    })
-                    ->orderBy('name')
-                    ->get();
+                    });
             } else {
-                // Si no tenemos un módulo, mostramos todas las categorías
-                $categories = \App\Models\Category::whereNull('module_id')
+                // Si no tenemos un módulo, mostramos las categorías sin módulo
+                $query = \App\Models\Category::whereNull('module_id')
+                    ->where('status', 1)
+                    ->where(function($query) {
+                        $query->whereNull('team_id')
+                            ->orWhere('team_id', auth()->user()->currentTeam->id);
+                    });
+            }
+            
+            // Obtener los grupos (categorías padre)
+            $parentCategories = $query->whereNull('parent_id')
+                ->orderBy('order')
+                ->orderBy('name')
+                ->get();
+                
+            // Obtener todas las subcategorías para este módulo
+            if ($module) {
+                $allSubcategories = \App\Models\Category::where('module_id', $module->id)
+                    ->whereNotNull('parent_id')
+                    ->where('status', 1)
                     ->where(function($query) {
                         $query->whereNull('team_id')
                             ->orWhere('team_id', auth()->user()->currentTeam->id);
                     })
+                    ->orderBy('order')
                     ->orderBy('name')
-                    ->get();
+                    ->get()
+                    ->groupBy('parent_id');
+            } else {
+                $allSubcategories = \App\Models\Category::whereNull('module_id')
+                    ->whereNotNull('parent_id')
+                    ->where('status', 1)
+                    ->where(function($query) {
+                        $query->whereNull('team_id')
+                            ->orWhere('team_id', auth()->user()->currentTeam->id);
+                    })
+                    ->orderBy('order')
+                    ->orderBy('name')
+                    ->get()
+                    ->groupBy('parent_id');
             }
         @endphp
         
-        @foreach($categories as $category)
-            <option value="{{ $category->id }}" {{ $selected == $category->id ? 'selected' : '' }}>
-                {{ $category->name }}
-            </option>
+        @foreach($parentCategories as $parentCategory)
+            <optgroup label="{{ $parentCategory->name }}">
+                @if(isset($allSubcategories[$parentCategory->id]))
+                    @foreach($allSubcategories[$parentCategory->id] as $subcategory)
+                        <option value="{{ $subcategory->id }}" {{ $selected == $subcategory->id ? 'selected' : '' }}>
+                            {{ $subcategory->name }}
+                        </option>
+                    @endforeach
+                @endif
+            </optgroup>
         @endforeach
     </select>
     
