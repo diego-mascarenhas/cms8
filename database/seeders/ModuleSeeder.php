@@ -102,10 +102,20 @@ class ModuleSeeder extends Seeder
             'icon' => 'server',
             'description' => 'Hosting management module',
         ],
+        'mail' => [
+            'name' => 'Mail',
+            'icon' => 'envelope',
+            'description' => 'Email management module',
+        ],
+        'chat' => [
+            'name' => 'Chat',
+            'icon' => 'comment-dots',
+            'description' => 'Live chat module',
+        ],
     ];
     
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat'],
         2 => ['invoices', 'payments', 'communications', 'tickets', 'marketing'],
         3 => ['invoices', 'payments', 'communications', 'tickets', 'marketing'],
     ];

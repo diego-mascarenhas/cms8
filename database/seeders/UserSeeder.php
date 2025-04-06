@@ -19,7 +19,7 @@ class UserSeeder extends Seeder
             'password' => '$2y$10$9His4IIPh5nFp0TSilz.h.0DLLE4DzhX1Os2y0QHwt.a19s6whxyC',
         ]);
         $revision->assignRole([1, 2, 10]);
-        $revision->categories()->attach([5001, 5002, 5003, 5004]);
+        // $revision->categories()->attach([5001, 5002, 5003, 5004]);
 
         $humano = User::factory()->create([
             'name' => 'Victor Gómez',
@@ -28,7 +28,7 @@ class UserSeeder extends Seeder
             'password' => '$2y$10$FcK76MqjsbRMzQeDyqSO3ujezrf7NLQWoZlQuxtvlWHogq9ULJKoi',
         ]);
         $humano->assignRole([1, 2]);
-        $revision->categories()->attach([5001]);
+        // $revision->categories()->attach([5001]);
 
         // Admin
         $user = User::factory()->create([
@@ -38,7 +38,7 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         $user->assignRole([2]);
-        $user->categories()->attach([5001, 5003, 5004]);
+        // $user->categories()->attach([5001, 5003, 5004]);
 
         $user->ownedTeams()->create([
             'name' => "Demo's Team",
@@ -60,7 +60,7 @@ class UserSeeder extends Seeder
             
         ]);
         $user->assignRole(3);
-        $user->categories()->attach([5001]);
+        // $user->categories()->attach([5001]);
         $user->teams()->attach(1);
         
         // Editor
@@ -72,7 +72,7 @@ class UserSeeder extends Seeder
             'current_team_id' => 1,
         ]);
         $user->assignRole(4);
-        $user->categories()->attach([5001]);
+        // $user->categories()->attach([5001]);
         $user->teams()->attach(1);
 
         // Auditor
@@ -84,7 +84,7 @@ class UserSeeder extends Seeder
             'current_team_id' => 1,
         ]);
         $user->assignRole(5);
-        $user->categories()->attach([5001]);
+        // $user->categories()->attach([5001]);
         $user->teams()->attach(1);
 
         // Technical
@@ -96,7 +96,7 @@ class UserSeeder extends Seeder
             'current_team_id' => 1,
         ]);
         $user->assignRole(6);
-        $user->categories()->attach([5001]);
+        // $user->categories()->attach([5001]);
         $user->teams()->attach(1);
 
         // Client
@@ -108,7 +108,7 @@ class UserSeeder extends Seeder
             'current_team_id' => 1,
         ]);
         $user->assignRole(7);
-        $user->categories()->attach([5001]);
+        // $user->categories()->attach([5001]);
         $user->teams()->attach(1);
 
         // User
@@ -120,7 +120,7 @@ class UserSeeder extends Seeder
             'current_team_id' => 1,
         ]);
         $user->assignRole(8);
-        $user->categories()->attach([5001]);
+        // $user->categories()->attach([5001]);
         $user->teams()->attach(1);
         
         // Guest
@@ -132,7 +132,7 @@ class UserSeeder extends Seeder
             'current_team_id' => 1,
         ]);
         $user->assignRole(9);
-        $user->categories()->attach([5001]);
+        // $user->categories()->attach([5001]);
         $user->teams()->attach(1);
 
         // Team revision alpha
@@ -156,7 +156,7 @@ class UserSeeder extends Seeder
             'current_team_id' => 2,
         ]);
         $lucas->assignRole(2);
-        $lucas->categories()->attach([5001]);
+        // $lucas->categories()->attach([5001]);
         $lucas->teams()->attach(2);
 
         // Jesica Lorente - revision alpha
@@ -168,7 +168,7 @@ class UserSeeder extends Seeder
             'current_team_id' => 2,
         ]);
         $jesica->assignRole(2);
-        $jesica->categories()->attach([5001]);
+        // $jesica->categories()->attach([5001]);
         $jesica->teams()->attach(2);
 
         // Team humano
