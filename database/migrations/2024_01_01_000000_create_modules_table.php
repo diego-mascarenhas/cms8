@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('modules', function (Blueprint $table) {
-            $table->id();
+            $table->tinyIncrements('id');
             $table->string('name');
             $table->string('key')->unique();
             $table->string('icon')->nullable();
@@ -25,7 +25,7 @@ return new class extends Migration
 
         Schema::create('module_team', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('module_id');
+            $table->unsignedTinyInteger('module_id');
             $table->unsignedBigInteger('team_id');
             $table->json('settings')->nullable();
             $table->tinyInteger('status')->default(1);
@@ -41,14 +41,6 @@ return new class extends Migration
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
         });
-
-        // Add module_id field to categories table
-        Schema::table('categories', function (Blueprint $table) {
-            $table->unsignedBigInteger('module_id')->nullable()->after('name');
-            $table->foreign('module_id')->references('id')->on('modules')
-                ->onUpdate('cascade')
-                ->onDelete('set null');
-        });
     }
 
     /**
@@ -56,11 +48,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('categories', function (Blueprint $table) {
-            $table->dropForeign(['module_id']);
-            $table->dropColumn('module_id');
-        });
-
         Schema::dropIfExists('module_team');
         Schema::dropIfExists('modules');
     }
