@@ -21,6 +21,7 @@ use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\TeamSettingController;
+use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\TaskController;
@@ -136,6 +137,15 @@ Route::middleware(['auth'])->group(function ()
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
+
+    // Services
+    Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list')->middleware('role:admin');
+    Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling')->middleware('role:admin');
+    Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show')->middleware('role:admin');
+    Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit')->middleware('role:admin');
+    Route::post('/service', [ServiceController::class, 'store'])->name('service.store')->middleware('role:admin');
+    Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update')->middleware('role:admin');
+    Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy')->middleware('role:admin');
 
     // Projects
     Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');

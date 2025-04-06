@@ -401,6 +401,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'project.destroy',
             'project.tasks',
             'project.calendar',
+            'service.index',
+            'service.list',
+            'service.create',
+            'service.show',
+            'service.edit',
+            'service.store',
+            'service.update',
+            'service.destroy',
         ]);
 
         $colaboratorRole = Role::create(['name' => 'colaborator']);
@@ -434,6 +442,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'password.update',
             'project.index',
             'project.list',
+            'service.index',
+            'service.list',
+            'service.show',
         ]);
 
         $editorRole = Role::create(['name' => 'auditor']);

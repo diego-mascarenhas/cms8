@@ -685,6 +685,28 @@ class ContactController extends Controller
 				];
 			});
 
+		$services = \App\Models\Service::where(function($q) use ($query) {
+				// Search for domain in the JSON data
+				$q->whereRaw("JSON_EXTRACT(data, '$.domain') LIKE ?", ["%{$query}%"])
+				  // Search for user in the JSON data
+				  ->orWhereRaw("JSON_EXTRACT(data, '$.user') LIKE ?", ["%{$query}%"])
+				  // Search for IP in the JSON data
+				  ->orWhereRaw("JSON_EXTRACT(data, '$.ip') LIKE ?", ["%{$query}%"]);
+			})
+			->select('id', 'enterprise_id', 'data', 'created_at')
+			->get()
+			->map(function ($service) {
+				$domain = isset($service->data->domain) ? $service->data->domain : 'No domain';
+				$user = isset($service->data->user) ? $service->data->user : '';
+				
+				return [
+					'name' => $domain,
+					'subtitle' => !empty($user) ? "Usuario: {$user}" : "Servicio creado el " . $service->created_at->format('d-m-Y'),
+					'src' => 'img/icons/brands/web.png',
+					'url' => route('service.show', $service->id),
+				];
+			});
+
 		$data = [
 			'pages' => [
 				[
@@ -738,6 +760,7 @@ class ContactController extends Controller
 			],
 			'members' => $members,
 			'enterprises' => $enterprises,
+			'services' => $services,
 		];
 
 		return response()->json($data);

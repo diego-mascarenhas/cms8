@@ -23,7 +23,7 @@ class ServiceDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'service.action')
             ->setRowId('id')
-            ->rawColumns(['name', 'status'])
+            ->rawColumns(['name', 'action', 'status'])
             ->editColumn('enterprise_id', function ($data)
             {
                 return $data->client->name;
@@ -84,6 +84,14 @@ class ServiceDataTable extends DataTable
             Column::make('created_at')->title('Created')->className('text-center'),
             Column::make('updated_at')->title('Updated')->className('text-center'),
             Column::make('status')->title('Status')->className('text-center'),
+            Column::computed('action')
+                ->title('Acciones')
+                ->width(20)
+                ->className('text-center')
+                ->addClass('min-desktop')
+                ->exportable(false)
+                ->printable(false)
+                ->width(30),
         ];
     }
 
