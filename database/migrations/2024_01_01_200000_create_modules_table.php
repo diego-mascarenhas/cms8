@@ -42,7 +42,7 @@ return new class extends Migration
                 ->onDelete('cascade');
         });
 
-        // Add module field to categories table
+        // Add module_id field to categories table
         Schema::table('categories', function (Blueprint $table) {
             $table->unsignedBigInteger('module_id')->nullable()->after('name');
             $table->foreign('module_id')->references('id')->on('modules')

@@ -11,6 +11,7 @@ class ModuleSeeder extends Seeder
     public function run()
     {
         $modules = [
+            // Módulos core (1-7)
             [
                 'name' => 'Dashboard',
                 'key' => 'dashboard',
@@ -28,10 +29,10 @@ class ModuleSeeder extends Seeder
                 'status' => 1,
             ],
             [
-                'name' => 'Enterprises',
-                'key' => 'enterprises',
-                'icon' => 'building',
-                'description' => 'Enterprise management module',
+                'name' => 'Settings',
+                'key' => 'settings',
+                'icon' => 'cog',
+                'description' => 'System settings module',
                 'is_core' => true,
                 'status' => 1,
             ],
@@ -44,10 +45,52 @@ class ModuleSeeder extends Seeder
                 'status' => 1,
             ],
             [
+                'name' => 'Enterprises',
+                'key' => 'enterprises',
+                'icon' => 'building',
+                'description' => 'Enterprise management module',
+                'is_core' => true,
+                'status' => 1,
+            ],
+            [
                 'name' => 'Projects',
                 'key' => 'projects',
                 'icon' => 'project-diagram',
                 'description' => 'Project management module',
+                'is_core' => true,
+                'status' => 1,
+            ],
+            [
+                'name' => 'Services',
+                'key' => 'services',
+                'icon' => 'server',
+                'description' => 'Service management module',
+                'is_core' => true,
+                'status' => 1,
+            ],
+            
+            // Módulos adicionales (8-18)
+            [
+                'name' => 'Invoices',
+                'key' => 'invoices',
+                'icon' => 'file-invoice',
+                'description' => 'Invoice management module',
+                'is_core' => false,
+                'status' => 1,
+            ],
+            [
+                'name' => 'Payments',
+                'key' => 'payments',
+                'icon' => 'money-bill',
+                'description' => 'Payment management module',
+                'is_core' => false,
+                'status' => 1,
+            ],
+            [
+                'name' => 'Communications',
+                'key' => 'communications',
+                'icon' => 'comments',
+                'description' => 'Communications management module',
                 'is_core' => false,
                 'status' => 1,
             ],
@@ -60,35 +103,59 @@ class ModuleSeeder extends Seeder
                 'status' => 1,
             ],
             [
-                'name' => 'Services',
-                'key' => 'services',
+                'name' => 'Notes',
+                'key' => 'notes',
+                'icon' => 'sticky-note',
+                'description' => 'Notes management module',
+                'is_core' => false,
+                'status' => 1,
+            ],
+            [
+                'name' => 'Tickets',
+                'key' => 'tickets',
+                'icon' => 'ticket-alt',
+                'description' => 'Support ticket management module',
+                'is_core' => false,
+                'status' => 1,
+            ],
+            [
+                'name' => 'Events',
+                'key' => 'events',
+                'icon' => 'calendar',
+                'description' => 'Events management module',
+                'is_core' => false,
+                'status' => 1,
+            ],
+            [
+                'name' => 'Landings',
+                'key' => 'landings',
+                'icon' => 'pager',
+                'description' => 'Landing pages management module',
+                'is_core' => false,
+                'status' => 1,
+            ],
+            [
+                'name' => 'Multimedia',
+                'key' => 'multimedia',
+                'icon' => 'photo-video',
+                'description' => 'Multimedia files management module',
+                'is_core' => false,
+                'status' => 1,
+            ],
+            [
+                'name' => 'Marketing',
+                'key' => 'marketing',
+                'icon' => 'bullhorn',
+                'description' => 'Marketing tools and campaigns module',
+                'is_core' => false,
+                'status' => 1,
+            ],
+            [
+                'name' => 'Hosting',
+                'key' => 'hosting',
                 'icon' => 'server',
-                'description' => 'Service management module',
+                'description' => 'Hosting management module',
                 'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Invoices',
-                'key' => 'invoices',
-                'icon' => 'file-invoice',
-                'description' => 'Invoice management module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Accounting',
-                'key' => 'accounting',
-                'icon' => 'money-bill',
-                'description' => 'Accounting module',
-                'is_core' => false,
-                'status' => 1,
-            ],
-            [
-                'name' => 'Settings',
-                'key' => 'settings',
-                'icon' => 'cog',
-                'description' => 'System settings module',
-                'is_core' => true,
                 'status' => 1,
             ],
         ];
@@ -100,14 +167,25 @@ class ModuleSeeder extends Seeder
             );
         }
 
-        // Activate all modules for admin team
-        $adminTeam = Team::find(1); // Assuming admin team has ID 1
+        // Activar módulos core para todos los equipos existentes
+        $teams = Team::all();
+        $coreModules = Module::where('is_core', true)->get();
         
+        foreach ($teams as $team) {
+            foreach ($coreModules as $module) {
+                $team->enableModule($module->key);
+                $this->command->info("Core module {$module->name} enabled for team {$team->name}");
+            }
+        }
+        
+        // Activar todos los módulos para el equipo admin (ID = 1)
+        $adminTeam = Team::find(1);
         if ($adminTeam) {
-            $modules = Module::all();
+            $nonCoreModules = Module::where('is_core', false)->get();
             
-            foreach ($modules as $module) {
+            foreach ($nonCoreModules as $module) {
                 $adminTeam->enableModule($module->key);
+                $this->command->info("Additional module {$module->name} enabled for admin team");
             }
         }
     }
