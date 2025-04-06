@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Hash;
 use Log;
 use Exception;
+use App\Models\Module;
 
 class ImportDataCommand extends Command
 {
@@ -151,6 +152,7 @@ class ImportDataCommand extends Command
 
             '2. Categories' => DB::connection('mysql_tmp')->table('categorias_generales')
                 ->where('grupo', env('CMS_GROUP'))
+                ->where('padre', 10)
                 ->select('id', 'categoria', 'padre', 'estado'),
 
             '5. Enterprises' => DB::connection('mysql_tmp')->table('empresas')
@@ -159,8 +161,29 @@ class ImportDataCommand extends Command
                 ->where('estado', 2)
                 ->select('id', 'empresa', 'id_categoria', 'telefono', 'email', 'estado'),
 
-            // Add other cases for different types...
-            
+            '6. Services' => DB::connection('mysql_tmp')->table('servicios')
+                ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
+                ->where('servicios.grupo', env('CMS_GROUP'))
+                ->where('servicios.estado', '>', 0)
+                ->where('servicios.operacion', 'V')
+                ->select('servicios.*', 'servicios_hosting.*'),
+
+            '7. Projects' => DB::connection('mysql_tmp')->table('proyectos')
+                ->where('grupo', env('CMS_GROUP'))
+                ->select('id', 'nombre', 'id_empresa', 'estado'),
+
+            '8. Invoices' => DB::connection('mysql_tmp')->table('facturas')
+                ->where('grupo', env('CMS_GROUP'))
+                ->select('id', 'id_empresa', 'id_factura_tipo', 'estado'),
+
+            '9. Payments' => DB::connection('mysql_tmp')->table('pagos')
+                ->where('grupo', env('CMS_GROUP'))
+                ->select('id', 'id_empresa', 'id_forma_pago', 'estado'),
+
+            '10. Communications' => DB::connection('mysql_tmp')->table('comunicaciones')
+                ->where('grupo', env('CMS_GROUP'))
+                ->select('id', 'id_empresa', 'id_comunicacion_tipo', 'estado'),
+
             default => throw new \Exception('Invalid type selected'),
         };
 
@@ -209,7 +232,11 @@ class ImportDataCommand extends Command
                 '1. Users' => $this->importUsers($id),
                 '2. Categories' => $this->importCategories($id),
                 '5. Enterprises' => $this->importEnterprises($id),
-                // ... other cases
+                '6. Services' => $this->importServices($id),
+                '7. Projects' => $this->importProjects($id),
+                '8. Invoices' => $this->importInvoices($id),
+                '9. Payments' => $this->importPayments($id),
+                '10. Communications' => $this->importCommunications($id),
                 default => throw new \Exception('Invalid type selected'),
             };
 
@@ -454,6 +481,257 @@ class ImportDataCommand extends Command
         }
 
         return $stats;
+    }
+
+    protected function importServices($id = null)
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+            'message' => null
+        ];
+
+        try {
+            // Buscar el módulo de servicios
+            $serviceModule = \App\Models\Module::where('key', 'services')->first();
+            
+            if (!$serviceModule) {
+                throw new \Exception("El módulo 'services' no existe. Ejecute primero el seeder de módulos.");
+            }
+            
+            $query = DB::connection('mysql_tmp')
+                ->table('servicios')
+                ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
+                ->where('servicios.grupo', env('CMS_GROUP'))
+                ->where('servicios.estado', '>', 0)
+                ->where('servicios.operacion', 'V') // Solo importar servicios de venta
+                ->select('servicios.*', 'servicios_hosting.*');
+
+            if ($id) {
+                $query->where('servicios.id', $id);
+            }
+
+            $services = $query->get();
+
+            if ($services->isEmpty()) {
+                $stats['message'] = 'No services found matching the criteria.';
+                return $stats;
+            }
+
+            $bar = $this->output->createProgressBar(count($services));
+            $bar->start();
+
+            // Pre-cargar empresas existentes en un array para verificación más rápida
+            $enterpriseIds = $services->pluck('id_empresa')->unique()->toArray();
+            $existingEnterprises = DB::table('enterprises')->whereIn('id', $enterpriseIds)->pluck('id')->toArray();
+            
+            $this->info("Verificando " . count($enterpriseIds) . " empresas...");
+            $this->info("Encontradas " . count($existingEnterprises) . " empresas existentes");
+
+            foreach ($services as $data) {
+                $existingService = DB::table('services')->where('id', $data->id)->first();
+
+                // Verificar si existe la empresa
+                $enterpriseExists = in_array($data->id_empresa, $existingEnterprises);
+                if (!$enterpriseExists) {
+                    $this->warn("Enterprise with ID {$data->id_empresa} not found, skipping service {$data->id}");
+                    $bar->advance();
+                    continue;
+                }
+
+                // Verificar si existe la categoría o asignar una predeterminada (4000)
+                $categoryId = 4000; // Categoría predeterminada
+                $categoryExists = DB::table('categories')
+                    ->where('id', $data->id_categoria)
+                    ->exists();
+                
+                if ($categoryExists) {
+                    // Si la categoría existe, verificamos que tenga el module_id del módulo de servicios
+                    $category = DB::table('categories')->where('id', $data->id_categoria)->first();
+                    
+                    if (!$category->module_id) {
+                        // Si no tiene module_id, actualizamos la categoría
+                        DB::table('categories')
+                            ->where('id', $data->id_categoria)
+                            ->update(['module_id' => $serviceModule->id]);
+                        
+                        $this->info("Categoría {$data->id_categoria} actualizada con module_id {$serviceModule->id}");
+                    }
+                    
+                    $categoryId = $data->id_categoria;
+                } else {
+                    $this->warn("Categoría con ID {$data->id_categoria} no encontrada, asignando categoría predeterminada 4000 para el servicio {$data->id}");
+                }
+
+                $cleaned_description = strip_tags($data->descripcion);
+                
+                // Crear un array con todos los campos de servicios_hosting
+                $hostingData = [];
+                foreach ((array)$data as $key => $value) {
+                    // Si es un campo de servicios_hosting (no está en la tabla principal de servicios)
+                    // El formato puede ser 'servicios_hosting.campo' o simplemente 'campo' dependiendo del driver
+                    if (strpos($key, 'servicios_hosting.') === 0 || 
+                        !in_array($key, ['id', 'id_empresa', 'id_categoria', 'descripcion', 'valor', 
+                                       'frecuencia', 'operacion', 'estado', 'fecha_alta', 
+                                       'fecha_modificacion', 'ultima', 'proxima', 'caduca',
+                                       'id_moneda', 'descuento'])) {
+                        // Quitar el prefijo si existe
+                        $cleanKey = str_replace('servicios_hosting.', '', $key);
+                        
+                        // Si el campo es 'data' y es un JSON válido, lo decodificamos para evitar doble codificación
+                        if ($cleanKey === 'data' && $value && is_string($value) && $this->isJson($value)) {
+                            $decodedData = json_decode($value, true);
+                            // Mezclamos los datos decodificados con el array principal
+                            if (is_array($decodedData)) {
+                                foreach ($decodedData as $dataKey => $dataValue) {
+                                    $hostingData[$dataKey] = $dataValue;
+                                }
+                            }
+                        } else {
+                            $hostingData[$cleanKey] = $value;
+                        }
+                    }
+                }
+                
+                // Mostrar los datos para depuración
+                // $this->info("Datos de hosting para servicio {$data->id}: " . json_encode($hostingData));
+
+                $serviceData = [
+                    'id' => $data->id,
+                    'category_id' => $categoryId,
+                    'enterprise_id' => $data->id_empresa,
+                    'operation' => 'Sell', // Siempre será Sell ya que filtramos por 'V'
+                    'desctiption' => $cleaned_description, // Respetar el nombre del campo como está en la migración
+                    'data' => json_encode($hostingData),
+                    'currency_id' => $data->id_moneda,
+                    'price' => $data->valor,
+                    'discount' => $data->descuento,
+                    'frequency' => $data->frecuencia,
+                    'last_billed' => $data->ultima,
+                    'next_billing' => $data->proxima,
+                    'expires_at' => $data->caduca,
+                    'status' => $data->estado,
+                    'created_at' => $data->fecha_alta,
+                    'updated_at' => $data->fecha_modificacion,
+                ];
+
+                try {
+                    if (!$existingService) {
+                        DB::table('services')->insert($serviceData);
+                        $stats['imported']++;
+                        $this->info("Service with ID {$data->id} imported");
+                    } else {
+                        DB::table('services')->where('id', $existingService->id)->update($serviceData);
+                        $stats['updated']++;
+                        $this->info("Service with ID {$data->id} updated");
+                    }
+                } catch (\Exception $e) {
+                    $this->error("Error al importar servicio {$data->id}: " . $e->getMessage());
+                }
+
+                $bar->advance();
+            }
+
+            $bar->finish();
+            $this->newLine();
+        } catch (\Exception $e) {
+            $this->newLine();
+            throw new \Exception("Error importing services: " . $e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Importa las categorías desde el sistema antiguo
+     */
+    protected function importCategories($id = null)
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+            'message' => null
+        ];
+
+        try {
+            // Buscar el módulo de servicios para asignar a las categorías
+            $serviceModule = \App\Models\Module::where('key', 'services')->first();
+            
+            if (!$serviceModule) {
+                $this->warn("El módulo 'services' no existe. Las categorías se importarán sin módulo asignado.");
+            }
+
+            $query = DB::connection('mysql_tmp')->table('categorias_generales')
+                ->where('grupo', env('CMS_GROUP'))
+                ->where('padre', 10)
+                ->where('estado', '>', 0);
+
+            if ($id) {
+                $query->where('id', $id);
+            }
+
+            $categories = $query->get();
+
+            if ($categories->isEmpty()) {
+                $stats['message'] = 'No se encontraron categorías para importar.';
+                return $stats;
+            }
+
+            $bar = $this->output->createProgressBar(count($categories));
+            $bar->start();
+
+            foreach ($categories as $data) {
+                $existingCategory = DB::table('categories')->where('id', $data->id)->first();
+
+                $categoryData = [
+                    'id' => $data->id,
+                    'name' => $data->categoria,
+                    'module_id' => $serviceModule ? $serviceModule->id : null,
+                    'parent_id' => $data->padre > 0 ? $data->padre : null,
+                    'description' => strip_tags($data->descripcion ?? ''),
+                    'data' => json_encode([
+                        'currency_id' => $data->id_moneda ?? null,
+                        'price' => $data->valor ?? null,
+                        'discount' => $data->descuento ?? null,
+                        'frequency' => $data->frecuencia ?? null,
+                    ]),
+                    'order' => $data->orden ?? 0,
+                    'status' => $data->estado ?? 1,
+                    'created_at' => $data->fecha_alta ?? now(),
+                    'updated_at' => $data->fecha_modificacion ?? now(),
+                ];
+
+                if (!$existingCategory) {
+                    DB::table('categories')->insert($categoryData);
+                    $stats['imported']++;
+                    $this->info("Categoría {$data->id} importada: {$data->categoria}");
+                } else {
+                    DB::table('categories')->where('id', $existingCategory->id)->update($categoryData);
+                    $stats['updated']++;
+                    $this->info("Categoría {$data->id} actualizada: {$data->categoria}");
+                }
+
+                $bar->advance();
+            }
+
+            $bar->finish();
+            $this->newLine();
+        } catch (\Exception $e) {
+            $this->newLine();
+            throw new \Exception("Error importando categorías: " . $e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Helper method to check if a string is valid JSON
+     */
+    protected function isJson($string) {
+        if (!is_string($string)) return false;
+        
+        json_decode($string);
+        return (json_last_error() == JSON_ERROR_NONE);
     }
 
     // Add other import methods...

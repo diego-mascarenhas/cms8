@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->unsignedTinyInteger('module_id')->nullable();
+            $table->unsignedBigInteger('team_id')->nullable();
             $table->string('description')->nullable();
             $table->json('data')->nullable();
             $table->unsignedBigInteger('parent_id')->nullable();
@@ -23,6 +25,12 @@ return new class extends Migration
             $table->softDeletes();
         
             $table->foreign('parent_id')->references('id')->on('categories')->onDelete('cascade');
+            $table->foreign('module_id')->references('id')->on('modules')
+                ->onUpdate('cascade')
+                ->onDelete('set null');
+            $table->foreign('team_id')->references('id')->on('teams')
+                ->onUpdate('cascade')
+                ->onDelete('set null');
         });
     }
 

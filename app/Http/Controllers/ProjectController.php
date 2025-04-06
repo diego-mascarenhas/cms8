@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ProjectDataTable;
 use App\Models\Project;
-use App\Models\Category;
 use App\Models\ProjectStatus;
 use Illuminate\Http\Request;
 use App\Models\Enterprise;
@@ -23,10 +22,9 @@ class ProjectController extends Controller
     public function create()
     {
         $enterprise_id = request('client_id');
-        $categories = Category::getOptions(6000);
         $statuses = ProjectStatus::getOptions();
 
-        return view('project.form', compact('enterprise_id', 'categories', 'statuses'));
+        return view('project.form', compact('enterprise_id', 'statuses'));
     }
 
     /**
@@ -87,11 +85,10 @@ class ProjectController extends Controller
     public function edit(string $id)
     {
         $data = Project::findOrFail($id);
-        $categories = Category::getOptions(6000);
         $enterprise_id = $data->enterprise_id;
         $statuses = ProjectStatus::getOptions();
 
-        return view('project.form', compact('data', 'enterprise_id', 'categories', 'statuses'));
+        return view('project.form', compact('data', 'enterprise_id', 'statuses'));
     }
 
     /**

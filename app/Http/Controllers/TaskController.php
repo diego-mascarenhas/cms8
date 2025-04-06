@@ -17,10 +17,9 @@ class TaskController extends Controller
 
     public function create()
     {
-        $categories = Category::getOptions(5000);
         $statuses = TaskStatus::getOptions();
 
-        return view('task.form', compact('categories', 'statuses'));
+        return view('task.form', compact('statuses'));
     }
 
     public function store(Request $request)
@@ -69,10 +68,8 @@ class TaskController extends Controller
     public function edit(string $id)
     {
         $data = Task::findOrFail($id);
-        $categories = Category::getOptions(6000);
-        $enterprise_id = $data->enterprise_id;
         $statuses = TaskStatus::getOptions();
 
-        return view('task.form', compact('data', 'categories', 'statuses'));
+        return view('task.form', compact('data', 'statuses'));
     }
 } 

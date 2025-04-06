@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             CurrencySeeder::class,
-			CategorySeeder::class,
+			// CategorySeeder::class,
             MessageTypeSeeder::class,
             TemplateSeeder::class,
             MessageSeeder::class,
@@ -39,6 +39,8 @@ class DatabaseSeeder extends Seeder
             ProjectStatusSeeder::class,
             TaskStatusSeeder::class,
             TaskSeeder::class,
+            ModuleSeeder::class,
+            ModuleCategorySeeder::class,
 		]);
     }
 }

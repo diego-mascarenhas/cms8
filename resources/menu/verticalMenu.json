@@ -34,13 +34,6 @@
 			"permission": "mail.list"
 		},
 		{
-			"url": "service/list",
-			"name": "Services",
-			"icon": "menu-icon tf-icons ti ti-rocket",
-			"slug": "service-list",
-			"permission": "service.list"
-		},
-		{
 			"url": "contact/list",
 			"name": "Contacts",
 			"icon": "menu-icon tf-icons ti ti-users",
@@ -60,6 +53,13 @@
 			"icon": "menu-icon tf-icons ti ti-list-check",
 			"slug": "list60-list",
 			"permission": "list60.list"
+		},
+		{
+			"url": "service/list",
+			"name": "Services",
+			"icon": "menu-icon tf-icons ti ti-rocket",
+			"slug": "service-list",
+			"permission": "service.list"
 		},
 		{
 			"url": "task/list",

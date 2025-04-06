@@ -47,7 +47,12 @@
 				<x-input-general id="title" label="Título (*)" value="{{ old('title', $data->title?? '') }}" />
 			</div>
 			<div class="col-md-3">
-				<x-input-select id="category_id" label="Categoría" :options="$categories" value="{{ old('category_id', $data->category_id ?? '') }}" />
+				<x-module-categories-select 
+					id="category_id" 
+					label="Categoría" 
+					moduleKey="tasks"
+					:selected="old('category_id', $data->category_id ?? '')" 
+				/>
 			</div>
 			<div class="col-md-3">
 				<x-input-select id="status_id" label="Estado (*)" :options="$statuses" value="{{ old('status_id', $data->status_id ?? '1') }}" />
