@@ -166,9 +166,7 @@ class ImportDataCommand extends Command
                 ->where('servicios.grupo', env('CMS_GROUP'))
                 ->where('servicios.estado', '>', 0)
                 ->where('servicios.operacion', 'V')
-                ->select('servicios.id', 'servicios.id_empresa', 'servicios.id_categoria', 
-                         'servicios.descripcion', 'servicios.valor', 'servicios.frecuencia',
-                         'servicios.operacion', 'servicios_hosting.user', 'servicios.estado'),
+                ->select('servicios.*', 'servicios_hosting.*'),
 
             '7. Projects' => DB::connection('mysql_tmp')->table('proyectos')
                 ->where('grupo', env('CMS_GROUP'))
@@ -507,7 +505,7 @@ class ImportDataCommand extends Command
                 ->where('servicios.grupo', env('CMS_GROUP'))
                 ->where('servicios.estado', '>', 0)
                 ->where('servicios.operacion', 'V') // Solo importar servicios de venta
-                ->select('servicios.*', 'servicios_hosting.user');
+                ->select('servicios.*', 'servicios_hosting.*');
 
             if ($id) {
                 $query->where('servicios.id', $id);
@@ -566,6 +564,37 @@ class ImportDataCommand extends Command
                 }
 
                 $cleaned_description = strip_tags($data->descripcion);
+                
+                // Crear un array con todos los campos de servicios_hosting
+                $hostingData = [];
+                foreach ((array)$data as $key => $value) {
+                    // Si es un campo de servicios_hosting (no está en la tabla principal de servicios)
+                    // El formato puede ser 'servicios_hosting.campo' o simplemente 'campo' dependiendo del driver
+                    if (strpos($key, 'servicios_hosting.') === 0 || 
+                        !in_array($key, ['id', 'id_empresa', 'id_categoria', 'descripcion', 'valor', 
+                                       'frecuencia', 'operacion', 'estado', 'fecha_alta', 
+                                       'fecha_modificacion', 'ultima', 'proxima', 'caduca',
+                                       'id_moneda', 'descuento'])) {
+                        // Quitar el prefijo si existe
+                        $cleanKey = str_replace('servicios_hosting.', '', $key);
+                        
+                        // Si el campo es 'data' y es un JSON válido, lo decodificamos para evitar doble codificación
+                        if ($cleanKey === 'data' && $value && is_string($value) && $this->isJson($value)) {
+                            $decodedData = json_decode($value, true);
+                            // Mezclamos los datos decodificados con el array principal
+                            if (is_array($decodedData)) {
+                                foreach ($decodedData as $dataKey => $dataValue) {
+                                    $hostingData[$dataKey] = $dataValue;
+                                }
+                            }
+                        } else {
+                            $hostingData[$cleanKey] = $value;
+                        }
+                    }
+                }
+                
+                // Mostrar los datos para depuración
+                // $this->info("Datos de hosting para servicio {$data->id}: " . json_encode($hostingData));
 
                 $serviceData = [
                     'id' => $data->id,
@@ -573,7 +602,7 @@ class ImportDataCommand extends Command
                     'enterprise_id' => $data->id_empresa,
                     'operation' => 'Sell', // Siempre será Sell ya que filtramos por 'V'
                     'desctiption' => $cleaned_description, // Respetar el nombre del campo como está en la migración
-                    'data' => json_encode(['user' => $data->user]),
+                    'data' => json_encode($hostingData),
                     'currency_id' => $data->id_moneda,
                     'price' => $data->valor,
                     'discount' => $data->descuento,
@@ -693,6 +722,16 @@ class ImportDataCommand extends Command
         }
 
         return $stats;
+    }
+
+    /**
+     * Helper method to check if a string is valid JSON
+     */
+    protected function isJson($string) {
+        if (!is_string($string)) return false;
+        
+        json_decode($string);
+        return (json_last_error() == JSON_ERROR_NONE);
     }
 
     // Add other import methods...
