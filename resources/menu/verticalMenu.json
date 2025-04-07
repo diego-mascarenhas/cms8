@@ -24,63 +24,72 @@
 			"name": "Chat",
 			"icon": "menu-icon tf-icons ti ti-message-chatbot",
 			"slug": "chat-list",
-			"permission": "chat.list"
+			"permission": "chat.list",
+			"module_key": "chat"
 		},
 		{
 			"url": "mail/list",
 			"name": "Mail",
 			"icon": "menu-icon tf-icons ti ti-mail",
 			"slug": "mail-list",
-			"permission": "mail.list"
+			"permission": "mail.list",
+			"module_key": "mail"
 		},
 		{
 			"url": "contact/list",
 			"name": "Contacts",
 			"icon": "menu-icon tf-icons ti ti-users",
 			"slug": "contact-list",
-			"permission": "contact.list"
+			"permission": "contact.list",
+			"module_key": "contacts"
 		},
 		{
 			"url": "client/list",
 			"name": "Clients",
 			"icon": "menu-icon tf-icons ti ti-user-heart",
 			"slug": "client-list",
-			"permission": "client.list"
+			"permission": "client.list",
+			"module_key": "clients"
 		},
 		{
 			"url": "list60/list",
 			"name": "List of 60",
 			"icon": "menu-icon tf-icons ti ti-list-check",
 			"slug": "list60-list",
-			"permission": "list60.list"
+			"permission": "list60.list",
+			"module_key": "list60"
 		},
 		{
 			"url": "service/list",
 			"name": "Services",
 			"icon": "menu-icon tf-icons ti ti-rocket",
 			"slug": "service-list",
-			"permission": "service.list"
+			"permission": "service.list",
+			"module_key": "services"
 		},
 		{
 			"url": "task/list",
 			"name": "Tasks",
 			"icon": "menu-icon tf-icons ti ti-checklist",
 			"slug": "task-list",
-			"permission": "task.list"
+			"permission": "task.list",
+			"module_key": "tasks"
 		},
 		{
 			"url": "time/list",
 			"name": "Times",
 			"icon": "menu-icon tf-icons ti ti-hourglass-low",
 			"slug": "time-list",
-			"permission": "time.list"
+			"permission": "time.list",
+			"module_key": "times"
 		},
 		{
 			"url": "documentation/list",
 			"name": "Documentación",
 			"icon": "menu-icon tf-icons ti ti-files",
 			"slug": "documentation-list",
-			"permission": "documentation.list"
+			"permission": "documentation.list",
+			"module_key": "documentation"
 		},
 		{
 			"menuHeader": "Billing"
@@ -90,28 +99,32 @@
 			"name": "Earnings",
 			"icon": "menu-icon tf-icons ti ti-moneybag",
 			"slug": "earning-list",
-			"permission": "earning.list"
+			"permission": "earning.list",
+			"module_key": "earnings"
 		},
 		{
 			"url": "expense/list",
 			"name": "Expenses",
 			"icon": "menu-icon tf-icons ti ti-receipt",
 			"slug": "expense-list",
-			"permission": "expense.list"
+			"permission": "expense.list",
+			"module_key": "expenses"
 		},
 		{
 			"url": "accounting/list",
 			"name": "Accounting",
 			"icon": "menu-icon tf-icons ti ti-receipt-tax",
 			"slug": "accounting-list",
-			"permission": "accounting.list"
+			"permission": "accounting.list",
+			"module_key": "accounting"
 		},
 		{
 			"url": "financial/list",
 			"name": "Evolution",
 			"icon": "menu-icon tf-icons ti ti-graph",
 			"slug": "financial-list",
-			"permission": "financial.list"
+			"permission": "financial.list",
+			"module_key": "financial"
 		},
 		{
 			"menuHeader": "Team"
@@ -121,14 +134,16 @@
 			"name": "Users",
 			"icon": "menu-icon tf-icons ti ti-users",
 			"slug": "user-list",
-			"permission": "user.list"
+			"permission": "user.list",
+			"module_key": "users"
 		},
 		{
 			"url": "department/list",
 			"name": "Departments",
 			"icon": "menu-icon tf-icons ti ti-users-group",
 			"slug": "department-list",
-			"permission": "department.list"
+			"permission": "department.list",
+			"module_key": "departments"
 		},
 		{
 			"menuHeader": "Automation"
@@ -138,38 +153,32 @@
 			"name": "Funnel",
 			"icon": "menu-icon tf-icons ti ti-filter",
 			"slug": "funnel-list",
-			"permission": "funnel.list"
+			"permission": "funnel.list",
+			"module_key": "funnel"
 		},
 		{
 			"url": "automation/list",
 			"name": "Automations",
 			"icon": "menu-icon tf-icons ti ti-robot",
 			"slug": "automation-list",
-			"permission": "automation.list"
+			"permission": "automation.list",
+			"module_key": "automations"
 		},
 		{
 			"url": "integration/list",
 			"name": "Integrations",
 			"icon": "menu-icon tf-icons ti ti-api-app",
 			"slug": "integration-list",
-			"permission": "integration.list"
+			"permission": "integration.list",
+			"module_key": "integrations"
 		},
 		{
 			"url": "campaign/list",
 			"name": "Campaigns",
 			"icon": "menu-icon tf-icons ti ti-mail",
 			"slug": "campaign-list",
-			"permission": "campaign.list"
-		},
-		{
-			"menuHeader": "Billing"
-		},
-		{
-			"url": "earning/list",
-			"name": "Earnings",
-			"icon": "menu-icon tf-icons ti ti-moneybag",
-			"slug": "earning-list",
-			"permission": "earning.list"
+			"permission": "campaign.list",
+			"module_key": "campaigns"
 		},
 		{
 			"menuHeader": "Projects"
@@ -179,28 +188,32 @@
 			"name": "All Projects",
 			"icon": "menu-icon tf-icons ti ti-folder",
 			"slug": "project-list",
-			"permission": "project.list"
+			"permission": "project.list",
+			"module_key": "projects"
 		},
 		{
 			"url": "project/create",
 			"name": "New Project",
 			"icon": "menu-icon tf-icons ti ti-folder-plus",
 			"slug": "project-create",
-			"permission": "project.create"
+			"permission": "project.create",
+			"module_key": "projects"
 		},
 		{
 			"url": "project/tasks",
 			"name": "Tasks",
 			"icon": "menu-icon tf-icons ti ti-checklist",
 			"slug": "project-tasks",
-			"permission": "project.tasks"
+			"permission": "project.tasks",
+			"module_key": "projects"
 		},
 		{
 			"url": "projects/calendar",
 			"name": "Calendar",
 			"icon": "menu-icon tf-icons ti ti-calendar",
 			"slug": "project-calendar",
-			"permission": "project.calendar"
+			"permission": "project.calendar",
+			"module_key": "projects"
 		},
 		{
 			"menuHeader": "Web Site"
@@ -211,7 +224,8 @@
 			"icon": "menu-icon tf-icons ti ti-globe",
 			"slug": "page-edit",
 			"target": "blank",
-			"permission": "pages.edit"
+			"permission": "pages.edit",
+			"module_key": "landings"
 		},
 		{
 			"menuHeader": "Mkt"
@@ -221,21 +235,24 @@
 			"name": "Categories",
 			"icon": "menu-icon tf-icons ti ti-list",
 			"slug": "mkt-category-list",
-			"permission": "mkt.category.list"
+			"permission": "mkt.category.list",
+			"module_key": "marketing"
 		},
 		{
 			"url": "mkt/message/list",
 			"name": "Mensajes",
 			"icon": "menu-icon tf-icons ti ti-send",
 			"slug": "mkt-message-list",
-			"permission": "mkt.message.list"
+			"permission": "mkt.message.list",
+			"module_key": "marketing"
 		},
 		{
 			"url": "mkt/template/list",
 			"name": "Templates",
 			"icon": "menu-icon tf-icons ti ti-template",
 			"slug": "mkt-template-list",
-			"permission": "mkt.template.list"		
+			"permission": "mkt.template.list",
+			"module_key": "marketing"		
 		}
 	]
 }

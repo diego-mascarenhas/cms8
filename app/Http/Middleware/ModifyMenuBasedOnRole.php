@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Module;
 
 class ModifyMenuBasedOnRole
 {
@@ -26,7 +27,13 @@ class ModifyMenuBasedOnRole
 
         if ($user)
         {
-            // Filter the menu based on the user's permissions
+            // Get the current team
+            $team = $user->currentTeam;
+            
+            // Get all core modules
+            $coreModules = Module::where('is_core', true)->pluck('key')->toArray();
+            
+            // Filter the menu based on the user's permissions and team's modules
             $filteredMenu = [];
             $currentSection = null;
             $sectionItems = [];
@@ -45,13 +52,22 @@ class ModifyMenuBasedOnRole
                     $currentSection = $menuItem;
                     $sectionItems = [];
                 }
-                elseif (isset($menuItem->permission) && !$user->can($menuItem->permission))
-                {
-                    // If the user does not have the permission, skip this item
-                    continue;
-                }
                 else
                 {
+                    // Check if the menu item has a module key
+                    $moduleKey = $menuItem->module_key ?? null;
+                    
+                    // Skip if the user doesn't have permission
+                    if (isset($menuItem->permission) && !$user->can($menuItem->permission)) {
+                        continue;
+                    }
+                    
+                    // If it's a core module, always show it
+                    // If it's not a core module, check if the team has access
+                    if ($moduleKey && !in_array($moduleKey, $coreModules) && !$team->hasModule($moduleKey)) {
+                        continue;
+                    }
+                    
                     // Add the item to the current section
                     $sectionItems[] = $menuItem;
                 }
