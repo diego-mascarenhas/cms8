@@ -25,6 +25,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TwilioWebhookController;
 
 // auth
 Route::middleware([
@@ -189,3 +190,7 @@ Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
 // Editor
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
+
+// Twilio Webhook Routes
+Route::post('/twilio/webhook', [TwilioWebhookController::class, 'handleIncomingMessage'])
+    ->name('twilio.webhook');
