@@ -48,8 +48,15 @@ class AccountDataTable extends DataTable
             ->editColumn('created_at', function($account) {
                 return $account->created_at->format('d/m/Y');
             })
+            ->addColumn('action', function ($account) {
+                return '<div class="d-flex justify-content-center align-items-center">
+                    <a href="' . route('account.edit', $account->id) . '" class="text-body">
+                        <i class="ti ti-edit ti-sm me-2"></i>
+                    </a>
+                </div>';
+            })
             ->setRowId('id')
-            ->rawColumns(['name']);
+            ->rawColumns(['name', 'action']);
     }
 
     public function query(Account $model): QueryBuilder
@@ -109,6 +116,12 @@ class AccountDataTable extends DataTable
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
+            Column::computed('action')
+                ->title('Acciones')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(false)
+                ->searchable(false),
         ];
     }
 
