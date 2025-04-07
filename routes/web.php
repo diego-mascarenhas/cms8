@@ -86,6 +86,9 @@ Route::middleware(['auth'])->group(function ()
     Route::resource('/user-list', UserManagement::class);
 
     Route::get('/account-management', [AccountController::class, 'index'])->name('account-management');
+    Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
+    Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
+    Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
 
     // Contacts
     Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');

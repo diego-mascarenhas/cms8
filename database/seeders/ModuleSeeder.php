@@ -34,11 +34,19 @@ class ModuleSeeder extends Seeder
             'icon' => 'address-book',
             'description' => 'Contact management module',
         ],
-        'enterprises' => [
-            'name' => 'Enterprises',
-            'icon' => 'building',
-            'description' => 'Enterprise management module',
+        'clients' => [
+            'name' => 'Clients',
+            'icon' => 'user-heart',
+            'description' => 'Client management module',
         ],
+        'list60' => [
+            'name' => 'List of 60',
+            'icon' => 'list-check',
+            'description' => 'List of 60 management module',
+        ],
+    ];
+    
+    protected $additionalModules = [
         'projects' => [
             'name' => 'Projects',
             'icon' => 'project-diagram',
@@ -49,9 +57,11 @@ class ModuleSeeder extends Seeder
             'icon' => 'server',
             'description' => 'Service management module',
         ],
-    ];
-    
-    protected $additionalModules = [
+        'enterprises' => [
+            'name' => 'Enterprises',
+            'icon' => 'building',
+            'description' => 'Enterprise management module',
+        ],
         'invoices' => [
             'name' => 'Invoices',
             'icon' => 'file-invoice',
@@ -115,9 +125,8 @@ class ModuleSeeder extends Seeder
     ];
     
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat'],
-        2 => ['invoices', 'payments', 'communications', 'tickets', 'marketing'],
-        3 => ['invoices', 'payments', 'communications', 'tickets', 'marketing'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services'],
+        2 => ['invoices', 'payments', 'communications', 'tickets', 'marketing', 'enterprises', 'projects', 'services'],
     ];
 
     public function run()
