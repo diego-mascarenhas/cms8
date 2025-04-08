@@ -27,6 +27,30 @@ class Conversation extends Model
     ];
     
     /**
+     * Check if a message has been delivered
+     */
+    public function isDelivered()
+    {
+        return in_array($this->status, ['delivered', 'read']);
+    }
+    
+    /**
+     * Check if a message has been read
+     */
+    public function isRead()
+    {
+        return $this->status === 'read';
+    }
+    
+    /**
+     * Check if a message has failed
+     */
+    public function hasFailed()
+    {
+        return in_array($this->status, ['failed', 'undelivered']);
+    }
+    
+    /**
      * Scope a query to only include WhatsApp conversations.
      */
     public function scopeWhatsapp($query)

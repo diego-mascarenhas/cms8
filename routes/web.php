@@ -195,3 +195,7 @@ Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 // Twilio Webhook Routes
 Route::post('/twilio/webhook', [TwilioWebhookController::class, 'handleIncomingMessage'])
     ->name('twilio.webhook');
+Route::post('/twilio/status', [TwilioWebhookController::class, 'handleMessageStatus'])
+    ->name('twilio.status');
+Route::post('/twilio/fallback', [TwilioWebhookController::class, 'handleFallback'])
+    ->name('twilio.fallback');

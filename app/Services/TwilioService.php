@@ -17,7 +17,7 @@ class TwilioService
         $sid = config('services.twilio.sid');
         $token = config('services.twilio.token');
         $this->smsFromNumber = config('services.twilio.from');
-        $this->whatsappFromNumber = 'whatsapp:+14155238886'; // Sandbox number
+        $this->whatsappFromNumber = 'whatsapp:' . config('services.twilio.whatsapp_from', '+14155238886');
         
         $this->client = new Client($sid, $token);
     }
@@ -25,11 +25,15 @@ class TwilioService
     public function sendSms($to, $message)
     {
         try {
+            // Get the full URL for the status callback
+            $statusCallbackUrl = url(route('twilio.status'));
+            
             $twilioMessage = $this->client->messages->create(
                 $to,
                 [
                     'from' => $this->smsFromNumber,
-                    'body' => $message
+                    'body' => $message,
+                    'statusCallback' => $statusCallbackUrl
                 ]
             );
             
@@ -64,11 +68,15 @@ class TwilioService
             // Format the numbers with whatsapp: prefix
             $formattedTo = 'whatsapp:' . $to;
             
+            // Get the full URL for the status callback
+            $statusCallbackUrl = url(route('twilio.status'));
+            
             $twilioMessage = $this->client->messages->create(
                 $formattedTo,
                 [
                     'from' => $this->whatsappFromNumber,
-                    'body' => $message
+                    'body' => $message,
+                    'statusCallback' => $statusCallbackUrl
                 ]
             );
 
