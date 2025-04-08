@@ -149,7 +149,7 @@
                                         class="d-flex align-items-center">
                                         <div class="flex-shrink-0 avatar avatar-online">
                                             @if (isset($contact->user_photo))
-                                                <img src="{{ $contact->user_photo }}"
+                                                <img src="{{ Storage::url($contact->user_photo) }}"
                                                     alt="{{ $contact->user_name ?? $contact->from }}"
                                                     class="rounded-circle">
                                             @else
@@ -318,19 +318,16 @@
             <div class="col app-chat-history bg-body">
                 <div class="chat-history-wrapper">
                     <div class="chat-history-header border-bottom">
+                        @if ($selectedPhone)
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="d-flex overflow-hidden align-items-center">
                                 <i class="ti ti-menu-2 ti-sm cursor-pointer d-lg-none d-block me-2"
                                     data-bs-toggle="sidebar" data-overlay data-target="#app-chat-contacts"></i>
                                 <div class="flex-shrink-0 avatar">
-                                    @if(isset($selectedUser) && $selectedUser->profile_photo_path)
-                                        <img src="{{ Storage::url($selectedUser->profile_photo_path) }}" alt="{{ $selectedUser->name }}"
-                                            class="rounded-circle" data-bs-toggle="sidebar" data-overlay
-                                            data-target="#app-chat-sidebar-right">
-                                    @else
-                                        <img src="{{ asset('assets/img/avatars/guru-meditating.jpg') }}" alt="User Avatar"
-                                            class="rounded-circle" data-bs-toggle="sidebar" data-overlay
-                                            data-target="#app-chat-sidebar-right">
+                                    @if (isset($selectedUser) && $selectedUser->profile_photo_path)
+                                        <img src="{{ Storage::url($selectedUser->profile_photo_path) }}"
+                                            alt="{{ $selectedUser->name }}" class="rounded-circle"
+                                            data-bs-toggle="sidebar" data-overlay data-target="#app-chat-sidebar-right">
                                     @endif
                                 </div>
                                 <div class="chat-contact-info flex-grow-1 ms-2">
@@ -339,10 +336,13 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
-                                <i class="ti ti-phone-call cursor-pointer d-sm-block d-none me-3"></i>
+                                {{-- <i class="ti ti-phone-call cursor-pointer d-sm-block d-none me-3"></i>
                                 <i class="ti ti-video cursor-pointer d-sm-block d-none me-3"></i>
-                                <i class="ti ti-search cursor-pointer d-sm-block d-none me-3"></i>
-                                <div class="dropdown d-flex align-self-center">
+                                <i class="ti ti-search cursor-pointer d-sm-block d-none me-3"></i> --}}
+                                <a href="{{ isset($selectedUser) && $selectedUser->id ? route('contact.show', $selectedUser->id) : '#' }}">
+                                    <i class="ti ti-eye"></i>
+                                </a>
+                                {{-- <div class="dropdown d-flex align-self-center">
                                     <button class="btn p-0" type="button" id="chat-header-actions"
                                         data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                         <i class="ti ti-dots-vertical"></i>
@@ -354,9 +354,10 @@
                                         <a class="dropdown-item" href="javascript:void(0);">Clear Chat</a>
                                         <a class="dropdown-item" href="javascript:void(0);">Report</a>
                                     </div>
+                                </div> --}}
                                 </div>
                             </div>
-                        </div>
+                        @endif
                     </div>
                     <div class="chat-history-body bg-body">
                         <ul class="list-unstyled chat-history">
