@@ -136,8 +136,9 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/list60/{id}', [List60Controller::class, 'destroy'])->name('list60.destroy');
 
     // Chat
-    Route::get('/chat', [ChatController::class, 'index'])->name('chat');
-    Route::get('/chat/list', [ChatController::class, 'index'])->name('chat-list');
+    Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
