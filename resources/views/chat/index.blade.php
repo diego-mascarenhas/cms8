@@ -137,22 +137,31 @@
                     </div>
                     <!-- Chats -->
                     <ul class="list-unstyled chat-contact-list" id="chat-list">
-                        @if($contacts->isEmpty())
+                        @if ($contacts->isEmpty())
                             <li class="chat-contact-list-item chat-list-item-0">
                                 <h6 class="text-muted mb-0">No hay conversaciones de WhatsApp</h6>
                             </li>
                         @else
-                            @foreach($contacts as $contact)
-                                <li class="chat-contact-list-item {{ $selectedPhone == $contact->from ? 'active' : '' }}" 
+                            @foreach ($contacts as $contact)
+                                <li class="chat-contact-list-item {{ $selectedPhone == $contact->from ? 'active' : '' }}"
                                     data-phone="{{ $contact->from }}">
-                                    <a href="{{ route('chat.index', ['phone' => $contact->from]) }}" class="d-flex align-items-center">
+                                    <a href="{{ route('chat.index', ['phone' => $contact->from]) }}"
+                                        class="d-flex align-items-center">
                                         <div class="flex-shrink-0 avatar avatar-online">
-                                            <span class="avatar-initial rounded-circle bg-label-success">
-                                                {{ substr($contact->from, -2) }}
-                                            </span>
+                                            @if (isset($contact->user_photo))
+                                                <img src="{{ $contact->user_photo }}"
+                                                    alt="{{ $contact->user_name ?? $contact->from }}"
+                                                    class="rounded-circle">
+                                            @else
+                                                <span class="avatar-initial rounded-circle bg-label-success">
+                                                    {{ substr($contact->from, -2) }}
+                                                </span>
+                                            @endif
                                         </div>
                                         <div class="chat-contact-info flex-grow-1 ms-2">
-                                            <h6 class="chat-contact-name text-truncate m-0">{{ $contact->from }}</h6>
+                                            <h6 class="chat-contact-name text-truncate m-0">
+                                                {{ $contact->user_name ?? $contact->from }}
+                                            </h6>
                                             <p class="chat-contact-status text-muted text-truncate mb-0">
                                                 {{ Str::limit($contact->last_message, 30) }}
                                             </p>
@@ -314,12 +323,18 @@
                                 <i class="ti ti-menu-2 ti-sm cursor-pointer d-lg-none d-block me-2"
                                     data-bs-toggle="sidebar" data-overlay data-target="#app-chat-contacts"></i>
                                 <div class="flex-shrink-0 avatar">
-                                    <img src="{{ asset('assets/img/avatars/guru-meditating.jpg') }}" alt="User Avatar"
-                                        class="rounded-circle" data-bs-toggle="sidebar" data-overlay
-                                        data-target="#app-chat-sidebar-right">
+                                    @if(isset($selectedUser) && $selectedUser->profile_photo_path)
+                                        <img src="{{ Storage::url($selectedUser->profile_photo_path) }}" alt="{{ $selectedUser->name }}"
+                                            class="rounded-circle" data-bs-toggle="sidebar" data-overlay
+                                            data-target="#app-chat-sidebar-right">
+                                    @else
+                                        <img src="{{ asset('assets/img/avatars/guru-meditating.jpg') }}" alt="User Avatar"
+                                            class="rounded-circle" data-bs-toggle="sidebar" data-overlay
+                                            data-target="#app-chat-sidebar-right">
+                                    @endif
                                 </div>
                                 <div class="chat-contact-info flex-grow-1 ms-2">
-                                    <h6 class="m-0">Cliente</h6>
+                                    <h6 class="m-0">{{ $selectedUser->name ?? 'Cliente' }}</h6>
                                     <small class="user-status text-muted">{{ $selectedPhone }}</small>
                                 </div>
                             </div>
@@ -345,23 +360,28 @@
                     </div>
                     <div class="chat-history-body bg-body">
                         <ul class="list-unstyled chat-history">
-                            @if(!$selectedPhone)
+                            @if (!$selectedPhone)
                                 <li class="text-center p-4">
                                     <p class="text-muted mb-0">Selecciona una conversación para ver los mensajes</p>
                                 </li>
                             @else
-                                @foreach($messages as $message)
+                                @foreach ($messages as $message)
                                     @php
                                         $isInbound = $message->direction === 'inbound';
                                     @endphp
                                     <li class="chat-message {{ !$isInbound ? 'chat-message-right' : '' }}">
                                         <div class="d-flex overflow-hidden">
-                                            @if($isInbound)
+                                            @if ($isInbound)
                                                 <div class="user-avatar flex-shrink-0 me-3">
                                                     <div class="avatar avatar-sm">
-                                                        <span class="avatar-initial rounded-circle bg-label-success">
-                                                            {{ substr($message->from, -2) }}
-                                                        </span>
+                                                        @if (isset($selectedUser) && $selectedUser->profile_photo_path)
+                                                            <img src="{{ Storage::url($selectedUser->profile_photo_path) }}"
+                                                                alt="{{ $selectedUser->name }}" class="rounded-circle">
+                                                        @else
+                                                            <span class="avatar-initial rounded-circle bg-label-success">
+                                                                {{ substr($message->from, -2) }}
+                                                            </span>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             @endif
@@ -370,16 +390,17 @@
                                                     <p class="mb-0">{{ $message->body }}</p>
                                                 </div>
                                                 <div class="{{ !$isInbound ? 'text-end' : '' }} text-muted mt-1">
-                                                    @if(!$isInbound)
+                                                    @if (!$isInbound)
                                                         <i class='ti ti-checks ti-xs me-1 text-success'></i>
                                                     @endif
                                                     <small>{{ $message->created_at->format('h:i A') }}</small>
                                                 </div>
                                             </div>
-                                            @if(!$isInbound)
+                                            @if (!$isInbound)
                                                 <div class="user-avatar flex-shrink-0 ms-3">
                                                     <div class="avatar avatar-sm">
-                                                        <img src="{{ asset('assets/img/branding/icon.png') }}" alt="Avatar" class="rounded-circle">
+                                                        <img src="{{ asset('assets/img/branding/icon.png') }}"
+                                                            alt="Avatar" class="rounded-circle">
                                                     </div>
                                                 </div>
                                             @endif
@@ -397,7 +418,8 @@
                             <input class="form-control message-input border-0 me-3 shadow-none"
                                 placeholder="Escribe tu mensaje aquí..." {{ !$selectedPhone ? 'disabled' : '' }}>
                             <div class="message-actions d-flex align-items-center">
-                                <button type="submit" class="btn btn-primary d-flex send-msg-btn" {{ !$selectedPhone ? 'disabled' : '' }}>
+                                <button type="submit" class="btn btn-primary d-flex send-msg-btn"
+                                    {{ !$selectedPhone ? 'disabled' : '' }}>
                                     <i class="ti ti-send me-md-1 me-0"></i>
                                     <span class="align-middle d-md-inline-block d-none">Enviar</span>
                                 </button>
