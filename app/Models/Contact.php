@@ -55,6 +55,11 @@ class Contact extends Model
 		return $this->belongsTo(Team::class);
 	}
 
+	public function phone()
+	{
+		return $this->belongsTo(User::class, 'user_id');
+	}
+
 	public function user()
 	{
 		return $this->belongsTo(User::class);
@@ -263,5 +268,34 @@ class Contact extends Model
 	public function isInList60(): bool
 	{
 		return $this->list60()->exists();
+	}
+
+	/**
+	 * Get the WhatsApp formatted phone number from the user relation or from the contact sources
+	 * 
+	 * @return string|null
+	 */
+	public function getWhatsAppNumber()
+	{
+		// First try to get phone from related user
+		$userPhone = null;
+		$relatedUser = $this->phone()->first();
+		
+		if ($relatedUser && $relatedUser->phone) {
+			$userPhone = $relatedUser->phone;
+		}
+		
+		// If no user found, try to get from contact sources
+		if (!$userPhone) {
+			$userPhone = $this->getPhoneAttribute();
+		}
+		
+		if ($userPhone) {
+			// Ensure it's clean and properly formatted
+			$cleanNumber = preg_replace('/[^0-9]/', '', (string)$userPhone);
+			return 'whatsapp:+' . $cleanNumber;
+		}
+		
+		return null;
 	}
 }
