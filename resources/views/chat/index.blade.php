@@ -392,7 +392,17 @@
                                                 </div>
                                                 <div class="{{ !$isInbound ? 'text-end' : '' }} text-muted mt-1">
                                                     @if (!$isInbound)
-                                                        <i class='ti ti-checks ti-xs me-1 text-success'></i>
+                                                        @if($message->hasFailed())
+                                                            <i class='ti ti-alert-circle ti-xs me-1 text-danger'></i>
+                                                        @elseif($message->isRead())
+                                                            <i class='ti ti-checks ti-xs me-1 text-primary'></i>
+                                                        @elseif($message->isDelivered())
+                                                            <i class='ti ti-checks ti-xs me-1 text-success'></i>
+                                                        @elseif($message->status === 'sent')
+                                                            <i class='ti ti-check ti-xs me-1 text-success'></i>
+                                                        @else
+                                                            <i class='ti ti-clock ti-xs me-1'></i>
+                                                        @endif
                                                     @endif
                                                     <small>{{ $message->created_at->format('h:i A') }}</small>
                                                 </div>
