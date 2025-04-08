@@ -45,6 +45,7 @@ return [
         'token' => env('TWILIO_TOKEN'),
         'from' => env('TWILIO_SMS_FROM'),
         'whatsapp_from' => env('TWILIO_WHATSAPP_FROM'),
+        'default_template' => env('TWILIO_DEFAULT_TEMPLATE', 'customer_support'),
     ],
 
 ];

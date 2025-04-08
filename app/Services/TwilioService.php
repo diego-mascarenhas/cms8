@@ -158,4 +158,69 @@ class TwilioService
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Send WhatsApp message using a template
+     * 
+     * @param string $to Recipient phone number (without whatsapp: prefix)
+     * @param string $templateName The name of the approved template
+     * @param array $parameters Template parameters
+     * @return \Twilio\Rest\Api\V2010\Account\MessageInstance
+     */
+    public function sendWhatsAppTemplate($to, $templateName, $parameters = [])
+    {
+        try {
+            // Format the numbers with whatsapp: prefix
+            $formattedTo = 'whatsapp:' . $to;
+            
+            // Get the full URL for the status callback
+            $statusCallbackUrl = url(route('twilio.status'));
+            
+            // Prepare template parameters
+            $contentSid = null;
+            $contentVariables = null;
+            
+            if (!empty($parameters)) {
+                $contentVariables = json_encode(['1' => $parameters]);
+            }
+            
+            // Create message with template
+            $twilioMessage = $this->client->messages->create(
+                $formattedTo,
+                [
+                    'from' => $this->whatsappFromNumber,
+                    'statusCallback' => $statusCallbackUrl,
+                    'contentSid' => $templateName,
+                    'contentVariables' => $contentVariables
+                ]
+            );
+
+            // Save outbound message to database
+            Conversation::create([
+                'message_sid' => $twilioMessage->sid,
+                'channel' => 'whatsapp',
+                'from' => $this->whatsappFromNumber,
+                'to' => $formattedTo,
+                'body' => "Template: {$templateName}",
+                'status' => 'sent',
+                'direction' => 'outbound',
+                'metadata' => [
+                    'twilio_response' => [
+                        'sid' => $twilioMessage->sid,
+                        'status' => $twilioMessage->status,
+                        'date_created' => $twilioMessage->dateCreated->format('Y-m-d H:i:s'),
+                    ],
+                    'template' => [
+                        'name' => $templateName,
+                        'parameters' => $parameters
+                    ]
+                ]
+            ]);
+            
+            return $twilioMessage;
+        } catch (\Exception $e) {
+            Log::error('Twilio WhatsApp Template Error: ' . $e->getMessage());
+            throw $e;
+        }
+    }
 } 
