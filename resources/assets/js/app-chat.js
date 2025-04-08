@@ -159,13 +159,46 @@ document.addEventListener('DOMContentLoaded', function () {
     formSendMessage.addEventListener('submit', e => {
       e.preventDefault();
       if (messageInput.value) {
-        // Create a div and add a class
+        const message = messageInput.value;
+        const to = document.getElementById('recipient').value;
+        
+        // Parte original: Actualizar la UI
         let renderMsg = document.createElement('div');
         renderMsg.className = 'chat-message-text mt-2';
-        renderMsg.innerHTML = '<p class="mb-0 text-break">' + messageInput.value + '</p>';
+        renderMsg.innerHTML = '<p class="mb-0 text-break">' + message + '</p>';
         document.querySelector('li:last-child .chat-message-wrapper').appendChild(renderMsg);
         messageInput.value = '';
         scrollToBottom();
+        
+        // Parte nueva: Enviar al servidor
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const cleanTo = to.replace('whatsapp:', ''); // Quitar prefijo si existe
+        
+        fetch('/chat/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': token
+          },
+          body: JSON.stringify({
+            to: cleanTo,
+            message: message
+          })
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Error en la respuesta: ' + response.status);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Mensaje enviado correctamente:', data);
+          // No recargamos la página porque ya actualizamos la UI
+        })
+        .catch(error => {
+          console.error('Error enviando mensaje:', error);
+          // Puedes mostrar un mensaje de error si quieres
+        });
       }
     });
 
@@ -206,3 +239,59 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   })();
 });
+
+/* ===== CÓDIGO DE DIAGNÓSTICO (comentado) =====
+document.addEventListener('DOMContentLoaded', function() {
+  // Esperar a que todo esté completamente cargado
+  setTimeout(function() {
+    // Obtener los elementos relevantes
+    const formSendMessage = document.querySelector('.form-send-message');
+    
+    if (formSendMessage) {
+      // Agregar un controlador de eventos adicional al formulario
+      formSendMessage.addEventListener('submit', function(e) {
+        // Obtener todos los datos importantes
+        const messageInput = document.querySelector('.message-input');
+        const recipientInput = document.getElementById('recipient');
+
+        // Recopilar información para depuración
+        const debugInfo = {
+          formFound: !!formSendMessage,
+          messageInputFound: !!messageInput,
+          recipientInputFound: !!recipientInput,
+          messageValue: messageInput ? messageInput.value : 'No disponible',
+          recipientValue: recipientInput ? recipientInput.value : 'No disponible',
+          csrfMeta: document.querySelector('meta[name="csrf-token"]') ? 'Presente' : 'No encontrado',
+          csrfMetaContent: document.querySelector('meta[name="csrf-token"]') ? 
+                           document.querySelector('meta[name="csrf-token"]').getAttribute('content') : 'No disponible',
+          csrfToken: '{{ csrf_token() }}',
+          ajaxRoute: '{{ route("chat.send") }}'
+        };
+
+        // Mostrar información de depuración
+        alert(
+          'DIAGNÓSTICO DEL FORMULARIO:\n\n' +
+          'Formulario encontrado: ' + debugInfo.formFound + '\n' +
+          'Campo de mensaje encontrado: ' + debugInfo.messageInputFound + '\n' +
+          'Campo de destinatario encontrado: ' + debugInfo.recipientInputFound + '\n' +
+          'Valor del mensaje: ' + debugInfo.messageValue + '\n' +
+          'Valor del destinatario: ' + debugInfo.recipientValue + '\n\n' +
+          'INFORMACIÓN CSRF:\n' +
+          'Meta tag CSRF: ' + debugInfo.csrfMeta + '\n' +
+          'Contenido del meta tag: ' + debugInfo.csrfMetaContent + '\n' +
+          'Token CSRF de Blade: ' + debugInfo.csrfToken + '\n\n' +
+          'URL de envío: ' + debugInfo.ajaxRoute
+        );
+
+        // También mostrar en la consola para referencia fácil
+        console.log('Diagnóstico del formulario:', debugInfo);
+      });
+      
+      console.log('Diagnóstico instalado en el formulario de chat');
+    } else {
+      console.error('No se encontró el formulario de envío de mensajes');
+      alert('ERROR: No se encontró el formulario de envío de mensajes');
+    }
+  }, 500); // Esperar medio segundo para asegurarnos que todo está cargado
+});
+===== FIN CÓDIGO DE DIAGNÓSTICO ===== */

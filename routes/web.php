@@ -25,6 +25,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TwilioWebhookController;
 
 // auth
 Route::middleware([
@@ -135,8 +136,9 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/list60/{id}', [List60Controller::class, 'destroy'])->name('list60.destroy');
 
     // Chat
-    Route::get('/chat', [ChatController::class, 'index'])->name('chat');
-    Route::get('/chat/list', [ChatController::class, 'index'])->name('chat-list');
+    Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
@@ -189,3 +191,7 @@ Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
 // Editor
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
+
+// Twilio Webhook Routes
+Route::post('/twilio/webhook', [TwilioWebhookController::class, 'handleIncomingMessage'])
+    ->name('twilio.webhook');

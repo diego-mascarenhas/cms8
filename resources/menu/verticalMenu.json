@@ -20,10 +20,10 @@
 			"permission": "today.index"
 		},
 		{
-			"url": "chat/list",
+			"url": "chat",
 			"name": "Chat",
 			"icon": "menu-icon tf-icons ti ti-message-chatbot",
-			"slug": "chat-list",
+			"slug": "chat",
 			"permission": "chat.list",
 			"module_key": "chat"
 		},

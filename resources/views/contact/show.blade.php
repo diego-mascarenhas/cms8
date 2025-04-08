@@ -56,16 +56,18 @@
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
             <!-- <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
-                    class="ti ti-plus me-1"></i>Añadir informe</a> -->
+                        class="ti ti-plus me-1"></i>Añadir informe</a> -->
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @can('project.create')
-            <a href="{{ route('project.create') }}" class="btn btn-success waves-effect waves-light"><i
-                    class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
+                <a href="{{ route('project.create') }}" class="btn btn-success waves-effect waves-light"><i
+                        class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
             @endcan
             @can('chat.list')
-            <a href="{{ route('chat-list') }}" class="btn btn-info waves-effect waves-light"><i
-                    class="ti ti-message-chatbot me-1"></i>Chat</a>
+                @if ($data->getWhatsAppNumber())
+                    <a href="{{ route('chat.index') }}?phone={{ $data->getWhatsAppNumber() }}"
+                        class="btn btn-info waves-effect waves-light"><i class="ti ti-message-chatbot me-1"></i>Chat</a>
+                @endif
             @endcan
         </div>
     </div>
@@ -121,11 +123,11 @@
                                     <span>{{ $data->username }}</span>
                                 </li>
                             @endif
-                            @if($data->enterprise)
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Empresa:</span>
-                                <span>{{ $data->enterprise->name }}</span>
-                            </li>
+                            @if ($data->enterprise)
+                                <li class="mb-2 pt-1">
+                                    <span class="fw-medium me-1">Empresa:</span>
+                                    <span>{{ $data->enterprise->name }}</span>
+                                </li>
                             @endif
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Estado:</span>
@@ -186,6 +188,15 @@
                                 <span class="fw-medium me-1">Superior:</span>
                                 <span>{{ $data->creator->name ?? 'No asignado' }}</span>
                             </li>
+
+                            @if ($data->related_user)
+                                <li class="mb-2 pt-1">
+                                    <span class="fw-medium me-1">Usuario vinculado:</span>
+                                    <span>
+                                        <span class="badge bg-label-success">{{ $data->related_user->name }}</span>
+                                    </span>
+                                </li>
+                            @endif
                         </ul>
                         <div class="d-flex justify-content-center">
                             {{-- <a href="javascript:;" class="btn btn-primary me-3" data-bs-target="#editUser"
@@ -245,7 +256,7 @@
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="emotional-balance-tab" data-bs-toggle="tab" href="#emotional-balance"
                         role="tab" aria-controls="emotional-balance" aria-selected="false">
-                        <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones 
+                        <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -358,25 +369,25 @@
             const contactId = window.location.pathname.split('/')[2];
 
             fetch(`/contact/${contactId}/notes`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    notes: notes
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        notes: notes
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    toastr.success('Notas guardadas correctamente');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                toastr.error('Error al guardar las notas');
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        toastr.success('Notas guardadas correctamente');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    toastr.error('Error al guardar las notas');
+                });
         }
 
         $(document).ready(function() {
@@ -440,7 +451,7 @@
         }
 
         window.addEventListener('beforeunload', function() {
-            fetch(`{{ route("contact.end-action", session("tracking_id")) }}`, {
+            fetch(`{{ route('contact.end-action', session('tracking_id')) }}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -468,6 +479,3 @@
         }, 1000);
     </script>
 @endpush
-
-
-
