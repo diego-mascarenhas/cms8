@@ -11,7 +11,7 @@ class ChatController extends Controller
 {
 	public function index()
 	{
-		// Obtener contactos únicos de WhatsApp (números de teléfono)
+		// Get unique WhatsApp contacts (phone numbers)
 		$contacts = Conversation::where('channel', 'whatsapp')
 			->selectRaw('DISTINCT `from`, MAX(created_at) as last_message_at')
 			->where('direction', 'inbound')
@@ -19,7 +19,7 @@ class ChatController extends Controller
 			->orderBy('last_message_at', 'desc')
 			->get();
 			
-		// Obtener el último mensaje de cada contacto
+		// Get the last message from each contact
 		foreach ($contacts as $contact) {
 			$lastMessage = Conversation::where('from', $contact->from)
 				->where('channel', 'whatsapp')
@@ -30,7 +30,7 @@ class ChatController extends Controller
 			$contact->last_message_time = $lastMessage->created_at->diffForHumans();
 		}
 		
-		// Si hay un contacto seleccionado, obtener sus mensajes
+		// If a contact is selected, get their messages
 		$selectedPhone = request('phone');
 		$messages = collect();
 		
@@ -70,18 +70,11 @@ class ChatController extends Controller
 		$twilioService = app(\App\Services\TwilioService::class);
 		
 		try {
-			// Registrar para depuración
-			\Log::info('Enviando mensaje a: ' . $request->to . ', mensaje: ' . $request->message);
-			
-			// Enviar mensaje
+			// Send message
 			$result = $twilioService->sendWhatsApp($request->to, $request->message);
 			
-			// Registrar el resultado
-			\Log::info('Mensaje enviado con SID: ' . $result->sid);
-			
-			return response()->json(['success' => true, 'message' => 'Mensaje enviado']);
+			return response()->json(['success' => true, 'message' => 'Message sent']);
 		} catch (\Exception $e) {
-			\Log::error('Error enviando mensaje: ' . $e->getMessage());
 			return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
 		}
 	}

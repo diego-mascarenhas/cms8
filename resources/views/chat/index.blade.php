@@ -26,7 +26,7 @@
                 <div
                     class="chat-sidebar-left-user sidebar-header d-flex flex-column justify-content-center align-items-center flex-wrap px-4 pt-5">
                     <div class="avatar avatar-xl avatar-online">
-                        <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar" class="rounded-circle">
+                        <img src="{{ asset('assets/img/branding/icon.png') }}" alt="Avatar" class="rounded-circle">
                     </div>
                     <h5 class="mt-2 mb-0">John Doe</h5>
                     <span>Admin</span>
@@ -118,7 +118,7 @@
                         <div class="flex-shrink-0 avatar avatar-online me-3" data-bs-toggle="sidebar"
                             data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">
                             <img class="user-avatar rounded-circle cursor-pointer"
-                                src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar">
+                                src="{{ asset('assets/img/branding/icon.png') }}" alt="Avatar">
                         </div>
                         <div class="flex-grow-1 input-group input-group-merge rounded-pill">
                             <span class="input-group-text" id="basic-addon-search31"><i class="ti ti-search"></i></span>
@@ -164,7 +164,7 @@
                         @endif
                     </ul>
                     <!-- Contacts -->
-                    <ul class="list-unstyled chat-contact-list mb-0" id="contact-list">
+                    {{-- <ul class="list-unstyled chat-contact-list mb-0" id="contact-list">
                         <li class="chat-contact-list-item chat-contact-list-item-title">
                             <h5 class="text-primary mb-0">Contacts</h5>
                         </li>
@@ -300,7 +300,7 @@
                                 </div>
                             </a>
                         </li>
-                    </ul>
+                    </ul> --}}
                 </div>
             </div>
             <!-- /Chat contacts -->
@@ -314,13 +314,13 @@
                                 <i class="ti ti-menu-2 ti-sm cursor-pointer d-lg-none d-block me-2"
                                     data-bs-toggle="sidebar" data-overlay data-target="#app-chat-contacts"></i>
                                 <div class="flex-shrink-0 avatar">
-                                    <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
+                                    <img src="{{ asset('assets/img/avatars/guru-meditating.jpg') }}" alt="User Avatar"
                                         class="rounded-circle" data-bs-toggle="sidebar" data-overlay
                                         data-target="#app-chat-sidebar-right">
                                 </div>
                                 <div class="chat-contact-info flex-grow-1 ms-2">
-                                    <h6 class="m-0">Felecia Rower</h6>
-                                    <small class="user-status text-muted">NextJS developer</small>
+                                    <h6 class="m-0">Cliente</h6>
+                                    <small class="user-status text-muted">{{ $selectedPhone }}</small>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
@@ -379,7 +379,7 @@
                                             @if(!$isInbound)
                                                 <div class="user-avatar flex-shrink-0 ms-3">
                                                     <div class="avatar avatar-sm">
-                                                        <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar" class="rounded-circle">
+                                                        <img src="{{ asset('assets/img/branding/icon.png') }}" alt="Avatar" class="rounded-circle">
                                                     </div>
                                                 </div>
                                             @endif

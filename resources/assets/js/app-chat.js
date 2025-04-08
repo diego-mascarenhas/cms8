@@ -161,12 +161,19 @@ document.addEventListener('DOMContentLoaded', function () {
       if (messageInput.value) {
         const message = messageInput.value;
         const to = document.getElementById('recipient').value;
+        
+        // Parte original: Actualizar la UI
+        let renderMsg = document.createElement('div');
+        renderMsg.className = 'chat-message-text mt-2';
+        renderMsg.innerHTML = '<p class="mb-0 text-break">' + message + '</p>';
+        document.querySelector('li:last-child .chat-message-wrapper').appendChild(renderMsg);
+        messageInput.value = '';
+        scrollToBottom();
+        
+        // Parte nueva: Enviar al servidor
         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const cleanTo = to.replace('whatsapp:', ''); // Quitar prefijo si existe
         
-        // Limpiar el número de teléfono si es necesario
-        const cleanTo = to.replace('whatsapp:', '');
-        
-        // Realizar la llamada AJAX
         fetch('/chat/send', {
           method: 'POST',
           headers: {
@@ -186,12 +193,11 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .then(data => {
           console.log('Mensaje enviado correctamente:', data);
-          // Refrescar la página para mostrar la conversación actualizada
-          window.location.reload();
+          // No recargamos la página porque ya actualizamos la UI
         })
         .catch(error => {
           console.error('Error enviando mensaje:', error);
-          alert('Error al enviar mensaje: ' + error.message);
+          // Puedes mostrar un mensaje de error si quieres
         });
       }
     });
@@ -234,6 +240,7 @@ document.addEventListener('DOMContentLoaded', function () {
   })();
 });
 
+/* ===== CÓDIGO DE DIAGNÓSTICO (comentado) =====
 document.addEventListener('DOMContentLoaded', function() {
   // Esperar a que todo esté completamente cargado
   setTimeout(function() {
@@ -287,3 +294,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 500); // Esperar medio segundo para asegurarnos que todo está cargado
 });
+===== FIN CÓDIGO DE DIAGNÓSTICO ===== */
