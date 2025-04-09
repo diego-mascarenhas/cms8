@@ -3,18 +3,21 @@
 namespace App\Livewire;
 
 use Livewire\Component;
+use App\Models\Conversation;
 
 class HelpCenterIcon extends Component
 {
+    public $inboundCount = 0;
+
+    public function mount()
+    {
+        $this->inboundCount = Conversation::where('direction', 'inbound')
+            ->where('status', '!=', 'received')
+            ->count();
+    }
+
     public function render()
     {
-        return <<<'HTML'
-        <li class="nav-item me-3 me-xl-1">
-            <a class="nav-link" href="{{ route('chat.index') }}" 
-               data-bs-toggle="tooltip" data-bs-placement="bottom" title="Chat Support">
-                <i class="ti ti-lifebuoy ti-md"></i>
-            </a>
-        </li>
-        HTML;
+        return view('livewire.help-center-icon', ['inboundCount' => $this->inboundCount]);
     }
 }
