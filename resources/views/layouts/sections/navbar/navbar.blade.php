@@ -212,6 +212,15 @@
             </li>
         @endif
 
+        <!-- Help Center -->
+        <li class="nav-item me-3 me-xl-1">
+            <a class="nav-link" href="{{ route('chat.index') }}" 
+               data-bs-toggle="tooltip" data-bs-placement="bottom" title="Chat Support">
+                <i class="ti ti-lifebuoy ti-md"></i>
+            </a>
+        </li>
+        <!-- /Help Center -->
+
         <!-- User -->
         <li class="nav-item navbar-dropdown dropdown-user dropdown">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
