@@ -48,4 +48,8 @@ return [
         'default_template' => env('TWILIO_DEFAULT_TEMPLATE', 'customer_support'),
     ],
 
+    'notifications' => [
+        'email' => env('NOTIFICATION_EMAIL'),
+    ],
+
 ];

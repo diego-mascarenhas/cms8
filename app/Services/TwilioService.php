@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Conversation;
+use App\Mail\IncomingMessageNotification;
 use Twilio\Rest\Client;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class TwilioService
 {
@@ -148,6 +150,13 @@ class TwilioService
                 'media' => !empty($media) ? $media : null,
                 'metadata' => $request->except(['_token'])
             ]);
+            
+            // Send email notification for new message
+            $notificationEmail = config('services.notifications.email');
+            if ($notificationEmail) {
+                Mail::to($notificationEmail)->send(new IncomingMessageNotification($conversation));
+                Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
+            }
             
             // Here you can add your business logic for automated responses
             // For example, you could call an AI service to generate a response
