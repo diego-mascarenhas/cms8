@@ -139,6 +139,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/chat/send-template', [ChatController::class, 'sendTemplateMessage'])->name('chat.send-template');
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');

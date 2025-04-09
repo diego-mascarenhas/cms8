@@ -124,7 +124,63 @@ class ChatController extends Controller
 			
 			return response()->json(['success' => true, 'message' => 'Message sent']);
 		} catch (\Exception $e) {
+			// If it fails because it's outside the 24-hour window, try sending with template
+			if (strpos($e->getMessage(), '63016') !== false) {
+				return $this->sendWithTemplate($request);
+			}
+			
 			return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
 		}
+	}
+	
+	/**
+	 * Send a message using WhatsApp templates
+	 * Used for first contact or when outside the 24-hour window
+	 */
+	public function sendWithTemplate(Request $request)
+	{
+		$request->validate([
+			'to' => 'required|string',
+			'message' => 'required|string',
+			'template' => 'string|nullable'
+		]);
+		
+		$twilioService = app(\App\Services\TwilioService::class);
+		
+		try {
+			// Determine which template to use
+			$defaultTemplate = config('services.twilio.default_template', 'customer_support');
+			$templateName = $request->template ?? $defaultTemplate;
+			
+			// Adapt the message as a template parameter
+			$parameters = ['message' => $request->message];
+			
+			// Send using template
+			$result = $twilioService->sendWhatsAppTemplate(
+				$request->to,
+				$templateName,
+				$parameters
+			);
+			
+			return response()->json([
+				'success' => true, 
+				'message' => 'Template message sent',
+				'template_used' => $templateName
+			]);
+		} catch (\Exception $e) {
+			return response()->json([
+				'success' => false, 
+				'error' => $e->getMessage(),
+				'tip' => 'Make sure you have approved templates in Twilio'
+			], 500);
+		}
+	}
+	
+	/**
+	 * Direct endpoint for sending messages with template
+	 */
+	public function sendTemplateMessage(Request $request)
+	{
+		return $this->sendWithTemplate($request);
 	}
 }
