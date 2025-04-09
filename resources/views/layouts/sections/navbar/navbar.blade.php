@@ -213,12 +213,7 @@
         @endif
 
         <!-- Help Center -->
-        <li class="nav-item me-3 me-xl-1">
-            <a class="nav-link" href="{{ route('chat.index') }}" 
-               data-bs-toggle="tooltip" data-bs-placement="bottom" title="Chat Support">
-                <i class="ti ti-lifebuoy ti-md"></i>
-            </a>
-        </li>
+        @livewire('help-center-icon')
         <!-- /Help Center -->
 
         <!-- User -->
