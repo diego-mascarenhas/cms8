@@ -21,40 +21,40 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('inspire')
-            ->hourly()
-            ->appendOutputTo(storage_path('logs/inspire.log'));
+        // $schedule->command('inspire')
+        //     ->hourly()
+        //     ->appendOutputTo(storage_path('logs/inspire.log'));
 
-        $schedule->command('inspire')
-            ->dailyAt('07:00')
-            ->emailOutputTo('diego.mascarenhas@icloud.com');
+        // $schedule->command('inspire')
+        //     ->dailyAt('07:00')
+        //     ->emailOutputTo('diego.mascarenhas@icloud.com');
 
-        $schedule->command('app:register-application')->dailyAt('23:59');
+        // $schedule->command('app:register-application')->dailyAt('23:59');
 
-        $schedule->command('emails:get')
-                ->everyMinute()
-                ->withoutOverlapping();
+        // $schedule->command('emails:get')
+        //         ->everyMinute()
+        //         ->withoutOverlapping();
 
-        $schedule->command('update:host-metrics')
-            ->everyFiveMinutes()
-            ->when(function ()
-            {
-                return !empty(env('VCENTER_HOST'));
-            });
+        // $schedule->command('update:host-metrics')
+        //     ->everyFiveMinutes()
+        //     ->when(function ()
+        //     {
+        //         return !empty(env('VCENTER_HOST'));
+        //     });
 
-        $schedule->command('update:vm-metrics')
-            ->twiceDaily(1, 13)
-            ->when(function ()
-            {
-                return !empty(env('VCENTER_HOST'));
-            });
+        // $schedule->command('update:vm-metrics')
+        //     ->twiceDaily(1, 13)
+        //     ->when(function ()
+        //     {
+        //         return !empty(env('VCENTER_HOST'));
+        //     });
 
-        $schedule->command('update:whm-service-status')
-            ->twiceDaily(2, 14)
-            ->when(function ()
-            {
-                return !empty(env('WHM_SERVERS'));
-            });
+        // $schedule->command('update:whm-service-status')
+        //     ->twiceDaily(2, 14)
+        //     ->when(function ()
+        //     {
+        //         return !empty(env('WHM_SERVERS'));
+        //     });
 
         // $schedule->command('fetch:bruler-data')
         //     ->hourly()
@@ -85,11 +85,11 @@ class Kernel extends ConsoleKernel
                 ->daily()
                 ->at('03:00');
 
-        $schedule->job(new WhmServerTest())->everyFiveMinutes();
+        $schedule->job(new \App\Jobs\WhmServerTest())->everyFiveMinutes();
         
-        $schedule->job(new WhmDomainSync)->twiceDaily(6, 18);
+        $schedule->job(new \App\Jobs\WhmDomainSync())->twiceDaily(6, 18);
 
-        $schedule->job(new UpdateDomainInfo)->daily();
+        $schedule->job(new \App\Jobs\UpdateDomainInfo())->daily();
     }
 
     /**
