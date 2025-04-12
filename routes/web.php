@@ -26,6 +26,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TwilioWebhookController;
+use App\Http\Controllers\HostingController;
 
 // auth
 Route::middleware([
@@ -170,6 +171,9 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/task', [TaskController::class, 'store'])->name('task.store');
     Route::put('/task/{id}', [TaskController::class, 'update'])->name('task.update');
     Route::delete('/task/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
+
+    // Hosting
+    Route::get('/hosting', [HostingController::class, 'index'])->name('hosting.index');
 });
 
 // Testing

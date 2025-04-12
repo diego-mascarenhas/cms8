@@ -228,6 +228,13 @@
 			"module_key": "landings"
 		},
 		{
+			"url": "hosting",
+			"name": "Hosting",
+			"icon": "menu-icon tf-icons ti ti-server",
+			"slug": "hosting.index",
+			"permission": "hosting.index"
+		},
+		{
 			"menuHeader": "Mkt"
 		},
 		{	

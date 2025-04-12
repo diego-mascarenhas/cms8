@@ -11,7 +11,6 @@ class WhmService
     public function syncDomainsFromAllServers()
     {
         $serversString = env('WHM_SERVERS');
-        Log::info('WHM_SERVERS value:', ['servers' => $serversString]);
 
         if (empty($serversString))
         {
@@ -22,20 +21,12 @@ class WhmService
         }
 
         $serversList = explode(',', $serversString);
-        Log::info('Servers list after explode:', ['list' => $serversList]);
-
         $successCount = 0;
         $errors = [];
 
         foreach ($serversList as $index => $serverString)
         {
             $server = explode(':', trim($serverString));
-            Log::info('Processing server:', [
-                'index' => $index,
-                'raw_string' => $serverString,
-                'parsed_components' => count($server),
-                'components' => $server
-            ]);
 
             if (count($server) < 3)
             {
@@ -78,7 +69,8 @@ class WhmService
                                 [
                                     'username' => $account['user'],
                                     'plan' => $plan,
-                                    'suspended' => $account['suspended'],
+                                    'status_id' => $account['suspended'],
+                                    'data' => $account
                                 ]
                             );
                         }
