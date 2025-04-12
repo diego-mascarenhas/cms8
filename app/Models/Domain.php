@@ -30,6 +30,11 @@ class Domain extends Model
         'data' => 'array'
     ];
 
+    public function server()
+    {
+        return $this->belongsTo(Server::class, 'server_url', 'server_url');
+    }
+
     public function getWebIpAttribute()
     {
         return $this->data['web_ip'] ?? null;
