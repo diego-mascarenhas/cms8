@@ -2,56 +2,195 @@
 
 namespace App\Services;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\RequestException;
+use App\Models\Domain;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class WHMService
+class WhmService
 {
-    protected $client;
-    protected $whmServers;
-
-    public function __construct()
+    public function syncDomainsFromAllServers()
     {
-        $this->client = new Client(['verify' => false]);
-        $this->whmServers = getWHMServers();
-    }
+        $serversString = env('WHM_SERVERS');
+        Log::info('WHM_SERVERS value:', ['servers' => $serversString]);
 
-    public function getServiceStatuses()
-    {
-        $statuses = [];
+        if (empty($serversString)) {
+            return [
+                'success' => false,
+                'errors' => ['No hay servidores configurados en WHM_SERVERS']
+            ];
+        }
 
-        foreach ($this->whmServers as $server)
+        $serversList = explode(',', $serversString);
+        Log::info('Servers list after explode:', ['list' => $serversList]);
+
+        $successCount = 0;
+        $errors = [];
+
+        foreach ($serversList as $index => $serverString)
         {
+            $server = explode(':', trim($serverString));
+            Log::info('Processing server:', [
+                'index' => $index,
+                'raw_string' => $serverString,
+                'parsed_components' => count($server),
+                'components' => $server
+            ]);
+
+            if (count($server) < 3)
+            {
+                $errors[] = "Configuración de servidor incorrecta. Formato requerido: hostname:usuario:token";
+                continue;
+            }
+
             try
             {
-                //$response = $this->client->get("https://{$server['host']}:2087/json-api/loadavg?api.version=1", [
-                $response = $this->client->get("https://{$server['host']}:2087/json-api/listaccts?api.version=1", [
-                    'headers' => [
-                        'Authorization' => 'whm ' . $server['username'] . ':' . $server['token'],
-                        'Accept' => 'application/json',
-                    ],
-                ]);
+                $url = "https://{$server[0]}:2087";
+                $response = Http::withHeaders([
+                    'Authorization' => 'whm ' . $server[1] . ':' . $server[2],
+                ])->get($url . '/json-api/listaccts');
 
-                $data = json_decode($response->getBody()->getContents(), true);
-                if (isset($data['cpanelresult']['error']))
+                if ($response->successful())
                 {
-                    throw new \Exception($data['cpanelresult']['error']);
+                    $data = $response->json();
+
+                    // Guardar la respuesta completa
+                    // Log::info('WHM Response for server ' . $server[0], ['response' => $data]);
+
+                    if (isset($data['acct']))
+                    {
+                        foreach ($data['acct'] as $account)
+                        {
+                            $plan = $account['plan'] ?? $account['owner'] ?? null;
+
+                            $domain = Domain::withTrashed()
+                                ->where('domain', $account['domain'])
+                                ->where('server_url', $server[0])
+                                ->first();
+
+                            if ($domain && $domain->trashed()) {
+                                $domain->restore();
+                            }
+
+                            Domain::updateOrCreate(
+                                [
+                                    'domain' => $account['domain'],
+                                    'server_url' => $server[0]
+                                ],
+                                [
+                                    'username' => $account['user'],
+                                    'plan' => $plan,
+                                    'status' => $account['suspended'] == 0,
+                                ]
+                            );
+                        }
+                        $successCount++;
+                    }
                 }
-                $statuses[$server['host']] = $data['data'];
-            }
-            catch (RequestException $e)
-            {
-                Log::error("Error retrieving data from {$server['host']}: " . $e->getMessage());
-                $statuses[$server['host']] = ['error' => 'Could not retrieve data'];
+                else
+                {
+                    $error = "Error en servidor {$server[0]}: " . $response->body();
+                    $errors[] = $error;
+                    Log::error($error);
+                }
             }
             catch (\Exception $e)
             {
-                Log::error("Access error on {$server['host']}: " . $e->getMessage());
-                $statuses[$server['host']] = ['error' => 'Access denied'];
+                $error = "Error en servidor {$server[0]}: " . $e->getMessage();
+                $errors[] = $error;
+                Log::error($error, [
+                    'exception' => get_class($e),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]);
             }
         }
 
-        return $statuses;
+        return [
+            'success' => $successCount > 0,
+            'total_servers' => count($serversList),
+            'successful_servers' => $successCount,
+            'errors' => $errors
+        ];
+    }
+
+    public function testConnections()
+    {
+        $serversString = env('WHM_SERVERS');
+        if (empty($serversString))
+        {
+            return ['error' => 'No hay servidores configurados en WHM_SERVERS'];
+        }
+
+        $results = [];
+        $serversList = explode(',', $serversString);
+
+        foreach ($serversList as $index => $serverString)
+        {
+            $server = explode(':', trim($serverString));
+
+            $results[] = [
+                'index' => $index,
+                'raw_string' => $serverString,
+                'parsed_components' => count($server),
+                'components' => $server,
+                'test_result' => $this->testSingleServer($server)
+            ];
+        }
+
+        return $results;
+    }
+
+    private function testSingleServer($server)
+    {
+        try
+        {
+            if (count($server) < 3)
+            {
+                return [
+                    'success' => false,
+                    'error' => 'Faltan componentes. Se necesitan 3 (servidor:usuario:token)',
+                    'components_found' => count($server)
+                ];
+            }
+
+            // Intentar resolver el hostname
+            $ip = gethostbyname($server[0]);
+            if ($ip === $server[0])
+            {
+                return [
+                    'success' => false,
+                    'error' => 'No se pudo resolver el hostname',
+                    'hostname' => $server[0]
+                ];
+            }
+
+            // Probar la conexión
+            $url = "https://{$server[0]}:2087";
+            $response = Http::withHeaders([
+                'Authorization' => 'whm ' . $server[1] . ':' . $server[2],
+            ])
+                ->timeout(10)
+                ->get($url . '/json-api/version');
+
+            return [
+                'success' => $response->successful(),
+                'status_code' => $response->status(),
+                'response' => $response->json(),
+                'ip' => $ip,
+                'url' => $url
+            ];
+
+        }
+        catch (\Exception $e)
+        {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'error_type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ];
+        }
     }
 }

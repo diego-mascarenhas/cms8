@@ -5,6 +5,9 @@ namespace App\Console;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use App\Console\Commands\UpdateHostMetrics;
+use App\Console\Commands\WhmServerTest;
+use App\Console\Commands\WhmDomainSync;
+use App\Console\Commands\UpdateDomainInfo;
 
 use Log;
 
@@ -81,6 +84,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('stripe:suspend-overdue')
                 ->daily()
                 ->at('03:00');
+
+        $schedule->job(new WhmServerTest())->everyFiveMinutes();
+        
+        $schedule->job(new WhmDomainSync)->twiceDaily(6, 18);
+
+        $schedule->job(new UpdateDomainInfo)->daily();
     }
 
     /**
