@@ -13,7 +13,8 @@ class WhmService
         $serversString = env('WHM_SERVERS');
         Log::info('WHM_SERVERS value:', ['servers' => $serversString]);
 
-        if (empty($serversString)) {
+        if (empty($serversString))
+        {
             return [
                 'success' => false,
                 'errors' => ['No hay servidores configurados en WHM_SERVERS']
@@ -53,9 +54,6 @@ class WhmService
                 {
                     $data = $response->json();
 
-                    // Guardar la respuesta completa
-                    // Log::info('WHM Response for server ' . $server[0], ['response' => $data]);
-
                     if (isset($data['acct']))
                     {
                         foreach ($data['acct'] as $account)
@@ -67,7 +65,8 @@ class WhmService
                                 ->where('server_url', $server[0])
                                 ->first();
 
-                            if ($domain && $domain->trashed()) {
+                            if ($domain && $domain->trashed())
+                            {
                                 $domain->restore();
                             }
 
@@ -79,7 +78,7 @@ class WhmService
                                 [
                                     'username' => $account['user'],
                                     'plan' => $plan,
-                                    'status' => $account['suspended'] == 0,
+                                    'suspended' => $account['suspended'],
                                 ]
                             );
                         }

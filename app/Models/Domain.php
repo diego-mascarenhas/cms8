@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\ServerStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -15,7 +14,7 @@ class Domain extends Model
         'server_url',
         'username',
         'plan',
-        'status_id',
+        'suspended',
         'site_type',
         'php_version',
         'notes',
@@ -25,16 +24,11 @@ class Domain extends Model
     ];
 
     protected $casts = [
-        'status_id' => ServerStatus::class,
+        'suspended' => 'boolean',
         'needs_update' => 'boolean',
         'is_working' => 'boolean',
         'data' => 'array'
     ];
-
-    public function isActive(): bool
-    {
-        return $this->status_id === ServerStatus::ACTIVE;
-    }
 
     public function getWebIpAttribute()
     {

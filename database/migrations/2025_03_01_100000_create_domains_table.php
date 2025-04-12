@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('server_url');
             $table->string('username');
             $table->string('plan')->nullable();
-            $table->boolean('status_id')->default(true);
+            $table->boolean('suspended')->default(0);
             $table->string('site_type')->nullable();
             $table->string('php_version')->nullable();
             $table->text('notes')->nullable();
