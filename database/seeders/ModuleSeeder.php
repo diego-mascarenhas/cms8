@@ -122,11 +122,71 @@ class ModuleSeeder extends Seeder
             'icon' => 'comment-dots',
             'description' => 'Live chat module',
         ],
+        'today' => [
+            'name' => 'Today',
+            'icon' => 'calendar-time',
+            'description' => 'Today\'s activities module',
+        ],
+        'times' => [
+            'name' => 'Times',
+            'icon' => 'hourglass-low',
+            'description' => 'Time tracking module',
+        ],
+        'documentation' => [
+            'name' => 'Documentation',
+            'icon' => 'files',
+            'description' => 'Documentation management module',
+        ],
+        'earnings' => [
+            'name' => 'Earnings',
+            'icon' => 'moneybag',
+            'description' => 'Earnings management module',
+        ],
+        'expenses' => [
+            'name' => 'Expenses',
+            'icon' => 'receipt',
+            'description' => 'Expenses management module',
+        ],
+        'accounting' => [
+            'name' => 'Accounting',
+            'icon' => 'receipt-tax',
+            'description' => 'Accounting management module',
+        ],
+        'financial' => [
+            'name' => 'Financial',
+            'icon' => 'graph',
+            'description' => 'Financial evolution module',
+        ],
+        'departments' => [
+            'name' => 'Departments',
+            'icon' => 'users-group',
+            'description' => 'Department management module',
+        ],
+        'funnel' => [
+            'name' => 'Funnel',
+            'icon' => 'filter',
+            'description' => 'Sales funnel module',
+        ],
+        'automations' => [
+            'name' => 'Automations',
+            'icon' => 'robot',
+            'description' => 'Automation management module',
+        ],
+        'integrations' => [
+            'name' => 'Integrations',
+            'icon' => 'api-app',
+            'description' => 'Integrations management module',
+        ],
+        'campaigns' => [
+            'name' => 'Campaigns',
+            'icon' => 'mail',
+            'description' => 'Campaigns management module',
+        ],
     ];
     
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services'],
-        2 => ['invoices', 'payments', 'communications', 'tickets', 'marketing', 'enterprises', 'projects', 'services'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'campaigns'],
+        2 => ['invoices', 'payments', 'communications', 'tickets', 'marketing', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel'],
     ];
 
     public function run()
