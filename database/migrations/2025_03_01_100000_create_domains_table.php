@@ -14,12 +14,13 @@ return new class extends Migration
             $table->string('server_url');
             $table->string('username');
             $table->string('plan')->nullable();
-            $table->boolean('status')->default(true);
+            $table->boolean('status_id')->default(true);
             $table->string('site_type')->nullable();
             $table->string('php_version')->nullable();
             $table->text('notes')->nullable();
             $table->boolean('needs_update')->default(false);
             $table->boolean('is_working')->default(true);
+            $table->json('data')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

@@ -30,7 +30,6 @@ class UpdateDomainInfo implements ShouldQueue
         } else {
             // Dispatch individual jobs for each domain
             Domain::select('id', 'domain')
-                ->where('status', true)
                 ->orderBy('id')
                 ->chunk(100, function ($domains) {
                     foreach ($domains as $domain) {
