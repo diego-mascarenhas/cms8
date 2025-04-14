@@ -5,9 +5,7 @@ namespace App\Console;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use App\Console\Commands\UpdateHostMetrics;
-use App\Console\Commands\WhmServerTest;
-use App\Console\Commands\WhmDomainSync;
-use App\Console\Commands\UpdateDomainInfo;
+use App\Models\Domain;
 
 use Log;
 
@@ -90,6 +88,22 @@ class Kernel extends ConsoleKernel
         $schedule->job(new \App\Jobs\WhmDomainSync())->twiceDaily(6, 18);
 
         $schedule->job(new \App\Jobs\UpdateDomainInfo())->daily();
+        
+        $schedule->job(function() {
+            Domain::select('id')->orderBy('id')->chunk(50, function($domains) {
+                foreach ($domains as $domain) {
+                    \App\Jobs\UpdateDomainSiteType::dispatch($domain->id);
+                }
+            });
+        })->dailyAt('04:00')->withoutOverlapping();
+                
+        $schedule->job(function() {
+            Domain::select('id')->orderBy('id')->chunk(50, function($domains) {
+                foreach ($domains as $domain) {
+                    \App\Jobs\UpdateDomainPhpVersion::dispatch($domain->id);
+                }
+            });
+        })->dailyAt('04:30')->withoutOverlapping();
     }
 
     /**

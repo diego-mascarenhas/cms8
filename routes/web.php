@@ -27,6 +27,7 @@ use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\HostingController;
+use App\Http\Controllers\DomainController;
 
 // auth
 Route::middleware([
@@ -174,6 +175,12 @@ Route::middleware(['auth'])->group(function ()
 
     // Hosting
     Route::get('/hosting', [HostingController::class, 'index'])->name('hosting.index');
+    Route::get('/hosting/data', [HostingController::class, 'data'])->name('hosting.data');
+    
+    // Domains
+    Route::resource('domain', DomainController::class);
+    Route::post('/domain/{domain}/refresh', [DomainController::class, 'refresh'])->name('domain.refresh');
+    Route::post('/domain/{domain}/toggle-suspension', [DomainController::class, 'toggleSuspension'])->name('domain.toggle-suspension');
 });
 
 // Testing

@@ -16,6 +16,9 @@ class DomainDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
+            ->addColumn('action', function($domain) {
+                return view('domain.action', ['id' => $domain->id])->render();
+            })
             ->setRowId('id')
             ->editColumn('suspended', function ($domain) {
                 $statusClass = $domain->suspended ? 'danger' : 'success';
@@ -45,20 +48,28 @@ class DomainDataTable extends DataTable
             ->dom('frtip')
             ->orderBy(1, 'asc')
             ->responsive(true)
-            ->processing(false)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json']);
+            ->processing(true)
+            ->serverSide(true)
+            ->language([
+                'url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'
+            ]);
     }
 
     protected function getColumns(): array
     {
         return [
+            Column::make('id')->hidden(),
             Column::make('domain')->title('Domain'),
-            Column::make('server_url')->title('Server'),
             Column::make('username')->title('Username'),
-            Column::make('plan')->title('Plan'),
-            Column::make('suspended')->title('Status'),
+            Column::make('server_url')->title('Server'),
             Column::make('site_type')->title('Type'),
             Column::make('php_version')->title('PHP'),
+            Column::make('suspended')->title('Status'),
+            Column::computed('action')
+                ->exportable(false)
+                ->printable(false)
+                ->width(60)
+                ->addClass('text-center'),
         ];
     }
 
