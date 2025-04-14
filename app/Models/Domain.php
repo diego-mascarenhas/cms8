@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Http;
 
 class Domain extends Model
 {
@@ -103,33 +104,52 @@ class Domain extends Model
                 return null;
             }
             
-            // You need to replace these with actual server credentials
-            // They should come from the Server model or config
-            $whm_username = 'admin'; // Replace with actual WHM username
-            $whm_token = env('WHM_API_TOKEN', ''); // Store API token in .env
+            // Get the WHM servers configuration
+            $serversString = env('WHM_SERVERS');
+            if (empty($serversString)) {
+                \Log::error("WHM_SERVERS environment variable not configured");
+                return null;
+            }
             
-            $url = "https://{$server->server_url}:2087/json-api/php_get_vhost_versions";
+            // Find the matching server in the list
+            $serversList = explode(',', $serversString);
+            $serverConfig = null;
+            
+            foreach ($serversList as $serverString) {
+                $serverParts = explode(':', trim($serverString));
+                if (count($serverParts) >= 3 && $serverParts[0] === $server->server_url) {
+                    $serverConfig = $serverParts;
+                    break;
+                }
+            }
+            
+            if (!$serverConfig) {
+                \Log::error("Server {$server->server_url} not found in WHM_SERVERS configuration");
+                return null;
+            }
+            
+            $hostname = $serverConfig[0];
+            $username = $serverConfig[1];
+            $token = $serverConfig[2];
+            
+            // Use the same approach as WhmService
+            $url = "https://{$hostname}:2087/json-api/php_get_vhost_versions";
             $query = http_build_query([
                 'api.filter.enable' => 1,
                 'api.filter.a.field' => 'vhost',
                 'api.filter.a.arg0' => $this->domain
             ]);
             
-            $client = new Client([
-                'verify' => false,
-                'timeout' => 10
-            ]);
+            $response = Http::withHeaders([
+                'Authorization' => 'whm ' . $username . ':' . $token,
+            ])->get($url . '?' . $query);
             
-            $response = $client->request('GET', $url . '?' . $query, [
-                'headers' => [
-                    'Authorization' => 'WHM ' . $whm_username . ':' . $whm_token
-                ]
-            ]);
+            if (!$response->successful()) {
+                \Log::error("WHM API request failed for {$this->domain}: " . $response->body());
+                return null;
+            }
             
-            $data = json_decode($response->getBody(), true);
-            
-            // Log the complete response for debugging
-            \Log::debug('PHP version API response for ' . $this->domain, $data);
+            $data = $response->json();
             
             // Check for the version in the response
             if (isset($data['data']['result'][0]['version'])) {
