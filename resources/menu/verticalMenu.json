@@ -111,7 +111,7 @@
 			"module_key": "expenses"
 		},
 		{
-			"url": "accounting/list",
+			"url": "accounting",
 			"name": "Accounting",
 			"icon": "menu-icon tf-icons ti ti-receipt-tax",
 			"slug": "accounting-list",

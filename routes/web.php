@@ -28,6 +28,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\DomainController;
+use App\Http\Controllers\AccountingController;
 
 // auth
 Route::middleware([
@@ -181,6 +182,11 @@ Route::middleware(['auth'])->group(function ()
     Route::resource('domain', DomainController::class);
     Route::post('/domain/{domain}/refresh', [DomainController::class, 'refresh'])->name('domain.refresh');
     Route::post('/domain/{domain}/toggle-suspension', [DomainController::class, 'toggleSuspension'])->name('domain.toggle-suspension');
+    
+    // Accounting
+    Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
+    Route::get('/accounting/invoice/{id}', [AccountingController::class, 'showInvoice'])->name('accounting.invoice');
+    Route::get('/accounting/customer/{id}', [AccountingController::class, 'customerInvoices'])->name('accounting.customer');
 });
 
 // Testing
