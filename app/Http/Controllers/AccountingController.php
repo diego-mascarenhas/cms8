@@ -38,18 +38,20 @@ class AccountingController extends Controller
             
             // Get all invoices (limited to last 100)
             $invoices = Invoice::all([
-                'limit' => 100,
-                'status' => 'paid'
+                'limit' => 100
             ]);
             
             // Process invoices
             foreach ($invoices->data as $invoice) {
+                // Determine correct amount to display based on status
+                $amount = $invoice->status === 'paid' ? $invoice->amount_paid : $invoice->amount_due;
+                
                 $stripeData['invoices'][] = [
                     'id' => $invoice->id,
                     'number' => $invoice->number,
                     'customer_name' => $invoice->customer_name,
                     'customer_email' => $invoice->customer_email,
-                    'amount' => $invoice->amount_paid / 100, // Convert from cents
+                    'amount' => $amount / 100, // Convert from cents
                     'currency' => strtoupper($invoice->currency),
                     'status' => $invoice->status,
                     'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
@@ -61,26 +63,24 @@ class AccountingController extends Controller
             // Calculate metrics
             $totalPaid = 0;
             $totalUnpaid = 0;
-            
-            // Get unpaid invoices
-            $unpaidInvoices = Invoice::all([
-                'limit' => 100,
-                'status' => 'open'
-            ]);
+            $paidInvoices = 0;
+            $unpaidInvoices = 0;
             
             foreach ($invoices->data as $invoice) {
-                $totalPaid += $invoice->amount_paid / 100;
-            }
-            
-            foreach ($unpaidInvoices->data as $invoice) {
-                $totalUnpaid += $invoice->amount_due / 100;
+                if ($invoice->status === 'paid') {
+                    $totalPaid += $invoice->amount_paid / 100;
+                    $paidInvoices++;
+                } else if ($invoice->status === 'open') {
+                    $totalUnpaid += $invoice->amount_due / 100;
+                    $unpaidInvoices++;
+                }
             }
             
             $stripeData['metrics'] = [
                 'total_paid' => number_format($totalPaid, 2),
                 'unpaid' => number_format($totalUnpaid, 2),
-                'total_invoices' => count($invoices->data),
-                'unpaid_invoices' => count($unpaidInvoices->data)
+                'total_invoices' => $paidInvoices,
+                'unpaid_invoices' => $unpaidInvoices
             ];
             
         } catch (\Exception $e) {
