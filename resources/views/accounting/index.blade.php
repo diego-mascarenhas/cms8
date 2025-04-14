@@ -94,61 +94,68 @@
         <h5 class="card-title mb-0">Facturas</h5>
     </div>
     <div class="card-datatable table-responsive">
-        <table class="table table-hover border-top">
-            <thead>
-                <tr>
-                    <th>Número</th>
-                    <th>Cliente</th>
-                    <th>Importe</th>
-                    <th>Estado</th>
-                    <th>Fecha</th>
-                    <th class="text-center">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($stripeData['invoices'] as $invoice)
-                <tr>
-                    <td>{{ $invoice['number'] }}</td>
-                    <td>
-                        <div class="d-flex flex-column">
-                            <a href="{{ route('accounting.customer', $invoice['customer_id']) }}" class="text-body fw-semibold">
-                                {{ $invoice['customer_name'] ?? 'Desconocido' }}
-                            </a>
-                            <small class="text-muted">{{ $invoice['customer_email'] ?? '' }}</small>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="fw-semibold">{{ number_format($invoice['amount'], 2) }}€</span>
-                        <small class="text-muted">{{ $invoice['currency'] }}</small>
-                    </td>
-                    <td>
-                        @if($invoice['status'] === 'paid')
-                        <span class="badge bg-label-success">Pagado</span>
-                        @elseif($invoice['status'] === 'open')
-                        <span class="badge bg-label-warning">Pendiente</span>
-                        @else
-                        <span class="badge bg-label-secondary">{{ ucfirst($invoice['status']) }}</span>
-                        @endif
-                    </td>
-                    <td>{{ $invoice['date'] }}</td>
-                    <td>
-                        <div class="d-flex justify-content-center">
-                            <a href="{{ route('accounting.invoice', $invoice['id']) }}" class="btn btn-sm btn-icon">
-                                <i class="ti ti-eye text-primary"></i>
-                            </a>
-                            <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon">
-                                <i class="ti ti-download text-success"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="6" class="text-center py-4">No se encontraron facturas</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+        @forelse($stripeData['grouped_invoices'] as $quarter => $invoices)
+            <div class="d-flex align-items-center bg-light p-2 border-bottom">
+                <i class="ti ti-calendar-stats me-2"></i>
+                <h6 class="mb-0">{{ $quarter }}</h6>
+            </div>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Cliente</th>
+                        <th>Importe</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($invoices as $invoice)
+                    <tr>
+                        <td>{{ $invoice['number'] }}</td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <a href="{{ route('accounting.customer', $invoice['customer_id']) }}" class="text-body fw-semibold">
+                                    {{ $invoice['customer_name'] ?? 'Desconocido' }}
+                                </a>
+                                <small class="text-muted">{{ $invoice['customer_email'] ?? '' }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="fw-semibold">{{ number_format($invoice['amount'], 2) }}€</span>
+                            <small class="text-muted">{{ $invoice['currency'] }}</small>
+                        </td>
+                        <td>
+                            @if($invoice['status'] === 'paid')
+                            <span class="badge bg-label-success">Pagado</span>
+                            @elseif($invoice['status'] === 'open')
+                            <span class="badge bg-label-warning">Pendiente</span>
+                            @else
+                            <span class="badge bg-label-secondary">{{ ucfirst($invoice['status']) }}</span>
+                            @endif
+                        </td>
+                        <td>{{ $invoice['date'] }}</td>
+                        <td>
+                            <div class="d-flex justify-content-center">
+                                <a href="{{ route('accounting.invoice', $invoice['id']) }}" class="btn btn-sm btn-icon">
+                                    <i class="ti ti-eye text-primary"></i>
+                                </a>
+                                <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon">
+                                    <i class="ti ti-download text-success"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @empty
+            <div class="text-center py-5">
+                <i class="ti ti-file-x fs-1 text-secondary mb-2"></i>
+                <p>No se encontraron facturas</p>
+            </div>
+        @endforelse
     </div>
 </div>
 @endsection 
