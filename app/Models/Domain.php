@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use GuzzleHttp\Client;
 
 class Domain extends Model
 {
@@ -68,5 +69,27 @@ class Domain extends Model
     public function getSslIssuerAttribute()
     {
         return $this->ssl_status['issuer'] ?? 'Unknown';
+    }
+
+    public function isWordPress(): bool
+    {
+        try {
+            $client = new Client(['timeout' => 5]);
+            $response = $client->get('https://' . $this->domain . '/wp-json/wp/v2', [
+                'http_errors' => false
+            ]);
+            
+            return $response->getStatusCode() === 200;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public function updateSiteType(): void
+    {
+        if ($this->isWordPress() && $this->site_type !== 'WordPress') {
+            $this->site_type = 'WordPress';
+            $this->save();
+        }
     }
 }
