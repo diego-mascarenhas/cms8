@@ -46,6 +46,14 @@ class AccountingController extends Controller
                 // Determine correct amount to display based on status
                 $amount = $invoice->status === 'paid' ? $invoice->amount_paid : $invoice->amount_due;
                 
+                // Create Carbon date for further processing
+                $invoiceDate = Carbon::createFromTimestamp($invoice->created);
+                
+                // Determine quarter
+                $quarter = ceil($invoiceDate->format('n') / 3);
+                $year = $invoiceDate->format('Y');
+                $quarterLabel = "Q{$quarter} {$year}";
+                
                 $stripeData['invoices'][] = [
                     'id' => $invoice->id,
                     'number' => $invoice->number,
@@ -54,11 +62,46 @@ class AccountingController extends Controller
                     'amount' => $amount / 100, // Convert from cents
                     'currency' => strtoupper($invoice->currency),
                     'status' => $invoice->status,
-                    'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
+                    'date' => $invoiceDate->format('d/m/Y'),
+                    'quarter' => $quarterLabel,
+                    'quarter_sort' => ($year * 10) + $quarter, // For easier sorting
+                    'timestamp' => $invoice->created, // Original timestamp
                     'pdf' => $invoice->invoice_pdf,
                     'customer_id' => $invoice->customer
                 ];
             }
+            
+            // Sort invoices by number
+            usort($stripeData['invoices'], function($a, $b) {
+                return strcmp($a['number'], $b['number']);
+            });
+            
+            // Group invoices by quarter
+            $groupedInvoices = [];
+            foreach ($stripeData['invoices'] as $invoice) {
+                $groupedInvoices[$invoice['quarter']] = $groupedInvoices[$invoice['quarter']] ?? [];
+                $groupedInvoices[$invoice['quarter']][] = $invoice;
+            }
+            
+            // Sort quarters in descending order (most recent first)
+            uksort($groupedInvoices, function($a, $b) {
+                $aComponents = explode(' ', $a);
+                $bComponents = explode(' ', $b);
+                
+                $aYear = (int)$aComponents[1];
+                $bYear = (int)$bComponents[1];
+                
+                if ($aYear !== $bYear) {
+                    return $bYear - $aYear; // Descending by year
+                }
+                
+                $aQuarter = (int)substr($aComponents[0], 1);
+                $bQuarter = (int)substr($bComponents[0], 1);
+                
+                return $bQuarter - $aQuarter; // Descending by quarter
+            });
+            
+            $stripeData['grouped_invoices'] = $groupedInvoices;
             
             // Calculate metrics
             $totalPaid = 0;
