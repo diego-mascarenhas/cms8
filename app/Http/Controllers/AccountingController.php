@@ -9,6 +9,9 @@ use Stripe\Customer;
 use Stripe\Invoice;
 use Stripe\PaymentMethod;
 use App\Models\Enterprise;
+use App\Models\InvoiceDownload;
+use Illuminate\Support\Facades\Storage;
+use App\Jobs\ProcessQuarterInvoices;
 
 class AccountingController extends Controller
 {
@@ -197,6 +200,58 @@ class AccountingController extends Controller
     }
     
     /**
+     * Track invoice download and redirect to PDF URL.
+     */
+    public function downloadInvoice($id)
+    {
+        $team = auth()->user()->currentTeam;
+        $user = auth()->user();
+        
+        if (!$team->getSetting('stripe_secret')) {
+            return redirect()->route('accounting.index')
+                ->with('error', 'API de Stripe no configurada');
+        }
+        
+        try {
+            // Set Stripe API key
+            Stripe::setApiKey($team->getSetting('stripe_secret'));
+            
+            // Get invoice details
+            $invoice = Invoice::retrieve([
+                'id' => $id
+            ]);
+            
+            if (empty($invoice->invoice_pdf)) {
+                return redirect()->route('accounting.invoice', $id)
+                    ->with('error', 'PDF no disponible para esta factura');
+            }
+            
+            // Get date information for the invoice
+            $invoiceDate = Carbon::createFromTimestamp($invoice->created);
+            $quarter = ceil($invoiceDate->format('n') / 3);
+            $year = $invoiceDate->format('Y');
+            
+            // Record the download
+            InvoiceDownload::create([
+                'user_id' => $user->id,
+                'team_id' => $team->id,
+                'invoice_id' => $id,
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+                'downloaded_at' => now(),
+            ]);
+            
+            // Redirect to the PDF
+            return redirect($invoice->invoice_pdf);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error downloading invoice PDF: ' . $e->getMessage());
+            return redirect()->route('accounting.invoice', $id)
+                ->with('error', 'Error al descargar PDF: ' . $e->getMessage());
+        }
+    }
+    
+    /**
      * Display invoices for a specific customer.
      */
     public function customerInvoices($customerId)
@@ -280,5 +335,32 @@ class AccountingController extends Controller
         }
         
         return view('accounting.customer', compact('stripeData', 'enterprise'));
+    }
+    
+    /**
+     * Download invoices for a specific quarter as ZIP file.
+     */
+    public function downloadQuarterInvoices(Request $request)
+    {
+        $team = auth()->user()->currentTeam;
+        $user = auth()->user();
+        $quarter = $request->quarter;
+        $year = $request->year;
+        
+        if (empty($quarter) || empty($year)) {
+            return redirect()->route('accounting.index')
+                ->with('error', 'Trimestre o año no especificado');
+        }
+        
+        if (!$team->getSetting('stripe_secret')) {
+            return redirect()->route('accounting.index')
+                ->with('error', 'API de Stripe no configurada');
+        }
+        
+        // Dispatch job to process quarter invoices
+        ProcessQuarterInvoices::dispatch($quarter, $year, $team, $user);
+        
+        return redirect()->route('accounting.index')
+            ->with('success', 'La solicitud de descarga de facturas ha sido puesta en cola. Recibirá una notificación cuando esté lista.');
     }
 } 

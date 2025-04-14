@@ -22,7 +22,7 @@
 </div>
 
 @if(session('error'))
-<div class="alert alert-danger mb-4">
+<div class="alert alert-danger mb-4"></div>
     {{ session('error') }}
 </div>
 @endif

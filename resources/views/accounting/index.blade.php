@@ -95,9 +95,20 @@
     </div>
     <div class="card-datatable table-responsive">
         @forelse($stripeData['grouped_invoices'] as $quarter => $invoices)
-            <div class="d-flex align-items-center bg-light p-2 border-bottom">
-                <i class="ti ti-calendar-stats me-2"></i>
-                <h6 class="mb-0">{{ $quarter }}</h6>
+            <div class="d-flex justify-content-between align-items-center bg-light p-2 border-bottom">
+                <div class="d-flex align-items-center">
+                    <i class="ti ti-calendar-stats me-2"></i>
+                    <h6 class="mb-0">{{ $quarter }}</h6>
+                </div>
+                @php
+                    $quarterParts = explode(' ', $quarter);
+                    $quarterNum = (int)substr($quarterParts[0], 1);
+                    $year = $quarterParts[1];
+                @endphp
+                <a href="{{ route('accounting.download-quarter', ['quarter' => $quarterNum, 'year' => $year]) }}" 
+                   class="btn btn-sm btn-primary d-flex align-items-center">
+                    <i class="ti ti-download me-1"></i> Descargar PDFs
+                </a>
             </div>
             <table class="table table-hover">
                 <thead>

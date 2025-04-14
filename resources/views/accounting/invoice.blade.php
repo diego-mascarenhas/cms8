@@ -46,7 +46,7 @@
         </div>
     </div>
     <div class="card-body">
-        <div class="row mb-4">
+        <div class="row mb-4"></div>
             <div class="col-md-6">
                 <h6 class="mb-3">Customer Information</h6>
                 <div class="p-3 bg-lighter rounded">

@@ -186,7 +186,9 @@ Route::middleware(['auth'])->group(function ()
     // Accounting
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
     Route::get('/accounting/invoice/{id}', [AccountingController::class, 'showInvoice'])->name('accounting.invoice');
+    Route::get('/accounting/invoice/{id}/download', [AccountingController::class, 'downloadInvoice'])->name('accounting.invoice.download');
     Route::get('/accounting/customer/{id}', [AccountingController::class, 'customerInvoices'])->name('accounting.customer');
+    Route::get('/accounting/download-quarter', [AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
 });
 
 // Testing
