@@ -90,6 +90,11 @@ class Kernel extends ConsoleKernel
         $schedule->job(new \App\Jobs\WhmDomainSync())->twiceDaily(6, 18);
 
         $schedule->job(new \App\Jobs\UpdateDomainInfo())->daily();
+        
+        // Detección de WordPress y actualización de site_type
+        $schedule->command('domains:update-site-type --queue')
+                ->dailyAt('04:00')
+                ->withoutOverlapping();
     }
 
     /**
