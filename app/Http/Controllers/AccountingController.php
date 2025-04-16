@@ -425,6 +425,14 @@ class AccountingController extends Controller
                         }
                     }
                     
+                    // Traducir el estado
+                    $status = match($invoice->status) {
+                        'paid' => 'Pagado',
+                        'open' => 'Pendiente',
+                        'void' => 'Anulado',
+                        default => ucfirst($invoice->status)
+                    };
+                    
                     $quarterInvoices[] = [
                         'number' => $invoice->number,
                         'customer_name' => $invoice->customer_name,
@@ -433,7 +441,7 @@ class AccountingController extends Controller
                         'tax' => $tax,
                         'total' => $total,
                         'currency' => strtoupper($invoice->currency),
-                        'status' => $invoice->status,
+                        'status' => $status,
                         'date' => $invoiceDate->format('d/m/Y'),
                     ];
                 }
@@ -457,8 +465,20 @@ class AccountingController extends Controller
                 // Add CSV headers
                 fputcsv($file, ['Número', 'Cliente', 'Email', 'Base Imponible', 'Impuestos', 'Total', 'Moneda', 'Estado', 'Fecha']);
                 
-                // Add invoice data
+                // Separar facturas activas y anuladas
+                $activeInvoices = [];
+                $voidInvoices = [];
+                
                 foreach ($quarterInvoices as $invoice) {
+                    if ($invoice['status'] === 'Anulado') {
+                        $voidInvoices[] = $invoice;
+                    } else {
+                        $activeInvoices[] = $invoice;
+                    }
+                }
+                
+                // Agregar facturas activas
+                foreach ($activeInvoices as $invoice) {
                     fputcsv($file, [
                         $invoice['number'],
                         $invoice['customer_name'],
@@ -470,6 +490,28 @@ class AccountingController extends Controller
                         $invoice['status'],
                         $invoice['date'],
                     ]);
+                }
+                
+                // Agregar separador si hay facturas anuladas
+                if (!empty($voidInvoices)) {
+                    fputcsv($file, ['', '', '', '', '', '', '', '', '']);
+                    fputcsv($file, ['FACTURAS ANULADAS', '', '', '', '', '', '', '', '']);
+                    fputcsv($file, ['', '', '', '', '', '', '', '', '']);
+                    
+                    // Agregar facturas anuladas
+                    foreach ($voidInvoices as $invoice) {
+                        fputcsv($file, [
+                            $invoice['number'],
+                            $invoice['customer_name'],
+                            $invoice['customer_email'],
+                            $invoice['subtotal'],
+                            $invoice['tax'],
+                            $invoice['total'],
+                            $invoice['currency'],
+                            $invoice['status'],
+                            $invoice['date'],
+                        ]);
+                    }
                 }
                 
                 fclose($file);

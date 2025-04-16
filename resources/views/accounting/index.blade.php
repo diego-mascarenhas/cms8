@@ -6,6 +6,12 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css')}}">
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+<style>
+    tr.invoice-void {
+        text-decoration: line-through;
+        opacity: 0.7;
+    }
+</style>
 @endsection
 
 @section('vendor-script')
@@ -136,7 +142,22 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($invoices as $invoice)
+                        @php
+                            // Separar facturas activas y anuladas
+                            $activeInvoices = [];
+                            $voidInvoices = [];
+                            
+                            foreach ($invoices as $invoice) {
+                                if ($invoice['status'] === 'void') {
+                                    $voidInvoices[] = $invoice;
+                                } else {
+                                    $activeInvoices[] = $invoice;
+                                }
+                            }
+                        @endphp
+                        
+                        {{-- Mostrar facturas activas --}}
+                        @foreach($activeInvoices as $invoice)
                         <tr>
                             <td>{{ $invoice['number'] }}</td>
                             <td>
@@ -173,6 +194,47 @@
                             </td>
                         </tr>
                         @endforeach
+                        
+                        {{-- Mostrar facturas anuladas si existen --}}
+                        @if(count($voidInvoices) > 0)
+                        <tr class="bg-light border-top">
+                            <td colspan="6" class="py-3">
+                                <h6 class="mb-0 text-secondary fw-bold">FACTURAS ANULADAS</h6>
+                            </td>
+                        </tr>
+                        
+                        @foreach($voidInvoices as $invoice)
+                        <tr class="invoice-void">
+                            <td>{{ $invoice['number'] }}</td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <a href="{{ route('accounting.customer', $invoice['customer_id']) }}" class="text-body fw-semibold">
+                                        {{ $invoice['customer_name'] ?? 'Desconocido' }}
+                                    </a>
+                                    <small class="text-muted">{{ $invoice['customer_email'] ?? '' }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-semibold">{{ number_format($invoice['amount'], 2) }}€</span>
+                                <small class="text-muted">{{ $invoice['currency'] }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-label-secondary">Anulado</span>
+                            </td>
+                            <td>{{ $invoice['date'] }}</td>
+                            <td>
+                                <div class="d-flex justify-content-center">
+                                    <a href="{{ route('accounting.invoice', $invoice['id']) }}" class="btn btn-sm btn-icon">
+                                        <i class="ti ti-eye text-primary"></i>
+                                    </a>
+                                    <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon">
+                                        <i class="ti ti-download text-success"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                        @endif
                     </tbody>
                 </table>
             @empty
