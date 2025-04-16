@@ -111,8 +111,10 @@ class AccountingController extends Controller
             // Calculate metrics
             $totalPaid = 0;
             $totalUnpaid = 0;
+            $totalUncollectible = 0;
             $paidInvoices = 0;
             $unpaidInvoices = 0;
+            $uncollectibleInvoices = 0;
             
             foreach ($invoices->data as $invoice) {
                 if ($invoice->status === 'paid') {
@@ -121,14 +123,20 @@ class AccountingController extends Controller
                 } else if ($invoice->status === 'open') {
                     $totalUnpaid += $invoice->amount_due / 100;
                     $unpaidInvoices++;
+                } else if ($invoice->status === 'uncollectible') {
+                    $totalUncollectible += $invoice->amount_due / 100;
+                    $uncollectibleInvoices++;
                 }
             }
             
             $stripeData['metrics'] = [
                 'total_paid' => number_format($totalPaid, 2),
                 'unpaid' => number_format($totalUnpaid, 2),
+                'uncollectible' => number_format($totalUncollectible, 2),
                 'total_invoices' => $paidInvoices,
-                'unpaid_invoices' => $unpaidInvoices
+                'unpaid_invoices' => $unpaidInvoices,
+                'uncollectible_invoices' => $uncollectibleInvoices,
+                'total_amount' => number_format($totalPaid + $totalUnpaid, 2)
             ];
             
         } catch (\Exception $e) {

@@ -48,9 +48,9 @@
         <div class="card h-100">
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="card-title mb-0">Facturas</h5>
-                    <h2 class="mb-0">{{ ($stripeData['metrics']['total_invoices'] ?? 0) + ($stripeData['metrics']['unpaid_invoices'] ?? 0) }}</h2>
-                    <small class="text-muted">Total facturas</small>
+                    <h5 class="card-title mb-0">Total Facturas</h5>
+                    <h2 class="mb-0">{{ $stripeData['metrics']['total_amount'] ?? '0.00' }}€</h2>
+                    <small class="text-muted">{{ ($stripeData['metrics']['total_invoices'] ?? 0) + ($stripeData['metrics']['unpaid_invoices'] ?? 0) }} facturas</small>
                 </div>
                 <div class="avatar bg-label-primary p-2">
                     <i class="ti ti-file ti-md"></i>
@@ -91,8 +91,8 @@
             <div class="card-body d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="card-title mb-0">Incobrable</h5>
-                    <h2 class="mb-0 text-danger">0.00€</h2>
-                    <small class="text-muted">0 facturas</small>
+                    <h2 class="mb-0 text-danger">{{ $stripeData['metrics']['uncollectible'] ?? '0.00' }}€</h2>
+                    <small class="text-muted">{{ $stripeData['metrics']['uncollectible_invoices'] ?? 0 }} facturas</small>
                 </div>
                 <div class="avatar bg-label-danger p-2">
                     <i class="ti ti-receipt-off ti-md"></i>
