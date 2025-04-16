@@ -47,7 +47,9 @@ class AccountingController extends Controller
             // Process invoices
             foreach ($invoices->data as $invoice) {
                 // Determine correct amount to display based on status
-                $amount = $invoice->status === 'paid' ? $invoice->amount_paid : $invoice->amount_due;
+                $amount = $invoice->status === 'paid' ? 
+                    ($invoice->amount_paid > 0 ? $invoice->amount_paid : $invoice->total) : 
+                    $invoice->amount_due;
                 
                 // Create Carbon date for further processing
                 $invoiceDate = Carbon::createFromTimestamp($invoice->created);
@@ -114,7 +116,7 @@ class AccountingController extends Controller
             
             foreach ($invoices->data as $invoice) {
                 if ($invoice->status === 'paid') {
-                    $totalPaid += $invoice->amount_paid / 100;
+                    $totalPaid += ($invoice->amount_paid > 0 ? $invoice->amount_paid / 100 : $invoice->total / 100);
                     $paidInvoices++;
                 } else if ($invoice->status === 'open') {
                     $totalUnpaid += $invoice->amount_due / 100;
@@ -164,7 +166,9 @@ class AccountingController extends Controller
                 'number' => $invoice->number,
                 'customer_name' => $invoice->customer->name,
                 'customer_email' => $invoice->customer->email,
-                'amount' => $invoice->amount_paid / 100,
+                'amount' => $invoice->status === 'paid' ?
+                    ($invoice->amount_paid > 0 ? $invoice->amount_paid / 100 : $invoice->total / 100) :
+                    $invoice->amount_due / 100,
                 'amount_paid' => $invoice->amount_paid,
                 'subtotal' => $invoice->subtotal,
                 'total' => $invoice->total,
@@ -304,7 +308,9 @@ class AccountingController extends Controller
                 $stripeData['invoices'][] = [
                     'id' => $invoice->id,
                     'number' => $invoice->number,
-                    'amount' => $invoice->amount_paid / 100,
+                    'amount' => $invoice->status === 'paid' ? 
+                        ($invoice->amount_paid > 0 ? $invoice->amount_paid / 100 : $invoice->total / 100) : 
+                        $invoice->amount_due / 100,
                     'currency' => strtoupper($invoice->currency),
                     'status' => $invoice->status,
                     'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
@@ -318,7 +324,7 @@ class AccountingController extends Controller
             
             foreach ($invoices->data as $invoice) {
                 if ($invoice->status === 'paid') {
-                    $totalPaid += $invoice->amount_paid / 100;
+                    $totalPaid += ($invoice->amount_paid > 0 ? $invoice->amount_paid / 100 : $invoice->total / 100);
                 } else if ($invoice->status === 'open') {
                     $totalUnpaid += $invoice->amount_due / 100;
                 }
@@ -393,7 +399,8 @@ class AccountingController extends Controller
             
             // Get all invoices (limited to last 100)
             $invoices = \Stripe\Invoice::all([
-                'limit' => 100
+                'limit' => 100,
+                'expand' => ['data.total_tax_amounts', 'data.lines']
             ]);
             
             // Filter invoices by the specified quarter and year
@@ -404,11 +411,27 @@ class AccountingController extends Controller
                 $invoiceYear = $invoiceDate->format('Y');
                 
                 if ($invoiceQuarter == $quarter && $invoiceYear == $year) {
+                    // Calcular valores
+                    $total = ($invoice->status === 'paid') ? 
+                        ($invoice->amount_paid > 0 ? $invoice->amount_paid / 100 : $invoice->total / 100) : 
+                        ($invoice->amount_due / 100);
+                    $subtotal = $invoice->subtotal / 100;
+                    $tax = 0;
+                    
+                    // Calcular impuestos totales
+                    if (!empty($invoice->total_tax_amounts)) {
+                        foreach ($invoice->total_tax_amounts as $taxAmount) {
+                            $tax += $taxAmount->amount / 100;
+                        }
+                    }
+                    
                     $quarterInvoices[] = [
                         'number' => $invoice->number,
                         'customer_name' => $invoice->customer_name,
                         'customer_email' => $invoice->customer_email,
-                        'amount' => ($invoice->status === 'paid') ? ($invoice->amount_paid / 100) : ($invoice->amount_due / 100),
+                        'subtotal' => $subtotal,
+                        'tax' => $tax,
+                        'total' => $total,
                         'currency' => strtoupper($invoice->currency),
                         'status' => $invoice->status,
                         'date' => $invoiceDate->format('d/m/Y'),
@@ -432,7 +455,7 @@ class AccountingController extends Controller
                 $file = fopen('php://output', 'w');
                 
                 // Add CSV headers
-                fputcsv($file, ['Número', 'Cliente', 'Email', 'Importe', 'Moneda', 'Estado', 'Fecha']);
+                fputcsv($file, ['Número', 'Cliente', 'Email', 'Base Imponible', 'Impuestos', 'Total', 'Moneda', 'Estado', 'Fecha']);
                 
                 // Add invoice data
                 foreach ($quarterInvoices as $invoice) {
@@ -440,7 +463,9 @@ class AccountingController extends Controller
                         $invoice['number'],
                         $invoice['customer_name'],
                         $invoice['customer_email'],
-                        $invoice['amount'],
+                        $invoice['subtotal'],
+                        $invoice['tax'],
+                        $invoice['total'],
                         $invoice['currency'],
                         $invoice['status'],
                         $invoice['date'],
