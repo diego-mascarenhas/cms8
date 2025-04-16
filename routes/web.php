@@ -189,6 +189,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/accounting/invoice/{id}/download', [AccountingController::class, 'downloadInvoice'])->name('accounting.invoice.download');
     Route::get('/accounting/customer/{id}', [AccountingController::class, 'customerInvoices'])->name('accounting.customer');
     Route::get('/accounting/download-quarter', [AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
+    Route::get('/accounting/download-quarter-csv', [AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
 });
 
 // Testing

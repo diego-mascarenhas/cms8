@@ -12,6 +12,8 @@
 <script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 @endsection
 
 @section('content')
@@ -89,84 +91,122 @@
 </div>
 
 <!-- Invoices Table -->
-<div class="card">
-    <div class="card-header">
-        <h5 class="card-title mb-0">Facturas</h5>
-    </div>
-    <div class="card-datatable table-responsive">
-        @forelse($stripeData['grouped_invoices'] as $quarter => $invoices)
-            <div class="d-flex justify-content-between align-items-center bg-light p-2 border-bottom">
-                <div class="d-flex align-items-center">
-                    <i class="ti ti-calendar-stats me-2"></i>
-                    <h6 class="mb-0">{{ $quarter }}</h6>
+<div id="accounting-app">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Facturas</h5>
+        </div>
+        <div class="card-datatable table-responsive">
+            @forelse($stripeData['grouped_invoices'] as $quarter => $invoices)
+                <div class="d-flex justify-content-between align-items-center bg-light p-2 border-bottom">
+                    <div class="d-flex align-items-center">
+                        <i class="ti ti-calendar-stats me-2"></i>
+                        <h6 class="mb-0">{{ $quarter }}</h6>
+                    </div>
+                    @php
+                        $quarterParts = explode(' ', $quarter);
+                        $quarterNum = (int)substr($quarterParts[0], 1);
+                        $year = $quarterParts[1];
+                    @endphp
+                    <div class="d-flex">
+                        <a href="{{ route('accounting.download-quarter', ['quarter' => $quarterNum, 'year' => $year]) }}"
+                           class="btn btn-sm btn-primary d-flex align-items-center me-2">
+                            <i class="ti ti-file-zip me-1"></i> Generar ZIP
+                        </a>
+                        <button 
+                            @click="checkZipFile({{ $quarterNum }}, {{ $year }})"
+                            class="btn btn-sm btn-outline-primary d-flex align-items-center me-2">
+                            <i class="ti ti-download me-1"></i> Descargar ZIP
+                        </button>
+                        <a href="{{ route('accounting.download-quarter-csv', ['quarter' => $quarterNum, 'year' => $year]) }}"
+                           class="btn btn-sm btn-outline-success d-flex align-items-center">
+                            <i class="ti ti-file-spreadsheet me-1"></i> CSV
+                        </a>
+                    </div>
                 </div>
-                @php
-                    $quarterParts = explode(' ', $quarter);
-                    $quarterNum = (int)substr($quarterParts[0], 1);
-                    $year = $quarterParts[1];
-                @endphp
-                <a href="{{ route('accounting.download-quarter', ['quarter' => $quarterNum, 'year' => $year]) }}" 
-                   class="btn btn-sm btn-primary d-flex align-items-center">
-                    <i class="ti ti-download me-1"></i> Descargar PDFs
-                </a>
-            </div>
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Número</th>
-                        <th>Cliente</th>
-                        <th>Importe</th>
-                        <th>Estado</th>
-                        <th>Fecha</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($invoices as $invoice)
-                    <tr>
-                        <td>{{ $invoice['number'] }}</td>
-                        <td>
-                            <div class="d-flex flex-column">
-                                <a href="{{ route('accounting.customer', $invoice['customer_id']) }}" class="text-body fw-semibold">
-                                    {{ $invoice['customer_name'] ?? 'Desconocido' }}
-                                </a>
-                                <small class="text-muted">{{ $invoice['customer_email'] ?? '' }}</small>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="fw-semibold">{{ number_format($invoice['amount'], 2) }}€</span>
-                            <small class="text-muted">{{ $invoice['currency'] }}</small>
-                        </td>
-                        <td>
-                            @if($invoice['status'] === 'paid')
-                            <span class="badge bg-label-success">Pagado</span>
-                            @elseif($invoice['status'] === 'open')
-                            <span class="badge bg-label-warning">Pendiente</span>
-                            @else
-                            <span class="badge bg-label-secondary">{{ ucfirst($invoice['status']) }}</span>
-                            @endif
-                        </td>
-                        <td>{{ $invoice['date'] }}</td>
-                        <td>
-                            <div class="d-flex justify-content-center">
-                                <a href="{{ route('accounting.invoice', $invoice['id']) }}" class="btn btn-sm btn-icon">
-                                    <i class="ti ti-eye text-primary"></i>
-                                </a>
-                                <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon">
-                                    <i class="ti ti-download text-success"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @empty
-            <div class="text-center py-5">
-                <i class="ti ti-file-x fs-1 text-secondary mb-2"></i>
-                <p>No se encontraron facturas</p>
-            </div>
-        @endforelse
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Cliente</th>
+                            <th>Importe</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($invoices as $invoice)
+                        <tr>
+                            <td>{{ $invoice['number'] }}</td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <a href="{{ route('accounting.customer', $invoice['customer_id']) }}" class="text-body fw-semibold">
+                                        {{ $invoice['customer_name'] ?? 'Desconocido' }}
+                                    </a>
+                                    <small class="text-muted">{{ $invoice['customer_email'] ?? '' }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="fw-semibold">{{ number_format($invoice['amount'], 2) }}€</span>
+                                <small class="text-muted">{{ $invoice['currency'] }}</small>
+                            </td>
+                            <td>
+                                @if($invoice['status'] === 'paid')
+                                <span class="badge bg-label-success">Pagado</span>
+                                @elseif($invoice['status'] === 'open')
+                                <span class="badge bg-label-warning">Pendiente</span>
+                                @else
+                                <span class="badge bg-label-secondary">{{ ucfirst($invoice['status']) }}</span>
+                                @endif
+                            </td>
+                            <td>{{ $invoice['date'] }}</td>
+                            <td>
+                                <div class="d-flex justify-content-center">
+                                    <a href="{{ route('accounting.invoice', $invoice['id']) }}" class="btn btn-sm btn-icon">
+                                        <i class="ti ti-eye text-primary"></i>
+                                    </a>
+                                    <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon">
+                                        <i class="ti ti-download text-success"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @empty
+                <div class="text-center py-5">
+                    <i class="ti ti-file-x fs-1 text-secondary mb-2"></i>
+                    <p>No se encontraron facturas</p>
+                </div>
+            @endforelse
+        </div>
     </div>
 </div>
+@endsection
+
+@section('page-script')
+<script>
+    new Vue({
+        el: '#accounting-app',
+        methods: {
+            checkZipFile(quarter, year) {
+                const userId = {{ auth()->id() }};
+                const zipUrl = `/storage/downloads/user_${userId}/facturas_Q${quarter}_${year}.zip`;
+                
+                // Verificar si el archivo existe
+                axios.head(zipUrl)
+                    .then(response => {
+                        // El archivo existe, redirigir para descarga
+                        window.location.href = zipUrl;
+                    })
+                    .catch(error => {
+                        // El archivo no existe, mostrar mensaje
+                        alert('El archivo ZIP aún no ha sido generado. Por favor, haga clic en "Generar ZIP" primero.');
+                    });
+            }
+        }
+    });
+</script>
 @endsection 

@@ -342,25 +342,120 @@ class AccountingController extends Controller
      */
     public function downloadQuarterInvoices(Request $request)
     {
+        $quarter = $request->input('quarter');
+        $year = $request->input('year');
+        
+        if (!$quarter || !$year) {
+            return redirect()->route('accounting.index')
+                ->with('error', 'Quarter and year are required');
+        }
+        
         $team = auth()->user()->currentTeam;
         $user = auth()->user();
-        $quarter = $request->quarter;
-        $year = $request->year;
-        
-        if (empty($quarter) || empty($year)) {
-            return redirect()->route('accounting.index')
-                ->with('error', 'Trimestre o año no especificado');
-        }
         
         if (!$team->getSetting('stripe_secret')) {
             return redirect()->route('accounting.index')
-                ->with('error', 'API de Stripe no configurada');
+                ->with('error', 'Stripe API not configured');
         }
         
-        // Dispatch job to process quarter invoices
+        // Dispatch job to process invoices in the background
         ProcessQuarterInvoices::dispatch($quarter, $year, $team, $user);
         
-        return redirect()->route('accounting.index')
-            ->with('success', 'La solicitud de descarga de facturas ha sido puesta en cola. Recibirá una notificación cuando esté lista.');
+        return response()->view('accounting.download-processing', [
+            'quarter' => $quarter,
+            'year' => $year
+        ]);
+    }
+    
+    /**
+     * Generate CSV for invoices in a specific quarter
+     */
+    public function downloadQuarterCsv(Request $request)
+    {
+        $quarter = $request->input('quarter');
+        $year = $request->input('year');
+        
+        if (!$quarter || !$year) {
+            return redirect()->route('accounting.index')
+                ->with('error', 'Quarter and year are required');
+        }
+        
+        $team = auth()->user()->currentTeam;
+        
+        if (!$team->getSetting('stripe_secret')) {
+            return redirect()->route('accounting.index')
+                ->with('error', 'Stripe API not configured');
+        }
+        
+        try {
+            // Set Stripe API key
+            \Stripe\Stripe::setApiKey($team->getSetting('stripe_secret'));
+            
+            // Get all invoices (limited to last 100)
+            $invoices = \Stripe\Invoice::all([
+                'limit' => 100
+            ]);
+            
+            // Filter invoices by the specified quarter and year
+            $quarterInvoices = [];
+            foreach ($invoices->data as $invoice) {
+                $invoiceDate = \Carbon\Carbon::createFromTimestamp($invoice->created);
+                $invoiceQuarter = ceil($invoiceDate->format('n') / 3);
+                $invoiceYear = $invoiceDate->format('Y');
+                
+                if ($invoiceQuarter == $quarter && $invoiceYear == $year) {
+                    $quarterInvoices[] = [
+                        'number' => $invoice->number,
+                        'customer_name' => $invoice->customer_name,
+                        'customer_email' => $invoice->customer_email,
+                        'amount' => $invoice->amount_paid / 100,
+                        'currency' => strtoupper($invoice->currency),
+                        'status' => $invoice->status,
+                        'date' => $invoiceDate->format('d/m/Y'),
+                    ];
+                }
+            }
+            
+            if (empty($quarterInvoices)) {
+                return redirect()->route('accounting.index')
+                    ->with('error', 'No invoices found for this quarter');
+            }
+            
+            // Create CSV file
+            $filename = "facturas_Q{$quarter}_{$year}.csv";
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => "attachment; filename={$filename}",
+            ];
+            
+            $callback = function() use ($quarterInvoices) {
+                $file = fopen('php://output', 'w');
+                
+                // Add CSV headers
+                fputcsv($file, ['Número', 'Cliente', 'Email', 'Importe', 'Moneda', 'Estado', 'Fecha']);
+                
+                // Add invoice data
+                foreach ($quarterInvoices as $invoice) {
+                    fputcsv($file, [
+                        $invoice['number'],
+                        $invoice['customer_name'],
+                        $invoice['customer_email'],
+                        $invoice['amount'],
+                        $invoice['currency'],
+                        $invoice['status'],
+                        $invoice['date'],
+                    ]);
+                }
+                
+                fclose($file);
+            };
+            
+            return response()->stream($callback, 200, $headers);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error generating CSV file: ' . $e->getMessage());
+            return redirect()->route('accounting.index')
+                ->with('error', 'Error generating CSV: ' . $e->getMessage());
+        }
     }
 } 
