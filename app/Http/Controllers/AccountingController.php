@@ -408,7 +408,7 @@ class AccountingController extends Controller
                         'number' => $invoice->number,
                         'customer_name' => $invoice->customer_name,
                         'customer_email' => $invoice->customer_email,
-                        'amount' => $invoice->amount_paid / 100,
+                        'amount' => ($invoice->status === 'paid') ? ($invoice->amount_paid / 100) : ($invoice->amount_due / 100),
                         'currency' => strtoupper($invoice->currency),
                         'status' => $invoice->status,
                         'date' => $invoiceDate->format('d/m/Y'),
