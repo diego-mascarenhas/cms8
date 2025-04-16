@@ -29,13 +29,6 @@
 @endsection
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Saldo</h4>
-        <p class="text-muted">Gestionar facturas y pagos</p>
-    </div>
-</div>
-
 @if(session('error'))
 <div class="alert alert-danger mb-4">
     {{ session('error') }}
@@ -43,59 +36,83 @@
 @endif
 
 <!-- Statistics -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="card-title mb-0">Total Facturas</h5>
-                    <h2 class="mb-0">{{ $stripeData['metrics']['total_amount'] ?? '0.00' }}€</h2>
-                    <small class="text-muted">{{ ($stripeData['metrics']['total_invoices'] ?? 0) + ($stripeData['metrics']['unpaid_invoices'] ?? 0) }} facturas</small>
-                </div>
-                <div class="avatar bg-label-primary p-2">
-                    <i class="ti ti-file ti-md"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="card-title mb-0">Pagado</h5>
-                    <h2 class="mb-0 text-success">{{ $stripeData['metrics']['total_paid'] }}€</h2>
-                    <small class="text-muted">{{ $stripeData['metrics']['total_invoices'] ?? 0 }} facturas</small>
-                </div>
-                <div class="avatar bg-label-success p-2">
-                    <i class="ti ti-currency-euro ti-md"></i>
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Total Facturas</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $stripeData['metrics']['total_amount'] ?? '0.00' }}€</h3>
+                        </div>
+                        <p class="mb-0">{{ ($stripeData['metrics']['total_invoices'] ?? 0) + ($stripeData['metrics']['unpaid_invoices'] ?? 0) }} facturas</p>
+                    </div>
+                    <div class="avatar">
+                        <span class="avatar-initial rounded bg-label-primary">
+                            <i class="ti ti-file ti-sm"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="card-title mb-0">Pendiente</h5>
-                    <h2 class="mb-0 text-warning">{{ $stripeData['metrics']['unpaid'] }}€</h2>
-                    <small class="text-muted">{{ $stripeData['metrics']['unpaid_invoices'] ?? 0 }} facturas</small>
-                </div>
-                <div class="avatar bg-label-warning p-2">
-                    <i class="ti ti-alert-circle ti-md"></i>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Pagado</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $stripeData['metrics']['total_paid'] }}€</h3>
+                        </div>
+                        <p class="mb-0">{{ $stripeData['metrics']['total_invoices'] ?? 0 }} facturas</p>
+                    </div>
+                    <div class="avatar">
+                        <span class="avatar-initial rounded bg-label-success">
+                            <i class="ti ti-currency-euro ti-sm"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="card-title mb-0">Incobrable</h5>
-                    <h2 class="mb-0 text-danger">{{ $stripeData['metrics']['uncollectible'] ?? '0.00' }}€</h2>
-                    <small class="text-muted">{{ $stripeData['metrics']['uncollectible_invoices'] ?? 0 }} facturas</small>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Pendiente</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $stripeData['metrics']['unpaid'] }}€</h3>
+                        </div>
+                        <p class="mb-0">{{ $stripeData['metrics']['unpaid_invoices'] ?? 0 }} facturas</p>
+                    </div>
+                    <div class="avatar">
+                        <span class="avatar-initial rounded bg-label-warning">
+                            <i class="ti ti-alert-circle ti-sm"></i>
+                        </span>
+                    </div>
                 </div>
-                <div class="avatar bg-label-danger p-2">
-                    <i class="ti ti-receipt-off ti-md"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>Incobrable</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $stripeData['metrics']['uncollectible'] ?? '0.00' }}€</h3>
+                        </div>
+                        <p class="mb-0">{{ $stripeData['metrics']['uncollectible_invoices'] ?? 0 }} facturas</p>
+                    </div>
+                    <div class="avatar">
+                        <span class="avatar-initial rounded bg-label-danger">
+                            <i class="ti ti-receipt-off ti-sm"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
