@@ -430,6 +430,7 @@ class AccountingController extends Controller
                         'paid' => 'Pagado',
                         'open' => 'Pendiente',
                         'void' => 'Anulado',
+                        'uncollectible' => 'Incobrable',
                         default => ucfirst($invoice->status)
                     };
                     
@@ -465,13 +466,13 @@ class AccountingController extends Controller
                 // Add CSV headers
                 fputcsv($file, ['Número', 'Cliente', 'Email', 'Base Imponible', 'Impuestos', 'Total', 'Moneda', 'Estado', 'Fecha']);
                 
-                // Separar facturas activas y anuladas
+                // Separar facturas activas y anuladas/incobrables
                 $activeInvoices = [];
-                $voidInvoices = [];
+                $inactiveInvoices = [];
                 
                 foreach ($quarterInvoices as $invoice) {
-                    if ($invoice['status'] === 'Anulado') {
-                        $voidInvoices[] = $invoice;
+                    if ($invoice['status'] === 'Anulado' || $invoice['status'] === 'Incobrable') {
+                        $inactiveInvoices[] = $invoice;
                     } else {
                         $activeInvoices[] = $invoice;
                     }
@@ -492,14 +493,14 @@ class AccountingController extends Controller
                     ]);
                 }
                 
-                // Agregar separador si hay facturas anuladas
-                if (!empty($voidInvoices)) {
+                // Agregar separador si hay facturas anuladas o incobrables
+                if (!empty($inactiveInvoices)) {
                     fputcsv($file, ['', '', '', '', '', '', '', '', '']);
-                    fputcsv($file, ['FACTURAS ANULADAS', '', '', '', '', '', '', '', '']);
+                    fputcsv($file, ['FACTURAS ANULADAS E INCOBRABLES', '', '', '', '', '', '', '', '']);
                     fputcsv($file, ['', '', '', '', '', '', '', '', '']);
                     
-                    // Agregar facturas anuladas
-                    foreach ($voidInvoices as $invoice) {
+                    // Agregar facturas anuladas e incobrables
+                    foreach ($inactiveInvoices as $invoice) {
                         fputcsv($file, [
                             $invoice['number'],
                             $invoice['customer_name'],

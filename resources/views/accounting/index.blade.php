@@ -11,6 +11,12 @@
         text-decoration: line-through;
         opacity: 0.7;
     }
+    
+    tr.invoice-uncollectible {
+        text-decoration: line-through;
+        opacity: 0.7;
+        background-color: rgba(255, 0, 0, 0.05);
+    }
 </style>
 @endsection
 
@@ -143,13 +149,13 @@
                     </thead>
                     <tbody>
                         @php
-                            // Separar facturas activas y anuladas
+                            // Separar facturas activas y anuladas/incobrables
                             $activeInvoices = [];
-                            $voidInvoices = [];
+                            $inactiveInvoices = [];
                             
                             foreach ($invoices as $invoice) {
-                                if ($invoice['status'] === 'void') {
-                                    $voidInvoices[] = $invoice;
+                                if ($invoice['status'] === 'void' || $invoice['status'] === 'uncollectible') {
+                                    $inactiveInvoices[] = $invoice;
                                 } else {
                                     $activeInvoices[] = $invoice;
                                 }
@@ -195,16 +201,16 @@
                         </tr>
                         @endforeach
                         
-                        {{-- Mostrar facturas anuladas si existen --}}
-                        @if(count($voidInvoices) > 0)
+                        {{-- Mostrar facturas anuladas/incobrables si existen --}}
+                        @if(count($inactiveInvoices) > 0)
                         <tr class="bg-light border-top">
                             <td colspan="6" class="py-3">
-                                <h6 class="mb-0 text-secondary fw-bold">FACTURAS ANULADAS</h6>
+                                <h6 class="mb-0 text-secondary fw-bold">FACTURAS ANULADAS E INCOBRABLES</h6>
                             </td>
                         </tr>
                         
-                        @foreach($voidInvoices as $invoice)
-                        <tr class="invoice-void">
+                        @foreach($inactiveInvoices as $invoice)
+                        <tr class="{{ $invoice['status'] === 'void' ? 'invoice-void' : 'invoice-uncollectible' }}">
                             <td>{{ $invoice['number'] }}</td>
                             <td>
                                 <div class="d-flex flex-column">
@@ -219,7 +225,11 @@
                                 <small class="text-muted">{{ $invoice['currency'] }}</small>
                             </td>
                             <td>
+                                @if($invoice['status'] === 'void')
                                 <span class="badge bg-label-secondary">Anulado</span>
+                                @elseif($invoice['status'] === 'uncollectible')
+                                <span class="badge bg-label-danger">Incobrable</span>
+                                @endif
                             </td>
                             <td>{{ $invoice['date'] }}</td>
                             <td>
