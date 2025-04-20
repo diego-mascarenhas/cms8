@@ -36,6 +36,21 @@
                         </div>
                     </div>
 
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Import Domains</h5>
+                                    <p>Import OVH services into the domains table</p>
+                                    <button class="btn btn-success import-domains">
+                                        Import to Domains Table
+                                    </button>
+                                    <div class="mt-3 import-result"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="card">
@@ -168,6 +183,28 @@
                         $('<div class="alert alert-danger">').text(`Error: ${xhr.responseJSON?.message || error}`)
                     );
                     button.prop('disabled', false).text('Fetch Services');
+                }
+            });
+        });
+
+        $('.import-domains').on('click', function() {
+            const button = $(this);
+            button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Importing...');
+            
+            $.ajax({
+                url: '{{ route("ovh.sync-domains") }}',
+                method: 'GET',
+                success: function(response) {
+                    $('.import-result').empty().append(
+                        $('<div class="alert alert-success">').text(response.message)
+                    );
+                    button.prop('disabled', false).text('Import to Domains Table');
+                },
+                error: function(xhr, status, error) {
+                    $('.import-result').empty().append(
+                        $('<div class="alert alert-danger">').text(`Error: ${xhr.responseJSON?.message || error}`)
+                    );
+                    button.prop('disabled', false).text('Import to Domains Table');
                 }
             });
         });

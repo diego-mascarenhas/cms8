@@ -229,4 +229,5 @@ Route::prefix('ovh')->group(function () {
     Route::get('/dashboard', [OvhApiController::class, 'dashboard'])->name('ovh.dashboard');
     Route::get('/invoices', [OvhApiController::class, 'getInvoices'])->name('ovh.invoices');
     Route::get('/services', [OvhApiController::class, 'getServices'])->name('ovh.services');
+    Route::get('/sync-domains', [OvhApiController::class, 'syncDomains'])->name('ovh.sync-domains');
 });

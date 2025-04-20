@@ -13,6 +13,7 @@ class Kernel extends ConsoleKernel
 {
     protected $commands = [
         UpdateHostMetrics::class,
+        \App\Console\Commands\OvhDomainSync::class,
     ];
     /**
      * Define the application's command schedule.
@@ -104,6 +105,8 @@ class Kernel extends ConsoleKernel
                 }
             });
         })->dailyAt('04:30')->withoutOverlapping();
+
+        $schedule->command('ovh:sync-domains')->daily();
     }
 
     /**

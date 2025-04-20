@@ -44,26 +44,29 @@ class UpdateDomainPhpVersion implements ShouldQueue
 
     /**
      * Create a new job instance.
+     *
+     * @param int $domainId
+     * @return void
      */
     public function __construct(int $domainId, ?string $mockVersion = null)
     {
         $this->domainId = $domainId;
         $this->mockVersion = $mockVersion;
-        $this->onQueue('domain-updates');
+        $this->onQueue('domain-version');
     }
 
     /**
      * Execute the job.
+     *
+     * @return void
      */
     public function handle()
     {
-        Log::info("Processing PHP version update for domain ID: {$this->domainId}");
-        
         try {
             $domain = Domain::find($this->domainId);
             
             if (!$domain) {
-                Log::warning("Domain with ID {$this->domainId} not found");
+                Log::warning("Domain not found for ID: {$this->domainId}");
                 return;
             }
             
@@ -86,8 +89,11 @@ class UpdateDomainPhpVersion implements ShouldQueue
                 Log::info("PHP version for {$domain->domain} remains unchanged: {$domain->php_version}");
             }
         } catch (\Exception $e) {
-            Log::error("Error processing PHP version update for domain ID {$this->domainId}: " . $e->getMessage());
-            throw $e;
+            Log::error("Error updating PHP version for domain ID {$this->domainId}: " . $e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
         }
     }
 } 

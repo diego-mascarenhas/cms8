@@ -115,10 +115,62 @@ class OvhApiController extends Controller
     }
 
     /**
+     * Get all services raw (for use by the job)
+     * 
+     * @return array
+     */
+    public function getServicesRaw()
+    {
+        try {
+            // Get list of service IDs
+            $serviceIds = $this->makeRequest('GET', '/service');
+            
+            $services = [];
+            foreach ($serviceIds as $id) {
+                $service = $this->makeRequest('GET', "/service/{$id}");
+                
+                // For web hosting services, fetch additional details
+                if (isset($service['category']) && $service['category'] === 'hosting') {
+                    $details = $this->makeRequest('GET', "/hosting/web/{$service['domain']}");
+                    $service = array_merge($service, $details);
+                }
+                
+                $services[] = $service;
+            }
+            
+            return [
+                'status' => 'success',
+                'count' => count($services),
+                'data' => $services
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Failed to fetch services: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
      * Dashboard view displaying both invoices and services
      */
     public function dashboard()
     {
         return view('ovh.dashboard');
+    }
+
+    /**
+     * Run the domain sync job manually
+     * 
+     * @return \Illuminate\Http\Response
+     */
+    public function syncDomains()
+    {
+        dispatch(new \App\Jobs\OvhDomainSync());
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'OVH domain sync job dispatched successfully'
+        ]);
     }
 } 
