@@ -57,6 +57,97 @@ class CategorySeeder extends Seeder
             'parent_id' => null,
             'status' => 1
         ]);
+
+        // OVH service categories as subcategories
+        Category::create([
+            'name' => 'VPS (Virtual Private Server)',
+            'description' => 'Virtual servers for hosting applications and websites',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'name' => 'Web Hosting',
+            'description' => 'Shared hosting solutions for websites',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'name' => 'Domain Names',
+            'description' => 'Domain name registration and management',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'name' => 'DNS Zones',
+            'description' => 'DNS management for domains',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'name' => 'Email Domain',
+            'description' => 'Email services attached to domains',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'name' => 'Email Pro',
+            'description' => 'Professional email hosting solutions',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'name' => 'cPanel License',
+            'description' => 'Control panel licenses for web hosting management',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'name' => 'Private Database',
+            'description' => 'Dedicated database servers',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'name' => 'Cloud Project',
+            'description' => 'Infrastructure as a Service cloud platform',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
+
+        Category::create([
+            'name' => 'vRack',
+            'description' => 'Private virtual network',
+            'module_id' => 9,
+            'team_id' => null,
+            'parent_id' => 4000,
+            'status' => 1
+        ]);
         
         $this->command->info('Basic system categories created successfully.');
     }
