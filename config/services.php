@@ -52,4 +52,11 @@ return [
         'email' => env('NOTIFICATION_EMAIL'),
     ],
 
+    'ovh' => [
+        'endpoint' => env('OVH_API_ENDPOINT', 'https://eu.api.ovh.com/1.0'),
+        'app_key' => env('OVH_APP_KEY'),
+        'app_secret' => env('OVH_APP_SECRET'),
+        'consumer_key' => env('OVH_CONSUMER_KEY'),
+    ],
+
 ];
