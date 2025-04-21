@@ -23,10 +23,17 @@ class ServiceDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'service.action')
             ->setRowId('id')
-            ->rawColumns(['name', 'action', 'status'])
+            ->rawColumns(['name', 'action', 'status', 'operation_type'])
+            ->addColumn('operation_type', function ($data) {
+                if ($data->operation == 'buy') {
+                    return '<span class="badge rounded-circle bg-primary" style="width:12px;height:12px;padding:0;display:inline-block;margin:0 auto;"></span>';
+                } else {
+                    return '<span class="badge rounded-circle bg-success" style="width:12px;height:12px;padding:0;display:inline-block;margin:0 auto;"></span>';
+                }
+            })
             ->editColumn('enterprise_id', function ($data)
             {
-                return $data->client->name;
+                return $data->client ? $data->client->name : 'N/A';
             })
             ->filterColumn('enterprise_id', function ($query, $keyword)
             {
@@ -61,7 +68,9 @@ class ServiceDataTable extends DataTable
 
     public function query(Service $model): QueryBuilder
     {
-        return $model->newQuery();
+        return $model->newQuery()->whereHas('client', function ($query) {
+            $query->where('team_id', auth()->user()->currentTeam->id);
+        });
     }
 
     public function html(): HtmlBuilder
@@ -78,6 +87,7 @@ class ServiceDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
+            Column::computed('operation_type')->title('')->width(5)->className('text-center'),
             Column::make('enterprise_id')->title('Client'),
             Column::make('category_id')->title('Category'),
             Column::make('calculated_price')->title('Price')->className('text-center'),
