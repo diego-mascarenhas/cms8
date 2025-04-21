@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 
-class OvhSyncDomainsNew extends Command
+class OvhServiceSync extends Command
 {
     /**
      * The name and signature of the console command.
@@ -32,7 +32,7 @@ class OvhSyncDomainsNew extends Command
         
         $this->info('Executing synchronization' . ($debug ? ' in debug mode' : '') . ($now ? ' immediately' : ' via queue') . '...');
         
-        $job = new \App\Jobs\OvhDomainSync($debug);
+        $job = new \App\Jobs\OvhServiceSync($debug);
         
         if ($now) {
             // Execute job immediately

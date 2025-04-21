@@ -166,7 +166,7 @@ class OvhApiController extends Controller
      */
     public function syncDomains()
     {
-        dispatch(new \App\Jobs\OvhDomainSync());
+        dispatch(new \App\Jobs\OvhServiceSync());
         
         return response()->json([
             'status' => 'success',
