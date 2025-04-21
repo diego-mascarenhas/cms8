@@ -35,20 +35,20 @@ class ServiceController extends Controller
             ->havingRaw('COUNT(enterprise_id) >= 3');
 
         // Get the sum of the gross_amount of last month's invoices for those clients
-        $totalBuyLastMonth = DB::table('invoices')
+        $totalbuyLastMonth = DB::table('invoices')
             ->joinSub($invoicesLastThreeMonths, 'last_invoices', function ($join)
             {
                 $join->on('invoices.enterprise_id', '=', 'last_invoices.enterprise_id');
             })
-            ->where('invoices.operation', 'Buy')
+            ->where('invoices.operation', 'buy')
             ->whereBetween('invoices.date', [$lastMonthStart, $lastMonthEnd])
             ->sum('invoices.gross_amount');
 
         // Project the total monthly amount based on the previous month
-        $total_buy = $totalBuyLastMonth;
+        $total_buy = $totalbuyLastMonth;
 
         // Calculate sales from services
-        $total_sell = Service::calculateTotal(4, 'Sell');
+        $total_sell = Service::calculateTotal(4, 'sell');
 
         // Calculate the total combined buy and sell amounts
         $total_combined = $total_buy + $total_sell;
@@ -237,12 +237,12 @@ class ServiceController extends Controller
                     ];
                 }
 
-                if ($service->operation == 'Sell')
+                if ($service->operation == 'sell')
                 {
                     $projectionData[$month]['earnings'] += $priceAfterDiscount;
                     $totalEarnings += $priceAfterDiscount;
                 }
-                elseif ($service->operation == 'Buy')
+                elseif ($service->operation == 'buy')
                 {
                     $projectionData[$month]['expenses'] += $priceAfterDiscount;
                     $totalExpenses += $priceAfterDiscount;

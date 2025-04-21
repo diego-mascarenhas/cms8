@@ -13,7 +13,7 @@ return new class extends Migration
             $table->unsignedBigInteger('enterprise_id');
             $table->unsignedBigInteger('billing_id');
             $table->unsignedTinyInteger('type_id');
-            $table->enum('operation', ['Buy', 'Sell'])->default('Sell');
+            $table->enum('operation', ['buy', 'sell'])->default('sell');
             $table->string('number')->default(1);
             $table->date('date');
             $table->date('due_date')->nullable();

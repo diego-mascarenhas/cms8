@@ -116,7 +116,7 @@ class CategoryController extends Controller
             }
 
             $operation = $sortedItems->first()->invoice->operation ?? 'Unknown';
-            $labelClass = ($operation === 'Sell') ? 'bg-success' : 'bg-danger';
+            $labelClass = ($operation === 'sell') ? 'bg-success' : 'bg-danger';
 
             return [
                 'id' => $category->id,
