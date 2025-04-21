@@ -29,6 +29,7 @@ use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\AccountingController;
+use App\Http\Controllers\OvhApiController;
 
 // auth
 Route::middleware([
@@ -220,3 +221,13 @@ Route::post('/twilio/status', [TwilioWebhookController::class, 'handleMessageSta
     ->name('twilio.status');
 Route::post('/twilio/fallback', [TwilioWebhookController::class, 'handleFallback'])
     ->name('twilio.fallback');
+
+/*
+ * OVH API Routes
+ */
+Route::prefix('ovh')->group(function () {
+    Route::get('/dashboard', [OvhApiController::class, 'dashboard'])->name('ovh.dashboard');
+    Route::get('/invoices', [OvhApiController::class, 'getInvoices'])->name('ovh.invoices');
+    Route::get('/services', [OvhApiController::class, 'getServices'])->name('ovh.services');
+    Route::get('/sync-domains', [OvhApiController::class, 'syncDomains'])->name('ovh.sync-domains');
+});

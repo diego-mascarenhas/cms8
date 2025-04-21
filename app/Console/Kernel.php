@@ -104,6 +104,8 @@ class Kernel extends ConsoleKernel
                 }
             });
         })->dailyAt('04:30')->withoutOverlapping();
+
+        $schedule->command('ovh:sync')->daily();
     }
 
     /**

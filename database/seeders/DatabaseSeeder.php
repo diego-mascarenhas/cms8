@@ -14,7 +14,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             CurrencySeeder::class,
-			// CategorySeeder::class,
             MessageTypeSeeder::class,
             TemplateSeeder::class,
             MessageSeeder::class,
@@ -41,6 +40,7 @@ class DatabaseSeeder extends Seeder
             TaskSeeder::class,
             ModuleSeeder::class,
             ModuleCategorySeeder::class,
+            CategorySeeder::class,
 		]);
     }
 }

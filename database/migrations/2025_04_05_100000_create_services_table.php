@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('category_id');
             $table->unsignedBigInteger('enterprise_id');
             $table->enum('operation', ['Buy', 'Sell'])->default('Sell');
-            $table->text('desctiption')->nullable();
+            $table->text('description')->nullable();
 			$table->json('data')->nullable();
             $table->unsignedSmallInteger('currency_id')->default(1);
             $table->decimal('price', 8, 2)->nullable();

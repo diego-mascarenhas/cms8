@@ -35,8 +35,38 @@ class Service extends Model
     ];
 
     protected $casts = [
-        'data' => 'object',
+        'data' => 'array',
+        'next_billing' => 'date',
+        'last_billed' => 'date',
+        'expires_at' => 'date',
     ];
+
+    /**
+     * Set the data attribute.
+     *
+     * @param  mixed  $value
+     * @return void
+     */
+    public function setDataAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['data'] = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        } else {
+            $this->attributes['data'] = $value;
+        }
+    }
+
+    /**
+     * Get the data attribute.
+     *
+     * @param  string  $value
+     * @return array
+     */
+    public function getDataAttribute($value)
+    {
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
+    }
 
     public function category()
     {
@@ -51,6 +81,54 @@ class Service extends Model
     public function services()
     {
         return $this->hasMany(Service::class);
+    }
+
+    /**
+     * Get domain from data
+     */
+    public function getDomainAttribute()
+    {
+        return $this->data['domain'] ?? null;
+    }
+
+    /**
+     * Get server URL from data
+     */
+    public function getServerUrlAttribute()
+    {
+        return $this->data['server_url'] ?? null;
+    }
+
+    /**
+     * Get username from data
+     */
+    public function getUsernameAttribute()
+    {
+        return $this->data['username'] ?? null;
+    }
+
+    /**
+     * Get service name from data
+     */
+    public function getServiceNameAttribute()
+    {
+        return $this->data['serviceName'] ?? null;
+    }
+
+    /**
+     * Get unique key from data
+     */
+    public function getUniqueKeyAttribute()
+    {
+        return $this->data['unique_key'] ?? null;
+    }
+
+    /**
+     * Get state from data
+     */
+    public function getStateAttribute()
+    {
+        return $this->data['state'] ?? null;
     }
 
     public function getStatusLabelAttribute()
