@@ -24,10 +24,14 @@ class ServiceDataTable extends DataTable
             ->addColumn('action', 'service.action')
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status', 'operation_type'])
-            ->addColumn('operation_type', function ($data) {
-                if ($data->operation == 'buy') {
-                    return '<span class="badge rounded-circle bg-primary" style="width:12px;height:12px;padding:0;display:inline-block;margin:0 auto;"></span>';
-                } else {
+            ->addColumn('operation_type', function ($data)
+            {
+                if ($data->operation == 'buy')
+                {
+                    return '<span class="badge rounded-circle bg-danger" style="width:12px;height:12px;padding:0;display:inline-block;margin:0 auto;"></span>';
+                }
+                else
+                {
                     return '<span class="badge rounded-circle bg-success" style="width:12px;height:12px;padding:0;display:inline-block;margin:0 auto;"></span>';
                 }
             })
@@ -37,15 +41,19 @@ class ServiceDataTable extends DataTable
             })
             ->filterColumn('enterprise_id', function ($query, $keyword)
             {
-                $query->whereHas('client', function ($q) use ($keyword) {
+                $query->whereHas('client', function ($q) use ($keyword)
+                {
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
-            ->editColumn('category_id', function ($data) {
+            ->editColumn('category_id', function ($data)
+            {
                 return $data->category->name;
             })
-            ->filterColumn('category_id', function ($query, $keyword) {
-                $query->whereHas('category', function ($q) use ($keyword) {
+            ->filterColumn('category_id', function ($query, $keyword)
+            {
+                $query->whereHas('category', function ($q) use ($keyword)
+                {
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
@@ -61,14 +69,16 @@ class ServiceDataTable extends DataTable
             {
                 return number_format($data->calculated_price, 2, ',', '.');
             })
-            ->editColumn('status', function ($data) {
+            ->editColumn('status', function ($data)
+            {
                 return $data->status_label;
             });
     }
 
     public function query(Service $model): QueryBuilder
     {
-        return $model->newQuery()->whereHas('client', function ($query) {
+        return $model->newQuery()->whereHas('client', function ($query)
+        {
             $query->where('team_id', auth()->user()->currentTeam->id);
         });
     }
@@ -76,11 +86,11 @@ class ServiceDataTable extends DataTable
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('service-table')
-                    ->columns($this->getColumns())
-                    ->minifiedAjax()
-                    ->dom('frtip')
-                    ->orderBy(0);
+            ->setTableId('service-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(0);
     }
 
     public function getColumns(): array

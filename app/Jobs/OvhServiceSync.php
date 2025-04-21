@@ -340,7 +340,7 @@ class OvhServiceSync implements ShouldQueue
             $serviceData = [
                 'enterprise_id' => $enterpriseId,
                 'category_id' => $categoryId,
-                'operation' => 'Buy',
+                'operation' => 'buy',
                 'description' => isset($service['resource']) && isset($service['resource']['displayName']) ? 
                     $service['resource']['displayName'] : $domainName,
                 'data' => $jsonData,

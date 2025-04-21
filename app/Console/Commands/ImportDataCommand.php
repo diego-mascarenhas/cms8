@@ -600,7 +600,7 @@ class ImportDataCommand extends Command
                     'id' => $data->id,
                     'category_id' => $categoryId,
                     'enterprise_id' => $data->id_empresa,
-                    'operation' => 'Sell', // Siempre será Sell ya que filtramos por 'V'
+                    'descriptiontion' => 'Sell', // Siempre será Sell ya que filtramos por 'V'
                     'description' => $cleaned_description, // Respetar el nombre del campo como está en la migración
                     'data' => json_encode($hostingData),
                     'currency_id' => $data->id_moneda,
