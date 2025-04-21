@@ -22,17 +22,17 @@ class OvhServiceSync implements ShouldQueue
 
     // Service category mapping
     protected $categoryMapping = [
-        'domain' => 4001, // Domain Names - Hardcoded category ID
-        'emailpro' => 4005, // Email Pro - Hardcoded category ID
-        'webHosting' => 4002, // Web Hosting - Hardcoded category ID
-        'privateDatabase' => 4008, // Private Database - Hardcoded category ID
-        'vps' => 4001, // VPS - Hardcoded category ID
-        'cloudProject' => 4009, // Cloud Project - Hardcoded category ID
-        'cpanel' => 4007, // cPanel License - Hardcoded category ID
-        'email' => 4005, // Email Domain - Hardcoded category ID
-        'dns' => 4003, // DNS Zones - Hardcoded category ID
-        'vRack' => 4010, // vRack - Hardcoded category ID
-        'default' => 4000, // Default "Services" category ID
+        'domain' => 401, // Domain Names - Hardcoded category ID
+        'emailpro' => 405, // Email Pro - Hardcoded category ID
+        'webHosting' => 402, // Web Hosting - Hardcoded category ID
+        'privateDatabase' => 408, // Private Database - Hardcoded category ID
+        'vps' => 401, // VPS - Hardcoded category ID
+        'cloudProject' => 409, // Cloud Project - Hardcoded category ID
+        'cpanel' => 407, // cPanel License - Hardcoded category ID
+        'email' => 405, // Email Domain - Hardcoded category ID
+        'dns' => 403, // DNS Zones - Hardcoded category ID
+        'vRack' => 410, // vRack - Hardcoded category ID
+        'default' => 1, // Default "Services" category ID
     ];
 
     public function __construct(bool $verbose = false)
@@ -224,11 +224,11 @@ class OvhServiceSync implements ShouldQueue
         
         // 3. Determine appropriate category ID based on service type
         $category = $service['category'] ?? 'default';
-        // $categoryId = $this->categoryMapping[$category] ?? $this->categoryMapping['default'];
-        $categoryId = 1;
+        $categoryId = $this->categoryMapping[$category] ?? $this->categoryMapping['default'];
         
         // 4. Set enterprise ID
-        $enterpriseId = 1;
+        //FIXME - get enterprise id from domain name
+        $enterpriseId = 300549;
         
         if ($this->verbose) {
             Log::debug('Using mapped category', [
