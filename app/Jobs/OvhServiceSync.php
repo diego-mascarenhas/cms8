@@ -232,7 +232,7 @@ class OvhServiceSync implements ShouldQueue
         ]);
         
         // 4. Set enterprise ID
-        $enterpriseId = env('OVH_ENTERPRISE_ID', 1);
+        $enterpriseId = config('services.ovh.enterprise_id', env('OVH_ENTERPRISE_ID', 1));
         Log::debug('Initial enterprise ID set', ['enterprise_id' => $enterpriseId]);
         
         if ($this->verbose) {
