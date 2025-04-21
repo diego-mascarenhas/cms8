@@ -25,6 +25,7 @@ class AccountingController extends Controller
         // Set default values
         $stripeData = [
             'invoices' => [],
+            'grouped_invoices' => [],
             'metrics' => [
                 'total_paid' => '0.00',
                 'unpaid' => '0.00'
