@@ -223,12 +223,17 @@ class OvhServiceSync implements ShouldQueue
         }
         
         // 3. Determine appropriate category ID based on service type
-        $category = $service['category'] ?? 'default';
+        $category = $this->determineCategory($service);
         $categoryId = $this->categoryMapping[$category] ?? $this->categoryMapping['default'];
+        Log::debug('Category mapping', [
+            'category' => $category,
+            'mapped_id' => $categoryId,
+            'mapping' => $this->categoryMapping
+        ]);
         
         // 4. Set enterprise ID
-        //FIXME - get enterprise id from domain name
-        $enterpriseId = 300549;
+        $enterpriseId = env('OVH_ENTERPRISE_ID', 1);
+        Log::debug('Initial enterprise ID set', ['enterprise_id' => $enterpriseId]);
         
         if ($this->verbose) {
             Log::debug('Using mapped category', [
@@ -359,7 +364,17 @@ class OvhServiceSync implements ShouldQueue
                 }
             }
             
+            Log::debug('Service data preparation', [
+                'enterprise_id' => $enterpriseId,
+                'category_id' => $categoryId
+            ]);
+            
             if ($existingService) {
+                Log::debug('Updating existing service', [
+                    'service_id' => $existingService->id,
+                    'enterprise_id' => $serviceData['enterprise_id'],
+                    'category_id' => $serviceData['category_id']
+                ]);
                 // Update existing service but preserve created_at
                 $existingService->update($serviceData);
                 Log::info("Updated service: {$serviceId}", [
@@ -377,15 +392,32 @@ class OvhServiceSync implements ShouldQueue
                     $serviceData['updated_at'] = $creationDate;
                 }
                 
-                Service::create($serviceData);
-                Log::info("Imported service: {$serviceId}", [
-                    'domain' => $domainName,
-                    'category' => $category
-                ]);
-                return [
-                    'status' => 'imported',
-                    'reason' => 'New service created'
-                ];
+                try {
+                    $newService = Service::create($serviceData);
+                    Log::debug('Service created successfully', [
+                        'id' => $newService->id
+                    ]);
+                    Log::info("Imported service: {$serviceId}", [
+                        'domain' => $domainName,
+                        'category' => $category
+                    ]);
+                    return [
+                        'status' => 'imported',
+                        'reason' => 'New service created'
+                    ];
+                } catch (\Exception $e) {
+                    Log::error('Error creating service', [
+                        'error' => $e->getMessage(),
+                        'enterprise_id' => $serviceData['enterprise_id'],
+                        'category_id' => $serviceData['category_id'],
+                        'domain' => $domainName,
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    return [
+                        'status' => 'error',
+                        'reason' => 'Database error: ' . $e->getMessage()
+                    ];
+                }
             }
         } catch (\Exception $e) {
             Log::error('Error saving service: ' . $e->getMessage(), [
@@ -482,5 +514,84 @@ class OvhServiceSync implements ShouldQueue
         }
         
         return $serverUrl;
+    }
+
+    /**
+     * Determinar la categoría correcta para un servicio
+     * 
+     * @param array $service
+     * @return string Clave de categoría
+     */
+    private function determineCategory(array $service): string
+    {
+        // Verificar categoría explícita
+        if (isset($service['category']) && !empty($service['category'])) {
+            return $service['category'];
+        }
+        
+        // Detectar por URL o path en la ruta
+        if (isset($service['route']) && isset($service['route']['path'])) {
+            $path = $service['route']['path'];
+            
+            if (strpos($path, '/domain/zone') !== false) {
+                return 'domain';
+            }
+            if (strpos($path, '/email/pro') !== false) {
+                return 'emailpro';
+            }
+            if (strpos($path, '/hosting/web') !== false) {
+                return 'webHosting';
+            }
+            if (strpos($path, '/vps') !== false) {
+                return 'vps';
+            }
+            if (strpos($path, '/cloud/project') !== false) {
+                return 'cloudProject';
+            }
+            if (strpos($path, '/hosting/privateDatabase') !== false || 
+                strpos($path, '/privateDatabase') !== false) {
+                return 'privateDatabase';
+            }
+            if (strpos($path, '/email/domain') !== false) {
+                return 'email';
+            }
+            if (strpos($path, '/vrack') !== false) {
+                return 'vRack';
+            }
+        }
+        
+        // Detectar por nombre del recurso o serviceName
+        $resourceName = $service['resource']['name'] ?? '';
+        $serviceName = $service['serviceName'] ?? '';
+        
+        if (strpos($resourceName, 'vps') !== false || strpos($serviceName, 'vps') !== false) {
+            return 'vps';
+        }
+        
+        if (strpos($resourceName, 'hosting') !== false || 
+            strpos($serviceName, 'cluster') !== false ||
+            strpos($resourceName, 'cluster') !== false) {
+            return 'webHosting';
+        }
+        
+        if (strpos($resourceName, 'cloud') !== false || strpos($serviceName, 'cloud') !== false) {
+            return 'cloudProject';
+        }
+        
+        if (strpos($resourceName, 'email') !== false || strpos($serviceName, 'email') !== false) {
+            if (strpos($resourceName, 'pro') !== false || strpos($serviceName, 'pro') !== false) {
+                return 'emailpro';
+            }
+            return 'email';
+        }
+        
+        // Si no se pudo determinar, usar default
+        Log::debug('Could not determine category, using default', [
+            'resource_name' => $resourceName,
+            'service_name' => $serviceName,
+            'route' => $service['route'] ?? 'no route'
+        ]);
+        
+        return 'default';
     }
 } 
