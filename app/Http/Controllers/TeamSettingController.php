@@ -7,11 +7,60 @@ use App\Http\Requests\UpdateTeamSettingsRequest;
 
 class TeamSettingController extends Controller
 {
-    public function edit(Team $team)
+    public function index(Team $team)
     {
         $this->authorize('update', $team);
 
-        $settings = [
+        // Get all team settings grouped by group
+        $groupedSettings = $team->settings()
+            ->orderBy('group')
+            ->get()
+            ->groupBy('group');
+
+        return view('team-settings.index', compact('team', 'groupedSettings'));
+    }
+
+    public function edit(Team $team, $group = 'stripe')
+    {
+        $this->authorize('update', $team);
+
+        $settings = $this->getSettingsConfig($team, $group);
+
+        return view('team-settings.edit', compact('team', 'settings', 'group'));
+    }
+
+    public function update(UpdateTeamSettingsRequest $request, Team $team)
+    {
+        $this->authorize('update', $team);
+
+        foreach ($request->validated() as $group => $settings)
+        {
+            foreach ($settings as $key => $value)
+            {
+                if (!empty($value) || $value === "0")
+                {
+                    $team->setSetting($key, $value, [
+                        'group' => $group,
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook']),
+                    ]);
+                }
+            }
+        }
+
+        $group = array_key_first($request->validated());
+        $message = ucfirst($group) . ' settings updated successfully';
+
+        return redirect()
+            ->back()
+            ->with('success', $message);
+    }
+
+    /**
+     * Get the settings configuration for a specific group
+     */
+    protected function getSettingsConfig(Team $team, $group)
+    {
+        $config = [
             'stripe' => [
                 'title' => 'Stripe Integration',
                 'icon' => 'ti ti-brand-stripe',
@@ -36,31 +85,75 @@ class TeamSettingController extends Controller
                     ]
                 ]
             ],
+            'categories' => [
+                'title' => 'Categories Configuration',
+                'icon' => 'ti ti-category',
+                'settings' => [
+                    'categories_default_status' => [
+                        'label' => 'Default Status',
+                        'type' => 'select',
+                        'options' => ['active' => 'Active', 'inactive' => 'Inactive'],
+                        'value' => $team->getSetting('categories_default_status', 'active'),
+                        'is_encrypted' => false,
+                    ],
+                    'categories_require_approval' => [
+                        'label' => 'Require Approval',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('categories_require_approval', '0'),
+                        'is_encrypted' => false,
+                    ],
+                    'categories_max_depth' => [
+                        'label' => 'Maximum Subcategory Depth',
+                        'type' => 'select',
+                        'options' => [
+                            '1' => '1 Level',
+                            '2' => '2 Levels',
+                            '3' => '3 Levels',
+                        ],
+                        'value' => $team->getSetting('categories_max_depth', '2'),
+                        'is_encrypted' => false,
+                    ],
+                    'categories_allow_multiple_parents' => [
+                        'label' => 'Allow Multiple Parent Categories',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('categories_allow_multiple_parents', '0'),
+                        'is_encrypted' => false,
+                    ],
+                    'categories_default_ordering' => [
+                        'label' => 'Default Ordering',
+                        'type' => 'select',
+                        'options' => [
+                            'name_asc' => 'Name (A-Z)',
+                            'name_desc' => 'Name (Z-A)',
+                            'created_desc' => 'Newest First',
+                            'created_asc' => 'Oldest First',
+                            'custom' => 'Custom Order',
+                        ],
+                        'value' => $team->getSetting('categories_default_ordering', 'name_asc'),
+                        'is_encrypted' => false,
+                    ],
+                ]
+            ],
+            'notifications' => [
+                'title' => 'Notification Settings',
+                'icon' => 'ti ti-bell',
+                'settings' => [
+                    'notifications_email' => [
+                        'label' => 'Email Notifications',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('notifications_email', '1'),
+                        'is_encrypted' => false,
+                    ],
+                    'notifications_sms' => [
+                        'label' => 'SMS Notifications',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('notifications_sms', '0'),
+                        'is_encrypted' => false,
+                    ]
+                ]
+            ]
         ];
 
-        return view('team-settings.edit', compact('team', 'settings'));
-    }
-
-    public function update(UpdateTeamSettingsRequest $request, Team $team)
-    {
-        $this->authorize('update', $team);
-
-        foreach ($request->validated() as $group => $settings)
-        {
-            foreach ($settings as $key => $value)
-            {
-                if (!empty($value))
-                {
-                    $team->setSetting($key, $value, [
-                        'group' => $group,
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook']),
-                    ]);
-                }
-            }
-        }
-
-        return redirect()
-            ->back()
-            ->with('success', 'La configuración de Stripe se actualizó correctamente.');
+        return isset($config[$group]) ? [$group => $config[$group]] : [];
     }
 }

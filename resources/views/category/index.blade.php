@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/animate-css/animate.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/nestable/nestable.css') }}">
 
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/toastr/toastr.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/animate-css/animate.css')}}" />
@@ -41,106 +42,225 @@
 </style>
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Categories</h4>
-        <p class="text-muted">Manage your categories efficiently and keep everything organized!</p>
-    </div>
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('category.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Create New</a>
-    </div>
-</div>
-
-@if(session('success'))
-<div id="toast-container" class="toast-top-right">
-    <div class="toast toast-success" aria-live="polite" style="display: block;">
-        <div class="toast-message">{{ session('success') }}</div>
-    </div>
-</div>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    var toastElement = document.getElementById('toast-container');
-    var toast = new bootstrap.Toast(toastElement, {
-        animation: true,
-        delay: 1000,
-        autohide: true
-    });
-    toast.show();
-  });
-</script>
-@endif
-
-<div class="card">
-    <div class="card-body">
-        {{ $dataTable->table() }}
-    </div>
-</div>
-
-<script>
-    function deleteRecord(id, element) {
-        Swal.fire({
-            title: 'Are you sure you want to delete this record?',
-            text: 'This action cannot be undone',
-            icon: 'warning',
-            showCloseButton: false,
-            showCancelButton: false,
-            confirmButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch("{{ route('category.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
-                }).then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok.');
-                    }
-                    return response.json();
-                }).then(data => {
-                    console.log('Response data:', data);
-
-                    const toastHTML = `
-                        <div id="toast-container" class="toast-top-right">
-                            <div class="toast toast-success" aria-live="polite" style="display: block;">
-                                <div class="toast-message">${data.success}</div>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Categories</h5>
+                <a href="{{ route('categories.create') }}" class="btn btn-primary">
+                    <i class="ti ti-plus me-1"></i> New Category
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <form id="filterForm" method="get">
+                            <div class="form-group">
+                                <label for="module_id" class="form-label">Filter by Module</label>
+                                <select name="module_id" id="module_id" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                                    <option value="">All Modules</option>
+                                    @foreach($modules as $module)
+                                        <option value="{{ $module->id }}" {{ $moduleId == $module->id ? 'selected' : '' }}>
+                                            {{ $module->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                @if(session('success'))
+                    <div class="alert alert-success">
+                        {{ session('success') }}
+                    </div>
+                @endif
+                
+                @if(session('error'))
+                    <div class="alert alert-danger">
+                        {{ session('error') }}
+                    </div>
+                @endif
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6 class="mb-3">Category Hierarchy</h6>
+                        @if($categories->count() > 0)
+                            <div class="dd" id="nestable">
+                                <ol class="dd-list">
+                                    @foreach($categories as $category)
+                                        @include('category.partials.category-item', ['category' => $category])
+                                    @endforeach
+                                </ol>
+                            </div>
+                            <div class="mt-3">
+                                <button type="button" id="saveOrder" class="btn btn-primary btn-sm">Save Order</button>
+                            </div>
+                        @else
+                            <div class="alert alert-info">
+                                No categories found. <a href="{{ route('categories.create') }}">Create your first category</a>.
+                            </div>
+                        @endif
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Quick Actions</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <a href="{{ route('categories.create') }}" class="btn btn-outline-primary">
+                                        <i class="ti ti-plus me-1"></i> Add Top-Level Category
+                                    </a>
+                                    
+                                    @if(isset($moduleId) && $moduleId)
+                                        <a href="{{ route('categories.create', ['module_id' => $moduleId]) }}" class="btn btn-outline-primary">
+                                            <i class="ti ti-plus me-1"></i> Add to Current Module
+                                        </a>
+                                    @endif
+                                    
+                                    <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'categories']) }}" class="btn btn-outline-secondary">
+                                        <i class="ti ti-settings me-1"></i> Category Settings
+                                    </a>
+                                </div>
                             </div>
                         </div>
-                    `;
-                    document.body.insertAdjacentHTML('beforeend', toastHTML);
-                    var toastElement = document.getElementById('toast-container');
-                    var toast = new bootstrap.Toast(toastElement, {
-                        animation: true,
-                        delay: 3000,
-                        autohide: true
-                    });
-                    toast.show();
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
 
-                    const row = element.closest('tr');
-                    if (row) {
-                        row.classList.add('fade-out');
-                        row.addEventListener('transitionend', () => {
-                            row.remove();
-                        });
-                    } else {
-                        console.error('No se encontró la fila correspondiente.');
-                    }
-                }).catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
+@section('vendor-script')
+<script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/nestable/jquery.nestable.js') }}"></script>
+@endsection
+
+@section('page-script')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize nestable
+    $('#nestable').nestable({
+        maxDepth: {{ $team->getSetting('categories_max_depth', 2) }}
+    });
+    
+    // Save order
+    $('#saveOrder').on('click', function() {
+        const data = $('#nestable').nestable('serialize');
+        const orderedCategories = flattenNestable(data);
+        
+        $.ajax({
+            url: '{{ route("categories.order") }}',
+            type: 'POST',
+            data: {
+                categories: orderedCategories,
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: response.success,
+                    icon: 'success',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
+            },
+            error: function(xhr) {
+                Swal.fire({
+                    title: 'Error!',
+                    text: xhr.responseJSON?.error || 'Failed to update order',
+                    icon: 'error',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
                 });
             }
         });
+    });
+    
+    // Delete category
+    $(document).on('click', '.delete-category', function(e) {
+        e.preventDefault();
+        
+        const deleteUrl = $(this).data('url');
+        const categoryName = $(this).data('name');
+        
+        Swal.fire({
+            title: 'Are you sure?',
+            text: `You are about to delete category "${categoryName}". This will also delete all subcategories.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete it!',
+            customClass: {
+                confirmButton: 'btn btn-danger me-3',
+                cancelButton: 'btn btn-secondary'
+            },
+            buttonsStyling: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: deleteUrl,
+                    type: 'DELETE',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: response.success,
+                            icon: 'success',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            },
+                            buttonsStyling: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    },
+                    error: function(xhr) {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: xhr.responseJSON?.error || 'Failed to delete category',
+                            icon: 'error',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            },
+                            buttonsStyling: false
+                        });
+                    }
+                });
+            }
+        });
+    });
+    
+    // Helper function to flatten nestable data
+    function flattenNestable(items, order = 0) {
+        let result = [];
+        
+        items.forEach((item, index) => {
+            result.push({
+                id: item.id,
+                order: order + index
+            });
+            
+            if (item.children && item.children.length > 0) {
+                const children = flattenNestable(item.children, 0);
+                result = result.concat(children);
+            }
+        });
+        
+        return result;
     }
+});
 </script>
 @endsection
-
-@push('scripts')
-    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
-@endpush
 
 {{-- vendor scripts --}}
 @section('vendor-script')
