@@ -269,8 +269,8 @@
                 @if (auth()->user()->ownsTeam(auth()->user()->currentTeam))
                     <li>
                         <a class="dropdown-item" href="{{ route('team-settings.edit', auth()->user()->currentTeam->id) }}">
-                            <i class="ti ti-settings-dollar me-2 ti-sm"></i>
-                            <span class="align-middle">Stripe Settings</span>
+                            <i class="ti ti-settings-automation me-2 ti-sm"></i>
+                            <span class="align-middle">Settings</span>
                         </a>
                     </li>
                 @endif

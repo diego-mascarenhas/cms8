@@ -101,7 +101,37 @@ class TeamSettingController extends Controller
                         'type' => 'checkbox',
                         'value' => $team->getSetting('categories_require_approval', '0'),
                         'is_encrypted' => false,
-                    ]
+                    ],
+                    'categories_max_depth' => [
+                        'label' => 'Maximum Subcategory Depth',
+                        'type' => 'select',
+                        'options' => [
+                            '1' => '1 Level',
+                            '2' => '2 Levels',
+                            '3' => '3 Levels',
+                        ],
+                        'value' => $team->getSetting('categories_max_depth', '2'),
+                        'is_encrypted' => false,
+                    ],
+                    'categories_allow_multiple_parents' => [
+                        'label' => 'Allow Multiple Parent Categories',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('categories_allow_multiple_parents', '0'),
+                        'is_encrypted' => false,
+                    ],
+                    'categories_default_ordering' => [
+                        'label' => 'Default Ordering',
+                        'type' => 'select',
+                        'options' => [
+                            'name_asc' => 'Name (A-Z)',
+                            'name_desc' => 'Name (Z-A)',
+                            'created_desc' => 'Newest First',
+                            'created_asc' => 'Oldest First',
+                            'custom' => 'Custom Order',
+                        ],
+                        'value' => $team->getSetting('categories_default_ordering', 'name_asc'),
+                        'is_encrypted' => false,
+                    ],
                 ]
             ],
             'notifications' => [

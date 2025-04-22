@@ -38,7 +38,10 @@
                                     <i class="ti ti-category mb-3" style="font-size: 2rem;"></i>
                                     <h5 class="card-title">Categories</h5>
                                     <p class="card-text">Configure default category settings and preferences</p>
-                                    <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'categories']) }}" class="btn btn-primary">Configure</a>
+                                    <div class="btn-group">
+                                        <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'categories']) }}" class="btn btn-primary">Configure</a>
+                                        <a href="{{ route('categories.index') }}" class="btn btn-outline-primary">Manage</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>

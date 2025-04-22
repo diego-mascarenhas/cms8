@@ -30,6 +30,7 @@ use App\Http\Controllers\HostingController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\OvhApiController;
+use App\Http\Controllers\CategoryController;
 
 // auth
 Route::middleware([
@@ -86,6 +87,17 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
+    
+    // Categories Management
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
+    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
+    Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+    Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
+    Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
     
     // User Management
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
