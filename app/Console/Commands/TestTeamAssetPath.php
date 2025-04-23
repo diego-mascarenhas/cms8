@@ -38,9 +38,11 @@ class TestTeamAssetPath extends Command
 
         // Test the repository
         $repository = app(TeamAssetRepository::class);
-        $diskPath = $repository->getDiskPath();
-
-        $this->info("Asset upload path: {$diskPath}");
+        $teamInfo = $repository->getTeamInfo();
+        
+        $this->info("Team ID: {$teamInfo['team_id']}");
+        $this->info("Team Hash: {$teamInfo['team_hash']} (md5 truncado a 12 caracteres)");
+        $this->info("Asset upload path: {$teamInfo['path']}");
         
         return 0;
     }
