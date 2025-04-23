@@ -509,7 +509,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
    * write one for the platform you are using Floating UI with.
    */
   var computePosition$1 = /*#__PURE__*/function () {
-    var _ref3 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(reference, floating, config) {
+    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(reference, floating, config) {
       var _config$placement, placement, _config$strategy, strategy, _config$middleware, middleware, platform, validMiddleware, rtl, rects, _computeCoordsFromPla, x, y, statefulPlacement, middlewareData, resetCount, i, _validMiddleware$i, name, fn, _yield$fn, nextX, nextY, data, reset, _computeCoordsFromPla2;
       return _regeneratorRuntime().wrap(function _callee$(_context) {
         while (1) switch (_context.prev = _context.next) {
@@ -663,7 +663,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
     return _detectOverflow.apply(this, arguments);
   }
   function _detectOverflow() {
-    _detectOverflow = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee7(state, options) {
+    _detectOverflow = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee7(state, options) {
       var _await$platform$isEle, x, y, platform, rects, elements, strategy, _options5, _options5$boundary, boundary, _options5$rootBoundar, rootBoundary, _options5$elementCont, elementContext, _options5$altBoundary, altBoundary, _options5$padding, padding, paddingObject, altContext, element, clippingClientRect, rect, offsetParent, offsetScale, elementClientRect;
       return _regeneratorRuntime().wrap(function _callee7$(_context7) {
         while (1) switch (_context7.prev = _context7.next) {
@@ -815,7 +815,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       name: 'arrow',
       options: options,
       fn: function fn(state) {
-        return _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
+        return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
           var _ref4, element, _ref4$padding, padding, x, y, placement, rects, platform, elements, paddingObject, coords, axis, length, arrowDimensions, isYAxis, minProp, maxProp, clientProp, endDiff, startDiff, arrowOffsetParent, clientSize, centerToReference, min, max, center, offset, shouldAddOffset, alignmentOffset;
           return _regeneratorRuntime().wrap(function _callee2$(_context2) {
             while (1) switch (_context2.prev = _context2.next) {
@@ -973,7 +973,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       name: 'flip',
       options: options,
       fn: function fn(state) {
-        return _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee3() {
+        return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3() {
           var _middlewareData$flip, placement, middlewareData, rects, initialPlacement, platform, elements, _options, _options$mainAxis, checkMainAxis, _options$crossAxis, checkCrossAxis, specifiedFallbackPlacements, _options$fallbackStra, fallbackStrategy, _options$fallbackAxis, fallbackAxisSideDirection, _options$flipAlignmen, flipAlignment, detectOverflowOptions, side, isBasePlacement, rtl, fallbackPlacements, placements, overflow, overflows, overflowsData, _getAlignmentSides, main, cross, _middlewareData$flip2, _overflowsData$filter, nextIndex, nextPlacement, resetPlacement, _overflowsData$map$so, _placement;
           return _regeneratorRuntime().wrap(function _callee3$(_context3) {
             while (1) switch (_context3.prev = _context3.next) {
@@ -1101,7 +1101,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       name: 'shift',
       options: options,
       fn: function fn(state) {
-        return _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee4() {
+        return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee4() {
           var x, y, placement, _options2, _options2$mainAxis, checkMainAxis, _options2$crossAxis, checkCrossAxis, _options2$limiter, limiter, detectOverflowOptions, coords, overflow, mainAxis, crossAxis, mainAxisCoord, crossAxisCoord, minSide, maxSide, _min, _max, _minSide, _maxSide, _min2, _max2, limitedCoords;
           return _regeneratorRuntime().wrap(function _callee4$(_context4) {
             while (1) switch (_context4.prev = _context4.next) {
@@ -1750,7 +1750,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
     getScale: getScale,
     getElementRects: function getElementRects(_ref) {
       var _this3 = this;
-      return _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee5() {
+      return _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee5() {
         var reference, floating, strategy, getOffsetParentFn, getDimensionsFn;
         return _regeneratorRuntime().wrap(function _callee5$(_context5) {
           while (1) switch (_context5.prev = _context5.next) {
@@ -2511,7 +2511,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       c: function c() {
         button = element("button");
         attr(button, "aria-label", button_aria_label_value = /*label*/ctx[3] ? /*label*/ctx[3] : null);
-        attr(button, "class", button_class_value = "".concat( /*classes*/ctx[1] || '', " shepherd-button ").concat( /*secondary*/ctx[4] ? 'shepherd-button-secondary' : ''));
+        attr(button, "class", button_class_value = "".concat(/*classes*/ctx[1] || '', " shepherd-button ").concat(/*secondary*/ctx[4] ? 'shepherd-button-secondary' : ''));
         button.disabled = /*disabled*/ctx[2];
         attr(button, "tabindex", "0");
       },
@@ -2520,7 +2520,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
         button.innerHTML = /*text*/ctx[5];
         if (!mounted) {
           dispose = listen(button, "click", function () {
-            if (is_function( /*action*/ctx[0])) /*action*/ctx[0].apply(this, arguments);
+            if (is_function(/*action*/ctx[0])) /*action*/ctx[0].apply(this, arguments);
           });
           mounted = true;
         }
@@ -2533,7 +2533,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
         if (dirty & /*label*/8 && button_aria_label_value !== (button_aria_label_value = /*label*/ctx[3] ? /*label*/ctx[3] : null)) {
           attr(button, "aria-label", button_aria_label_value);
         }
-        if (dirty & /*classes, secondary*/18 && button_class_value !== (button_class_value = "".concat( /*classes*/ctx[1] || '', " shepherd-button ").concat( /*secondary*/ctx[4] ? 'shepherd-button-secondary' : ''))) {
+        if (dirty & /*classes, secondary*/18 && button_class_value !== (button_class_value = "".concat(/*classes*/ctx[1] || '', " shepherd-button ").concat(/*secondary*/ctx[4] ? 'shepherd-button-secondary' : ''))) {
           attr(button, "class", button_class_value);
         }
         if (dirty & /*disabled*/4) {
@@ -2728,7 +2728,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       p: function p(ctx, _ref) {
         var _ref8 = _slicedToArray(_ref, 1),
           dirty = _ref8[0];
-        if ( /*buttons*/ctx[1]) {
+        if (/*buttons*/ctx[1]) {
           if (if_block) {
             if_block.p(ctx, dirty);
             if (dirty & /*buttons*/2) {
@@ -3030,7 +3030,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       p: function p(ctx, _ref) {
         var _ref11 = _slicedToArray(_ref, 1),
           dirty = _ref11[0];
-        if ( /*title*/ctx[2]) {
+        if (/*title*/ctx[2]) {
           if (if_block0) {
             if_block0.p(ctx, dirty);
             if (dirty & /*title*/4) {
@@ -3049,7 +3049,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
           });
           check_outros();
         }
-        if ( /*cancelIcon*/ctx[3] && /*cancelIcon*/ctx[3].enabled) {
+        if (/*cancelIcon*/ctx[3] && /*cancelIcon*/ctx[3].enabled) {
           if (if_block1) {
             if_block1.p(ctx, dirty);
             if (dirty & /*cancelIcon*/8) {
@@ -3308,11 +3308,11 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
   }
   function create_fragment$2(ctx) {
     var div;
-    var show_if_2 = !isUndefined( /*step*/ctx[2].options.title) || /*step*/ctx[2].options.cancelIcon && /*step*/ctx[2].options.cancelIcon.enabled;
+    var show_if_2 = !isUndefined(/*step*/ctx[2].options.title) || /*step*/ctx[2].options.cancelIcon && /*step*/ctx[2].options.cancelIcon.enabled;
     var t0;
-    var show_if_1 = !isUndefined( /*step*/ctx[2].options.text);
+    var show_if_1 = !isUndefined(/*step*/ctx[2].options.text);
     var t1;
-    var show_if = Array.isArray( /*step*/ctx[2].options.buttons) && /*step*/ctx[2].options.buttons.length;
+    var show_if = Array.isArray(/*step*/ctx[2].options.buttons) && /*step*/ctx[2].options.buttons.length;
     var current;
     var if_block0 = show_if_2 && create_if_block_2(ctx);
     var if_block1 = show_if_1 && create_if_block_1(ctx);
@@ -3339,7 +3339,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       p: function p(ctx, _ref) {
         var _ref13 = _slicedToArray(_ref, 1),
           dirty = _ref13[0];
-        if (dirty & /*step*/4) show_if_2 = !isUndefined( /*step*/ctx[2].options.title) || /*step*/ctx[2].options.cancelIcon && /*step*/ctx[2].options.cancelIcon.enabled;
+        if (dirty & /*step*/4) show_if_2 = !isUndefined(/*step*/ctx[2].options.title) || /*step*/ctx[2].options.cancelIcon && /*step*/ctx[2].options.cancelIcon.enabled;
         if (show_if_2) {
           if (if_block0) {
             if_block0.p(ctx, dirty);
@@ -3359,7 +3359,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
           });
           check_outros();
         }
-        if (dirty & /*step*/4) show_if_1 = !isUndefined( /*step*/ctx[2].options.text);
+        if (dirty & /*step*/4) show_if_1 = !isUndefined(/*step*/ctx[2].options.text);
         if (show_if_1) {
           if (if_block1) {
             if_block1.p(ctx, dirty);
@@ -3379,7 +3379,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
           });
           check_outros();
         }
-        if (dirty & /*step*/4) show_if = Array.isArray( /*step*/ctx[2].options.buttons) && /*step*/ctx[2].options.buttons.length;
+        if (dirty & /*step*/4) show_if = Array.isArray(/*step*/ctx[2].options.buttons) && /*step*/ctx[2].options.buttons.length;
         if (show_if) {
           if (if_block2) {
             if_block2.p(ctx, dirty);
@@ -3482,7 +3482,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       }
     });
     var div_levels = [{
-      "aria-describedby": div_aria_describedby_value = !isUndefined( /*step*/ctx[4].options.text) ? /*descriptionId*/ctx[2] : null
+      "aria-describedby": div_aria_describedby_value = !isUndefined(/*step*/ctx[4].options.text) ? /*descriptionId*/ctx[2] : null
     }, {
       "aria-labelledby": div_aria_labelledby_value = /*step*/ctx[4].options.title ? /*labelId*/ctx[3] : null
     }, /*dataStepId*/ctx[1], {
@@ -3521,7 +3521,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       p: function p(ctx, _ref) {
         var _ref14 = _slicedToArray(_ref, 1),
           dirty = _ref14[0];
-        if ( /*step*/ctx[4].options.arrow && /*step*/ctx[4].options.attachTo && /*step*/ctx[4].options.attachTo.element && /*step*/ctx[4].options.attachTo.on) {
+        if (/*step*/ctx[4].options.arrow && /*step*/ctx[4].options.attachTo && /*step*/ctx[4].options.attachTo.element && /*step*/ctx[4].options.attachTo.on) {
           if (if_block) ;else {
             if_block = create_if_block();
             if_block.c();
@@ -3536,7 +3536,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
         if (dirty & /*labelId*/8) shepherdcontent_changes.labelId = /*labelId*/ctx[3];
         if (dirty & /*step*/16) shepherdcontent_changes.step = /*step*/ctx[4];
         shepherdcontent.$set(shepherdcontent_changes);
-        set_attributes(div, div_data = get_spread_update(div_levels, [(!current || dirty & /*step, descriptionId*/20 && div_aria_describedby_value !== (div_aria_describedby_value = !isUndefined( /*step*/ctx[4].options.text) ? /*descriptionId*/ctx[2] : null)) && {
+        set_attributes(div, div_data = get_spread_update(div_levels, [(!current || dirty & /*step, descriptionId*/20 && div_aria_describedby_value !== (div_aria_describedby_value = !isUndefined(/*step*/ctx[4].options.text) ? /*descriptionId*/ctx[2] : null)) && {
           "aria-describedby": div_aria_describedby_value
         }, (!current || dirty & /*step, labelId*/24 && div_aria_labelledby_value !== (div_aria_labelledby_value = /*step*/ctx[4].options.title ? /*labelId*/ctx[3] : null)) && {
           "aria-labelledby": div_aria_labelledby_value
@@ -4248,7 +4248,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
         svg = svg_element("svg");
         path = svg_element("path");
         attr(path, "d", /*pathDefinition*/ctx[2]);
-        attr(svg, "class", svg_class_value = "".concat( /*modalIsVisible*/ctx[1] ? 'shepherd-modal-is-visible' : '', " shepherd-modal-overlay-container"));
+        attr(svg, "class", svg_class_value = "".concat(/*modalIsVisible*/ctx[1] ? 'shepherd-modal-is-visible' : '', " shepherd-modal-overlay-container"));
       },
       m: function m(target, anchor) {
         insert(target, svg, anchor);
@@ -4266,7 +4266,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
         if (dirty & /*pathDefinition*/4) {
           attr(path, "d", /*pathDefinition*/ctx[2]);
         }
-        if (dirty & /*modalIsVisible*/2 && svg_class_value !== (svg_class_value = "".concat( /*modalIsVisible*/ctx[1] ? 'shepherd-modal-is-visible' : '', " shepherd-modal-overlay-container"))) {
+        if (dirty & /*modalIsVisible*/2 && svg_class_value !== (svg_class_value = "".concat(/*modalIsVisible*/ctx[1] ? 'shepherd-modal-is-visible' : '', " shepherd-modal-overlay-container"))) {
           attr(svg, "class", svg_class_value);
         }
       },
@@ -4431,12 +4431,12 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
       var scrollParent = _getScrollParent(step.target);
 
       // Setup recursive function to call requestAnimationFrame to update the modal opening position
-      var rafLoop = function rafLoop() {
+      var _rafLoop = function rafLoop() {
         rafId = undefined;
         positionModal(modalOverlayOpeningPadding, modalOverlayOpeningRadius, scrollParent, step.target);
-        rafId = requestAnimationFrame(rafLoop);
+        rafId = requestAnimationFrame(_rafLoop);
       };
-      rafLoop();
+      _rafLoop();
       _addStepEventListeners();
     }
     function svg_binding($$value) {
@@ -4628,7 +4628,7 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
     }, {
       key: "cancel",
       value: (function () {
-        var _cancel = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee6() {
+        var _cancel = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee6() {
           var confirmCancelIsFunction, cancelMessage, stopTour;
           return _regeneratorRuntime().wrap(function _callee6$(_context6) {
             while (1) switch (_context6.prev = _context6.next) {

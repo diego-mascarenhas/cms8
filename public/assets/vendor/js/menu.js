@@ -800,7 +800,7 @@ var Menu = /*#__PURE__*/function () {
     }
   }], [{
     key: "childOf",
-    value: function childOf( /* child node */c, /* parent node */p) {
+    value: function childOf(/* child node */c, /* parent node */p) {
       // returns boolean
       if (c.parentNode) {
         while ((c = c.parentNode) && c !== p);

@@ -123,18 +123,18 @@ var Helpers = {
       var change = activeEl - start - parseInt(element.clientHeight / 2, 10);
       var startDate = +new Date();
       if (animate === true) {
-        var animateScroll = function animateScroll() {
+        var _animateScroll = function animateScroll() {
           var currentDate = +new Date();
           var currentTime = currentDate - startDate;
           var val = easeInOutQuad(currentTime, start, change, duration);
           element.scrollTop = val;
           if (currentTime < duration) {
-            requestAnimationFrame(animateScroll);
+            requestAnimationFrame(_animateScroll);
           } else {
             element.scrollTop = change;
           }
         };
-        animateScroll();
+        _animateScroll();
       } else {
         element.scrollTop = change;
       }
@@ -560,18 +560,18 @@ var Helpers = {
     var startDate = +new Date();
     // const increment = 20
 
-    var animateScroll = function animateScroll() {
+    var _animateScroll2 = function animateScroll() {
       var currentDate = +new Date();
       var currentTime = currentDate - startDate;
       var val = easeInOutQuad(currentTime, start, change, duration);
       element.scrollTop = val;
       if (currentTime < duration) {
-        requestAnimationFrame(animateScroll);
+        requestAnimationFrame(_animateScroll2);
       } else {
         element.scrollTop = to;
       }
     };
-    animateScroll();
+    _animateScroll2();
   },
   // ---
   // Collapse / expand layout
