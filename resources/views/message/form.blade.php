@@ -25,9 +25,6 @@
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">Messages/</span> {{ isset($data->id) ? 'Edit' : 'Create' }}</h4>
         <p class="text-muted">Manage your messages with ease and keep your audience engaged!</p>
     </div>
-    <!-- <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('category.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Eliminar</a>
-    </div> -->
 </div>
 
 <div class="card mb-4">
@@ -41,7 +38,12 @@
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="category_id" label="Category" :options="$data->categories" value="{{ old('category_id', $data->category_id ?? '') }}" />
+				<x-module-categories-select 
+					id="category_id" 
+					label="Categoría" 
+					moduleKey="contacts"
+					:selected="old('category_id', $data->category_id ?? '')" 
+				/>
 			</div>
 			<div class="col-md-6">
 				<x-input-select id="type_id" label="Type (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
@@ -63,7 +65,7 @@
 
 		<div class="pt-4">
 			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('app-mkt-message-list') }}'">Cancel</button>
+			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message-list') }}'">Cancel</button>
 		</div>
 	</form>
 </div>

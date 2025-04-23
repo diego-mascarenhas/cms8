@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
-use App\Models\Category;
 use App\Models\Message;
 use App\Models\MessageType;
 use App\Models\Template;
@@ -29,9 +28,8 @@ class MessageController extends Controller
     public function create()
     {
         $data = new stdClass();
-        $data->categories = Category::categories();
-        $data->types = MessageType::types();
-        $data->templates = Template::templates();
+        $data->types = MessageType::getOptions();
+        $data->templates = Template::getOptions();
 
         return view('message.form', compact('data'));
     }
@@ -61,7 +59,7 @@ class MessageController extends Controller
             ]
         );
 
-        return redirect()->route('app-mkt-message-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('message-list')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -78,13 +76,12 @@ class MessageController extends Controller
     public function edit(string $id)
     {
         $data = Message::find($id);
-        $data->categories = Category::getOptions();
         $data->types = MessageType::getOptions();
         $data->templates = Template::getOptions();
 
         if (!$data)
         {
-            return redirect()->route('app-mkt-message-list')->with('error', 'Message not found.');
+            return redirect()->route('message-list')->with('error', 'Message not found.');
         }
 
         return view('message.form', compact('data'));

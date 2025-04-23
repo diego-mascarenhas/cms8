@@ -45,7 +45,7 @@ class TemplateController extends Controller
             ]
         );
 
-        return redirect()->route('app-mkt-template-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('template-list')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -71,7 +71,7 @@ class TemplateController extends Controller
 
         if (!$data)
         {
-            return redirect()->route('app-mkt-template-list')->with('error', 'Template not found.');
+            return redirect()->route('template-list')->with('error', 'Template not found.');
         }
 
         return view('template.form', compact('data'));
