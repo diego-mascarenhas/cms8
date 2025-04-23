@@ -222,13 +222,13 @@ Route::middleware(['auth'])->group(function ()
     // Templates
     Route::get('/template/list', [TemplateController::class, 'index'])->name('template-list');
     Route::get('/template/create', [TemplateController::class, 'create'])->name('template.create');
-    Route::get('/template/{id}', [TemplateController::class, 'show'])->name('template.show');
-    Route::get('/template/{id}/edit', [TemplateController::class, 'edit'])->name('template.edit');
+    Route::get('/template/{hashedId}', [TemplateController::class, 'show'])->name('template.show');
+    Route::get('/template/{hashedId}/edit', [TemplateController::class, 'edit'])->name('template.edit');
     Route::post('/template', [TemplateController::class, 'store'])->name('template.store');
-    Route::put('/template/{id}', [TemplateController::class, 'update'])->name('template.update');
-    Route::delete('/template/{id}', [TemplateController::class, 'destroy'])->name('template.destroy');
-    Route::get('/template/{page}/editor', [TemplateController::class, 'editor'])->name('template.editor');
-    Route::get('/template/{page}', [TemplateController::class, 'show'])->name('template.view');
+    Route::put('/template/{hashedId}', [TemplateController::class, 'update'])->name('template.update');
+    Route::delete('/template/{hashedId}', [TemplateController::class, 'destroy'])->name('template.destroy');
+    Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');
+    Route::get('/template/view/{hashedId}', [TemplateController::class, 'show'])->name('template.view');
 });
 
 // Testing
