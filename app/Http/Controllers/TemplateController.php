@@ -109,6 +109,10 @@ class TemplateController extends Controller
             return redirect()->route('template-list')->with('error', 'Template not found.');
         }
         
+        // Add team ID information to the editor context
+        $teamId = auth()->user()->currentTeam->id ?? 'default';
+        $request->merge(['team_id' => $teamId]);
+        
         return $this->show_gjs_editor($request, $page);
     }
 }

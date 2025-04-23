@@ -72,4 +72,14 @@ class Template extends Model implements Editable
             return null;
         }
     }
+    
+    /**
+     * Get the current team ID for the template
+     * 
+     * @return int|null
+     */
+    public function getTeamId()
+    {
+        return auth()->user()->currentTeam->id ?? null;
+    }
 }

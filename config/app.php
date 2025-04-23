@@ -172,6 +172,7 @@ return [
     App\Providers\FortifyServiceProvider::class,
     App\Providers\JetstreamServiceProvider::class,
     App\Providers\MenuServiceProvider::class,
+    App\Providers\GrapesJsServiceProvider::class,
     Yajra\DataTables\DataTablesServiceProvider::class,
     Spatie\Permission\PermissionServiceProvider::class,
     App\Providers\BladeServiceProvider::class,
