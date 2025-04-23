@@ -19,6 +19,36 @@ class TeamAssetRepository extends AssetRepository
         return substr(md5('team_salt_' . $teamId . '_' . config('app.key')), 0, 12);
     }
 
+    /**
+     * Normalize filename for URL safety
+     * 
+     * @param string $filename
+     * @return string
+     */
+    protected function normalizeFilename($filename)
+    {
+        // Get file extension
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $name = pathinfo($filename, PATHINFO_FILENAME);
+        
+        // Transliterate accented characters to ASCII
+        $name = Str::ascii($name);
+        
+        // Convert to lowercase and replace spaces with hyphens
+        $name = Str::slug($name);
+        
+        // Remove any remaining non-alphanumeric characters except for hyphens
+        $name = preg_replace('/[^a-z0-9\-]/', '', $name);
+        
+        // Ensure name is not empty
+        if (empty($name)) {
+            $name = 'file_' . substr(md5(time() . rand()), 0, 8);
+        }
+        
+        // Combine with extension
+        return $name . '.' . strtolower($extension);
+    }
+
     public function __construct()
     {
         parent::__construct();
@@ -31,6 +61,7 @@ class TeamAssetRepository extends AssetRepository
     
     /**
      * Override the single file upload method to ensure team ID is included
+     * and filenames are normalized
      */
     public function uploadSinglgeFile(UploadedFile $file)
     {
@@ -39,7 +70,19 @@ class TeamAssetRepository extends AssetRepository
         $teamHash = $this->getTeamHash($teamId);
         $this->diskPath = "media/{$teamHash}";
         
-        return parent::uploadSinglgeFile($file);
+        // Check if the file is from blob or has a real filename
+        if ($file->getClientOriginalName() === 'blob') {
+            // Use default method for blob files (these are typically from image editor)
+            return parent::uploadSinglgeFile($file);
+        } else {
+            // Normalize the filename before storing
+            $normalizedFilename = $this->normalizeFilename($file->getClientOriginalName());
+            
+            // Store file with normalized name
+            $path = $this->storage->putFileAs($this->diskPath, $file, $normalizedFilename, 'public');
+            
+            return $this->storage->url($path);
+        }
     }
     
     /**
@@ -63,5 +106,13 @@ class TeamAssetRepository extends AssetRepository
             'team_hash' => $teamHash,
             'path' => $this->diskPath
         ];
+    }
+    
+    /**
+     * Test filename normalization
+     */
+    public function testNormalizeFilename($filename)
+    {
+        return $this->normalizeFilename($filename);
     }
 } 

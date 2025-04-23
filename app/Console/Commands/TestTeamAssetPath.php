@@ -9,8 +9,8 @@ use App\Models\User;
 
 class TestTeamAssetPath extends Command
 {
-    protected $signature = 'test:team-asset-path {user_id? : The ID of the user to impersonate}';
-    protected $description = 'Test the team asset path functionality';
+    protected $signature = 'test:team-asset-path {user_id? : The ID of the user to impersonate} {--test-filename=}';
+    protected $description = 'Test the team asset path functionality and filename normalization';
 
     public function handle()
     {
@@ -43,6 +43,36 @@ class TestTeamAssetPath extends Command
         $this->info("Team ID: {$teamInfo['team_id']}");
         $this->info("Team Hash: {$teamInfo['team_hash']} (md5 truncado a 12 caracteres)");
         $this->info("Asset upload path: {$teamInfo['path']}");
+        
+        // Test filename normalization if provided
+        $testFilename = $this->option('test-filename');
+        if ($testFilename) {
+            $normalizedFilename = $repository->testNormalizeFilename($testFilename);
+            $this->info("");
+            $this->info("Normalizando nombre de archivo:");
+            $this->info("Original: $testFilename");
+            $this->info("Normalizado: $normalizedFilename");
+        }
+        
+        // Add examples of problematic filenames
+        if (!$this->option('test-filename')) {
+            $this->info("");
+            $this->info("Ejemplos de normalización:");
+            $examples = [
+                'Archivo Español.jpg',
+                'image with spaces.png',
+                'FILE-UPPER_CASE.PDF',
+                'símbolos!@#$%.txt',
+                'document (1) copy.docx',
+                'áéíóúñ.gif',
+                'file"with?dangerous-chars.svg'
+            ];
+            
+            foreach ($examples as $example) {
+                $normal = $repository->testNormalizeFilename($example);
+                $this->info("$example → $normal");
+            }
+        }
         
         return 0;
     }
