@@ -209,9 +209,9 @@ class RolesAndPermissionsSeeder extends Seeder
 
         Permission::create(['name' => 'pages.edit']);
 
-        Permission::create(['name' => 'mkt.category.list']);
-        Permission::create(['name' => 'mkt.message.list']);
-        Permission::create(['name' => 'mkt.template.list']);
+        Permission::create(['name' => 'category.list']);
+        Permission::create(['name' => 'message.list']);
+        Permission::create(['name' => 'template.list']);
 
         Permission::create(['name' => 'hosting.index']);
         Permission::create(['name' => 'hosting.list']);
@@ -272,6 +272,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'hosting.edit',
             'hosting.store',
             'hosting.update',
+            'category.list',
+            'message.list',
+            'template.list',
         ]);
 
         $colaboratorRole = Role::create(['name' => 'colaborator']);
@@ -316,6 +319,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'hosting.edit',
             'hosting.store',
             'hosting.update',
+            'category.list',
+            'message.list',
+            'template.list',
         ]);
 
         $editorRole = Role::create(['name' => 'auditor']);

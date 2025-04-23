@@ -102,10 +102,10 @@ class ModuleSeeder extends Seeder
             'icon' => 'photo-video',
             'description' => 'Multimedia files management module',
         ],
-        'marketing' => [
-            'name' => 'Marketing',
-            'icon' => 'bullhorn',
-            'description' => 'Marketing tools and campaigns module',
+        'website' => [
+            'name' => 'Website',
+            'icon' => 'world',
+            'description' => 'Website module',
         ],
         'hosting' => [
             'name' => 'Hosting',
@@ -179,8 +179,13 @@ class ModuleSeeder extends Seeder
         ],
         'campaigns' => [
             'name' => 'Campaigns',
-            'icon' => 'mail',
+            'icon' => 'send',
             'description' => 'Campaigns management module',
+        ],
+        'templates' => [
+            'name' => 'Templates',
+            'icon' => 'template',
+            'description' => 'Templates management module',
         ],
     ];
     

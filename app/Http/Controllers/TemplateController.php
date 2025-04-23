@@ -45,15 +45,15 @@ class TemplateController extends Controller
             ]
         );
 
-        return redirect()->route('app-mkt-template-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('template-list')->with('success', 'Record saved successfully.');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(string $hashedId)
     {
-        $page = Template::find($id);
+        $page = Template::findByHash($hashedId);
 
         if (!$page) {
             return redirect()->route('template.index')->with('error', 'Page not found.');
@@ -65,13 +65,13 @@ class TemplateController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(string $hashedId)
     {
-        $data = Template::find($id);
+        $data = Template::findByHash($hashedId);
 
         if (!$data)
         {
-            return redirect()->route('app-mkt-template-list')->with('error', 'Template not found.');
+            return redirect()->route('template-list')->with('error', 'Template not found.');
         }
 
         return view('template.form', compact('data'));
@@ -80,7 +80,7 @@ class TemplateController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $hashedId)
     {
         //
     }
@@ -88,17 +88,31 @@ class TemplateController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(string $hashedId)
     {
-        $model = Template::findOrFail($id);
+        $model = Template::findByHash($hashedId);
+        
+        if (!$model) {
+            return response()->json(['error' => 'Template not found.'], 404);
+        }
 
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
     }
 
-    public function editor(Request $request, Template $page)
+    public function editor(Request $request, string $hashedId)
     {
+        $page = Template::findByHash($hashedId);
+        
+        if (!$page) {
+            return redirect()->route('template-list')->with('error', 'Template not found.');
+        }
+        
+        // Add team ID information to the editor context
+        $teamId = auth()->user()->currentTeam->id ?? 'default';
+        $request->merge(['team_id' => $teamId]);
+        
         return $this->show_gjs_editor($request, $page);
     }
 }

@@ -2965,6 +2965,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _popperjs_core__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @popperjs/core */ "./node_modules/@popperjs/core/lib/index.js");
 /* harmony import */ var _popperjs_core__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @popperjs/core */ "./node_modules/@popperjs/core/lib/popper.js");
+function _superPropGet(t, o, e, r) { var p = _get(_getPrototypeOf(1 & r ? t.prototype : t), o, e); return 2 & r && "function" == typeof p ? function (t) { return p.apply(e, t); } : p; }
 function _get() { return _get = "undefined" != typeof Reflect && Reflect.get ? Reflect.get.bind() : function (e, t, r) { var p = _superPropBase(e, t); if (p) { var n = Object.getOwnPropertyDescriptor(p, t); return n.get ? n.get.call(arguments.length < 3 ? e : r) : n.value; } }, _get.apply(null, arguments); }
 function _superPropBase(t, o) { for (; !{}.hasOwnProperty.call(t, o) && null !== (t = _getPrototypeOf(t));); return t; }
 function _callSuper(t, o, e) { return o = _getPrototypeOf(o), _possibleConstructorReturn(t, _isNativeReflectConstruct() ? Reflect.construct(o, e || [], _getPrototypeOf(t).constructor) : o.apply(t, e)); }
@@ -3170,7 +3171,7 @@ var isDisabled = function isDisabled(element) {
   }
   return element.hasAttribute('disabled') && element.getAttribute('disabled') !== 'false';
 };
-var findShadowRoot = function findShadowRoot(element) {
+var _findShadowRoot = function findShadowRoot(element) {
   if (!document.documentElement.attachShadow) {
     return null;
   }
@@ -3188,7 +3189,7 @@ var findShadowRoot = function findShadowRoot(element) {
   if (!element.parentNode) {
     return null;
   }
-  return findShadowRoot(element.parentNode);
+  return _findShadowRoot(element.parentNode);
 };
 var noop = function noop() {};
 
@@ -3259,16 +3260,16 @@ var executeAfterTransition = function executeAfterTransition(callback, transitio
   var durationPadding = 5;
   var emulatedDuration = getTransitionDurationFromElement(transitionElement) + durationPadding;
   var called = false;
-  var handler = function handler(_ref) {
+  var _handler = function handler(_ref) {
     var target = _ref.target;
     if (target !== transitionElement) {
       return;
     }
     called = true;
-    transitionElement.removeEventListener(TRANSITION_END, handler);
+    transitionElement.removeEventListener(TRANSITION_END, _handler);
     execute(callback);
   };
-  transitionElement.addEventListener(TRANSITION_END, handler);
+  transitionElement.addEventListener(TRANSITION_END, _handler);
   setTimeout(function () {
     if (!called) {
       triggerTransitionEnd(transitionElement);
@@ -4403,7 +4404,7 @@ var Carousel = /*#__PURE__*/function (_BaseComponent3) {
       if (this._swipeHelper) {
         this._swipeHelper.dispose();
       }
-      _get(_getPrototypeOf(Carousel.prototype), "dispose", this).call(this);
+      _superPropGet(Carousel, "dispose", this, 3)([]);
     }
 
     // Private
@@ -5175,7 +5176,7 @@ var Dropdown = /*#__PURE__*/function (_BaseComponent5) {
       if (this._popper) {
         this._popper.destroy();
       }
-      _get(_getPrototypeOf(Dropdown.prototype), "dispose", this).call(this);
+      _superPropGet(Dropdown, "dispose", this, 3)([]);
     }
   }, {
     key: "update",
@@ -5224,7 +5225,7 @@ var Dropdown = /*#__PURE__*/function (_BaseComponent5) {
   }, {
     key: "_getConfig",
     value: function _getConfig(config) {
-      config = _get(_getPrototypeOf(Dropdown.prototype), "_getConfig", this).call(this, config);
+      config = _superPropGet(Dropdown, "_getConfig", this, 3)([config]);
       if (_typeof(config.reference) === 'object' && !isElement(config.reference) && typeof config.reference.getBoundingClientRect !== 'function') {
         // Popper virtual elements require a getBoundingClientRect method
         throw new TypeError("".concat(NAME$a.toUpperCase(), ": Option \"reference\" provided type \"object\" without a required \"getBoundingClientRect\" method."));
@@ -5977,7 +5978,7 @@ var Modal = /*#__PURE__*/function (_BaseComponent6) {
       EventHandler.off(this._dialog, EVENT_KEY$4);
       this._backdrop.dispose();
       this._focustrap.deactivate();
-      _get(_getPrototypeOf(Modal.prototype), "dispose", this).call(this);
+      _superPropGet(Modal, "dispose", this, 3)([]);
     }
   }, {
     key: "handleUpdate",
@@ -6340,7 +6341,7 @@ var Offcanvas = /*#__PURE__*/function (_BaseComponent7) {
     value: function dispose() {
       this._backdrop.dispose();
       this._focustrap.deactivate();
-      _get(_getPrototypeOf(Offcanvas.prototype), "dispose", this).call(this);
+      _superPropGet(Offcanvas, "dispose", this, 3)([]);
     }
 
     // Private
@@ -6700,7 +6701,7 @@ var TemplateFactory = /*#__PURE__*/function (_Config5) {
   }, {
     key: "_typeCheckConfig",
     value: function _typeCheckConfig(config) {
-      _get(_getPrototypeOf(TemplateFactory.prototype), "_typeCheckConfig", this).call(this, config);
+      _superPropGet(TemplateFactory, "_typeCheckConfig", this, 3)([config]);
       this._checkContent(config.content);
     }
   }, {
@@ -6711,10 +6712,10 @@ var TemplateFactory = /*#__PURE__*/function (_Config5) {
         var _ref20 = _slicedToArray(_ref19, 2);
         var selector = _ref20[0];
         var content = _ref20[1];
-        _get(_getPrototypeOf(TemplateFactory.prototype), "_typeCheckConfig", this).call(this, {
+        _superPropGet(TemplateFactory, "_typeCheckConfig", this, 3)([{
           selector: selector,
           entry: content
-        }, DefaultContentType);
+        }, DefaultContentType]);
       }
     }
   }, {
@@ -6924,7 +6925,7 @@ var Tooltip = /*#__PURE__*/function (_BaseComponent8) {
         this._element.setAttribute('title', this._element.getAttribute('data-bs-original-title'));
       }
       this._disposePopper();
-      _get(_getPrototypeOf(Tooltip.prototype), "dispose", this).call(this);
+      _superPropGet(Tooltip, "dispose", this, 3)([]);
     }
   }, {
     key: "show",
@@ -6937,7 +6938,7 @@ var Tooltip = /*#__PURE__*/function (_BaseComponent8) {
         return;
       }
       var showEvent = EventHandler.trigger(this._element, this.constructor.eventName(EVENT_SHOW$2));
-      var shadowRoot = findShadowRoot(this._element);
+      var shadowRoot = _findShadowRoot(this._element);
       var isInTheDom = (shadowRoot || this._element.ownerDocument.documentElement).contains(this._element);
       if (showEvent.defaultPrevented || !isInTheDom) {
         return;
@@ -7584,7 +7585,7 @@ var ScrollSpy = /*#__PURE__*/function (_BaseComponent9) {
     key: "dispose",
     value: function dispose() {
       this._observer.disconnect();
-      _get(_getPrototypeOf(ScrollSpy.prototype), "dispose", this).call(this);
+      _superPropGet(ScrollSpy, "dispose", this, 3)([]);
     }
 
     // Private
@@ -8279,7 +8280,7 @@ var Toast = /*#__PURE__*/function (_BaseComponent11) {
       if (this.isShown()) {
         this._element.classList.remove(CLASS_NAME_SHOW);
       }
-      _get(_getPrototypeOf(Toast.prototype), "dispose", this).call(this);
+      _superPropGet(Toast, "dispose", this, 3)([]);
     }
   }, {
     key: "isShown",

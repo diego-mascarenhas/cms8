@@ -21,7 +21,9 @@ class TemplateDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'template.action')
+            ->addColumn('action', function ($template) {
+                return view('template.action', ['id' => $template->getHashedId()])->render();
+            })
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status'])
             ->editColumn('updated_at', function ($data)

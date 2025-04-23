@@ -31,6 +31,7 @@ use App\Http\Controllers\DomainController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\TemplateController;
 
 // auth
 Route::middleware([
@@ -204,6 +205,30 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/accounting/customer/{id}', [AccountingController::class, 'customerInvoices'])->name('accounting.customer');
     Route::get('/accounting/download-quarter', [AccountingController::class, 'downloadQuarterInvoices'])->name('accounting.download-quarter');
     Route::get('/accounting/download-quarter-csv', [AccountingController::class, 'downloadQuarterCsv'])->name('accounting.download-quarter-csv');
+
+    // Messages
+    Route::get('message/list', [MessageController::class, 'index'])->name('message-list');
+    Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
+    Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
+    Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
+    Route::post('message', [MessageController::class, 'store'])->name('message.store');
+    Route::put('message/{id}', [MessageController::class, 'update'])->name('message.update');
+    Route::delete('message/{id}', [MessageController::class, 'destroy'])->name('message.destroy');
+
+    Route::get('/send-sms', [MessageController::class, 'sendSmsMessage']);
+    Route::get('/send-whatsapp', [MessageController::class, 'sendWhatsAppMessage']);
+    Route::get('/send-email', [MessageController::class, 'sendSendGridMessage']);
+
+    // Templates
+    Route::get('/template/list', [TemplateController::class, 'index'])->name('template-list');
+    Route::get('/template/create', [TemplateController::class, 'create'])->name('template.create');
+    Route::get('/template/{hashedId}', [TemplateController::class, 'show'])->name('template.show');
+    Route::get('/template/{hashedId}/edit', [TemplateController::class, 'edit'])->name('template.edit');
+    Route::post('/template', [TemplateController::class, 'store'])->name('template.store');
+    Route::put('/template/{hashedId}', [TemplateController::class, 'update'])->name('template.update');
+    Route::delete('/template/{hashedId}', [TemplateController::class, 'destroy'])->name('template.destroy');
+    Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');
+    Route::get('/template/view/{hashedId}', [TemplateController::class, 'show'])->name('template.view');
 });
 
 // Testing

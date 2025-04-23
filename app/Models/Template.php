@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Dotlogics\Grapesjs\App\Traits\EditableTrait;
 use Dotlogics\Grapesjs\App\Contracts\Editable;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Contracts\Encryption\DecryptException;
 
 class Template extends Model implements Editable
 {
@@ -33,5 +35,51 @@ class Template extends Model implements Editable
                 'name' => $data->name,
             ];
         });
+    }
+    
+    /**
+     * Get the route key for the model.
+     *
+     * @return string
+     */
+    public function getRouteKey()
+    {
+        return $this->getHashedId();
+    }
+    
+    /**
+     * Hash the ID for public URLs
+     *
+     * @return string
+     */
+    public function getHashedId()
+    {
+        return Crypt::encryptString($this->id);
+    }
+    
+    /**
+     * Find a template by its hashed ID
+     *
+     * @param string $hashedId
+     * @return Template|null
+     */
+    public static function findByHash($hashedId)
+    {
+        try {
+            $id = Crypt::decryptString($hashedId);
+            return self::find($id);
+        } catch (DecryptException $e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Get the current team ID for the template
+     * 
+     * @return int|null
+     */
+    public function getTeamId()
+    {
+        return auth()->user()->currentTeam->id ?? null;
     }
 }

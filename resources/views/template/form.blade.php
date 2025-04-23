@@ -25,9 +25,6 @@
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">Templates/</span> {{ isset($data->id) ? 'Edit' : 'Create' }}</h4>
         <p class="text-muted">Create and customize templates for consistent communication!</p>
     </div>
-    <!-- <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('category.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Eliminar</a>
-    </div> -->
 </div>
 
 <div class="card mb-4">
@@ -51,7 +48,7 @@
 
 		<div class="pt-4">
 			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('app-mkt-template-list') }}'">Cancel</button>
+			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('template-list') }}'">Cancel</button>
 		</div>
 	</form>
 </div>

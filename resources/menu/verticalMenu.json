@@ -130,7 +130,7 @@
 			"menuHeader": "Team"
 		},
 		{
-			"url": "user/list",
+			"url": "user-management",
 			"name": "Users",
 			"icon": "menu-icon tf-icons ti ti-users",
 			"slug": "user-list",
@@ -173,11 +173,11 @@
 			"module_key": "integrations"
 		},
 		{
-			"url": "campaign/list",
+			"url": "message/list",
 			"name": "Campaigns",
-			"icon": "menu-icon tf-icons ti ti-mail",
-			"slug": "campaign-list",
-			"permission": "campaign.list",
+			"icon": "menu-icon tf-icons ti ti-send",
+			"slug": "message-list",
+			"permission": "message.list",
 			"module_key": "campaigns"
 		},
 		{
@@ -224,42 +224,24 @@
 			"icon": "menu-icon tf-icons ti ti-globe",
 			"slug": "page-edit",
 			"target": "blank",
-			"permission": "pages.edit",
-			"module_key": "landings"
+			"permission": "hosting.edit",
+			"module_key": "website"
+		},
+		{
+			"url": "template/list",
+			"name": "Templates",
+			"icon": "menu-icon tf-icons ti ti-template",
+			"slug": "template-list",
+			"permission": "template.list",
+			"module_key": "templates"		
 		},
 		{
 			"url": "hosting",
 			"name": "Hosting",
 			"icon": "menu-icon tf-icons ti ti-server",
 			"slug": "hosting.index",
-			"permission": "hosting.index"
-		},
-		{
-			"menuHeader": "Mkt"
-		},
-		{	
-			"url": "mkt/category/list",
-			"name": "Categories",
-			"icon": "menu-icon tf-icons ti ti-list",
-			"slug": "mkt-category-list",
-			"permission": "mkt.category.list",
-			"module_key": "marketing"
-		},
-		{
-			"url": "mkt/message/list",
-			"name": "Mensajes",
-			"icon": "menu-icon tf-icons ti ti-send",
-			"slug": "mkt-message-list",
-			"permission": "mkt.message.list",
-			"module_key": "marketing"
-		},
-		{
-			"url": "mkt/template/list",
-			"name": "Templates",
-			"icon": "menu-icon tf-icons ti ti-template",
-			"slug": "mkt-template-list",
-			"permission": "mkt.template.list",
-			"module_key": "marketing"		
+			"permission": "hosting.index",
+			"module_key": "hosting"
 		}
 	]
 }

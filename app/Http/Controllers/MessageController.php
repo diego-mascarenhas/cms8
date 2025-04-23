@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
-use App\Models\Category;
 use App\Models\Message;
 use App\Models\MessageType;
 use App\Models\Template;
@@ -29,9 +28,8 @@ class MessageController extends Controller
     public function create()
     {
         $data = new stdClass();
-        $data->categories = Category::categories();
-        $data->types = MessageType::types();
-        $data->templates = Template::templates();
+        $data->types = MessageType::getOptions();
+        $data->templates = Template::getOptions();
 
         return view('message.form', compact('data'));
     }
@@ -61,7 +59,7 @@ class MessageController extends Controller
             ]
         );
 
-        return redirect()->route('app-mkt-message-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('message-list')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -78,13 +76,12 @@ class MessageController extends Controller
     public function edit(string $id)
     {
         $data = Message::find($id);
-        $data->categories = Category::getOptions();
         $data->types = MessageType::getOptions();
         $data->templates = Template::getOptions();
 
         if (!$data)
         {
-            return redirect()->route('app-mkt-message-list')->with('error', 'Message not found.');
+            return redirect()->route('message-list')->with('error', 'Message not found.');
         }
 
         return view('message.form', compact('data'));
@@ -112,8 +109,8 @@ class MessageController extends Controller
 
     public function sendSmsMessage(Request $request)
     {
-        $receiverNumber = '+34722372858'; // +5491155687301 // +5491138738376
-        $message = 'CMS8+ SMS Message testing...';
+        $receiverNumber = env('TWILIO_PHONE_TO');
+        $message = env('APP_NAME', 'Laravel') . ' SMS Message testing...';
 
         $sid = env('TWILIO_SID');
         $token = env('TWILIO_TOKEN');
@@ -137,8 +134,8 @@ class MessageController extends Controller
 
     public function sendWhatsAppMessage(Request $request)
     {
-        $receiverNumber = 'whatsapp:' . '+34722372858';
-        $message = 'CMS8+ WhatsApp Message testing...';
+        $receiverNumber = 'whatsapp:' . env('TWILIO_WHATSAPP_FROM');
+        $message = env('APP_NAME', 'Laravel') . ' WhatsApp Message testing...';
 
         $sid = env('TWILIO_SID');
         $token = env('TWILIO_TOKEN');
@@ -163,11 +160,11 @@ class MessageController extends Controller
     public function sendSendGridMessage()
     {
         $data = [
-            'to' => 'diego@revisionalpha.es',
+            'to' => env('MAILBOX_USERNAME'),
             'dynamic_template_data' => [
-                'name' => 'Diego Mascarenhas',
-                'message' => 'CMS8+ SendGrid Message testing...',
-                'unsubscribe_url' => route('unsubscribe', ['email' => 'diego@revisionalpha.es']),
+                'name' => env('APP_NAME', 'Laravel'),
+                'message' => env('APP_NAME', 'Laravel') . ' SendGrid Message testing...',
+                'unsubscribe_url' => route('unsubscribe', ['email' => env('MAILBOX_USERNAME')]),
             ],
         ];
 
