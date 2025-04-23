@@ -109,8 +109,8 @@ class MessageController extends Controller
 
     public function sendSmsMessage(Request $request)
     {
-        $receiverNumber = '+34722372858'; // +5491155687301 // +5491138738376
-        $message = 'CMS8+ SMS Message testing...';
+        $receiverNumber = env('TWILIO_PHONE_TO');
+        $message = env('APP_NAME', 'Laravel') . ' SMS Message testing...';
 
         $sid = env('TWILIO_SID');
         $token = env('TWILIO_TOKEN');
@@ -134,8 +134,8 @@ class MessageController extends Controller
 
     public function sendWhatsAppMessage(Request $request)
     {
-        $receiverNumber = 'whatsapp:' . '+34722372858';
-        $message = 'CMS8+ WhatsApp Message testing...';
+        $receiverNumber = 'whatsapp:' . env('TWILIO_WHATSAPP_FROM');
+        $message = env('APP_NAME', 'Laravel') . ' WhatsApp Message testing...';
 
         $sid = env('TWILIO_SID');
         $token = env('TWILIO_TOKEN');
@@ -160,11 +160,11 @@ class MessageController extends Controller
     public function sendSendGridMessage()
     {
         $data = [
-            'to' => 'diego@revisionalpha.es',
+            'to' => env('MAILBOX_USERNAME'),
             'dynamic_template_data' => [
-                'name' => 'Diego Mascarenhas',
-                'message' => 'CMS8+ SendGrid Message testing...',
-                'unsubscribe_url' => route('unsubscribe', ['email' => 'diego@revisionalpha.es']),
+                'name' => env('APP_NAME', 'Laravel'),
+                'message' => env('APP_NAME', 'Laravel') . ' SendGrid Message testing...',
+                'unsubscribe_url' => route('unsubscribe', ['email' => env('MAILBOX_USERNAME')]),
             ],
         ];
 
