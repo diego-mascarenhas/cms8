@@ -35,13 +35,14 @@ class TemplateController extends Controller
             'name' => 'required|string|min:3|max:25',
         ]);
 
-        $data['status'] = $request->has('status') ? 1 : 0;
+        // Set status_id based on checkbox presence
+        $status_id = $request->has('status_id') ? 2 : 1; // 2 = active, 1 = inactive
 
         Template::updateOrCreate(
             ['id' => $request->id],
             [
                 'name' => $data['name'],
-                'status' => $data['status'],
+                'status_id' => $status_id,
             ]
         );
 

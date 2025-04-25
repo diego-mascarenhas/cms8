@@ -40,7 +40,7 @@
 			<div class="col-xl-12 p-4">
 				<div class="text-light small fw-medium">Status</div>
 				<div class="demo-inline-spacing">
-					<x-input-checkbox name="status" label="Active" value="{{ old('status', $data->status ?? '') }}" />
+					<x-input-checkbox name="status_id" label="Active" value="{{ old('status_id', $data->status_id ?? '') }}" />
 				</div>
 			</div>
 		</div>

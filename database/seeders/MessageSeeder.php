@@ -18,7 +18,7 @@ class MessageSeeder extends Seeder
             'name' => 'Test',
             'text' => 'Test Message',
             'type_id' => 2,
-            'status' => 1
+            'status_id' => 1
         ]);
 
         Message::create([
@@ -27,7 +27,7 @@ class MessageSeeder extends Seeder
             'text' => 'Test Message Two',
             'type_id' => 1,
             'template_id' => 1,
-            'status' => 0
+            'status_id' => 2
         ]);
     }
 }

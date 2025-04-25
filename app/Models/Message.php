@@ -32,6 +32,12 @@ class Message extends Model
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
+
+        static::creating(function ($model) {
+            if (!$model->team_id && auth()->check()) {
+                $model->team_id = auth()->user()->currentTeam->id;
+            }
+        });
     }
 
     public function team()

@@ -8,6 +8,7 @@ use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
+use App\Enums\MessageStatus;
 
 use Carbon\Carbon;
 
@@ -23,7 +24,7 @@ class MessageDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'message.action')
             ->setRowId('id')
-            ->rawColumns(['name', 'action', 'status'])
+            ->rawColumns(['name', 'action', 'status_id'])
             ->editColumn('type_id', function ($data)
             {
                 return $data->type->name;
@@ -36,9 +37,11 @@ class MessageDataTable extends DataTable
             {
                 return Carbon::parse($data->updated_at)->format('d-m-Y H:i:s');
             })
-            ->editColumn('status', function ($data)
+            ->editColumn('status_id', function ($data)
             {
-                if ($data->status)
+                $statusValue = is_object($data->status_id) ? $data->status_id->value : $data->status_id;
+                
+                if ($statusValue == 2)
                 {
                     return '<span class="badge rounded-pill bg-label-success">Active</span>';
                 }
@@ -61,23 +64,39 @@ class MessageDataTable extends DataTable
                     ->columns($this->getColumns())
                     ->minifiedAjax()
                     ->dom('frtip')
-                    ->orderBy(2);
+                    ->orderBy(1)
+                    ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json']);
     }
 
     public function getColumns(): array
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('name')->title('Name'),
-            Column::make('type_id')->title('Type'),
-            Column::make('category_id')->title('Category'),
-            Column::make('updated_at')->title('Updated')->className('text-center'),
-            Column::make('status')->title('Status')->className('text-center'),
-            Column::computed('action')->title('Actions')->width(20)->className('text-center')
-                  ->exportable(false)
-                  ->printable(false)
-                  ->width(30)
-                  ->addClass('text-center'),
+            Column::make('name')
+                ->title(__('Name'))
+                ->addClass('all'),
+            Column::make('type_id')
+                ->title(__('Type'))
+                ->addClass('min-tablet'),
+            Column::make('category_id')
+                ->title(__('Category'))
+                ->addClass('min-desktop'),
+            Column::make('updated_at')
+                ->title(__('Updated'))
+                ->className('text-center')
+                ->addClass('min-tablet'),
+            Column::make('status_id')
+                ->title(__('Status'))
+                ->className('text-center')
+                ->addClass('min-tablet'),
+            Column::computed('action')
+                ->title(__('Actions'))
+                ->width(20)
+                ->className('text-center')
+                ->exportable(false)
+                ->printable(false)
+                ->width(30)
+                ->addClass('min-desktop'),
         ];
     }
 

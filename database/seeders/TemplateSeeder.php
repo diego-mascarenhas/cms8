@@ -14,7 +14,7 @@ class TemplateSeeder extends Seeder
 	{
 		Template::create([
 			'name' => 'Hosting Cloud',
-			'status' => 1,
+			'status_id' => 1,
 		]);
 	}
 }

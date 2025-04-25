@@ -46,16 +46,18 @@ class MessageController extends Controller
             'text' => 'required|string|min:3|max:255',
         ]);
 
-        $data['status'] = $request->has('status') ? 1 : 0;
+        // Set status_id based on checkbox presence
+        $status_id = $request->has('status_id') ? 2 : 1; // 2 = active, 1 = inactive
 
         Message::updateOrCreate(
             ['id' => $request->id],
             [
                 'name' => $data['name'],
-                'category_id' => $data['category_id'],
                 'type_id' => $data['type_id'],
+                'category_id' => $data['category_id'],
+                'template_id' => $data['template_id'],
                 'text' => $data['text'],
-                'status' => $data['status'],
+                'status_id' => $status_id,
             ]
         );
 
