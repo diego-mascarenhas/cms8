@@ -14,14 +14,13 @@ return new class extends Migration
 		Schema::create('messages', function (Blueprint $table)
 		{
 			$table->id();
+			$table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
 			$table->string('name');
 			$table->unsignedInteger('type_id');
-			//$table->unsignedInteger('category_id')->nullable();
 			$table->foreignId('category_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
-			//$table->unsignedInteger('template_id')->nullable();
 			$table->foreignId('template_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
 			$table->text('text');
-			$table->tinyInteger('status')->default(2);
+			$table->tinyInteger('status_id')->default(2);
 			$table->timestamps();
 			$table->softDeletes();
 

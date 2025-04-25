@@ -14,9 +14,10 @@ return new class extends Migration
 		Schema::create('templates', function (Blueprint $table)
 		{
 			$table->id();
+			$table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
 			$table->string('name');
 			$table->json('gjs_data')->nullable();
-			$table->tinyInteger('status')->default(2);
+			$table->tinyInteger('status_id')->default(2);
 			$table->timestamps();
 			$table->softDeletes();
 		});

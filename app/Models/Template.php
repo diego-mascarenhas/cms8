@@ -9,6 +9,8 @@ use Dotlogics\Grapesjs\App\Traits\EditableTrait;
 use Dotlogics\Grapesjs\App\Contracts\Editable;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\Eloquent\Builder;
+use App\Enums\TemplateStatus;
 
 class Template extends Model implements Editable
 {
@@ -20,11 +22,28 @@ class Template extends Model implements Editable
 
     protected $table = 'templates';
 
-    protected $fillable = ['name', 'gjs_data', 'status'];
+    protected $fillable = ['name', 'gjs_data', 'status_id', 'team_id'];
 
     protected $casts = [
         'gjs_data' => 'array',
+        'status_id' => TemplateStatus::class,
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
 
     public static function getOptions()
     {
