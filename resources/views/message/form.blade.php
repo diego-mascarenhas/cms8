@@ -52,12 +52,12 @@
 				<x-input-select id="template_id" label="Template" :options="$data->templates" value="{{ old('template_id', $data->template_id ?? '') }}" />
 			</div>
 			<div class="col-md-12">
-				<x-input-textarea id="text" label="Text (*)" value="{{ old('vivienda_otra_informacion', $data->text?? '') }}" />
+				<x-input-textarea id="text" label="Text (*)" value="{{ old('text', $data->text?? '') }}" />
 			</div>
 			<div class="col-xl-12 p-4">
 				<div class="text-light small fw-medium">Status</div>
 				<div class="demo-inline-spacing">
-					<x-input-checkbox name="status" label="Active" value="{{ old('status', $data->status ?? '') }}" />
+					<x-input-checkbox name="status_id" label="Active" value="{{ old('status_id', $data->status_id ?? '') }}" />
 				</div>
 			</div>
 		</div>

@@ -23,7 +23,7 @@ class PageSeeder extends Seeder
       'id' => 1,
       'name' => 'Home',
 			'gjs_data' => $data,
-      'status' => 1,
+      'status_id' => 1,
     ]);
   }
 }

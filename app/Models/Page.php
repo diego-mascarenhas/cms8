@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Dotlogics\Grapesjs\App\Traits\EditableTrait;
 use Dotlogics\Grapesjs\App\Contracts\Editable;
+use Illuminate\Database\Eloquent\Builder;
+use App\Enums\PageStatus;
 
 class Page extends Model implements Editable
 {
@@ -18,9 +20,32 @@ class Page extends Model implements Editable
 
     protected $table = 'pages';
 
-    protected $fillable = ['name', 'gjs_data', 'status'];
+    protected $fillable = ['name', 'gjs_data', 'status_id', 'team_id'];
 
     protected $casts = [
         'gjs_data' => 'array',
+        'status_id' => PageStatus::class,
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+
+        static::creating(function ($model) {
+            if (!$model->team_id && auth()->check()) {
+                $model->team_id = auth()->user()->currentTeam->id;
+            }
+        });
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
 }

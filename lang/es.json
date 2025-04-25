@@ -611,5 +611,12 @@
     "Advisor": "Asesor",
     "Next contact": "Próximo contacto",
     "Type": "Tipo",
-    "Undefined": "Sin definir"
+    "Undefined": "Sin definir",
+    "Templates": "Plantillas",
+    "Messages": "Mensajes",
+    "Updated": "Actualizado",
+    "Active": "Activo",
+    "Inactive": "Inactivo",
+    "Text": "Texto",
+    "Template": "Plantilla"
 }

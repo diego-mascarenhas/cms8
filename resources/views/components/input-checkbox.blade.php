@@ -1,7 +1,7 @@
 @props(['name', 'label', 'value' => false])
 
 <label class="switch switch-secondary">
-    <input type="checkbox" class="switch-input" name="{{ $name }}" {{ old($name, $value) ? 'checked' : '' }} />
+    <input type="checkbox" class="switch-input" name="{{ $name }}" {{ old($name, $value) == 2 || old($name, $value) === true ? 'checked' : '' }} />
     <span class="switch-toggle-slider">
         <span class="switch-on">
             <i class="ti ti-check"></i>
