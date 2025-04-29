@@ -8,8 +8,6 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/bootstrap-select/bootstrap-select.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
 @endsection
 
 @section('vendor-script')
@@ -17,8 +15,6 @@
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/bootstrap-select/bootstrap-select.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -169,11 +165,11 @@
                         placeholder="Selector de estado emocional" />
                 </div>
                 <div class="flex-grow-1">
-                    <x-categories-select 
+                    <x-module-categories-select 
                         id="CategoryFilter" 
                         label=""
-                        :selected="[]"
                         moduleKey="contacts"
+                        :selected="''"
                     />
                 </div>
                 <div class="flex-grow-1" style="visibility: hidden;">
@@ -250,13 +246,10 @@
                 table.column('.select-filter').search(selectedValue).draw();
             });
 
+            // Use single value for category filter
             $('#CategoryFilter').on('change', function() {
-                let selectedValues = $(this).val();
-                if (selectedValues && selectedValues.length > 0) {
-                    table.column('.category-filter').search(selectedValues.join('|'), true, false).draw();
-                } else {
-                    table.column('.category-filter').search('').draw();
-                }
+                let selectedValue = $(this).val();
+                table.column(5).search(selectedValue ? selectedValue : '', true, false).draw();
             });
 
             $('#EnterpriseState').on('change', function() {

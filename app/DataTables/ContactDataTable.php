@@ -63,7 +63,7 @@ class ContactDataTable extends DataTable
             ->filterColumn('categories', function($query, $keyword) {
                 if ($keyword !== '') {
                     $query->whereHas('categories', function($q) use ($keyword) {
-                        $q->whereIn('id', explode('|', $keyword));
+                        $q->where('id', $keyword);
                     });
                 }
             })
@@ -117,6 +117,10 @@ class ContactDataTable extends DataTable
                 'drawCallback' => "function() {
                     $('#EmotionalState').off('change').on('change', function() {
                         $('#contact-table').DataTable().columns('.select-filter').search($(this).val()).draw();
+                    });
+                    $('#CategoryFilter').off('change').on('change', function() {
+                        let selectedValue = $(this).val();
+                        $('#contact-table').DataTable().column(5).search(selectedValue ? selectedValue : '', true, false).draw();
                     });
                 }",
             ]);
