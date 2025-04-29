@@ -2,7 +2,7 @@
 
 <div class="form-group">
     <label for="{{ $id }}">{{ $label }}</label>
-    <select id="{{ $id }}" name="{{ $id }}[]" class="form-control select2 @error($id) is-invalid @enderror" multiple>
+    <select id="{{ $id }}" name="categories[]" class="form-control select2 @error($id) is-invalid @enderror" multiple>
         @if($showNull)
             <option value="">Seleccione una categoría</option>
         @endif
@@ -103,7 +103,7 @@
             <optgroup label="{{ $parentCategory->name }}">
                 @if(isset($allSubcategories[$parentCategory->id]))
                     @foreach($allSubcategories[$parentCategory->id] as $subcategory)
-                        <option value="{{ $subcategory->id }}" {{ in_array($subcategory->id, old($id, $selected)) ? 'selected' : '' }}>
+                        <option value="{{ $subcategory->id }}" {{ in_array($subcategory->id, old('categories', $selected)) ? 'selected' : '' }}>
                             {{ $subcategory->name }}
                         </option>
                     @endforeach
@@ -117,4 +117,17 @@
             <strong>{{ $message }}</strong>
         </span>
     @enderror
-</div> 
+</div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        $('#{{ $id }}').select2({
+            placeholder: 'Select categories',
+            allowClear: true,
+            closeOnSelect: false,
+            width: '100%'
+        });
+    });
+</script>
+@endpush 
