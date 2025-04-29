@@ -98,4 +98,12 @@ class Conversation extends Model
     {
         return $query->where('direction', 'outbound');
     }
+
+    /**
+     * Get the user associated with the conversation based on the from phone number
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'from', 'phone');
+    }
 }

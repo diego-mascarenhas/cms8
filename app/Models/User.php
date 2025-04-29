@@ -88,6 +88,14 @@ class User extends Authenticatable
         return $this->hasMany(Enterprise::class, 'assigned_to', 'id');
     }
 
+    /**
+     * Get the conversations associated with this user's phone number
+     */
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class, 'from', 'phone');
+    }
+
     public function projetcs()
     {
         return $this->hasMany(Project::class, 'leader_id');
