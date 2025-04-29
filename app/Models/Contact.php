@@ -260,6 +260,11 @@ class Contact extends Model
 					->withTimestamps();
 	}
 
+	public function categories(): BelongsToMany
+	{
+		return $this->belongsToMany(Category::class, 'contact_category');
+	}
+
 	public function list60(): HasOne
 	{
 		return $this->hasOne(List60::class);

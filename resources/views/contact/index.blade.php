@@ -164,10 +164,13 @@
                     <x-input-select id="EmotionalState" :options="$emotionalStates" :value="''"
                         placeholder="Selector de estado emocional" />
                 </div>
-                <div class="flex-grow-1" style="visibility: hidden;">
-                    <select id="ContractedService" class="form-select">
-                        <option value=""> Selector de servicio contratado </option>
-                    </select>
+                <div class="flex-grow-1">
+                    <x-module-categories-select 
+                        id="CategoryFilter" 
+                        label=""
+                        moduleKey="contacts"
+                        :selected="''"
+                    />
                 </div>
                 <div class="flex-grow-1" style="visibility: hidden;">
                     <x-input-select id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
@@ -241,6 +244,12 @@
             $('#EmotionalState').on('change', function() {
                 let selectedValue = $(this).val();
                 table.column('.select-filter').search(selectedValue).draw();
+            });
+
+            // Use single value for category filter
+            $('#CategoryFilter').on('change', function() {
+                let selectedValue = $(this).val();
+                table.column(5).search(selectedValue ? selectedValue : '', true, false).draw();
             });
 
             $('#EnterpriseState').on('change', function() {

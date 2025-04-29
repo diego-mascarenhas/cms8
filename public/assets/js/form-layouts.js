@@ -108,7 +108,10 @@ $(function () {
       var $this = $(this);
       $this.wrap('<div class="position-relative"></div>').select2({
         placeholder: 'Select value',
-        dropdownParent: $this.parent()
+        dropdownParent: $this.parent(),
+        // Add specific options for multiple select
+        multiple: $this.prop('multiple'),
+        closeOnSelect: !$this.prop('multiple')
       });
     });
   }

@@ -71,6 +71,11 @@ class ContactController extends Controller
 
 		$contact = Contact::create($contactData);
 
+		// Sync categories
+		if (isset($data['categories'])) {
+			$contact->categories()->sync($data['categories']);
+		}
+
 		$message = __('messages.success.created');
 
 		if ($request->ajax())
@@ -359,6 +364,11 @@ class ContactController extends Controller
 
 		$contact = Contact::findOrFail($id);
 		$contact->update($contactData);
+
+		// Sync categories
+		if (isset($data['categories'])) {
+			$contact->categories()->sync($data['categories']);
+		}
 
 		$message = __('messages.success.updated');
 

@@ -34,6 +34,8 @@ class UpdateContactRequest extends FormRequest
             'source_value' => 'array',
             'source_value.*' => 'required|string|max:255',
             'responsible_id' => 'required|exists:users,id',
+            'categories' => 'array',
+            'categories.*' => 'exists:categories,id',
         ];
     }
 
@@ -56,6 +58,7 @@ class UpdateContactRequest extends FormRequest
 
         $enterpriseData = [];
         $sourcesData = [];
+        $categories = $validated['categories'] ?? [];
 
         if (isset($validated['enterprise']))
         {
@@ -120,6 +123,7 @@ class UpdateContactRequest extends FormRequest
             'contact' => $contactData,
             'enterprise' => $enterpriseData,
             'sources' => $sourcesData,
+            'categories' => $categories,
         ];
     }
 }

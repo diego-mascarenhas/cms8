@@ -67,7 +67,7 @@ class TwilioService
     public function sendWhatsApp($to, $message)
     {
         try {
-            // Format the numbers with whatsapp: prefix
+            // Format the numbers with whatsapp: prefix for Twilio
             $formattedTo = 'whatsapp:' . $to;
             
             // Get the full URL for the status callback
@@ -82,12 +82,16 @@ class TwilioService
                 ]
             );
 
+            // Clean phone numbers before saving to database
+            $cleanFrom = preg_replace('/[^0-9]/', '', $this->whatsappFromNumber);
+            $cleanTo = preg_replace('/[^0-9]/', '', $to);
+
             // Save outbound message to database
             Conversation::create([
                 'message_sid' => $twilioMessage->sid,
                 'channel' => 'whatsapp',
-                'from' => $this->whatsappFromNumber,
-                'to' => $formattedTo,
+                'from' => $cleanFrom,
+                'to' => $cleanTo,
                 'body' => $message,
                 'status' => 'sent',
                 'direction' => 'outbound',
@@ -116,6 +120,10 @@ class TwilioService
             $body = $request->input('Body');
             $numMedia = (int)$request->input('NumMedia', 0);
             
+            // Clean phone numbers by removing whatsapp: prefix and non-numeric characters
+            $cleanFrom = preg_replace('/[^0-9]/', '', $from);
+            $cleanTo = preg_replace('/[^0-9]/', '', $to);
+            
             // Determine the channel type
             $channel = 'sms';
             if (strpos($from, 'whatsapp:') !== false || strpos($to, 'whatsapp:') !== false) {
@@ -123,7 +131,7 @@ class TwilioService
             }
             
             // Log the incoming message
-            Log::info("Incoming {$channel} message from {$from}: {$body}");
+            Log::info("Incoming {$channel} message from {$cleanFrom}: {$body}");
             
             // Process media if present
             $media = [];
@@ -142,8 +150,8 @@ class TwilioService
             $conversation = Conversation::create([
                 'message_sid' => $messageSid,
                 'channel' => $channel,
-                'from' => $from,
-                'to' => $to,
+                'from' => $cleanFrom,
+                'to' => $cleanTo,
                 'body' => $body,
                 'status' => 'received',
                 'direction' => 'inbound',
