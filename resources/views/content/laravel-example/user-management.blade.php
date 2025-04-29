@@ -138,15 +138,15 @@
         <input type="hidden" name="id" id="user_id">
         <div class="mb-3">
           <label class="form-label" for="add-user-fullname">Full Name</label>
-          <input type="text" class="form-control" id="add-user-fullname" name="name" aria-label="John Doe" />
+          <input type="text" class="form-control" id="add-user-fullname" name="name" />
         </div>
         <div class="mb-3">
           <label class="form-label" for="add-user-email">Email</label>
-          <input type="text" id="add-user-email" class="form-control" aria-label="john.doe@example.com" name="email" />
+          <input type="text" id="add-user-email" class="form-control" name="email" />
         </div>
         <div class="mb-3">
           <label class="form-label" for="add-user-contact">Phone</label>
-          <input type="text" id="add-user-contact" class="form-control phone-mask" aria-label="john.doe@example.com" name="userContact" />
+          <input type="text" id="add-user-contact" class="form-control" name="userContact" />
         </div>
         <!-- <div class="mb-3">
           <label class="form-label" for="add-user-company">Company</label>

@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\User;
+use App\Models\Contact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Helpers\TextHelper;
 
 class ChatController extends Controller
 {
@@ -58,7 +60,16 @@ class ChatController extends Controller
 			$selectedUser = $this->getUserByPhone($selectedPhone);
 		}
 
-		return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser'));
+		$hasContact = false;
+		if ($selectedUser && $selectedUser->id) {
+			$hasContact = \App\Models\Contact::where('user_id', $selectedUser->id)->exists();
+		}
+
+		foreach ($messages as $message) {
+			$message->body = TextHelper::sanitizeAndLink($message->body);
+		}
+
+		return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact'));
 	}
 	
 	/**
@@ -67,33 +78,39 @@ class ChatController extends Controller
 	 */
 	private function getUserByPhone($phoneNumber)
 	{
-		// Debug the original phone number
-		\Log::info('Original phone number: ' . $phoneNumber);
-		
 		// Clean the phone number (remove whatsapp: prefix, plus sign, and any non-digits)
 		$cleanNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
-		\Log::info('Cleaned phone number: ' . $cleanNumber);
-		
-		// First try with exactly this number (for format like "34722372858")
-		$user = User::where('phone', (int)$cleanNumber)->first();
-		
-		if (!$user && strlen($cleanNumber) > 9) {
-			// If not found and number is long enough, try without country code
-			$withoutCountryCode = substr($cleanNumber, -9);
-			\Log::info('Trying without country code: ' . $withoutCountryCode);
-			$user = User::where('phone', (int)$withoutCountryCode)->first();
-		}
-		
+
+		// Always try to get user directly by phone (full number)
+		$user = User::where('phone', $cleanNumber)->first();
 		if ($user) {
-			\Log::info('User found: ' . $user->name);
-			
-			// Ensure we use the profile_photo_path directly
 			$user->user_photo = $user->profile_photo_path;
-		} else {
-			\Log::info('No user found for this phone number');
+			return $user;
 		}
-		
-		return $user;
+
+		// Try without country code if not found
+		if (strlen($cleanNumber) > 9) {
+			$withoutCountryCode = substr($cleanNumber, -9);
+			$user = User::where('phone', $withoutCountryCode)->first();
+			if ($user) {
+				$user->user_photo = $user->profile_photo_path;
+				return $user;
+			}
+		}
+
+		// If no user found directly, try to find through contact relationship
+		$contact = Contact::whereHas('sources', function($query) use ($cleanNumber) {
+			$query->where('source_id', 2) // Phone source
+				->where('value', $cleanNumber);
+		})->first();
+
+		if ($contact && $contact->user) {
+			$user = $contact->user;
+			$user->user_photo = $user->profile_photo_path;
+			return $user;
+		}
+
+		return null;
 	}
 	
 	public function getMessages(Request $request, $phone)

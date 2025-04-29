@@ -339,9 +339,11 @@
                                 {{-- <i class="ti ti-phone-call cursor-pointer d-sm-block d-none me-3"></i>
                                 <i class="ti ti-video cursor-pointer d-sm-block d-none me-3"></i>
                                 <i class="ti ti-search cursor-pointer d-sm-block d-none me-3"></i> --}}
-                                <a href="{{ isset($selectedUser) && $selectedUser->id ? route('contact.show', $selectedUser->id) : '#' }}">
-                                    <i class="ti ti-eye"></i>
-                                </a>
+                                @if(isset($selectedUser) && $selectedUser->id && $hasContact)
+                                    <a href="{{ route('contact.show', $selectedUser->id) }}">
+                                        <i class="ti ti-eye"></i>
+                                    </a>
+                                @endif
                                 {{-- <div class="dropdown d-flex align-self-center">
                                     <button class="btn p-0" type="button" id="chat-header-actions"
                                         data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -388,7 +390,7 @@
                                             @endif
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text">
-                                                    <p class="mb-0">{{ $message->body }}</p>
+                                                    <p class="mb-0">{!! nl2br($message->body) !!}</p>
                                                 </div>
                                                 <div class="{{ !$isInbound ? 'text-end' : '' }} text-muted mt-1">
                                                     @if (!$isInbound)
