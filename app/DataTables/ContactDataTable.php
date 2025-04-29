@@ -55,10 +55,22 @@ class ContactDataTable extends DataTable
                     $q->where('name', 'like', "%{$keyword}%");
                 });
             })
+            ->addColumn('categories', function ($row) {
+                return $row->categories->map(function($category) {
+                    return '<span class="badge bg-label-primary me-1">' . e($category->name) . '</span>';
+                })->join(' ');
+            })
+            ->filterColumn('categories', function($query, $keyword) {
+                if ($keyword !== '') {
+                    $query->whereHas('categories', function($q) use ($keyword) {
+                        $q->whereIn('id', explode('|', $keyword));
+                    });
+                }
+            })
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
-            ->rawColumns(['name', 'action', 'current_sentiment', 'sources', 'status_id']);
+            ->rawColumns(['name', 'action', 'current_sentiment', 'sources', 'status_id', 'categories']);
     }
 
     public function query(Contact $model): QueryBuilder
@@ -69,7 +81,8 @@ class ContactDataTable extends DataTable
             'currentSentiment.sentiment',
             'status',
             'sources',
-            'responsible:id,name'
+            'responsible:id,name',
+            'categories'
         ]);
     }
 
@@ -135,6 +148,12 @@ class ContactDataTable extends DataTable
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
+                ->orderable(false),
+            Column::make('categories')
+                ->title(__('Categories'))
+                ->className('text-center')
+                ->addClass('category-filter min-desktop')
+                ->searchable(true)
                 ->orderable(false),
             Column::make('status_id')
                 ->title(__('Status'))
