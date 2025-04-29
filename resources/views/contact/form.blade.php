@@ -156,6 +156,14 @@
                                     @enderror
                                 </div>
                                 <div class="col-sm-12">
+                                    <x-categories-select 
+                                        id="categories" 
+                                        label="Categorías"
+                                        :selected="$data->categories->pluck('id')->toArray() ?? old('categories', [])"
+                                        moduleKey="contacts"
+                                    />
+                                </div>
+                                <div class="col-sm-12">
                                     <x-input-textarea id="profile" label="Profile" rows="3"
                                         value="{{ old('profile', $data->profile ?? '') }}" />
                                 </div>
