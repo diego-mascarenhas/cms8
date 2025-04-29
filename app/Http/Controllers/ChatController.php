@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Contact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Helpers\TextHelper;
 
 class ChatController extends Controller
 {
@@ -62,6 +63,10 @@ class ChatController extends Controller
 		$hasContact = false;
 		if ($selectedUser && $selectedUser->id) {
 			$hasContact = \App\Models\Contact::where('user_id', $selectedUser->id)->exists();
+		}
+
+		foreach ($messages as $message) {
+			$message->body = TextHelper::sanitizeAndLink($message->body);
 		}
 
 		return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact'));

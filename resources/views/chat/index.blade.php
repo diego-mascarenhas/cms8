@@ -390,7 +390,7 @@
                                             @endif
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text">
-                                                    <p class="mb-0">{{ $message->body }}</p>
+                                                    <p class="mb-0">{!! nl2br($message->body) !!}</p>
                                                 </div>
                                                 <div class="{{ !$isInbound ? 'text-end' : '' }} text-muted mt-1">
                                                     @if (!$isInbound)
