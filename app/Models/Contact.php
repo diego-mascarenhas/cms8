@@ -262,8 +262,7 @@ class Contact extends Model
 
 	public function categories(): BelongsToMany
 	{
-		return $this->belongsToMany(Category::class, 'contact_category')
-					->withTimestamps();
+		return $this->belongsToMany(Category::class, 'contact_category');
 	}
 
 	public function list60(): HasOne
