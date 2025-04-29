@@ -147,6 +147,18 @@
                                     @endif
                                 </span>
                             </li>
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Categorías:</span>
+                                <span>
+                                    @if ($data->categories->count() > 0)
+                                        @foreach ($data->categories as $category)
+                                            <span class="badge bg-label-info me-1">{{ $category->name }}</span>
+                                        @endforeach
+                                    @else
+                                        No hay categorías asignadas
+                                    @endif
+                                </span>
+                            </li>
                             @php
                                 $countryName = $data->country
                                     ? \App\Models\Country::find($data->country)->name ?? 'No asignado'
