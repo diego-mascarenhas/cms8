@@ -22,7 +22,9 @@ return new class extends Migration
 			$table->string('direction')->default('inbound');
 			$table->json('media')->nullable();
 			$table->json('metadata')->nullable();
+			$table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
 			$table->timestamps();
+			$table->softDeletes();
 			
 			// Indexing for faster queries
 			$table->index(['channel', 'from', 'to']);
