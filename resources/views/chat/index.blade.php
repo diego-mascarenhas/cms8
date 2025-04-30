@@ -347,29 +347,16 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
-                                {{-- <i class="ti ti-phone-call cursor-pointer d-sm-block d-none me-3"></i>
-                                <i class="ti ti-video cursor-pointer d-sm-block d-none me-3"></i>
-                                <i class="ti ti-search cursor-pointer d-sm-block d-none me-3"></i> --}}
                                 @if(isset($selectedUser) && $selectedUser->id && $hasContact)
-                                    <a href="{{ route('contact.show', $selectedUser->id) }}">
+                                    <a href="{{ route('contact.show', $selectedUser->id) }}" class="me-2">
                                         <i class="ti ti-eye"></i>
                                     </a>
                                 @endif
-                                {{-- <div class="dropdown d-flex align-self-center">
-                                    <button class="btn p-0" type="button" id="chat-header-actions"
-                                        data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <i class="ti ti-dots-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="chat-header-actions">
-                                        <a class="dropdown-item" href="javascript:void(0);">View Contact</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Mute Notifications</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Block Contact</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Clear Chat</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Report</a>
-                                    </div>
-                                </div> --}}
-                                </div>
+                                <a href="{{ route('claude.prompts.index') }}" class="btn btn-sm btn-primary me-2" title="Gestionar prompts de Claude">
+                                    <i class="ti ti-robot me-1"></i>Prompts
+                                </a>
                             </div>
+                        </div>
                         @endif
                     </div>
                     <div class="chat-history-body bg-body">
@@ -468,13 +455,33 @@
                         <form id="chat-form" class="form-send-message d-flex justify-content-between align-items-center">
                             @csrf
                             <input type="hidden" id="recipient" value="{{ $selectedPhone }}">
-                            <input class="form-control message-input border-0 me-3 shadow-none"
-                                placeholder="Escribe tu mensaje aquí..." {{ !$selectedPhone ? 'disabled' : '' }}>
+
+                            <div class="d-flex align-items-center w-100">
+                                <textarea class="form-control message-input border-0 me-3 shadow-none"
+                                    placeholder="Type your message here..."></textarea>
+                                
+                                <div class="d-flex align-items-center me-3">
+                                    <div class="form-check form-switch mb-0">
+                                        <input type="checkbox" class="form-check-input" id="use-ai-toggle">
+                                        <label class="form-check-label" for="use-ai-toggle">
+                                            <i class="ti ti-robot me-1"></i>
+                                        </label>
+                                    </div>
+                                    <a href="{{ route('claude.prompts.index') }}" class="btn btn-sm btn-outline-primary ms-2" title="Gestionar prompts de Claude">
+                                        <i class="ti ti-settings ti-xs"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
                             <div class="message-actions d-flex align-items-center">
-                                <button type="submit" class="btn btn-primary d-flex send-msg-btn"
-                                    {{ !$selectedPhone ? 'disabled' : '' }}>
+                                <i class="speech-to-text ti ti-microphone ti-sm cursor-pointer"></i>
+                                <label for="attach-doc" class="form-label mb-0">
+                                    <i class="ti ti-photo ti-sm cursor-pointer mx-3"></i>
+                                    <input type="file" id="attach-doc" hidden>
+                                </label>
+                                <button type="submit" class="btn btn-primary d-flex send-msg-btn">
                                     <i class="ti ti-send me-md-1 me-0"></i>
-                                    <span class="align-middle d-md-inline-block d-none">Enviar</span>
+                                    <span class="align-middle d-md-inline-block d-none">Send</span>
                                 </button>
                             </div>
                         </form>

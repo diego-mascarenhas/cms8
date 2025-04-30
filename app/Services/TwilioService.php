@@ -141,7 +141,7 @@ class TwilioService
             }
 
             // Log the incoming message
-            Log::info("Incoming {$channel} message from {$cleanFrom}: {$body}");
+            \Log::info("Incoming {$channel} message from {$cleanFrom}: {$body}");
 
             // Process media if present
             $media = [];
@@ -176,17 +176,51 @@ class TwilioService
             if ($notificationEmail)
             {
                 Mail::to($notificationEmail)->send(new IncomingMessageNotification($conversation));
-                Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
+                \Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
             }
 
-            // Here you can add your business logic for automated responses
-            // For example, you could call an AI service to generate a response
+            // Automatic AI response using Claude
+            if (config('services.claude.auto_respond', false) && $channel == 'whatsapp')
+            {
+                try {
+                    // Get recent chat history for context
+                    $history = Conversation::where('channel', 'whatsapp')
+                        ->where(function ($query) use ($cleanFrom) {
+                            $query->where('from', $cleanFrom)
+                                ->orWhere('to', $cleanFrom);
+                        })
+                        ->orderBy('created_at', 'desc')
+                        ->limit(10)
+                        ->get()
+                        ->sortBy('created_at')
+                        ->values()
+                        ->toArray();
+                    
+                    // Process with Claude
+                    $claudeService = app(\App\Services\ClaudeService::class);
+                    $claudeResponse = $claudeService->chat($body, $history);
+                    
+                    // If Claude responded successfully, send the response
+                    if ($claudeResponse['success']) {
+                        $aiMessage = $claudeResponse['text'];
+                        
+                        // Send the AI message
+                        $this->sendWhatsApp($cleanFrom, $aiMessage);
+                        
+                        \Log::info("Auto AI response sent to {$cleanFrom}: " . \Illuminate\Support\Str::limit($aiMessage, 100));
+                    } else {
+                        \Log::warning("Failed to get AI response: " . ($claudeResponse['message'] ?? 'Unknown error'));
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Error in auto AI response: " . $e->getMessage());
+                }
+            }
 
             return response()->json(['status' => 'success', 'conversation_id' => $conversation->id]);
         }
         catch (\Exception $e)
         {
-            Log::error('Error processing incoming message: ' . $e->getMessage());
+            \Log::error('Error processing incoming message: ' . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
