@@ -16,6 +16,17 @@
 
 @section('page-script')
     <script src="{{ asset('assets/js/app-chat.js') }}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var chatImageModal = document.getElementById('chatImageModal');
+        chatImageModal.addEventListener('show.bs.modal', function (event) {
+            var trigger = event.relatedTarget;
+            var imgUrl = trigger.getAttribute('data-img');
+            var modalImg = document.getElementById('chatModalImg');
+            modalImg.src = imgUrl;
+        });
+    });
+    </script>
 @endsection
 
 @section('content')
@@ -399,7 +410,7 @@
                                                         <div class="chat-media mt-2">
                                                             @foreach ($media as $item)
                                                                 @if(Str::startsWith($item['content_type'], 'image/'))
-                                                                    <a href="{{ $item['url'] }}" target="_blank">
+                                                                    <a href="#" data-bs-toggle="modal" data-bs-target="#chatImageModal" data-img="{{ $item['url'] }}">
                                                                         <img src="{{ $item['url'] }}" alt="media" style="max-width: 200px; max-height: 200px; border-radius: 8px; margin-bottom: 4px;">
                                                                     </a>
                                                                 @else
@@ -527,6 +538,17 @@
             <!-- /Sidebar Right -->
 
             <div class="app-overlay"></div>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div class="modal fade" id="chatImageModal" tabindex="-1" aria-labelledby="chatImageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-transparent border-0">
+                <div class="modal-body text-center p-0">
+                    <img id="chatModalImg" src="" alt="media" style="max-width:100%; max-height:80vh; border-radius:8px;">
+                </div>
+            </div>
         </div>
     </div>
 @endsection
