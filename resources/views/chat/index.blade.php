@@ -25,6 +25,171 @@
             var modalImg = document.getElementById('chatModalImg');
             modalImg.src = imgUrl;
         });
+
+        // Claude AI preview handling
+        const formSendMessage = document.getElementById('chat-form');
+        const messageInput = document.querySelector('.message-input');
+        const useAiToggle = document.getElementById('use-ai-toggle');
+        const recipientInput = document.getElementById('recipient');
+        const previewModal = new bootstrap.Modal(document.getElementById('claudePreviewModal'));
+        const sendAiResponseBtn = document.getElementById('sendAiResponseBtn');
+        
+        let currentUserMessage = '';
+        let currentAiResponse = '';
+        
+        // Override the default form submission when AI is toggled on
+        formSendMessage.addEventListener('submit', function(e) {
+            if (useAiToggle && useAiToggle.checked && messageInput.value.trim()) {
+                e.preventDefault();
+                currentUserMessage = messageInput.value.trim();
+                
+                // Show the user's message in the preview modal
+                document.getElementById('userMessagePreview').textContent = currentUserMessage;
+                
+                // Reset and show the preview modal
+                document.getElementById('aiPreviewLoader').classList.remove('d-none');
+                document.getElementById('aiPreviewContent').classList.add('d-none');
+                document.getElementById('aiResponsePreview').textContent = '';
+                previewModal.show();
+                
+                // Get AI response preview
+                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const cleanTo = recipientInput.value.replace('whatsapp:', '');
+                
+                fetch('{{ route("claude.prompts.preview") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify({
+                        prompt_name: 'default',
+                        test_message: currentUserMessage
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('aiPreviewLoader').classList.add('d-none');
+                    document.getElementById('aiPreviewContent').classList.remove('d-none');
+                    
+                    if (data.success) {
+                        currentAiResponse = data.response;
+                        document.getElementById('aiResponsePreview').textContent = data.response;
+                    } else {
+                        document.getElementById('aiResponsePreview').innerHTML = 
+                            '<div class="alert alert-danger">Error: ' + (data.message || 'Failed to get response') + '</div>';
+                        currentAiResponse = '';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('aiPreviewLoader').classList.add('d-none');
+                    document.getElementById('aiPreviewContent').classList.remove('d-none');
+                    document.getElementById('aiResponsePreview').innerHTML = 
+                        '<div class="alert alert-danger">Error connecting to server: ' + error.message + '</div>';
+                    currentAiResponse = '';
+                });
+                
+                return false;
+            }
+        });
+        
+        // Send the previewed AI response when confirmed
+        sendAiResponseBtn.addEventListener('click', function() {
+            if (currentUserMessage && currentAiResponse) {
+                previewModal.hide();
+                
+                // Send the user message first
+                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const cleanTo = recipientInput.value.replace('whatsapp:', '');
+                
+                // Add the original message to the UI
+                let renderMsg = document.createElement('li');
+                renderMsg.className = 'chat-message chat-message-right';
+                renderMsg.innerHTML = `
+                    <div class="d-flex overflow-hidden">
+                        <div class="chat-message-wrapper flex-grow-1">
+                            <div class="chat-message-text">
+                                <p class="mb-0">${currentUserMessage}</p>
+                            </div>
+                            <div class="text-end text-muted mt-1">
+                                <i class='ti ti-check ti-xs me-1 text-success'></i>
+                                <small>${new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})}</small>
+                            </div>
+                        </div>
+                        <div class="user-avatar flex-shrink-0 ms-3">
+                            <div class="avatar avatar-sm">
+                                <span class="avatar-initial rounded-circle bg-label-primary">
+                                    {{ substr(auth()->user()->name ?? 'U', 0, 2) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.querySelector('.chat-history').appendChild(renderMsg);
+                
+                // Send the user message to the server
+                fetch('/chat/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify({
+                        to: cleanTo,
+                        message: currentUserMessage,
+                        use_ai: false
+                    })
+                }).then(response => response.json())
+                  .catch(error => console.error('Error sending user message:', error));
+                
+                // Create a new message for AI response
+                let aiMsg = document.createElement('li');
+                aiMsg.className = 'chat-message chat-message-right';
+                aiMsg.innerHTML = `
+                    <div class="d-flex overflow-hidden">
+                        <div class="chat-message-wrapper flex-grow-1">
+                            <div class="chat-message-text">
+                                <p class="mb-0">${currentAiResponse}</p>
+                            </div>
+                            <div class="text-end text-muted mt-1">
+                                <i class='ti ti-clock ti-xs me-1'></i>
+                                <small>${new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true})}</small>
+                            </div>
+                        </div>
+                        <div class="user-avatar flex-shrink-0 ms-3">
+                            <div class="avatar avatar-sm">
+                                <span class="avatar-initial rounded-circle bg-label-primary">AI</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.querySelector('.chat-history').appendChild(aiMsg);
+                
+                // Scroll to bottom
+                const chatHistory = document.querySelector('.chat-history-body');
+                if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
+                
+                // Send the AI message to the server
+                fetch('/chat/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify({
+                        to: cleanTo,
+                        message: currentAiResponse,
+                        use_ai: false
+                    })
+                }).then(response => response.json())
+                  .catch(error => console.error('Error sending AI message:', error));
+                
+                // Clear the input
+                messageInput.value = '';
+                currentUserMessage = '';
+                currentAiResponse = '';
+            }
+        });
     });
     </script>
 @endsection
@@ -458,7 +623,7 @@
 
                             <div class="d-flex align-items-center w-100">
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"
-                                    placeholder="Type your message here..."></textarea>
+                                    placeholder="Type your message here..." style="resize: none;"></textarea>
                                 
                                 <div class="d-flex align-items-center me-3">
                                     <div class="form-check form-switch mb-0">
@@ -467,18 +632,15 @@
                                             <i class="ti ti-robot me-1"></i>
                                         </label>
                                     </div>
-                                    <a href="{{ route('claude.prompts.index') }}" class="btn btn-sm btn-outline-primary ms-2" title="Gestionar prompts de Claude">
-                                        <i class="ti ti-settings ti-xs"></i>
-                                    </a>
                                 </div>
                             </div>
                             
                             <div class="message-actions d-flex align-items-center">
-                                <i class="speech-to-text ti ti-microphone ti-sm cursor-pointer"></i>
+                                {{-- <i class="speech-to-text ti ti-microphone ti-sm cursor-pointer"></i>
                                 <label for="attach-doc" class="form-label mb-0">
                                     <i class="ti ti-photo ti-sm cursor-pointer mx-3"></i>
                                     <input type="file" id="attach-doc" hidden>
-                                </label>
+                                </label> --}}
                                 <button type="submit" class="btn btn-primary d-flex send-msg-btn">
                                     <i class="ti ti-send me-md-1 me-0"></i>
                                     <span class="align-middle d-md-inline-block d-none">Send</span>
@@ -599,4 +761,39 @@
         border-radius: 8px;
     }
     </style>
+
+    <!-- Claude AI Preview Modal -->
+    <div class="modal fade" id="claudePreviewModal" tabindex="-1" aria-labelledby="claudePreviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="claudePreviewModalLabel">Claude's Response Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="aiPreviewLoader" class="text-center mb-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Claude is thinking...</p>
+                    </div>
+                    <div id="aiPreviewContent" class="d-none">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="mb-2">Your message:</h6>
+                                <p id="userMessagePreview" class="mb-3"></p>
+                                <hr>
+                                <h6 class="mb-2">Claude's response:</h6>
+                                <p id="aiResponsePreview"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="sendAiResponseBtn">Send Response</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
