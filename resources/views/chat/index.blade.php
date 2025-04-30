@@ -556,9 +556,40 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-transparent border-0">
                 <div class="modal-body text-center p-0">
-                    <img id="chatModalImg" src="" alt="media" style="max-width:100%; max-height:80vh; border-radius:8px;">
+                    <img id="chatModalImg" src="" alt="media">
                 </div>
             </div>
         </div>
     </div>
+
+    <style>
+    #chatImageModal .modal-dialog {
+        max-width: 100vw;
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #chatImageModal .modal-content {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        width: 100vw;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #chatModalImg {
+        max-width: 98vw;
+        max-height: 98vh;
+        width: auto;
+        height: auto;
+        display: block;
+        margin: auto;
+        border-radius: 8px;
+    }
+    </style>
 @endsection
