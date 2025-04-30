@@ -212,7 +212,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 document.getElementById('responseContent').textContent = data.response;
             } else {
-                document.getElementById('responseContent').textContent = 'Error: ' + (data.message || 'Failed to get response');
+                let errorText = 'Error: ' + (data.message || 'Failed to get response');
+                
+                // Add more details if available
+                if (data.details) {
+                    errorText += '\n\nDetails: ' + JSON.stringify(data.details, null, 2);
+                }
+                
+                if (data.trace) {
+                    errorText += '\n\nStack Trace: ' + data.trace;
+                }
+                
+                document.getElementById('responseContent').textContent = errorText;
             }
         })
         .catch(error => {

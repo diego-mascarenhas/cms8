@@ -191,12 +191,30 @@ class ClaudePromptController extends Controller
         }
         
         // Get response using the selected prompt
-        $response = $this->claudeService->chat($testMessage, [], $promptContent);
-        
-        return response()->json([
-            'success' => $response['success'],
-            'response' => $response['success'] ? $response['text'] : $response['message']
-        ]);
+        try {
+            $response = $this->claudeService->chat($testMessage, [], $promptContent);
+            
+            if (!$response['success']) {
+                \Log::error('Claude API Error in preview: ' . json_encode($response));
+                return response()->json([
+                    'success' => false,
+                    'message' => $response['message'] ?? 'Error from Claude API',
+                    'details' => $response['error'] ?? 'No additional details'
+                ]);
+            }
+            
+            return response()->json([
+                'success' => $response['success'],
+                'response' => $response['text']
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Exception in Claude preview: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Exception: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
     
     /**

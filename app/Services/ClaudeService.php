@@ -16,9 +16,9 @@ class ClaudeService
     public function __construct()
     {
         $this->apiKey = config('services.claude.api_key');
-        $this->model = config('services.claude.model', 'claude-3-opus-20240229');
+        $this->model = config('services.claude.model', 'claude-3-5-sonnet-20241022');
         $this->baseUrl = config('services.claude.base_url', 'https://api.anthropic.com/v1');
-        $this->maxTokens = config('services.claude.max_tokens', 1000);
+        $this->maxTokens = (int)config('services.claude.max_tokens', 1000);
         $this->systemPrompt = config('services.claude.system_prompt', $this->getDefaultSystemPrompt());
     }
 
@@ -39,6 +39,16 @@ class ClaudeService
             // Use custom system prompt if provided, otherwise use default
             $systemPrompt = $customSystemPrompt ?? $this->systemPrompt;
             
+            // Ensure max_tokens is a valid integer
+            $maxTokens = (int)$this->maxTokens;
+            
+            // Log the request for debugging
+            \Log::info('Claude API Request:', [
+                'model' => $this->model,
+                'max_tokens' => $maxTokens,
+                'message_count' => count($messages)
+            ]);
+            
             $response = Http::withHeaders([
                 'x-api-key' => $this->apiKey,
                 'anthropic-version' => '2023-06-01',
@@ -47,7 +57,7 @@ class ClaudeService
                 'model' => $this->model,
                 'system' => $systemPrompt,
                 'messages' => $messages,
-                'max_tokens' => $this->maxTokens,
+                'max_tokens' => $maxTokens,
             ]);
 
             if (!$response->successful()) {
@@ -60,10 +70,21 @@ class ClaudeService
             }
 
             $data = $response->json();
+            Log::info('Claude API Response: ' . json_encode($data));
+            
+            // Adapt to the response structure in the current Claude API
+            $responseText = '';
+            if (isset($data['content']) && is_array($data['content'])) {
+                foreach ($data['content'] as $content) {
+                    if (isset($content['type']) && $content['type'] === 'text' && isset($content['text'])) {
+                        $responseText .= $content['text'];
+                    }
+                }
+            }
             
             return [
                 'success' => true,
-                'text' => $data['content'][0]['text'] ?? 'No response text',
+                'text' => $responseText ?: 'No response text',
                 'model' => $data['model'] ?? $this->model,
                 'usage' => $data['usage'] ?? null,
                 'raw_response' => $data
@@ -114,19 +135,9 @@ class ClaudeService
     private function getDefaultSystemPrompt()
     {
         return <<<EOT
-You are a helpful, friendly, and professional customer service AI assistant for a company.
+You are a helpful, friendly, and professional customer service assistant.
 
-Guidelines:
-1. Be concise and direct in your responses.
-2. Maintain a friendly, professional tone.
-3. If you don't know the answer to something, be honest about it.
-4. Never share sensitive information like personal data or internal company details.
-5. Responses should be helpful and informative.
-6. Adapt your tone to match the customer's emotional state.
-7. Focus on solving the customer's problem efficiently.
-8. Keep responses under 4 paragraphs unless more detail is necessary.
-
-For WhatsApp conversations, keep your responses even more concise since they're being read on mobile devices.
+Be concise and clear in your responses. Keep them under 3 paragraphs for mobile readability.
 EOT;
     }
     
