@@ -69,12 +69,15 @@ class ChatController extends Controller
 			$hasContact = Contact::where('user_id', $selectedUser->id)->exists();
 		}
 
+		$userIds = $messages->pluck('user_id')->filter()->unique();
+		$users = User::whereIn('id', $userIds)->get()->keyBy('id');
+
 		foreach ($messages as $message)
 		{
 			$message->body = TextHelper::sanitizeAndLink($message->body);
 		}
 
-		return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact'));
+		return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'users'));
 	}
 
 	/**

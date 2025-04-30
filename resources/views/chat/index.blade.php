@@ -442,8 +442,18 @@
                                             @if (!$isInbound)
                                                 <div class="user-avatar flex-shrink-0 ms-3">
                                                     <div class="avatar avatar-sm">
-                                                        <img src="{{ asset('assets/img/branding/icon.png') }}"
-                                                            alt="Avatar" class="rounded-circle">
+                                                        @if (isset($message->user_id) && $message->user_id && isset($users[$message->user_id]) && $users[$message->user_id]->profile_photo_path)
+                                                            <img src="{{ Storage::url($users[$message->user_id]->profile_photo_path) }}"
+                                                                alt="{{ $users[$message->user_id]->name }}" class="rounded-circle">
+                                                        @elseif(isset($users[$message->user_id]->name))
+                                                            <span class="avatar-initial rounded-circle bg-label-primary">
+                                                                {{ \Illuminate\Support\Str::of($users[$message->user_id]->name)->explode(' ')->map(fn($w) => $w[0])->join('') }}
+                                                            </span>
+                                                        @else
+                                                            <span class="avatar-initial rounded-circle bg-label-primary">
+                                                                {{ substr($message->from, -2) }}
+                                                            </span>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             @endif
