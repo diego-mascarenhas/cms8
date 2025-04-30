@@ -371,6 +371,10 @@
                                 @foreach ($messages as $message)
                                     @php
                                         $isInbound = $message->direction === 'inbound';
+                                        $media = $message->media ?? [];
+                                        if (is_string($media)) {
+                                            $media = json_decode($media, true) ?? [];
+                                        }
                                     @endphp
                                     <li class="chat-message {{ !$isInbound ? 'chat-message-right' : '' }}">
                                         <div class="d-flex overflow-hidden">
@@ -391,6 +395,21 @@
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text">
                                                     <p class="mb-0">{!! nl2br($message->body) !!}</p>
+                                                    @if (!empty($media))
+                                                        <div class="chat-media mt-2">
+                                                            @foreach ($media as $item)
+                                                                @if(Str::startsWith($item['content_type'], 'image/'))
+                                                                    <a href="{{ $item['url'] }}" target="_blank">
+                                                                        <img src="{{ $item['url'] }}" alt="media" style="max-width: 200px; max-height: 200px; border-radius: 8px; margin-bottom: 4px;">
+                                                                    </a>
+                                                                @else
+                                                                    <a href="{{ $item['url'] }}" target="_blank" rel="noopener">
+                                                                        {{ basename($item['url']) }}
+                                                                    </a>
+                                                                @endif
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
                                                 </div>
                                                 <div class="{{ !$isInbound ? 'text-end' : '' }} text-muted mt-1">
                                                     @if (!$isInbound)
