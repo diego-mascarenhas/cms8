@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
       messageInput = document.querySelector('.message-input'),
       searchInput = document.querySelector('.chat-search-input'),
       speechToText = $('.speech-to-text'), // ! jQuery dependency for speech to text
+      useAiToggle = document.getElementById('use-ai-toggle'), // Claude AI toggle switch
       userStatusObj = {
         active: 'avatar-online',
         offline: 'avatar-offline',
@@ -161,8 +162,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (messageInput.value) {
         const message = messageInput.value;
         const to = document.getElementById('recipient').value;
+        const useAi = useAiToggle ? useAiToggle.checked : false;
         
-        // Parte original: Actualizar la UI
+        // Update UI
         let renderMsg = document.createElement('div');
         renderMsg.className = 'chat-message-text mt-2';
         renderMsg.innerHTML = '<p class="mb-0 text-break">' + message + '</p>';
@@ -170,9 +172,25 @@ document.addEventListener('DOMContentLoaded', function () {
         messageInput.value = '';
         scrollToBottom();
         
-        // Parte nueva: Enviar al servidor
+        // Send to server
         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        const cleanTo = to.replace('whatsapp:', ''); // Quitar prefijo si existe
+        const cleanTo = to.replace('whatsapp:', ''); // Remove prefix if exists
+        
+        // Show sending indicator if using AI
+        let aiResponseIndicator;
+        if (useAi) {
+          aiResponseIndicator = document.createElement('li');
+          aiResponseIndicator.className = 'chat-message chat-message-right';
+          aiResponseIndicator.innerHTML = `
+            <div class="chat-message-wrapper flex-grow-1">
+              <div class="chat-message-text">
+                <p class="mb-0 text-break"><i>Claude is thinking...</i></p>
+              </div>
+            </div>
+          `;
+          document.querySelector('.chat-history').appendChild(aiResponseIndicator);
+          scrollToBottom();
+        }
         
         fetch('/chat/send', {
           method: 'POST',
@@ -182,22 +200,65 @@ document.addEventListener('DOMContentLoaded', function () {
           },
           body: JSON.stringify({
             to: cleanTo,
-            message: message
+            message: message,
+            use_ai: useAi
           })
         })
         .then(response => {
           if (!response.ok) {
-            throw new Error('Error en la respuesta: ' + response.status);
+            throw new Error('Error in response: ' + response.status);
           }
           return response.json();
         })
         .then(data => {
-          console.log('Mensaje enviado correctamente:', data);
-          // No recargamos la página porque ya actualizamos la UI
+          console.log('Message sent successfully:', data);
+          
+          // Remove AI thinking indicator if it exists
+          if (aiResponseIndicator) {
+            aiResponseIndicator.remove();
+          }
+          
+          // If AI responded, show the AI response
+          if (data.ai_used && data.ai_response) {
+            // Create a new message for AI response
+            let aiMsg = document.createElement('li');
+            aiMsg.className = 'chat-message chat-message-right';
+            aiMsg.innerHTML = `
+              <div class="d-flex">
+                <div class="avatar avatar-sm flex-shrink-0">
+                  <span class="avatar-initial rounded-circle bg-label-primary">AI</span>
+                </div>
+                <div class="chat-message-wrapper flex-grow-1">
+                  <div class="chat-message-text">
+                    <p class="mb-0 text-break">${data.ai_response}</p>
+                  </div>
+                </div>
+              </div>
+            `;
+            document.querySelector('.chat-history').appendChild(aiMsg);
+            scrollToBottom();
+          }
         })
         .catch(error => {
-          console.error('Error enviando mensaje:', error);
-          // Puedes mostrar un mensaje de error si quieres
+          console.error('Error sending message:', error);
+          
+          // Remove AI thinking indicator if it exists
+          if (aiResponseIndicator) {
+            aiResponseIndicator.remove();
+          }
+          
+          // Show error message
+          let errorMsg = document.createElement('li');
+          errorMsg.className = 'chat-message chat-message-right';
+          errorMsg.innerHTML = `
+            <div class="chat-message-wrapper flex-grow-1">
+              <div class="chat-message-text bg-label-danger text-danger">
+                <p class="mb-0 text-break">Error sending message. Please try again.</p>
+              </div>
+            </div>
+          `;
+          document.querySelector('.chat-history').appendChild(errorMsg);
+          scrollToBottom();
         });
       }
     });

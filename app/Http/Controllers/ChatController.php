@@ -9,6 +9,9 @@ use App\Models\Contact;
 use Illuminate\Http\Request;
 use App\Helpers\TextHelper;
 use App\Services\TwilioService;
+use App\Services\ClaudeService;
+use Illuminate\Support\Facades\Log;
+
 class ChatController extends Controller
 {
 	public function index()
@@ -144,14 +147,42 @@ class ChatController extends Controller
 	{
 		$request->validate([
 			'to' => 'required|string',
-			'message' => 'required|string'
+			'message' => 'required|string',
+			'use_ai' => 'boolean'
 		]);
 
 		$twilioService = app(TwilioService::class);
 
 		try
 		{
-			// Send message
+			// Check if AI assistance was requested
+			if ($request->input('use_ai', false)) {
+				// Get chat history for context
+				$history = $this->getChatHistory($request->to, 10);
+				
+				// Process with Claude
+				$claudeResponse = $this->processWithClaude($request->message, $history);
+				
+				// If Claude responded successfully, use its response
+				if ($claudeResponse['success']) {
+					$aiMessage = $claudeResponse['text'];
+					
+					// Send the AI message
+					$result = $twilioService->sendWhatsApp($request->to, $aiMessage);
+					
+					return response()->json([
+						'success' => true, 
+						'message' => 'AI assistant message sent',
+						'ai_used' => true,
+						'ai_response' => $aiMessage
+					]);
+				}
+				
+				// If Claude failed, continue with original message
+				Log::warning('Claude AI failed, sending original message: ' . $claudeResponse['message']);
+			}
+			
+			// Send original message
 			$result = $twilioService->sendWhatsApp($request->to, $request->message);
 
 			return response()->json(['success' => true, 'message' => 'Message sent']);
@@ -166,6 +197,41 @@ class ChatController extends Controller
 
 			return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
 		}
+	}
+
+	/**
+	 * Process a message with Claude to get AI assistance
+	 * 
+	 * @param string $message The user message
+	 * @param array $history Previous conversation history
+	 * @return array Response from Claude
+	 */
+	private function processWithClaude($message, $history = [])
+	{
+		$claudeService = app(ClaudeService::class);
+		return $claudeService->chat($message, $history);
+	}
+	
+	/**
+	 * Get recent chat history to provide context for the AI
+	 * 
+	 * @param string $phone The phone number
+	 * @param int $limit Number of messages to retrieve
+	 * @return array Conversation history
+	 */
+	private function getChatHistory($phone, $limit = 10)
+	{
+		return Conversation::where('channel', 'whatsapp')
+			->where(function ($query) use ($phone) {
+				$query->where('from', $phone)
+					->orWhere('to', $phone);
+			})
+			->orderBy('created_at', 'desc')
+			->limit($limit)
+			->get()
+			->sortBy('created_at')
+			->values()
+			->toArray();
 	}
 
 	/**

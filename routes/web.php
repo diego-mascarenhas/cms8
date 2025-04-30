@@ -269,3 +269,15 @@ Route::prefix('ovh')->group(function () {
     Route::get('/services', [OvhApiController::class, 'getServices'])->name('ovh.services');
     Route::get('/sync-domains', [OvhApiController::class, 'syncDomains'])->name('ovh.sync-domains');
 });
+
+// Claude Prompts
+Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function () {
+    Route::get('/prompts', [App\Http\Controllers\ClaudePromptController::class, 'index'])->name('prompts.index');
+    Route::get('/prompts/create', [App\Http\Controllers\ClaudePromptController::class, 'create'])->name('prompts.create');
+    Route::post('/prompts', [App\Http\Controllers\ClaudePromptController::class, 'store'])->name('prompts.store');
+    Route::get('/prompts/{prompt}/edit', [App\Http\Controllers\ClaudePromptController::class, 'edit'])->name('prompts.edit');
+    Route::put('/prompts/{prompt}', [App\Http\Controllers\ClaudePromptController::class, 'update'])->name('prompts.update');
+    Route::delete('/prompts/{prompt}', [App\Http\Controllers\ClaudePromptController::class, 'destroy'])->name('prompts.destroy');
+    Route::post('/prompts/activate', [App\Http\Controllers\ClaudePromptController::class, 'activate'])->name('prompts.activate');
+    Route::post('/prompts/preview', [App\Http\Controllers\ClaudePromptController::class, 'preview'])->name('prompts.preview');
+});
