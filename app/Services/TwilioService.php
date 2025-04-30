@@ -49,6 +49,7 @@ class TwilioService
                 'body' => $message,
                 'status' => 'sent',
                 'direction' => 'outbound',
+                'user_id' => auth()->id(),
                 'metadata' => [
                     'twilio_response' => [
                         'sid' => $twilioMessage->sid,
@@ -99,6 +100,7 @@ class TwilioService
                 'body' => $message,
                 'status' => 'sent',
                 'direction' => 'outbound',
+                'user_id' => auth()->id(),
                 'metadata' => [
                     'twilio_response' => [
                         'sid' => $twilioMessage->sid,
@@ -236,6 +238,7 @@ class TwilioService
                 'body' => "Template: {$templateName}",
                 'status' => 'sent',
                 'direction' => 'outbound',
+                'user_id' => auth()->id(),
                 'metadata' => [
                     'twilio_response' => [
                         'sid' => $twilioMessage->sid,

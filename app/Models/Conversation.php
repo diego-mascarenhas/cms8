@@ -18,7 +18,8 @@ class Conversation extends Model
         'status',
         'direction',
         'media',
-        'metadata'
+        'metadata',
+        'user_id'
     ];
 
     protected $casts = [

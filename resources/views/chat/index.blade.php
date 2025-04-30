@@ -16,6 +16,17 @@
 
 @section('page-script')
     <script src="{{ asset('assets/js/app-chat.js') }}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var chatImageModal = document.getElementById('chatImageModal');
+        chatImageModal.addEventListener('show.bs.modal', function (event) {
+            var trigger = event.relatedTarget;
+            var imgUrl = trigger.getAttribute('data-img');
+            var modalImg = document.getElementById('chatModalImg');
+            modalImg.src = imgUrl;
+        });
+    });
+    </script>
 @endsection
 
 @section('content')
@@ -371,6 +382,10 @@
                                 @foreach ($messages as $message)
                                     @php
                                         $isInbound = $message->direction === 'inbound';
+                                        $media = $message->media ?? [];
+                                        if (is_string($media)) {
+                                            $media = json_decode($media, true) ?? [];
+                                        }
                                     @endphp
                                     <li class="chat-message {{ !$isInbound ? 'chat-message-right' : '' }}">
                                         <div class="d-flex overflow-hidden">
@@ -391,6 +406,21 @@
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text">
                                                     <p class="mb-0">{!! nl2br($message->body) !!}</p>
+                                                    @if (!empty($media))
+                                                        <div class="chat-media mt-2">
+                                                            @foreach ($media as $item)
+                                                                @if(Str::startsWith($item['content_type'], 'image/'))
+                                                                    <a href="#" data-bs-toggle="modal" data-bs-target="#chatImageModal" data-img="{{ $item['url'] }}">
+                                                                        <img src="{{ $item['url'] }}" alt="media" style="max-width: 200px; max-height: 200px; border-radius: 8px; margin-bottom: 4px;">
+                                                                    </a>
+                                                                @else
+                                                                    <a href="{{ $item['url'] }}" target="_blank" rel="noopener">
+                                                                        {{ basename($item['url']) }}
+                                                                    </a>
+                                                                @endif
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
                                                 </div>
                                                 <div class="{{ !$isInbound ? 'text-end' : '' }} text-muted mt-1">
                                                     @if (!$isInbound)
@@ -412,8 +442,18 @@
                                             @if (!$isInbound)
                                                 <div class="user-avatar flex-shrink-0 ms-3">
                                                     <div class="avatar avatar-sm">
-                                                        <img src="{{ asset('assets/img/branding/icon.png') }}"
-                                                            alt="Avatar" class="rounded-circle">
+                                                        @if (isset($message->user_id) && $message->user_id && isset($users[$message->user_id]) && $users[$message->user_id]->profile_photo_path)
+                                                            <img src="{{ Storage::url($users[$message->user_id]->profile_photo_path) }}"
+                                                                alt="{{ $users[$message->user_id]->name }}" class="rounded-circle">
+                                                        @elseif(isset($users[$message->user_id]->name))
+                                                            <span class="avatar-initial rounded-circle bg-label-primary">
+                                                                {{ \Illuminate\Support\Str::of($users[$message->user_id]->name)->explode(' ')->map(fn($w) => $w[0])->join('') }}
+                                                            </span>
+                                                        @else
+                                                            <span class="avatar-initial rounded-circle bg-label-primary">
+                                                                {{ substr($message->from, -2) }}
+                                                            </span>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             @endif
@@ -510,4 +550,46 @@
             <div class="app-overlay"></div>
         </div>
     </div>
+
+    <!-- Image Modal -->
+    <div class="modal fade" id="chatImageModal" tabindex="-1" aria-labelledby="chatImageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-transparent border-0">
+                <div class="modal-body text-center p-0">
+                    <img id="chatModalImg" src="" alt="media">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    #chatImageModal .modal-dialog {
+        max-width: 100vw;
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #chatImageModal .modal-content {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        width: 100vw;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #chatModalImg {
+        max-width: 98vw;
+        max-height: 98vh;
+        width: auto;
+        height: auto;
+        display: block;
+        margin: auto;
+        border-radius: 8px;
+    }
+    </style>
 @endsection

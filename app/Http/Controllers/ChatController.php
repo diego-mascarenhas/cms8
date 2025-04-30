@@ -7,9 +7,8 @@ use App\Models\Conversation;
 use App\Models\User;
 use App\Models\Contact;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use App\Helpers\TextHelper;
-
+use App\Services\TwilioService;
 class ChatController extends Controller
 {
 	public function index()
@@ -21,57 +20,66 @@ class ChatController extends Controller
 			->groupBy('from')
 			->orderBy('last_message_at', 'desc')
 			->get();
-			
+
 		// Get the last message from each contact and enrich with user data
-		foreach ($contacts as $contact) {
+		foreach ($contacts as $contact)
+		{
 			$lastMessage = Conversation::where('from', $contact->from)
 				->where('channel', 'whatsapp')
 				->latest()
 				->first();
-				
+
 			$contact->last_message = $lastMessage->body;
 			$contact->last_message_time = $lastMessage->created_at->diffForHumans();
-			
+
 			// Get user information if available
 			$userData = $this->getUserByPhone($contact->from);
-			if ($userData) {
+			if ($userData)
+			{
 				$contact->user_name = $userData->name;
 				$contact->user_photo = $userData->profile_photo_path;
 				$contact->user_id = $userData->id;
 			}
 		}
-		
+
 		// If a contact is selected, get their messages
 		$selectedPhone = request('phone');
 		$messages = collect();
 		$selectedUser = null;
-		
-		if ($selectedPhone) {
+
+		if ($selectedPhone)
+		{
 			// Get all messages for this conversation
 			$messages = Conversation::where('channel', 'whatsapp')
-				->where(function($query) use ($selectedPhone) {
+				->where(function ($query) use ($selectedPhone)
+				{
 					$query->where('from', $selectedPhone)
-						  ->orWhere('to', $selectedPhone);
+						->orWhere('to', $selectedPhone);
 				})
 				->orderBy('created_at')
 				->get();
-			
+
 			// Get user information for the header
 			$selectedUser = $this->getUserByPhone($selectedPhone);
 		}
 
 		$hasContact = false;
-		if ($selectedUser && $selectedUser->id) {
-			$hasContact = \App\Models\Contact::where('user_id', $selectedUser->id)->exists();
+		if ($selectedUser && $selectedUser->id)
+		{
+			$hasContact = Contact::where('user_id', $selectedUser->id)->exists();
 		}
 
-		foreach ($messages as $message) {
+		$userIds = $messages->pluck('user_id')->filter()->unique();
+		$users = User::whereIn('id', $userIds)->get()->keyBy('id');
+
+		foreach ($messages as $message)
+		{
 			$message->body = TextHelper::sanitizeAndLink($message->body);
 		}
 
-		return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact'));
+		return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'users'));
 	}
-	
+
 	/**
 	 * Get user by phone number
 	 * This handles extracting the digits from WhatsApp format and finding the user
@@ -83,28 +91,33 @@ class ChatController extends Controller
 
 		// Always try to get user directly by phone (full number)
 		$user = User::where('phone', $cleanNumber)->first();
-		if ($user) {
+		if ($user)
+		{
 			$user->user_photo = $user->profile_photo_path;
 			return $user;
 		}
 
 		// Try without country code if not found
-		if (strlen($cleanNumber) > 9) {
+		if (strlen($cleanNumber) > 9)
+		{
 			$withoutCountryCode = substr($cleanNumber, -9);
 			$user = User::where('phone', $withoutCountryCode)->first();
-			if ($user) {
+			if ($user)
+			{
 				$user->user_photo = $user->profile_photo_path;
 				return $user;
 			}
 		}
 
 		// If no user found directly, try to find through contact relationship
-		$contact = Contact::whereHas('sources', function($query) use ($cleanNumber) {
+		$contact = Contact::whereHas('sources', function ($query) use ($cleanNumber)
+		{
 			$query->where('source_id', 2) // Phone source
 				->where('value', $cleanNumber);
 		})->first();
 
-		if ($contact && $contact->user) {
+		if ($contact && $contact->user)
+		{
 			$user = $contact->user;
 			$user->user_photo = $user->profile_photo_path;
 			return $user;
@@ -112,44 +125,49 @@ class ChatController extends Controller
 
 		return null;
 	}
-	
+
 	public function getMessages(Request $request, $phone)
 	{
 		$messages = Conversation::where('channel', 'whatsapp')
-			->where(function($query) use ($phone) {
+			->where(function ($query) use ($phone)
+			{
 				$query->where('from', $phone)
-					  ->orWhere('to', $phone);
+					->orWhere('to', $phone);
 			})
 			->orderBy('created_at')
 			->get();
-			
+
 		return response()->json(['messages' => $messages]);
 	}
-	
+
 	public function sendMessage(Request $request)
 	{
 		$request->validate([
 			'to' => 'required|string',
 			'message' => 'required|string'
 		]);
-		
-		$twilioService = app(\App\Services\TwilioService::class);
-		
-		try {
+
+		$twilioService = app(TwilioService::class);
+
+		try
+		{
 			// Send message
 			$result = $twilioService->sendWhatsApp($request->to, $request->message);
-			
+
 			return response()->json(['success' => true, 'message' => 'Message sent']);
-		} catch (\Exception $e) {
+		}
+		catch (\Exception $e)
+		{
 			// If it fails because it's outside the 24-hour window, try sending with template
-			if (strpos($e->getMessage(), '63016') !== false) {
+			if (strpos($e->getMessage(), '63016') !== false)
+			{
 				return $this->sendWithTemplate($request);
 			}
-			
+
 			return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
 		}
 	}
-	
+
 	/**
 	 * Send a message using WhatsApp templates
 	 * Used for first contact or when outside the 24-hour window
@@ -161,38 +179,41 @@ class ChatController extends Controller
 			'message' => 'required|string',
 			'template' => 'string|nullable'
 		]);
-		
-		$twilioService = app(\App\Services\TwilioService::class);
-		
-		try {
+
+		$twilioService = app(TwilioService::class);
+
+		try
+		{
 			// Determine which template to use
 			$defaultTemplate = config('services.twilio.default_template', 'customer_support');
 			$templateName = $request->template ?? $defaultTemplate;
-			
+
 			// Adapt the message as a template parameter
 			$parameters = ['message' => $request->message];
-			
+
 			// Send using template
 			$result = $twilioService->sendWhatsAppTemplate(
 				$request->to,
 				$templateName,
 				$parameters
 			);
-			
+
 			return response()->json([
-				'success' => true, 
+				'success' => true,
 				'message' => 'Template message sent',
 				'template_used' => $templateName
 			]);
-		} catch (\Exception $e) {
+		}
+		catch (\Exception $e)
+		{
 			return response()->json([
-				'success' => false, 
+				'success' => false,
 				'error' => $e->getMessage(),
 				'tip' => 'Make sure you have approved templates in Twilio'
 			], 500);
 		}
 	}
-	
+
 	/**
 	 * Direct endpoint for sending messages with template
 	 */
