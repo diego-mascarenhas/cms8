@@ -347,29 +347,16 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
-                                {{-- <i class="ti ti-phone-call cursor-pointer d-sm-block d-none me-3"></i>
-                                <i class="ti ti-video cursor-pointer d-sm-block d-none me-3"></i>
-                                <i class="ti ti-search cursor-pointer d-sm-block d-none me-3"></i> --}}
                                 @if(isset($selectedUser) && $selectedUser->id && $hasContact)
-                                    <a href="{{ route('contact.show', $selectedUser->id) }}">
+                                    <a href="{{ route('contact.show', $selectedUser->id) }}" class="me-2">
                                         <i class="ti ti-eye"></i>
                                     </a>
                                 @endif
-                                {{-- <div class="dropdown d-flex align-self-center">
-                                    <button class="btn p-0" type="button" id="chat-header-actions"
-                                        data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        <i class="ti ti-dots-vertical"></i>
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="chat-header-actions">
-                                        <a class="dropdown-item" href="javascript:void(0);">View Contact</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Mute Notifications</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Block Contact</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Clear Chat</a>
-                                        <a class="dropdown-item" href="javascript:void(0);">Report</a>
-                                    </div>
-                                </div> --}}
-                                </div>
+                                <a href="{{ route('claude.prompts.index') }}" class="btn btn-sm btn-primary me-2" title="Gestionar prompts de Claude">
+                                    <i class="ti ti-robot me-1"></i>Prompts
+                                </a>
                             </div>
+                        </div>
                         @endif
                     </div>
                     <div class="chat-history-body bg-body">
@@ -480,6 +467,9 @@
                                             <i class="ti ti-robot me-1"></i>
                                         </label>
                                     </div>
+                                    <a href="{{ route('claude.prompts.index') }}" class="btn btn-sm btn-outline-primary ms-2" title="Gestionar prompts de Claude">
+                                        <i class="ti ti-settings ti-xs"></i>
+                                    </a>
                                 </div>
                             </div>
                             
