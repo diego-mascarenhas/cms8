@@ -155,33 +155,46 @@ class ChatController extends Controller
 
 		try
 		{
+			// Check if this number needs registration
+			$registrationResponse = $this->processRegistration($request->to, $request->message);
+			if ($registrationResponse)
+			{
+				return response()->json([
+					'success' => true,
+					'registration' => true,
+					'message' => $registrationResponse['message']
+				]);
+			}
+
 			// Check if AI assistance was requested
-			if ($request->input('use_ai', false)) {
+			if ($request->input('use_ai', false))
+			{
 				// Get chat history for context
 				$history = $this->getChatHistory($request->to, 10);
-				
+
 				// Process with Claude
 				$claudeResponse = $this->processWithClaude($request->message, $history);
-				
+
 				// If Claude responded successfully, use its response
-				if ($claudeResponse['success']) {
+				if ($claudeResponse['success'])
+				{
 					$aiMessage = $claudeResponse['text'];
-					
+
 					// Send the AI message
 					$result = $twilioService->sendWhatsApp($request->to, $aiMessage);
-					
+
 					return response()->json([
-						'success' => true, 
+						'success' => true,
 						'message' => 'AI assistant message sent',
 						'ai_used' => true,
 						'ai_response' => $aiMessage
 					]);
 				}
-				
+
 				// If Claude failed, continue with original message
 				Log::warning('Claude AI failed, sending original message: ' . $claudeResponse['message']);
 			}
-			
+
 			// Send original message
 			$result = $twilioService->sendWhatsApp($request->to, $request->message);
 
@@ -211,7 +224,7 @@ class ChatController extends Controller
 		$claudeService = app(ClaudeService::class);
 		return $claudeService->chat($message, $history);
 	}
-	
+
 	/**
 	 * Get recent chat history to provide context for the AI
 	 * 
@@ -222,7 +235,8 @@ class ChatController extends Controller
 	private function getChatHistory($phone, $limit = 10)
 	{
 		return Conversation::where('channel', 'whatsapp')
-			->where(function ($query) use ($phone) {
+			->where(function ($query) use ($phone)
+			{
 				$query->where('from', $phone)
 					->orWhere('to', $phone);
 			})
@@ -232,6 +246,125 @@ class ChatController extends Controller
 			->sortBy('created_at')
 			->values()
 			->toArray();
+	}
+
+	/**
+	 * Check if the phone has a registration in progress and process accordingly
+	 * 
+	 * @param string $phone The phone number
+	 * @param string $message The user message
+	 * @return array|null Response to send or null if no registration in progress
+	 */
+	public function processRegistration($phone, $message)
+	{
+		$twilioService = app(TwilioService::class);
+		$lastMessage = Conversation::where('to', $phone)
+			->where('channel', 'whatsapp')
+			->orderBy('created_at', 'desc')
+			->first();
+
+		if (!$lastMessage)
+		{
+			return null;
+		}
+
+		$metadata = $lastMessage->metadata ?? [];
+		$registrationStep = $metadata['registration_step'] ?? null;
+
+		// If no registration in progress, start one
+		if (!$registrationStep)
+		{
+			// Check if the user exists first
+			$user = $this->getUserByPhone($phone);
+			if (!$user)
+			{
+				$response = "¡Bienvenido a nuestra mesa de ayuda!\nVemos que aún nuca nos has escrito por aquí.\n\n¿Podrás decirnos tu nombre completo?";
+				
+				// The TwilioService will save the message in the database
+				$result = $twilioService->sendWhatsApp($phone, $response, ['registration_step' => 'name']);
+				
+				return ['success' => true, 'message' => 'Registration initiated'];
+			}
+			return null;
+		}
+
+		// Process registration steps
+		if ($registrationStep === 'name')
+		{
+			$name = $message;
+			
+			// Validate name has at least 3 letters
+			if (strlen(trim($name)) < 3)
+			{
+				$response = "No parece ser un nombre válido.\n\n¿Podrías escribirlo nuevamente?";
+				$twilioService->sendWhatsApp($phone, $response, ['registration_step' => 'name']);
+				return ['success' => true, 'message' => 'Invalid name'];
+			}
+			
+			$response = "¡Gracias, $name!\n\n¿Podrás decirnos tu dirección de email para asociarla a tu cuenta?";
+			
+			// The TwilioService will save the message to database
+			$twilioService->sendWhatsApp($phone, $response, [
+				'registration_step' => 'email',
+				'user_name' => $name
+			]);
+			
+			return ['success' => true, 'message' => 'Name collected'];
+		}
+		
+		if ($registrationStep === 'email')
+		{
+			$email = $message;
+			$userName = $metadata['user_name'] ?? 'User';
+			
+			// Validate email
+			if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+			{
+				$response = "No parece ser una dirección de email válida.\n\n¿Podrás escribirla nuevamente?";
+				$twilioService->sendWhatsApp($phone, $response, [
+					'registration_step' => 'email',
+					'user_name' => $userName
+				]);
+				return ['success' => true, 'message' => 'Invalid email'];
+			}
+			
+			// Create the new user
+			try
+			{
+				$user = User::create([
+					'name' => $userName,
+					'email' => $email,
+					'phone' => preg_replace('/[^0-9]/', '', $phone),
+					'password' => bcrypt(substr(md5(rand()), 0, 10)) // Random password
+				]);
+
+				// Assign client role (ID 7)
+				if (class_exists('\\Spatie\\Permission\\Models\\Role'))
+				{
+					$clientRole = \Spatie\Permission\Models\Role::findById(7);
+					if ($clientRole)
+					{
+						$user->assignRole($clientRole);
+					}
+				}
+
+				$response = "¡Gracias por registrarte!\n\nVamos a confirmar tus datos y a partir de ahora todas las comunicaciones con nosotros estarán validadas con este número telefónico.\nEn breve nos pondremos en contacto por este mismo medio.";
+				
+				// The TwilioService will save the message to database with user_id
+				$twilioService->sendWhatsApp($phone, $response, null, $user->id);
+				
+				return ['success' => true, 'message' => 'User registered', 'user_id' => $user->id];
+			}
+			catch (\Exception $e)
+			{
+				Log::error('User registration error: ' . $e->getMessage());
+				$response = "Lo sentimos, ha ocurrido un error al crear tu cuenta.\nPor favor escríbenos a administracion@revisionalpha.com para que podamos ayudarte.";
+				$twilioService->sendWhatsApp($phone, $response);
+				return ['success' => false, 'message' => 'Registration error'];
+			}
+		}
+		
+		return null;
 	}
 
 	/**
