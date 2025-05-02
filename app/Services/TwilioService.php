@@ -68,7 +68,7 @@ class TwilioService
         }
     }
 
-    public function sendWhatsApp($to, $message)
+    public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
     {
         try
         {
@@ -91,6 +91,20 @@ class TwilioService
             $cleanFrom = preg_replace('/[^0-9]/', '', $this->whatsappFromNumber);
             $cleanTo = preg_replace('/[^0-9]/', '', $to);
 
+            // Prepare metadata
+            $messageMetadata = [
+                'twilio_response' => [
+                    'sid' => $twilioMessage->sid,
+                    'status' => $twilioMessage->status,
+                    'date_created' => $twilioMessage->dateCreated->format('Y-m-d H:i:s'),
+                ]
+            ];
+            
+            // Merge custom metadata if provided
+            if ($metadata) {
+                $messageMetadata = array_merge($messageMetadata, $metadata);
+            }
+
             // Save outbound message to database
             Conversation::create([
                 'message_sid' => $twilioMessage->sid,
@@ -100,14 +114,8 @@ class TwilioService
                 'body' => $message,
                 'status' => 'sent',
                 'direction' => 'outbound',
-                'user_id' => auth()->id(),
-                'metadata' => [
-                    'twilio_response' => [
-                        'sid' => $twilioMessage->sid,
-                        'status' => $twilioMessage->status,
-                        'date_created' => $twilioMessage->dateCreated->format('Y-m-d H:i:s'),
-                    ]
-                ]
+                'user_id' => $userId ?? auth()->id(),
+                'metadata' => $messageMetadata
             ]);
 
             return $twilioMessage;
@@ -177,6 +185,18 @@ class TwilioService
             {
                 Mail::to($notificationEmail)->send(new IncomingMessageNotification($conversation));
                 \Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
+            }
+
+            // Check if this is part of a registration process
+            if ($channel == 'whatsapp')
+            {
+                $chatController = app(\App\Http\Controllers\ChatController::class);
+                $registrationResponse = $chatController->processRegistration($cleanFrom, $body);
+                
+                // If this was a registration step, we've already handled it
+                if ($registrationResponse) {
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'registration' => true]);
+                }
             }
 
             // Automatic AI response using Claude
