@@ -443,6 +443,7 @@ EOT;
         
         // Inicializar el array de empresas
         $enterprises = [];
+        $enterpriseInvoices = []; // Array para almacenar las facturas por empresa
         
         try {
             // Cargar el contacto con sus empresas usando eager loading - solo enterprises()
@@ -450,7 +451,29 @@ EOT;
             
             if ($contactWithEnterprises && $contactWithEnterprises->enterprises) {
                 // Map enterprises to the desired format
-                $enterprises = $contactWithEnterprises->enterprises->map(function($enterprise) {
+                $enterprises = $contactWithEnterprises->enterprises->map(function($enterprise) use (&$enterpriseInvoices) {
+                    // Cargar facturas para esta empresa
+                    try {
+                        $invoices = \App\Models\Invoice::where('enterprise_id', $enterprise->id)
+                                    ->orderBy('date', 'desc')
+                                    ->take(5) // Limitamos a las 5 más recientes
+                                    ->get();
+                        
+                        // Guardar facturas en el array por ID de empresa
+                        $enterpriseInvoices[$enterprise->id] = $invoices;
+                        
+                        \Log::info('Invoices loaded for enterprise', [
+                            'enterprise_id' => $enterprise->id,
+                            'invoice_count' => $invoices->count()
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::error('Error loading invoices', [
+                            'enterprise_id' => $enterprise->id,
+                            'error' => $e->getMessage()
+                        ]);
+                        $enterpriseInvoices[$enterprise->id] = collect([]); // Colección vacía como fallback
+                    }
+                    
                     return [
                         'id' => $enterprise->id,
                         'name' => $enterprise->name,
@@ -484,6 +507,7 @@ EOT;
         if (!empty($enterprises)) {
             $userContext .= "\n===== USER ENTERPRISES =====\n";
             $userContext .= "IMPORTANTE: El usuario está asociado con las siguientes empresas:\n\n";
+            
             foreach ($enterprises as $index => $enterprise) {
                 $userContext .= "EMPRESA #" . ($index + 1) . ":\n";
                 $userContext .= "- NOMBRE: " . $enterprise['name'] . "\n";
@@ -491,6 +515,35 @@ EOT;
                 if (!empty($enterprise['position'])) {
                     $userContext .= "- POSICIÓN: " . $enterprise['position'] . "\n";
                 }
+                
+                // Obtener facturas asociadas a esta empresa
+                try {
+                    $invoices = $enterpriseInvoices[$enterprise['id']] ?? collect();
+                    
+                    if ($invoices && $invoices->count() > 0) {
+                        $userContext .= "- FACTURAS RECIENTES (" . $invoices->count() . "):\n";
+                        foreach ($invoices as $i => $invoice) {
+                            $userContext .= "  * Factura #" . $invoice->number . 
+                                           " - Fecha: " . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A') . 
+                                           " - Importe: " . number_format($invoice->total_amount, 2) . "€\n";
+                        }
+                    } else {
+                        $userContext .= "- FACTURAS: No hay facturas recientes para esta empresa\n";
+                    }
+                    
+                    // Log para debugging
+                    \Log::info('Invoices found for enterprise', [
+                        'enterprise_id' => $enterprise['id'],
+                        'invoice_count' => $invoices ? $invoices->count() : 0
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Error loading invoices for enterprise', [
+                        'enterprise_id' => $enterprise['id'],
+                        'error' => $e->getMessage()
+                    ]);
+                    $userContext .= "- FACTURAS: Error al cargar las facturas\n";
+                }
+                
                 $userContext .= "\n";
             }
             $userContext .= "===== FIN EMPRESAS USUARIO =====\n";
@@ -502,7 +555,10 @@ EOT;
         $userContext .= "- If they ask 'What's my birthday?' respond with their birthday from the USER BIRTHDAY field.\n";
         $userContext .= "- If they ask about what companies or enterprises they are associated with, ALWAYS tell them about the companies listed in USER ENTERPRISES section above.\n";
         $userContext .= "- VERY IMPORTANT: If the user asks about their company or enterprise, you MUST respond with the list of enterprises shown in USER ENTERPRISES section.\n";
+        $userContext .= "- If they ask about invoices or bills for their company, tell them about the invoices listed under each enterprise.\n";
+        $userContext .= "- If they ask for the total amount of their recent invoices, calculate the sum of all invoice amounts listed.\n";
         $userContext .= "- NEVER say that you don't have access to their company information.\n";
+        $userContext .= "- NEVER say that you don't have access to their invoice information.\n";
         $userContext .= "- DO NOT say you don't have access to their data.\n";
         $userContext .= "- DO NOT say that you can only see what's in the conversation.\n";
         $userContext .= "- DO tell them their company information if they ask about it, using the exact names from USER ENTERPRISES.\n";
@@ -523,6 +579,26 @@ EOT;
             $userContext .= "Correct response: 'No tengo registros de que estés asociado con alguna empresa en este momento.'\n";
         }
         $userContext .= "Incorrect response: 'No puedo acceder a esa información.' o 'No tengo esa información.'\n\n";
+        
+        // Example for invoices
+        $userContext .= "User: '¿Cuáles son mis facturas recientes?'\n";
+        $userContext .= "Correct response: 'Aquí están tus facturas recientes por empresa:'\n";
+        if (!empty($enterprises)) {
+            foreach ($enterprises as $e) {
+                $userContext .= "Para " . $e['name'] . ": ";
+                // Add example invoice response
+                $invoices = $enterpriseInvoices[$e['id']] ?? collect();
+                
+                if ($invoices && $invoices->count() > 0) {
+                    $userContext .= "Tienes " . $invoices->count() . " facturas recientes. ";
+                    $userContext .= "La más reciente es la factura #" . $invoices[0]->number . 
+                                  " por un importe de " . number_format($invoices[0]->total_amount, 2) . "€.\n";
+                } else {
+                    $userContext .= "No hay facturas recientes.\n";
+                }
+            }
+        }
+        $userContext .= "Incorrect response: 'No puedo ver tus facturas.' o 'No tengo acceso a esa información.'\n";
         
         $userContext .= "===== END USER INFORMATION =====\n\n";
         
