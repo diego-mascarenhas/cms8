@@ -54,7 +54,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username', $domain->username) }}" required placeholder="cPanel username">
+                            <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username', $domain->username) }}" required placeholder="Username">
                             @error('username')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
