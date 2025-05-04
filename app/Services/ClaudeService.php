@@ -454,10 +454,32 @@ EOT;
                 $enterprises = $contactWithEnterprises->enterprises->map(function($enterprise) use (&$enterpriseInvoices) {
                     // Cargar facturas para esta empresa
                     try {
-                        $invoices = \App\Models\Invoice::where('enterprise_id', $enterprise->id)
+                        // Get all recent invoices
+                        $allInvoices = \App\Models\Invoice::where('enterprise_id', $enterprise->id)
                                     ->orderBy('date', 'desc')
-                                    ->take(5) // Limitamos a las 5 más recientes
+                                    ->take(20) // Get more to filter from
                                     ->get();
+                        
+                        // Filter unpaid invoices - assuming balance > 0 means unpaid
+                        $unpaidInvoices = $allInvoices->filter(function($invoice) {
+                            return $invoice->balance > 0;
+                        });
+                        
+                        // If we have unpaid invoices, use those (all of them)
+                        if ($unpaidInvoices->count() > 0) {
+                            $invoices = $unpaidInvoices; // Use all unpaid invoices without limiting to 5
+                            \Log::info('Found unpaid invoices for enterprise', [
+                                'enterprise_id' => $enterprise->id,
+                                'unpaid_count' => $unpaidInvoices->count()
+                            ]);
+                        } else {
+                            // Otherwise use the 3 most recent invoices
+                            $invoices = $allInvoices->take(3);
+                            \Log::info('No unpaid invoices, using latest 3 for enterprise', [
+                                'enterprise_id' => $enterprise->id,
+                                'invoice_count' => $invoices->count()
+                            ]);
+                        }
                         
                         // Guardar facturas en el array por ID de empresa
                         $enterpriseInvoices[$enterprise->id] = $invoices;
@@ -521,11 +543,50 @@ EOT;
                     $invoices = $enterpriseInvoices[$enterprise['id']] ?? collect();
                     
                     if ($invoices && $invoices->count() > 0) {
-                        $userContext .= "- FACTURAS RECIENTES (" . $invoices->count() . "):\n";
-                        foreach ($invoices as $i => $invoice) {
-                            $userContext .= "  * Factura #" . $invoice->number . 
-                                           " - Fecha: " . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A') . 
-                                           " - Importe: " . number_format($invoice->total_amount, 2) . "€\n";
+                        // Check if we have unpaid invoices
+                        $unpaidInvoices = $invoices->filter(function($invoice) {
+                            return $invoice->balance > 0;
+                        });
+                        
+                        if ($unpaidInvoices->count() > 0) {
+                            $userContext .= "- FACTURAS PENDIENTES DE PAGO (" . $unpaidInvoices->count() . "):\n";
+                            // Show ALL unpaid invoices
+                            foreach ($unpaidInvoices as $i => $invoice) {
+                                $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
+                                
+                                $userContext .= "  * Factura #" . $invoice->number . 
+                                               " - Fecha: " . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A') . 
+                                               " - Importe Total: $" . number_format($invoice->total_amount, 2) .
+                                               " - Pendiente: $" . number_format($invoice->balance, 2) .
+                                               " - Descargar: " . $downloadLink . "\n";
+                            }
+                            
+                            // Also show the 3 most recent invoices if different from the unpaid ones
+                            $paidInvoices = $invoices->reject(function($invoice) {
+                                return $invoice->balance > 0;
+                            })->take(3);
+                            
+                            if ($paidInvoices->count() > 0) {
+                                $userContext .= "- ÚLTIMAS FACTURAS PAGADAS (" . $paidInvoices->count() . "):\n";
+                                foreach ($paidInvoices as $i => $invoice) {
+                                    $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
+                                    
+                                    $userContext .= "  * Factura #" . $invoice->number . 
+                                                   " - Fecha: " . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A') . 
+                                                   " - Importe: $" . number_format($invoice->total_amount, 2) .
+                                                   " - Descargar: " . $downloadLink . "\n";
+                                }
+                            }
+                        } else {
+                            $userContext .= "- ÚLTIMAS FACTURAS (Todas pagadas) (" . $invoices->count() . "):\n";
+                            foreach ($invoices as $i => $invoice) {
+                                $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
+                                
+                                $userContext .= "  * Factura #" . $invoice->number . 
+                                               " - Fecha: " . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A') . 
+                                               " - Importe: $" . number_format($invoice->total_amount, 2) .
+                                               " - Descargar: " . $downloadLink . "\n";
+                            }
                         }
                     } else {
                         $userContext .= "- FACTURAS: No hay facturas recientes para esta empresa\n";
@@ -534,7 +595,8 @@ EOT;
                     // Log para debugging
                     \Log::info('Invoices found for enterprise', [
                         'enterprise_id' => $enterprise['id'],
-                        'invoice_count' => $invoices ? $invoices->count() : 0
+                        'invoice_count' => $invoices ? $invoices->count() : 0,
+                        'unpaid_count' => isset($unpaidInvoices) ? $unpaidInvoices->count() : 0
                     ]);
                 } catch (\Exception $e) {
                     \Log::error('Error loading invoices for enterprise', [
@@ -579,27 +641,96 @@ EOT;
             $userContext .= "Correct response: 'No tengo registros de que estés asociado con alguna empresa en este momento.'\n";
         }
         $userContext .= "Incorrect response: 'No puedo acceder a esa información.' o 'No tengo esa información.'\n\n";
-        
+
         // Example for invoices
-        $userContext .= "User: '¿Cuáles son mis facturas recientes?'\n";
-        $userContext .= "Correct response: 'Aquí están tus facturas recientes por empresa:'\n";
+        $userContext .= "User: '¿Cuáles son mis facturas pendientes?'\n";
+        $userContext .= "Correct response cuando hay facturas pendientes: 'Aquí están todas tus facturas pendientes de pago por empresa:'\n";
+        $userContext .= "Correct response cuando NO hay facturas pendientes: 'No tienes facturas pendientes de pago. Aquí están tus últimas 3 facturas:'\n";
+
         if (!empty($enterprises)) {
+            $hasUnpaidInvoices = false;
             foreach ($enterprises as $e) {
                 $userContext .= "Para " . $e['name'] . ": ";
                 // Add example invoice response
                 $invoices = $enterpriseInvoices[$e['id']] ?? collect();
                 
-                if ($invoices && $invoices->count() > 0) {
-                    $userContext .= "Tienes " . $invoices->count() . " facturas recientes. ";
-                    $userContext .= "La más reciente es la factura #" . $invoices[0]->number . 
-                                  " por un importe de " . number_format($invoices[0]->total_amount, 2) . "€.\n";
+                // Filter for unpaid invoices
+                $unpaidInvoices = $invoices->filter(function($invoice) {
+                    return $invoice->balance > 0;
+                });
+                
+                if ($unpaidInvoices && $unpaidInvoices->count() > 0) {
+                    $hasUnpaidInvoices = true;
+                    $userContext .= "Tienes " . $unpaidInvoices->count() . " facturas pendientes. ";
+                    
+                    // If there's just one unpaid invoice
+                    if ($unpaidInvoices->count() == 1) {
+                        $userContext .= "La factura pendiente es #" . $unpaidInvoices->first()->number . 
+                                      " por un importe pendiente de $" . number_format($unpaidInvoices->first()->balance, 2) . ".\n";
+                    } else {
+                        // List a couple of examples if there are multiple
+                        $userContext .= "Por ejemplo, la factura #" . $unpaidInvoices->first()->number . 
+                                      " por $" . number_format($unpaidInvoices->first()->balance, 2);
+                        
+                        if ($unpaidInvoices->count() > 1) {
+                            $userContext .= " y la factura #" . $unpaidInvoices[1]->number . 
+                                          " por $" . number_format($unpaidInvoices[1]->balance, 2);
+                        }
+                        
+                        $userContext .= ".\n";
+                    }
                 } else {
-                    $userContext .= "No hay facturas recientes.\n";
+                    $userContext .= "No tienes facturas pendientes de pago. ";
+                    if ($invoices && $invoices->count() > 0) {
+                        $userContext .= "Tus últimas facturas son: ";
+                        foreach ($invoices as $index => $invoice) {
+                            if ($index > 0) $userContext .= ", ";
+                            $userContext .= "#" . $invoice->number . " ($" . number_format($invoice->total_amount, 2) . ")";
+                        }
+                        $userContext .= ".\n";
+                    } else {
+                        $userContext .= "No hay facturas recientes.\n";
+                    }
+                }
+            }
+            
+            if (!$hasUnpaidInvoices) {
+                $userContext .= "\nRECORDATORIO IMPORTANTE: Cuando un usuario pregunte por sus facturas y NO tenga facturas pendientes, siempre mostrar las últimas 3 facturas pagadas.\n";
+            } else {
+                $userContext .= "\nRECORDATORIO IMPORTANTE: Cuando un usuario pregunte por sus facturas y tenga facturas pendientes, SIEMPRE mostrar TODAS las facturas pendientes sin importar cuántas sean.\n";
+            }
+        }
+        $userContext .= "Incorrect response: 'No puedo ver tus facturas.' o 'No tengo acceso a esa información.'\n\n";
+
+        // Example for download links
+        $userContext .= "EXAMPLE WITH DOWNLOAD LINKS:\n";
+        $userContext .= "User: '¿Puedes enviarme el link para descargar mis facturas?'\n";
+        $userContext .= "Correct response: 'Claro, aquí tienes los links para descargar tus facturas:'\n";
+
+        // Include example of how to display download links
+        if (!empty($enterprises)) {
+            foreach ($enterprises as $e) {
+                $invoices = $enterpriseInvoices[$e['id']] ?? collect();
+                
+                if ($invoices && $invoices->count() > 0) {
+                    $userContext .= "Para " . $e['name'] . ":\n";
+                    
+                    foreach ($invoices->take(2) as $invoice) {
+                        $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
+                        $userContext .= "- Factura #" . $invoice->number . 
+                                      " ($" . number_format($invoice->total_amount, 2) . "): " . 
+                                      $downloadLink . "\n";
+                    }
                 }
             }
         }
-        $userContext .= "Incorrect response: 'No puedo ver tus facturas.' o 'No tengo acceso a esa información.'\n";
-        
+
+        // User asking for specific invoice download
+        $userContext .= "\nUser: '¿Me puedes dar el link para descargar la factura #12345?'\n";
+        $userContext .= "Correct response: 'Aquí tienes el link para descargar la factura #12345: https://wsaa.revisionalpha.com/[hash-correspondiente].pdf'\n";
+
+        $userContext .= "Incorrect response: 'No puedo proporcionar enlaces de descarga.'\n";
+
         $userContext .= "===== END USER INFORMATION =====\n\n";
         
         // Log the enriched prompt for debugging
@@ -613,5 +744,23 @@ EOT;
         
         // Append this context to the system prompt
         return $systemPrompt . $userContext;
+    }
+
+    /**
+     * Generate a download link for an invoice
+     * 
+     * @param int $invoiceId The invoice ID
+     * @return string The download URL
+     */
+    private function generateInvoiceDownloadLink($invoiceId)
+    {
+        // Group is always 502
+        $group = 502;
+        
+        // Generate MD5 of "502{invoice_id}"
+        $md5Hash = md5($group . $invoiceId);
+        
+        // Return the download URL
+        return "https://wsaa.revisionalpha.com/{$md5Hash}.pdf";
     }
 }
