@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('enterprise_id');
-            $table->unsignedBigInteger('billing_id');
+            $table->unsignedBigInteger('billing_id')->nullable();
             $table->unsignedTinyInteger('type_id');
             $table->enum('operation', ['buy', 'sell'])->default('sell');
             $table->string('number')->default(1);
