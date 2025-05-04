@@ -163,7 +163,7 @@ class ImportDataCommand extends Command
                 ->whereNotNull('nombre')
                 ->where('nombre', '!=', '')
                 ->whereRaw("TRIM(nombre) != ''")
-                ->select('id', 'email', 'nombre', 'apellido', 'estado'),
+                ->select('id', 'email', 'nombre', 'apellido', 'estado', 'id_empresa', 'area_privada', 'telefono', 'celular', 'fecha_alta', 'fecha_modificacion'),
 
             '2. Categories' => DB::connection('mysql_tmp')->table('categorias_generales')
                 ->where('grupo', env('CMS_GROUP'))
@@ -339,7 +339,8 @@ class ImportDataCommand extends Command
                 ->where('id', '>', 2)
                 ->whereNotNull('nombre')
                 ->where('nombre', '!=', '')
-                ->whereRaw("TRIM(nombre) != ''");
+                ->whereRaw("TRIM(nombre) != ''")
+                ->select('id', 'email', 'nombre', 'apellido', 'estado', 'id_empresa', 'area_privada', 'telefono', 'celular', 'fecha_alta', 'fecha_modificacion');
 
             if ($id)
             {
@@ -398,6 +399,74 @@ class ImportDataCommand extends Command
                 {
                     DB::table('contacts')->where('id', $existingContact->id)->update($contactData);
                     $stats['updated']++;
+                }
+
+                // Añadir la relación con la empresa si existe id_empresa
+                if (!empty($data->id_empresa))
+                {
+                    // Verificar si existe la empresa
+                    $enterpriseExists = DB::table('enterprises')->where('id', $data->id_empresa)->exists();
+
+                    if ($enterpriseExists)
+                    {
+                        // Determinar la posición basada en area_privada
+                        $position = 'Usuario'; // Default position
+                        switch ($data->area_privada) {
+                            case 1:
+                                $position = 'root';
+                                break;
+                            case 2:
+                                $position = 'Reseller';
+                                break;
+                            case 3:
+                                $position = 'Administrador';
+                                break;
+                            case 4:
+                                $position = 'Usuario';
+                                break;
+                            case 5:
+                                $position = 'Invitado';
+                                break;
+                            default:
+                                $position = 'Usuario';
+                                break;
+                        }
+
+                        // Comprobar si ya existe la relación
+                        $relationExists = DB::table('contact_enterprise')
+                            ->where('contact_id', $data->id)
+                            ->where('enterprise_id', $data->id_empresa)
+                            ->exists();
+
+                        if (!$relationExists)
+                        {
+                            // Crear la relación
+                            DB::table('contact_enterprise')->insert([
+                                'contact_id' => $data->id,
+                                'enterprise_id' => $data->id_empresa,
+                                'position' => $position,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                            $this->info("Added relationship between contact {$data->id} and enterprise {$data->id_empresa} as {$position}");
+                        }
+                        else
+                        {
+                            // Actualizar la posición si la relación ya existe
+                            DB::table('contact_enterprise')
+                                ->where('contact_id', $data->id)
+                                ->where('enterprise_id', $data->id_empresa)
+                                ->update([
+                                    'position' => $position,
+                                    'updated_at' => now(),
+                                ]);
+                            $this->info("Updated position to {$position} for contact {$data->id} in enterprise {$data->id_empresa}");
+                        }
+                    }
+                    else
+                    {
+                        $this->warn("Enterprise with ID {$data->id_empresa} not found, skipping relationship for contact {$data->id}");
+                    }
                 }
 
                 $bar->advance();
