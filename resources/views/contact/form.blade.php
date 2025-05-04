@@ -159,7 +159,7 @@
                                     <x-categories-select 
                                         id="categories" 
                                         label="Categorías"
-                                        :selected="$data->categories->pluck('id')->toArray() ?? old('categories', [])"
+                                        :selected="isset($data->categories) ? $data->categories->pluck('id')->toArray() : old('categories', [])"
                                         moduleKey="contacts"
                                     />
                                 </div>
