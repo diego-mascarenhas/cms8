@@ -50,16 +50,23 @@ class ClaudeService
                 'message_count' => count($messages)
             ]);
 
+            // Construir el payload para la API
+            $payload = [
+                'model' => $this->model,
+                'messages' => $messages,
+                'max_tokens' => $maxTokens
+            ];
+            
+            // Solo agregar el campo system si el systemPrompt no está vacío
+            if (!empty($systemPrompt)) {
+                $payload['system'] = $systemPrompt;
+            }
+
             $response = Http::withHeaders([
                 'x-api-key' => $this->apiKey,
                 'anthropic-version' => '2023-06-01',
                 'Content-Type' => 'application/json',
-            ])->post("{$this->baseUrl}/messages", [
-                        'model' => $this->model,
-                        'system' => $systemPrompt,
-                        'messages' => $messages,
-                        'max_tokens' => $maxTokens,
-                    ]);
+            ])->post("{$this->baseUrl}/messages", $payload);
 
             if (!$response->successful())
             {
