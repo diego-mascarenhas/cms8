@@ -8,7 +8,7 @@
         </div>
         <div class="col-md-6 text-end">
             <a href="{{ route('server.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back to Servers
+                <i class="ti ti-arrow-left me-1"></i> Back to Servers
             </a>
         </div>
     </div>

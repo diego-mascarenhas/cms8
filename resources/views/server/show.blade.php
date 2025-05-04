@@ -8,10 +8,10 @@
         </div>
         <div class="col-md-6 text-end">
             <a href="{{ route('server.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back to Servers
+                <i class="ti ti-arrow-left me-1"></i> Back to Servers
             </a>
             <a href="{{ route('server.edit', $server->id) }}" class="btn btn-primary">
-                <i class="fas fa-edit"></i> Edit Server
+                <i class="ti ti-edit me-1"></i> Edit Server
             </a>
         </div>
     </div>
@@ -67,19 +67,16 @@
                     <h5 class="card-title mb-0">Actions</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ route('server.testConnection', $server->id) }}" method="POST" class="mb-3">
-                        @csrf
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-network-wired me-1"></i> Test Connection
-                        </button>
-                    </form>
+                    <a href="#" class="btn btn-outline-primary mb-3" id="test-connection-btn">
+                        <i class="ti ti-world me-1"></i> Test Connection
+                    </a>
                     
                     <form action="{{ route('server.destroy', $server->id) }}" method="POST"
                           onsubmit="return confirm('Are you sure you want to delete this server?');">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger w-100">
-                            <i class="fas fa-trash me-1"></i> Delete Server
+                            <i class="ti ti-trash me-1"></i> Delete Server
                         </button>
                     </form>
                 </div>
