@@ -18,7 +18,7 @@ class ClaudeService
         $this->apiKey = config('services.claude.api_key');
         $this->model = config('services.claude.model', 'claude-3-5-sonnet-20241022');
         $this->baseUrl = config('services.claude.base_url', 'https://api.anthropic.com/v1');
-        $this->maxTokens = (int)config('services.claude.max_tokens', 1000);
+        $this->maxTokens = (int) config('services.claude.max_tokens', 1000);
         $this->systemPrompt = config('services.claude.system_prompt', $this->getDefaultSystemPrompt());
     }
 
@@ -32,35 +32,37 @@ class ClaudeService
      */
     public function chat($message, $history = [], $customSystemPrompt = null)
     {
-        try {
+        try
+        {
             // Format conversation history for Claude's messages format
             $messages = $this->formatConversationHistory($message, $history);
-            
+
             // Use custom system prompt if provided, otherwise use default
             $systemPrompt = $customSystemPrompt ?? $this->systemPrompt;
-            
+
             // Ensure max_tokens is a valid integer
-            $maxTokens = (int)$this->maxTokens;
-            
+            $maxTokens = (int) $this->maxTokens;
+
             // Log the request for debugging
             \Log::info('Claude API Request:', [
                 'model' => $this->model,
                 'max_tokens' => $maxTokens,
                 'message_count' => count($messages)
             ]);
-            
+
             $response = Http::withHeaders([
                 'x-api-key' => $this->apiKey,
                 'anthropic-version' => '2023-06-01',
                 'Content-Type' => 'application/json',
             ])->post("{$this->baseUrl}/messages", [
-                'model' => $this->model,
-                'system' => $systemPrompt,
-                'messages' => $messages,
-                'max_tokens' => $maxTokens,
-            ]);
+                        'model' => $this->model,
+                        'system' => $systemPrompt,
+                        'messages' => $messages,
+                        'max_tokens' => $maxTokens,
+                    ]);
 
-            if (!$response->successful()) {
+            if (!$response->successful())
+            {
                 Log::error('Claude API Error: ' . $response->body());
                 return [
                     'success' => false,
@@ -71,17 +73,20 @@ class ClaudeService
 
             $data = $response->json();
             Log::info('Claude API Response: ' . json_encode($data));
-            
+
             // Adapt to the response structure in the current Claude API
             $responseText = '';
-            if (isset($data['content']) && is_array($data['content'])) {
-                foreach ($data['content'] as $content) {
-                    if (isset($content['type']) && $content['type'] === 'text' && isset($content['text'])) {
+            if (isset($data['content']) && is_array($data['content']))
+            {
+                foreach ($data['content'] as $content)
+                {
+                    if (isset($content['type']) && $content['type'] === 'text' && isset($content['text']))
+                    {
                         $responseText .= $content['text'];
                     }
                 }
             }
-            
+
             return [
                 'success' => true,
                 'text' => $responseText ?: 'No response text',
@@ -89,7 +94,9 @@ class ClaudeService
                 'usage' => $data['usage'] ?? null,
                 'raw_response' => $data
             ];
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e)
+        {
             Log::error('Claude Service Error: ' . $e->getMessage());
             return [
                 'success' => false,
@@ -110,7 +117,8 @@ class ClaudeService
         $formattedMessages = [];
 
         // Add history messages if provided
-        foreach ($history as $message) {
+        foreach ($history as $message)
+        {
             $role = $message['direction'] === 'inbound' ? 'user' : 'assistant';
             $formattedMessages[] = [
                 'role' => $role,
@@ -126,7 +134,7 @@ class ClaudeService
 
         return $formattedMessages;
     }
-    
+
     /**
      * Get default system prompt for Claude
      * 
@@ -134,13 +142,21 @@ class ClaudeService
      */
     private function getDefaultSystemPrompt()
     {
+        $defaultPromptPath = storage_path('app/claude_prompts/default.txt');
+
+        if (file_exists($defaultPromptPath))
+        {
+            return file_get_contents($defaultPromptPath);
+        }
+
+        // Fallback if file doesn't exist
         return <<<EOT
 You are a helpful, friendly, and professional customer service assistant.
 
 Be concise and clear in your responses. Keep them under 3 paragraphs for mobile readability.
 EOT;
     }
-    
+
     /**
      * Set a custom system prompt
      * 
@@ -151,7 +167,7 @@ EOT;
     {
         $this->systemPrompt = $prompt;
     }
-    
+
     /**
      * Reset to default system prompt
      * 
@@ -161,4 +177,4 @@ EOT;
     {
         $this->systemPrompt = $this->getDefaultSystemPrompt();
     }
-} 
+}
