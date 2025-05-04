@@ -10,6 +10,8 @@ class Server extends Model
     protected $table = 'servers';
 
     protected $fillable = [
+        'name',
+        'ip',
         'server_url',
         'username',
         'success',
@@ -56,5 +58,10 @@ class Server extends Model
     public function getSslIssuerAttribute()
     {
         return $this->ssl_status['issuer'] ?? 'Unknown';
+    }
+
+    public function domains()
+    {
+        return $this->hasMany(Domain::class);
     }
 } 

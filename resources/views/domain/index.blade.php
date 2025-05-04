@@ -2,6 +2,11 @@
 
 @section('title', 'Domains')
 
+@section('vendor-style')
+<link rel="stylesheet" href="{{asset('vendors/data-tables/css/dataTables.bootstrap5.min.css')}}">
+<link rel="stylesheet" href="{{asset('vendors/data-tables/extensions/responsive/css/responsive.bootstrap5.min.css')}}">
+@endsection
+
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
@@ -112,11 +117,12 @@
 @endsection
 
 @push('scripts')
-    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+    {{ $dataTable->scripts() }}
 @endpush
 
 @section('vendor-script')
 <script src="{{asset('vendors/data-tables/js/jquery.dataTables.min.js')}}"></script>
+<script src="{{asset('vendors/data-tables/js/dataTables.bootstrap5.min.js')}}"></script>
 <script src="{{asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js')}}"></script>
 <script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
 @endsection 

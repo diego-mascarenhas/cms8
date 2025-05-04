@@ -9,7 +9,9 @@ return new class extends Migration
     public function up()
     {
         Schema::create('servers', function (Blueprint $table) {
-            $table->id();
+            $table->smallIncrements('id');
+            $table->string('name');
+            $table->string('ip')->nullable();
             $table->string('server_url')->unique();
             $table->string('username');
             $table->boolean('success');

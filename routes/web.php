@@ -32,6 +32,7 @@ use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\ServerController;
 
 // auth
 Route::middleware([
@@ -197,6 +198,10 @@ Route::middleware(['auth'])->group(function ()
     Route::resource('domain', DomainController::class);
     Route::post('/domain/{domain}/refresh', [DomainController::class, 'refresh'])->name('domain.refresh');
     Route::post('/domain/{domain}/toggle-suspension', [DomainController::class, 'toggleSuspension'])->name('domain.toggle-suspension');
+    
+    // Servers
+    Route::resource('server', ServerController::class);
+    Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
     
     // Accounting
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');

@@ -37,7 +37,7 @@ class DomainController extends Controller
     {
         $validated = $request->validate([
             'domain' => 'required|string|unique:domains,domain',
-            'server_url' => 'required|string|exists:servers,server_url',
+            'server_id' => 'required|integer|exists:servers,id',
             'username' => 'required|string',
             'plan' => 'nullable|string',
             'site_type' => 'nullable|string',
@@ -88,7 +88,7 @@ class DomainController extends Controller
                 'string',
                 Rule::unique('domains')->ignore($domain->id),
             ],
-            'server_url' => 'required|string|exists:servers,server_url',
+            'server_id' => 'required|integer|exists:servers,id',
             'username' => 'required|string',
             'plan' => 'nullable|string',
             'site_type' => 'nullable|string',
@@ -99,10 +99,10 @@ class DomainController extends Controller
             'is_working' => 'boolean',
         ]);
 
-        // Handle boolean fields
-        $validated['suspended'] = $request->has('suspended');
-        $validated['needs_update'] = $request->has('needs_update');
-        $validated['is_working'] = $request->has('is_working');
+        // Set default values with consistent handling
+        $validated['suspended'] = $request->input('suspended', false);
+        $validated['needs_update'] = $request->input('needs_update', false);
+        $validated['is_working'] = $request->input('is_working', true);
 
         $domain->update($validated);
 

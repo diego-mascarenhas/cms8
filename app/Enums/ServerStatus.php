@@ -4,18 +4,31 @@ namespace App\Enums;
 
 enum ServerStatus: int
 {
-    case INACTIVE = 1;
-    case ACTIVE = 2;
-    case MAINTENANCE = 3;
-    case ERROR = 4;
-
-    public function label(): string
+    case Unknown = 0;
+    case Active = 1;
+    case Inactive = 2;
+    case Maintenance = 3;
+    case Error = 4;
+    
+    public function name(): string
     {
         return match($this) {
-            self::ACTIVE => 'Active',
-            self::INACTIVE => 'Inactive',
-            self::MAINTENANCE => 'Maintenance',
-            self::ERROR => 'Error',
+            self::Unknown => 'Unknown',
+            self::Active => 'Active',
+            self::Inactive => 'Inactive',
+            self::Maintenance => 'Maintenance',
+            self::Error => 'Error',
+        };
+    }
+    
+    public function color(): string
+    {
+        return match($this) {
+            self::Unknown => 'secondary',
+            self::Active => 'success',
+            self::Inactive => 'warning',
+            self::Maintenance => 'info',
+            self::Error => 'danger',
         };
     }
 } 

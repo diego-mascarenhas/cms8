@@ -47,7 +47,7 @@
         <div class="card mb-3">
             <div class="card-body">
                 <h5 class="card-title">Server</h5>
-                <p class="mb-0">{{ $domain->server_url }}</p>
+                <p class="mb-0">{{ $domain->server ? $domain->server->server_url : 'N/A' }}</p>
                 <small class="text-muted">Username: {{ $domain->username }}</small>
             </div>
         </div>
@@ -97,7 +97,7 @@
                 
                 <div class="row mb-3">
                     <div class="col-md-4 fw-bold">Server:</div>
-                    <div class="col-md-8">{{ $domain->server_url }}</div>
+                    <div class="col-md-8">{{ $domain->server ? $domain->server->server_url : 'N/A' }}</div>
                 </div>
                 
                 <div class="row mb-3">

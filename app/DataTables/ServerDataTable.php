@@ -2,7 +2,8 @@
 
 namespace App\DataTables;
 
-use App\Models\Domain;
+use App\Models\Server;
+use App\Enums\ServerStatus;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -11,41 +12,32 @@ use Yajra\DataTables\Html\Editor\Editor;
 use Yajra\DataTables\Html\Editor\Fields;
 use Yajra\DataTables\Services\DataTable;
 
-class DomainDataTable extends DataTable
+class ServerDataTable extends DataTable
 {
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', function($domain) {
-                return view('domain.action', ['id' => $domain->id])->render();
+            ->addColumn('action', function($server) {
+                return view('server.action', ['id' => $server->id])->render();
             })
             ->setRowId('id')
-            ->editColumn('suspended', function ($domain) {
-                $statusClass = $domain->suspended ? 'danger' : 'success';
-                $statusText = $domain->suspended ? 'Suspended' : 'Active';
+            ->editColumn('status_id', function ($server) {
+                $statusClass = $server->status_id->color();
+                $statusText = $server->status_id->name();
                 return '<span class="badge bg-label-' . $statusClass . '">' . $statusText . '</span>';
             })
-            ->editColumn('site_type', function ($domain) {
-                return $domain->site_type ?? 'N/A';
-            })
-            ->editColumn('php_version', function ($domain) {
-                return $domain->php_version ?? 'N/A';
-            })
-            ->addColumn('server_url', function ($domain) {
-                return $domain->server ? $domain->server->server_url : 'N/A';
-            })
-            ->rawColumns(['suspended', 'action']);
+            ->rawColumns(['status_id', 'action']);
     }
 
     public function query(): QueryBuilder
     {
-        return Domain::with('server');
+        return Server::query();
     }
 
     public function html(): HtmlBuilder
     {
         return $this->builder()
-            ->setTableId('domain-table')
+            ->setTableId('server-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
@@ -62,12 +54,11 @@ class DomainDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('domain')->title('Domain'),
+            Column::make('name')->title('Name'),
+            Column::make('ip')->title('IP Address'),
+            Column::make('server_url')->title('URL'),
             Column::make('username')->title('Username'),
-            Column::computed('server_url')->title('Server'),
-            Column::make('site_type')->title('Type'),
-            Column::make('php_version')->title('PHP'),
-            Column::make('suspended')->title('Status'),
+            Column::make('status_id')->title('Status'),
             Column::computed('action')
                 ->exportable(false)
                 ->printable(false)
@@ -78,6 +69,6 @@ class DomainDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Domain_' . date('YmdHis');
+        return 'Server_' . date('YmdHis');
     }
 } 
