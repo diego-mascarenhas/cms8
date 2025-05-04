@@ -191,7 +191,7 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/task/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
 
     // Hosting
-    Route::get('/hosting', [HostingController::class, 'index'])->name('hosting.index');
+    Route::resource('hosting', HostingController::class);
     Route::get('/hosting/data', [HostingController::class, 'data'])->name('hosting.data');
     
     // Domains

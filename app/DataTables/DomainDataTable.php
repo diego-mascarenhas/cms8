@@ -17,6 +17,9 @@ class DomainDataTable extends DataTable
     {
         return (new EloquentDataTable($query))
             ->addColumn('action', function($domain) {
+                if(request()->route()->getName() == 'hosting.index') {
+                    return view('hosting.action', ['id' => $domain->id])->render();
+                }
                 return view('domain.action', ['id' => $domain->id])->render();
             })
             ->setRowId('id')
