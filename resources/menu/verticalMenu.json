@@ -236,6 +236,14 @@
 			"module_key": "templates"		
 		},
 		{
+			"url": "server",
+			"name": "Servers",
+			"icon": "menu-icon tf-icons ti ti-server-2",
+			"slug": "server.index",
+			"permission": "server.index",
+			"module_key": "hosting"
+		},
+		{
 			"url": "hosting",
 			"name": "Hosting",
 			"icon": "menu-icon tf-icons ti ti-server",

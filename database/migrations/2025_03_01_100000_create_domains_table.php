@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('domains', function (Blueprint $table) {
             $table->id();
             $table->string('domain');
-            $table->string('server_url');
+            $table->unsignedSmallInteger('server_id');
             $table->string('username');
             $table->string('plan')->nullable();
             $table->boolean('suspended')->default(0);
@@ -23,6 +23,11 @@ return new class extends Migration
             $table->json('data')->nullable();
             $table->timestamps();
             $table->softDeletes();
+            
+            $table->foreign('server_id')
+                ->references('id')
+                ->on('servers')
+                ->onDelete('cascade');
         });
     }
 

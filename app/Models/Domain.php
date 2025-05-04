@@ -13,7 +13,7 @@ class Domain extends Model
 
     protected $fillable = [
         'domain',
-        'server_url',
+        'server_id',
         'username',
         'plan',
         'suspended',
@@ -34,7 +34,7 @@ class Domain extends Model
 
     public function server()
     {
-        return $this->belongsTo(Server::class, 'server_url', 'server_url');
+        return $this->belongsTo(Server::class);
     }
 
     public function getWebIpAttribute()
@@ -97,7 +97,7 @@ class Domain extends Model
     public function getPhpVersionFromServer(): ?string
     {
         try {
-            // Get the server URL from relation
+            // Get the server from relation
             $server = $this->server;
             
             if (!$server) {

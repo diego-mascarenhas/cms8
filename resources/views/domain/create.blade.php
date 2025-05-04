@@ -33,16 +33,16 @@
                         </div>
                         
                         <div class="col-md-6">
-                            <label for="server_url" class="form-label">Server</label>
-                            <select class="form-select @error('server_url') is-invalid @enderror" id="server_url" name="server_url" required>
+                            <label for="server_id" class="form-label">Server</label>
+                            <select class="form-select @error('server_id') is-invalid @enderror" id="server_id" name="server_id" required>
                                 <option value="">Select Server</option>
                                 @foreach ($servers as $server)
-                                    <option value="{{ $server->server_url }}" {{ old('server_url') == $server->server_url ? 'selected' : '' }}>
-                                        {{ $server->server_url }}
+                                    <option value="{{ $server->id }}" {{ old('server_id') == $server->id ? 'selected' : '' }}>
+                                        {{ $server->name }} ({{ $server->server_url }})
                                     </option>
                                 @endforeach
                             </select>
-                            @error('server_url')
+                            @error('server_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>

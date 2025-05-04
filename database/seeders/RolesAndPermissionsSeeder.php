@@ -222,6 +222,24 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'hosting.update']);
         Permission::create(['name' => 'hosting.destroy']);
 
+        Permission::create(['name' => 'domain.index']);
+        Permission::create(['name' => 'domain.list']);
+        Permission::create(['name' => 'domain.create']);
+        Permission::create(['name' => 'domain.show']);
+        Permission::create(['name' => 'domain.edit']);
+        Permission::create(['name' => 'domain.store']);
+        Permission::create(['name' => 'domain.update']);
+        Permission::create(['name' => 'domain.destroy']);
+
+        Permission::create(['name' => 'server.index']);
+        Permission::create(['name' => 'server.list']);
+        Permission::create(['name' => 'server.create']);
+        Permission::create(['name' => 'server.show']);
+        Permission::create(['name' => 'server.edit']);
+        Permission::create(['name' => 'server.store']);
+        Permission::create(['name' => 'server.update']);
+        Permission::create(['name' => 'server.destroy']);
+
         $rootRole = Role::create(['name' => 'root']);
         $rootRole->syncPermissions([
             'user.management',
@@ -275,6 +293,22 @@ class RolesAndPermissionsSeeder extends Seeder
             'category.list',
             'message.list',
             'template.list',
+            'domain.index',
+            'domain.list',
+            'domain.create',
+            'domain.show',
+            'domain.edit',
+            'domain.store',
+            'domain.update',
+            'domain.destroy',
+            'server.index',
+            'server.list',
+            'server.create',
+            'server.show',
+            'server.edit',
+            'server.store',
+            'server.update',
+            'server.destroy',
         ]);
 
         $colaboratorRole = Role::create(['name' => 'colaborator']);
@@ -523,6 +557,22 @@ class RolesAndPermissionsSeeder extends Seeder
             'hosting.show',
             'hosting.edit',
             'hosting.store',
+            'domain.index',
+            'domain.list',
+            'domain.create',
+            'domain.show',
+            'domain.edit',
+            'domain.store',
+            'domain.update',
+            'domain.destroy',
+            'server.index',
+            'server.list',
+            'server.create',
+            'server.show',
+            'server.edit',
+            'server.store',
+            'server.update',
+            'server.destroy',
         ]);
     }
 }
