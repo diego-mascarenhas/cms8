@@ -56,7 +56,7 @@
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
             <!-- <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
-                        class="ti ti-plus me-1"></i>Añadir informe</a> -->
+                            class="ti ti-plus me-1"></i>Añadir informe</a> -->
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @can('project.create')
@@ -117,10 +117,21 @@
                     </div>
                     <div class="mt-4 info-container">
                         <ul class="list-unstyled">
+                            <li class="mb-2 pt-1">
+                                <span class="fw-medium me-1">Estado:</span>
+                                <span class="badge {{ $data->status->label_class }}">{{ $data->status->name }}</span>
+                            </li>
                             @if ($data->user_id)
                                 <li class="mb-2 pt-1">
-                                    <span class="fw-medium me-1">Username:</span>
-                                    <span>{{ $data->username }}</span>
+                                    <span class="fw-medium me-1">Usuario:</span>
+                                    <span>
+                                        @php $linkedUser = \App\Models\User::find($data->user_id); @endphp
+                                        @if ($linkedUser)
+                                            <span>{{ $linkedUser->name }}</span>
+                                        @else
+                                            <span class="badge bg-label-danger">Usuario no encontrado</span>
+                                        @endif
+                                    </span>
                                 </li>
                             @endif
                             @if ($data->enterprise)
@@ -129,10 +140,6 @@
                                     <span>{{ $data->enterprise->name }}</span>
                                 </li>
                             @endif
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Estado:</span>
-                                <span class="badge {{ $data->status->label_class }}">{{ $data->status->name }}</span>
-                            </li>
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Redes:</span>
                                 <span>{!! $data->sources_icons_html !!}</span>
@@ -200,15 +207,6 @@
                                 <span class="fw-medium me-1">Superior:</span>
                                 <span>{{ $data->creator->name ?? 'No asignado' }}</span>
                             </li>
-
-                            @if ($data->related_user)
-                                <li class="mb-2 pt-1">
-                                    <span class="fw-medium me-1">Usuario vinculado:</span>
-                                    <span>
-                                        <span class="badge bg-label-success">{{ $data->related_user->name }}</span>
-                                    </span>
-                                </li>
-                            @endif
                         </ul>
                         <div class="d-flex justify-content-center">
                             {{-- <a href="javascript:;" class="btn btn-primary me-3" data-bs-target="#editUser"
