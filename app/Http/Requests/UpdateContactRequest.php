@@ -23,6 +23,7 @@ class UpdateContactRequest extends FormRequest
             'country' => 'required|string|max:3',
             'language' => 'required|string|max:2',
             'profile' => 'nullable|string',
+            'contact.user_id' => 'nullable|exists:users,id',
             'enterprise.name' => 'nullable|string|max:255',
             'enterprise.code' => 'nullable|string|max:255',
             'enterprise.website' => 'nullable|url|max:255',
@@ -51,6 +52,11 @@ class UpdateContactRequest extends FormRequest
             'language' => $validated['language'],
             'profile' => $validated['profile'] ?? null,
         ];
+        
+        // Add user_id if it exists in the contact array
+        if (isset($validated['contact']) && isset($validated['contact']['user_id'])) {
+            $contactData['user_id'] = $validated['contact']['user_id'];
+        }
 
         $contact = $this->route('id')
             ? Contact::findOrFail($this->route('id'))
@@ -95,7 +101,11 @@ class UpdateContactRequest extends FormRequest
                 $enterprise = Enterprise::create($enterpriseData);
             }
 
-            $contactData['enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
+            if (isset($enterprise)) {
+                $contactData['enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
+            } else {
+                $contactData['enterprise_id'] = null;
+            }
 
             if (isset($validated['source_id']) && isset($validated['source_value']))
             {

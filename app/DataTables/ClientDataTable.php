@@ -161,9 +161,4 @@ class ClientDataTable extends DataTable
         }
         return $url;
     }
-
-    public function scopeActiveClients($query)
-    {
-        return $query->where('status_id', 2);
-    }
 }

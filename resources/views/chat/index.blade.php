@@ -516,6 +516,10 @@
                                     <a href="{{ route('contact.show', $selectedUser->id) }}" class="me-2">
                                         <i class="ti ti-eye"></i>
                                     </a>
+                                @elseif(isset($selectedUser) && $selectedUser->id)
+                                    <a href="{{ route('contact.create') }}?link_user={{ $selectedUser->id }}" class="btn btn-sm btn-outline-primary me-2" title="Crear contacto">
+                                        <i class="ti ti-users ti-xs me-1"></i>Vincular con contacto
+                                    </a>
                                 @endif
                                 <a href="{{ route('claude.prompts.index') }}" class="btn btn-sm btn-primary me-2" title="Gestionar prompts de Claude">
                                     <i class="ti ti-robot me-1"></i>Prompts
@@ -759,6 +763,19 @@
         display: block;
         margin: auto;
         border-radius: 8px;
+    }
+
+    /* Make links in chat messages more visible */
+    .chat-message-text a, .chat-link {
+        color: inherit !important;
+        font-weight: 600 !important;
+        text-decoration: underline !important;
+        opacity: 1 !important;
+    }
+
+    .chat-message-text a:hover, .chat-link:hover {
+        opacity: 0.8 !important;
+        text-decoration: underline !important;
     }
     </style>
 

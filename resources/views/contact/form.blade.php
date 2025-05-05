@@ -143,6 +143,18 @@
                                     <x-input-select id="status_id" :options="$enterpriseStatuses" :value="old('status_id', $data->status_id ?? '')" />
                                 </div>
                                 <div class="col-sm-4">
+                                    <label for="user_id" class="form-label">Usuario vinculado</label>
+                                    <select id="user_id" name="contact[user_id]" class="form-select select2">
+                                        <option value="">-- Seleccionar usuario --</option>
+                                        @foreach(\App\Models\User::orderBy('name')->get() as $user)
+                                            <option value="{{ $user->id }}" {{ (old('contact.user_id', $data->user_id ?? '') == $user->id) ? 'selected' : '' }}>
+                                                {{ $user->name }} ({{ $user->email }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Vincular este contacto con un usuario del sistema</small>
+                                </div>
+                                <div class="col-sm-4">
                                     <x-input-date id="birthday" label="Cumpleaños"
                                         value="{{ old('birthday', $data->birthday ?? '') }}" />
                                 </div>

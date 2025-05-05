@@ -49,6 +49,11 @@ class ContactController extends Controller
 	public function create()
 	{
 		$data = new \stdClass();
+		
+		// Pre-fill user_id if provided in query string
+		if (request()->has('link_user')) {
+			$data->user_id = request()->input('link_user');
+		}
 
 		$enterpriseStatuses = ContactStatus::getOptions();
 		$socialSources = Source::getOptions();

@@ -1,5 +1,5 @@
 <div class="d-flex justify-content-center align-items-center">
-    @if (auth()->user()->can('contact.show'))
+    @if (auth()->user()->can('contact.show') && isset($responsible_id) && $responsible_id)
         <a href="{{ route('contact.show', $responsible_id) }}" class="text-body"><i class="ti ti-edit ti-sm me-2"></i></a>
     @endif
     @if (auth()->user()->can('project.create'))
