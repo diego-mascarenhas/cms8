@@ -18,6 +18,10 @@ class HelpCenterIcon extends Component
 
     public function render()
     {
-        return view('livewire.help-center-icon', ['inboundCount' => $this->inboundCount]);
+        $this->inboundCount = Conversation::where('direction', 'inbound')
+            ->where('status', '!=', 'received')
+            ->count();
+            
+        return view('livewire.help-center-icon');
     }
 }
