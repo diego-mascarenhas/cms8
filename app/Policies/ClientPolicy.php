@@ -17,7 +17,7 @@ class ClientPolicy
             return true;
         }
 
-        if ($user->hasRole('colaborator'))
+        if ($user->hasRole('collaborator'))
         {
             return $client->assigned_to == $user->id;
         }
@@ -27,6 +27,6 @@ class ClientPolicy
 
     public function manage(User $user, Enterprise $client)
     {
-        return $user->hasRole('colaborator') && $client->assigned_to == $user->id;
+        return $user->hasRole('collaborator') && $client->assigned_to == $user->id;
     }
 }

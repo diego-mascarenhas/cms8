@@ -50,10 +50,10 @@ class UserSeeder extends Seeder
         ]);
         $user->update(['current_team_id' => 1]); 
 
-        // Colaborator
+        // Collaborator
         $user = User::factory()->create([
-            'name' => 'Colaborator',
-            'email' => 'colaborator@example.com',
+            'name' => 'Collaborator',
+            'email' => 'collaborator@example.com',
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
             'current_team_id' => 1,

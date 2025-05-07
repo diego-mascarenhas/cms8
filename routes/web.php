@@ -135,7 +135,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])
-        ->middleware('role:admin,colaborator')
+        ->middleware('role:admin,collaborator')
         ->name('client-list');
         
     Route::post('/client/end-action/{id}', [ClientController::class, 'endAction'])->name('client.end-action');
