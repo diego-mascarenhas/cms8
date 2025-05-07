@@ -30,9 +30,9 @@ use App\Http\Controllers\HostingController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\OvhApiController;
-use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\ServerController;
+use App\Http\Controllers\CollaboratorController;
 
 // auth
 Route::middleware([
@@ -116,22 +116,26 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
     Route::post('/contact/upload-file', [contactController::class, 'UploadFile'])->name('contact.upload-file');
     Route::get('/contact/import', [ContactController::class, 'showImportForm'])->name('contact.import');
-    
     Route::get('/contacts/import-mapping', action: [ContactController::class, 'importMapping'])->name('contact.import-mapping');
-    Route::post('/contact/upload-file-mapping', [ContactController::class, 'uploadFileForMapping'])
-    ->name('contact.upload-file-mapping');
-    Route::post('/contact/process-mapping', [ContactController::class, 'processMapping'])
-        ->name('contact.process-mapping');
-
+    Route::post('/contact/upload-file-mapping', [ContactController::class, 'uploadFileForMapping'])->name('contact.upload-file-mapping');
+    Route::post('/contact/process-mapping', [ContactController::class, 'processMapping'])->name('contact.process-mapping');
     Route::get('/contact/create', [contactController::class, 'create'])->name('contact.create');
     Route::get('/contact/{id}', [contactController::class, 'show'])->name('contact.show');
     Route::get('/contact/{id}/edit', [contactController::class, 'edit'])->name('contact.edit');
     Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
     Route::put('/contact/{id}', [ContactController::class, 'update'])->name('contact.update');
     Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
-    
     Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
     Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
+
+    // Collaborators
+    Route::get('/collaborator/list', [CollaboratorController::class, 'index'])->name('collaborator-list');
+    Route::get('/collaborator/create', [CollaboratorController::class, 'create'])->name('collaborator.create');
+    Route::post('/collaborator', [CollaboratorController::class, 'store'])->name('collaborator.store');
+    Route::get('/collaborator/{id}', [CollaboratorController::class, 'show'])->name('collaborator.show');
+    Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit');
+    Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
+    Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
 
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])
