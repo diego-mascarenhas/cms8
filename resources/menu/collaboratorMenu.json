@@ -13,10 +13,10 @@
 			"menuHeader": "OPERATIVA"
 		},
 		{
-			"url": "collaborator/list",
+			"url": "collaborator",
 			"name": "Colaboradoras",
 			"icon": "menu-icon tf-icons ti ti-users",
-			"slug": "collaborator-list",
+			"slug": "collaborator",
 			"submenu": [
 				{
 					"url": "collaborator/create",
@@ -24,9 +24,9 @@
 					"slug": "collaborator.create"
 				},
 				{
-					"url": "collaborator/search",
+					"url": "collaborator/list",
 					"name": "Buscar",
-					"slug": "collaborator.search"
+					"slug": "collaborator-list"
 				}
 			]
 		},

@@ -68,7 +68,7 @@ class CollaboratorDataTable extends DataTable
             ->setTableId('collaborator-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
-            ->dom('frtip')
+            ->dom('rtip')
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(false)

@@ -49,86 +49,82 @@
         </script>
     @endif
 
-    <div class="row g-4 mb-4">
-        <div class="col-sm-6 col-xl-3">
-            <div class="card">
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="content-left">
-                            <span>{{ __('Por aceptar') }}</span>
-                            <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">237</h3>
-                                <p class="text-success mb-0">(+42%)</p>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-0">{{ __('Por aceptar') }}</h6>
+                            <div class="d-flex align-items-center mt-1">
+                                <h3 class="mb-0 me-1">237</h3>
+                                <small class="text-success">(+42%)</small>
                             </div>
-                            <p class="mb-0">{{ __('Último mes') }}</p>
+                            <small class="text-muted">{{ __('Último mes') }}</small>
                         </div>
-                        <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-warning filter-status" data-status="1">
-                                <i class="ti ti-user-plus ti-sm"></i>
-                            </a>
+                        <div class="avatar bg-label-warning rounded p-2">
+                            <i class="ti ti-search"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card">
+        
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="content-left">
-                            <span>{{ __('Colaboradoras') }}</span>
-                            <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">1,459</h3>
-                                <p class="text-success mb-0">(+29%)</p>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-0">{{ __('Colaboradoras') }}</h6>
+                            <div class="d-flex align-items-center mt-1">
+                                <h3 class="mb-0 me-1">1,459</h3>
+                                <small class="text-success">(+29%)</small>
                             </div>
-                            <p class="mb-0">{{ __('Total') }}</p>
+                            <small class="text-muted">{{ __('Total') }}</small>
                         </div>
-                        <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-primary filter-status" data-status="2">
-                                <i class="ti ti-users ti-sm"></i>
-                            </a>
+                        <div class="avatar bg-label-primary rounded p-2">
+                            <i class="ti ti-users"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card">
+        
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="content-left">
-                            <span>{{ __('Nuevos') }}</span>
-                            <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">67</h3>
-                                <p class="text-primary mb-0">(+18%)</p>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-0">{{ __('Nuevos') }}</h6>
+                            <div class="d-flex align-items-center mt-1">
+                                <h3 class="mb-0 me-1">67</h3>
+                                <small class="text-success">(+18%)</small>
                             </div>
-                            <p class="mb-0">{{ __('Última semana') }}</p>
+                            <small class="text-muted">{{ __('Última semana') }}</small>
                         </div>
-                        <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-danger filter-status" data-status="5">
-                                <i class="ti ti-user-plus ti-sm"></i>
-                            </a>
+                        <div class="avatar bg-label-danger rounded p-2">
+                            <i class="ti ti-user-plus"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="card">
+        
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <div class="d-flex align-items-start justify-content-between">
-                        <div class="content-left">
-                            <span>{{ __('Sin actualizar en 6m') }}</span>
-                            <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">540</h3>
-                                <p class="text-dark mb-0">(-14%)</p>
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-0">{{ __('Sin actualizar en 6m') }}</h6>
+                            <div class="d-flex align-items-center mt-1">
+                                <h3 class="mb-0 me-1">540</h3>
+                                <small class="text-danger">(-14%)</small>
                             </div>
-                            <p class="mb-0">{{ __('Últimos 6 meses') }}</p>
+                            <small class="text-muted">{{ __('Últimos 6 meses') }}</small>
                         </div>
-                        <div class="avatar">
-                            <a href="#" class="avatar-initial rounded bg-label-success filter-status" data-status="6">
-                                <i class="ti ti-user-check ti-sm"></i>
-                            </a>
+                        <div class="avatar bg-label-success rounded p-2">
+                            <i class="ti ti-user-check"></i>
                         </div>
                     </div>
                 </div>
@@ -136,21 +132,13 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header border-bottom">
-            <div
-                class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
-                <div class="d-flex gap-2">
-                    <a href="{{ route('collaborator.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
-                        <i class="ti ti-plus me-sm-1"></i>
-                        <span class="d-none d-sm-inline-block">Añadir colaborador</span>
-                    </a>
-                </div>
-            </div>
-            <div class="d-flex flex-column flex-md-row gap-3">
-                <div class="flex-grow-1">
-                    <select id="IdiomaOrigen" class="form-select form-select-sm" >
-                        <option value="">Idioma Origen</option>
+    <div class="card shadow">
+        <div class="card-body">            
+            <h5 class="mb-3">Filtros</h5>
+            <div class="row g-3 mb-3">
+                <div class="col">
+                    <select class="form-select" id="idioma-origen">
+                        <option value="" selected>{{ __('Idioma origen') }}</option>
                         <option value="ES">Español</option>
                         <option value="EN">Inglés</option>
                         <option value="FR">Francés</option>
@@ -158,9 +146,9 @@
                         <option value="CA">Catalán</option>
                     </select>
                 </div>
-                <div class="flex-grow-1">
-                    <select id="IdiomaDestino" class="form-select form-select-sm">
-                        <option value="">Idioma Destino</option>
+                <div class="col">
+                    <select class="form-select" id="idioma-destino">
+                        <option value="" selected>{{ __('Idioma destino') }}</option>
                         <option value="ES">Español</option>
                         <option value="EN">Inglés</option>
                         <option value="FR">Francés</option>
@@ -168,9 +156,9 @@
                         <option value="CA">Catalán</option>
                     </select>
                 </div>
-                <div class="flex-grow-1">
-                    <select id="Servicio" class="form-select form-select-sm">
-                        <option value="">Servicio</option>
+                <div class="col">
+                    <select class="form-select" id="servicio">
+                        <option value="" selected>{{ __('Servicio') }}</option>
                         <option value="transcreacion">Transcreación</option>
                         <option value="documentos">Documentos</option>
                         <option value="subtitulado">Subtitulado</option>
@@ -178,10 +166,49 @@
                         <option value="interpretacion">Interpretación</option>
                     </select>
                 </div>
+                <div class="col">
+                    <select class="form-select" id="dias">
+                        <option value="" selected>{{ __('Días') }}</option>
+                        <option value="5">5 días</option>
+                        <option value="10">10 días</option>
+                        <option value="15">15 días</option>
+                        <option value="30">30 días</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="form-select" id="fecha-entrega">
+                        <option value="" selected>{{ __('Fecha entrega') }}</option>
+                        <option value="today">Hoy</option>
+                        <option value="week">Esta semana</option>
+                        <option value="month">Este mes</option>
+                    </select>
+                </div>
             </div>
-        </div>
-        <div class="card-body">
-            {{ $dataTable->table() }}
+            <div class="row align-items-center mb-4">
+                <div class="col-md-1">
+                    <select class="form-select" id="entries-length">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="col-md-6"></div>
+                <div class="col-md-5 d-flex justify-content-end align-items-center gap-2">
+                    <input type="text" class="form-control w-auto me-2" id="search" placeholder="{{ __('Buscar') }}" style="width: 350px;">
+                    <button class="btn btn-outline-primary me-2" style="height: 40px; min-width: 110px;">
+                        <i class="ti ti-download me-1"></i>
+                        <span style="white-space: nowrap;">{{ __('Exportar') }}</span>
+                    </button>
+                    <a href="{{ route('collaborator.create') }}" class="btn btn-primary ms-2 d-flex align-items-center gap-1" style="height: 40px; min-width: 170px;">
+                        <i class="ti ti-plus"></i>
+                        <span style="white-space: nowrap;">{{ __('Añadir nuevo') }}</span>
+                    </a>
+                </div>
+            </div>
+            
+            <hr>
+
+            {{ $dataTable->table(['class' => 'table table-hover table-striped dt-responsive nowrap w-100']) }}
         </div>
     </div>
 @endsection
@@ -191,10 +218,28 @@
 
     <script>
         $(document).ready(function() {
+            // Eliminar el buscador duplicado
+            $('.dataTables_filter').hide();
+            
             // Filtros de tabla
-            $(document).on('click', '.filter-status', function() {
-                let status = $(this).data('status');
-                $('#collaborator-table').DataTable().column(3).search(status).draw();
+            $('#idioma-origen, #idioma-destino, #servicio, #dias, #fecha-entrega').on('change', function() {
+                let columna = $(this).attr('id') === 'idioma-origen' ? 2 : 
+                              $(this).attr('id') === 'idioma-destino' ? 3 :
+                              $(this).attr('id') === 'servicio' ? 4 :
+                              $(this).attr('id') === 'dias' ? 5 : 6;
+                
+                let valor = $(this).val();
+                $('#collaborator-table').DataTable().column(columna).search(valor).draw();
+            });
+            
+            // Longitud de entradas
+            $('#entries-length').on('change', function() {
+                $('#collaborator-table').DataTable().page.len($(this).val()).draw();
+            });
+            
+            // Búsqueda
+            $('#search').on('keyup', function() {
+                $('#collaborator-table').DataTable().search($(this).val()).draw();
             });
 
             // Función para eliminar un colaborador
@@ -248,15 +293,6 @@
             $(document).on('click', '.btn-delete', function() {
                 var id = $(this).data('id');
                 deleteRecord(id, this);
-            });
-            
-            // Filtros de idiomas y servicios
-            $('#IdiomaOrigen, #IdiomaDestino, #Servicio').on('change', function() {
-                let columna = $(this).attr('id') === 'IdiomaOrigen' ? 2 : 
-                              $(this).attr('id') === 'IdiomaDestino' ? 3 : 4;
-                
-                let valor = $(this).val();
-                $('#collaborator-table').DataTable().column(columna).search(valor).draw();
             });
         });
     </script>
