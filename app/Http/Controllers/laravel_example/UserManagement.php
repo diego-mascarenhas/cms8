@@ -251,22 +251,39 @@ class UserManagement extends Controller
           // Add the user to the current team
           $user->teams()->attach(Auth::user()->currentTeam->id);
           
-          // Assign role if provided
-          if($request->has('role') && $request->role) {
+          // Get role ID from request or find guest role by default
+          $roleId = $request->role;
+          if(empty($roleId)) {
+            $guestRole = \Spatie\Permission\Models\Role::where('name', 'guest')->first();
+            if($guestRole) {
+              $roleId = $guestRole->id;
+            }
+          }
+          
+          // Assign role
+          if($roleId) {
             // Find the role by ID
-            $role = \Spatie\Permission\Models\Role::find($request->role);
+            $role = \Spatie\Permission\Models\Role::find($roleId);
             if ($role) {
               // Assign the role by name
               $user->assignRole($role->name);
               Log::info("Role assigned: {$role->name}");
             } else {
-              Log::warning("Role not found with ID: {$request->role}");
+              Log::warning("Role not found with ID: {$roleId}");
             }
           }
   
           // Return the created user data
+          $user->fresh();
           $user->load('roles');
           $user->role = $user->roles->first() ? $user->roles->first()->id : null;
+          
+          // Log the final user state
+          Log::info('Created user state:', [
+            'user_id' => $user->id,
+            'roles' => $user->roles->pluck('name', 'id'),
+            'role_id_sent' => $user->role
+          ]);
           
           // user created
           return response()->json([

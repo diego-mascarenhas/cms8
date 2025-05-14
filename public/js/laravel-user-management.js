@@ -443,7 +443,17 @@ $(function () {
     // Reset the form completely
     $('#addNewUserForm')[0].reset();
     $('#user_id').val(''); //reseting input field
-    $('#user-role').val('').trigger('change');
+    
+    // Find the guest role option and select it by default
+    const guestOption = $('#user-role option').filter(function() {
+      return $(this).text().toLowerCase() === 'guest';
+    });
+    
+    if (guestOption.length > 0) {
+      $('#user-role').val(guestOption.val());
+    } else {
+      $('#user-role').val($('#user-role option:first').val());
+    }
     
     // Reset validation
     if (typeof fv !== 'undefined') {

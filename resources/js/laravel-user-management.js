@@ -368,9 +368,10 @@ $(function () {
         // delete the data
         $.ajax({
           type: 'DELETE',
-          url: `${baseUrl}user-list/${user_id}`,
+          url: baseUrl + 'user-list/' + user_id,
           success: function () {
-            dt_user.draw();
+            // Force a full reload of the data to get fresh data from server
+            dt_user.ajax.reload(null, false);
           },
           error: function (error) {
             console.log(error);
@@ -413,17 +414,63 @@ $(function () {
     $('#offcanvasAddUserLabel').html('Edit User');
 
     // get data
-    $.get(`${baseUrl}user-list\/${user_id}\/edit`, function (data) {
+    $.get(baseUrl + 'user-list/' + user_id + '/edit', function (data) {
+      console.log("Edit data received:", data);
+      
       $('#user_id').val(data.id);
       $('#add-user-fullname').val(data.name);
       $('#add-user-email').val(data.email);
-      $('#add-user-contact').val(data.phone);
+      
+      // Set phone number
+      if (data.phone) {
+        $('#add-user-contact').val(data.phone);
+      } else {
+        $('#add-user-contact').val('');
+      }
+      
+      console.log('Role data:', {
+        role_id: data.role,
+        type: typeof data.role
+      });
+      
+      // Set role if available
+      setTimeout(function() {
+        // Make sure we're working with strings for comparison
+        var roleId = data.role ? data.role.toString() : '';
+        console.log('Setting role select to:', roleId);
+        
+        if (roleId) {
+          $('#user-role').val(roleId);
+          console.log('Role after set:', $('#user-role').val());
+        } else {
+          $('#user-role').val('');
+        }
+      }, 100);
     });
   });
 
   // changing the title
   $('.add-new').on('click', function () {
+    // Reset the form completely
+    $('#addNewUserForm')[0].reset();
     $('#user_id').val(''); //reseting input field
+    
+    // Find the guest role option and select it by default
+    const guestOption = $('#user-role option').filter(function() {
+      return $(this).text().toLowerCase() === 'guest';
+    });
+    
+    if (guestOption.length > 0) {
+      $('#user-role').val(guestOption.val());
+    } else {
+      $('#user-role').val('');
+    }
+    
+    // Reset validation
+    if (typeof fv !== 'undefined') {
+      fv.resetForm(true);
+    }
+    
     $('#offcanvasAddUserLabel').html('Add User');
   });
 
@@ -477,32 +524,53 @@ $(function () {
     // adding or updating user when form successfully validate
     $.ajax({
       data: $('#addNewUserForm').serialize(),
-      url: `${baseUrl}user-list`,
+      url: baseUrl + 'user-list',
       type: 'POST',
-      success: function (status) {
-        dt_user.draw();
+      success: function (response) {
+        // Force a full reload of the data to get fresh data from server
+        dt_user.ajax.reload(null, false);
         offCanvasForm.offcanvas('hide');
+
+        // Check if response is the new format or old format
+        var status = typeof response === 'object' && response.status ? response.status : response;
+        
+        console.log("Success response:", response);
 
         // sweetalert
         Swal.fire({
           icon: 'success',
-          title: `Successfully ${status}!`,
-          text: `User ${status} Successfully.`,
+          title: "Successfully " + status + "!",
+          text: "User " + status + " Successfully.",
           customClass: {
             confirmButton: 'btn btn-success'
           }
         });
       },
       error: function (err) {
+        console.error("Error response:", err);
+        
         offCanvasForm.offcanvas('hide');
-        Swal.fire({
-          title: 'Duplicate Entry!',
-          text: 'Your email should be unique.',
-          icon: 'error',
-          customClass: {
-            confirmButton: 'btn btn-success'
-          }
-        });
+        if (err.responseJSON && err.responseJSON.message === "already exits") {
+          Swal.fire({
+            title: 'Duplicate Entry!',
+            text: 'Your email should be unique.',
+            icon: 'error',
+            customClass: {
+              confirmButton: 'btn btn-success'
+            }
+          });
+        } else {
+          Swal.fire({
+            title: 'Error!',
+            text: err.responseJSON && err.responseJSON.message ? 
+              err.responseJSON.message : 
+              'Something went wrong while saving the user.',
+            icon: 'error',
+            customClass: {
+              confirmButton: 'btn btn-success'
+            }
+          });
+        }
       }
     });
   });
@@ -510,7 +578,15 @@ $(function () {
   // clearing form data when offcanvas hidden
   offCanvasForm.on('hidden.bs.offcanvas', function () {
     fv.resetForm(true);
+    $('#addNewUserForm')[0].reset();
   });
+  
+  // Clear DataTables state if it's causing problems
+  try {
+    localStorage.removeItem('DataTables_datatables-users_' + window.location.pathname);
+  } catch (e) {
+    console.log('Error clearing DataTables state:', e);
+  }
 
   const phoneMaskList = document.querySelectorAll('.phone-mask');
 

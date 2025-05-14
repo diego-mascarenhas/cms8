@@ -152,9 +152,8 @@
         <div class="mb-3">
           <label class="form-label" for="user-role">Role</label>
           <select id="user-role" name="role" class="form-select">
-            <option value="">Select Role</option>
             @foreach($roles as $role)
-              <option value="{{ $role->id }}">{{ $role->name }} (ID: {{ $role->id }})</option>
+              <option value="{{ $role->id }}" {{ $role->name == 'guest' ? 'selected' : '' }}>{{ $role->name }}</option>
             @endforeach
           </select>
         </div>
