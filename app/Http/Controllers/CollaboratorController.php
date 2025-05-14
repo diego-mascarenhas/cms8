@@ -50,14 +50,16 @@ class CollaboratorController extends Controller
             ->with('success', __('Collaborator created successfully.'));
     }
 
-    public function show(Contact $collaborator)
+    public function show($id)
     {
+        $collaborator = Contact::findOrFail($id);
         $collaborator->load(['enterprise', 'responsible', 'categories']);
         return view('collaborator.show', compact('collaborator'));
     }
 
-    public function edit(Contact $collaborator)
+    public function edit($id)
     {
+        $collaborator = Contact::findOrFail($id);
         $categories = Category::all();
         $enterprises = Enterprise::all();
         $users = User::role('collaborator')->get();
@@ -65,8 +67,10 @@ class CollaboratorController extends Controller
         return view('collaborator.form', compact('collaborator', 'categories', 'enterprises', 'users'));
     }
 
-    public function update(Request $request, Contact $collaborator)
+    public function update(Request $request, $id)
     {
+        $collaborator = Contact::findOrFail($id);
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
@@ -87,8 +91,9 @@ class CollaboratorController extends Controller
             ->with('success', __('Collaborator updated successfully.'));
     }
 
-    public function destroy(Contact $collaborator)
+    public function destroy($id)
     {
+        $collaborator = Contact::findOrFail($id);
         $collaborator->delete();
         return redirect()->route('collaborator.list')
             ->with('success', __('Collaborator deleted successfully.'));
