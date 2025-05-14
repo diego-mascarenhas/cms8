@@ -41,6 +41,7 @@ $(function () {
         { data: 'id' },
         { data: 'name' },
         { data: 'email' },
+        { data: 'roles' },
         { data: 'email_verified_at' },
         { data: 'action' }
       ],
@@ -115,8 +116,40 @@ $(function () {
           }
         },
         {
-          // email verify
+          // User roles
           targets: 4,
+          render: function (data, type, full, meta) {
+            console.log("Roles data:", full['roles'], "Type:", typeof full['roles']);
+            
+            // Check if it's a string (JSON) that needs parsing
+            if (typeof full['roles'] === 'string' && full['roles'].startsWith('[')) {
+              try {
+                var roles = JSON.parse(full['roles']);
+                return '<span class="user-roles">' + roles.join(', ') + '</span>';
+              } catch (e) {
+                console.error("Error parsing roles:", e);
+                return '<span class="user-roles">' + full['roles'] + '</span>';
+              }
+            }
+            
+            // Handle array
+            if (Array.isArray(full['roles'])) {
+              return '<span class="user-roles">' + full['roles'].join(', ') + '</span>';
+            }
+            
+            // Handle object with numeric keys (like Laravel collection)
+            if (full['roles'] && typeof full['roles'] === 'object') {
+              var roleArray = Object.values(full['roles']);
+              return '<span class="user-roles">' + roleArray.join(', ') + '</span>';
+            }
+            
+            // Fallback
+            return '<span class="user-roles">' + (full['roles'] || '') + '</span>';
+          }
+        },
+        {
+          // email verify
+          targets: 5,
           className: 'text-center',
           render: function (data, type, full, meta) {
             var $verified = full['email_verified_at'];

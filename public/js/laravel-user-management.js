@@ -21,6 +21,7 @@ var __webpack_exports__ = {};
 
 
 // Datatable (jquery)
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 $(function () {
   // Variable declaration for table
   var dt_user_table = $('.datatables-users'),
@@ -84,7 +85,6 @@ $(function () {
         searchable: false,
         orderable: false
       }, {
-        // User ID - hidden but needed
         searchable: false,
         orderable: false,
         targets: 1,
@@ -123,16 +123,32 @@ $(function () {
         // User roles
         targets: 4,
         render: function render(data, type, full, meta) {
-          var roles = full['roles'];
-          if (roles && roles.length > 0) {
-            var html = '<div class="d-flex flex-wrap">';
-            for (var i = 0; i < roles.length; i++) {
-              html += '<span class="badge bg-label-primary me-1 mb-1">' + roles[i] + '</span>';
+          console.log("Roles data:", full['roles'], "Type:", _typeof(full['roles']));
+
+          // Check if it's a string (JSON) that needs parsing
+          if (typeof full['roles'] === 'string' && full['roles'].startsWith('[')) {
+            try {
+              var roles = JSON.parse(full['roles']);
+              return '<span class="user-roles">' + roles.join(', ') + '</span>';
+            } catch (e) {
+              console.error("Error parsing roles:", e);
+              return '<span class="user-roles">' + full['roles'] + '</span>';
             }
-            html += '</div>';
-            return html;
           }
-          return '<span class="badge bg-label-secondary">No role</span>';
+
+          // Handle array
+          if (Array.isArray(full['roles'])) {
+            return '<span class="user-roles">' + full['roles'].join(', ') + '</span>';
+          }
+
+          // Handle object with numeric keys (like Laravel collection)
+          if (full['roles'] && _typeof(full['roles']) === 'object') {
+            var roleArray = Object.values(full['roles']);
+            return '<span class="user-roles">' + roleArray.join(', ') + '</span>';
+          }
+
+          // Fallback
+          return '<span class="user-roles">' + (full['roles'] || '') + '</span>';
         }
       }, {
         // email verify
@@ -144,7 +160,7 @@ $(function () {
         }
       }, {
         // Actions
-        targets: 6,
+        targets: -1,
         title: 'Actions',
         searchable: false,
         orderable: false,
@@ -338,7 +354,7 @@ $(function () {
         // delete the data
         $.ajax({
           type: 'DELETE',
-          url: "".concat(baseUrl, "user-list/").concat(user_id),
+          url: baseUrl + 'user-list/' + user_id,
           success: function success() {
             // Force a full reload of the data to get fresh data from server
             dt_user.ajax.reload(null, false);
@@ -383,40 +399,29 @@ $(function () {
     // changing the title of offcanvas
     $('#offcanvasAddUserLabel').html('Edit User');
 
-    // Reset the form first
-    $('#addNewUserForm')[0].reset();
-    
-    // Reset validation if fv exists
-    if (typeof fv !== 'undefined') {
-      fv.resetForm(true);
-    }
-
     // get data
-    $.get("".concat(baseUrl, "user-list/").concat(user_id, "/edit"), function (data) {
+    $.get(baseUrl + 'user-list/' + user_id + '/edit', function (data) {
       console.log("Edit data received:", data);
-      
       $('#user_id').val(data.id);
       $('#add-user-fullname').val(data.name);
       $('#add-user-email').val(data.email);
-      
+
       // Set phone number
       if (data.phone) {
         $('#add-user-contact').val(data.phone);
       } else {
         $('#add-user-contact').val('');
       }
-      
       console.log('Role data:', {
         role_id: data.role,
-        type: typeof data.role
+        type: _typeof(data.role)
       });
-      
+
       // Set role if available
-      setTimeout(function() {
+      setTimeout(function () {
         // Make sure we're working with strings for comparison
         var roleId = data.role ? data.role.toString() : '';
         console.log('Setting role select to:', roleId);
-        
         if (roleId) {
           $('#user-role').val(roleId);
           console.log('Role after set:', $('#user-role').val());
@@ -424,17 +429,6 @@ $(function () {
           $('#user-role').val('');
         }
       }, 100);
-    })
-    .fail(function(error) {
-      console.error('Error loading user data:', error);
-      Swal.fire({
-        title: 'Error!',
-        text: 'Failed to load user data. Please try again.',
-        icon: 'error',
-        customClass: {
-          confirmButton: 'btn btn-success'
-        }
-      });
     });
   });
 
@@ -443,23 +437,21 @@ $(function () {
     // Reset the form completely
     $('#addNewUserForm')[0].reset();
     $('#user_id').val(''); //reseting input field
-    
+
     // Find the guest role option and select it by default
-    const guestOption = $('#user-role option').filter(function() {
+    var guestOption = $('#user-role option').filter(function () {
       return $(this).text().toLowerCase() === 'guest';
     });
-    
     if (guestOption.length > 0) {
       $('#user-role').val(guestOption.val());
     } else {
-      $('#user-role').val($('#user-role option:first').val());
+      $('#user-role').val('');
     }
-    
+
     // Reset validation
     if (typeof fv !== 'undefined') {
       fv.resetForm(true);
     }
-    
     $('#offcanvasAddUserLabel').html('Add User');
   });
 
@@ -513,7 +505,7 @@ $(function () {
     // adding or updating user when form successfully validate
     $.ajax({
       data: $('#addNewUserForm').serialize(),
-      url: "".concat(baseUrl, "user-list"),
+      url: baseUrl + 'user-list',
       type: 'POST',
       success: function success(response) {
         // Force a full reload of the data to get fresh data from server
@@ -521,15 +513,14 @@ $(function () {
         offCanvasForm.offcanvas('hide');
 
         // Check if response is the new format or old format
-        var status = typeof response === 'object' && response.status ? response.status : response;
-        
+        var status = _typeof(response) === 'object' && response.status ? response.status : response;
         console.log("Success response:", response);
 
         // sweetalert
         Swal.fire({
           icon: 'success',
-          title: "Successfully ".concat(status, "!"),
-          text: "User ".concat(status, " Successfully."),
+          title: "Successfully " + status + "!",
+          text: "User " + status + " Successfully.",
           customClass: {
             confirmButton: 'btn btn-success'
           }
@@ -537,7 +528,6 @@ $(function () {
       },
       error: function error(err) {
         console.error("Error response:", err);
-        
         offCanvasForm.offcanvas('hide');
         if (err.responseJSON && err.responseJSON.message === "already exits") {
           Swal.fire({
@@ -551,9 +541,7 @@ $(function () {
         } else {
           Swal.fire({
             title: 'Error!',
-            text: err.responseJSON && err.responseJSON.message ? 
-              err.responseJSON.message : 
-              'Something went wrong while saving the user.',
+            text: err.responseJSON && err.responseJSON.message ? err.responseJSON.message : 'Something went wrong while saving the user.',
             icon: 'error',
             customClass: {
               confirmButton: 'btn btn-success'
@@ -569,14 +557,13 @@ $(function () {
     fv.resetForm(true);
     $('#addNewUserForm')[0].reset();
   });
-  
+
   // Clear DataTables state if it's causing problems
   try {
     localStorage.removeItem('DataTables_datatables-users_' + window.location.pathname);
   } catch (e) {
     console.log('Error clearing DataTables state:', e);
   }
-
   var phoneMaskList = document.querySelectorAll('.phone-mask');
 
   // Phone Number
