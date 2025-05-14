@@ -61,6 +61,8 @@ $(function () {
       }, {
         data: 'email'
       }, {
+        data: 'roles'
+      }, {
         data: 'email_verified_at'
       }, {
         data: 'action'
@@ -82,6 +84,7 @@ $(function () {
         searchable: false,
         orderable: false
       }, {
+        // User ID - hidden but needed
         searchable: false,
         orderable: false,
         targets: 1,
@@ -117,8 +120,23 @@ $(function () {
           return '<span class="user-email">' + $email + '</span>';
         }
       }, {
-        // email verify
+        // User roles
         targets: 4,
+        render: function render(data, type, full, meta) {
+          var roles = full['roles'];
+          if (roles && roles.length > 0) {
+            var html = '<div class="d-flex flex-wrap">';
+            for (var i = 0; i < roles.length; i++) {
+              html += '<span class="badge bg-label-primary me-1 mb-1">' + roles[i] + '</span>';
+            }
+            html += '</div>';
+            return html;
+          }
+          return '<span class="badge bg-label-secondary">No role</span>';
+        }
+      }, {
+        // email verify
+        targets: 5,
         className: 'text-center',
         render: function render(data, type, full, meta) {
           var $verified = full['email_verified_at'];
@@ -126,7 +144,7 @@ $(function () {
         }
       }, {
         // Actions
-        targets: -1,
+        targets: 6,
         title: 'Actions',
         searchable: false,
         orderable: false,
@@ -369,7 +387,25 @@ $(function () {
       $('#user_id').val(data.id);
       $('#add-user-fullname').val(data.name);
       $('#add-user-email').val(data.email);
-      $('#add-user-contact').val(data.phone);
+      
+      // Set phone number
+      if (data.phone) {
+        $('#add-user-contact').val(data.phone);
+      } else {
+        $('#add-user-contact').val('');
+      }
+      
+      // Set role if available
+      if (data.role !== null && data.role !== undefined) {
+        $('#user-role').val(data.role);
+      } else {
+        $('#user-role').val('');
+      }
+      
+      // Reset validation
+      if (typeof fv !== 'undefined') {
+        fv.resetForm(true);
+      }
     });
   });
 
@@ -447,14 +483,25 @@ $(function () {
       },
       error: function error(err) {
         offCanvasForm.offcanvas('hide');
-        Swal.fire({
-          title: 'Duplicate Entry!',
-          text: 'Your email should be unique.',
-          icon: 'error',
-          customClass: {
-            confirmButton: 'btn btn-success'
-          }
-        });
+        if (err.responseJSON && err.responseJSON.message === "already exits") {
+          Swal.fire({
+            title: 'Duplicate Entry!',
+            text: 'Your email should be unique.',
+            icon: 'error',
+            customClass: {
+              confirmButton: 'btn btn-success'
+            }
+          });
+        } else {
+          Swal.fire({
+            title: 'Error!',
+            text: 'Something went wrong while saving the user.',
+            icon: 'error',
+            customClass: {
+              confirmButton: 'btn btn-success'
+            }
+          });
+        }
       }
     });
   });

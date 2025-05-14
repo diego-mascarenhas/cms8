@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Auth;
 
 use Log;
 
@@ -17,18 +19,24 @@ class UserManagement extends Controller
    */
   public function UserManagement()
   {
-    $users = User::all();
+    $users = User::whereHas('teams', function($query) {
+      $query->where('team_id', Auth::user()->currentTeam->id);
+    })->get();
+    
     $userCount = $users->count();
-    $verified = User::whereNotNull('email_verified_at')->get()->count();
-    $notVerified = User::whereNull('email_verified_at')->get()->count();
+    $verified = $users->whereNotNull('email_verified_at')->count();
+    $notVerified = $users->whereNull('email_verified_at')->count();
     $usersUnique = $users->unique(['email']);
     $userDuplicates = $users->diff($usersUnique)->count();
+    
+    $roles = Role::all();
 
     return view('content.laravel-example.user-management', [
       'totalUser' => $userCount,
       'verified' => $verified,
       'notVerified' => $notVerified,
       'userDuplicates' => $userDuplicates,
+      'roles' => $roles,
     ]);
   }
 
@@ -48,8 +56,12 @@ class UserManagement extends Controller
 
     $search = [];
 
-    $totalData = User::count();
+    // Filter users by current team
+    $baseQuery = User::whereHas('teams', function($q) {
+      $q->where('team_id', Auth::user()->currentTeam->id);
+    });
 
+    $totalData = $baseQuery->count();
     $totalFiltered = $totalData;
 
     $limit = $request->input('length');
@@ -59,7 +71,7 @@ class UserManagement extends Controller
 
     if (empty($request->input('search.value')))
     {
-      $users = User::offset($start)
+      $users = $baseQuery->offset($start)
         ->limit($limit)
         ->orderBy($order, $dir)
         ->get();
@@ -68,17 +80,23 @@ class UserManagement extends Controller
     {
       $search = $request->input('search.value');
 
-      $users = User::where('id', 'LIKE', "%{$search}%")
-        ->orWhere('name', 'LIKE', "%{$search}%")
-        ->orWhere('email', 'LIKE', "%{$search}%")
+      $searchQuery = clone $baseQuery;
+      
+      $users = $searchQuery->where(function($q) use ($search) {
+          $q->where('id', 'LIKE', "%{$search}%")
+            ->orWhere('name', 'LIKE', "%{$search}%")
+            ->orWhere('email', 'LIKE', "%{$search}%");
+        })
         ->offset($start)
         ->limit($limit)
         ->orderBy($order, $dir)
         ->get();
 
-      $totalFiltered = User::where('id', 'LIKE', "%{$search}%")
-        ->orWhere('name', 'LIKE', "%{$search}%")
-        ->orWhere('email', 'LIKE', "%{$search}%")
+      $totalFiltered = $baseQuery->where(function($q) use ($search) {
+          $q->where('id', 'LIKE', "%{$search}%")
+            ->orWhere('name', 'LIKE', "%{$search}%")
+            ->orWhere('email', 'LIKE', "%{$search}%");
+        })
         ->count();
     }
 
@@ -96,6 +114,7 @@ class UserManagement extends Controller
         $nestedData['name'] = $user->name;
         $nestedData['email'] = $user->email;
         $nestedData['email_verified_at'] = $user->email_verified_at;
+        $nestedData['roles'] = $user->roles->pluck('name'); // Get user roles
 
         $data[] = $nestedData;
       }
@@ -146,6 +165,8 @@ class UserManagement extends Controller
     if ($userID)
     {
       // update the value
+      $user = User::findOrFail($userID);
+      
       $data = [
         'name' => $request->name,
         'email' => $request->email,
@@ -160,7 +181,21 @@ class UserManagement extends Controller
         $data['phone'] = null;
       }
 
-      $users = User::updateOrCreate(['id' => $userID], $data);
+      // Check if email is already used by another user
+      $existingUser = User::where('email', $request->email)
+        ->where('id', '!=', $userID)
+        ->first();
+        
+      if ($existingUser) {
+        return response()->json(['message' => "already exits"], 422);
+      }
+      
+      $user->update($data);
+      
+      // Update user roles if provided
+      if($request->role) {
+        $user->syncRoles([$request->role]);
+      }
 
       // user updated
       return response()->json('Updated');
@@ -187,7 +222,15 @@ class UserManagement extends Controller
           $data['phone'] = null;
         }
 
-        $users = User::updateOrCreate(['id' => $userID], $data);
+        $user = User::create($data);
+        
+        // Add the user to the current team
+        $user->teams()->attach(Auth::user()->currentTeam->id);
+        
+        // Assign role if provided
+        if($request->role) {
+          $user->assignRole($request->role);
+        }
 
         // user created
         return response()->json('Created');
@@ -219,11 +262,18 @@ class UserManagement extends Controller
    */
   public function edit($id)
   {
-    $where = ['id' => $id];
+    $user = User::findOrFail($id);
+    
+    // Get the user's first role (ID)
+    $userRole = $user->roles->first();
+    $user->role = $userRole ? $userRole->id : null;
+    
+    // Convert phone to string to avoid type issues
+    if ($user->phone) {
+      $user->phone = (string)$user->phone;
+    }
 
-    $users = User::where($where)->first();
-
-    return response()->json($users);
+    return response()->json($user);
   }
 
   /**
