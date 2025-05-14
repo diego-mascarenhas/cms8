@@ -340,7 +340,8 @@ $(function () {
           type: 'DELETE',
           url: "".concat(baseUrl, "user-list/").concat(user_id),
           success: function success() {
-            dt_user.draw();
+            // Force a full reload of the data to get fresh data from server
+            dt_user.ajax.reload(null, false);
           },
           error: function error(_error) {
             console.log(_error);
@@ -382,8 +383,18 @@ $(function () {
     // changing the title of offcanvas
     $('#offcanvasAddUserLabel').html('Edit User');
 
+    // Reset the form first
+    $('#addNewUserForm')[0].reset();
+    
+    // Reset validation if fv exists
+    if (typeof fv !== 'undefined') {
+      fv.resetForm(true);
+    }
+
     // get data
     $.get("".concat(baseUrl, "user-list/").concat(user_id, "/edit"), function (data) {
+      console.log("Edit data received:", data);
+      
       $('#user_id').val(data.id);
       $('#add-user-fullname').val(data.name);
       $('#add-user-email').val(data.email);
@@ -395,23 +406,50 @@ $(function () {
         $('#add-user-contact').val('');
       }
       
-      // Set role if available
-      if (data.role !== null && data.role !== undefined) {
-        $('#user-role').val(data.role);
-      } else {
-        $('#user-role').val('');
-      }
+      console.log('Role data:', {
+        role_id: data.role,
+        type: typeof data.role
+      });
       
-      // Reset validation
-      if (typeof fv !== 'undefined') {
-        fv.resetForm(true);
-      }
+      // Set role if available
+      setTimeout(function() {
+        // Make sure we're working with strings for comparison
+        var roleId = data.role ? data.role.toString() : '';
+        console.log('Setting role select to:', roleId);
+        
+        if (roleId) {
+          $('#user-role').val(roleId);
+          console.log('Role after set:', $('#user-role').val());
+        } else {
+          $('#user-role').val('');
+        }
+      }, 100);
+    })
+    .fail(function(error) {
+      console.error('Error loading user data:', error);
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to load user data. Please try again.',
+        icon: 'error',
+        customClass: {
+          confirmButton: 'btn btn-success'
+        }
+      });
     });
   });
 
   // changing the title
   $('.add-new').on('click', function () {
+    // Reset the form completely
+    $('#addNewUserForm')[0].reset();
     $('#user_id').val(''); //reseting input field
+    $('#user-role').val('').trigger('change');
+    
+    // Reset validation
+    if (typeof fv !== 'undefined') {
+      fv.resetForm(true);
+    }
+    
     $('#offcanvasAddUserLabel').html('Add User');
   });
 
@@ -467,9 +505,15 @@ $(function () {
       data: $('#addNewUserForm').serialize(),
       url: "".concat(baseUrl, "user-list"),
       type: 'POST',
-      success: function success(status) {
-        dt_user.draw();
+      success: function success(response) {
+        // Force a full reload of the data to get fresh data from server
+        dt_user.ajax.reload(null, false);
         offCanvasForm.offcanvas('hide');
+
+        // Check if response is the new format or old format
+        var status = typeof response === 'object' && response.status ? response.status : response;
+        
+        console.log("Success response:", response);
 
         // sweetalert
         Swal.fire({
@@ -482,6 +526,8 @@ $(function () {
         });
       },
       error: function error(err) {
+        console.error("Error response:", err);
+        
         offCanvasForm.offcanvas('hide');
         if (err.responseJSON && err.responseJSON.message === "already exits") {
           Swal.fire({
@@ -495,7 +541,9 @@ $(function () {
         } else {
           Swal.fire({
             title: 'Error!',
-            text: 'Something went wrong while saving the user.',
+            text: err.responseJSON && err.responseJSON.message ? 
+              err.responseJSON.message : 
+              'Something went wrong while saving the user.',
             icon: 'error',
             customClass: {
               confirmButton: 'btn btn-success'
@@ -509,7 +557,16 @@ $(function () {
   // clearing form data when offcanvas hidden
   offCanvasForm.on('hidden.bs.offcanvas', function () {
     fv.resetForm(true);
+    $('#addNewUserForm')[0].reset();
   });
+  
+  // Clear DataTables state if it's causing problems
+  try {
+    localStorage.removeItem('DataTables_datatables-users_' + window.location.pathname);
+  } catch (e) {
+    console.log('Error clearing DataTables state:', e);
+  }
+
   var phoneMaskList = document.querySelectorAll('.phone-mask');
 
   // Phone Number

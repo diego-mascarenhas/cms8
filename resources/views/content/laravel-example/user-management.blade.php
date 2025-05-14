@@ -154,7 +154,7 @@
           <select id="user-role" name="role" class="form-select">
             <option value="">Select Role</option>
             @foreach($roles as $role)
-              <option value="{{ $role->id }}">{{ $role->name }}</option>
+              <option value="{{ $role->id }}">{{ $role->name }} (ID: {{ $role->id }})</option>
             @endforeach
           </select>
         </div>
