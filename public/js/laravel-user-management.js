@@ -21,6 +21,7 @@ var __webpack_exports__ = {};
 
 
 // Datatable (jquery)
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 $(function () {
   // Variable declaration for table
   var dt_user_table = $('.datatables-users'),
@@ -60,6 +61,8 @@ $(function () {
         data: 'name'
       }, {
         data: 'email'
+      }, {
+        data: 'roles'
       }, {
         data: 'email_verified_at'
       }, {
@@ -117,8 +120,42 @@ $(function () {
           return '<span class="user-email">' + $email + '</span>';
         }
       }, {
-        // email verify
+        // User roles
         targets: 4,
+        render: function render(data, type, full, meta) {
+          var roles = full['roles'] || [];
+
+          // Si roles es un array de cadenas, simplemente unir con coma
+          if (Array.isArray(roles) && typeof roles[0] === 'string') {
+            var badges = roles.map(function (role) {
+              return '<span class="badge bg-label-primary me-1">' + role + '</span>';
+            }).join(' ');
+            return badges;
+          }
+
+          // Si roles es un array de objetos, extraer el nombre
+          if (Array.isArray(roles) && _typeof(roles[0]) === 'object') {
+            var badges = roles.map(function (role) {
+              return '<span class="badge bg-label-primary me-1">' + role.name + '</span>';
+            }).join(' ');
+            return badges;
+          }
+
+          // Si roles es un objeto (colección Laravel)
+          if (roles && _typeof(roles) === 'object' && !Array.isArray(roles)) {
+            var roleArray = Object.values(roles);
+            var badges = roleArray.map(function (role) {
+              return '<span class="badge bg-label-primary me-1">' + role + '</span>';
+            }).join(' ');
+            return badges;
+          }
+
+          // Fallback
+          return '<span class="badge bg-label-primary">' + (roles || 'Guest') + '</span>';
+        }
+      }, {
+        // email verify
+        targets: 5,
         className: 'text-center',
         render: function render(data, type, full, meta) {
           var $verified = full['email_verified_at'];
@@ -320,9 +357,10 @@ $(function () {
         // delete the data
         $.ajax({
           type: 'DELETE',
-          url: "".concat(baseUrl, "user-list/").concat(user_id),
+          url: baseUrl + 'user-list/' + user_id,
           success: function success() {
-            dt_user.draw();
+            // Force a full reload of the data to get fresh data from server
+            dt_user.ajax.reload(null, false);
           },
           error: function error(_error) {
             console.log(_error);
@@ -365,17 +403,58 @@ $(function () {
     $('#offcanvasAddUserLabel').html('Edit User');
 
     // get data
-    $.get("".concat(baseUrl, "user-list/").concat(user_id, "/edit"), function (data) {
+    $.get(baseUrl + 'user-list/' + user_id + '/edit', function (data) {
+      console.log("Edit data received:", data);
       $('#user_id').val(data.id);
       $('#add-user-fullname').val(data.name);
       $('#add-user-email').val(data.email);
-      $('#add-user-contact').val(data.phone);
+
+      // Set phone number
+      if (data.phone) {
+        $('#add-user-contact').val(data.phone);
+      } else {
+        $('#add-user-contact').val('');
+      }
+      console.log('Role data:', {
+        role_id: data.role,
+        type: _typeof(data.role)
+      });
+
+      // Set role if available
+      setTimeout(function () {
+        // Make sure we're working with strings for comparison
+        var roleId = data.role ? data.role.toString() : '';
+        console.log('Setting role select to:', roleId);
+        if (roleId) {
+          $('#user-role').val(roleId);
+          console.log('Role after set:', $('#user-role').val());
+        } else {
+          $('#user-role').val('');
+        }
+      }, 100);
     });
   });
 
   // changing the title
   $('.add-new').on('click', function () {
+    // Reset the form completely
+    $('#addNewUserForm')[0].reset();
     $('#user_id').val(''); //reseting input field
+
+    // Find the guest role option and select it by default
+    var guestOption = $('#user-role option').filter(function () {
+      return $(this).text().toLowerCase() === 'guest';
+    });
+    if (guestOption.length > 0) {
+      $('#user-role').val(guestOption.val());
+    } else {
+      $('#user-role').val('');
+    }
+
+    // Reset validation
+    if (typeof fv !== 'undefined') {
+      fv.resetForm(true);
+    }
     $('#offcanvasAddUserLabel').html('Add User');
   });
 
@@ -429,32 +508,49 @@ $(function () {
     // adding or updating user when form successfully validate
     $.ajax({
       data: $('#addNewUserForm').serialize(),
-      url: "".concat(baseUrl, "user-list"),
+      url: baseUrl + 'user-list',
       type: 'POST',
-      success: function success(status) {
-        dt_user.draw();
+      success: function success(response) {
+        // Force a full reload of the data to get fresh data from server
+        dt_user.ajax.reload(null, false);
         offCanvasForm.offcanvas('hide');
+
+        // Check if response is the new format or old format
+        var status = _typeof(response) === 'object' && response.status ? response.status : response;
+        console.log("Success response:", response);
 
         // sweetalert
         Swal.fire({
           icon: 'success',
-          title: "Successfully ".concat(status, "!"),
-          text: "User ".concat(status, " Successfully."),
+          title: "Successfully " + status + "!",
+          text: "User " + status + " Successfully.",
           customClass: {
             confirmButton: 'btn btn-success'
           }
         });
       },
       error: function error(err) {
+        console.error("Error response:", err);
         offCanvasForm.offcanvas('hide');
-        Swal.fire({
-          title: 'Duplicate Entry!',
-          text: 'Your email should be unique.',
-          icon: 'error',
-          customClass: {
-            confirmButton: 'btn btn-success'
-          }
-        });
+        if (err.responseJSON && err.responseJSON.message === "already exits") {
+          Swal.fire({
+            title: 'Duplicate Entry!',
+            text: 'Your email should be unique.',
+            icon: 'error',
+            customClass: {
+              confirmButton: 'btn btn-success'
+            }
+          });
+        } else {
+          Swal.fire({
+            title: 'Error!',
+            text: err.responseJSON && err.responseJSON.message ? err.responseJSON.message : 'Something went wrong while saving the user.',
+            icon: 'error',
+            customClass: {
+              confirmButton: 'btn btn-success'
+            }
+          });
+        }
       }
     });
   });
@@ -462,7 +558,15 @@ $(function () {
   // clearing form data when offcanvas hidden
   offCanvasForm.on('hidden.bs.offcanvas', function () {
     fv.resetForm(true);
+    $('#addNewUserForm')[0].reset();
   });
+
+  // Clear DataTables state if it's causing problems
+  try {
+    localStorage.removeItem('DataTables_datatables-users_' + window.location.pathname);
+  } catch (e) {
+    console.log('Error clearing DataTables state:', e);
+  }
   var phoneMaskList = document.querySelectorAll('.phone-mask');
 
   // Phone Number

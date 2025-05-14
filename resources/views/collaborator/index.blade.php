@@ -1,0 +1,299 @@
+@extends('layouts/layoutMaster')
+
+@section('title', __('Collaborators'))
+
+@section('vendor-style')
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
+@endsection
+
+@section('vendor-script')
+    <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
+@endsection
+
+@section('page-script')
+    <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
+@endsection
+
+<style>
+    .fade-out {
+        opacity: 0;
+        transition: opacity 0.5s ease-out;
+    }
+</style>
+
+@section('content')
+    @if (session('success'))
+        <div id="toast-container" class="toast-top-right">
+            <div class="toast toast-success" aria-live="polite" style="display: block;">
+                <div class="toast-message">{{ session('success') }}</div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var toastElement = document.getElementById('toast-container');
+                var toast = new bootstrap.Toast(toastElement, {
+                    animation: true,
+                    delay: 1000,
+                    autohide: true
+                });
+                toast.show();
+            });
+        </script>
+    @endif
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-0">{{ __('Por aceptar') }}</h6>
+                            <div class="d-flex align-items-center mt-1">
+                                <h3 class="mb-0 me-1">237</h3>
+                                <small class="text-success">(+42%)</small>
+                            </div>
+                            <small class="text-muted">{{ __('Último mes') }}</small>
+                        </div>
+                        <div class="avatar bg-label-warning rounded p-2">
+                            <i class="ti ti-search"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-0">{{ __('Colaboradoras') }}</h6>
+                            <div class="d-flex align-items-center mt-1">
+                                <h3 class="mb-0 me-1">1,459</h3>
+                                <small class="text-success">(+29%)</small>
+                            </div>
+                            <small class="text-muted">{{ __('Total') }}</small>
+                        </div>
+                        <div class="avatar bg-label-primary rounded p-2">
+                            <i class="ti ti-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-0">{{ __('Nuevos') }}</h6>
+                            <div class="d-flex align-items-center mt-1">
+                                <h3 class="mb-0 me-1">67</h3>
+                                <small class="text-success">(+18%)</small>
+                            </div>
+                            <small class="text-muted">{{ __('Última semana') }}</small>
+                        </div>
+                        <div class="avatar bg-label-danger rounded p-2">
+                            <i class="ti ti-user-plus"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="text-muted mb-0">{{ __('Sin actualizar en 6m') }}</h6>
+                            <div class="d-flex align-items-center mt-1">
+                                <h3 class="mb-0 me-1">540</h3>
+                                <small class="text-danger">(-14%)</small>
+                            </div>
+                            <small class="text-muted">{{ __('Últimos 6 meses') }}</small>
+                        </div>
+                        <div class="avatar bg-label-success rounded p-2">
+                            <i class="ti ti-user-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">            
+            <h5 class="mb-3">Filtros</h5>
+            <div class="row g-3 mb-3">
+                <div class="col">
+                    <select class="form-select" id="idioma-origen">
+                        <option value="" selected>{{ __('Idioma origen') }}</option>
+                        <option value="ES">Español</option>
+                        <option value="EN">Inglés</option>
+                        <option value="FR">Francés</option>
+                        <option value="DE">Alemán</option>
+                        <option value="CA">Catalán</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="form-select" id="idioma-destino">
+                        <option value="" selected>{{ __('Idioma destino') }}</option>
+                        <option value="ES">Español</option>
+                        <option value="EN">Inglés</option>
+                        <option value="FR">Francés</option>
+                        <option value="DE">Alemán</option>
+                        <option value="CA">Catalán</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="form-select" id="servicio">
+                        <option value="" selected>{{ __('Servicio') }}</option>
+                        <option value="transcreacion">Transcreación</option>
+                        <option value="documentos">Documentos</option>
+                        <option value="subtitulado">Subtitulado</option>
+                        <option value="traduccion-literaria">Traducción literaria</option>
+                        <option value="interpretacion">Interpretación</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="form-select" id="dias">
+                        <option value="" selected>{{ __('Días') }}</option>
+                        <option value="5">5 días</option>
+                        <option value="10">10 días</option>
+                        <option value="15">15 días</option>
+                        <option value="30">30 días</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select class="form-select" id="fecha-entrega">
+                        <option value="" selected>{{ __('Fecha entrega') }}</option>
+                        <option value="today">Hoy</option>
+                        <option value="week">Esta semana</option>
+                        <option value="month">Este mes</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row align-items-center mb-4">
+                <div class="col-md-1">
+                    <select class="form-select" id="entries-length">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="col-md-6"></div>
+                <div class="col-md-5 d-flex justify-content-end align-items-center gap-2">
+                    <input type="text" class="form-control w-auto me-2" id="search" placeholder="{{ __('Buscar') }}" style="width: 350px;">
+                    <button class="btn btn-outline-primary me-2" style="height: 40px; min-width: 110px;">
+                        <i class="ti ti-download me-1"></i>
+                        <span style="white-space: nowrap;">{{ __('Exportar') }}</span>
+                    </button>
+                    <a href="{{ route('collaborator.create') }}" class="btn btn-primary ms-2 d-flex align-items-center gap-1" style="height: 40px; min-width: 170px;">
+                        <i class="ti ti-plus"></i>
+                        <span style="white-space: nowrap;">{{ __('Añadir nuevo') }}</span>
+                    </a>
+                </div>
+            </div>
+            
+            <hr>
+
+            {{ $dataTable->table(['class' => 'table table-hover table-striped dt-responsive nowrap w-100']) }}
+        </div>
+    </div>
+@endsection
+
+@push('scripts')
+    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+
+    <script>
+        $(document).ready(function() {
+            // Eliminar el buscador duplicado
+            $('.dataTables_filter').hide();
+            
+            // Filtros de tabla
+            $('#idioma-origen, #idioma-destino, #servicio, #dias, #fecha-entrega').on('change', function() {
+                let columna = $(this).attr('id') === 'idioma-origen' ? 2 : 
+                              $(this).attr('id') === 'idioma-destino' ? 3 :
+                              $(this).attr('id') === 'servicio' ? 4 :
+                              $(this).attr('id') === 'dias' ? 5 : 6;
+                
+                let valor = $(this).val();
+                $('#collaborator-table').DataTable().column(columna).search(valor).draw();
+            });
+            
+            // Longitud de entradas
+            $('#entries-length').on('change', function() {
+                $('#collaborator-table').DataTable().page.len($(this).val()).draw();
+            });
+            
+            // Búsqueda
+            $('#search').on('keyup', function() {
+                $('#collaborator-table').DataTable().search($(this).val()).draw();
+            });
+
+            // Función para eliminar un colaborador
+            function deleteRecord(id, element) {
+                event.preventDefault();
+                Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: "¿Deseas eliminar este colaborador?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar',
+                    customClass: {
+                        confirmButton: 'btn btn-primary me-3',
+                        cancelButton: 'btn btn-label-secondary'
+                    },
+                    buttonsStyling: false
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: route('collaborator.destroy', id),
+                            type: 'DELETE',
+                            data: {
+                                _token: $('meta[name="csrf-token"]').attr('content'),
+                            },
+                            success: function(response) {
+                                $('#collaborator-table').DataTable().ajax.reload();
+                                toastr['success']('', response.message, {
+                                    closeButton: true,
+                                    tapToDismiss: false,
+                                    rtl: false
+                                });
+                            },
+                            error: function(response) {
+                                Swal.fire({
+                                    title: 'Error',
+                                    text: response.responseJSON.message || 'Ha ocurrido un error',
+                                    icon: 'error',
+                                    customClass: {
+                                        confirmButton: 'btn btn-primary'
+                                    },
+                                    buttonsStyling: false
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Delegación de eventos para botones de acción
+            $(document).on('click', '.btn-delete', function() {
+                var id = $(this).data('id');
+                deleteRecord(id, this);
+            });
+        });
+    </script>
+@endpush

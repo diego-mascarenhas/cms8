@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Auth;
 
 use Log;
 
@@ -17,18 +19,24 @@ class UserManagement extends Controller
    */
   public function UserManagement()
   {
-    $users = User::all();
+    $users = User::whereHas('teams', function($query) {
+      $query->where('team_id', Auth::user()->currentTeam->id);
+    })->get();
+    
     $userCount = $users->count();
-    $verified = User::whereNotNull('email_verified_at')->get()->count();
-    $notVerified = User::whereNull('email_verified_at')->get()->count();
+    $verified = $users->whereNotNull('email_verified_at')->count();
+    $notVerified = $users->whereNull('email_verified_at')->count();
     $usersUnique = $users->unique(['email']);
     $userDuplicates = $users->diff($usersUnique)->count();
+    
+    $roles = Role::all();
 
     return view('content.laravel-example.user-management', [
       'totalUser' => $userCount,
       'verified' => $verified,
       'notVerified' => $notVerified,
       'userDuplicates' => $userDuplicates,
+      'roles' => $roles,
     ]);
   }
 
@@ -48,8 +56,12 @@ class UserManagement extends Controller
 
     $search = [];
 
-    $totalData = User::count();
+    // Filter users by current team
+    $baseQuery = User::with('roles')->whereHas('teams', function($q) {
+      $q->where('team_id', Auth::user()->currentTeam->id);
+    });
 
+    $totalData = $baseQuery->count();
     $totalFiltered = $totalData;
 
     $limit = $request->input('length');
@@ -59,7 +71,7 @@ class UserManagement extends Controller
 
     if (empty($request->input('search.value')))
     {
-      $users = User::offset($start)
+      $users = $baseQuery->offset($start)
         ->limit($limit)
         ->orderBy($order, $dir)
         ->get();
@@ -68,17 +80,23 @@ class UserManagement extends Controller
     {
       $search = $request->input('search.value');
 
-      $users = User::where('id', 'LIKE', "%{$search}%")
-        ->orWhere('name', 'LIKE', "%{$search}%")
-        ->orWhere('email', 'LIKE', "%{$search}%")
+      $searchQuery = clone $baseQuery;
+      
+      $users = $searchQuery->where(function($q) use ($search) {
+          $q->where('id', 'LIKE', "%{$search}%")
+            ->orWhere('name', 'LIKE', "%{$search}%")
+            ->orWhere('email', 'LIKE', "%{$search}%");
+        })
         ->offset($start)
         ->limit($limit)
         ->orderBy($order, $dir)
         ->get();
 
-      $totalFiltered = User::where('id', 'LIKE', "%{$search}%")
-        ->orWhere('name', 'LIKE', "%{$search}%")
-        ->orWhere('email', 'LIKE', "%{$search}%")
+      $totalFiltered = $baseQuery->where(function($q) use ($search) {
+          $q->where('id', 'LIKE', "%{$search}%")
+            ->orWhere('name', 'LIKE', "%{$search}%")
+            ->orWhere('email', 'LIKE', "%{$search}%");
+        })
         ->count();
     }
 
@@ -96,6 +114,7 @@ class UserManagement extends Controller
         $nestedData['name'] = $user->name;
         $nestedData['email'] = $user->email;
         $nestedData['email_verified_at'] = $user->email_verified_at;
+        $nestedData['roles'] = $user->roles->pluck('name'); // Get user roles
 
         $data[] = $nestedData;
       }
@@ -139,45 +158,21 @@ class UserManagement extends Controller
    */
   public function store(Request $request)
   {
-    Log::info(json_encode($request->all()));
-
-    $userID = $request->id;
-
-    if ($userID)
-    {
-      // update the value
-      $data = [
-        'name' => $request->name,
-        'email' => $request->email,
-      ];
-
-      if ($request->userContact)
+    try {
+      Log::info(json_encode($request->all()));
+  
+      $userID = $request->id;
+  
+      if ($userID)
       {
-        $data['phone'] = preg_replace('/\D/', '', $request->userContact);
-      }
-      else
-      {
-        $data['phone'] = null;
-      }
-
-      $users = User::updateOrCreate(['id' => $userID], $data);
-
-      // user updated
-      return response()->json('Updated');
-    }
-    else
-    {
-      // create new one if email is unique
-      $userEmail = User::where('email', $request->email)->first();
-
-      if (empty($userEmail))
-      {
+        // update the value
+        $user = User::findOrFail($userID);
+        
         $data = [
           'name' => $request->name,
           'email' => $request->email,
-          'password' => bcrypt(Str::random(10)),
         ];
-
+  
         if ($request->userContact)
         {
           $data['phone'] = preg_replace('/\D/', '', $request->userContact);
@@ -186,17 +181,125 @@ class UserManagement extends Controller
         {
           $data['phone'] = null;
         }
-
-        $users = User::updateOrCreate(['id' => $userID], $data);
-
-        // user created
-        return response()->json('Created');
+  
+        // Check if email is already used by another user
+        $existingUser = User::where('email', $request->email)
+          ->where('id', '!=', $userID)
+          ->first();
+          
+        if ($existingUser) {
+          return response()->json(['message' => "already exits"], 422);
+        }
+        
+        $user->update($data);
+        
+        // Update user roles if provided
+        if($request->has('role') && $request->role) {
+          // Find the role by ID
+          $role = \Spatie\Permission\Models\Role::find($request->role);
+          if ($role) {
+            // Assign the role by name
+            $user->syncRoles([$role->name]);
+            Log::info("Role assigned: {$role->name}");
+          } else {
+            Log::warning("Role not found with ID: {$request->role}");
+          }
+        }
+  
+        // Return the updated user data
+        $user->fresh();
+        $user->load('roles');
+        $user->role = $user->roles->first() ? $user->roles->first()->id : null;
+        
+        // Log the final user state
+        Log::info('Updated user state:', [
+          'user_id' => $user->id,
+          'roles' => $user->roles->pluck('name', 'id'),
+          'role_id_sent' => $user->role
+        ]);
+        
+        // user updated
+        return response()->json([
+          'status' => 'Updated',
+          'user' => $user
+        ]);
       }
       else
       {
-        // user already exist
-        return response()->json(['message' => "already exits"], 422);
+        // create new one if email is unique
+        $userEmail = User::where('email', $request->email)->first();
+  
+        if (empty($userEmail))
+        {
+          $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => bcrypt(Str::random(10)),
+          ];
+  
+          if ($request->userContact)
+          {
+            $data['phone'] = preg_replace('/\D/', '', $request->userContact);
+          }
+          else
+          {
+            $data['phone'] = null;
+          }
+  
+          $user = User::create($data);
+          
+          // Add the user to the current team
+          $user->teams()->attach(Auth::user()->currentTeam->id);
+          
+          // Get role ID from request or find guest role by default
+          $roleId = $request->role;
+          if(empty($roleId)) {
+            $guestRole = \Spatie\Permission\Models\Role::where('name', 'guest')->first();
+            if($guestRole) {
+              $roleId = $guestRole->id;
+            }
+          }
+          
+          // Assign role
+          if($roleId) {
+            // Find the role by ID
+            $role = \Spatie\Permission\Models\Role::find($roleId);
+            if ($role) {
+              // Assign the role by name
+              $user->assignRole($role->name);
+              Log::info("Role assigned: {$role->name}");
+            } else {
+              Log::warning("Role not found with ID: {$roleId}");
+            }
+          }
+  
+          // Return the created user data
+          $user->fresh();
+          $user->load('roles');
+          $user->role = $user->roles->first() ? $user->roles->first()->id : null;
+          
+          // Log the final user state
+          Log::info('Created user state:', [
+            'user_id' => $user->id,
+            'roles' => $user->roles->pluck('name', 'id'),
+            'role_id_sent' => $user->role
+          ]);
+          
+          // user created
+          return response()->json([
+            'status' => 'Created',
+            'user' => $user
+          ]);
+        }
+        else
+        {
+          // user already exist
+          return response()->json(['message' => "already exits"], 422);
+        }
       }
+    } catch (\Exception $e) {
+      Log::error('Error saving user data: ' . $e->getMessage());
+      return response()->json(['message' => 'Error processing request: ' . $e->getMessage()], 500);
     }
   }
 
@@ -219,11 +322,34 @@ class UserManagement extends Controller
    */
   public function edit($id)
   {
-    $where = ['id' => $id];
-
-    $users = User::where($where)->first();
-
-    return response()->json($users);
+    try {
+      $user = User::with('roles')->findOrFail($id);
+      
+      // Get all roles for debugging
+      $allRoles = \Spatie\Permission\Models\Role::all();
+      Log::info("All available roles: " . $allRoles->pluck('name', 'id'));
+      
+      // Get the user's first role (ID)
+      $userRole = $user->roles->first();
+      $user->role = $userRole ? $userRole->id : null;
+      
+      // Log role information for debugging
+      Log::info('User role data:', [
+        'user_id' => $user->id,
+        'role_id' => $user->role,
+        'role_name' => $userRole ? $userRole->name : 'none'
+      ]);
+      
+      // Convert phone to string to avoid type issues
+      if ($user->phone) {
+        $user->phone = (string)$user->phone;
+      }
+  
+      return response()->json($user);
+    } catch (\Exception $e) {
+      Log::error('Error fetching user data: ' . $e->getMessage());
+      return response()->json(['error' => 'User not found'], 404);
+    }
   }
 
   /**

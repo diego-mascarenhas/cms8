@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Module;
+use App\Helpers\MenuHelper;
 
 class ModifyMenuBasedOnRole
 {
@@ -18,8 +19,7 @@ class ModifyMenuBasedOnRole
      */
     public function handle(Request $request, Closure $next)
     {
-        $verticalMenuJson = file_get_contents(base_path('resources/menu/verticalMenu.json'));
-        $verticalMenuData = json_decode($verticalMenuJson);
+        $menuConfig = MenuHelper::getMenuConfig();
         $horizontalMenuJson = file_get_contents(base_path('resources/menu/horizontalMenu.json'));
         $horizontalMenuData = json_decode($horizontalMenuJson);
 
@@ -38,9 +38,9 @@ class ModifyMenuBasedOnRole
             $currentSection = null;
             $sectionItems = [];
 
-            foreach ($verticalMenuData->menu as $menuItem)
+            foreach ($menuConfig['menu'] as $menuItem)
             {
-                if (isset($menuItem->menuHeader))
+                if (isset($menuItem['menuHeader']))
                 {
                     // If we are starting a new section, add the previous section if it had items
                     if ($currentSection && count($sectionItems) > 0)
@@ -55,10 +55,10 @@ class ModifyMenuBasedOnRole
                 else
                 {
                     // Check if the menu item has a module key
-                    $moduleKey = $menuItem->module_key ?? null;
+                    $moduleKey = $menuItem['module_key'] ?? null;
                     
                     // Skip if the user doesn't have permission
-                    if (isset($menuItem->permission) && !$user->can($menuItem->permission)) {
+                    if (isset($menuItem['permission']) && !$user->can($menuItem['permission'])) {
                         continue;
                     }
                     
@@ -81,9 +81,9 @@ class ModifyMenuBasedOnRole
             }
 
             // Reindex the array to avoid issues in JavaScript
-            $verticalMenuData->menu = array_values($filteredMenu);
+            $menuConfig['menu'] = array_values($filteredMenu);
 
-            \View::share('menuData', [$verticalMenuData, $horizontalMenuData]);
+            \View::share('menuData', [json_decode(json_encode($menuConfig)), $horizontalMenuData]);
         }
 
         return $next($request);

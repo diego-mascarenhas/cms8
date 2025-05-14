@@ -311,8 +311,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'server.destroy',
         ]);
 
-        $colaboratorRole = Role::create(['name' => 'colaborator']);
-        $colaboratorRole->syncPermissions([
+        $collaboratorRole = Role::create(['name' => 'collaborator']);
+        $collaboratorRole->syncPermissions([
             'user.list',
             'today.list',
             'chat.list',
