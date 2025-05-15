@@ -296,5 +296,8 @@ Route::middleware(['auth'])->prefix('language-variants')->name('language-variant
     Route::get('/', [App\Http\Controllers\LanguageVariantController::class, 'index'])->name('index');
     Route::get('/create', [App\Http\Controllers\LanguageVariantController::class, 'create'])->name('create');
     Route::post('/', [App\Http\Controllers\LanguageVariantController::class, 'store'])->name('store');
+    Route::get('/{languageVariant}/edit', [App\Http\Controllers\LanguageVariantController::class, 'edit'])->name('edit');
+    Route::put('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'update'])->name('update');
+    Route::delete('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'destroy'])->name('destroy');
     Route::get('/variants/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
 });

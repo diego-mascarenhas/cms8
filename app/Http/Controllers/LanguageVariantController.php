@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTables\LanguageVariantDataTable;
 use App\Models\Language;
 use App\Models\LanguageVariant;
 use Illuminate\Http\Request;
@@ -11,12 +12,9 @@ class LanguageVariantController extends Controller
     /**
      * Mostrar la lista de variantes de idioma
      */
-    public function index()
+    public function index(LanguageVariantDataTable $dataTable)
     {
-        $languages = Language::orderBy('name')->get();
-        $variants = LanguageVariant::orderBy('base_language')->orderBy('name')->get();
-        
-        return view('language.variants.index', compact('languages', 'variants'));
+        return $dataTable->render('language.variants.index');
     }
     
     /**
@@ -47,6 +45,48 @@ class LanguageVariantController extends Controller
         
         return redirect()->route('language-variants.index')
             ->with('success', 'Variante de idioma creada correctamente');
+    }
+    
+    /**
+     * Mostrar el formulario para editar una variante
+     */
+    public function edit(LanguageVariant $languageVariant)
+    {
+        $languages = Language::orderBy('name')->get();
+        $variant = $languageVariant;
+        
+        return view('language.variants.edit', compact('variant', 'languages'));
+    }
+    
+    /**
+     * Actualizar la variante de idioma
+     */
+    public function update(Request $request, LanguageVariant $languageVariant)
+    {
+        $validated = $request->validate([
+            'code' => 'required|string|max:10|unique:language_variants,code,' . $languageVariant->id,
+            'name' => 'required|string|max:255',
+            'base_language' => 'required|string|exists:languages,code',
+            'country_code' => 'nullable|string|max:2',
+            'native_name' => 'nullable|string|max:255',
+            'flag' => 'nullable|string|max:2',
+        ]);
+        
+        $languageVariant->update($validated);
+        
+        return redirect()->route('language-variants.index')
+            ->with('success', 'Variante de idioma actualizada correctamente');
+    }
+    
+    /**
+     * Eliminar la variante de idioma
+     */
+    public function destroy(LanguageVariant $languageVariant)
+    {
+        $languageVariant->delete();
+        
+        return redirect()->route('language-variants.index')
+            ->with('success', 'Variante de idioma eliminada correctamente');
     }
     
     /**
