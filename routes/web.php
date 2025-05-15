@@ -290,3 +290,11 @@ Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function (
     Route::post('/prompts/activate', [App\Http\Controllers\ClaudePromptController::class, 'activate'])->name('prompts.activate');
     Route::post('/prompts/preview', [App\Http\Controllers\ClaudePromptController::class, 'preview'])->name('prompts.preview');
 });
+
+// Language Variants
+Route::middleware(['auth'])->prefix('language-variants')->name('language-variants.')->group(function() {
+    Route::get('/', [App\Http\Controllers\LanguageVariantController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\LanguageVariantController::class, 'create'])->name('create');
+    Route::post('/', [App\Http\Controllers\LanguageVariantController::class, 'store'])->name('store');
+    Route::get('/variants/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
+});

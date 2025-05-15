@@ -46,10 +46,10 @@
 			"menuHeader": "CONFIGURACIÓN"
 		},
 		{
-			"url": "language",
+			"url": "language-variants",
 			"name": "Idiomas",
 			"icon": "menu-icon tf-icons ti ti-language",
-			"slug": "language-list"
+			"slug": "language-variants"
 		},
 		{
 			"url": "rate/list",
