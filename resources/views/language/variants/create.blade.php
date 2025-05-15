@@ -26,6 +26,17 @@
           
           <div class="row mb-3">
             <div class="col-md-6">
+              <label for="native_name" class="form-label">Nombre Nativo</label>
+              <input type="text" class="form-control @error('native_name') is-invalid @enderror" 
+                    id="native_name" name="native_name" placeholder="Español (España)" 
+                    value="{{ old('native_name') }}">
+              <small class="text-muted">Nombre del idioma en el propio idioma</small>
+              @error('native_name')
+                <div class="invalid-feedback">{{ $message }}</div>
+              @enderror
+            </div>
+            
+            <div class="col-md-6">
               <label for="base_language" class="form-label">Idioma Base</label>
               <select id="base_language" name="base_language" class="form-select select2 @error('base_language') is-invalid @enderror" required>
                 <option value="">Seleccione un idioma</option>
@@ -81,19 +92,6 @@
                     value="{{ old('flag') }}" maxlength="2">
               <small class="text-muted">Código ISO de 2 letras para mostrar la bandera</small>
               @error('flag')
-                <div class="invalid-feedback">{{ $message }}</div>
-              @enderror
-            </div>
-          </div>
-          
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label for="native_name" class="form-label">Nombre Nativo</label>
-              <input type="text" class="form-control @error('native_name') is-invalid @enderror" 
-                    id="native_name" name="native_name" placeholder="Español (España)" 
-                    value="{{ old('native_name') }}">
-              <small class="text-muted">Nombre del idioma en el propio idioma</small>
-              @error('native_name')
                 <div class="invalid-feedback">{{ $message }}</div>
               @enderror
             </div>

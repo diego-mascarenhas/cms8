@@ -292,12 +292,12 @@ Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function (
 });
 
 // Language Variants
-Route::middleware(['auth'])->prefix('language-variants')->name('language-variants.')->group(function() {
+Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function() {
     Route::get('/', [App\Http\Controllers\LanguageVariantController::class, 'index'])->name('index');
     Route::get('/create', [App\Http\Controllers\LanguageVariantController::class, 'create'])->name('create');
     Route::post('/', [App\Http\Controllers\LanguageVariantController::class, 'store'])->name('store');
     Route::get('/{languageVariant}/edit', [App\Http\Controllers\LanguageVariantController::class, 'edit'])->name('edit');
     Route::put('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'update'])->name('update');
     Route::delete('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'destroy'])->name('destroy');
-    Route::get('/variants/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
+    Route::get('/by-language/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
 });

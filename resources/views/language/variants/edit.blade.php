@@ -36,9 +36,7 @@
                 <div class="invalid-feedback">{{ $message }}</div>
               @enderror
             </div>
-          </div>
-          
-          <div class="row mb-3">
+            
             <div class="col-md-6">
               <label for="base_language" class="form-label">Idioma Base</label>
               <select id="base_language" name="base_language" class="form-select select2 @error('base_language') is-invalid @enderror" required>
