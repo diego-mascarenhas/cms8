@@ -105,10 +105,10 @@
             <a href="{{ route('collaborator.rates', ['id' => $collaborator->id]) }}" class="btn btn-primary me-3">
                 <i class="ti ti-tag me-1"></i>Tarifas
             </a>
-            <a href="javascript:void(0)" class="btn btn-outline-secondary me-3">
+            <a href="{{ route('collaborator.absences', ['id' => $collaborator->id]) }}" class="btn btn-outline-secondary me-3">
                 <i class="ti ti-users me-1"></i>Ausencias
             </a>
-            <a href="javascript:void(0)" class="btn btn-outline-secondary">
+            <a href="{{ route('collaborator.notifications', ['id' => $collaborator->id]) }}" class="btn btn-outline-secondary">
                 <i class="ti ti-bell me-1"></i>Notificaciones
             </a>
         </div>
