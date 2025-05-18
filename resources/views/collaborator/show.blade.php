@@ -119,7 +119,7 @@
                 <a href="javascript:void(0)" class="btn btn-primary me-3">
                     <i class="ti ti-refresh me-1"></i>Resumen
                 </a>
-                <a href="javascript:void(0)" class="btn btn-outline-secondary me-3">
+                <a href="{{ route('collaborator.rates', ['id' => $collaborator->id]) }}" class="btn btn-outline-secondary me-3">
                     <i class="ti ti-tag me-1"></i>Tarifas
                 </a>
                 <a href="javascript:void(0)" class="btn btn-outline-secondary me-3">

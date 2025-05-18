@@ -33,6 +33,7 @@ use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\CollaboratorController;
+use App\Models\Contact;
 
 // auth
 Route::middleware([
@@ -136,6 +137,10 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit');
     Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
     Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
+    Route::get('/collaborator/{id}/rates', function ($id) {
+        $collaborator = Contact::findOrFail($id);
+        return view('collaborator.rates', compact('collaborator'));
+    })->name('collaborator.rates');
 
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])
