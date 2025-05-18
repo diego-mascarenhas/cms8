@@ -290,3 +290,14 @@ Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function (
     Route::post('/prompts/activate', [App\Http\Controllers\ClaudePromptController::class, 'activate'])->name('prompts.activate');
     Route::post('/prompts/preview', [App\Http\Controllers\ClaudePromptController::class, 'preview'])->name('prompts.preview');
 });
+
+// Language Variants
+Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function() {
+    Route::get('/', [App\Http\Controllers\LanguageVariantController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\LanguageVariantController::class, 'create'])->name('create');
+    Route::post('/', [App\Http\Controllers\LanguageVariantController::class, 'store'])->name('store');
+    Route::get('/{languageVariant}/edit', [App\Http\Controllers\LanguageVariantController::class, 'edit'])->name('edit');
+    Route::put('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'update'])->name('update');
+    Route::delete('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'destroy'])->name('destroy');
+    Route::get('/by-language/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
+});
