@@ -92,15 +92,15 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
     
     // Categories Management
-    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
-    Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
-    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
-    Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
-    Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
-    Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
-    Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
-    Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
-    Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
+    // Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    // Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
+    // Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    // Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
+    // Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+    // Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
+    // Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    // Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
+    // Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
     
     // User Management
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
@@ -141,6 +141,15 @@ Route::middleware(['auth'])->group(function ()
         $collaborator = Contact::findOrFail($id);
         return view('collaborator.rates', compact('collaborator'));
     })->name('collaborator.rates');
+    Route::get('/collaborator/{id}/absences', function ($id) {
+        $collaborator = Contact::findOrFail($id);
+        return view('collaborator.absences', compact('collaborator'));
+    })->name('collaborator.absences');
+    
+    Route::get('/collaborator/{id}/notifications', function ($id) {
+        $collaborator = Contact::findOrFail($id);
+        return view('collaborator.notifications', compact('collaborator'));
+    })->name('collaborator.notifications');
 
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])

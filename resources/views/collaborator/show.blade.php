@@ -116,16 +116,16 @@
         <div class="col-xl-8 col-lg-7 col-md-7">
             <!-- Tabs -->
             <div class="d-flex mb-3">
-                <a href="javascript:void(0)" class="btn btn-primary me-3">
+                <a href="{{ route('collaborator.show', ['id' => $collaborator->id]) }}" class="btn btn-primary me-3">
                     <i class="ti ti-refresh me-1"></i>Resumen
                 </a>
                 <a href="{{ route('collaborator.rates', ['id' => $collaborator->id]) }}" class="btn btn-outline-secondary me-3">
                     <i class="ti ti-tag me-1"></i>Tarifas
                 </a>
-                <a href="javascript:void(0)" class="btn btn-outline-secondary me-3">
+                <a href="{{ route('collaborator.absences', ['id' => $collaborator->id]) }}" class="btn btn-outline-secondary me-3">
                     <i class="ti ti-users me-1"></i>Ausencias
                 </a>
-                <a href="javascript:void(0)" class="btn btn-outline-secondary">
+                <a href="{{ route('collaborator.notifications', ['id' => $collaborator->id]) }}" class="btn btn-outline-secondary">
                     <i class="ti ti-bell me-1"></i>Notificaciones
                 </a>
             </div>
