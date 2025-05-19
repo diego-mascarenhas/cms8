@@ -17,31 +17,24 @@ class CollaboratorDataTable extends DataTable
             ->addColumn('action', function ($contact) {
                 return view('collaborator.action', compact('contact'));
             })
+            ->addColumn('rating', function ($contact) {
+                return '<div class="rating text-warning">
+                    <i class="ti ti-star-filled"></i>
+                    <i class="ti ti-star-filled"></i>
+                    <i class="ti ti-star-filled"></i>
+                    <i class="ti ti-star-filled"></i>
+                    <i class="ti ti-star"></i>
+                </div>';
+            })
+            ->addColumn('rates', function ($contact) {
+                return '<a href="' . route('collaborator.rates', ['id' => $contact->id]) . '" class="btn btn-sm btn-outline-primary">
+                    <i class="ti ti-tag me-1"></i>Ver tarifas
+                </a>';
+            })
+            ->addColumn('projects', function ($contact) {
+                return '<span class="badge bg-label-primary rounded-pill">' . rand(1, 10) . '</span>';
+            })
             ->setRowId('id')
-            ->editColumn('name', function ($row) {
-                $companyName = $row->enterprise ? e($row->enterprise->name) : '';
-
-                return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">' . e($row->name) . '</span>
-                            <small class="text-muted">' . ($companyName ?: '&nbsp;') . '</small>
-                        </div>';
-            })
-            ->addColumn('sources', function ($row) {
-                return $row->sources_icons_html;
-            })
-            ->addColumn('responsible_name', function ($contact) {
-                return $contact->responsible->name ?? __('Unassigned');
-            })
-            ->filterColumn('responsible_name', function($query, $keyword) {
-                $query->whereHas('responsible', function ($q) use ($keyword) {
-                    $q->where('name', 'like', "%{$keyword}%");
-                });
-            })
-            ->addColumn('categories', function ($row) {
-                return $row->categories->map(function($category) {
-                    return '<span class="badge bg-label-primary me-1">' . e($category->name) . '</span>';
-                })->join(' ');
-            })
             ->filterColumn('categories', function($query, $keyword) {
                 if ($keyword !== '') {
                     $query->whereHas('categories', function($q) use ($keyword) {
@@ -49,16 +42,12 @@ class CollaboratorDataTable extends DataTable
                     });
                 }
             })
-            ->rawColumns(['name', 'action', 'sources', 'categories']);
+            ->rawColumns(['name', 'action', 'rating', 'rates', 'projects']);
     }
 
     public function query(Contact $model): QueryBuilder
     {
         return $model->newQuery()->with([
-            'enterprise',
-            'sources',
-            'responsible:id,name',
-            'categories'
         ]);
     }
 
@@ -98,27 +87,23 @@ class CollaboratorDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')
-                ->title(__('Name'))
+                ->title(__('Colaborador'))
                 ->addClass('all'),
-            Column::make('sources')
-                ->title(__('Networks'))
+            Column::make('rating')
+                ->title('Valoración')
                 ->className('text-center')
                 ->addClass('min-phone')
-                ->searchable(false)
-                ->orderable(false)
-                ->width(150),
-            Column::make('responsible_name')
-                ->title(__('Advisor'))
+                ->searchable(false),
+            Column::make('rates')
+                ->title('Tarifas')
                 ->className('text-center')
                 ->addClass('min-desktop')
-                ->searchable(false)
-                ->orderable(false),
-            Column::make('categories')
-                ->title(__('Categories'))
+                ->searchable(false),
+            Column::make('projects')
+                ->title('Proyectos')
                 ->className('text-center')
-                ->addClass('category-filter min-desktop')
-                ->searchable(true)
-                ->orderable(false),
+                ->addClass('min-desktop')
+                ->searchable(false),
             Column::computed('action')
                 ->title(__('Actions'))
                 ->width(20)
