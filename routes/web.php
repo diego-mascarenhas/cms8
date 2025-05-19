@@ -130,6 +130,9 @@ Route::middleware(['auth'])->group(function ()
     Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
 
     // Collaborators
+    Route::get('/collaborator/dashboard', function () {
+        return view('collaborator.dashboard');
+    })->name('collaborator.dashboard');
     Route::get('/collaborator/list', [CollaboratorController::class, 'index'])->name('collaborator-list');
     Route::get('/collaborator/create', [CollaboratorController::class, 'create'])->name('collaborator.create');
     Route::post('/collaborator', [CollaboratorController::class, 'store'])->name('collaborator.store');
