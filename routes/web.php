@@ -55,6 +55,20 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
+Route::get('/dashboard/collaborator', function() {
+    return view('collaborator.dashboard');
+})->name('dashboard.collaborator')->middleware('auth');
+
+// Adding routes for other dashboard types
+Route::get('/dashboard/client', function() {
+    // This view doesn't exist yet, so we'll redirect to collaborator for now
+    return view('collaborator.dashboard');
+})->name('dashboard.client')->middleware('auth');
+
+Route::get('/dashboard/project', function() {
+    // This view doesn't exist yet, so we'll redirect to collaborator for now
+    return view('collaborator.dashboard');
+})->name('dashboard.project')->middleware('auth');
 
 // errors
 Route::get('misc-error', function () {
