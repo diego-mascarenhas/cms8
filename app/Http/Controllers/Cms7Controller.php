@@ -183,25 +183,28 @@ class Cms7Controller extends Controller
         // Obtener servicios relacionados
         $servicios = DB::connection('mysql_tmp')
             ->table('servicios')
-            ->where('id_empresa', $id)
-            ->where('estado', '>', 0)
+            ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio', 'left')
+            ->where('servicios.id_empresa', $id)
+            ->where('servicios.estado', '>', 0)
+            ->select('servicios.*', 'servicios_hosting.*')
             ->get();
             
         // Obtener datos fiscales si existen
         $datosFiscales = DB::connection('mysql_tmp')
             ->table('empresas_fiscales')
             ->where('id_empresa', $id)
-            ->first();
-            
-        // Crear array con todos los datos
-        $data = [
-            'empresa' => $empresa,
-            'contactos' => $contactos,
-            'servicios' => $servicios,
-            'datos_fiscales' => $datosFiscales
-        ];
+            ->get();
         
-        // Hacer dump y morir
-        dd($data);
+        // Obtener facturas si existen
+        $facturas = DB::connection('mysql_tmp')
+            ->table('facturas')
+            ->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
+            ->where('empresas_fiscales.id_empresa', $id)
+            ->select('facturas.*', 'empresas_fiscales.razon_social as razon_social')
+            ->orderBy('facturas.fecha', 'desc')
+            ->limit(20)
+            ->get();
+        
+        return view('cms7.empresa-detalle', compact('empresa', 'contactos', 'servicios', 'datosFiscales', 'facturas'));
     }
 } 
