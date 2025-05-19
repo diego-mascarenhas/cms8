@@ -231,7 +231,7 @@
                                     <th>IP</th>
                                     <th>Precio</th>
                                     <th>Frecuencia</th>
-                                    <th>Próxima Facturación</th>
+                                    <th>Próxima</th>
                                     <th>Estado</th>
                                 </tr>
                             </thead>
