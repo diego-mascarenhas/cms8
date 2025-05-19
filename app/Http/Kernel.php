@@ -39,6 +39,7 @@ class Kernel extends HttpKernel
       \App\Http\Middleware\LocaleMiddleware::class,
       \App\Http\Middleware\ModifyMenuBasedOnRole::class,
       \App\Http\Middleware\TrackContactViewing::class,
+      \App\Http\Middleware\DashboardRedirect::class,
     ],
 
     'api' => [
