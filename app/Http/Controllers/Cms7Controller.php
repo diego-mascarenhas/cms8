@@ -180,13 +180,14 @@ class Cms7Controller extends Controller
             ->where('id_empresa', $id)
             ->get();
         
-        // Obtener servicios relacionados
+        // Obtener servicios relacionados con categoría
         $servicios = DB::connection('mysql_tmp')
             ->table('servicios')
             ->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio', 'left')
+            ->leftJoin('categorias_generales', 'servicios.id_categoria', '=', 'categorias_generales.id')
             ->where('servicios.id_empresa', $id)
             ->where('servicios.estado', '>', 0)
-            ->select('servicios.*', 'servicios_hosting.*')
+            ->select('servicios.*', 'servicios_hosting.*', 'categorias_generales.categoria')
             ->get();
             
         // Obtener datos fiscales si existen
@@ -200,7 +201,7 @@ class Cms7Controller extends Controller
             ->table('facturas')
             ->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
             ->where('empresas_fiscales.id_empresa', $id)
-            ->select('facturas.*', 'empresas_fiscales.razon_social as razon_social')
+            ->select('facturas.*')
             ->orderBy('facturas.fecha', 'desc')
             ->limit(20)
             ->get();

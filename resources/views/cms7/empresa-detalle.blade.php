@@ -56,8 +56,8 @@
                     <div class="col-md-4 mb-3">
                         <h6>Estado</h6>
                         <p>
-                            <span class="badge bg-{{ $empresa->estado == 1 ? 'success' : 'warning' }}">
-                                {{ $empresa->estado == 1 ? 'Activo' : 'Inactivo' }}
+                            <span class="badge bg-{{ $empresa->estado == 2 ? 'success' : 'warning' }}">
+                                {{ $empresa->estado == 2 ? 'Activo' : 'Inactivo' }}
                             </span>
                         </p>
                     </div>
@@ -117,10 +117,9 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Nombre</th>
+                                    <th>Razón Social</th>
                                     <th>CUIT</th>
                                     <th>Condición IVA</th>
-                                    <th>Dirección</th>
                                     <th>Estado</th>
                                 </tr>
                             </thead>
@@ -143,10 +142,9 @@
                                             {{ $fiscal->id_condicion_iva }}
                                         @endif
                                     </td>
-                                    <td>{{ $fiscal->domicilio }}</td>
                                     <td>
-                                        <span class="badge bg-{{ $fiscal->estado == 1 ? 'success' : 'warning' }}">
-                                            {{ $fiscal->estado == 1 ? 'Activo' : 'Inactivo' }}
+                                        <span class="badge bg-{{ $fiscal->estado == 2 ? 'success' : 'warning' }}">
+                                            {{ $fiscal->estado == 2 ? 'Activo' : 'Inactivo' }}
                                         </span>
                                     </td>
                                 </tr>
@@ -193,8 +191,8 @@
                                     <td>{{ $contacto->telefono ?: $contacto->celular }}</td>
                                     <td>{{ $contacto->cargo }}</td>
                                     <td>
-                                        <span class="badge bg-{{ $contacto->estado == 1 ? 'success' : 'warning' }}">
-                                            {{ $contacto->estado == 1 ? 'Activo' : 'Inactivo' }}
+                                        <span class="badge bg-{{ $contacto->estado == 2 ? 'success' : 'warning' }}">
+                                            {{ $contacto->estado == 2 ? 'Activo' : 'Inactivo' }}
                                         </span>
                                     </td>
                                 </tr>
@@ -226,7 +224,10 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Descripción</th>
+                                    <th>Categoría</th>
                                     <th>Dominio</th>
+                                    <th>Usuario</th>
+                                    <th>Plan</th>
                                     <th>IP</th>
                                     <th>Precio</th>
                                     <th>Frecuencia</th>
@@ -239,7 +240,10 @@
                                 <tr>
                                     <td>{{ $servicio->id }}</td>
                                     <td>{{ $servicio->descripcion }}</td>
-                                    <td>{{ $servicio->dominio ?? '-' }}</td>
+                                    <td>{{ $servicio->categoria ?? 'No especificada' }}</td>
+                                    <td>{{ $servicio->domain ?? $servicio->dominio ?? '-' }}</td>
+                                    <td>{{ $servicio->user ?? '-' }}</td>
+                                    <td>{{ $servicio->plan ?? '-' }}</td>
                                     <td>{{ $servicio->ip ?? '-' }}</td>
                                     <td>
                                         @if($servicio->valor > 0)
@@ -274,8 +278,8 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ $servicio->estado == 1 ? 'success' : 'warning' }}">
-                                            {{ $servicio->estado == 1 ? 'Activo' : 'Inactivo' }}
+                                        <span class="badge bg-{{ $servicio->estado == 2 ? 'success' : 'warning' }}">
+                                            {{ $servicio->estado == 2 ? 'Activo' : 'Inactivo' }}
                                         </span>
                                     </td>
                                 </tr>
@@ -306,7 +310,6 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Razón Social</th>
                                     <th>Número</th>
                                     <th>Fecha</th>
                                     <th>Vencimiento</th>
@@ -319,7 +322,6 @@
                                 @foreach($facturas as $factura)
                                 <tr>
                                     <td>{{ $factura->id }}</td>
-                                    <td>{{ $factura->razon_social }}</td>
                                     <td>
                                         @if($factura->operacion == 'V')
                                             {{ str_pad($factura->numero_talonario, 4, '0', STR_PAD_LEFT) }}-{{ str_pad($factura->numero_factura, 8, '0', STR_PAD_LEFT) }}
@@ -332,8 +334,8 @@
                                     <td>{{ number_format($factura->total_neto, 2) }} {{ $factura->id_moneda == 2 ? 'USD' : '$' }}</td>
                                     <td>{{ number_format($factura->saldo, 2) }} {{ $factura->id_moneda == 2 ? 'USD' : '$' }}</td>
                                     <td>
-                                        <span class="badge bg-{{ $factura->estado == 1 ? 'success' : 'warning' }}">
-                                            {{ $factura->estado == 1 ? 'Pagada' : 'Pendiente' }}
+                                        <span class="badge bg-{{ ($factura->saldo == 0) ? 'success' : 'warning' }}">
+                                            {{ ($factura->saldo == 0) ? 'Pagada' : 'Pendiente' }}
                                         </span>
                                     </td>
                                 </tr>
@@ -353,13 +355,24 @@
 @section('page-script')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    $('#serviciosTable, #facturasTable').DataTable({
+    $('#serviciosTable').DataTable({
         language: {
             url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
         },
         pageLength: 5,
         lengthMenu: [5, 10, 25, 50],
         ordering: true,
+        responsive: true
+    });
+    
+    $('#facturasTable').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+        },
+        pageLength: 5,
+        lengthMenu: [5, 10, 25, 50],
+        ordering: true,
+        order: [[3, 'desc']], // Order by date column (index 3) in descending order
         responsive: true
     });
 });
