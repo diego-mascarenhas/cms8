@@ -332,3 +332,10 @@ Route::middleware(['auth'])->prefix('language/variants')->name('language-variant
     Route::delete('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'destroy'])->name('destroy');
     Route::get('/by-language/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
 });
+
+/*
+ * CMS7 Routes - Legacy database
+ */
+Route::get('/cms7/empresa/{id}', [App\Http\Controllers\Cms7Controller::class, 'enterpriseDetails'])
+    ->name('cms7.empresa')
+    ->middleware(['auth', 'verified']);

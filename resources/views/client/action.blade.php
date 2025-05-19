@@ -7,4 +7,9 @@
             <i class="tf-icons ti ti-folder-plus ti-sm" title="Create Project"></i>
         </a>
     @endif
+    @if (auth()->user()->can('contact.show') && isset($id))
+        <a href="{{ route('cms7.empresa', $id) }}" class="text-body ms-2" target="_blank">
+            <i class="tf-icons ti ti-database ti-sm" title="Ver datos del CMS 7"></i>
+        </a>
+    @endif
 </div>
