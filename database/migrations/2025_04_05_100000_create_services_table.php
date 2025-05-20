@@ -18,7 +18,7 @@ return new class extends Migration
             $table->enum('operation', ['buy', 'sell'])->default('sell');
             $table->text('description')->nullable();
 			$table->json('data')->nullable();
-            $table->unsignedSmallInteger('currency_id')->default(1);
+            $table->unsignedSmallInteger('currency_id')->nullable();
             $table->decimal('price', 8, 2)->nullable();
             $table->decimal('discount', 5, 2)->nullable();
             $table->unsignedTinyInteger('frequency')->default(1);
