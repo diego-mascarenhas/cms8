@@ -142,13 +142,21 @@ class Service extends Model
         switch ($this->status)
         {
             case 1:
-                return '<span class="badge rounded-pill bg-label-danger">Suspended</span>';
+                return '<span class="badge rounded-pill bg-label-secondary">Suspendido</span>';
             case 2:
-                return '<span class="badge rounded-pill bg-label-warning">To suspend</span>';
+                return '<span class="badge rounded-pill bg-label-warning">Suspender</span>';
             case 3:
-                return '<span class="badge rounded-pill bg-label-success">To activate</span>';
+                return '<span class="badge rounded-pill bg-label-success">Activar</span>';
             case 4:
-                return '<span class="badge rounded-pill bg-label-info">Active</span>';
+                return '<span class="badge rounded-pill bg-label-info">Activo</span>';
+            case 5:
+                return '<span class="badge rounded-pill bg-label-danger">Migrar</span>';
+            case 6:
+                return '<span class="badge rounded-pill bg-label-warning">Cambiar DNS</span>';
+            case 7:
+                return '<span class="badge rounded-pill bg-label-warning">Delegar</span>';
+            case 8:
+                return '<span class="badge rounded-pill bg-label-warning">Corregir precio</span>';
             default:
                 return '<span class="badge rounded-pill bg-label-secondary">unknown</span>';
         }

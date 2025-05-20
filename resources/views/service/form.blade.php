@@ -83,8 +83,9 @@
                                 <option value="3" {{ isset($data) && $data->status == 3 ? 'selected' : '' }}>Activar</option>
                                 <option value="4" {{ isset($data) && $data->status == 4 ? 'selected' : '' }}>Activo</option>
                                 <option value="5" {{ isset($data) && $data->status == 5 ? 'selected' : '' }}>Migrar</option>
-                                <option value="6" {{ isset($data) && $data->status == 6 ? 'selected' : '' }}>Delegar</option>
-                                <option value="7" {{ isset($data) && $data->status == 7 ? 'selected' : '' }}>Cambiar DNS</option>
+                                <option value="6" {{ isset($data) && $data->status == 6 ? 'selected' : '' }}>Cambiar DNS</option>
+                                <option value="7" {{ isset($data) && $data->status == 7 ? 'selected' : '' }}>Delegar</option>
+                                <option value="8" {{ isset($data) && $data->status == 8 ? 'selected' : '' }}>Corregir precio</option>
                             </select>
                         </div>
                     </div>
@@ -213,6 +214,39 @@
                 <div class="row g-3">
                     <div class="col-md-3">
                         <div class="form-group">
+                            <label for="data_os" class="form-label">Operating System</label>
+                            <select id="data_os" name="data[os]" class="form-select">
+                                <option value="">Select Operating System</option>
+                                <option value="CentOS 7" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'CentOS 7' ? 'selected' : '' }}>CentOS 7</option>
+                                <option value="CentOS 8" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'CentOS 8' ? 'selected' : '' }}>CentOS 8</option>
+                                <option value="AlmaLinux 8" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'AlmaLinux 8' ? 'selected' : '' }}>AlmaLinux 8</option>
+                                <option value="Ubuntu 18.04" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'Ubuntu 18.04' ? 'selected' : '' }}>Ubuntu 18.04</option>
+                                <option value="Ubuntu 20.04" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'Ubuntu 20.04' ? 'selected' : '' }}>Ubuntu 20.04</option>
+                                <option value="Ubuntu 22.04" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'Ubuntu 22.04' ? 'selected' : '' }}>Ubuntu 22.04</option>
+                                <option value="Debian 10" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'Debian 10' ? 'selected' : '' }}>Debian 10</option>
+                                <option value="Debian 11" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'Debian 11' ? 'selected' : '' }}>Debian 11</option>
+                                <option value="Windows Server 2019" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'Windows Server 2019' ? 'selected' : '' }}>Windows Server 2019</option>
+                                <option value="Windows Server 2022" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'Windows Server 2022' ? 'selected' : '' }}>Windows Server 2022</option>
+                                <option value="Other" {{ isset($data) && isset($data->data['os']) && $data->data['os'] == 'Other' ? 'selected' : '' }}>Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="data_control_panel" class="form-label">Control Panel</label>
+                            <select id="data_control_panel" name="data[control_panel]" class="form-select">
+                                <option value="">Select Control Panel</option>
+                                <option value="cPanel" {{ isset($data) && isset($data->data['control_panel']) && $data->data['control_panel'] == 'cPanel' ? 'selected' : '' }}>cPanel</option>
+                                <option value="Plesk" {{ isset($data) && isset($data->data['control_panel']) && $data->data['control_panel'] == 'Plesk' ? 'selected' : '' }}>Plesk</option>
+                                <option value="aaPanel" {{ isset($data) && isset($data->data['control_panel']) && $data->data['control_panel'] == 'aaPanel' ? 'selected' : '' }}>aaPanel</option>
+                                <option value="Other" {{ isset($data) && isset($data->data['control_panel']) && $data->data['control_panel'] == 'Other' ? 'selected' : '' }}>Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="form-group">
                             <label for="data_db_version" class="form-label">Database Version</label>
                             <select id="data_db_version" name="data[db_version]" class="form-select">
                                 <option value="">Select Database Version</option>
@@ -220,10 +254,6 @@
                                 <option value="MySQL 8.0" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MySQL 8.0' ? 'selected' : '' }}>MySQL 8.0</option>
                                 <option value="MariaDB 10.5" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MariaDB 10.5' ? 'selected' : '' }}>MariaDB 10.5</option>
                                 <option value="MariaDB 10.6" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MariaDB 10.6' ? 'selected' : '' }}>MariaDB 10.6</option>
-                                <option value="PostgreSQL 12" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'PostgreSQL 12' ? 'selected' : '' }}>PostgreSQL 12</option>
-                                <option value="PostgreSQL 13" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'PostgreSQL 13' ? 'selected' : '' }}>PostgreSQL 13</option>
-                                <option value="PostgreSQL 14" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'PostgreSQL 14' ? 'selected' : '' }}>PostgreSQL 14</option>
-                                <option value="SQLite 3" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'SQLite 3' ? 'selected' : '' }}>SQLite 3</option>
                             </select>
                         </div>
                     </div>

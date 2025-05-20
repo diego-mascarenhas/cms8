@@ -97,7 +97,7 @@ class ServiceController extends Controller
             'frequency' => 'nullable|integer|min:1',
             'next_billing' => 'nullable|date',
             'expires_at' => 'nullable|date',
-            'status' => 'required|integer|in:1,2,3,4,5,6,7',
+            'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
             'data' => 'nullable|array',
             'responsible_id' => 'nullable|exists:users,id',
         ]);
@@ -175,7 +175,7 @@ class ServiceController extends Controller
             'frequency' => 'nullable|integer|min:1',
             'next_billing' => 'nullable|date',
             'expires_at' => 'nullable|date',
-            'status' => 'required|integer|in:1,2,3,4,5,6,7',
+            'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
             'data' => 'nullable|array',
             'responsible_id' => 'nullable|exists:users,id',
         ]);
