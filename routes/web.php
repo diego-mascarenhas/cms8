@@ -201,6 +201,7 @@ Route::middleware(['auth'])->group(function ()
     // Services
     Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list')->middleware('role:admin');
     Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling')->middleware('role:admin');
+    Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create')->middleware('role:admin');
     Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show')->middleware('role:admin');
     Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit')->middleware('role:admin');
     Route::post('/service', [ServiceController::class, 'store'])->name('service.store')->middleware('role:admin');

@@ -63,6 +63,10 @@
                 <a href="{{ route('project.create') }}" class="btn btn-success waves-effect waves-light"><i
                         class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
             @endcan
+            @can('service.create')
+                <a href="{{ route('service.create', ['enterprise_id' => $data->id]) }}" class="btn btn-info waves-effect waves-light ms-2"><i
+                        class="ti ti-server me-1"></i>Crear servicio</a>
+            @endcan
             @can('chat.list')
                 @if ($data->getWhatsAppNumber())
                     <a href="{{ route('chat.index') }}?phone={{ $data->getWhatsAppNumber() }}"
