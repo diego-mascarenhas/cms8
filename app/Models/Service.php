@@ -29,6 +29,7 @@ class Service extends Model
         'next_billing',
         'last_billed',
         'expires_at',
+        'responsible_id',
         'status',
         'created_at',
         'updated_at',
@@ -76,6 +77,11 @@ class Service extends Model
     public function client()
     {
         return $this->belongsTo(Enterprise::class, 'enterprise_id');
+    }
+
+    public function responsible()
+    {
+        return $this->belongsTo(User::class, 'responsible_id');
     }
 
     public function services()

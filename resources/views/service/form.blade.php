@@ -29,7 +29,7 @@
             <h5 class="card-header">Basic Information</h5>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-6" style="display: none;">
                         <div class="form-group">
                             <label for="enterprise_id" class="form-label">Client</label>
                             <select id="enterprise_id" name="enterprise_id" class="select2 form-select" data-allow-clear="true" required>
@@ -39,6 +39,15 @@
                                 @endforeach
                             </select>
                         </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <x-team-users-select 
+                            id="responsible_id" 
+                            label="Asesor"
+                            :selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
+                            show-null="false"
+                        />
                     </div>
 
                     <div class="col-md-6">
@@ -205,14 +214,36 @@
                     <div class="col-md-3">
                         <div class="form-group">
                             <label for="data_db_version" class="form-label">Database Version</label>
-                            <input type="text" id="data_db_version" name="data[db_version]" class="form-control" value="{{ isset($data) ? ($data->data['db_version'] ?? '') : '' }}">
+                            <select id="data_db_version" name="data[db_version]" class="form-select">
+                                <option value="">Select Database Version</option>
+                                <option value="MySQL 5.7" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MySQL 5.7' ? 'selected' : '' }}>MySQL 5.7</option>
+                                <option value="MySQL 8.0" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MySQL 8.0' ? 'selected' : '' }}>MySQL 8.0</option>
+                                <option value="MariaDB 10.5" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MariaDB 10.5' ? 'selected' : '' }}>MariaDB 10.5</option>
+                                <option value="MariaDB 10.6" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'MariaDB 10.6' ? 'selected' : '' }}>MariaDB 10.6</option>
+                                <option value="PostgreSQL 12" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'PostgreSQL 12' ? 'selected' : '' }}>PostgreSQL 12</option>
+                                <option value="PostgreSQL 13" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'PostgreSQL 13' ? 'selected' : '' }}>PostgreSQL 13</option>
+                                <option value="PostgreSQL 14" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'PostgreSQL 14' ? 'selected' : '' }}>PostgreSQL 14</option>
+                                <option value="SQLite 3" {{ isset($data) && isset($data->data['db_version']) && $data->data['db_version'] == 'SQLite 3' ? 'selected' : '' }}>SQLite 3</option>
+                            </select>
                         </div>
                     </div>
 
                     <div class="col-md-3">
                         <div class="form-group">
                             <label for="data_php_version" class="form-label">PHP Version</label>
-                            <input type="text" id="data_php_version" name="data[php_version]" class="form-control" value="{{ isset($data) ? ($data->data['php_version'] ?? '') : '' }}">
+                            <select id="data_php_version" name="data[php_version]" class="form-select">
+                                <option value="">Select PHP Version</option>
+                                <option value="5.6" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '5.6' ? 'selected' : '' }}>PHP 5.6</option>
+                                <option value="7.0" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '7.0' ? 'selected' : '' }}>PHP 7.0</option>
+                                <option value="7.1" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '7.1' ? 'selected' : '' }}>PHP 7.1</option>
+                                <option value="7.2" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '7.2' ? 'selected' : '' }}>PHP 7.2</option>
+                                <option value="7.3" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '7.3' ? 'selected' : '' }}>PHP 7.3</option>
+                                <option value="7.4" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '7.4' ? 'selected' : '' }}>PHP 7.4</option>
+                                <option value="8.0" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '8.0' ? 'selected' : '' }}>PHP 8.0</option>
+                                <option value="8.1" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '8.1' ? 'selected' : '' }}>PHP 8.1</option>
+                                <option value="8.2" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '8.2' ? 'selected' : '' }}>PHP 8.2</option>
+                                <option value="8.3" {{ isset($data) && isset($data->data['php_version']) && $data->data['php_version'] == '8.3' ? 'selected' : '' }}>PHP 8.3</option>
+                            </select>
                         </div>
                     </div>
 

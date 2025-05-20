@@ -25,6 +25,7 @@ return new class extends Migration
             $table->date('last_billed')->nullable()->default(null);
             $table->date('next_billing')->nullable()->default(null);
             $table->date('expires_at')->nullable()->default(null);
+            $table->foreignId('responsible_id')->nullable()->constrained('users');
 			$table->tinyInteger('status')->default(1);
 			$table->timestamps();
             $table->softDeletes();
