@@ -206,7 +206,17 @@ class Service extends Model
 
     public static function calculateTotal($status, $operation)
     {
-        $services = self::where('status', $status)
+        $services = self::where(function($query) use ($status) {
+                // If status is specifically provided, use exact status
+                if (is_numeric($status)) {
+                    // For status 4, include all status >= 4 (all active statuses)
+                    if ($status == 4) {
+                        $query->where('status', '>=', 4);
+                    } else {
+                        $query->where('status', $status);
+                    }
+                }
+            })
             ->whereHas('category', function ($query) use ($operation)
             {
                 $query->where('operation', $operation);

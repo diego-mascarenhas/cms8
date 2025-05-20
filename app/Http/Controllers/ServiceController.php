@@ -63,7 +63,7 @@ class ServiceController extends Controller
 
         // Calculate pending and active services
         $pending_services = Service::whereIn('status', [2, 3])->count();
-        $active_services = Service::where('status', 4)->count();
+        $active_services = Service::where('status', '>=', 4)->count();
         $total_services = $pending_services + $active_services;
         $percentage_pending = $total_services > 0 ? ($pending_services / $total_services) * 100 : 0;
 
@@ -213,7 +213,7 @@ class ServiceController extends Controller
     {
         Log::info('Iniciando proyección de facturación');
 
-        $services = Service::where('status', 4)->get();
+        $services = Service::where('status', '>=', 4)->get();
         $currentDate = Carbon::now();
         $projectionMonths = 12; // Número de meses para proyectar
         $projectionData = [];
