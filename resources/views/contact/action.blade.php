@@ -9,7 +9,7 @@
         @endif
     @endif
     @if (auth()->user()->can('contact.show'))
-        <a href="{{ route('contact.show', $contact->id) }}" class="text-body"><i class="ti ti-edit ti-sm me-2"></i></a>
+        <a href="{{ route('contact.show', $contact->id) }}" class="text-body"><i class="ti ti-eye ti-sm me-2"></i></a>
     @endif
     @if (auth()->user()->can('contact.destroy'))
         <a href="#" class="text-danger" onclick="deleteRecord({{ $contact->id }}, this)"><i class="ti ti-trash ti-sm"></i></a>

@@ -201,6 +201,7 @@ Route::middleware(['auth'])->group(function ()
     // Services
     Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list')->middleware('role:admin');
     Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling')->middleware('role:admin');
+    Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create')->middleware('role:admin');
     Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show')->middleware('role:admin');
     Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit')->middleware('role:admin');
     Route::post('/service', [ServiceController::class, 'store'])->name('service.store')->middleware('role:admin');
@@ -332,3 +333,10 @@ Route::middleware(['auth'])->prefix('language/variants')->name('language-variant
     Route::delete('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'destroy'])->name('destroy');
     Route::get('/by-language/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
 });
+
+/*
+ * CMS7 Routes - Legacy database
+ */
+Route::get('/cms7/empresa/{id}', [App\Http\Controllers\Cms7Controller::class, 'enterpriseDetails'])
+    ->name('cms7.empresa')
+    ->middleware(['auth', 'verified']);
