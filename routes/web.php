@@ -33,6 +33,7 @@ use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\CollaboratorController;
+use App\Http\Controllers\CategoryController;
 use App\Models\Contact;
 
 // auth
@@ -40,8 +41,8 @@ Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
-])->group(function ()
-{
+    ])->group(function ()
+    {
     Route::get('/dashboard', function ()
     {
         return view('dashboard');
@@ -106,15 +107,15 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
     
     // Categories Management
-    // Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
-    // Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
-    // Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
-    // Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
-    // Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
-    // Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
-    // Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
-    // Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
-    // Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
+    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
+    Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+    Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
+    Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
     
     // User Management
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');

@@ -22,6 +22,7 @@
         @if(isset($data))
             @method('PUT')
             <input type="hidden" name="id" value="{{ $data->id }}">
+            <input type="hidden" name="enterprise_id" value="{{ $enterprise_id }}">
         @endif
 
         <!-- Basic Information Card -->
@@ -29,18 +30,6 @@
             <h5 class="card-header">Basic Information</h5>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6" style="display: none;">
-                        <div class="form-group">
-                            <label for="enterprise_id" class="form-label">Client</label>
-                            <select id="enterprise_id" name="enterprise_id" class="select2 form-select" data-allow-clear="true" required>
-                                <option value="">Select Client</option>
-                                @foreach(\App\Models\Enterprise::all() as $enterprise)
-                                    <option value="{{ $enterprise->id }}" {{ (isset($data) && $data->enterprise_id == $enterprise->id) || (isset($enterprise_id) && $enterprise_id == $enterprise->id) ? 'selected' : '' }}>{{ $enterprise->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-
                     <div class="col-md-6">
                         <x-team-users-select 
                             id="responsible_id" 
@@ -51,15 +40,12 @@
                     </div>
 
                     <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="category_id" class="form-label">Category</label>
-                            <select id="category_id" name="category_id" class="select2 form-select" data-allow-clear="true" required>
-                                <option value="">Select Category</option>
-                                @foreach(\App\Models\Category::all() as $category)
-                                    <option value="{{ $category->id }}" {{ isset($data) && $data->category_id == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                        <x-module-categories-select 
+                            id="category_id" 
+                            label="Category"
+                            :selected="old('category_id', $data->category_id ?? null)"
+                            :moduleKey="'services'"
+                        />
                     </div>
 
                     <div class="col-md-6">

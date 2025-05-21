@@ -41,19 +41,7 @@
 	<form class="card-body" action="{{ route('project.store') }}" method="POST">
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
-
-		@if(isset($enterprise_id) && $enterprise_id)
-			<input type="hidden" name="enterprise_id" value="{{ $enterprise_id }}">
-		@else
-			<div class="col-md-12 mb-4">
-				<x-client-select 
-					id="enterprise_id" 
-					label="Cliente (*)" 
-					:selected="old('enterprise_id', $data->enterprise_id ?? '')"
-					:allow-null="false"
-				/>
-			</div>
-		@endif
+		<input type="hidden" name="enterprise_id" value="{{ $enterprise_id }}">
 		
 		<div class="row g-3">
 			<div class="col-md-6">
