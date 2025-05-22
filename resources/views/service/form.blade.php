@@ -17,11 +17,36 @@
         <span class="text-muted fw-light">Service /</span> {{ isset($data) ? 'Edit Service' : 'Create Service' }}
     </h4>
 
+    @if ($errors->any())
+    <div class="alert alert-danger">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
+    @if(session('error'))
+    <div class="alert alert-danger">
+        {{ session('error') }}
+    </div>
+    @endif
+
+    @if(session('success'))
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
+    @endif
+
     <form id="serviceForm" method="POST" action="{{ isset($data) ? route('service.update', $data->id) : route('service.store') }}">
         @csrf
         @if(isset($data))
             @method('PUT')
             <input type="hidden" name="id" value="{{ $data->id }}">
+        @endif
+        
+        @if(isset($enterprise_id))
             <input type="hidden" name="enterprise_id" value="{{ $enterprise_id }}">
         @endif
 
@@ -69,9 +94,9 @@
                                 <option value="3" {{ isset($data) && $data->status == 3 ? 'selected' : '' }}>Activar</option>
                                 <option value="4" {{ isset($data) && $data->status == 4 ? 'selected' : '' }}>Activo</option>
                                 <option value="5" {{ isset($data) && $data->status == 5 ? 'selected' : '' }}>Migrar</option>
-                                <option value="6" {{ isset($data) && $data->status == 6 ? 'selected' : '' }}>Cambiar DNS</option>
+                                <option value="6" {{ isset($data) && $data->status == 6 ? 'selected' : '' }}>Migrando</option>
                                 <option value="7" {{ isset($data) && $data->status == 7 ? 'selected' : '' }}>Delegar</option>
-                                <option value="8" {{ isset($data) && $data->status == 8 ? 'selected' : '' }}>Corregir precio</option>
+                                <option value="8" {{ isset($data) && $data->status == 8 ? 'selected' : '' }}>Analizar</option>
                             </select>
                         </div>
                     </div>

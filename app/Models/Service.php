@@ -152,11 +152,11 @@ class Service extends Model
             case 5:
                 return '<span class="badge rounded-pill bg-label-danger">Migrar</span>';
             case 6:
-                return '<span class="badge rounded-pill bg-label-warning">Cambiar DNS</span>';
+                return '<span class="badge rounded-pill bg-label-warning">Migrando</span>';
             case 7:
                 return '<span class="badge rounded-pill bg-label-warning">Delegar</span>';
             case 8:
-                return '<span class="badge rounded-pill bg-label-warning">Corregir precio</span>';
+                return '<span class="badge rounded-pill bg-label-warning">Analizar</span>';
             default:
                 return '<span class="badge rounded-pill bg-label-secondary">unknown</span>';
         }
