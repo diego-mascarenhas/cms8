@@ -67,8 +67,25 @@ class ServiceDataTable extends DataTable
                 }
                 return '-';
             })
+            ->filterColumn('server', function ($query, $keyword) {
+                // Buscar servidores por nombre
+                $serverIds = \App\Models\Server::where('name', 'LIKE', "%{$keyword}%")
+                    ->pluck('id')
+                    ->toArray();
+                
+                if (!empty($serverIds)) {
+                    $conditions = [];
+                    foreach ($serverIds as $serverId) {
+                        $conditions[] = "JSON_EXTRACT(data, '$.server_id') = '{$serverId}'";
+                    }
+                    $query->whereRaw('(' . implode(' OR ', $conditions) . ')');
+                } else {
+                    // Si no hay coincidencias, asegurar que no se devuelvan resultados
+                    $query->whereRaw('1=0');
+                }
+            })
             ->filterColumn('domain', function ($query, $keyword) {
-                $query->whereRaw("JSON_EXTRACT(data, '$.domain') LIKE ?", ["%{$keyword}%"]);
+                $query->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(data, '$.domain'))) LIKE ?", ["%".strtolower($keyword)."%"]);
             })
             ->editColumn('next_billing', function ($data) {
                 return $data->next_billing ? $data->next_billing->format('d-m-Y') : '-';
