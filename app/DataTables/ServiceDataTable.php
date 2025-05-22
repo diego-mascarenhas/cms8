@@ -57,6 +57,12 @@ class ServiceDataTable extends DataTable
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
+            ->addColumn('domain', function ($data) {
+                return $data->domain ?: '-';
+            })
+            ->filterColumn('domain', function ($query, $keyword) {
+                $query->whereRaw("JSON_EXTRACT(data, '$.domain') LIKE ?", ["%{$keyword}%"]);
+            })
             ->editColumn('created_at', function ($data)
             {
                 return Carbon::parse($data->created_at)->format('d-m-Y');
@@ -105,7 +111,7 @@ class ServiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(7); // Order by status_order column
+            ->orderBy(8); // Order by status_order column (index 8 now)
     }
 
     public function getColumns(): array
@@ -115,11 +121,12 @@ class ServiceDataTable extends DataTable
             Column::computed('operation_type')->title('')->width(5)->className('text-center'),
             Column::make('enterprise_id')->title('Client'),
             Column::make('category_id')->title('Category'),
+            Column::make('domain')->title('Domain'),
             Column::make('calculated_price')->title('Price')->className('text-center'),
             Column::make('created_at')->title('Created')->className('text-center'),
             Column::make('updated_at')->title('Updated')->className('text-center'),
             Column::make('status_order')->hidden(),
-            Column::make('status')->title('Status')->className('text-center')->orderData(7), // Order by status_order column (index 7)
+            Column::make('status')->title('Status')->className('text-center')->orderData(8), // Order by status_order column (index 8 now)
             Column::computed('action')
                 ->title('Acciones')
                 ->width(20)
