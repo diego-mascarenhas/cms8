@@ -68,20 +68,20 @@ class ServiceDataTable extends DataTable
             ->editColumn('status', function ($data) {
                 return $data->status_label;
             })
-            ->addColumn('status_order', function ($data) {
+            ->orderColumn('status', function ($query, $direction) {
                 // Custom ordering: 7, 5, 3, 2, 6, 8, 4, 1
-                $orderMap = [
-                    7 => 1,
-                    5 => 2,
-                    3 => 3,
-                    2 => 4,
-                    6 => 5,
-                    8 => 6,
-                    4 => 7,
-                    1 => 8
-                ];
+                $orderMap = "CASE
+                    WHEN status = 7 THEN 1
+                    WHEN status = 5 THEN 2
+                    WHEN status = 3 THEN 3
+                    WHEN status = 2 THEN 4
+                    WHEN status = 6 THEN 5
+                    WHEN status = 8 THEN 6
+                    WHEN status = 4 THEN 7
+                    WHEN status = 1 THEN 8
+                    ELSE 999 END";
 
-                return $orderMap[$data->status] ?? 999; // Default high value for unknown statuses
+                $query->orderByRaw("$orderMap $direction");
             });
     }
 
@@ -99,7 +99,7 @@ class ServiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(8); // Order by status_order column (index 8)
+            ->orderBy(8, 'asc'); // Ordenar por status
     }
 
     public function getColumns(): array
@@ -113,8 +113,7 @@ class ServiceDataTable extends DataTable
             Column::make('server')->title('Server'),
             Column::make('calculated_price')->title('Price')->className('text-center'),
             Column::make('next_billing')->title('Next Billing')->className('text-center'),
-            Column::make('status_order')->hidden(),
-            Column::make('status')->title('Status')->className('text-center')->orderData(8), // Order by status_order column (index 8)
+            Column::make('status')->title('Status')->className('text-center'),
             Column::computed('action')
                 ->title('Acciones')
                 ->width(20)
