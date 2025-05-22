@@ -139,7 +139,8 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="discount" class="form-label">Discount (%)</label>
-                            <input type="number" id="discount" name="discount" class="form-control" step="0.01" value="{{ isset($data) ? $data->discount : '0' }}">
+                            <input type="number" id="discount" name="discount" class="form-control" step="1" max="30" value="{{ isset($data) ? $data->discount : '0' }}">
+                            <small class="text-muted">Maximum discount allowed: 30%</small>
                         </div>
                     </div>
 
