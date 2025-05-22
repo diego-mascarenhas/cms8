@@ -60,16 +60,18 @@ class ServiceDataTable extends DataTable
             ->addColumn('domain', function ($data) {
                 return $data->domain ?: '-';
             })
+            ->addColumn('server', function ($data) {
+                if (!empty($data->data['server_id'])) {
+                    $server = \App\Models\Server::find($data->data['server_id']);
+                    return $server ? $server->name : '-';
+                }
+                return '-';
+            })
             ->filterColumn('domain', function ($query, $keyword) {
                 $query->whereRaw("JSON_EXTRACT(data, '$.domain') LIKE ?", ["%{$keyword}%"]);
             })
-            ->editColumn('created_at', function ($data)
-            {
-                return Carbon::parse($data->created_at)->format('d-m-Y');
-            })
-            ->editColumn('updated_at', function ($data)
-            {
-                return Carbon::parse($data->updated_at)->format('d-m-Y');
+            ->editColumn('next_billing', function ($data) {
+                return $data->next_billing ? $data->next_billing->format('d-m-Y') : '-';
             })
             ->addColumn('calculated_price', function ($data)
             {
@@ -111,7 +113,7 @@ class ServiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(8); // Order by status_order column (index 8 now)
+            ->orderBy(8); // Order by status_order column (index 8)
     }
 
     public function getColumns(): array
@@ -122,11 +124,11 @@ class ServiceDataTable extends DataTable
             Column::make('enterprise_id')->title('Client'),
             Column::make('category_id')->title('Category'),
             Column::make('domain')->title('Domain'),
+            Column::make('server')->title('Server'),
             Column::make('calculated_price')->title('Price')->className('text-center'),
-            Column::make('created_at')->title('Created')->className('text-center'),
-            Column::make('updated_at')->title('Updated')->className('text-center'),
+            Column::make('next_billing')->title('Next Billing')->className('text-center'),
             Column::make('status_order')->hidden(),
-            Column::make('status')->title('Status')->className('text-center')->orderData(8), // Order by status_order column (index 8 now)
+            Column::make('status')->title('Status')->className('text-center')->orderData(8), // Order by status_order column (index 8)
             Column::computed('action')
                 ->title('Acciones')
                 ->width(20)

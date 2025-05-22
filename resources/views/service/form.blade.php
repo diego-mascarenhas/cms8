@@ -185,11 +185,35 @@
                             <input type="text" id="data_ip" name="data[ip]" class="form-control" value="{{ isset($data) ? ($data->data['ip'] ?? '') : '' }}">
                         </div>
                     </div>
+                    
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="data_server_id" class="form-label">Server</label>
+                            <select id="data_server_id" name="data[server_id]" class="form-select">
+                                <option value="">Select Server</option>
+                                @foreach(\App\Models\Server::orderBy('name')->get() as $server)
+                                    <option value="{{ $server->id }}" {{ isset($data) && isset($data->data['server_id']) && $data->data['server_id'] == $server->id ? 'selected' : '' }}>
+                                        {{ $server->name }} ({{ $server->ip }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="data_plan" class="form-label">Plan</label>
                             <input type="text" id="data_plan" name="data[plan]" class="form-control" value="{{ isset($data) ? ($data->data['plan'] ?? '') : '' }}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="data_email_service" class="form-label">Email Service</label>
+                            <select id="data_email_service" name="data[email_service]" class="form-select">
+                                <option value="1" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 1 ? 'selected' : '' }}>Yes</option>
+                                <option value="0" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 0 ? 'selected' : '' }}>No</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -301,16 +325,6 @@
                                 <option value="magento" {{ isset($data) && isset($data->data['website_type']) && $data->data['website_type'] == 'magento' ? 'selected' : '' }}>Magento</option>
                                 <option value="html" {{ isset($data) && isset($data->data['website_type']) && $data->data['website_type'] == 'html' ? 'selected' : '' }}>Static HTML</option>
                                 <option value="other" {{ isset($data) && isset($data->data['website_type']) && $data->data['website_type'] == 'other' ? 'selected' : '' }}>Other</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label for="data_email_service" class="form-label">Email Service</label>
-                            <select id="data_email_service" name="data[email_service]" class="form-select">
-                                <option value="1" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 1 ? 'selected' : '' }}>Yes</option>
-                                <option value="0" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 0 ? 'selected' : '' }}>No</option>
                             </select>
                         </div>
                     </div>
