@@ -92,7 +92,13 @@ class ServiceDataTable extends DataTable
             })
             ->addColumn('calculated_price', function ($data)
             {
-                return number_format($data->calculated_price, 2, ',', '.');
+                $currencyCode = 'USD';
+                
+                if ($data->currency) {
+                    $currencyCode = $data->currency->code ?? 'USD';
+                }
+                
+                return $currencyCode . ' ' . number_format($data->calculated_price, 2, ',', '.');
             })
             ->editColumn('status', function ($data)
             {
@@ -117,7 +123,7 @@ class ServiceDataTable extends DataTable
 
     public function query(Service $model): QueryBuilder
     {
-        return $model->newQuery()->whereHas('client', function ($query)
+        return $model->newQuery()->with(['client', 'category', 'currency'])->whereHas('client', function ($query)
         {
             $query->where('team_id', auth()->user()->currentTeam->id);
         });
