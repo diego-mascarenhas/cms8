@@ -94,7 +94,17 @@ class ServiceDataTable extends DataTable
             {
                 $currencyCode = 'USD';
                 
-                if ($data->currency) {
+                // Si el precio del servicio es nulo o cero, usar datos de la categoría
+                if ($data->price === null || $data->price == 0) {
+                    // Intentar obtener moneda de la categoría
+                    if (isset($data->category->data['currency_id'])) {
+                        $categoryCurrency = \App\Models\Currency::find($data->category->data['currency_id']);
+                        if ($categoryCurrency) {
+                            $currencyCode = $categoryCurrency->code ?? 'USD';
+                        }
+                    }
+                } else if ($data->currency) {
+                    // Si el servicio tiene precio, usar su moneda si está especificada
                     $currencyCode = $data->currency->code ?? 'USD';
                 }
                 
