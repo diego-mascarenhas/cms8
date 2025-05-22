@@ -90,6 +90,11 @@ class Service extends Model
         return $this->belongsTo(User::class, 'responsible_id');
     }
 
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
+    }
+
     public function services()
     {
         return $this->hasMany(Service::class);

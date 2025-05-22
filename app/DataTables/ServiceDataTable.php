@@ -56,14 +56,38 @@ class ServiceDataTable extends DataTable
                 }
                 return '-';
             })
+            ->filterColumn('server', function ($query, $keyword) {
+                // Buscar servidores por nombre
+                $serverIds = \App\Models\Server::where('name', 'LIKE', "%{$keyword}%")
+                    ->pluck('id')
+                    ->toArray();
+
+                if (!empty($serverIds)) {
+                    $conditions = [];
+                    foreach ($serverIds as $serverId) {
+                        $conditions[] = "JSON_EXTRACT(data, '$.server_id') = '{$serverId}'";
+                    }
+                    $query->whereRaw('(' . implode(' OR ', $conditions) . ')');
+                } else {
+                    // Si no hay coincidencias, asegurar que no se devuelvan resultados
+                    $query->whereRaw('1=0');
+                }
+            })
             ->filterColumn('domain', function ($query, $keyword) {
-                $query->whereRaw("JSON_EXTRACT(data, '$.domain') LIKE ?", ["%{$keyword}%"]);
+                $query->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(data, '$.domain'))) LIKE ?", ["%".strtolower($keyword)."%"]);
             })
             ->editColumn('next_billing', function ($data) {
                 return $data->next_billing ? $data->next_billing->format('d-m-Y') : '-';
             })
-            ->addColumn('calculated_price', function ($data) {
-                return number_format($data->calculated_price, 2, ',', '.');
+            ->addColumn('calculated_price', function ($data)
+            {
+                $currencyCode = 'USD';
+
+                if ($data->currency) {
+                    $currencyCode = $data->currency->code ?? 'USD';
+                }
+
+                return $currencyCode . ' ' . number_format($data->calculated_price, 2, ',', '.');
             })
             ->editColumn('status', function ($data) {
                 return $data->status_label;
@@ -87,7 +111,8 @@ class ServiceDataTable extends DataTable
 
     public function query(Service $model): QueryBuilder
     {
-        return $model->newQuery()->whereHas('client', function ($query) {
+        return $model->newQuery()->with(['client', 'category', 'currency'])->whereHas('client', function ($query)
+        {
             $query->where('team_id', auth()->user()->currentTeam->id);
         });
     }
@@ -99,7 +124,8 @@ class ServiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(8, 'asc'); // Ordenar por status
+            ->orderBy(8, 'asc') // Ordenar por status
+            ->pageLength(25);
     }
 
     public function getColumns(): array
