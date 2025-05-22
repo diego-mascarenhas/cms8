@@ -117,6 +117,11 @@ class ServiceController extends Controller
 
             $input = $request->all();
             
+            // Convert price to NULL if empty
+            if ($request->has('price') && $request->price === '') {
+                $input['price'] = null;
+            }
+            
             // For debugging
             \Log::info('Service data before creation', ['data' => $input]);
             
@@ -211,6 +216,11 @@ class ServiceController extends Controller
         ]);
 
         $input = $request->all();
+        
+        // Convert price to NULL if empty
+        if ($request->has('price') && $request->price === '') {
+            $input['price'] = null;
+        }
         
         // Format dates
         if (!empty($input['next_billing'])) {

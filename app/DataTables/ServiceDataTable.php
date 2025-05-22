@@ -130,7 +130,8 @@ class ServiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(8, 'asc'); // Ordenar por status
+            ->orderBy(8, 'asc') // Ordenar por status
+            ->pageLength(25);
     }
 
     public function getColumns(): array

@@ -144,7 +144,7 @@ class Service extends Model
             case 1:
                 return '<span class="badge rounded-pill bg-label-secondary">Suspendido</span>';
             case 2:
-                return '<span class="badge rounded-pill bg-label-success">Suspender</span>';
+                return '<span class="badge rounded-pill bg-label-info">Suspender</span>';
             case 3:
                 return '<span class="badge rounded-pill bg-label-warning">Activar</span>';
             case 4:
