@@ -92,37 +92,65 @@ class ServiceController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'enterprise_id' => 'required|exists:enterprises,id',
-            'category_id' => 'required|exists:categories,id',
-            'operation' => 'required|in:buy,sell',
-            'description' => 'nullable|string',
-            'currency_id' => 'nullable|exists:currencies,id',
-            'price' => 'nullable|numeric',
-            'discount' => 'nullable|numeric',
-            'frequency' => 'nullable|integer|min:1',
-            'next_billing' => 'nullable|date',
-            'expires_at' => 'nullable|date',
-            'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
-            'data' => 'nullable|array',
-            'responsible_id' => 'nullable|exists:users,id',
-        ]);
+        try {
+            $validator = \Validator::make($request->all(), [
+                'enterprise_id' => 'required|exists:enterprises,id',
+                'category_id' => 'required|exists:categories,id',
+                'operation' => 'required|in:buy,sell',
+                'description' => 'nullable|string',
+                'currency_id' => 'nullable|exists:currencies,id',
+                'price' => 'nullable|numeric',
+                'discount' => 'nullable|numeric',
+                'frequency' => 'nullable|integer|min:1',
+                'next_billing' => 'nullable|date',
+                'expires_at' => 'nullable|date',
+                'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
+                'data' => 'nullable|array',
+                'responsible_id' => 'nullable|exists:users,id',
+            ]);
 
-        $input = $request->all();
+            if ($validator->fails()) {
+                \Log::error('Service validation failed', [
+                    'errors' => $validator->errors()->toArray(),
+                    'input' => $request->all()
+                ]);
 
-        // Format dates
-        if (! empty($input['next_billing'])) {
-            $input['next_billing'] = \Carbon\Carbon::parse($input['next_billing']);
+                return redirect()->back()
+                    ->withErrors($validator)
+                    ->withInput()
+                    ->with('error', 'Validation failed: ' . $validator->errors()->first());
+            }
+
+            $input = $request->all();
+
+            // For debugging
+            \Log::info('Service data before creation', ['data' => $input]);
+
+            // Format dates
+            if (!empty($input['next_billing'])) {
+                $input['next_billing'] = \Carbon\Carbon::parse($input['next_billing']);
+            }
+
+            if (!empty($input['expires_at'])) {
+                $input['expires_at'] = \Carbon\Carbon::parse($input['expires_at']);
+            }
+
+            // Create the service
+            $service = Service::create($input);
+            \Log::info('Service created successfully', ['service_id' => $service->id]);
+
+            return redirect()->route('service-list')->with('success', 'Service created successfully');
+        } catch (\Exception $e) {
+            \Log::error('Error creating service', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'input' => $request->all()
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Error creating service: ' . $e->getMessage());
         }
-
-        if (! empty($input['expires_at'])) {
-            $input['expires_at'] = \Carbon\Carbon::parse($input['expires_at']);
-        }
-
-        // Create the service
-        $service = Service::create($input);
-
-        return redirect()->route('service-list')->with('success', 'Service created successfully');
     }
 
     /**
@@ -159,7 +187,9 @@ class ServiceController extends Controller
             return redirect()->route('app-service-list')->with('error', 'Service not found.');
         }
 
-        return view('service.form', compact('data'));
+        $enterprise_id = $data->enterprise_id;
+
+        return view('service.form', compact('data', 'enterprise_id'));
     }
 
     /**
