@@ -72,6 +72,21 @@ class ServiceDataTable extends DataTable
             ->editColumn('status', function ($data)
             {
                 return $data->status_label;
+            })
+            ->addColumn('status_order', function ($data) {
+                // Custom ordering: 7, 5, 3, 2, 6, 8, 4, 1
+                $orderMap = [
+                    7 => 1,
+                    5 => 2,
+                    3 => 3,
+                    2 => 4,
+                    6 => 5,
+                    8 => 6,
+                    4 => 7,
+                    1 => 8
+                ];
+                
+                return $orderMap[$data->status] ?? 999; // Default high value for unknown statuses
             });
     }
 
@@ -90,7 +105,7 @@ class ServiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(0);
+            ->orderBy(7); // Order by status_order column
     }
 
     public function getColumns(): array
@@ -103,7 +118,8 @@ class ServiceDataTable extends DataTable
             Column::make('calculated_price')->title('Price')->className('text-center'),
             Column::make('created_at')->title('Created')->className('text-center'),
             Column::make('updated_at')->title('Updated')->className('text-center'),
-            Column::make('status')->title('Status')->className('text-center'),
+            Column::make('status_order')->hidden(),
+            Column::make('status')->title('Status')->className('text-center')->orderData(7), // Order by status_order column (index 7)
             Column::computed('action')
                 ->title('Acciones')
                 ->width(20)

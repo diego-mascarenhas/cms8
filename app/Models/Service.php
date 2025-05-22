@@ -144,11 +144,11 @@ class Service extends Model
             case 1:
                 return '<span class="badge rounded-pill bg-label-secondary">Suspendido</span>';
             case 2:
-                return '<span class="badge rounded-pill bg-label-warning">Suspender</span>';
+                return '<span class="badge rounded-pill bg-label-success">Suspender</span>';
             case 3:
-                return '<span class="badge rounded-pill bg-label-success">Activar</span>';
+                return '<span class="badge rounded-pill bg-label-warning">Activar</span>';
             case 4:
-                return '<span class="badge rounded-pill bg-label-info">Activo</span>';
+                return '<span class="badge rounded-pill bg-label-success">Activo</span>';
             case 5:
                 return '<span class="badge rounded-pill bg-label-danger">Migrar</span>';
             case 6:
@@ -156,7 +156,7 @@ class Service extends Model
             case 7:
                 return '<span class="badge rounded-pill bg-label-warning">Delegar</span>';
             case 8:
-                return '<span class="badge rounded-pill bg-label-warning">Analizar</span>';
+                return '<span class="badge rounded-pill bg-label-info">Analizar</span>';
             default:
                 return '<span class="badge rounded-pill bg-label-secondary">unknown</span>';
         }
