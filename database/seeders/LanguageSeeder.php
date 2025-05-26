@@ -7,19 +7,28 @@ use App\Models\Language;
 
 class LanguageSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
     public function run()
     {
         $languages = [
             ['code' => 'es', 'name' => 'Español'],
-            ['code' => 'en', 'name' => 'Inglés'],
-            ['code' => 'fr', 'name' => 'Francés'],
-            ['code' => 'de', 'name' => 'Alemán'],
+            ['code' => 'en', 'name' => 'English'],
+            ['code' => 'fr', 'name' => 'Français'],
+            ['code' => 'de', 'name' => 'Deutsch'],
             ['code' => 'it', 'name' => 'Italiano'],
-            ['code' => 'pt', 'name' => 'Portugués'],
+            ['code' => 'pt', 'name' => 'Português'],
+            ['code' => 'ca', 'name' => 'Català'],
         ];
 
         foreach ($languages as $language) {
-            Language::create($language);
+            Language::firstOrCreate(
+                ['code' => $language['code']],
+                ['name' => $language['name']]
+            );
         }
     }
 }

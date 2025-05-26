@@ -4,125 +4,152 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\LanguageVariant;
-use Illuminate\Support\Facades\DB;
+use App\Models\Language;
 
 class LanguageVariantSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
     public function run()
     {
-        $variants = [
-            // Español
-            [
-                'code' => 'es_ES',
-                'name' => 'Español (España)',
-                'base_language' => 'es',
-                'country_code' => 'es',
-                'native_name' => 'Español (España)',
-                'flag' => 'es'
-            ],
-            [
-                'code' => 'es_AR',
-                'name' => 'Español (Argentina)',
-                'base_language' => 'es',
-                'country_code' => 'ar',
-                'native_name' => 'Español (Argentina)',
-                'flag' => 'ar'
-            ],
-            [
-                'code' => 'es_MX',
-                'name' => 'Español (México)',
-                'base_language' => 'es',
-                'country_code' => 'mx',
-                'native_name' => 'Español (México)',
-                'flag' => 'mx'
-            ],
-            [
-                'code' => 'es_CO',
-                'name' => 'Español (Colombia)',
-                'base_language' => 'es',
-                'country_code' => 'co',
-                'native_name' => 'Español (Colombia)',
-                'flag' => 'co'
-            ],
+        // Spanish variants
+        LanguageVariant::firstOrCreate([
+            'code' => 'es-ES'
+        ], [
+            'name' => 'Español (España)',
+            'base_language' => 'es',
+            'country_code' => 'ES',
+            'native_name' => 'Español (España)',
+            'flag' => 'ES'
+        ]);
 
-            // Inglés
-            [
-                'code' => 'en_US',
-                'name' => 'Inglés (Estados Unidos)',
-                'base_language' => 'en',
-                'country_code' => 'us',
-                'native_name' => 'English (United States)',
-                'flag' => 'us'
-            ],
-            [
-                'code' => 'en_GB',
-                'name' => 'Inglés (Reino Unido)',
-                'base_language' => 'en',
-                'country_code' => 'gb',
-                'native_name' => 'English (United Kingdom)',
-                'flag' => 'gb'
-            ],
+        LanguageVariant::firstOrCreate([
+            'code' => 'es-MX'
+        ], [
+            'name' => 'Español (México)',
+            'base_language' => 'es',
+            'country_code' => 'MX',
+            'native_name' => 'Español (México)',
+            'flag' => 'MX'
+        ]);
 
-            // Francés
-            [
-                'code' => 'fr_FR',
-                'name' => 'Francés (Francia)',
-                'base_language' => 'fr',
-                'country_code' => 'fr',
-                'native_name' => 'Français (France)',
-                'flag' => 'fr'
-            ],
-            [
-                'code' => 'fr_CA',
-                'name' => 'Francés (Canadá)',
-                'base_language' => 'fr',
-                'country_code' => 'ca',
-                'native_name' => 'Français (Canada)',
-                'flag' => 'ca'
-            ],
+        LanguageVariant::firstOrCreate([
+            'code' => 'es-AR'
+        ], [
+            'name' => 'Español (Argentina)',
+            'base_language' => 'es',
+            'country_code' => 'AR',
+            'native_name' => 'Español (Argentina)',
+            'flag' => 'AR'
+        ]);
 
-            // Alemán
-            [
-                'code' => 'de_DE',
-                'name' => 'Alemán (Alemania)',
-                'base_language' => 'de',
-                'country_code' => 'de',
-                'native_name' => 'Deutsch (Deutschland)',
-                'flag' => 'de'
-            ],
+        // English variants
+        LanguageVariant::firstOrCreate([
+            'code' => 'en-US'
+        ], [
+            'name' => 'English (United States)',
+            'base_language' => 'en',
+            'country_code' => 'US',
+            'native_name' => 'English (United States)',
+            'flag' => 'US'
+        ]);
 
-            // Italiano
-            [
-                'code' => 'it_IT',
-                'name' => 'Italiano (Italia)',
-                'base_language' => 'it',
-                'country_code' => 'it',
-                'native_name' => 'Italiano',
-                'flag' => 'it'
-            ],
+        LanguageVariant::firstOrCreate([
+            'code' => 'en-GB'
+        ], [
+            'name' => 'English (United Kingdom)',
+            'base_language' => 'en',
+            'country_code' => 'GB',
+            'native_name' => 'English (United Kingdom)',
+            'flag' => 'GB'
+        ]);
 
-            // Portugués
-            [
-                'code' => 'pt_PT',
-                'name' => 'Portugués (Portugal)',
-                'base_language' => 'pt',
-                'country_code' => 'pt',
-                'native_name' => 'Português (Portugal)',
-                'flag' => 'pt'
-            ],
-            [
-                'code' => 'pt_BR',
-                'name' => 'Portugués (Brasil)',
-                'base_language' => 'pt',
-                'country_code' => 'br',
-                'native_name' => 'Português (Brasil)',
-                'flag' => 'br'
-            ],
-        ];
+        // French variants
+        LanguageVariant::firstOrCreate([
+            'code' => 'fr-FR'
+        ], [
+            'name' => 'Français (France)',
+            'base_language' => 'fr',
+            'country_code' => 'FR',
+            'native_name' => 'Français (France)',
+            'flag' => 'FR'
+        ]);
 
-        foreach ($variants as $variant)
-        {
-            LanguageVariant::create($variant);
-        }
+        LanguageVariant::firstOrCreate([
+            'code' => 'fr-CA'
+        ], [
+            'name' => 'Français (Canada)',
+            'base_language' => 'fr',
+            'country_code' => 'CA',
+            'native_name' => 'Français (Canada)',
+            'flag' => 'CA'
+        ]);
+
+        // German variants
+        LanguageVariant::firstOrCreate([
+            'code' => 'de-DE'
+        ], [
+            'name' => 'Deutsch (Deutschland)',
+            'base_language' => 'de',
+            'country_code' => 'DE',
+            'native_name' => 'Deutsch (Deutschland)',
+            'flag' => 'DE'
+        ]);
+
+        LanguageVariant::firstOrCreate([
+            'code' => 'de-AT'
+        ], [
+            'name' => 'Deutsch (Österreich)',
+            'base_language' => 'de',
+            'country_code' => 'AT',
+            'native_name' => 'Deutsch (Österreich)',
+            'flag' => 'AT'
+        ]);
+
+        // Portuguese variants
+        LanguageVariant::firstOrCreate([
+            'code' => 'pt-PT'
+        ], [
+            'name' => 'Português (Portugal)',
+            'base_language' => 'pt',
+            'country_code' => 'PT',
+            'native_name' => 'Português (Portugal)',
+            'flag' => 'PT'
+        ]);
+
+        LanguageVariant::firstOrCreate([
+            'code' => 'pt-BR'
+        ], [
+            'name' => 'Português (Brasil)',
+            'base_language' => 'pt',
+            'country_code' => 'BR',
+            'native_name' => 'Português (Brasil)',
+            'flag' => 'BR'
+        ]);
+
+        // Italian
+        LanguageVariant::firstOrCreate([
+            'code' => 'it-IT'
+        ], [
+            'name' => 'Italiano (Italia)',
+            'base_language' => 'it',
+            'country_code' => 'IT',
+            'native_name' => 'Italiano (Italia)',
+            'flag' => 'IT'
+        ]);
+
+        // Catalan
+        LanguageVariant::firstOrCreate([
+            'code' => 'ca-ES'
+        ], [
+            'name' => 'Català (Espanya)',
+            'base_language' => 'ca',
+            'country_code' => 'ES',
+            'native_name' => 'Català (Espanya)',
+            'flag' => 'ES'
+        ]);
     }
 }

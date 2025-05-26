@@ -1,10 +1,10 @@
 @props(['id', 'label', 'selected' => null, 'showNull' => false])
 
 <div class="form-group">
-    <label for="{{ $id }}">{{ $label }}</label>
-    <select id="{{ $id }}" name="{{ $id }}" class="form-control @error($id) is-invalid @enderror">
+    <label for="{{ $id }}" class="form-label">{{ $label }}</label>
+    <select id="{{ $id }}" name="{{ $id }}" class="select2 form-select @error($id) is-invalid @enderror" required>
         @if($showNull)
-            <option value="">Select {{ $label }}</option>
+            <option value="">Seleccione {{ $label }}</option>
         @endif
         
         @foreach(auth()->user()->currentTeam->allUsers() as $user)
@@ -19,4 +19,18 @@
             <strong>{{ $message }}</strong>
         </span>
     @enderror
-</div> 
+</div>
+
+@push('page-script')
+<script>
+    $(function () {
+        const select = $('#{{ $id }}');
+        if (select.length) {
+            select.select2({
+                dropdownParent: select.parent(),
+                width: '100%'
+            });
+        }
+    });
+</script>
+@endpush 

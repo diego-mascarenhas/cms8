@@ -33,6 +33,7 @@ use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\CollaboratorController;
+use App\Http\Controllers\CustomerFareController;
 use App\Models\Contact;
 
 // auth
@@ -154,10 +155,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit');
     Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
     Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
-    Route::get('/collaborator/{id}/rates', function ($id) {
-        $collaborator = Contact::findOrFail($id);
-        return view('collaborator.rates', compact('collaborator'));
-    })->name('collaborator.rates');
+    Route::get('/collaborator/{id}/rates', [CustomerFareController::class, 'collaboratorRates'])->name('collaborator.rates');
     Route::get('/collaborator/{id}/absences', function ($id) {
         $collaborator = Contact::findOrFail($id);
         return view('collaborator.absences', compact('collaborator'));
@@ -269,6 +267,15 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/template/{hashedId}', [TemplateController::class, 'destroy'])->name('template.destroy');
     Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');
     Route::get('/template/view/{hashedId}', [TemplateController::class, 'show'])->name('template.view');
+
+    // Customer Fares
+    Route::get('/customer-fare', [CustomerFareController::class, 'index'])->name('customer-fare.index');
+    Route::get('/customer-fare/create', [CustomerFareController::class, 'create'])->name('customer-fare.create');
+    Route::post('/customer-fare', [CustomerFareController::class, 'store'])->name('customer-fare.store');
+    Route::get('/customer-fare/{customerFare}', [CustomerFareController::class, 'show'])->name('customer-fare.show');
+    Route::get('/customer-fare/{customerFare}/edit', [CustomerFareController::class, 'edit'])->name('customer-fare.edit');
+    Route::put('/customer-fare/{customerFare}', [CustomerFareController::class, 'update'])->name('customer-fare.update');
+    Route::delete('/customer-fare/{customerFare}', [CustomerFareController::class, 'destroy'])->name('customer-fare.destroy');
 });
 
 // Testing

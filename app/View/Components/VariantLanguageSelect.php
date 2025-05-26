@@ -30,6 +30,9 @@ class VariantLanguageSelect extends Component
         
         if ($this->baseLanguage) {
             $variants = LanguageVariant::getVariantsFor($this->baseLanguage);
+        } else {
+            // If no base language is specified, get all language variants
+            $variants = LanguageVariant::orderBy('name')->get();
         }
         
         return view('components.variant-language-select', [
