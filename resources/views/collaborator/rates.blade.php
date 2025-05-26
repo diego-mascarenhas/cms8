@@ -1,6 +1,14 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Tarifas')
+@section('title', 'Tarifas de ' . $collaborator->name)
+
+@section('vendor-style')
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flag-icons/flag-icons.css') }}" />
+@endsection
+
+@section('vendor-script')
+    <script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
+@endsection
 
 @section('content')
 <div class="row">
@@ -95,7 +103,7 @@
     </div>
     <!--/ Collaborator Sidebar -->
 
-    <!-- Tarifas Content -->
+    <!-- Rates Content -->
     <div class="col-xl-8 col-lg-7 col-md-7">
         <!-- Tabs -->
         <div class="d-flex mb-3">
@@ -112,251 +120,220 @@
                 <i class="ti ti-bell me-1"></i>Notificaciones
             </a>
         </div>
+        
         <div class="card mb-4">
             <div class="card-body">
-                <div class="d-flex flex-wrap align-items-center mb-4 gap-2">
-                    <select class="form-select w-auto">
-                        <option>Divisa €</option>
-                    </select>
-                    <div class="ms-3">
-                        <span class="flag-icon flag-icon-es me-1"></span> ES→SP
-                        <span class="flag-icon flag-icon-fr mx-2"></span> FR→SP
-                        <span class="flag-icon flag-icon-gb mx-2"></span> EN→SP
+                <form id="rates-form" method="POST" action="{{ route('collaborator.rates.save', $collaborator->id) }}">
+                    @csrf
+                    <!-- Selección de divisa -->
+                    <div class="mb-3 row">
+                        <label class="col-form-label col-md-2">Divisa *</label>
+                        <div class="col-md-4">
+                            <select class="form-select" name="currency">
+                                <option value="EUR" selected>EUR</option>
+                                <option value="USD">USD</option>
+                                <option value="GBP">GBP</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
-                <div class="form-check mb-4">
-                    <input class="form-check-input" type="checkbox" id="sameRates">
-                    <label class="form-check-label" for="sameRates">
-                        Son las mismas tarifas de FR-EN a ES-SP
-                    </label>
-                </div>
-                <form>
-                    <!-- Traducción audiovisual -->
-                    <h5 class="mb-3">Traducción audiovisual</h5>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
+
+                    <!-- Selección de idiomas -->
+                    <div class="mb-3">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-outline-primary active px-3">
+                                <span class="fi fi-es me-1"></span> es-SP
+                                <span class="mx-1">></span>
+                                <span class="fi fi-fr me-1"></span> fr-FR
+                            </button>
+                        </div>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-outline-primary px-3">
+                                <span class="fi fi-fr me-1"></span> fr-FR
+                                <span class="mx-1">></span>
+                                <span class="fi fi-es me-1"></span> es-SP
+                            </button>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="sameRates" name="same_rates" checked>
+                            <label class="form-check-label" for="sameRates">
+                                Son las mismas tarifas de fr-FR a es-SP
+                            </label>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Tarifas audiovisuales -->
+                    <h5 class="mt-4 mb-3">Traducción audiovisual</h5>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
                             <label class="form-label">Traducción de plantilla</label>
-                            <div class="input-group">
+                            <div class="input-group input-group-sm">
                                 <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
+                                <input type="number" class="form-control" name="rates[template]" value="0.00" step="0.01" min="0">
                                 <span class="input-group-text">/min</span>
                             </div>
+                            <small class="text-muted">Traducción básica de guiones o plantillas.</small>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Traducción + subtitulado sin guion</label>
-                            <div class="input-group">
+                            <div class="input-group input-group-sm">
                                 <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
+                                <input type="number" class="form-control" name="rates[sub_no_script]" value="0.00" step="0.01" min="0">
                                 <span class="input-group-text">/min</span>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Traducción para locución/voice over</label>
-                            <div class="input-group">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Traducción + subtitulado con guion</label>
+                            <div class="input-group input-group-sm">
                                 <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
+                                <input type="number" class="form-control" name="rates[sub_with_script]" value="0.00" step="0.01" min="0">
+                                <span class="input-group-text">/min</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Traducción para locución/voice over/doblaje</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[voice_over]" value="0.00" step="0.01" min="0">
                                 <span class="input-group-text">/10 min</span>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Traducción + subtitulado con guion</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Transcreación (publicidad)</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/hora</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
                             <label class="form-label">Traducción de guion literario</label>
-                            <div class="input-group">
+                            <div class="input-group input-group-sm">
                                 <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
+                                <input type="number" class="form-control" name="rates[literary_script]" value="0.00" step="0.01" min="0">
                                 <span class="input-group-text">/pág</span>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Transcripción</label>
-                            <div class="input-group">
+                        <div class="col-md-6">
+                            <label class="form-label">Transcripción (publicidad)</label>
+                            <div class="input-group input-group-sm">
                                 <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/pág</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Transcripción + subtitulado</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Adaptación + subtitulado</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Revisión</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Ajuste</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Traducción general (texto) -->
-                    <h5 class="mb-3">Traducción general (texto)</h5>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label">Traducción general</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/palabra</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Revisión</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/palabra</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Jurídica</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/palabra</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Médica</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/palabra</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Técnica</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/palabra</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Científica</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/palabra</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Accesibilidad audiovisual -->
-                    <h5 class="mb-3">Accesibilidad audiovisual</h5>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label">SPS con guion</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">SPS sin guion</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Adaptación a SPS</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Revisión SPS</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Guion de audiodescripción</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Locución de audiodescripción</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Otras tarifas -->
-                    <h5 class="mb-3">Otras tarifas</h5>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label">Tarifa mínima</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
-                                <span class="input-group-text">Total</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Tarifa por hora</label>
-                            <div class="input-group">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" placeholder="0.00">
+                                <input type="number" class="form-control" name="rates[transcription_ad]" value="0.00" step="0.01" min="0">
                                 <span class="input-group-text">/hora</span>
                             </div>
                         </div>
                     </div>
-                    <div class="text-end">
-                        <button type="submit" class="btn btn-primary">Guardar</button>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Transcripción</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[transcription]" value="10" step="0.01" min="0">
+                                <span class="input-group-text">/pág</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Transcripción + subtitulado</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[transcription_sub]" value="0.00" step="0.01" min="0">
+                                <span class="input-group-text">/min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Adaptación + subtitulado</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[adaptation_sub]" value="0.00" step="0.01" min="0">
+                                <span class="input-group-text">/min</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Revisión</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[review]" value="0.00" step="0.01" min="0">
+                                <span class="input-group-text">/min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Ajuste</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[adjustment]" value="0.00" step="0.01" min="0">
+                                <span class="input-group-text">/min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Tarifas traducción general -->
+                    <h5 class="mt-4 mb-3">Traducción general (texto)</h5>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Traducción general</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[general]" value="0.00" step="0.01" min="0">
+                                <span class="input-group-text">/palabra</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Revisión</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[review_text]" value="0.00" step="0.01" min="0">
+                                <span class="input-group-text">/palabra</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Jurídica</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[legal]" value="0.00" step="0.01" min="0">
+                                <span class="input-group-text">/palabra</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Médica</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">Eur</span>
+                                <input type="number" class="form-control" name="rates[medical]" value="0.00" step="0.01" min="0">
+                                <span class="input-group-text">/palabra</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de acción -->
+                    <div class="mt-4 text-end">
+                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    <!--/ Tarifas Content -->
 </div>
+@endsection
+
+@section('page-script')
+<script>
+    $(document).ready(function() {
+        // Funcionalidad para los botones de selección de idiomas
+        $('.btn-group .btn').on('click', function() {
+            $(this).addClass('active').siblings().removeClass('active');
+        });
+    });
+</script>
 @endsection 

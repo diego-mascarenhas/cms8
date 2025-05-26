@@ -33,10 +33,10 @@ class Fare extends Model
     }
 
     /**
-     * Get the customer fares for this fare
+     * Get the user fares for this fare
      */
-    public function customerFares()
+    public function userFares()
     {
-        return $this->hasMany(CustomerFare::class);
+        return $this->hasMany(UserFare::class);
     }
 } 

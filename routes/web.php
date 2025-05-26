@@ -34,6 +34,8 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\CustomerFareController;
+use App\Http\Controllers\UserFareController;
+use App\Http\Controllers\FareController;
 use App\Models\Contact;
 
 // auth
@@ -155,7 +157,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit');
     Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
     Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
-    Route::get('/collaborator/{id}/rates', [CustomerFareController::class, 'collaboratorRates'])->name('collaborator.rates');
+    Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
+    Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
     Route::get('/collaborator/{id}/absences', function ($id) {
         $collaborator = Contact::findOrFail($id);
         return view('collaborator.absences', compact('collaborator'));
@@ -268,14 +271,23 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');
     Route::get('/template/view/{hashedId}', [TemplateController::class, 'show'])->name('template.view');
 
-    // Customer Fares
-    Route::get('/customer-fare', [CustomerFareController::class, 'index'])->name('customer-fare.index');
-    Route::get('/customer-fare/create', [CustomerFareController::class, 'create'])->name('customer-fare.create');
-    Route::post('/customer-fare', [CustomerFareController::class, 'store'])->name('customer-fare.store');
-    Route::get('/customer-fare/{customerFare}', [CustomerFareController::class, 'show'])->name('customer-fare.show');
-    Route::get('/customer-fare/{customerFare}/edit', [CustomerFareController::class, 'edit'])->name('customer-fare.edit');
-    Route::put('/customer-fare/{customerFare}', [CustomerFareController::class, 'update'])->name('customer-fare.update');
-    Route::delete('/customer-fare/{customerFare}', [CustomerFareController::class, 'destroy'])->name('customer-fare.destroy');
+    // Tipos de Tarifas
+    Route::get('/fare', [FareController::class, 'index'])->name('fare.index');
+    Route::get('/fare/create', [FareController::class, 'create'])->name('fare.create');
+    Route::post('/fare', [FareController::class, 'store'])->name('fare.store');
+    Route::get('/fare/{fare}', [FareController::class, 'show'])->name('fare.show');
+    Route::get('/fare/{fare}/edit', [FareController::class, 'edit'])->name('fare.edit');
+    Route::put('/fare/{fare}', [FareController::class, 'update'])->name('fare.update');
+    Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
+
+    // Tarifas Personalizadas de Usuario
+    Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
+    Route::get('/user-fare/create', [UserFareController::class, 'create'])->name('user-fare.create');
+    Route::post('/user-fare', [UserFareController::class, 'store'])->name('user-fare.store');
+    Route::get('/user-fare/{userFare}', [UserFareController::class, 'show'])->name('user-fare.show');
+    Route::get('/user-fare/{userFare}/edit', [UserFareController::class, 'edit'])->name('user-fare.edit');
+    Route::put('/user-fare/{userFare}', [UserFareController::class, 'update'])->name('user-fare.update');
+    Route::delete('/user-fare/{userFare}', [UserFareController::class, 'destroy'])->name('user-fare.destroy');
 });
 
 // Testing

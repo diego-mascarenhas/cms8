@@ -52,11 +52,12 @@
 			"slug": "language/variants"
 		},
 		{
-			"url": "customer-fare",
+			"url": "fare",
 			"name": "Tarifas",
 			"icon": "menu-icon tf-icons ti ti-currency-dollar",
-			"slug": "customer-fare-list"
+			"slug": "fare.index"
 		},
+
 		{
 			"url": "program/list",
 			"name": "Programas",
