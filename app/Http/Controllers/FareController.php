@@ -14,10 +14,9 @@ class FareController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(FareDataTable $dataTable)
     {
-        $fares = Fare::with(['units', 'type'])->get();
-        return view('fare.index', compact('fares'));
+        return $dataTable->render('fare.index');
     }
 
     /**

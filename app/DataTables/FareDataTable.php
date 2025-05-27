@@ -17,19 +17,30 @@ class FareDataTable extends DataTable
             ->addColumn('action', function ($fare) {
                 return view('fare.action', compact('fare'));
             })
-            ->addColumn('unit', function ($fare) {
-                return $fare->unit ? $fare->unit->type : 'N/A';
+            ->addColumn('units', function ($fare) {
+                if ($fare->units->isEmpty()) {
+                    return '<span class="text-muted">N/A</span>';
+                }
+                
+                $badges = '';
+                foreach ($fare->units as $unit) {
+                    $badges .= '<span class="badge bg-label-primary me-1">' . $unit->type . '</span>';
+                }
+                return $badges;
             })
-            ->addColumn('block', function ($fare) {
-                return $fare->block ? $fare->block->name : 'N/A';
+            ->addColumn('type', function ($fare) {
+                return $fare->type ? $fare->type->name : 'N/A';
             })
-            ->rawColumns(['action'])
+            ->addColumn('glosary', function ($fare) {
+                return $fare->glosary_id ? 'Texto explicando de qué trata este tipo de servicio / tarifa' : 'N/A';
+            })
+            ->rawColumns(['action', 'units'])
             ->setRowId('id');
     }
 
     public function query(Fare $model): QueryBuilder
     {
-        return $model->newQuery()->with(['unit', 'block']);
+        return $model->newQuery()->with(['units', 'type']);
     }
 
     public function html(): HtmlBuilder
@@ -38,29 +49,30 @@ class FareDataTable extends DataTable
             ->setTableId('fares-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
-            ->dom('Bfrtip')
+            ->dom('frtip')
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(true)
             ->serverSide(true)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
-            ->buttons([
-                'copy', 'excel', 'pdf', 'print'
+            ->parameters([
+                'select' => false,
+                'lengthChange' => false,
             ]);
     }
 
     protected function getColumns(): array
     {
         return [
-            Column::make('id')->title('ID')->addClass('text-center'),
-            Column::make('name')->title('Nombre')->searchable(true),
-            Column::make('unit')->title('Unidad')->searchable(false),
-            Column::make('block')->title('Bloque')->searchable(false),
+            Column::make('name')->title('TARIFA')->searchable(true),
+            Column::computed('units')->title('UNIDADES')->searchable(false),
+            Column::computed('type')->title('TIPO')->searchable(false),
+            Column::computed('glosary')->title('GLOSARIO')->searchable(false),
             Column::computed('action')
                 ->exportable(false)
                 ->printable(false)
                 ->addClass('text-center')
-                ->title('Acciones'),
+                ->title('ACCIÓN'),
         ];
     }
 

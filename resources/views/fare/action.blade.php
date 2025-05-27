@@ -1,20 +1,15 @@
-<div class="dropdown">
-    <button type="button" class="btn btn-sm dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
-        <i class="ti ti-dots-vertical"></i>
+<div class="d-flex gap-2">
+    <a href="{{ route('fare.show', $fare->id) }}" class="btn btn-sm btn-icon btn-primary">
+        <i class="ti ti-eye"></i>
+    </a>
+    <a href="{{ route('fare.edit', $fare->id) }}" class="btn btn-sm btn-icon btn-info">
+        <i class="ti ti-pencil"></i>
+    </a>
+    <button type="button" class="btn btn-sm btn-icon btn-danger delete-record" 
+        data-id="{{ $fare->id }}" 
+        data-route="{{ route('fare.destroy', $fare->id) }}">
+        <i class="ti ti-trash"></i>
     </button>
-    <div class="dropdown-menu">
-        <a class="dropdown-item" href="{{ route('fare.show', $fare->id) }}">
-            <i class="ti ti-eye me-1"></i> Ver
-        </a>
-        <a class="dropdown-item" href="{{ route('fare.edit', $fare->id) }}">
-            <i class="ti ti-pencil me-1"></i> Editar
-        </a>
-        <a class="dropdown-item delete-record" href="javascript:void(0);" 
-           data-id="{{ $fare->id }}" 
-           data-route="{{ route('fare.destroy', $fare->id) }}">
-            <i class="ti ti-trash me-1"></i> Eliminar
-        </a>
-    </div>
 </div>
 
 @push('page-script')
@@ -62,7 +57,7 @@
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                                                            text: 'Ocurrió un error al eliminar la tarifa.',
+                            text: 'Ocurrió un error al eliminar la tarifa.',
                             customClass: {
                                 confirmButton: 'btn btn-primary'
                             },
