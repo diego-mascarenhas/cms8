@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('units', function (Blueprint $table) {
+        Schema::create('fare_types', function (Blueprint $table) {
             $table->id();
-            $table->string('type', 255);
+            $table->string('name', 255);
             $table->timestamps();
             $table->softDeletes();
         });
@@ -24,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('units');
+        Schema::dropIfExists('fare_types');
     }
 }; 

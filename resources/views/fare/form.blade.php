@@ -36,31 +36,30 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label" for="unit_id">Unidad</label>
-                        <select name="unit_id" id="unit_id" class="form-select @error('unit_id') is-invalid @enderror" required>
-                            <option value="">Seleccione unidad</option>
+                        <label class="form-label" for="unit_ids">Unidades</label>
+                        <select name="unit_ids[]" id="unit_ids" class="form-select @error('unit_ids') is-invalid @enderror" multiple required>
                             @foreach($units as $unit)
-                                <option value="{{ $unit->id }}" {{ isset($fare) && $fare->unit_id == $unit->id ? 'selected' : '' }}>
+                                <option value="{{ $unit->id }}" {{ isset($fare) && $fare->units->contains($unit->id) ? 'selected' : '' }}>
                                     {{ $unit->type }}
                                 </option>
                             @endforeach
                         </select>
-                        @error('unit_id')
+                        @error('unit_ids')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label" for="block_id">Bloque</label>
-                        <select name="block_id" id="block_id" class="form-select @error('block_id') is-invalid @enderror">
-                            <option value="">Seleccione bloque (opcional)</option>
-                            @foreach($blocks as $block)
-                                <option value="{{ $block->id }}" {{ isset($fare) && $fare->block_id == $block->id ? 'selected' : '' }}>
-                                    {{ $block->name }}
+                        <label class="form-label" for="type_id">Tipo</label>
+                        <select name="type_id" id="type_id" class="form-select @error('type_id') is-invalid @enderror">
+                            <option value="">Seleccione tipo (opcional)</option>
+                            @foreach($types as $type)
+                                <option value="{{ $type->id }}" {{ isset($fare) && $fare->type_id == $type->id ? 'selected' : '' }}>
+                                    {{ $type->name }}
                                 </option>
                             @endforeach
                         </select>
-                        @error('block_id')
+                        @error('type_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
@@ -81,7 +80,7 @@
     $(function() {
         // Inicializar Select2 si está disponible
         if ($.fn.select2) {
-            $('#unit_id, #block_id').select2();
+            $('#unit_ids, #type_id').select2();
         }
     });
 </script>

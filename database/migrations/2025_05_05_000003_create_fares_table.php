@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::create('fares', function (Blueprint $table) {
             $table->id();
             $table->string('name', 255);
-            $table->foreignId('unit_id')->constrained();
             $table->foreignId('glosary_id')->nullable();
-            $table->foreignId('block_id')->nullable()->constrained('fares_blocks');
+            $table->foreignId('type_id')->nullable()->constrained('fare_types');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

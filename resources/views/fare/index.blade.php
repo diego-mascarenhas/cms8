@@ -48,7 +48,8 @@
                             </div>
                         </th>
                         <th>TARIFA</th>
-                        <th>UNIDAD</th>
+                        <th>UNIDADES</th>
+                        <th>TIPO</th>
                         <th>GLOSARIO</th>
                         <th class="text-end">ACCIÓN</th>
                     </tr>
@@ -62,7 +63,16 @@
                             </div>
                         </td>
                         <td>{{ $fare->name }}</td>
-                        <td>{{ $fare->unit ? $fare->unit->type : 'N/A' }}</td>
+                        <td>
+                            @if($fare->units->isNotEmpty())
+                                @foreach($fare->units as $unit)
+                                    <span class="badge bg-label-primary">{{ $unit->type }}</span>
+                                @endforeach
+                            @else
+                                <span class="text-muted">N/A</span>
+                            @endif
+                        </td>
+                        <td>{{ $fare->type ? $fare->type->name : 'N/A' }}</td>
                         <td>{{ $fare->glosary_id ? 'Texto explicando de qué trata este tipo de servicio / tarifa' : 'N/A' }}</td>
                         <td class="text-end">
                             <div class="d-inline-flex">

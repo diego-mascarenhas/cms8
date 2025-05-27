@@ -4,32 +4,39 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Fare extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
-        'unit_id',
         'glosary_id',
-        'block_id'
+        'type_id'
     ];
 
     /**
-     * Get the unit that belongs to the fare
+     * The attributes that should be mutated to dates.
+     *
+     * @var array
      */
-    public function unit()
+    protected $dates = ['deleted_at'];
+
+    /**
+     * Get the units that belong to the fare
+     */
+    public function units()
     {
-        return $this->belongsTo(Unit::class);
+        return $this->belongsToMany(Unit::class, 'fare_unit');
     }
 
     /**
-     * Get the block that belongs to the fare
+     * Get the type that belongs to the fare
      */
-    public function block()
+    public function type()
     {
-        return $this->belongsTo(FareBlock::class, 'block_id');
+        return $this->belongsTo(FareType::class, 'type_id');
     }
 
     /**

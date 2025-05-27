@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\FareDataTable;
 use App\Models\Fare;
 use App\Models\Unit;
-use App\Models\FareBlock;
+use App\Models\FareType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,7 +16,7 @@ class FareController extends Controller
      */
     public function index()
     {
-        $fares = Fare::with(['unit', 'block'])->get();
+        $fares = Fare::with(['units', 'type'])->get();
         return view('fare.index', compact('fares'));
     }
 
@@ -26,9 +26,9 @@ class FareController extends Controller
     public function create()
     {
         $units = Unit::all();
-        $blocks = FareBlock::all();
+        $types = FareType::all();
 
-        return view('fare.form', compact('units', 'blocks'));
+        return view('fare.form', compact('units', 'types'));
     }
 
     /**
@@ -38,12 +38,21 @@ class FareController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'unit_id' => 'required|exists:units,id',
-            'block_id' => 'nullable|exists:fares_blocks,id',
+            'unit_ids' => 'required|array',
+            'unit_ids.*' => 'exists:units,id',
+            'type_id' => 'nullable|exists:fare_types,id',
             'glosary_id' => 'nullable|exists:glosaries,id',
         ]);
 
-        Fare::create($validated);
+        $fare = Fare::create([
+            'name' => $validated['name'],
+            'type_id' => $validated['type_id'],
+            'glosary_id' => $validated['glosary_id'] ?? null,
+        ]);
+
+        if (isset($validated['unit_ids'])) {
+            $fare->units()->attach($validated['unit_ids']);
+        }
 
         if ($request->ajax()) {
             return response()->json([
@@ -60,7 +69,7 @@ class FareController extends Controller
      */
     public function show(Fare $fare)
     {
-        $fare->load(['unit', 'block']);
+        $fare->load(['units', 'type']);
         
         return view('fare.show', compact('fare'));
     }
@@ -71,9 +80,10 @@ class FareController extends Controller
     public function edit(Fare $fare)
     {
         $units = Unit::all();
-        $blocks = FareBlock::all();
+        $types = FareType::all();
+        $fare->load('units');
 
-        return view('fare.form', compact('fare', 'units', 'blocks'));
+        return view('fare.form', compact('fare', 'units', 'types'));
     }
 
     /**
@@ -83,12 +93,21 @@ class FareController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'unit_id' => 'required|exists:units,id',
-            'block_id' => 'nullable|exists:fares_blocks,id',
+            'unit_ids' => 'required|array',
+            'unit_ids.*' => 'exists:units,id',
+            'type_id' => 'nullable|exists:fare_types,id',
             'glosary_id' => 'nullable|exists:glosaries,id',
         ]);
 
-        $fare->update($validated);
+        $fare->update([
+            'name' => $validated['name'],
+            'type_id' => $validated['type_id'],
+            'glosary_id' => $validated['glosary_id'] ?? null,
+        ]);
+
+        if (isset($validated['unit_ids'])) {
+            $fare->units()->sync($validated['unit_ids']);
+        }
 
         if ($request->ajax()) {
             return response()->json([

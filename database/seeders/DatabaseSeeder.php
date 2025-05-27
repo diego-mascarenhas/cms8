@@ -42,8 +42,9 @@ class DatabaseSeeder extends Seeder
             ModuleCategorySeeder::class,
             CategorySeeder::class,
             UnitsSeeder::class,
-            FareBlocksSeeder::class,
+            FareTypesSeeder::class,
             FaresSeeder::class,
+            FareUnitSeeder::class,
         ]);
     }
 }

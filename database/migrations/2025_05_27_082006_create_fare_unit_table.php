@@ -11,10 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('fares_blocks', function (Blueprint $table) {
+        Schema::create('fare_unit', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 255);
+            $table->foreignId('fare_id')->constrained()->onDelete('cascade');
+            $table->foreignId('unit_id')->constrained()->onDelete('cascade');
             $table->timestamps();
+            
+            $table->unique(['fare_id', 'unit_id']);
         });
     }
 
@@ -23,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('fares_blocks');
+        Schema::dropIfExists('fare_unit');
     }
-}; 
+};

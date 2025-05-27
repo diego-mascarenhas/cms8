@@ -6,12 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Unit extends Model
+class FareType extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'type'
+        'name'
     ];
 
     /**
@@ -22,24 +22,10 @@ class Unit extends Model
     protected $dates = ['deleted_at'];
 
     /**
-     * Get the fares for this unit
+     * Get the fares for this type
      */
     public function fares()
     {
-        return $this->belongsToMany(Fare::class, 'fare_unit');
+        return $this->hasMany(Fare::class, 'type_id');
     }
-
-    /**
-     * Common unit types
-     */
-    public static function getTypes()
-    {
-        return [
-            'min' => 'Minuto',
-            'pal' => 'Palabra',
-            'pag' => 'Página',
-            'rollo' => 'Rollo',
-            'hour' => 'Hora'
-        ];
-    }
-} 
+}

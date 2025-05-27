@@ -39,15 +39,23 @@
                         <p>{{ $fare->name }}</p>
                     </div>
                     <div class="col-md-6">
-                        <h6 class="fw-semibold">Unidad</h6>
-                        <p>{{ $fare->unit ? $fare->unit->type : 'N/A' }}</p>
+                        <h6 class="fw-semibold">Unidades</h6>
+                        <p>
+                            @if($fare->units->isNotEmpty())
+                                @foreach($fare->units as $unit)
+                                    <span class="badge bg-label-primary">{{ $unit->type }}</span>
+                                @endforeach
+                            @else
+                                <span class="text-muted">N/A</span>
+                            @endif
+                        </p>
                     </div>
                 </div>
 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <h6 class="fw-semibold">Bloque</h6>
-                        <p>{{ $fare->block ? $fare->block->name : 'N/A' }}</p>
+                        <h6 class="fw-semibold">Tipo</h6>
+                        <p>{{ $fare->type ? $fare->type->name : 'N/A' }}</p>
                     </div>
                     <div class="col-md-6">
                         <h6 class="fw-semibold">Fecha de Creación</h6>
