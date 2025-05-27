@@ -18,13 +18,17 @@
 @endsection
 
 @section('content')
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Tarifas</h5>
-        <a href="{{ route('fare.create') }}" class="btn btn-primary">
-            <i class="ti ti-plus me-1"></i> Crear tarifa
-        </a>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+    <div class="d-flex flex-column justify-content-center">
+        <h4 class="mb-1 mt-3">Tarifas</h4>
+        <p class="text-muted">Gestión de tarifas para los servicios</p>
     </div>
+    <div class="mt-3 mt-md-0">
+        <a href="{{ route('fare.create') }}" class="btn btn-primary"> <i class="ti ti-plus me-1"></i> Crear tarifa </a>
+    </div>
+</div>
+
+<div class="card">
     <div class="card-body">
         {!! $dataTable->table(['class' => 'table table-hover']) !!}
     </div>

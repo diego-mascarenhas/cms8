@@ -1,3 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Form Template
+
 @extends('layouts/layoutMaster')
 
 @section('title', __('Tasks'))
