@@ -30,27 +30,62 @@
 				}
 			});
 		@endif
+        
+        // Delete functionality
+        $(document).on('click', '.delete-record', function() {
+            const route = $(this).data('route');
+            
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "¡No podrás revertir esto!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then(function(result) {
+                if (result.value) {
+                    $.ajax({
+                        url: route,
+                        type: 'DELETE',
+                        data: {
+                            "_token": $('meta[name="csrf-token"]').attr('content')
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '¡Eliminado!',
+                                    text: 'La variante de idioma ha sido eliminada.',
+                                    customClass: {
+                                        confirmButton: 'btn btn-success'
+                                    },
+                                    buttonsStyling: false
+                                }).then(function() {
+                                    window.location.href = "{{ route('language-variants.index') }}";
+                                });
+                            }
+                        },
+                        error: function(error) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Ocurrió un error al eliminar la variante de idioma.',
+                                customClass: {
+                                    confirmButton: 'btn btn-primary'
+                                },
+                                buttonsStyling: false
+                            });
+                        }
+                    });
+                }
+            });
+        });
 	});
-	
-	function confirmDelete() {
-		Swal.fire({
-			title: '¿Estás seguro?',
-			text: "¡No podrás revertir esto!",
-			icon: 'warning',
-			showCancelButton: true,
-			confirmButtonText: 'Sí, eliminar',
-			cancelButtonText: 'Cancelar',
-			customClass: {
-				confirmButton: 'btn btn-primary me-3',
-				cancelButton: 'btn btn-label-secondary'
-			},
-			buttonsStyling: false
-		}).then(function(result) {
-			if (result.value) {
-				document.getElementById('delete-form').submit();
-			}
-		});
-	}
 </script>
 @endsection
 
@@ -62,13 +97,9 @@
 	</div>
 	@if(isset($variant))
 	<div class="d-flex align-content-center flex-wrap gap-3">
-		<button type="button" class="btn btn-danger waves-effect waves-light" onclick="confirmDelete()">
+		<button type="button" class="btn btn-danger waves-effect waves-light delete-record" data-route="{{ route('language-variants.destroy', $variant->id) }}">
 			<i class="ti ti-trash me-1"></i> Eliminar
 		</button>
-		<form id="delete-form" action="{{ route('language-variants.destroy', $variant->id) }}" method="POST" style="display: none;">
-			@csrf
-			@method('DELETE')
-		</form>
 	</div>
 	@endif
 </div>

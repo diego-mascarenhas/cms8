@@ -85,6 +85,10 @@ class LanguageVariantController extends Controller
     {
         $languageVariant->delete();
         
+        if (request()->ajax()) {
+            return response()->json(['success' => true]);
+        }
+        
         return redirect()->route('language-variants.index')
             ->with('success', 'Variante de idioma eliminada correctamente');
     }
