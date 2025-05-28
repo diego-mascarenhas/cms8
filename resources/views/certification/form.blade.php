@@ -112,17 +112,17 @@
                 <label class="form-label" for="language">Idioma (*)</label>
                 <select name="language" id="language" class="form-select @error('language') is-invalid @enderror" required>
                     <option value="">Seleccione un idioma</option>
-                    <option value="ES" {{ (isset($certification) && $certification->language == 'ES') || old('language') == 'ES' ? 'selected' : '' }}>Español</option>
-                    <option value="EN" {{ (isset($certification) && $certification->language == 'EN') || old('language') == 'EN' ? 'selected' : '' }}>Inglés</option>
-                    <option value="FR" {{ (isset($certification) && $certification->language == 'FR') || old('language') == 'FR' ? 'selected' : '' }}>Francés</option>
-                    <option value="DE" {{ (isset($certification) && $certification->language == 'DE') || old('language') == 'DE' ? 'selected' : '' }}>Alemán</option>
-                    <option value="IT" {{ (isset($certification) && $certification->language == 'IT') || old('language') == 'IT' ? 'selected' : '' }}>Italiano</option>
-                    <option value="PT" {{ (isset($certification) && $certification->language == 'PT') || old('language') == 'PT' ? 'selected' : '' }}>Portugués</option>
-                    <option value="JA" {{ (isset($certification) && $certification->language == 'JA') || old('language') == 'JA' ? 'selected' : '' }}>Japonés</option>
-                    <option value="ZH" {{ (isset($certification) && $certification->language == 'ZH') || old('language') == 'ZH' ? 'selected' : '' }}>Chino</option>
-                    <option value="KO" {{ (isset($certification) && $certification->language == 'KO') || old('language') == 'KO' ? 'selected' : '' }}>Coreano</option>
-                    <option value="RU" {{ (isset($certification) && $certification->language == 'RU') || old('language') == 'RU' ? 'selected' : '' }}>Ruso</option>
-                    <option value="AR" {{ (isset($certification) && $certification->language == 'AR') || old('language') == 'AR' ? 'selected' : '' }}>Árabe</option>
+                    <option value="es" {{ (isset($certification) && $certification->language == 'es') || old('language') == 'es' ? 'selected' : '' }}>Español</option>
+                    <option value="en" {{ (isset($certification) && $certification->language == 'en') || old('language') == 'en' ? 'selected' : '' }}>Inglés</option>
+                    <option value="fr" {{ (isset($certification) && $certification->language == 'fr') || old('language') == 'fr' ? 'selected' : '' }}>Francés</option>
+                    <option value="de" {{ (isset($certification) && $certification->language == 'de') || old('language') == 'de' ? 'selected' : '' }}>Alemán</option>
+                    <option value="it" {{ (isset($certification) && $certification->language == 'it') || old('language') == 'it' ? 'selected' : '' }}>Italiano</option>
+                    <option value="pt" {{ (isset($certification) && $certification->language == 'pt') || old('language') == 'pt' ? 'selected' : '' }}>Portugués</option>
+                    <option value="ja" {{ (isset($certification) && $certification->language == 'ja') || old('language') == 'ja' ? 'selected' : '' }}>Japonés</option>
+                    <option value="zh" {{ (isset($certification) && $certification->language == 'zh') || old('language') == 'zh' ? 'selected' : '' }}>Chino</option>
+                    <option value="ko" {{ (isset($certification) && $certification->language == 'ko') || old('language') == 'ko' ? 'selected' : '' }}>Coreano</option>
+                    <option value="ru" {{ (isset($certification) && $certification->language == 'ru') || old('language') == 'ru' ? 'selected' : '' }}>Ruso</option>
+                    <option value="ar" {{ (isset($certification) && $certification->language == 'ar') || old('language') == 'ar' ? 'selected' : '' }}>Árabe</option>
                 </select>
                 @error('language')
                     <div class="invalid-feedback">{{ $message }}</div>

@@ -42,4 +42,12 @@ class Certification extends Model
     {
         return $this->belongsTo(Team::class);
     }
+
+    /**
+     * Set the language attribute to lowercase
+     */
+    public function setLanguageAttribute($value)
+    {
+        $this->attributes['language'] = strtolower($value);
+    }
 }

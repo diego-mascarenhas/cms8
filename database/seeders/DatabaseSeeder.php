@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             PolicySeeder::class,
             CountrySeeder::class,
             LanguageSeeder::class,
+            LanguageVariantSeeder::class,
             SourceSeeder::class,
             UserSeeder::class,
             EnterpriseTypeSeeder::class,
