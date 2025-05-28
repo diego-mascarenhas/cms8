@@ -26,9 +26,10 @@
             $('#type_id').select2();
         }
 
-        // Delete functionality
-        $(document).on('click', '.delete-record', function() {
-            const route = $(this).data('route');
+        // Delete functionality with form submission
+        $(document).on('click', '.btn-delete', function(e) {
+            e.preventDefault();
+            const form = $(this).closest('form');
             
             Swal.fire({
                 title: '¿Estás seguro?',
@@ -57,45 +58,8 @@
                         }
                     });
                     
-                    $.ajax({
-                        url: route,
-                        type: 'DELETE',
-                        data: {
-                            "_token": $('meta[name="csrf-token"]').attr('content')
-                        },
-                        success: function(response) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: '¡Eliminado!',
-                                text: 'El software ha sido eliminado.',
-                                customClass: {
-                                    confirmButton: 'btn btn-success'
-                                },
-                                buttonsStyling: false
-                            }).then(function() {
-                                // Redirección manual
-                                window.location.href = "{{ route('software.index') }}";
-                            });
-                        },
-                        error: function(error) {
-                            console.error('Error al eliminar:', error);
-                            
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: 'Ocurrió un error al eliminar. Redirigiendo...',
-                                customClass: {
-                                    confirmButton: 'btn btn-primary'
-                                },
-                                buttonsStyling: false,
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(function() {
-                                // Redirección en caso de error también
-                                window.location.href = "{{ route('software.index') }}";
-                            });
-                        }
-                    });
+                    // Enviar el formulario
+                    form.submit();
                 }
             });
         });
@@ -114,7 +78,7 @@
         <form action="{{ route('software.destroy', $software->id) }}" method="POST" style="display: inline;">
             @csrf
             @method('DELETE')
-            <button type="submit" class="btn btn-danger waves-effect waves-light" onclick="return confirm('¿Estás seguro? Esta acción no se puede deshacer.')">
+            <button type="submit" class="btn btn-danger waves-effect waves-light btn-delete">
                 <i class="ti ti-trash me-1"></i> Eliminar
             </button>
         </form>
