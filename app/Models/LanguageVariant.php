@@ -22,7 +22,7 @@ class LanguageVariant extends Model
      */
     public static function getVariantsFor($baseLanguage)
     {
-        return self::where('base_language', $baseLanguage)
+        return self::where('base_language', strtolower($baseLanguage))
             ->orderBy('name')
             ->get();
     }
@@ -33,5 +33,29 @@ class LanguageVariant extends Model
     public function baseLanguage()
     {
         return $this->belongsTo(Language::class, 'base_language', 'code');
+    }
+    
+    /**
+     * Set the base language to lowercase
+     */
+    public function setBaseLanguageAttribute($value)
+    {
+        $this->attributes['base_language'] = strtolower($value);
+    }
+    
+    /**
+     * Set the country code to uppercase
+     */
+    public function setCountryCodeAttribute($value)
+    {
+        $this->attributes['country_code'] = $value ? strtoupper($value) : null;
+    }
+    
+    /**
+     * Set the flag code to uppercase
+     */
+    public function setFlagAttribute($value)
+    {
+        $this->attributes['flag'] = $value ? strtoupper($value) : null;
     }
 } 
