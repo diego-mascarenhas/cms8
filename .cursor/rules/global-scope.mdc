@@ -1,0 +1,17 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Global Scope team_id
+
+protected static function booted()
+{
+    static::addGlobalScope('team', function (Builder $builder)
+    {
+        if (auth()->check())
+        {
+            $builder->where('team_id', auth()->user()->currentTeam->id);
+        }
+    });
+}

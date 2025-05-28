@@ -45,6 +45,8 @@ class DatabaseSeeder extends Seeder
             FareTypesSeeder::class,
             FaresSeeder::class,
             FareUnitSeeder::class,
+            SoftwareTypesSeeder::class,
+            SoftwareSeeder::class,
         ]);
     }
 }

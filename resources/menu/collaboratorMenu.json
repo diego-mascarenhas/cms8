@@ -57,12 +57,11 @@
 			"icon": "menu-icon tf-icons ti ti-currency-dollar",
 			"slug": "fare.index"
 		},
-
 		{
-			"url": "program/list",
+			"url": "software",
 			"name": "Programas",
 			"icon": "menu-icon tf-icons ti ti-device-laptop",
-			"slug": "program-list"
+			"slug": "software.index"
 		},
 		{
 			"url": "certification/list",

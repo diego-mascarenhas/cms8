@@ -36,6 +36,7 @@ use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\CustomerFareController;
 use App\Http\Controllers\UserFareController;
 use App\Http\Controllers\FareController;
+use App\Http\Controllers\SoftwareController;
 use App\Models\Contact;
 
 // auth
@@ -279,6 +280,14 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/fare/{fare}/edit', [FareController::class, 'edit'])->name('fare.edit');
     Route::put('/fare/{fare}', [FareController::class, 'update'])->name('fare.update');
     Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
+
+    // Software Management
+    Route::get('/software', [SoftwareController::class, 'index'])->name('software.index')->middleware('auth');
+    Route::get('/software/create', [SoftwareController::class, 'create'])->name('software.create')->middleware('auth');
+    Route::post('/software', [SoftwareController::class, 'store'])->name('software.store')->middleware('auth');
+    Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit')->middleware('auth');
+    Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update')->middleware('auth');
+    Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy')->middleware('auth');
 
     // Tarifas Personalizadas de Usuario
     Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');

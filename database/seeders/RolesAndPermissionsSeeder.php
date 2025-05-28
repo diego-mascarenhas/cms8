@@ -240,6 +240,15 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'server.update']);
         Permission::create(['name' => 'server.destroy']);
 
+        Permission::create(['name' => 'software.index']);
+        Permission::create(['name' => 'software.list']);
+        Permission::create(['name' => 'software.create']);
+        Permission::create(['name' => 'software.show']);
+        Permission::create(['name' => 'software.edit']);
+        Permission::create(['name' => 'software.store']);
+        Permission::create(['name' => 'software.update']);
+        Permission::create(['name' => 'software.destroy']);
+
         $rootRole = Role::create(['name' => 'root']);
         $rootRole->syncPermissions([
             'user.management',
@@ -309,6 +318,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'server.store',
             'server.update',
             'server.destroy',
+            'software.index',
+            'software.list',
+            'software.create',
+            'software.show',
+            'software.edit',
+            'software.store',
+            'software.update',
+            'software.destroy',
         ]);
 
         $collaboratorRole = Role::create(['name' => 'collaborator']);
@@ -573,6 +590,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'server.store',
             'server.update',
             'server.destroy',
+            'software.index',
+            'software.list',
+            'software.create',
+            'software.show',
+            'software.edit',
+            'software.store',
+            'software.update',
+            'software.destroy',
         ]);
     }
 }
