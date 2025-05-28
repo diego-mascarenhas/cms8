@@ -58,6 +58,19 @@
                 buttonsStyling: false
             }).then(function(result) {
                 if (result.value) {
+                    // Mostrar indicador de carga
+                    Swal.fire({
+                        title: 'Eliminando...',
+                        text: 'Por favor espere',
+                        icon: 'info',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
                     $.ajax({
                         url: route,
                         type: 'DELETE',
@@ -65,29 +78,35 @@
                             "_token": $('meta[name="csrf-token"]').attr('content')
                         },
                         success: function(response) {
-                            if (response.success) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: '¡Eliminado!',
-                                    text: 'La tarifa ha sido eliminada.',
-                                    customClass: {
-                                        confirmButton: 'btn btn-success'
-                                    },
-                                    buttonsStyling: false
-                                }).then(function() {
-                                    window.location.href = "{{ route('fare.index') }}";
-                                });
-                            }
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Eliminado!',
+                                text: 'La tarifa ha sido eliminada.',
+                                customClass: {
+                                    confirmButton: 'btn btn-success'
+                                },
+                                buttonsStyling: false
+                            }).then(function() {
+                                // Redirección manual
+                                window.location.href = "{{ route('fare.index') }}";
+                            });
                         },
                         error: function(error) {
+                            console.error('Error al eliminar:', error);
+                            
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
-                                text: 'Ocurrió un error al eliminar la tarifa.',
+                                text: 'Ocurrió un error al eliminar. Redirigiendo...',
                                 customClass: {
                                     confirmButton: 'btn btn-primary'
                                 },
-                                buttonsStyling: false
+                                buttonsStyling: false,
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(function() {
+                                // Redirección en caso de error también
+                                window.location.href = "{{ route('fare.index') }}";
                             });
                         }
                     });
@@ -106,9 +125,13 @@
     </div>
     @if(isset($fare))
     <div class="d-flex align-content-center flex-wrap gap-3">
-        <button type="button" class="btn btn-danger waves-effect waves-light delete-record" data-route="{{ route('fare.destroy', $fare->id) }}">
-            <i class="ti ti-trash me-1"></i> Eliminar
-        </button>
+        <form action="{{ route('fare.destroy', $fare->id) }}" method="POST" style="display: inline;">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger waves-effect waves-light" onclick="return confirm('¿Estás seguro? Esta acción no se puede deshacer.')">
+                <i class="ti ti-trash me-1"></i> Eliminar
+            </button>
+        </form>
     </div>
     @endif
 </div>

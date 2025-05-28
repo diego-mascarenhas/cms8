@@ -99,6 +99,10 @@ class CertificationController extends Controller
     {
         $certification->delete();
 
-        return response()->json(['success' => true, 'message' => 'Certificación eliminada exitosamente'], 200);
+        if (request()->ajax()) {
+            return response()->json(['success' => true]);
+        }
+        
+        return redirect()->route('certification.index')->with('success', 'Certificación eliminada exitosamente');
     }
 }

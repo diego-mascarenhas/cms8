@@ -127,6 +127,10 @@ class FareController extends Controller
     {
         $fare->delete();
 
-        return response()->json(['success' => 'Tarifa eliminada exitosamente'], 200);
+        if (request()->ajax()) {
+            return response()->json(['success' => true]);
+        }
+        
+        return redirect()->route('fare.index')->with('success', 'Tarifa eliminada exitosamente');
     }
 } 
