@@ -109,23 +109,14 @@
             </div>
             
             <div class="col-md-6">
-                <label class="form-label" for="language">Idioma (*)</label>
-                <select name="language" id="language" class="form-select @error('language') is-invalid @enderror" required>
-                    <option value="">Seleccione un idioma</option>
-                    <option value="es" {{ (isset($certification) && $certification->language == 'es') || old('language') == 'es' ? 'selected' : '' }}>Español</option>
-                    <option value="en" {{ (isset($certification) && $certification->language == 'en') || old('language') == 'en' ? 'selected' : '' }}>Inglés</option>
-                    <option value="fr" {{ (isset($certification) && $certification->language == 'fr') || old('language') == 'fr' ? 'selected' : '' }}>Francés</option>
-                    <option value="de" {{ (isset($certification) && $certification->language == 'de') || old('language') == 'de' ? 'selected' : '' }}>Alemán</option>
-                    <option value="it" {{ (isset($certification) && $certification->language == 'it') || old('language') == 'it' ? 'selected' : '' }}>Italiano</option>
-                    <option value="pt" {{ (isset($certification) && $certification->language == 'pt') || old('language') == 'pt' ? 'selected' : '' }}>Portugués</option>
-                    <option value="ja" {{ (isset($certification) && $certification->language == 'ja') || old('language') == 'ja' ? 'selected' : '' }}>Japonés</option>
-                    <option value="zh" {{ (isset($certification) && $certification->language == 'zh') || old('language') == 'zh' ? 'selected' : '' }}>Chino</option>
-                    <option value="ko" {{ (isset($certification) && $certification->language == 'ko') || old('language') == 'ko' ? 'selected' : '' }}>Coreano</option>
-                    <option value="ru" {{ (isset($certification) && $certification->language == 'ru') || old('language') == 'ru' ? 'selected' : '' }}>Ruso</option>
-                    <option value="ar" {{ (isset($certification) && $certification->language == 'ar') || old('language') == 'ar' ? 'selected' : '' }}>Árabe</option>
-                </select>
+                <x-language-select 
+                    name="language" 
+                    id="language" 
+                    label="Idioma (*)" 
+                    value="{{ old('language', $certification->language ?? '') }}" 
+                />
                 @error('language')
-                    <div class="invalid-feedback">{{ $message }}</div>
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
             </div>
         </div>

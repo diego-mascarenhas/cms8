@@ -19,7 +19,11 @@ class CertificationDataTable extends DataTable
             })
             ->editColumn('language', function ($row) {
                 $languageName = $row->languageRelation ? $row->languageRelation->name : strtoupper($row->language);
-                $flag = '<span class="fi fi-' . strtolower($row->language) . ' me-2"></span>';
+                
+                // Mapeo especial para inglés - usa GB como bandera por defecto
+                $countryCode = $row->language == 'en' ? 'gb' : $row->language;
+                
+                $flag = '<span class="fi fi-' . strtolower($countryCode) . ' me-2"></span>';
                 return $flag . e($languageName);
             })
             ->orderColumn('certification', function ($query, $order) {
