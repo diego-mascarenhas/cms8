@@ -10,10 +10,10 @@ class LanguageVariant extends Model
         'code',
         'name',
         'base_language',
-        'country_code',
-        'native_name',
-        'flag'
+        'country_code'
     ];
+
+    protected $appends = ['flag'];
 
     public $timestamps = false;
 
@@ -52,10 +52,10 @@ class LanguageVariant extends Model
     }
     
     /**
-     * Set the flag code to uppercase
+     * Get flag code from country code
      */
-    public function setFlagAttribute($value)
+    public function getFlagAttribute()
     {
-        $this->attributes['flag'] = $value ? strtoupper($value) : null;
+        return $this->country_code;
     }
 } 

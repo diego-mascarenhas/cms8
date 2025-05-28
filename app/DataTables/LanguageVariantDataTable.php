@@ -24,7 +24,7 @@ class LanguageVariantDataTable extends DataTable
             })
             ->setRowId('id')
             ->editColumn('name', function ($row) {
-                $flag = $row->flag ? '<span class="fi fi-' . strtolower($row->flag) . ' me-2"></span>' : '';
+                $flag = $row->country_code ? '<span class="fi fi-' . strtolower($row->country_code) . ' me-2"></span>' : '';
                 return $flag . e($row->name);
             })
             ->editColumn('base_language', function ($row) {
@@ -70,14 +70,11 @@ class LanguageVariantDataTable extends DataTable
                 ->title(__('Name'))
                 ->addClass('all'),
             Column::make('base_language')
-                ->title(__('Base Language'))
+                ->title(__('Language'))
                 ->addClass('min-tablet'),
             Column::make('country_code')
                 ->title(__('Country'))
                 ->addClass('min-tablet'),
-            Column::make('native_name')
-                ->title(__('Native Name'))
-                ->addClass('min-desktop'),
                 Column::computed('action')
                 ->title(__('Actions'))
                 ->width(20)

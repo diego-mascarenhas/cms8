@@ -26,7 +26,6 @@
 				if (baseCode) {
 					$('#code').val(baseCode + '-');
 					$('#country_code').val(baseCode.toUpperCase());
-					$('#flag').val(baseCode.toUpperCase());
 				}
 			});
 		@endif
@@ -123,11 +122,15 @@
 			</div>
 			
 			<div class="col-md-6">
-				<label class="form-label" for="native_name">Nombre Nativo</label>
-				<input type="text" class="form-control @error('native_name') is-invalid @enderror" id="native_name"
-					name="native_name" placeholder="Español (España)" value="{{ old('native_name', $variant->native_name ?? '') }}">
-				<small class="text-muted">Nombre del idioma en el propio idioma</small>
-				@error('native_name')
+				<label class="form-label" for="base_language">Idioma Base (*)</label>
+				<select id="base_language" name="base_language"
+					class="form-select select2 @error('base_language') is-invalid @enderror" required>
+					<option value="">Seleccione un idioma</option>
+					@foreach($languages as $language)
+						<option value="{{ $language->code }}" {{ old('base_language', $variant->base_language ?? '') == $language->code ? 'selected' : '' }}>{{ $language->name }}</option>
+					@endforeach
+				</select>
+				@error('base_language')
 					<div class="invalid-feedback">{{ $message }}</div>
 				@enderror
 			</div>
@@ -143,36 +146,12 @@
 			</div>
 			
 			<div class="col-md-6">
-				<label class="form-label" for="base_language">Idioma Base (*)</label>
-				<select id="base_language" name="base_language"
-					class="form-select select2 @error('base_language') is-invalid @enderror" required>
-					<option value="">Seleccione un idioma</option>
-					@foreach($languages as $language)
-						<option value="{{ $language->code }}" {{ old('base_language', $variant->base_language ?? '') == $language->code ? 'selected' : '' }}>{{ $language->name }}</option>
-					@endforeach
-				</select>
-				@error('base_language')
-					<div class="invalid-feedback">{{ $message }}</div>
-				@enderror
-			</div>
-			
-			<div class="col-md-6">
-				<label class="form-label" for="country_code">Código de País</label>
+				<label class="form-label" for="country_code">Código de País (*)</label>
 				<input type="text" class="form-control @error('country_code') is-invalid @enderror" id="country_code"
 					name="country_code" placeholder="ES" value="{{ old('country_code', $variant->country_code ?? '') }}"
-					maxlength="2">
-				<small class="text-muted">Código ISO de 2 letras (ES, US, etc)</small>
+					maxlength="2" required>
+				<small class="text-muted">Código ISO de 2 letras (ES, US, etc). También se usará para la bandera.</small>
 				@error('country_code')
-					<div class="invalid-feedback">{{ $message }}</div>
-				@enderror
-			</div>
-			
-			<div class="col-md-6">
-				<label class="form-label" for="flag">Código de Bandera</label>
-				<input type="text" class="form-control @error('flag') is-invalid @enderror" id="flag" name="flag"
-					placeholder="ES" value="{{ old('flag', $variant->flag ?? '') }}" maxlength="2">
-				<small class="text-muted">Código ISO de 2 letras para mostrar la bandera</small>
-				@error('flag')
 					<div class="invalid-feedback">{{ $message }}</div>
 				@enderror
 			</div>
