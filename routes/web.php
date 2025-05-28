@@ -271,7 +271,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');
     Route::get('/template/view/{hashedId}', [TemplateController::class, 'show'])->name('template.view');
 
-    // Tipos de Tarifas
+    // Fare Types
     Route::get('/fare', [FareController::class, 'index'])->name('fare.index');
     Route::get('/fare/create', [FareController::class, 'create'])->name('fare.create');
     Route::post('/fare', [FareController::class, 'store'])->name('fare.store');

@@ -1,9 +1,9 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
-## Los botones de acciones de DataTables que utilicen estos estilos
+## DataTables Actions
 
 <div class="d-flex justify-content-center align-items-center">
     <a href="javascript:;" class="text-body edit-sentiment" data-id="{{ $contact->id }}"><i class="ti ti-mood-happy ti-sm me-2"></i></a>

@@ -5,6 +5,7 @@
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 @endsection
 
 @section('vendor-script')
@@ -13,6 +14,7 @@
 <script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -20,10 +22,78 @@
 
 <script>
     $(function() {
-        // Inicializar Select2 si está disponible
         if ($.fn.select2) {
             $('#unit_ids, #type_id').select2();
         }
+
+        // Form validation
+        $('form').on('submit', function(e) {
+            const unitIds = $('#unit_ids').val();
+            if (!unitIds || unitIds.length === 0) {
+                $('#unit_ids_error').show();
+                $('#unit_ids').addClass('is-invalid');
+                e.preventDefault();
+                return false;
+            } else {
+                $('#unit_ids_error').hide();
+                $('#unit_ids').removeClass('is-invalid');
+            }
+        });
+
+        // Delete functionality
+        $(document).on('click', '.delete-record', function() {
+            const route = $(this).data('route');
+            
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "¡No podrás revertir esto!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then(function(result) {
+                if (result.value) {
+                    $.ajax({
+                        url: route,
+                        type: 'DELETE',
+                        data: {
+                            "_token": $('meta[name="csrf-token"]').attr('content')
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '¡Eliminado!',
+                                    text: 'La tarifa ha sido eliminada.',
+                                    customClass: {
+                                        confirmButton: 'btn btn-success'
+                                    },
+                                    buttonsStyling: false
+                                }).then(function() {
+                                    window.location.href = "{{ route('fare.index') }}";
+                                });
+                            }
+                        },
+                        error: function(error) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Ocurrió un error al eliminar la tarifa.',
+                                customClass: {
+                                    confirmButton: 'btn btn-primary'
+                                },
+                                buttonsStyling: false
+                            });
+                        }
+                    });
+                }
+            });
+        });
     });
 </script>
 @endsection
@@ -34,6 +104,13 @@
         <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Tarifas') }}/</span> {{ isset($fare) ? __('Editar') : __('Crear') }}</h4>
         <p class="text-muted">{{ __('Gestión de tarifas para servicios') }}</p>
     </div>
+    @if(isset($fare))
+    <div class="d-flex align-content-center flex-wrap gap-3">
+        <button type="button" class="btn btn-danger waves-effect waves-light delete-record" data-route="{{ route('fare.destroy', $fare->id) }}">
+            <i class="ti ti-trash me-1"></i> Eliminar
+        </button>
+    </div>
+    @endif
 </div>
 
 <div class="card mb-4">
@@ -61,6 +138,7 @@
                 @error('unit_ids')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
+                <div class="text-danger" id="unit_ids_error" style="display: none;">El campo unidades es obligatorio.</div>
             </div>
 
             <div class="col-md-6">

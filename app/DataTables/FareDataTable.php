@@ -32,7 +32,15 @@ class FareDataTable extends DataTable
                 return $fare->type ? $fare->type->name : 'N/A';
             })
             ->addColumn('glosary', function ($fare) {
-                return $fare->glosary_id ? 'Texto explicando de qué trata este tipo de servicio / tarifa' : 'N/A';
+                return $fare->glosary_id ? 'Texto explicando de qué trata este tipo de servicio / tarifa' : '';
+            })
+            ->orderColumn('type', function ($query, $order) {
+                $query->leftJoin('fare_types', 'fares.type_id', '=', 'fare_types.id')
+                      ->orderBy('fare_types.name', $order);
+            })
+            ->orderColumn('units', function ($query, $order) {
+                // This is a simplified approach as units is a many-to-many relationship
+                $query->orderBy('name', $order);
             })
             ->rawColumns(['action', 'units'])
             ->setRowId('id');
@@ -64,15 +72,15 @@ class FareDataTable extends DataTable
     protected function getColumns(): array
     {
         return [
-            Column::make('name')->title('TARIFA')->searchable(true),
-            Column::computed('units')->title('UNIDADES')->searchable(false),
-            Column::computed('type')->title('TIPO')->searchable(false),
-            Column::computed('glosary')->title('GLOSARIO')->searchable(false),
+            Column::make('name')->title('TARIFA')->searchable(true)->orderable(true),
+            Column::computed('units')->title('UNIDADES')->searchable(false)->orderable(false),
+            Column::computed('type')->title('TIPO')->searchable(true)->orderable(true),
+            Column::computed('glosary')->title('GLOSARIO')->searchable(false)->orderable(false),
             Column::computed('action')
                 ->exportable(false)
                 ->printable(false)
                 ->addClass('text-center')
-                ->title('ACCIÓN'),
+                ->title('Acciones'),
         ];
     }
 
