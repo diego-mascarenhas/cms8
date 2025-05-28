@@ -21,9 +21,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Español (España)',
             'base_language' => 'es',
-            'country_code' => 'ES',
-            'native_name' => 'Español (España)',
-            'flag' => 'ES'
+            'country_code' => 'ES'
         ]);
 
         LanguageVariant::firstOrCreate([
@@ -31,9 +29,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Español (México)',
             'base_language' => 'es',
-            'country_code' => 'MX',
-            'native_name' => 'Español (México)',
-            'flag' => 'MX'
+            'country_code' => 'MX'
         ]);
 
         LanguageVariant::firstOrCreate([
@@ -41,9 +37,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Español (Argentina)',
             'base_language' => 'es',
-            'country_code' => 'AR',
-            'native_name' => 'Español (Argentina)',
-            'flag' => 'AR'
+            'country_code' => 'AR'
         ]);
 
         // English variants
@@ -52,9 +46,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'English (United States)',
             'base_language' => 'en',
-            'country_code' => 'US',
-            'native_name' => 'English (United States)',
-            'flag' => 'US'
+            'country_code' => 'US'
         ]);
 
         LanguageVariant::firstOrCreate([
@@ -62,9 +54,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'English (United Kingdom)',
             'base_language' => 'en',
-            'country_code' => 'GB',
-            'native_name' => 'English (United Kingdom)',
-            'flag' => 'GB'
+            'country_code' => 'GB'
         ]);
 
         // French variants
@@ -73,9 +63,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Français (France)',
             'base_language' => 'fr',
-            'country_code' => 'FR',
-            'native_name' => 'Français (France)',
-            'flag' => 'FR'
+            'country_code' => 'FR'
         ]);
 
         LanguageVariant::firstOrCreate([
@@ -83,9 +71,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Français (Canada)',
             'base_language' => 'fr',
-            'country_code' => 'CA',
-            'native_name' => 'Français (Canada)',
-            'flag' => 'CA'
+            'country_code' => 'CA'
         ]);
 
         // German variants
@@ -94,9 +80,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Deutsch (Deutschland)',
             'base_language' => 'de',
-            'country_code' => 'DE',
-            'native_name' => 'Deutsch (Deutschland)',
-            'flag' => 'DE'
+            'country_code' => 'DE'
         ]);
 
         LanguageVariant::firstOrCreate([
@@ -104,9 +88,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Deutsch (Österreich)',
             'base_language' => 'de',
-            'country_code' => 'AT',
-            'native_name' => 'Deutsch (Österreich)',
-            'flag' => 'AT'
+            'country_code' => 'AT'
         ]);
 
         // Portuguese variants
@@ -115,9 +97,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Português (Portugal)',
             'base_language' => 'pt',
-            'country_code' => 'PT',
-            'native_name' => 'Português (Portugal)',
-            'flag' => 'PT'
+            'country_code' => 'PT'
         ]);
 
         LanguageVariant::firstOrCreate([
@@ -125,9 +105,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Português (Brasil)',
             'base_language' => 'pt',
-            'country_code' => 'BR',
-            'native_name' => 'Português (Brasil)',
-            'flag' => 'BR'
+            'country_code' => 'BR'
         ]);
 
         // Italian
@@ -136,9 +114,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Italiano (Italia)',
             'base_language' => 'it',
-            'country_code' => 'IT',
-            'native_name' => 'Italiano (Italia)',
-            'flag' => 'IT'
+            'country_code' => 'IT'
         ]);
 
         // Catalan
@@ -147,9 +123,7 @@ class LanguageVariantSeeder extends Seeder
         ], [
             'name' => 'Català (Espanya)',
             'base_language' => 'ca',
-            'country_code' => 'ES',
-            'native_name' => 'Català (Espanya)',
-            'flag' => 'ES'
+            'country_code' => 'ES'
         ]);
     }
 }
