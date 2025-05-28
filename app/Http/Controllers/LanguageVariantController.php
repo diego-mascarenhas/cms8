@@ -24,7 +24,7 @@ class LanguageVariantController extends Controller
     {
         $languages = Language::orderBy('name')->get();
         
-        return view('language.variants.create', compact('languages'));
+        return view('language.variants.form', compact('languages'));
     }
     
     /**
@@ -55,7 +55,7 @@ class LanguageVariantController extends Controller
         $languages = Language::orderBy('name')->get();
         $variant = $languageVariant;
         
-        return view('language.variants.edit', compact('variant', 'languages'));
+        return view('language.variants.form', compact('variant', 'languages'));
     }
     
     /**
