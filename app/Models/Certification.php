@@ -42,6 +42,14 @@ class Certification extends Model
     {
         return $this->belongsTo(Team::class);
     }
+    
+    /**
+     * Get the language associated with the certification
+     */
+    public function languageRelation()
+    {
+        return $this->belongsTo(Language::class, 'language', 'code');
+    }
 
     /**
      * Set the language attribute to lowercase

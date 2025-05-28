@@ -17,20 +17,25 @@ class CertificationDataTable extends DataTable
             ->addColumn('action', function ($certification) {
                 return view('certification.action', compact('certification'));
             })
+            ->editColumn('language', function ($row) {
+                $languageName = $row->languageRelation ? $row->languageRelation->name : strtoupper($row->language);
+                $flag = '<span class="fi fi-' . strtolower($row->language) . ' me-2"></span>';
+                return $flag . e($languageName);
+            })
             ->orderColumn('certification', function ($query, $order) {
                 $query->orderBy('certification', $order);
             })
             ->orderColumn('language', function ($query, $order) {
                 $query->orderBy('language', $order);
             })
-            ->rawColumns(['action'])
+            ->rawColumns(['action', 'language'])
             ->setRowId('id');
     }
 
     public function query(Certification $model): QueryBuilder
     {
         // Global scope will handle team filtering automatically
-        return $model->newQuery();
+        return $model->newQuery()->with('languageRelation');
     }
 
     public function html(): HtmlBuilder
@@ -54,13 +59,13 @@ class CertificationDataTable extends DataTable
     protected function getColumns(): array
     {
         return [
-            Column::make('certification')->title('CERTIFICACIÓN')->searchable(true)->orderable(true),
-            Column::make('language')->title('IDIOMA')->searchable(true)->orderable(true),
+            Column::make('certification')->title(__('Certification'))->searchable(true)->orderable(true),
+            Column::make('language')->title(__('Language'))->searchable(true)->orderable(true),
             Column::computed('action')
                 ->exportable(false)
                 ->printable(false)
                 ->addClass('text-center')
-                ->title('Acciones'),
+                ->title(__('Actions')),
         ];
     }
 
