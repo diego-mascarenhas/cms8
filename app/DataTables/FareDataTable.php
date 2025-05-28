@@ -29,7 +29,7 @@ class FareDataTable extends DataTable
                 return $badges;
             })
             ->addColumn('type', function ($fare) {
-                return $fare->type ? $fare->type->name : 'N/A';
+                return $fare->type ? $fare->type->name : '';
             })
             ->addColumn('glosary', function ($fare) {
                 return $fare->glosary_id ? 'Texto explicando de qué trata este tipo de servicio / tarifa' : '';

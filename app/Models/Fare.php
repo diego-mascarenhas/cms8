@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 
 class Fare extends Model
 {
@@ -12,6 +13,7 @@ class Fare extends Model
 
     protected $fillable = [
         'name',
+        'team_id',
         'glosary_id',
         'type_id'
     ];
@@ -22,6 +24,17 @@ class Fare extends Model
      * @var array
      */
     protected $dates = ['deleted_at'];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+    }
 
     /**
      * Get the units that belong to the fare
@@ -37,6 +50,14 @@ class Fare extends Model
     public function type()
     {
         return $this->belongsTo(FareType::class, 'type_id');
+    }
+
+    /**
+     * Get the team that owns the fare
+     */
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
     }
 
     /**

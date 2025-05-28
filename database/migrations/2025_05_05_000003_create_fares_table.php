@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('fares', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name', 255);
             $table->foreignId('glosary_id')->nullable();
             $table->foreignId('type_id')->nullable()->constrained('fare_types');

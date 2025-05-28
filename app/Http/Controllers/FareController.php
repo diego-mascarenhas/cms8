@@ -45,6 +45,7 @@ class FareController extends Controller
 
         $fare = Fare::create([
             'name' => $validated['name'],
+            'team_id' => auth()->user()->currentTeam->id,
             'type_id' => $validated['type_id'],
             'glosary_id' => $validated['glosary_id'] ?? null,
         ]);
@@ -100,6 +101,7 @@ class FareController extends Controller
 
         $fare->update([
             'name' => $validated['name'],
+            'team_id' => auth()->user()->currentTeam->id,
             'type_id' => $validated['type_id'],
             'glosary_id' => $validated['glosary_id'] ?? null,
         ]);
