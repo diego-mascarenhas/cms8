@@ -64,10 +64,10 @@
 			"slug": "software.index"
 		},
 		{
-			"url": "certification/list",
+			"url": "certification",
 			"name": "Certificaciones",
 			"icon": "menu-icon tf-icons ti ti-school",
-			"slug": "certification-list"
+			"slug": "certification.index"
 		},
 		{
 			"url": "style/list",

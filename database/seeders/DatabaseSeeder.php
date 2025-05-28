@@ -47,6 +47,7 @@ class DatabaseSeeder extends Seeder
             FareUnitSeeder::class,
             SoftwareTypesSeeder::class,
             SoftwareSeeder::class,
+            CertificationsSeeder::class,
         ]);
     }
 }

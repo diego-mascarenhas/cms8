@@ -38,6 +38,7 @@ use App\Http\Controllers\UserFareController;
 use App\Http\Controllers\FareController;
 use App\Http\Controllers\SoftwareController;
 use App\Models\Contact;
+use App\Http\Controllers\CertificationController;
 
 // auth
 Route::middleware([
@@ -288,6 +289,14 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit')->middleware('auth');
     Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update')->middleware('auth');
     Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy')->middleware('auth');
+
+    // Certification Management
+    Route::get('/certification', [CertificationController::class, 'index'])->name('certification.index')->middleware('auth');
+    Route::get('/certification/create', [CertificationController::class, 'create'])->name('certification.create')->middleware('auth');
+    Route::post('/certification', [CertificationController::class, 'store'])->name('certification.store')->middleware('auth');
+    Route::get('/certification/{certification}/edit', [CertificationController::class, 'edit'])->name('certification.edit')->middleware('auth');
+    Route::put('/certification/{certification}', [CertificationController::class, 'update'])->name('certification.update')->middleware('auth');
+    Route::delete('/certification/{certification}', [CertificationController::class, 'destroy'])->name('certification.destroy')->middleware('auth');
 
     // Tarifas Personalizadas de Usuario
     Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
