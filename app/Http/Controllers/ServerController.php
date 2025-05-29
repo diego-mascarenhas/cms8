@@ -171,7 +171,7 @@ class ServerController extends Controller
             if ($response->successful()) {
                 $versionData = $response->json();
                 
-                // Update server status to success
+                // Update server status to success - clear any previous error data
                 $server->update([
                     'success' => true,
                     'status_id' => ServerStatus::Active->value,
@@ -182,7 +182,13 @@ class ServerController extends Controller
                         'build' => $versionData['build'] ?? null,
                         'server_hostname' => $versionData['hostname'] ?? null,
                         'test_response_time' => $response->transferStats ? 
-                            round($response->transferStats->getTransferTime() * 1000, 2) . 'ms' : null
+                            round($response->transferStats->getTransferTime() * 1000, 2) . 'ms' : null,
+                        // Clear previous error data
+                        'error_code' => null,
+                        'error_response' => null,
+                        'connection_error' => null,
+                        'error_message' => null,
+                        'error_type' => null
                     ])
                 ]);
                 

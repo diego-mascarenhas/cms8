@@ -127,57 +127,43 @@
                                     @endif
                                 </td>
                             </tr>
-                            
-                            @if(isset($server->data['api_version']))
-                            <tr>
-                                <th>WHM Version</th>
-                                <td>{{ $server->data['api_version'] }}</td>
-                            </tr>
-                            @endif
-                            
-                            @if(isset($server->data['build']))
-                            <tr>
-                                <th>Build</th>
-                                <td>{{ $server->data['build'] }}</td>
-                            </tr>
-                            @endif
                         </table>
                     </div>
                     <div class="col-md-6">
                         <table class="table table-sm">
-                            @if(isset($server->data['server_hostname']))
-                            <tr>
-                                <th style="width: 40%;">Server Hostname</th>
-                                <td>{{ $server->data['server_hostname'] }}</td>
-                            </tr>
-                            @endif
-                            
-                            @if(isset($server->data['test_response_time']))
-                            <tr>
-                                <th>Response Time</th>
-                                <td>{{ $server->data['test_response_time'] }}</td>
-                            </tr>
-                            @endif
-                            
-                            @if(isset($server->data['error_code']))
-                            <tr>
-                                <th>Error Code</th>
-                                <td><span class="badge bg-warning">{{ $server->data['error_code'] }}</span></td>
-                            </tr>
-                            @endif
-                            
-                            @if(isset($server->data['connection_error']))
-                            <tr>
-                                <th>Error</th>
-                                <td class="text-danger">{{ $server->data['connection_error'] }}</td>
-                            </tr>
-                            @endif
-                            
-                            @if(isset($server->data['error_message']))
-                            <tr>
-                                <th>Error Message</th>
-                                <td class="text-danger">{{ $server->data['error_message'] }}</td>
-                            </tr>
+                            @if($server->data['connection_status'] === 'Success')
+                                @if(isset($server->data['api_version']))
+                                <tr>
+                                    <th style="width: 40%;">WHM Version</th>
+                                    <td>{{ $server->data['api_version'] }}</td>
+                                </tr>
+                                @endif
+                                
+                                @if(isset($server->data['test_response_time']))
+                                <tr>
+                                    <th>Response Time</th>
+                                    <td>{{ $server->data['test_response_time'] }}</td>
+                                </tr>
+                                @endif
+                            @else
+                                @if(isset($server->data['error_code']))
+                                <tr>
+                                    <th style="width: 40%;">Error Code</th>
+                                    <td><span class="badge bg-warning">{{ $server->data['error_code'] }}</span></td>
+                                </tr>
+                                @endif
+                                
+                                @if(isset($server->data['connection_error']))
+                                <tr>
+                                    <th>Error</th>
+                                    <td class="text-danger">{{ $server->data['connection_error'] }}</td>
+                                </tr>
+                                @elseif(isset($server->data['error_message']))
+                                <tr>
+                                    <th>Error Message</th>
+                                    <td class="text-danger">{{ $server->data['error_message'] }}</td>
+                                </tr>
+                                @endif
                             @endif
                         </table>
                     </div>
