@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Server;
+use App\Services\WhmService;
 use App\Enums\ServerStatus;
 use Illuminate\Http\Request;
 use App\DataTables\ServerDataTable;
@@ -86,7 +87,7 @@ class ServerController extends Controller
         
         // If it's a cPanel server, try to get domains from WHM API
         if ($server->control_panel === 'cpanel' && $server->hasToken()) {
-            $whmService = new \App\Services\WhmService();
+            $whmService = new WhmService();
             $result = $whmService->getDomainsFromServer($server);
             
             if ($result['success']) {
@@ -155,7 +156,7 @@ class ServerController extends Controller
             }
 
             // Test actual API connection using WHM service
-            $whmService = new \App\Services\WhmService();
+            $whmService = new WhmService();
             
             // Try to get server version first (lightweight test)
             $url = "https://{$server->server_url}:2087";
@@ -310,7 +311,7 @@ class ServerController extends Controller
         }
 
         try {
-            $whmService = new \App\Services\WhmService();
+            $whmService = new WhmService();
             $result = $whmService->syncDomainsFromServer($server);
 
             if ($result['success']) {
