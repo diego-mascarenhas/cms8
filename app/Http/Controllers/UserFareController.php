@@ -27,7 +27,7 @@ class UserFareController extends Controller
      */
     public function create()
     {
-        $fares = Fare::with(['unit', 'block'])->get();
+        $fares = Fare::with(['units', 'type'])->get();
         $languages = Language::all();
         $currencies = Currency::all();
 
@@ -68,7 +68,7 @@ class UserFareController extends Controller
      */
     public function show(UserFare $userFare)
     {
-        $userFare->load(['fare.unit', 'fare.block', 'user', 'languageOrigin', 'languageDestination', 'currency']);
+        $userFare->load(['fare.units', 'fare.type', 'user', 'languageOrigin', 'languageDestination', 'currency']);
         
         return view('user-fare.show', compact('userFare'));
     }
@@ -78,7 +78,7 @@ class UserFareController extends Controller
      */
     public function edit(UserFare $userFare)
     {
-        $fares = Fare::with(['unit', 'block'])->get();
+        $fares = Fare::with(['units', 'type'])->get();
         $languages = Language::all();
         $currencies = Currency::all();
 
@@ -134,14 +134,14 @@ class UserFareController extends Controller
         // Obtener las tarifas personalizadas del usuario (si existen)
         if ($user) {
             $userFares = UserFare::where('user_id', $user->id)
-                ->with(['fare.unit', 'languageOrigin', 'languageDestination', 'currency'])
+                ->with(['fare.units', 'languageOrigin', 'languageDestination', 'currency'])
                 ->get();
         } else {
             $userFares = collect();
         }
 
         // Obtener las tarifas predefinidas
-        $fares = Fare::with(['unit', 'block'])->get();
+        $fares = Fare::with(['units', 'type'])->get();
         
         // Obtener divisas disponibles
         $currencies = \App\Models\Currency::all();
