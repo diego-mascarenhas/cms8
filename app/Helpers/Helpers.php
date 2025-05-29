@@ -200,4 +200,25 @@ class Helpers
       }
     }
   }
+
+  /**
+   * Map language codes to country codes for flag display
+   * This resolves issues with languages like Japanese (ja) that use different country codes (jp) for flags
+   *
+   * @param string $languageCode ISO language code
+   * @return string Country code to use for flag display
+   */
+  public static function getLanguageFlag($languageCode)
+  {
+    $languageToCountryMap = [
+        'ja' => 'jp', // Japanese -> Japan
+        'ko' => 'kr', // Korean -> South Korea
+        'zh' => 'cn', // Chinese -> China
+        'en' => 'gb', // English -> Great Britain (default)
+        'ar' => 'sa', // Arabic -> Saudi Arabia
+        // Add more mappings as needed
+    ];
+    
+    return $languageToCountryMap[$languageCode] ?? $languageCode;
+  }
 }

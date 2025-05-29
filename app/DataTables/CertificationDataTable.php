@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Certification;
+use App\Helpers\Helpers;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -20,8 +21,8 @@ class CertificationDataTable extends DataTable
             ->editColumn('language', function ($row) {
                 $languageName = $row->languageRelation ? $row->languageRelation->name : strtoupper($row->language);
                 
-                // Mapeo especial para inglés - usa GB como bandera por defecto
-                $countryCode = $row->language == 'en' ? 'gb' : $row->language;
+                // Use helper to map language code to appropriate country code for flags
+                $countryCode = Helpers::getLanguageFlag($row->language);
                 
                 $flag = '<span class="fi fi-' . strtolower($countryCode) . ' me-2"></span>';
                 return $flag . e($languageName);

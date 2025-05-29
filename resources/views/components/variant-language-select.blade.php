@@ -8,7 +8,7 @@
             <option value="{{ $variant->code }}" 
                     {{ old($name, $value) == $variant->code ? 'selected' : '' }}
                     data-country="{{ $variant->country_code ?? '' }}"
-                    data-flag="{{ strtolower($variant->flag ?? '') }}"
+                    data-flag="{{ strtolower($variant->country_code ?? '') }}"
                     data-base="{{ $variant->base_language }}">
                 {{ $variant->name }}
             </option>
@@ -39,7 +39,24 @@
             }
             
             const $option = $(language.element);
-            const flag = $option.data('flag');
+            let flag = $option.data('flag');
+            
+            // If no flag specified, try to get it from base language code
+            if (!flag) {
+                const baseCode = $option.data('base')?.toLowerCase();
+                if (baseCode) {
+                    // Map language codes to country codes for flags
+                    const languageMap = {
+                        'ja': 'jp', // Japanese -> Japan
+                        'ko': 'kr', // Korean -> South Korea
+                        'zh': 'cn', // Chinese -> China
+                        'en': 'gb', // English -> Great Britain
+                        'ar': 'sa'  // Arabic -> Saudi Arabia
+                    };
+                    
+                    flag = languageMap[baseCode] || baseCode;
+                }
+            }
             
             if (!flag) {
                 return language.text;

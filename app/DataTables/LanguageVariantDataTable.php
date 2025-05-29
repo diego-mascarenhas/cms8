@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\LanguageVariant;
+use App\Helpers\Helpers;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -24,7 +25,17 @@ class LanguageVariantDataTable extends DataTable
             })
             ->setRowId('id')
             ->editColumn('name', function ($row) {
-                $flag = $row->country_code ? '<span class="fi fi-' . strtolower($row->country_code) . ' me-2"></span>' : '';
+                // If country_code is provided, use it directly
+                // Otherwise, try to map from the language code (the part before the hyphen in the variant code)
+                if ($row->country_code) {
+                    $flagCode = strtolower($row->country_code);
+                } else {
+                    // Get base language code from the variant code (e.g., "en" from "en-US")
+                    $langCode = strtolower(explode('-', $row->code)[0] ?? '');
+                    $flagCode = Helpers::getLanguageFlag($langCode);
+                }
+                
+                $flag = $flagCode ? '<span class="fi fi-' . $flagCode . ' me-2"></span>' : '';
                 return $flag . e($row->name);
             })
             ->editColumn('base_language', function ($row) {
