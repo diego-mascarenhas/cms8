@@ -25,8 +25,8 @@ class ServerController extends Controller
     public function create()
     {
         $statuses = ServerStatus::cases();
-
-        return view('server.create', compact('statuses'));
+        $teams = \App\Models\Team::all();
+        return view('server.create', compact('statuses', 'teams'));
     }
 
     /**
@@ -39,6 +39,10 @@ class ServerController extends Controller
             'ip' => 'nullable|string|ip',
             'server_url' => 'required|string|unique:servers,server_url',
             'username' => 'required|string',
+            'operating_system' => 'nullable|string|max:255',
+            'control_panel' => 'required|in:none,cpanel,plesk',
+            'encrypted_token' => 'nullable|string',
+            'team_id' => 'nullable|exists:teams,id',
             'status_id' => 'required|integer',
         ]);
 
@@ -66,8 +70,8 @@ class ServerController extends Controller
     public function edit(Server $server)
     {
         $statuses = ServerStatus::cases();
-
-        return view('server.edit', compact('server', 'statuses'));
+        $teams = \App\Models\Team::all();
+        return view('server.edit', compact('server', 'statuses', 'teams'));
     }
 
     /**
@@ -84,6 +88,10 @@ class ServerController extends Controller
                 Rule::unique('servers')->ignore($server->id),
             ],
             'username' => 'required|string',
+            'operating_system' => 'nullable|string|max:255',
+            'control_panel' => 'required|in:none,cpanel,plesk',
+            'encrypted_token' => 'nullable|string',
+            'team_id' => 'nullable|exists:teams,id',
             'status_id' => 'required|integer',
         ]);
 
