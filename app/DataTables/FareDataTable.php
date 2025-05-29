@@ -62,6 +62,7 @@ class FareDataTable extends DataTable
             ->responsive(true)
             ->processing(true)
             ->serverSide(true)
+            ->pageLength(25)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'select' => false,

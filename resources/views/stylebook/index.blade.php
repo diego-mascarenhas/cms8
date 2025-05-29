@@ -14,6 +14,18 @@
 
 @section('page-script')
 <script>
+console.log('DataTable script loading...');
+
+// Ensure DataTable container exists
+$(document).ready(function() {
+    console.log('Document ready, DataTable container exists: ' + ($('#stylebook-table').length > 0));
+    
+    // Log when DataTable is initialized
+    $('#stylebook-table').on('init.dt', function() {
+        console.log('DataTable initialized');
+    });
+});
+
 function deleteRecord(id, element) {
     if (confirm("{{ __('Are you sure you want to delete this style book?') }}")) {
         $.ajax({
@@ -33,6 +45,7 @@ function deleteRecord(id, element) {
     }
 }
 </script>
+{!! $dataTable->scripts() !!}
 @endsection
 
 @section('content')
