@@ -213,7 +213,7 @@ class WHMService
                                 'max_addon' => $account['maxaddon'] ?? null,
                                 'startdate' => $account['startdate'] ?? null,
                             ];
-                        })->sortBy('domain')->values()
+                        })
                     ];
                 }
                 
@@ -258,7 +258,7 @@ class WHMService
         foreach ($result['domains'] as $accountData) {
             $domain = Domain::withTrashed()
                 ->where('domain', $accountData['domain'])
-                ->where('server_id', $server->id)
+                ->where('server_url', $server->server_url)
                 ->first();
 
             if ($domain && $domain->trashed()) {
@@ -268,12 +268,12 @@ class WHMService
             Domain::updateOrCreate(
                 [
                     'domain' => $accountData['domain'],
-                    'server_id' => $server->id
+                    'server_url' => $server->server_url
                 ],
                 [
                     'username' => $accountData['user'],
                     'plan' => $accountData['plan'],
-                    'suspended' => $accountData['suspended'],
+                    'status_id' => $accountData['suspended'],
                     'data' => $accountData
                 ]
             );
@@ -285,56 +285,6 @@ class WHMService
             'success' => true,
             'domains_synced' => $synced,
             'total_domains' => $result['domains']->count()
-        ];
-    }
-
-    public function syncDomainsFromAllDatabaseServers()
-    {
-        // Get all cPanel servers with tokens from database
-        $servers = Server::where('control_panel', 'cpanel')
-                         ->whereNotNull('encrypted_token')
-                         ->get();
-
-        if ($servers->isEmpty()) {
-            return [
-                'success' => false,
-                'errors' => ['No cPanel servers with tokens found in database']
-            ];
-        }
-
-        $successCount = 0;
-        $errors = [];
-
-        foreach ($servers as $server) {
-            try {
-                $result = $this->syncDomainsFromServer($server);
-                
-                if ($result['success']) {
-                    $successCount++;
-                    Log::info("Successfully synced {$result['domains_synced']} domains from server {$server->name} ({$server->server_url})");
-                } else {
-                    $error = "Error syncing from server {$server->name} ({$server->server_url}): " . $result['error'];
-                    $errors[] = $error;
-                    Log::error($error);
-                }
-            } catch (\Exception $e) {
-                $error = "Error syncing from server {$server->name} ({$server->server_url}): " . $e->getMessage();
-                $errors[] = $error;
-                Log::error($error, [
-                    'server_id' => $server->id,
-                    'exception' => get_class($e),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-            }
-        }
-
-        return [
-            'success' => $successCount > 0,
-            'total_servers' => $servers->count(),
-            'successful_servers' => $successCount,
-            'errors' => $errors
         ];
     }
 }

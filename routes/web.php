@@ -285,6 +285,7 @@ Route::delete('/project/{project}/service/{serviceId}', [ProjectController::clas
     // Servers
     Route::resource('server', ServerController::class);
     Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
+    Route::post('/server/{server}/sync-domains', [ServerController::class, 'syncDomains'])->name('server.syncDomains');
 
     // Accounting
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
