@@ -26,20 +26,33 @@ class ServerController extends Controller
      */
     public function create()
     {
-        $statuses = ServerStatus::cases();
+        $statuses = collect(ServerStatus::cases())->map(function($status) {
+            return [
+                'id' => $status->value,
+                'name' => $status->name()
+            ];
+        })->toArray();
         $teams = \App\Models\Team::all();
-        return view('server.create', compact('statuses', 'teams'));
+        $data = null; // For unified form
+        return view('server.form', compact('statuses', 'teams', 'data'));
     }
 
     /**
-     * Store a newly created server
+     * Store a newly created server or update existing
      */
     public function store(Request $request)
     {
+        $isEdit = !empty($request->input('id'));
+        $server = $isEdit ? Server::findOrFail($request->input('id')) : null;
+
         $validated = $request->validate([
             'name' => 'required|string',
             'ip' => 'nullable|string|ip',
-            'server_url' => 'required|string|unique:servers,server_url',
+            'server_url' => [
+                'required',
+                'string',
+                $isEdit ? Rule::unique('servers')->ignore($server->id) : 'unique:servers,server_url'
+            ],
             'username' => 'required|string',
             'operating_system' => 'nullable|string|max:255',
             'control_panel' => 'required|in:none,cpanel,plesk',
@@ -48,14 +61,19 @@ class ServerController extends Controller
             'status_id' => 'required|integer',
         ]);
 
-        // Set default values
-        $validated['success'] = true;
-        $validated['data'] = [];
-
-        $server = Server::create($validated);
+        if ($isEdit) {
+            $server->update($validated);
+            $message = 'Server updated successfully.';
+        } else {
+            // Set default values for new servers
+            $validated['success'] = true;
+            $validated['data'] = [];
+            $server = Server::create($validated);
+            $message = 'Server created successfully.';
+        }
 
         return redirect()->route('server.show', $server->id)
-            ->with('success', 'Server created successfully.');
+            ->with('success', $message);
     }
 
     /**
@@ -86,36 +104,15 @@ class ServerController extends Controller
      */
     public function edit(Server $server)
     {
-        $statuses = ServerStatus::cases();
+        $statuses = collect(ServerStatus::cases())->map(function($status) {
+            return [
+                'id' => $status->value,
+                'name' => $status->name()
+            ];
+        })->toArray();
         $teams = \App\Models\Team::all();
-        return view('server.edit', compact('server', 'statuses', 'teams'));
-    }
-
-    /**
-     * Update the specified server
-     */
-    public function update(Request $request, Server $server)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string',
-            'ip' => 'nullable|string|ip',
-            'server_url' => [
-                'required',
-                'string',
-                Rule::unique('servers')->ignore($server->id),
-            ],
-            'username' => 'required|string',
-            'operating_system' => 'nullable|string|max:255',
-            'control_panel' => 'required|in:none,cpanel,plesk',
-            'encrypted_token' => 'nullable|string',
-            'team_id' => 'nullable|exists:teams,id',
-            'status_id' => 'required|integer',
-        ]);
-
-        $server->update($validated);
-
-        return redirect()->route('server.show', $server->id)
-            ->with('success', 'Server updated successfully.');
+        $data = $server; // For unified form
+        return view('server.form', compact('statuses', 'teams', 'data'));
     }
 
     /**
