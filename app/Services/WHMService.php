@@ -231,7 +231,7 @@ class WhmService
                                 'max_addon' => $account['maxaddon'] ?? null,
                                 'startdate' => $account['startdate'] ?? null,
                             ];
-                        })
+                        })->sortBy('domain')->values()
                     ];
                 }
                 
