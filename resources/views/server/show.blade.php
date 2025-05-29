@@ -17,70 +17,78 @@
     </div>
 
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-12">
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Server Information</h5>
                 </div>
                 <div class="card-body">
-                    <table class="table">
-                        <tr>
-                            <th style="width: 30%;">Name</th>
-                            <td>{{ $server->name }}</td>
-                        </tr>
-                        <tr>
-                            <th>IP Address</th>
-                            <td>{{ $server->ip ?: 'Not specified' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Server URL</th>
-                            <td>{{ $server->server_url }}</td>
-                        </tr>
-                        <tr>
-                            <th>Username</th>
-                            <td>{{ $server->username }}</td>
-                        </tr>
-                        <tr>
-                            <th>Operating System</th>
-                            <td>{{ $server->operating_system ?: 'Not specified' }}</td>
-                        </tr>
-                        <tr>
-                            <th>Control Panel</th>
-                            <td>{{ $server->control_panel_name }}</td>
-                        </tr>
-                        @if($server->team)
-                        <tr>
-                            <th>Team</th>
-                            <td>{{ $server->team->name }}</td>
-                        </tr>
-                        @endif
-                        <tr>
-                            <th>Token Status</th>
-                            <td>
-                                @if($server->hasToken())
-                                    <span class="badge bg-success">Configured</span>
-                                @else
-                                    <span class="badge bg-warning">Not configured</span>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table">
+                                <tr>
+                                    <th style="width: 40%;">Name</th>
+                                    <td>{{ $server->name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <td>{{ $server->ip ?: 'Not specified' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Server URL</th>
+                                    <td>{{ $server->server_url }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Username</th>
+                                    <td>{{ $server->username }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Operating System</th>
+                                    <td>{{ $server->operating_system ?: 'Not specified' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table">
+                                <tr>
+                                    <th style="width: 40%;">Control Panel</th>
+                                    <td>{{ $server->control_panel_name }}</td>
+                                </tr>
+                                @if($server->team)
+                                <tr>
+                                    <th>Team</th>
+                                    <td>{{ $server->team->name }}</td>
+                                </tr>
                                 @endif
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>Status</th>
-                            <td>
-                                <span class="badge bg-{{ $server->status_id->color() }}">
-                                    {{ $server->status_id->name() }}
-                                </span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>Created</th>
-                            <td>{{ $server->created_at->format('M d, Y H:i') }}</td>
-                        </tr>
-                        <tr>
-                            <th>Last Updated</th>
-                            <td>{{ $server->updated_at->format('M d, Y H:i') }}</td>
-                        </tr>
-                    </table>
+                                <tr>
+                                    <th>Token Status</th>
+                                    <td>
+                                        @if($server->hasToken())
+                                            <span class="badge bg-success">Configured</span>
+                                        @else
+                                            <span class="badge bg-warning">Not configured</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Status</th>
+                                    <td>
+                                        <span class="badge bg-{{ $server->status_id->color() }}">
+                                            {{ $server->status_id->name() }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Created</th>
+                                    <td>{{ $server->created_at->format('M d, Y H:i') }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Last Updated</th>
+                                    <td>{{ $server->updated_at->format('M d, Y H:i') }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -90,71 +98,78 @@
                     <h5 class="card-title mb-0">Connection Test Results</h5>
                 </div>
                 <div class="card-body">
-                    <table class="table table-sm">
-                        <tr>
-                            <th style="width: 30%;">Last Test</th>
-                            <td>{{ \Carbon\Carbon::parse($server->data['last_connection_test'])->format('M d, Y H:i:s') }}</td>
-                        </tr>
-                        <tr>
-                            <th>Status</th>
-                            <td>
-                                @if($server->data['connection_status'] === 'Success')
-                                    <span class="badge bg-success">{{ $server->data['connection_status'] }}</span>
-                                @else
-                                    <span class="badge bg-danger">{{ $server->data['connection_status'] }}</span>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 40%;">Last Test</th>
+                                    <td>{{ \Carbon\Carbon::parse($server->data['last_connection_test'])->format('M d, Y H:i:s') }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Status</th>
+                                    <td>
+                                        @if($server->data['connection_status'] === 'Success')
+                                            <span class="badge bg-success">{{ $server->data['connection_status'] }}</span>
+                                        @else
+                                            <span class="badge bg-danger">{{ $server->data['connection_status'] }}</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                
+                                @if(isset($server->data['api_version']))
+                                <tr>
+                                    <th>WHM Version</th>
+                                    <td>{{ $server->data['api_version'] }}</td>
+                                </tr>
                                 @endif
-                            </td>
-                        </tr>
-                        
-                        @if(isset($server->data['api_version']))
-                        <tr>
-                            <th>WHM Version</th>
-                            <td>{{ $server->data['api_version'] }}</td>
-                        </tr>
-                        @endif
-                        
-                        @if(isset($server->data['build']))
-                        <tr>
-                            <th>Build</th>
-                            <td>{{ $server->data['build'] }}</td>
-                        </tr>
-                        @endif
-                        
-                        @if(isset($server->data['server_hostname']))
-                        <tr>
-                            <th>Server Hostname</th>
-                            <td>{{ $server->data['server_hostname'] }}</td>
-                        </tr>
-                        @endif
-                        
-                        @if(isset($server->data['test_response_time']))
-                        <tr>
-                            <th>Response Time</th>
-                            <td>{{ $server->data['test_response_time'] }}</td>
-                        </tr>
-                        @endif
-                        
-                        @if(isset($server->data['error_code']))
-                        <tr>
-                            <th>Error Code</th>
-                            <td><span class="badge bg-warning">{{ $server->data['error_code'] }}</span></td>
-                        </tr>
-                        @endif
-                        
-                        @if(isset($server->data['connection_error']))
-                        <tr>
-                            <th>Error</th>
-                            <td class="text-danger">{{ $server->data['connection_error'] }}</td>
-                        </tr>
-                        @endif
-                        
-                        @if(isset($server->data['error_message']))
-                        <tr>
-                            <th>Error Message</th>
-                            <td class="text-danger">{{ $server->data['error_message'] }}</td>
-                        </tr>
-                        @endif
-                    </table>
+                                
+                                @if(isset($server->data['build']))
+                                <tr>
+                                    <th>Build</th>
+                                    <td>{{ $server->data['build'] }}</td>
+                                </tr>
+                                @endif
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm">
+                                @if(isset($server->data['server_hostname']))
+                                <tr>
+                                    <th style="width: 40%;">Server Hostname</th>
+                                    <td>{{ $server->data['server_hostname'] }}</td>
+                                </tr>
+                                @endif
+                                
+                                @if(isset($server->data['test_response_time']))
+                                <tr>
+                                    <th>Response Time</th>
+                                    <td>{{ $server->data['test_response_time'] }}</td>
+                                </tr>
+                                @endif
+                                
+                                @if(isset($server->data['error_code']))
+                                <tr>
+                                    <th>Error Code</th>
+                                    <td><span class="badge bg-warning">{{ $server->data['error_code'] }}</span></td>
+                                </tr>
+                                @endif
+                                
+                                @if(isset($server->data['connection_error']))
+                                <tr>
+                                    <th>Error</th>
+                                    <td class="text-danger">{{ $server->data['connection_error'] }}</td>
+                                </tr>
+                                @endif
+                                
+                                @if(isset($server->data['error_message']))
+                                <tr>
+                                    <th>Error Message</th>
+                                    <td class="text-danger">{{ $server->data['error_message'] }}</td>
+                                </tr>
+                                @endif
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
             @endif
@@ -181,30 +196,40 @@
                             Error connecting to cPanel: {{ $cPanelError }}
                         </div>
                     @elseif($cPanelDomains && $cPanelDomains->count() > 0)
-                        <div class="mb-3">
-                            <input type="text" class="form-control form-control-sm" id="domain-search" placeholder="Search domains...">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="domain-search" placeholder="Search domains, users, or plans...">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                                <small class="text-muted ms-auto">
+                                    <i class="ti ti-info-circle me-1"></i>
+                                    Total domains: <span id="total-domains">{{ $cPanelDomains->count() }}</span>
+                                    <span id="filtered-info" style="display: none;"> | Showing: <span id="visible-domains"></span></span>
+                                </small>
+                            </div>
                         </div>
                         
                         <div class="table-responsive">
-                            <table class="table table-sm" id="domains-table">
-                                <thead>
+                            <table class="table table-hover" id="domains-table">
+                                <thead class="table-light">
                                     <tr>
                                         <th>Domain</th>
                                         <th>User</th>
                                         <th>Plan</th>
                                         <th>Status</th>
-                                        <th>Disk Used</th>
+                                        <th>Disk Usage</th>
                                         <th>Email</th>
-                                        <th>IP</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($cPanelDomains as $domain)
                                     <tr>
                                         <td>
-                                            <strong>{{ $domain['domain'] }}</strong>
+                                            <strong class="text-primary">{{ $domain['domain'] }}</strong>
                                         </td>
-                                        <td>{{ $domain['user'] }}</td>
+                                        <td>
+                                            <span class="text-muted">{{ $domain['user'] }}</span>
+                                        </td>
                                         <td>{{ $domain['plan'] ?: 'N/A' }}</td>
                                         <td>
                                             @if($domain['suspended'])
@@ -214,7 +239,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <small>
+                                            <small class="text-muted">
                                                 {{ $domain['disk_used'] ?: '0' }} MB
                                                 @if($domain['disk_limit'])
                                                     / {{ $domain['disk_limit'] }} MB
@@ -222,30 +247,12 @@
                                             </small>
                                         </td>
                                         <td>
-                                            <small>{{ $domain['email'] ?: 'N/A' }}</small>
-                                        </td>
-                                        <td>
-                                            <small>{{ $domain['ip'] ?: 'N/A' }}</small>
+                                            <small class="text-muted">{{ $domain['email'] ?: 'N/A' }}</small>
                                         </td>
                                     </tr>
                                     @endforeach
                                 </tbody>
                             </table>
-                        </div>
-                        
-                        <div class="mt-3 d-flex justify-content-between align-items-center">
-                            <small class="text-muted">
-                                <i class="ti ti-info-circle me-1"></i>
-                                Total domains: <span id="total-domains">{{ $cPanelDomains->count() }}</span>
-                                <span id="filtered-info" style="display: none;"> | Showing: <span id="visible-domains"></span></span>
-                            </small>
-                            
-                            @if($cPanelDomains->count() > 10)
-                            <small class="text-muted">
-                                <i class="ti ti-search me-1"></i>
-                                Use search to filter domains
-                            </small>
-                            @endif
                         </div>
                     @elseif($cPanelDomains)
                         <div class="alert alert-info">
@@ -262,8 +269,10 @@
             </div>
             @endif
         </div>
+    </div>
 
-        <div class="col-md-4">
+    <div class="row">
+        <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Actions</h5>
@@ -299,14 +308,16 @@
                     </form>
                 </div>
             </div>
+        </div>
 
-            @if($server->domains()->count() > 0)
+        @if($server->domains()->count() > 0)
+        <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Domains</h5>
+                    <h5 class="card-title mb-0">Local Domains</h5>
                 </div>
                 <div class="card-body">
-                    <p>This server has {{ $server->domains()->count() }} domain(s):</p>
+                    <p>This server has {{ $server->domains()->count() }} domain(s) in database:</p>
                     <ul class="list-group">
                         @foreach($server->domains()->take(5)->get() as $domain)
                             <li class="list-group-item">
@@ -322,8 +333,8 @@
                     </ul>
                 </div>
             </div>
-            @endif
         </div>
+        @endif
     </div>
 </div>
 @endsection
@@ -440,8 +451,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const domain = row.cells[0].textContent.toLowerCase();
                 const user = row.cells[1].textContent.toLowerCase();
                 const plan = row.cells[2].textContent.toLowerCase();
+                const email = row.cells[5].textContent.toLowerCase();
                 
-                if (domain.includes(searchTerm) || user.includes(searchTerm) || plan.includes(searchTerm)) {
+                if (domain.includes(searchTerm) || 
+                    user.includes(searchTerm) || 
+                    plan.includes(searchTerm) || 
+                    email.includes(searchTerm)) {
                     row.style.display = '';
                     visibleCount++;
                 } else {
