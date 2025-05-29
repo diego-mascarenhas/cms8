@@ -346,13 +346,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 }
             })
-            .then(response => {
-                if (response.ok) {
-                    showAlert('success', 'Connection test initiated. Check server status for results.');
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    showAlert('success', data.message);
+                    // Reload page to show updated connection test results
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
                 } else {
-                    showAlert('danger', 'Failed to initiate connection test');
+                    showAlert('danger', data.message || 'Connection test failed');
                 }
             })
             .catch(error => {
@@ -416,9 +424,16 @@ document.addEventListener('DOMContentLoaded', function() {
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
         
-        // Insert at the top of the container
-        const container = document.querySelector('.container');
-        container.insertBefore(alert, container.firstChild);
+        // Insert at the top of the content section
+        const contentSection = document.querySelector('[class*="d-flex"][class*="flex-column"][class*="flex-md-row"]') || 
+                              document.querySelector('.row') || 
+                              document.body;
+        
+        if (contentSection.parentNode) {
+            contentSection.parentNode.insertBefore(alert, contentSection);
+        } else {
+            document.body.insertBefore(alert, document.body.firstChild);
+        }
         
         // Auto dismiss after 5 seconds
         setTimeout(() => {

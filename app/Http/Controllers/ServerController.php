@@ -144,13 +144,17 @@ class ServerController extends Controller
         try {
             // Check if server has required configuration
             if ($server->control_panel !== 'cpanel') {
-                return redirect()->route('server.show', $server->id)
-                    ->with('warning', 'Connection test is only available for cPanel servers.');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Connection test is only available for cPanel servers.'
+                ], 400);
             }
 
             if (!$server->hasToken()) {
-                return redirect()->route('server.show', $server->id)
-                    ->with('error', 'Cannot test connection: Server token is not configured.');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot test connection: Server token is not configured.'
+                ], 400);
             }
 
             // Test actual API connection using WHM service
@@ -190,8 +194,11 @@ class ServerController extends Controller
                     $message .= ", Hostname: {$versionData['hostname']}";
                 }
                 
-                return redirect()->route('server.show', $server->id)
-                    ->with('success', $message);
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'data' => $versionData
+                ]);
                     
             } else {
                 // API request failed
@@ -218,8 +225,11 @@ class ServerController extends Controller
                     $errorMessage .= ": Server error";
                 }
                 
-                return redirect()->route('server.show', $server->id)
-                    ->with('error', $errorMessage);
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage,
+                    'error_code' => $statusCode
+                ], 400);
             }
             
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
@@ -243,8 +253,10 @@ class ServerController extends Controller
                 $errorMessage .= 'Network error';
             }
             
-            return redirect()->route('server.show', $server->id)
-                ->with('error', $errorMessage);
+            return response()->json([
+                'success' => false,
+                'message' => $errorMessage
+            ], 500);
                 
         } catch (\Exception $e) {
             // Other errors
@@ -268,8 +280,10 @@ class ServerController extends Controller
                 ])
             ]);
             
-            return redirect()->route('server.show', $server->id)
-                ->with('error', 'Unexpected error during connection test: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unexpected error during connection test: ' . $e->getMessage()
+            ], 500);
         }
     }
 
