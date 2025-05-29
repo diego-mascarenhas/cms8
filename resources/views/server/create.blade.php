@@ -55,6 +55,65 @@
                 </div>
 
                 <div class="mb-3">
+                    <label for="operating_system" class="form-label">Operating System</label>
+                    <input type="text" class="form-control @error('operating_system') is-invalid @enderror" 
+                           id="operating_system" name="operating_system" 
+                           value="{{ old('operating_system') }}" 
+                           placeholder="Linux, Windows, etc.">
+                    @error('operating_system')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label for="control_panel" class="form-label">Control Panel</label>
+                    <select class="form-select @error('control_panel') is-invalid @enderror" 
+                            id="control_panel" name="control_panel" required>
+                        <option value="none" {{ old('control_panel', 'none') == 'none' ? 'selected' : '' }}>
+                            Ninguno
+                        </option>
+                        <option value="cpanel" {{ old('control_panel') == 'cpanel' ? 'selected' : '' }}>
+                            cPanel
+                        </option>
+                        <option value="plesk" {{ old('control_panel') == 'plesk' ? 'selected' : '' }}>
+                            Plesk
+                        </option>
+                    </select>
+                    @error('control_panel')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label for="encrypted_token" class="form-label">Encrypted Token</label>
+                    <textarea class="form-control @error('encrypted_token') is-invalid @enderror" 
+                              id="encrypted_token" name="encrypted_token" rows="3"
+                              placeholder="Token encriptado para autenticación">{{ old('encrypted_token') }}</textarea>
+                    @error('encrypted_token')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                @if(isset($teams) && $teams->count() > 0)
+                <div class="mb-3">
+                    <label for="team_id" class="form-label">Team</label>
+                    <select class="form-select @error('team_id') is-invalid @enderror" 
+                            id="team_id" name="team_id">
+                        <option value="">Select a team (optional)</option>
+                        @foreach($teams as $team)
+                            <option value="{{ $team->id }}" 
+                                {{ old('team_id') == $team->id ? 'selected' : '' }}>
+                                {{ $team->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('team_id')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                @endif
+
+                <div class="mb-3">
                     <label for="status_id" class="form-label">Status</label>
                     <select class="form-select @error('status_id') is-invalid @enderror" 
                             id="status_id" name="status_id" required>
