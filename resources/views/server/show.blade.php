@@ -181,8 +181,12 @@
                             Error connecting to cPanel: {{ $cPanelError }}
                         </div>
                     @elseif($cPanelDomains && $cPanelDomains->count() > 0)
+                        <div class="mb-3">
+                            <input type="text" class="form-control form-control-sm" id="domain-search" placeholder="Search domains...">
+                        </div>
+                        
                         <div class="table-responsive">
-                            <table class="table table-sm">
+                            <table class="table table-sm" id="domains-table">
                                 <thead>
                                     <tr>
                                         <th>Domain</th>
@@ -190,10 +194,12 @@
                                         <th>Plan</th>
                                         <th>Status</th>
                                         <th>Disk Used</th>
+                                        <th>Email</th>
+                                        <th>IP</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($cPanelDomains->take(10) as $domain)
+                                    @foreach($cPanelDomains as $domain)
                                     <tr>
                                         <td>
                                             <strong>{{ $domain['domain'] }}</strong>
@@ -208,10 +214,18 @@
                                             @endif
                                         </td>
                                         <td>
-                                            {{ $domain['disk_used'] ?: '0' }} MB
-                                            @if($domain['disk_limit'])
-                                                / {{ $domain['disk_limit'] }} MB
-                                            @endif
+                                            <small>
+                                                {{ $domain['disk_used'] ?: '0' }} MB
+                                                @if($domain['disk_limit'])
+                                                    / {{ $domain['disk_limit'] }} MB
+                                                @endif
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <small>{{ $domain['email'] ?: 'N/A' }}</small>
+                                        </td>
+                                        <td>
+                                            <small>{{ $domain['ip'] ?: 'N/A' }}</small>
                                         </td>
                                     </tr>
                                     @endforeach
@@ -219,17 +233,19 @@
                             </table>
                         </div>
                         
-                        @if($cPanelDomains->count() > 10)
-                            <div class="text-center mt-3">
-                                <small class="text-muted">Showing first 10 of {{ $cPanelDomains->count() }} domains</small>
-                            </div>
-                        @endif
-                        
-                        <div class="mt-3">
+                        <div class="mt-3 d-flex justify-content-between align-items-center">
                             <small class="text-muted">
                                 <i class="ti ti-info-circle me-1"></i>
-                                Total domains: {{ $cPanelDomains->count() }}
+                                Total domains: <span id="total-domains">{{ $cPanelDomains->count() }}</span>
+                                <span id="filtered-info" style="display: none;"> | Showing: <span id="visible-domains"></span></span>
                             </small>
+                            
+                            @if($cPanelDomains->count() > 10)
+                            <small class="text-muted">
+                                <i class="ti ti-search me-1"></i>
+                                Use search to filter domains
+                            </small>
+                            @endif
                         </div>
                     @elseif($cPanelDomains)
                         <div class="alert alert-info">
@@ -404,6 +420,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             });
+        });
+    }
+    
+    // Domain search functionality
+    const domainSearch = document.getElementById('domain-search');
+    const domainsTable = document.getElementById('domains-table');
+    const totalDomainsSpan = document.getElementById('total-domains');
+    const filteredInfo = document.getElementById('filtered-info');
+    const visibleDomainsSpan = document.getElementById('visible-domains');
+    
+    if (domainSearch && domainsTable) {
+        domainSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = domainsTable.querySelectorAll('tbody tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const domain = row.cells[0].textContent.toLowerCase();
+                const user = row.cells[1].textContent.toLowerCase();
+                const plan = row.cells[2].textContent.toLowerCase();
+                
+                if (domain.includes(searchTerm) || user.includes(searchTerm) || plan.includes(searchTerm)) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            if (searchTerm.length > 0) {
+                filteredInfo.style.display = 'inline';
+                visibleDomainsSpan.textContent = visibleCount;
+            } else {
+                filteredInfo.style.display = 'none';
+            }
         });
     }
     
