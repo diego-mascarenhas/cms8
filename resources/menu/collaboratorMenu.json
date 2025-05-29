@@ -70,10 +70,10 @@
 			"slug": "certification.index"
 		},
 		{
-			"url": "style/list",
+			"url": "stylebook",
 			"name": "Guías de estilo",
 			"icon": "menu-icon tf-icons ti ti-notebook",
-			"slug": "style-list"
+			"slug": "stylebook.index"
 		},
 		{
 			"url": "notification/list",

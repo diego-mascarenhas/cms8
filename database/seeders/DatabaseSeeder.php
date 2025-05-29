@@ -49,6 +49,7 @@ class DatabaseSeeder extends Seeder
             SoftwareTypesSeeder::class,
             SoftwareSeeder::class,
             CertificationsSeeder::class,
+            StylebooksSeeder::class,
         ]);
     }
 }

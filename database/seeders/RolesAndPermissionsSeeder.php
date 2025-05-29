@@ -249,6 +249,24 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'software.update']);
         Permission::create(['name' => 'software.destroy']);
 
+        Permission::create(['name' => 'certification.index']);
+        Permission::create(['name' => 'certification.list']);
+        Permission::create(['name' => 'certification.create']);
+        Permission::create(['name' => 'certification.show']);
+        Permission::create(['name' => 'certification.edit']);
+        Permission::create(['name' => 'certification.store']);
+        Permission::create(['name' => 'certification.update']);
+        Permission::create(['name' => 'certification.destroy']);
+
+        Permission::create(['name' => 'stylebook.index']);
+        Permission::create(['name' => 'stylebook.list']);
+        Permission::create(['name' => 'stylebook.create']);
+        Permission::create(['name' => 'stylebook.show']);
+        Permission::create(['name' => 'stylebook.edit']);
+        Permission::create(['name' => 'stylebook.store']);
+        Permission::create(['name' => 'stylebook.update']);
+        Permission::create(['name' => 'stylebook.destroy']);
+
         $rootRole = Role::create(['name' => 'root']);
         $rootRole->syncPermissions([
             'user.management',
@@ -326,6 +344,22 @@ class RolesAndPermissionsSeeder extends Seeder
             'software.store',
             'software.update',
             'software.destroy',
+            'certification.index',
+            'certification.list',
+            'certification.create',
+            'certification.show',
+            'certification.edit',
+            'certification.store',
+            'certification.update',
+            'certification.destroy',
+            'stylebook.index',
+            'stylebook.list',
+            'stylebook.create',
+            'stylebook.show',
+            'stylebook.edit',
+            'stylebook.store',
+            'stylebook.update',
+            'stylebook.destroy',
         ]);
 
         $collaboratorRole = Role::create(['name' => 'collaborator']);
@@ -598,6 +632,22 @@ class RolesAndPermissionsSeeder extends Seeder
             'software.store',
             'software.update',
             'software.destroy',
+            'certification.index',
+            'certification.list',
+            'certification.create',
+            'certification.show',
+            'certification.edit',
+            'certification.store',
+            'certification.update',
+            'certification.destroy',
+            'stylebook.index',
+            'stylebook.list',
+            'stylebook.create',
+            'stylebook.show',
+            'stylebook.edit',
+            'stylebook.store',
+            'stylebook.update',
+            'stylebook.destroy',
         ]);
     }
 }

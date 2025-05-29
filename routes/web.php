@@ -39,6 +39,7 @@ use App\Http\Controllers\FareController;
 use App\Http\Controllers\SoftwareController;
 use App\Models\Contact;
 use App\Http\Controllers\CertificationController;
+use App\Http\Controllers\StylebookController;
 
 // auth
 Route::middleware([
@@ -297,6 +298,15 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/certification/{certification}/edit', [CertificationController::class, 'edit'])->name('certification.edit')->middleware('auth');
     Route::put('/certification/{certification}', [CertificationController::class, 'update'])->name('certification.update')->middleware('auth');
     Route::delete('/certification/{certification}', [CertificationController::class, 'destroy'])->name('certification.destroy')->middleware('auth');
+
+    // Style Book Management
+    Route::get('/stylebook', [StylebookController::class, 'index'])->name('stylebook.index')->middleware('auth');
+    Route::get('/stylebook/create', [StylebookController::class, 'create'])->name('stylebook.create')->middleware('auth');
+    Route::post('/stylebook', [StylebookController::class, 'store'])->name('stylebook.store')->middleware('auth');
+    Route::get('/stylebook/{stylebook}', [StylebookController::class, 'show'])->name('stylebook.show')->middleware('auth');
+    Route::get('/stylebook/{stylebook}/edit', [StylebookController::class, 'edit'])->name('stylebook.edit')->middleware('auth');
+    Route::put('/stylebook/{stylebook}', [StylebookController::class, 'update'])->name('stylebook.update')->middleware('auth');
+    Route::delete('/stylebook/{stylebook}', [StylebookController::class, 'destroy'])->name('stylebook.destroy')->middleware('auth');
 
     // Tarifas Personalizadas de Usuario
     Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
