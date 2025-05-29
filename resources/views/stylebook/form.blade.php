@@ -5,6 +5,7 @@
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -13,6 +14,7 @@
 <script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -30,6 +32,26 @@
             dateFormat: 'Y-m-d'
         });
     });
+    
+    // Function to delete record with SweetAlert2 confirmation
+    function deleteStylebook() {
+        Swal.fire({
+            title: "{{ __('Are you sure?') }}",
+            text: "{{ __('You won\'t be able to revert this!') }}",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: "{{ __('Yes, delete it!') }}",
+            customClass: {
+                confirmButton: 'btn btn-primary me-3',
+                cancelButton: 'btn btn-label-secondary'
+            },
+            buttonsStyling: false
+        }).then(function (result) {
+            if (result.value) {
+                document.getElementById('delete-form').submit();
+            }
+        });
+    }
 </script>
 @endsection
 
@@ -42,7 +64,7 @@
     <div class="d-flex align-content-center flex-wrap gap-3">
         @can('stylebook.destroy')
             @if(isset($stylebook->id))
-                <a href="javascript:void(0)" onclick="if(confirm('{{ __('Are you sure you want to delete this style book?') }}')) { document.getElementById('delete-form').submit(); }" class="btn btn-danger waves-effect waves-light">
+                <a href="javascript:void(0)" onclick="deleteStylebook()" class="btn btn-danger waves-effect waves-light">
                     <i class="ti ti-trash me-1"></i>{{ __('Delete') }}
                 </a>
                 <form id="delete-form" method="POST" action="{{ route('stylebook.destroy', $stylebook->id) }}" style="display: none;">

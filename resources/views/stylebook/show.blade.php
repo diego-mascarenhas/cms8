@@ -15,18 +15,12 @@
     <div class="d-flex align-content-center flex-wrap gap-3">
         @can('stylebook.edit')
             <a href="{{ route('stylebook.edit', $stylebook->id) }}" class="btn btn-primary waves-effect waves-light">
-                <i class="ti ti-edit me-1"></i>{{ __('Edit Style Book') }}
+                <i class="ti ti-edit me-1"></i>{{ __('Edit') }}
             </a>
         @endcan
-        @can('stylebook.destroy')
-            <a href="javascript:void(0)" onclick="if(confirm('{{ __('Are you sure you want to delete this style book?') }}')) { document.getElementById('delete-form').submit(); }" class="btn btn-danger waves-effect waves-light">
-                <i class="ti ti-trash me-1"></i>{{ __('Delete') }}
-            </a>
-            <form id="delete-form" method="POST" action="{{ route('stylebook.destroy', $stylebook->id) }}" style="display: none;">
-                @csrf
-                @method('DELETE')
-            </form>
-        @endcan
+        <a href="{{ route('stylebook.index') }}" class="btn btn-label-secondary waves-effect">
+            <i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}
+        </a>
     </div>
 </div>
 
