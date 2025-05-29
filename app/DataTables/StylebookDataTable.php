@@ -14,73 +14,39 @@ class StylebookDataTable extends DataTable
 {
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        \Illuminate\Support\Facades\Log::debug('StylebookDataTable: dataTable method called');
-        
-        $dataTable = new EloquentDataTable($query);
-        
-        $dataTable->addColumn('action', function ($stylebook) {
-            \Illuminate\Support\Facades\Log::debug('StylebookDataTable: Processing action for stylebook ID: ' . $stylebook->id);
-            return view('stylebook.action', compact('stylebook'))->render();
-        });
-        
-        $dataTable->editColumn('language', function ($row) {
-            \Illuminate\Support\Facades\Log::debug('StylebookDataTable: Processing language for stylebook ID: ' . $row->id);
-            $languageName = $row->languageRelation ? $row->languageRelation->name : strtoupper($row->language);
-            
-            // Use helper to map language code to appropriate country code for flags
-            $countryCode = Helpers::getLanguageFlag($row->language);
-            
-            $flag = '<span class="fi fi-' . strtolower($countryCode) . ' me-2"></span>';
-            return $flag . e($languageName);
-        });
-        
-        $dataTable->editColumn('date', function ($row) {
-            \Illuminate\Support\Facades\Log::debug('StylebookDataTable: Processing date for stylebook ID: ' . $row->id . ', date: ' . ($row->date ? $row->date->format('Y-m-d') : 'null'));
-            return $row->date ? $row->date->format('d/m/Y') : '';
-        });
-        
-        $dataTable->orderColumn('name', function ($query, $order) {
-            $query->orderBy('name', $order);
-        });
-        
-        $dataTable->orderColumn('language', function ($query, $order) {
-            $query->orderBy('language', $order);
-        });
-        
-        $dataTable->orderColumn('date', function ($query, $order) {
-            $query->orderBy('date', $order);
-        });
-        
-        $dataTable->rawColumns(['action', 'language'])
+        return (new EloquentDataTable($query))
+            ->addColumn('action', function ($stylebook) {
+                return view('stylebook.action', compact('stylebook'))->render();
+            })
+            ->editColumn('language', function ($row) {
+                $languageName = $row->languageRelation ? $row->languageRelation->name : strtoupper($row->language);
+                
+                // Use helper to map language code to appropriate country code for flags
+                $countryCode = Helpers::getLanguageFlag($row->language);
+                
+                $flag = '<span class="fi fi-' . strtolower($countryCode) . ' me-2"></span>';
+                return $flag . e($languageName);
+            })
+            ->editColumn('date', function ($row) {
+                return $row->date ? $row->date->format('d/m/Y') : '';
+            })
+            ->orderColumn('name', function ($query, $order) {
+                $query->orderBy('name', $order);
+            })
+            ->orderColumn('language', function ($query, $order) {
+                $query->orderBy('language', $order);
+            })
+            ->orderColumn('date', function ($query, $order) {
+                $query->orderBy('date', $order);
+            })
+            ->rawColumns(['action', 'language'])
             ->setRowId('id');
-            
-        \Illuminate\Support\Facades\Log::debug('StylebookDataTable: dataTable method completed setup');
-        
-        return $dataTable;
     }
 
     public function query(Stylebook $model): QueryBuilder
     {
         // Global scope will handle team filtering automatically
-        $query = $model->newQuery()->with('languageRelation');
-        
-        // Log the SQL query and bindings
-        $rawSql = $query->toSql();
-        $bindings = $query->getBindings();
-        \Illuminate\Support\Facades\Log::debug('StylebookDataTable SQL: ' . $rawSql);
-        \Illuminate\Support\Facades\Log::debug('StylebookDataTable Bindings: ' . json_encode($bindings));
-        
-        // Log the count and sample data
-        $count = $query->count();
-        \Illuminate\Support\Facades\Log::debug('StylebookDataTable Count: ' . $count);
-        
-        if ($count > 0) {
-            // Log the first 2 records for debugging
-            $sample = $query->limit(2)->get()->toArray();
-            \Illuminate\Support\Facades\Log::debug('StylebookDataTable Sample: ' . json_encode($sample));
-        }
-        
-        return $query;
+        return $model->newQuery()->with('languageRelation');
     }
 
     public function html(): HtmlBuilder
@@ -111,6 +77,7 @@ class StylebookDataTable extends DataTable
             Column::computed('action')
                 ->exportable(false)
                 ->printable(false)
+                ->width(60)
                 ->addClass('text-center')
                 ->title(__('Actions')),
         ];
