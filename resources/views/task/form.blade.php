@@ -26,6 +26,31 @@
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
 
 <script src="{{asset('assets/js/forms-editors.js')}}"></script>
+
+<script>
+    // Initialize Quill editor
+    var quill = new Quill('#snow-editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: '#snow-toolbar'
+        }
+    });
+
+    // Form submission handler
+    document.querySelector('form').onsubmit = function() {
+        // Update hidden input field with editor content
+        document.querySelector('#description').value = quill.root.innerHTML;
+    };
+</script>
+
+<script>
+    $(function() {
+        // Inicializar Select2 si está disponible
+        if ($.fn.select2) {
+            $('#unit_ids, #type_id').select2();
+        }
+    });
+</script>
 @endsection
 
 @section('content')
@@ -91,21 +116,4 @@
 		</div>
 	</form>
 </div>
-
-<script>
-    // Initialize Quill editor
-    var quill = new Quill('#snow-editor', {
-        theme: 'snow',
-        modules: {
-            toolbar: '#snow-toolbar'
-        }
-    });
-
-    // Form submission handler
-    document.querySelector('form').onsubmit = function() {
-        // Update hidden input field with editor content
-        document.querySelector('#description').value = quill.root.innerHTML;
-    };
-</script>
-
 @endsection

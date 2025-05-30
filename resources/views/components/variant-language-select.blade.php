@@ -2,30 +2,33 @@
 
 <div>
     <label for="{{ $id ?? $name }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id ?? $name }}" name="{{ $name }}" class="form-select select2">
+    <select id="{{ $id ?? $name }}" name="{{ $name }}" class="select2 form-select @error($name) is-invalid @enderror" required>
         <option value="">Seleccione una variante de idioma</option>
         @foreach($variants as $variant)
             <option value="{{ $variant->code }}" 
                     {{ old($name, $value) == $variant->code ? 'selected' : '' }}
                     data-country="{{ $variant->country_code ?? '' }}"
+                    data-flag="{{ strtolower($variant->country_code ?? '') }}"
                     data-base="{{ $variant->base_language }}">
-                @if($variant->flag)
-                    <span class="fi fi-{{ strtolower($variant->flag) }} me-1"></span>
-                @endif
                 {{ $variant->name }}
             </option>
         @endforeach
     </select>
+    @error($name)
+        <div class="invalid-feedback">{{ $message }}</div>
+    @enderror
 </div>
 
+@push('page-script')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const select = document.getElementById('{{ $id ?? $name }}');
-        if (select) {
-            // Initialize Select2
-            $(select).select2({
+    $(function () {
+        const select = $('#{{ $id ?? $name }}');
+        if (select.length) {
+            select.select2({
+                dropdownParent: select.parent(),
                 templateResult: formatLanguage,
-                templateSelection: formatLanguage
+                templateSelection: formatLanguage,
+                width: '100%'
             });
         }
         
@@ -36,13 +39,31 @@
             }
             
             const $option = $(language.element);
-            const country = $option.data('country');
+            let flag = $option.data('flag');
             
-            if (!country) {
+            // If no flag specified, try to get it from base language code
+            if (!flag) {
+                const baseCode = $option.data('base')?.toLowerCase();
+                if (baseCode) {
+                    // Map language codes to country codes for flags
+                    const languageMap = {
+                        'ja': 'jp', // Japanese -> Japan
+                        'ko': 'kr', // Korean -> South Korea
+                        'zh': 'cn', // Chinese -> China
+                        'en': 'gb', // English -> Great Britain
+                        'ar': 'sa'  // Arabic -> Saudi Arabia
+                    };
+                    
+                    flag = languageMap[baseCode] || baseCode;
+                }
+            }
+            
+            if (!flag) {
                 return language.text;
             }
             
-            return $('<span><span class="fi fi-' + country.toLowerCase() + ' me-2"></span>' + language.text + '</span>');
+            return $('<span><i class="fi fi-' + flag + ' me-2"></i>' + language.text + '</span>');
         }
     });
-</script> 
+</script>
+@endpush 

@@ -52,28 +52,28 @@
 			"slug": "language/variants"
 		},
 		{
-			"url": "rate/list",
+			"url": "fare",
 			"name": "Tarifas",
 			"icon": "menu-icon tf-icons ti ti-currency-dollar",
-			"slug": "rate-list"
+			"slug": "fare.index"
 		},
 		{
-			"url": "program/list",
+			"url": "software",
 			"name": "Programas",
 			"icon": "menu-icon tf-icons ti ti-device-laptop",
-			"slug": "program-list"
+			"slug": "software.index"
 		},
 		{
-			"url": "certification/list",
+			"url": "certification",
 			"name": "Certificaciones",
 			"icon": "menu-icon tf-icons ti ti-school",
-			"slug": "certification-list"
+			"slug": "certification.index"
 		},
 		{
-			"url": "style/list",
+			"url": "stylebook",
 			"name": "Guías de estilo",
 			"icon": "menu-icon tf-icons ti ti-notebook",
-			"slug": "style-list"
+			"slug": "stylebook.index"
 		},
 		{
 			"url": "notification/list",

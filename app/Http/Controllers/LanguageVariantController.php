@@ -24,7 +24,7 @@ class LanguageVariantController extends Controller
     {
         $languages = Language::orderBy('name')->get();
         
-        return view('language.variants.create', compact('languages'));
+        return view('language.variants.form', compact('languages'));
     }
     
     /**
@@ -36,9 +36,7 @@ class LanguageVariantController extends Controller
             'code' => 'required|string|max:10|unique:language_variants',
             'name' => 'required|string|max:255',
             'base_language' => 'required|string|exists:languages,code',
-            'country_code' => 'nullable|string|max:2',
-            'native_name' => 'nullable|string|max:255',
-            'flag' => 'nullable|string|max:2',
+            'country_code' => 'required|string|max:2',
         ]);
         
         LanguageVariant::create($validated);
@@ -55,7 +53,7 @@ class LanguageVariantController extends Controller
         $languages = Language::orderBy('name')->get();
         $variant = $languageVariant;
         
-        return view('language.variants.edit', compact('variant', 'languages'));
+        return view('language.variants.form', compact('variant', 'languages'));
     }
     
     /**
@@ -67,9 +65,7 @@ class LanguageVariantController extends Controller
             'code' => 'required|string|max:10|unique:language_variants,code,' . $languageVariant->id,
             'name' => 'required|string|max:255',
             'base_language' => 'required|string|exists:languages,code',
-            'country_code' => 'nullable|string|max:2',
-            'native_name' => 'nullable|string|max:255',
-            'flag' => 'nullable|string|max:2',
+            'country_code' => 'required|string|max:2',
         ]);
         
         $languageVariant->update($validated);
@@ -84,6 +80,10 @@ class LanguageVariantController extends Controller
     public function destroy(LanguageVariant $languageVariant)
     {
         $languageVariant->delete();
+        
+        if (request()->ajax()) {
+            return response()->json(['success' => true]);
+        }
         
         return redirect()->route('language-variants.index')
             ->with('success', 'Variante de idioma eliminada correctamente');

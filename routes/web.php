@@ -33,8 +33,13 @@ use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\CollaboratorController;
-use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CustomerFareController;
+use App\Http\Controllers\UserFareController;
+use App\Http\Controllers\FareController;
+use App\Http\Controllers\SoftwareController;
 use App\Models\Contact;
+use App\Http\Controllers\CertificationController;
+use App\Http\Controllers\StylebookController;
 
 // auth
 Route::middleware([
@@ -155,10 +160,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit');
     Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
     Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
-    Route::get('/collaborator/{id}/rates', function ($id) {
-        $collaborator = Contact::findOrFail($id);
-        return view('collaborator.rates', compact('collaborator'));
-    })->name('collaborator.rates');
+    Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
+    Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
     Route::get('/collaborator/{id}/absences', function ($id) {
         $collaborator = Contact::findOrFail($id);
         return view('collaborator.absences', compact('collaborator'));
@@ -271,6 +274,49 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/template/{hashedId}', [TemplateController::class, 'destroy'])->name('template.destroy');
     Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');
     Route::get('/template/view/{hashedId}', [TemplateController::class, 'show'])->name('template.view');
+
+    // Fare Types
+    Route::get('/fare', [FareController::class, 'index'])->name('fare.index');
+    Route::get('/fare/create', [FareController::class, 'create'])->name('fare.create');
+    Route::post('/fare', [FareController::class, 'store'])->name('fare.store');
+    Route::get('/fare/{fare}', [FareController::class, 'show'])->name('fare.show');
+    Route::get('/fare/{fare}/edit', [FareController::class, 'edit'])->name('fare.edit');
+    Route::put('/fare/{fare}', [FareController::class, 'update'])->name('fare.update');
+    Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
+
+    // Software Management
+    Route::get('/software', [SoftwareController::class, 'index'])->name('software.index')->middleware('auth');
+    Route::get('/software/create', [SoftwareController::class, 'create'])->name('software.create')->middleware('auth');
+    Route::post('/software', [SoftwareController::class, 'store'])->name('software.store')->middleware('auth');
+    Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit')->middleware('auth');
+    Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update')->middleware('auth');
+    Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy')->middleware('auth');
+
+    // Certification Management
+    Route::get('/certification', [CertificationController::class, 'index'])->name('certification.index')->middleware('auth');
+    Route::get('/certification/create', [CertificationController::class, 'create'])->name('certification.create')->middleware('auth');
+    Route::post('/certification', [CertificationController::class, 'store'])->name('certification.store')->middleware('auth');
+    Route::get('/certification/{certification}/edit', [CertificationController::class, 'edit'])->name('certification.edit')->middleware('auth');
+    Route::put('/certification/{certification}', [CertificationController::class, 'update'])->name('certification.update')->middleware('auth');
+    Route::delete('/certification/{certification}', [CertificationController::class, 'destroy'])->name('certification.destroy')->middleware('auth');
+
+    // Style Book Management
+    Route::get('/stylebook', [StylebookController::class, 'index'])->name('stylebook.index')->middleware('auth');
+    Route::get('/stylebook/create', [StylebookController::class, 'create'])->name('stylebook.create')->middleware('auth');
+    Route::post('/stylebook', [StylebookController::class, 'store'])->name('stylebook.store')->middleware('auth');
+    Route::get('/stylebook/{stylebook}', [StylebookController::class, 'show'])->name('stylebook.show')->middleware('auth');
+    Route::get('/stylebook/{stylebook}/edit', [StylebookController::class, 'edit'])->name('stylebook.edit')->middleware('auth');
+    Route::put('/stylebook/{stylebook}', [StylebookController::class, 'update'])->name('stylebook.update')->middleware('auth');
+    Route::delete('/stylebook/{stylebook}', [StylebookController::class, 'destroy'])->name('stylebook.destroy')->middleware('auth');
+
+    // Tarifas Personalizadas de Usuario
+    Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
+    Route::get('/user-fare/create', [UserFareController::class, 'create'])->name('user-fare.create');
+    Route::post('/user-fare', [UserFareController::class, 'store'])->name('user-fare.store');
+    Route::get('/user-fare/{userFare}', [UserFareController::class, 'show'])->name('user-fare.show');
+    Route::get('/user-fare/{userFare}/edit', [UserFareController::class, 'edit'])->name('user-fare.edit');
+    Route::put('/user-fare/{userFare}', [UserFareController::class, 'update'])->name('user-fare.update');
+    Route::delete('/user-fare/{userFare}', [UserFareController::class, 'destroy'])->name('user-fare.destroy');
 });
 
 // Testing

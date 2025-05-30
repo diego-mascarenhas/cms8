@@ -103,6 +103,15 @@
 			"module_key": "earnings"
 		},
 		{
+			"url": "fare",
+			"name": "Tarifas",
+			"icon": "menu-icon tf-icons ti ti-currency-dollar",
+			"slug": "fare.index",
+			"permission": "fare.list",
+			"module_key": "fares"
+		},
+
+		{
 			"url": "expense/list",
 			"name": "Expenses",
 			"icon": "menu-icon tf-icons ti ti-receipt",

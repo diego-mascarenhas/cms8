@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             PolicySeeder::class,
             CountrySeeder::class,
             LanguageSeeder::class,
+            LanguageVariantSeeder::class,
             SourceSeeder::class,
             UserSeeder::class,
             EnterpriseTypeSeeder::class,
@@ -41,6 +42,14 @@ class DatabaseSeeder extends Seeder
             ModuleSeeder::class,
             ModuleCategorySeeder::class,
             CategorySeeder::class,
-		]);
+            UnitsSeeder::class,
+            FareTypesSeeder::class,
+            FaresSeeder::class,
+            FareUnitSeeder::class,
+            SoftwareTypesSeeder::class,
+            SoftwareSeeder::class,
+            CertificationsSeeder::class,
+            StylebooksSeeder::class,
+        ]);
     }
 }

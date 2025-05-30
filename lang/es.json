@@ -618,5 +618,7 @@
     "Active": "Activo",
     "Inactive": "Inactivo",
     "Text": "Texto",
-    "Template": "Plantilla"
+    "Template": "Plantilla",
+    "Language": "Idioma",
+    "Country": "País"
 }

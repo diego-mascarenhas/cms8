@@ -1,0 +1,160 @@
+/* Estilos para la vista de tarifas de colaborador */
+
+/* Tarjetas */
+.card {
+    box-shadow: 0 2px 6px 0 rgba(67, 89, 113, 0.12);
+    border-radius: 8px;
+}
+
+/* Pestañas de navegación */
+.nav-tabs .nav-link.active {
+    color: #696cff;
+    border-bottom: 2px solid #696cff;
+    background: transparent;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link {
+    color: #697a8d;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.75rem 1.25rem;
+}
+
+.nav-tabs {
+    border-bottom: 1px solid #eaeaec;
+}
+
+/* Botones de selección de idioma */
+.btn-outline-primary.active {
+    background-color: #e7e7ff;
+    border-color: #696cff;
+}
+
+.btn-outline-primary {
+    border-color: #d8d8e9;
+    color: #697a8d;
+}
+
+.btn-outline-primary:hover {
+    background-color: #f0f0ff;
+    border-color: #696cff;
+}
+
+/* Campos de tarifas */
+.input-group-text {
+    background-color: #f6f6f9;
+    color: #697a8d;
+    border-color: #d8d8e9;
+    font-size: 0.85rem;
+}
+
+.input-group-sm > .form-control {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.input-group-sm > .input-group-text {
+    padding: 0.25rem 0.5rem;
+}
+
+/* Categorías */
+h5 {
+    color: #566a7f;
+    font-weight: 500;
+}
+
+/* Separadores */
+hr {
+    opacity: 0.1;
+    margin: 1.5rem 0;
+}
+
+/* Etiquetas */
+.form-label {
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #566a7f;
+}
+
+/* Selectores */
+.form-select {
+    padding: 0.4375rem 2.25rem 0.4375rem 0.875rem;
+    border-color: #d8d8e9;
+    color: #697a8d;
+}
+
+/* Avatar */
+.avatar-xl {
+    width: 5rem;
+    height: 5rem;
+}
+
+.avatar-initial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 500;
+    font-size: 1.8rem;
+}
+
+/* Badges */
+.badge.bg-label-primary {
+    background-color: #e7e7ff !important;
+    color: #696cff !important;
+}
+
+.badge.bg-label-success {
+    background-color: #e8fadf !important;
+    color: #71dd37 !important;
+}
+
+/* Documentos */
+.list-unstyled a {
+    color: #697a8d;
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.list-unstyled a:hover {
+    color: #696cff;
+}
+
+/* Información de contacto */
+.info-container .fw-semibold {
+    color: #566a7f;
+    font-size: 0.85rem;
+}
+
+.info-container ul li {
+    font-size: 0.85rem;
+}
+
+/* Botones */
+.btn-primary {
+    background-color: #696cff;
+    border-color: #696cff;
+}
+
+.btn-label-danger {
+    color: #ff3e1d;
+    background-color: #ffe0db;
+    border-color: transparent;
+}
+
+/* Espaciado general */
+.mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+/* Contenido principal */
+.p-4 {
+    padding: 1.25rem !important;
+}
+
+/* Alineación de texto */
+.text-start {
+    text-align: left !important;
+} 
