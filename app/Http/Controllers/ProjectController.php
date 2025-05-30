@@ -21,7 +21,7 @@ class ProjectController extends Controller
      */
     public function create()
     {
-        $enterprise_id = request('client_id');
+        $enterprise_id = request('enterprise_id');
         $statuses = ProjectStatus::getOptions();
 
         return view('project.form', compact('enterprise_id', 'statuses'));

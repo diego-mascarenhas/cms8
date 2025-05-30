@@ -60,8 +60,12 @@
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @can('project.create')
-                <a href="{{ route('project.create') }}" class="btn btn-success waves-effect waves-light"><i
+                <a href="{{ route('project.create', ['enterprise_id' => $data->enterprise ? $data->enterprise->id : null]) }}" class="btn btn-success waves-effect waves-light"><i
                         class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
+            @endcan
+            @can('service.create')
+                <a href="{{ route('service.create', ['enterprise_id' => $data->enterprise ? $data->enterprise->id : null]) }}" class="btn btn-info waves-effect waves-light ms-2"><i
+                        class="ti ti-server me-1"></i>Crear servicio</a>
             @endcan
             @can('chat.list')
                 @if ($data->getWhatsAppNumber())
@@ -69,6 +73,11 @@
                         class="btn btn-info waves-effect waves-light"><i class="ti ti-message-chatbot me-1"></i>Chat</a>
                 @endif
             @endcan
+            @if (auth()->user()->currentTeam->id == env('CMS_TEAM_ID') && isset($data->enterprise->id))
+                <a href="{{ route('cms7.empresa', $data->enterprise->id) }}" class="btn btn-secondary waves-effect waves-light" target="_blank">
+                    <i class="ti ti-database me-1"></i>
+                </a>
+            @endif
         </div>
     </div>
 

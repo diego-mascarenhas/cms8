@@ -63,7 +63,7 @@ class ServiceController extends Controller
 
         // Calculate pending and active services
         $pending_services = Service::whereIn('status', [2, 3])->count();
-        $active_services = Service::where('status', 4)->count();
+        $active_services = Service::where('status', '>=', 4)->count();
         $total_services = $pending_services + $active_services;
         $percentage_pending = $total_services > 0 ? ($pending_services / $total_services) * 100 : 0;
 
@@ -75,9 +75,10 @@ class ServiceController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
-        return view('service.form');
+        $enterprise_id = $request->input('enterprise_id');
+        return view('service.form', compact('enterprise_id'));
     }
 
     /**
@@ -85,23 +86,37 @@ class ServiceController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->except(['id', '_token']);
-
         $request->validate([
-            'name' => 'required|string|min:3|max:25',
+            'enterprise_id' => 'required|exists:enterprises,id',
+            'category_id' => 'required|exists:categories,id',
+            'operation' => 'required|in:buy,sell',
+            'description' => 'nullable|string',
+            'currency_id' => 'nullable|exists:currencies,id',
+            'price' => 'nullable|numeric',
+            'discount' => 'nullable|numeric',
+            'frequency' => 'nullable|integer|min:1',
+            'next_billing' => 'nullable|date',
+            'expires_at' => 'nullable|date',
+            'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
+            'data' => 'nullable|array',
+            'responsible_id' => 'nullable|exists:users,id',
         ]);
 
-        $data['status'] = $request->has('status') ? 1 : 0;
+        $input = $request->all();
+        
+        // Format dates
+        if (!empty($input['next_billing'])) {
+            $input['next_billing'] = \Carbon\Carbon::parse($input['next_billing']);
+        }
+        
+        if (!empty($input['expires_at'])) {
+            $input['expires_at'] = \Carbon\Carbon::parse($input['expires_at']);
+        }
 
-        Service::updateOrCreate(
-            ['id' => $request->id],
-            [
-                'name' => $data['name'],
-                'status' => $data['status'],
-            ]
-        );
-
-        return redirect()->route('app-service-list')->with('success', 'Record saved successfully.');
+        // Create the service
+        $service = Service::create($input);
+        
+        return redirect()->route('service-list')->with('success', 'Service created successfully');
     }
 
     /**
@@ -147,7 +162,39 @@ class ServiceController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $service = Service::findOrFail($id);
+        
+        $request->validate([
+            'enterprise_id' => 'required|exists:enterprises,id',
+            'category_id' => 'required|exists:categories,id',
+            'operation' => 'required|in:buy,sell',
+            'description' => 'nullable|string',
+            'currency_id' => 'nullable|exists:currencies,id',
+            'price' => 'nullable|numeric',
+            'discount' => 'nullable|numeric',
+            'frequency' => 'nullable|integer|min:1',
+            'next_billing' => 'nullable|date',
+            'expires_at' => 'nullable|date',
+            'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
+            'data' => 'nullable|array',
+            'responsible_id' => 'nullable|exists:users,id',
+        ]);
+
+        $input = $request->all();
+        
+        // Format dates
+        if (!empty($input['next_billing'])) {
+            $input['next_billing'] = \Carbon\Carbon::parse($input['next_billing']);
+        }
+        
+        if (!empty($input['expires_at'])) {
+            $input['expires_at'] = \Carbon\Carbon::parse($input['expires_at']);
+        }
+
+        // Update the service
+        $service->update($input);
+        
+        return redirect()->route('service-list')->with('success', 'Service updated successfully');
     }
 
     /**
@@ -166,7 +213,7 @@ class ServiceController extends Controller
     {
         Log::info('Iniciando proyección de facturación');
 
-        $services = Service::where('status', 4)->get();
+        $services = Service::where('status', '>=', 4)->get();
         $currentDate = Carbon::now();
         $projectionMonths = 12; // Número de meses para proyectar
         $projectionData = [];

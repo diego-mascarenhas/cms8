@@ -29,6 +29,7 @@ class Service extends Model
         'next_billing',
         'last_billed',
         'expires_at',
+        'responsible_id',
         'status',
         'created_at',
         'updated_at',
@@ -76,6 +77,11 @@ class Service extends Model
     public function client()
     {
         return $this->belongsTo(Enterprise::class, 'enterprise_id');
+    }
+
+    public function responsible()
+    {
+        return $this->belongsTo(User::class, 'responsible_id');
     }
 
     public function services()
@@ -136,13 +142,21 @@ class Service extends Model
         switch ($this->status)
         {
             case 1:
-                return '<span class="badge rounded-pill bg-label-danger">Suspended</span>';
+                return '<span class="badge rounded-pill bg-label-secondary">Suspendido</span>';
             case 2:
-                return '<span class="badge rounded-pill bg-label-warning">To suspend</span>';
+                return '<span class="badge rounded-pill bg-label-warning">Suspender</span>';
             case 3:
-                return '<span class="badge rounded-pill bg-label-success">To activate</span>';
+                return '<span class="badge rounded-pill bg-label-success">Activar</span>';
             case 4:
-                return '<span class="badge rounded-pill bg-label-info">Active</span>';
+                return '<span class="badge rounded-pill bg-label-info">Activo</span>';
+            case 5:
+                return '<span class="badge rounded-pill bg-label-danger">Migrar</span>';
+            case 6:
+                return '<span class="badge rounded-pill bg-label-warning">Cambiar DNS</span>';
+            case 7:
+                return '<span class="badge rounded-pill bg-label-warning">Delegar</span>';
+            case 8:
+                return '<span class="badge rounded-pill bg-label-warning">Corregir precio</span>';
             default:
                 return '<span class="badge rounded-pill bg-label-secondary">unknown</span>';
         }
@@ -192,7 +206,17 @@ class Service extends Model
 
     public static function calculateTotal($status, $operation)
     {
-        $services = self::where('status', $status)
+        $services = self::where(function($query) use ($status) {
+                // If status is specifically provided, use exact status
+                if (is_numeric($status)) {
+                    // For status 4, include all status >= 4 (all active statuses)
+                    if ($status == 4) {
+                        $query->where('status', '>=', 4);
+                    } else {
+                        $query->where('status', $status);
+                    }
+                }
+            })
             ->whereHas('category', function ($query) use ($operation)
             {
                 $query->where('operation', $operation);

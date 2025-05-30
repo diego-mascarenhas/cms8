@@ -26,7 +26,7 @@ class UpdateContactRequest extends FormRequest
             'contact.user_id' => 'nullable|exists:users,id',
             'enterprise.name' => 'nullable|string|max:255',
             'enterprise.code' => 'nullable|string|max:255',
-            'enterprise.website' => 'nullable|url|max:255',
+            'enterprise.website' => 'nullable|max:255', //!FIXME: Add url validation
             'enterprise.phone' => 'nullable|string|max:20',
             'enterprise.email' => 'nullable|email|max:255',
             'enterprise.whatsapp' => 'nullable|string|max:20',
