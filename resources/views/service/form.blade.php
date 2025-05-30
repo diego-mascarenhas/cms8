@@ -17,11 +17,36 @@
         <span class="text-muted fw-light">Service /</span> {{ isset($data) ? 'Edit Service' : 'Create Service' }}
     </h4>
 
+    @if ($errors->any())
+    <div class="alert alert-danger">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
+    @if(session('error'))
+    <div class="alert alert-danger">
+        {{ session('error') }}
+    </div>
+    @endif
+
+    @if(session('success'))
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
+    @endif
+
     <form id="serviceForm" method="POST" action="{{ isset($data) ? route('service.update', $data->id) : route('service.store') }}">
         @csrf
         @if(isset($data))
             @method('PUT')
             <input type="hidden" name="id" value="{{ $data->id }}">
+        @endif
+        
+        @if(isset($enterprise_id))
             <input type="hidden" name="enterprise_id" value="{{ $enterprise_id }}">
         @endif
 
@@ -69,9 +94,9 @@
                                 <option value="3" {{ isset($data) && $data->status == 3 ? 'selected' : '' }}>Activar</option>
                                 <option value="4" {{ isset($data) && $data->status == 4 ? 'selected' : '' }}>Activo</option>
                                 <option value="5" {{ isset($data) && $data->status == 5 ? 'selected' : '' }}>Migrar</option>
-                                <option value="6" {{ isset($data) && $data->status == 6 ? 'selected' : '' }}>Cambiar DNS</option>
+                                <option value="6" {{ isset($data) && $data->status == 6 ? 'selected' : '' }}>Migrando</option>
                                 <option value="7" {{ isset($data) && $data->status == 7 ? 'selected' : '' }}>Delegar</option>
-                                <option value="8" {{ isset($data) && $data->status == 8 ? 'selected' : '' }}>Corregir precio</option>
+                                <option value="8" {{ isset($data) && $data->status == 8 ? 'selected' : '' }}>Analizar</option>
                             </select>
                         </div>
                     </div>
@@ -114,7 +139,8 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="discount" class="form-label">Discount (%)</label>
-                            <input type="number" id="discount" name="discount" class="form-control" step="0.01" value="{{ isset($data) ? $data->discount : '0' }}">
+                            <input type="number" id="discount" name="discount" class="form-control" step="1" max="30" value="{{ isset($data) ? $data->discount : '0' }}">
+                            <small class="text-muted">Maximum discount allowed: 30%</small>
                         </div>
                     </div>
 
@@ -160,11 +186,35 @@
                             <input type="text" id="data_ip" name="data[ip]" class="form-control" value="{{ isset($data) ? ($data->data['ip'] ?? '') : '' }}">
                         </div>
                     </div>
+                    
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="data_server_id" class="form-label">Server</label>
+                            <select id="data_server_id" name="data[server_id]" class="form-select">
+                                <option value="">Select Server</option>
+                                @foreach(\App\Models\Server::orderBy('name')->get() as $server)
+                                    <option value="{{ $server->id }}" {{ isset($data) && isset($data->data['server_id']) && $data->data['server_id'] == $server->id ? 'selected' : '' }}>
+                                        {{ $server->name }} ({{ $server->ip }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="data_plan" class="form-label">Plan</label>
                             <input type="text" id="data_plan" name="data[plan]" class="form-control" value="{{ isset($data) ? ($data->data['plan'] ?? '') : '' }}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="data_email_service" class="form-label">Email Service</label>
+                            <select id="data_email_service" name="data[email_service]" class="form-select">
+                                <option value="1" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 1 ? 'selected' : '' }}>Yes</option>
+                                <option value="0" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 0 ? 'selected' : '' }}>No</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -276,16 +326,6 @@
                                 <option value="magento" {{ isset($data) && isset($data->data['website_type']) && $data->data['website_type'] == 'magento' ? 'selected' : '' }}>Magento</option>
                                 <option value="html" {{ isset($data) && isset($data->data['website_type']) && $data->data['website_type'] == 'html' ? 'selected' : '' }}>Static HTML</option>
                                 <option value="other" {{ isset($data) && isset($data->data['website_type']) && $data->data['website_type'] == 'other' ? 'selected' : '' }}>Other</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label for="data_email_service" class="form-label">Email Service</label>
-                            <select id="data_email_service" name="data[email_service]" class="form-select">
-                                <option value="1" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 1 ? 'selected' : '' }}>Yes</option>
-                                <option value="0" {{ isset($data) && isset($data->data['email_service']) && $data->data['email_service'] == 0 ? 'selected' : '' }}>No</option>
                             </select>
                         </div>
                     </div>

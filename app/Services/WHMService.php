@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Domain;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Models\Server;
 
 class WhmService
 {
@@ -183,5 +184,175 @@ class WhmService
                 'line' => $e->getLine()
             ];
         }
+    }
+
+    public function getDomainsFromServer(Server $server)
+    {
+        if ($server->control_panel !== 'cpanel' || !$server->hasToken()) {
+            return [
+                'success' => false,
+                'error' => 'Server is not configured for cPanel or missing token'
+            ];
+        }
+
+        try {
+            $url = "https://{$server->server_url}:2087";
+            $response = Http::withHeaders([
+                'Authorization' => $server->getWhmAuthHeader(),
+            ])
+                ->timeout(30)
+                ->get($url . '/json-api/listaccts');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                if (isset($data['acct'])) {
+                    return [
+                        'success' => true,
+                        'domains' => collect($data['acct'])->map(function($account) {
+                            return [
+                                'domain' => $account['domain'],
+                                'user' => $account['user'],
+                                'plan' => $account['plan'] ?? $account['owner'] ?? null,
+                                'suspended' => $account['suspended'] ?? 0,
+                                'disk_used' => $account['diskused'] ?? 0,
+                                'disk_limit' => $account['disklimit'] ?? 0,
+                                'email' => $account['email'] ?? null,
+                                'ip' => $account['ip'] ?? null,
+                                'theme' => $account['theme'] ?? null,
+                                'shell' => $account['shell'] ?? null,
+                                'partition' => $account['partition'] ?? null,
+                                'max_ftp' => $account['maxftp'] ?? null,
+                                'max_sql' => $account['maxsql'] ?? null,
+                                'max_pop' => $account['maxpop'] ?? null,
+                                'max_lists' => $account['maxlst'] ?? null,
+                                'max_sub' => $account['maxsub'] ?? null,
+                                'max_park' => $account['maxpark'] ?? null,
+                                'max_addon' => $account['maxaddon'] ?? null,
+                                'startdate' => $account['startdate'] ?? null,
+                            ];
+                        })->sortBy('domain')->values()
+                    ];
+                }
+                
+                return [
+                    'success' => true,
+                    'domains' => collect([])
+                ];
+            }
+            
+            return [
+                'success' => false,
+                'error' => 'API request failed: ' . $response->body(),
+                'status_code' => $response->status()
+            ];
+            
+        } catch (\Exception $e) {
+            Log::error('Error getting domains from server: ' . $e->getMessage(), [
+                'server_id' => $server->id,
+                'server_url' => $server->server_url,
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => 'Connection error: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function syncDomainsFromServer(Server $server)
+    {
+        $result = $this->getDomainsFromServer($server);
+        
+        if (!$result['success']) {
+            return $result;
+        }
+
+        $synced = 0;
+        
+        foreach ($result['domains'] as $accountData) {
+            $domain = Domain::withTrashed()
+                ->where('domain', $accountData['domain'])
+                ->where('server_id', $server->id)
+                ->first();
+
+            if ($domain && $domain->trashed()) {
+                $domain->restore();
+            }
+
+            Domain::updateOrCreate(
+                [
+                    'domain' => $accountData['domain'],
+                    'server_id' => $server->id
+                ],
+                [
+                    'username' => $accountData['user'],
+                    'plan' => $accountData['plan'],
+                    'suspended' => $accountData['suspended'],
+                    'data' => $accountData
+                ]
+            );
+            
+            $synced++;
+        }
+
+        return [
+            'success' => true,
+            'domains_synced' => $synced,
+            'total_domains' => $result['domains']->count()
+        ];
+    }
+
+    public function syncDomainsFromAllDatabaseServers()
+    {
+        // Get all cPanel servers with tokens from database
+        $servers = Server::where('control_panel', 'cpanel')
+                         ->whereNotNull('encrypted_token')
+                         ->get();
+
+        if ($servers->isEmpty()) {
+            return [
+                'success' => false,
+                'errors' => ['No cPanel servers with tokens found in database']
+            ];
+        }
+
+        $successCount = 0;
+        $errors = [];
+
+        foreach ($servers as $server) {
+            try {
+                $result = $this->syncDomainsFromServer($server);
+                
+                if ($result['success']) {
+                    $successCount++;
+                    Log::info("Successfully synced {$result['domains_synced']} domains from server {$server->name} ({$server->server_url})");
+                } else {
+                    $error = "Error syncing from server {$server->name} ({$server->server_url}): " . $result['error'];
+                    $errors[] = $error;
+                    Log::error($error);
+                }
+            } catch (\Exception $e) {
+                $error = "Error syncing from server {$server->name} ({$server->server_url}): " . $e->getMessage();
+                $errors[] = $error;
+                Log::error($error, [
+                    'server_id' => $server->id,
+                    'exception' => get_class($e),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        }
+
+        return [
+            'success' => $successCount > 0,
+            'total_servers' => $servers->count(),
+            'successful_servers' => $successCount,
+            'errors' => $errors
+        ];
     }
 }

@@ -84,6 +84,11 @@ class Service extends Model
         return $this->belongsTo(User::class, 'responsible_id');
     }
 
+    public function currency()
+    {
+        return $this->belongsTo(Currency::class);
+    }
+
     public function services()
     {
         return $this->hasMany(Service::class);
@@ -144,19 +149,19 @@ class Service extends Model
             case 1:
                 return '<span class="badge rounded-pill bg-label-secondary">Suspendido</span>';
             case 2:
-                return '<span class="badge rounded-pill bg-label-warning">Suspender</span>';
+                return '<span class="badge rounded-pill bg-label-info">Suspender</span>';
             case 3:
-                return '<span class="badge rounded-pill bg-label-success">Activar</span>';
+                return '<span class="badge rounded-pill bg-label-warning">Activar</span>';
             case 4:
-                return '<span class="badge rounded-pill bg-label-info">Activo</span>';
+                return '<span class="badge rounded-pill bg-label-success">Activo</span>';
             case 5:
                 return '<span class="badge rounded-pill bg-label-danger">Migrar</span>';
             case 6:
-                return '<span class="badge rounded-pill bg-label-warning">Cambiar DNS</span>';
+                return '<span class="badge rounded-pill bg-label-warning">Migrando</span>';
             case 7:
                 return '<span class="badge rounded-pill bg-label-warning">Delegar</span>';
             case 8:
-                return '<span class="badge rounded-pill bg-label-warning">Corregir precio</span>';
+                return '<span class="badge rounded-pill bg-label-info">Analizar</span>';
             default:
                 return '<span class="badge rounded-pill bg-label-secondary">unknown</span>';
         }

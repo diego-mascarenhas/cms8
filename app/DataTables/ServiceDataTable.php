@@ -57,27 +57,83 @@ class ServiceDataTable extends DataTable
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
-            ->editColumn('created_at', function ($data)
-            {
-                return Carbon::parse($data->created_at)->format('d-m-Y');
+            ->addColumn('domain', function ($data) {
+                return $data->domain ?: '-';
             })
-            ->editColumn('updated_at', function ($data)
-            {
-                return Carbon::parse($data->updated_at)->format('d-m-Y');
+            ->addColumn('server', function ($data) {
+                if (!empty($data->data['server_id'])) {
+                    $server = \App\Models\Server::find($data->data['server_id']);
+                    return $server ? $server->name : '-';
+                }
+                return '-';
+            })
+            ->filterColumn('server', function ($query, $keyword) {
+                // Buscar servidores por nombre
+                $serverIds = \App\Models\Server::where('name', 'LIKE', "%{$keyword}%")
+                    ->pluck('id')
+                    ->toArray();
+                
+                if (!empty($serverIds)) {
+                    $conditions = [];
+                    foreach ($serverIds as $serverId) {
+                        $conditions[] = "JSON_EXTRACT(data, '$.server_id') = '{$serverId}'";
+                    }
+                    $query->whereRaw('(' . implode(' OR ', $conditions) . ')');
+                } else {
+                    // Si no hay coincidencias, asegurar que no se devuelvan resultados
+                    $query->whereRaw('1=0');
+                }
+            })
+            ->filterColumn('domain', function ($query, $keyword) {
+                $query->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(data, '$.domain'))) LIKE ?", ["%".strtolower($keyword)."%"]);
+            })
+            ->editColumn('next_billing', function ($data) {
+                return $data->next_billing ? $data->next_billing->format('d-m-Y') : '-';
             })
             ->addColumn('calculated_price', function ($data)
             {
-                return number_format($data->calculated_price, 2, ',', '.');
+                $currencyCode = 'USD';
+                
+                // Si el precio del servicio es nulo o cero, usar datos de la categoría
+                if ($data->price === null || $data->price == 0) {
+                    // Intentar obtener moneda de la categoría
+                    if (isset($data->category->data['currency_id'])) {
+                        $categoryCurrency = \App\Models\Currency::find($data->category->data['currency_id']);
+                        if ($categoryCurrency) {
+                            $currencyCode = $categoryCurrency->code ?? 'USD';
+                        }
+                    }
+                } else if ($data->currency) {
+                    // Si el servicio tiene precio, usar su moneda si está especificada
+                    $currencyCode = $data->currency->code ?? 'USD';
+                }
+                
+                return $currencyCode . ' ' . number_format($data->calculated_price, 2, ',', '.');
             })
             ->editColumn('status', function ($data)
             {
                 return $data->status_label;
+            })
+            ->orderColumn('status', function ($query, $direction) {
+                // Custom ordering: 7, 5, 3, 2, 6, 8, 4, 1
+                $orderMap = "CASE 
+                    WHEN status = 7 THEN 1
+                    WHEN status = 5 THEN 2
+                    WHEN status = 3 THEN 3
+                    WHEN status = 2 THEN 4
+                    WHEN status = 6 THEN 5
+                    WHEN status = 8 THEN 6
+                    WHEN status = 4 THEN 7
+                    WHEN status = 1 THEN 8
+                    ELSE 999 END";
+                
+                $query->orderByRaw("$orderMap $direction");
             });
     }
 
     public function query(Service $model): QueryBuilder
     {
-        return $model->newQuery()->whereHas('client', function ($query)
+        return $model->newQuery()->with(['client', 'category', 'currency'])->whereHas('client', function ($query)
         {
             $query->where('team_id', auth()->user()->currentTeam->id);
         });
@@ -90,7 +146,8 @@ class ServiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(0);
+            ->orderBy(8, 'asc') // Ordenar por status
+            ->pageLength(25);
     }
 
     public function getColumns(): array
@@ -100,9 +157,10 @@ class ServiceDataTable extends DataTable
             Column::computed('operation_type')->title('')->width(5)->className('text-center'),
             Column::make('enterprise_id')->title('Client'),
             Column::make('category_id')->title('Category'),
+            Column::make('domain')->title('Domain'),
+            Column::make('server')->title('Server'),
             Column::make('calculated_price')->title('Price')->className('text-center'),
-            Column::make('created_at')->title('Created')->className('text-center'),
-            Column::make('updated_at')->title('Updated')->className('text-center'),
+            Column::make('next_billing')->title('Next Billing')->className('text-center'),
             Column::make('status')->title('Status')->className('text-center'),
             Column::computed('action')
                 ->title('Acciones')
