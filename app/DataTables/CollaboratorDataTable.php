@@ -18,37 +18,65 @@ class CollaboratorDataTable extends DataTable
                 return view('collaborator.action', compact('contact'));
             })
             ->addColumn('rating', function ($contact) {
-                return '<div class="rating text-warning">
-                    <i class="ti ti-star-filled"></i>
-                    <i class="ti ti-star-filled"></i>
-                    <i class="ti ti-star-filled"></i>
-                    <i class="ti ti-star-filled"></i>
-                    <i class="ti ti-star"></i>
-                </div>';
-            })
-            ->addColumn('rates', function ($contact) {
-                return '<a href="' . route('collaborator.rates', ['id' => $contact->id]) . '" class="btn btn-sm btn-outline-primary">
-                    <i class="ti ti-tag me-1"></i>Ver tarifas
-                </a>';
-            })
-            ->addColumn('projects', function ($contact) {
-                return '<span class="badge bg-label-primary rounded-pill">' . rand(1, 10) . '</span>';
-            })
-            ->setRowId('id')
-            ->filterColumn('categories', function($query, $keyword) {
-                if ($keyword !== '') {
-                    $query->whereHas('categories', function($q) use ($keyword) {
-                        $q->where('id', $keyword);
-                    });
+                // Depending on the contact's status, return different rating badges
+                $status = $contact->status ?? 'top'; // Default to 'top' if no status
+                
+                switch($status) {
+                    case 'top':
+                        return '<div class="d-flex align-items-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
+                    case 'blacklist':
+                        return '<div class="d-flex align-items-center"><i class="ti ti-x text-danger ti-sm me-2"></i> Lista negra</div>';
+                    case 'validated':
+                        return '<div class="d-flex align-items-center"><i class="ti ti-check text-success ti-sm me-2"></i> Validada</div>';
+                    case 'pending':
+                        return '<div class="d-flex align-items-center"><i class="ti ti-clock text-warning ti-sm me-2"></i> En espera</div>';
+                    case 'watch':
+                        return '<div class="d-flex align-items-center"><i class="ti ti-eye text-danger ti-sm me-2"></i> Ojo</div>';
+                    default:
+                        return '<div class="d-flex align-items-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
                 }
             })
-            ->rawColumns(['name', 'action', 'rating', 'rates', 'projects']);
+            ->addColumn('language_combinations', function ($contact) {
+                // This should be pulled from the contact's language combinations
+                $combinations = $contact->language_combinations ?? [];
+                
+                if (empty($combinations)) {
+                    return 'ES > EN';
+                }
+                
+                return implode('<br>', $combinations);
+            })
+            ->addColumn('services', function ($contact) {
+                // This should be pulled from the contact's services
+                $services = $contact->services ?? [];
+                
+                if (empty($services)) {
+                    return 'Documentos';
+                }
+                
+                return implode('<br>', $services);
+            })
+            ->addColumn('projects', function ($contact) {
+                // Use a fixed number or random until we have a proper relationship
+                return '<span class="badge bg-label-primary rounded-pill">' . rand(0, 10) . '</span>';
+            })
+            ->setRowId('id')
+            ->filterColumn('language_combinations', function($query, $keyword) {
+                if ($keyword !== '') {
+                    // Implement language combination filtering
+                }
+            })
+            ->filterColumn('services', function($query, $keyword) {
+                if ($keyword !== '') {
+                    // Implement services filtering
+                }
+            })
+            ->rawColumns(['name', 'action', 'rating', 'language_combinations', 'services', 'projects']);
     }
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery()->with([
-        ]);
+        return $model->newQuery();
     }
 
     public function html(): HtmlBuilder
@@ -90,23 +118,27 @@ class CollaboratorDataTable extends DataTable
                 ->title(__('Colaborador'))
                 ->addClass('all'),
             Column::make('rating')
-                ->title('Valoración')
+                ->title(__('Valoración'))
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->searchable(false),
-            Column::make('rates')
-                ->title('Tarifas')
+            Column::make('language_combinations')
+                ->title(__('Combinación'))
                 ->className('text-center')
-                ->addClass('min-desktop')
-                ->searchable(false),
+                ->addClass('min-tablet')
+                ->searchable(true),
+            Column::make('services')
+                ->title(__('Servicios'))
+                ->className('text-center')
+                ->addClass('min-tablet')
+                ->searchable(true),
             Column::make('projects')
-                ->title('Proyectos')
+                ->title(__('Proyectos'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false),
             Column::computed('action')
-                ->title(__('Actions'))
-                ->width(20)
+                ->title(__('Acciones'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->exportable(false)

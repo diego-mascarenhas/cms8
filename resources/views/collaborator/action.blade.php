@@ -1,15 +1,13 @@
-<div class="d-inline-block">
-    <a href="{{ route('collaborator.show', $contact) }}" class="btn btn-sm btn-icon">
-        <i class="ti ti-eye"></i>
-    </a>
-    <a href="{{ route('collaborator.edit', $contact) }}" class="btn btn-sm btn-icon">
-        <i class="ti ti-edit"></i>
-    </a>
-    <form action="{{ route('collaborator.destroy', $contact) }}" method="POST" class="d-inline">
-        @csrf
-        @method('DELETE')
-        <button type="submit" class="btn btn-sm btn-icon" onclick="return confirm('{{ __('Are you sure?') }}')">
-            <i class="ti ti-trash"></i>
-        </button>
-    </form>
+<div class="d-flex justify-content-center align-items-center">
+    @if (auth()->user()->can('collaborator.edit'))
+        <a href="{{ route('collaborator.edit', $contact->id) }}" class="text-body me-2"><i class="ti ti-edit ti-sm"></i></a>
+    @endif
+    
+    @if (auth()->user()->can('collaborator.show'))
+        <a href="{{ route('collaborator.show', $contact->id) }}" class="text-body me-2"><i class="ti ti-eye ti-sm"></i></a>
+    @endif
+    
+    @if (auth()->user()->can('collaborator.destroy'))
+        <a href="javascript:;" class="text-danger btn-delete" data-id="{{ $contact->id }}"><i class="ti ti-trash ti-sm"></i></a>
+    @endif
 </div> 
