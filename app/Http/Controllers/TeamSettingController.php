@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Team;
+use App\Models\ContactValoration;
 use App\Http\Requests\UpdateTeamSettingsRequest;
+use Illuminate\Http\Request;
 
 class TeamSettingController extends Controller
 {
@@ -155,5 +157,93 @@ class TeamSettingController extends Controller
         ];
 
         return isset($config[$group]) ? [$group => $config[$group]] : [];
+    }
+
+    /**
+     * Show valorations management page
+     */
+    public function valorations(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $valorations = ContactValoration::where('team_id', $team->id)
+            ->orderBy('id')
+            ->get();
+
+        return view('team-settings.valorations', compact('team', 'valorations'));
+    }
+
+    /**
+     * Store a new valoration
+     */
+    public function storeValoration(Request $request, Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        // Get next ID for this team
+        $lastValoration = ContactValoration::where('team_id', $team->id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $nextId = $lastValoration ? $lastValoration->id + 1 : ($team->id * 10) + 1;
+
+        ContactValoration::create([
+            'id' => $nextId,
+            'team_id' => $team->id,
+            'name' => $request->name,
+        ]);
+
+        return redirect()->back()->with('success', 'Valoración creada exitosamente');
+    }
+
+    /**
+     * Update an existing valoration
+     */
+    public function updateValoration(Request $request, Team $team, ContactValoration $valoration)
+    {
+        $this->authorize('update', $team);
+
+        // Ensure the valoration belongs to this team
+        if ($valoration->team_id !== $team->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $valoration->update([
+            'name' => $request->name,
+        ]);
+
+        return redirect()->back()->with('success', 'Valoración actualizada exitosamente');
+    }
+
+    /**
+     * Delete a valoration
+     */
+    public function destroyValoration(Team $team, ContactValoration $valoration)
+    {
+        $this->authorize('update', $team);
+
+        // Ensure the valoration belongs to this team
+        if ($valoration->team_id !== $team->id) {
+            abort(403);
+        }
+
+        // Check if any contacts are using this valoration
+        $contactsCount = \App\Models\Contact::where('valoration_id', $valoration->id)->count();
+        
+        if ($contactsCount > 0) {
+            return redirect()->back()->with('error', "No se puede eliminar la valoración porque hay {$contactsCount} contactos que la están usando");
+        }
+
+        $valoration->delete();
+
+        return redirect()->back()->with('success', 'Valoración eliminada exitosamente');
     }
 }

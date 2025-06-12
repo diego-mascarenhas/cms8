@@ -56,6 +56,17 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="ti ti-star mb-3" style="font-size: 2rem;"></i>
+                                    <h5 class="card-title">Valorations</h5>
+                                    <p class="card-text">Manage contact valorations for your team</p>
+                                    <a href="{{ route('team-settings.valorations', $team) }}" class="btn btn-primary">Manage</a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -11,6 +11,9 @@ class ContactValoration extends Model
 {
     use HasFactory;
 
+    public $incrementing = false;
+    protected $keyType = 'int';
+
     protected $fillable = [
         'id',
         'team_id',
