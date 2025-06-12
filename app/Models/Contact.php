@@ -270,6 +270,13 @@ class Contact extends Model
 		return $this->belongsToMany(Category::class, 'contact_category');
 	}
 
+	public function softwares(): BelongsToMany
+	{
+		return $this->belongsToMany(Software::class, 'contact_softwares')
+					->withPivot('proficiency_level', 'notes')
+					->withTimestamps();
+	}
+
 	public function list60(): HasOne
 	{
 		return $this->hasOne(List60::class);

@@ -83,4 +83,38 @@ class SoftwareController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    /**
+     * Get software options for autocomplete.
+     */
+    public function autocomplete(Request $request)
+    {
+        $search = $request->get('q', '');
+        
+        $query = Software::with('type');
+        
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhereHas('type', function($subQuery) use ($search) {
+                      $subQuery->where('name', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+        
+        $softwares = $query->limit(15)
+            ->get()
+            ->map(function ($software) {
+                return [
+                    'id' => $software->id,
+                    'text' => $software->name . ($software->type ? ' (' . $software->type->name . ')' : ''),
+                    'name' => $software->name,
+                    'type' => $software->type ? $software->type->name : '',
+                ];
+            });
+
+        return response()->json([
+            'results' => $softwares
+        ]);
+    }
 } 

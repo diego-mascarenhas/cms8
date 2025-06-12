@@ -81,6 +81,11 @@ class ContactController extends Controller
 			$contact->categories()->sync($data['categories']);
 		}
 
+		// Sync software
+		if (isset($data['software_ids'])) {
+			$contact->softwares()->sync($data['software_ids']);
+		}
+
 		$message = __('messages.success.created');
 
 		if ($request->ajax())
@@ -348,7 +353,7 @@ class ContactController extends Controller
 	 */
 	public function edit($id)
 	{
-		$data = Contact::with('enterprise', 'sources')->findOrFail($id);
+		$data = Contact::with('enterprise', 'sources', 'softwares', 'categories')->findOrFail($id);
 		$data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
 		$enterpriseStatuses = ContactStatus::getOptions();
 		$socialSources = Source::getOptions();
@@ -373,6 +378,11 @@ class ContactController extends Controller
 		// Sync categories
 		if (isset($data['categories'])) {
 			$contact->categories()->sync($data['categories']);
+		}
+
+		// Sync software
+		if (isset($data['software_ids'])) {
+			$contact->softwares()->sync($data['software_ids']);
 		}
 
 		$message = __('messages.success.updated');

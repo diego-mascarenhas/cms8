@@ -38,7 +38,7 @@ class CollaboratorController extends Controller
 
     public function show($id)
     {
-        $collaborator = Contact::findOrFail($id);
+        $collaborator = Contact::with('softwares.type')->findOrFail($id);
         return view('collaborator.show', compact('collaborator'));
     }
 
@@ -157,6 +157,44 @@ class CollaboratorController extends Controller
                 'collaborator_id' => $collaborator->id,
                 'message' => $message
             ]
+        ]);
+    }
+
+    /**
+     * Update collaborator software
+     */
+    public function updateSoftware(Request $request, $id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $collaborator = Contact::findOrFail($id);
+        
+        $validated = $request->validate([
+            'software_ids' => 'array',
+            'software_ids.*' => 'exists:software,id',
+        ]);
+
+        // Sync software
+        $collaborator->softwares()->sync($validated['software_ids'] ?? []);
+
+        // Load updated softwares with types
+        $collaborator->load('softwares.type');
+        
+        // Format response data
+        $softwares = $collaborator->softwares->map(function($software) {
+            return [
+                'id' => $software->id,
+                'name' => $software->name,
+                'type_name' => $software->type ? $software->type->name : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Software actualizado correctamente',
+            'softwares' => $softwares
         ]);
     }
 } 

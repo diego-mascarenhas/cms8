@@ -4,14 +4,17 @@
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
 @endsection
 
 @section('page-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-user-view.css') }}" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
 @endsection
 
 @section('content')
@@ -417,21 +420,39 @@
             <div class="card mb-4">
                 <div class="card-header border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Software de trabajo</h5>
-                    <a href="javascript:void(0)" class="text-secondary"><i class="ti ti-pencil"></i></a>
+                    <button id="toggleSoftwareEdit" class="btn btn-sm btn-outline-secondary" type="button">
+                        <i class="ti ti-pencil"></i> Editar
+                    </button>
                 </div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <span class="badge bg-label-primary rounded-pill me-1">Subtitle Edit</span>
-                        <span class="badge bg-label-primary rounded-pill me-1">Davinci</span>
-                        <span class="badge bg-label-primary rounded-pill">Memsource</span>
+                    <!-- Vista de solo lectura -->
+                    <div id="software-display">
+                        @if($collaborator->softwares && $collaborator->softwares->count() > 0)
+                            @foreach($collaborator->softwares as $software)
+                                <span class="badge bg-label-primary rounded-pill me-1 mb-1">
+                                    {{ $software->name }}{{ $software->type ? ' (' . $software->type->name . ')' : '' }}
+                                </span>
+                            @endforeach
+                        @else
+                            <div class="mt-2">
+                                <span class="text-muted">No hay software asignado</span>
+                            </div>
+                        @endif
                     </div>
-                    <div class="mt-3">
-                        <ul class="list-unstyled mb-0">
-                            <li class="mb-2">Aegisub</li>
-                            <li class="mb-2">EZTitles</li>
-                            <li class="mb-2">SDL Trados</li>
-                        </ul>
-                    </div>
+                    
+                    <!-- Formulario de edición (visible para testing) -->
+                    <form id="software-edit-form" class="mt-3">
+                        @csrf
+                        <x-software-select 
+                            id="collaborator_software_ids" 
+                            label="Software que domina"
+                            :selected="$collaborator->softwares ? $collaborator->softwares->pluck('id')->toArray() : []"
+                        />
+                        <div class="mt-3">
+                            <button type="button" id="saveSoftware" class="btn btn-primary btn-sm">Guardar</button>
+                            <button type="button" id="cancelSoftwareEdit" class="btn btn-outline-secondary btn-sm">Cancelar</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -459,4 +480,108 @@
         </div>
         <!-- /Collaborator Content -->
     </div>
+
+    @push('page-script')
+    <script>
+        $(function() {
+            console.log('Document ready, setting up events...');
+            
+            // Toggle entre vista y edición
+            $('#toggleSoftwareEdit').on('click', function() {
+                console.log('Toggle edit clicked');
+                $('#software-display').addClass('d-none');
+                $('#software-edit-form').removeClass('d-none');
+                $(this).addClass('d-none');
+            });
+
+            // Cancelar edición
+            $('#cancelSoftwareEdit').on('click', function() {
+                console.log('Cancel edit clicked');
+                $('#software-edit-form').addClass('d-none');
+                $('#software-display').removeClass('d-none');
+                $('#toggleSoftwareEdit').removeClass('d-none');
+            });
+
+            // Guardar cambios
+            $('#saveSoftware').on('click', function() {
+                console.log('Save software clicked');
+                const softwareIds = $('#collaborator_software_ids').val();
+                const collaboratorId = {{ $collaborator->id }};
+                
+                console.log('Software IDs:', softwareIds);
+                console.log('Collaborator ID:', collaboratorId);
+                
+                $.ajax({
+                    url: `/collaborator/${collaboratorId}/update-software`,
+                    type: 'POST',
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                        software_ids: softwareIds
+                    },
+                    beforeSend: function() {
+                        console.log('Sending AJAX request...');
+                    },
+                    success: function(response) {
+                        console.log('AJAX Success:', response);
+                        if (response.success) {
+                            // Actualizar las badges en la vista
+                            let badgesHtml = '';
+                            if (response.softwares && response.softwares.length > 0) {
+                                response.softwares.forEach(function(software) {
+                                    const softwareText = software.name + (software.type_name ? ' (' + software.type_name + ')' : '');
+                                    badgesHtml += `<span class="badge bg-label-primary rounded-pill me-1 mb-1">${softwareText}</span>`;
+                                });
+                            } else {
+                                badgesHtml = '<div class="mt-2"><span class="text-muted">No hay software asignado</span></div>';
+                            }
+                            
+                            $('#software-display').html(badgesHtml);
+                            
+                            // Volver a la vista de solo lectura
+                            $('#software-edit-form').addClass('d-none');
+                            $('#software-display').removeClass('d-none');
+                            $('#toggleSoftwareEdit').removeClass('d-none');
+                            
+                            // Mostrar notificación de éxito
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: '¡Éxito!',
+                                    text: 'Software actualizado correctamente',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                alert('Software actualizado correctamente');
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        console.log('AJAX Error:', xhr);
+                        let errorMessage = 'Error al actualizar el software';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: errorMessage
+                            });
+                        } else {
+                            alert(errorMessage);
+                        }
+                    }
+                });
+            });
+        });
+
+        // Función para actualización automática (opcional)
+        function updateSoftware() {
+            // Esta función se puede usar si quieres actualización automática al cambiar la selección
+            // Por ahora la dejamos vacía para que solo se actualice con el botón Guardar
+        }
+    </script>
+    @endpush
 @endsection 

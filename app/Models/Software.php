@@ -45,4 +45,29 @@ class Software extends Model
     {
         return $this->belongsTo(Team::class);
     }
+
+    /**
+     * Get the contacts that use this software.
+     */
+    public function contacts()
+    {
+        return $this->belongsToMany(Contact::class, 'contact_softwares')
+                    ->withPivot('proficiency_level', 'notes')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get software options for dropdowns and autocomplete.
+     */
+    public static function getOptions()
+    {
+        return self::with('type')->get()->map(function ($data) {
+            return [
+                'id' => $data->id,
+                'name' => $data->name,
+                'type' => $data->type ? $data->type->name : '',
+                'text' => $data->name . ($data->type ? ' (' . $data->type->name . ')' : ''),
+            ];
+        });
+    }
 } 

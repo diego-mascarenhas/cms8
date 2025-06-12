@@ -37,6 +37,8 @@ class UpdateContactRequest extends FormRequest
             'responsible_id' => 'required|exists:users,id',
             'categories' => 'array',
             'categories.*' => 'exists:categories,id',
+            'software_ids' => 'array',
+            'software_ids.*' => 'exists:software,id',
         ];
     }
 
@@ -65,6 +67,7 @@ class UpdateContactRequest extends FormRequest
         $enterpriseData = [];
         $sourcesData = [];
         $categories = $validated['categories'] ?? [];
+        $softwareIds = $validated['software_ids'] ?? [];
 
         if (isset($validated['enterprise']))
         {
@@ -134,6 +137,7 @@ class UpdateContactRequest extends FormRequest
             'enterprise' => $enterpriseData,
             'sources' => $sourcesData,
             'categories' => $categories,
+            'software_ids' => $softwareIds,
         ];
     }
 }

@@ -168,8 +168,9 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
     Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
     Route::post('/collaborator/{id}/mark-as-watch', [CollaboratorController::class, 'markAsWatch'])->name('collaborator.markAsWatch');
-    Route::post('/collaborator/{id}/send-to-blacklist', [CollaboratorController::class, 'sendToBlacklist'])->name('collaborator.sendToBlacklist');
-    Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
+Route::post('/collaborator/{id}/send-to-blacklist', [CollaboratorController::class, 'sendToBlacklist'])->name('collaborator.sendToBlacklist');
+Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
+Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware');
     Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
     Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
     Route::get('/collaborator/{id}/absences', function ($id) {
@@ -296,12 +297,13 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
 
     // Software Management
-    Route::get('/software', [SoftwareController::class, 'index'])->name('software.index')->middleware('auth');
-    Route::get('/software/create', [SoftwareController::class, 'create'])->name('software.create')->middleware('auth');
-    Route::post('/software', [SoftwareController::class, 'store'])->name('software.store')->middleware('auth');
-    Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit')->middleware('auth');
-    Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update')->middleware('auth');
-    Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy')->middleware('auth');
+Route::get('/software', [SoftwareController::class, 'index'])->name('software.index')->middleware('auth');
+Route::get('/software/create', [SoftwareController::class, 'create'])->name('software.create')->middleware('auth');
+Route::post('/software', [SoftwareController::class, 'store'])->name('software.store')->middleware('auth');
+Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit')->middleware('auth');
+Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update')->middleware('auth');
+Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy')->middleware('auth');
+Route::get('/software/autocomplete', [SoftwareController::class, 'autocomplete'])->name('software.autocomplete')->middleware('auth');
 
     // Certification Management
     Route::get('/certification', [CertificationController::class, 'index'])->name('certification.index')->middleware('auth');
