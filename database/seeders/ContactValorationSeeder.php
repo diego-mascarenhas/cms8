@@ -14,11 +14,11 @@ class ContactValorationSeeder extends Seeder
     public function run(): void
     {
         $valorations = [
-            ['id' => 1, 'name' => 'Top'],
-            ['id' => 2, 'name' => 'Validada'], 
-            ['id' => 3, 'name' => 'Interesante'],
-            ['id' => 4, 'name' => 'Lista negra'],
-            ['id' => 5, 'name' => 'En espera'],
+            ['id' => 1, 'name' => 'Top', 'icon' => '⭐'],
+            ['id' => 2, 'name' => 'Validada', 'icon' => '✅'], 
+            ['id' => 3, 'name' => 'Interesante', 'icon' => '🕐'],
+            ['id' => 4, 'name' => 'Lista negra', 'icon' => '❌'],
+            ['id' => 5, 'name' => 'En espera', 'icon' => '👁️'],
         ];
 
         // Get all teams
@@ -30,6 +30,7 @@ class ContactValorationSeeder extends Seeder
                     'id' => ($team->id * 10) + $valoration['id'], // Generate unique ID
                     'team_id' => $team->id,
                     'name' => $valoration['name'],
+                    'icon' => $valoration['icon'],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

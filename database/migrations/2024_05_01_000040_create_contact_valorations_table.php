@@ -15,6 +15,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('id')->primary();
             $table->foreignId('team_id')->constrained()->onDelete('cascade');
             $table->string('name', 255);
+            $table->string('icon', 10)->default('🔘');
             $table->timestamps();
         });
     }

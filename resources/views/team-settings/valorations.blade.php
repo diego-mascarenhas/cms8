@@ -57,25 +57,7 @@
                                 </div>
                             </td>
                                                     <td class="text-center">
-                            @switch($valoration->name)
-                                @case('Top')
-                                    ⭐
-                                    @break
-                                @case('Lista negra')
-                                    ❌
-                                    @break
-                                @case('Validada')
-                                    ✅
-                                    @break
-                                @case('En espera')
-                                    👁️
-                                    @break
-                                @case('Interesante')
-                                    🕐
-                                    @break
-                                @default
-                                    🔘
-                            @endswitch
+                            {{ $valoration->icon }}
                         </td>
                         <td class="text-center">
                             <span class="badge bg-label-primary">
@@ -84,7 +66,7 @@
                         </td>
                         <td class="text-center">
                             <div class="d-flex justify-content-center align-items-center">
-                                <a href="javascript:;" class="text-body me-2" onclick="editValoration({{ $valoration->id }}, '{{ $valoration->name }}')">
+                                <a href="javascript:;" class="text-body me-2" onclick="editValoration({{ $valoration->id }}, '{{ $valoration->name }}', '{{ $valoration->icon }}')">
                                     <i class="ti ti-edit ti-sm"></i>
                                 </a>
                                 <a href="javascript:;" class="text-danger" onclick="deleteValoration({{ $valoration->id }}, '{{ $valoration->name }}')">
@@ -122,6 +104,14 @@
                             <label for="name" class="form-label">Valoration Name</label>
                             <input type="text" class="form-control" id="name" name="name" required>
                         </div>
+                        <div class="mb-3">
+                            <label for="icon" class="form-label">Icon</label>
+                            <select class="form-select" id="icon" name="icon" required>
+                                @foreach(\App\Models\ContactValoration::getAvailableIcons() as $iconValue => $iconLabel)
+                                    <option value="{{ $iconValue }}">{{ $iconValue }} {{ $iconLabel }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -148,6 +138,14 @@
                             <label for="edit_name" class="form-label">Valoration Name</label>
                             <input type="text" class="form-control" id="edit_name" name="name" required>
                         </div>
+                        <div class="mb-3">
+                            <label for="edit_icon" class="form-label">Icon</label>
+                            <select class="form-select" id="edit_icon" name="icon" required>
+                                @foreach(\App\Models\ContactValoration::getAvailableIcons() as $iconValue => $iconLabel)
+                                    <option value="{{ $iconValue }}">{{ $iconValue }} {{ $iconLabel }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -161,8 +159,9 @@
 
 @section('page-script')
 <script>
-    function editValoration(id, name) {
+    function editValoration(id, name, icon) {
         document.getElementById('edit_name').value = name;
+        document.getElementById('edit_icon').value = icon;
         document.getElementById('editValorationForm').action = '{{ route('team-settings.valorations.update', ['team' => $team, 'valoration' => '__ID__']) }}'.replace('__ID__', id);
         new bootstrap.Modal(document.getElementById('editValorationModal')).show();
     }

@@ -182,6 +182,7 @@ class TeamSettingController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
+            'icon' => 'required|string|max:10',
         ]);
 
         // Get next ID for this team
@@ -195,6 +196,7 @@ class TeamSettingController extends Controller
             'id' => $nextId,
             'team_id' => $team->id,
             'name' => $request->name,
+            'icon' => $request->icon,
         ]);
 
         return redirect()->back()->with('success', 'Valoración creada exitosamente');
@@ -214,10 +216,12 @@ class TeamSettingController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
+            'icon' => 'required|string|max:10',
         ]);
 
         $valoration->update([
             'name' => $request->name,
+            'icon' => $request->icon,
         ]);
 
         return redirect()->back()->with('success', 'Valoración actualizada exitosamente');

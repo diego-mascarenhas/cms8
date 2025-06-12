@@ -18,6 +18,7 @@ class ContactValoration extends Model
         'id',
         'team_id',
         'name',
+        'icon',
     ];
 
     protected $casts = [
@@ -64,6 +65,27 @@ class ContactValoration extends Model
             'Interesante',
             'Lista negra',
             'En espera'
+        ];
+    }
+
+    /**
+     * Get available icons for selection
+     */
+    public static function getAvailableIcons()
+    {
+        return [
+            '⭐' => 'Top/Estrella',
+            '✅' => 'Validada/Check',
+            '🕐' => 'Interesante/Reloj',
+            '❌' => 'Lista negra/X',
+            '👁️' => 'En espera/Ojo',
+            '🔘' => 'Neutro/Círculo',
+            '🎯' => 'Objetivo/Target',
+            '💎' => 'Premium/Diamante',
+            '🔥' => 'Urgente/Fuego',
+            '📊' => 'Análisis/Gráfico',
+            '🏆' => 'Excelente/Trofeo',
+            '⚡' => 'Rápido/Rayo',
         ];
     }
 }
