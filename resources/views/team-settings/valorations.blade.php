@@ -38,45 +38,68 @@
     @endif
 
     <div class="card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Contact Valorations</h5>
-        </div>
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Contacts Count</th>
-                        <th>Actions</th>
+                        <th>VALORACIÓN</th>
+                        <th class="text-center">ICON</th>
+                        <th class="text-center">CONTACTOS</th>
+                        <th class="text-center">ACCIONES</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($valorations as $valoration)
                         <tr>
-                            <td>{{ $valoration->id }}</td>
-                            <td>{{ $valoration->name }}</td>
                             <td>
-                                <span class="badge bg-primary">
-                                    {{ \App\Models\Contact::where('valoration_id', $valoration->id)->count() }} contacts
-                                </span>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <button type="button" class="btn btn-sm btn-outline-primary me-2" 
-                                        onclick="editValoration({{ $valoration->id }}, '{{ $valoration->name }}')">
-                                        <i class="ti ti-edit ti-sm"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" 
-                                        onclick="deleteValoration({{ $valoration->id }}, '{{ $valoration->name }}')">
-                                        <i class="ti ti-trash ti-sm"></i>
-                                    </button>
+                                <div class="d-flex flex-column">
+                                    <h6 class="mb-0">{{ $valoration->name }}</h6>
                                 </div>
                             </td>
+                                                    <td class="text-center">
+                            @switch($valoration->name)
+                                @case('Top')
+                                    ⭐
+                                    @break
+                                @case('Lista negra')
+                                    ❌
+                                    @break
+                                @case('Validada')
+                                    ✅
+                                    @break
+                                @case('En espera')
+                                    👁️
+                                    @break
+                                @case('Interesante')
+                                    🕐
+                                    @break
+                                @default
+                                    🔘
+                            @endswitch
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-label-primary">
+                                {{ \App\Models\Contact::where('valoration_id', $valoration->id)->count() }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center align-items-center">
+                                <a href="javascript:;" class="text-body me-2" onclick="editValoration({{ $valoration->id }}, '{{ $valoration->name }}')">
+                                    <i class="ti ti-edit ti-sm"></i>
+                                </a>
+                                <a href="javascript:;" class="text-danger" onclick="deleteValoration({{ $valoration->id }}, '{{ $valoration->name }}')">
+                                    <i class="ti ti-trash ti-sm"></i>
+                                </a>
+                            </div>
+                        </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="text-center">No valorations found</td>
+                            <td colspan="4" class="text-center text-muted py-4">
+                                <i class="ti ti-star-off mb-2" style="font-size: 2rem;"></i>
+                                <p class="mb-0">No hay valoraciones configuradas</p>
+                                <small>Haz clic en "Add Valoration" para crear la primera</small>
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
