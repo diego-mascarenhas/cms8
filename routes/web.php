@@ -21,6 +21,7 @@ use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\TeamSettingController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\KanbanController;
