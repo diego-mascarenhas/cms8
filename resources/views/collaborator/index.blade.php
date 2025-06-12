@@ -116,7 +116,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h6 class="text-muted mb-0">{{ __('Sin actualizar en 6m') }}</h6>
+                            <h6 class="text-muted mb-0">{{ __('Sin actualizar') }}</h6>
                             <div class="d-flex align-items-center mt-1">
                                 <h3 class="mb-0 me-1">540</h3>
                                 <small class="text-danger">(-14%)</small>
