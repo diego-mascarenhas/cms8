@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\CollaboratorDataTable;
 use App\Models\Contact;
+use App\Models\ContactValoration;
 use Illuminate\Http\Request;
 
 class CollaboratorController extends Controller
@@ -68,5 +69,94 @@ class CollaboratorController extends Controller
         $collaborator->delete();
         return redirect()->route('collaborator-list')
             ->with('success', __('Collaborator deleted successfully.'));
+    }
+
+    /**
+     * Mark collaborator as watch (Ojo)
+     */
+    public function markAsWatch($id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $collaborator = Contact::findOrFail($id);
+        $teamId = auth()->user()->currentTeam->id;
+        
+        // Find the "Ojo" valoration (assuming it corresponds to "En espera" for watch status)
+        $watchValoration = ContactValoration::where('team_id', $teamId)
+            ->where('name', 'En espera')
+            ->first();
+            
+        if ($watchValoration) {
+            $collaborator->update(['valoration_id' => $watchValoration->id]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Colaborador marcado como ojo correctamente'
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'No se pudo encontrar la valoración de supervisión'
+        ], 400);
+    }
+
+    /**
+     * Send collaborator to blacklist
+     */
+    public function sendToBlacklist($id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $collaborator = Contact::findOrFail($id);
+        $teamId = auth()->user()->currentTeam->id;
+        
+        // Find the "Lista negra" valoration
+        $blacklistValoration = ContactValoration::where('team_id', $teamId)
+            ->where('name', 'Lista negra')
+            ->first();
+            
+        if ($blacklistValoration) {
+            $collaborator->update(['valoration_id' => $blacklistValoration->id]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Colaborador enviado a lista negra'
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'No se pudo encontrar la valoración de lista negra'
+        ], 400);
+    }
+
+    /**
+     * Send notification to collaborator
+     */
+    public function sendNotification(Request $request, $id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $collaborator = Contact::findOrFail($id);
+        $message = $request->input('message');
+        
+        // TODO: Implement actual notification sending logic here
+        // For now, just return success
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Notificación enviada correctamente',
+            'data' => [
+                'collaborator_id' => $collaborator->id,
+                'message' => $message
+            ]
+        ]);
     }
 } 

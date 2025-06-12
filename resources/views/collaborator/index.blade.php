@@ -312,13 +312,32 @@
                 buttonsStyling: false
             }).then(function(result) {
                 if (result.isConfirmed) {
-                    // Aquí puedes implementar la lógica para marcar como ojo
-                    toastr['success']('', 'Colaborador marcado como ojo correctamente', {
-                        closeButton: true,
-                        tapToDismiss: false,
-                        rtl: false
+                    $.ajax({
+                        url: '/collaborator/' + id + '/mark-as-watch',
+                        type: 'POST',
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                        },
+                        success: function(response) {
+                            toastr['success']('', response.message, {
+                                closeButton: true,
+                                tapToDismiss: false,
+                                rtl: false
+                            });
+                            $('#collaborator-table').DataTable().ajax.reload();
+                        },
+                        error: function(response) {
+                            Swal.fire({
+                                title: 'Error',
+                                text: response.responseJSON.message || 'Ha ocurrido un error',
+                                icon: 'error',
+                                customClass: {
+                                    confirmButton: 'btn btn-primary'
+                                },
+                                buttonsStyling: false
+                            });
+                        }
                     });
-                    $('#collaborator-table').DataTable().ajax.reload();
                 }
             });
         }
@@ -339,13 +358,32 @@
                 buttonsStyling: false
             }).then(function(result) {
                 if (result.isConfirmed) {
-                    // Aquí puedes implementar la lógica para enviar a lista negra
-                    toastr['success']('', 'Colaborador enviado a lista negra', {
-                        closeButton: true,
-                        tapToDismiss: false,
-                        rtl: false
+                    $.ajax({
+                        url: '/collaborator/' + id + '/send-to-blacklist',
+                        type: 'POST',
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                        },
+                        success: function(response) {
+                            toastr['success']('', response.message, {
+                                closeButton: true,
+                                tapToDismiss: false,
+                                rtl: false
+                            });
+                            $('#collaborator-table').DataTable().ajax.reload();
+                        },
+                        error: function(response) {
+                            Swal.fire({
+                                title: 'Error',
+                                text: response.responseJSON.message || 'Ha ocurrido un error',
+                                icon: 'error',
+                                customClass: {
+                                    confirmButton: 'btn btn-primary'
+                                },
+                                buttonsStyling: false
+                            });
+                        }
                     });
-                    $('#collaborator-table').DataTable().ajax.reload();
                 }
             });
         }
@@ -375,11 +413,31 @@
                 }
             }).then(function(result) {
                 if (result.isConfirmed) {
-                    // Aquí puedes implementar la lógica para enviar notificación
-                    toastr['success']('', 'Notificación enviada correctamente', {
-                        closeButton: true,
-                        tapToDismiss: false,
-                        rtl: false
+                    $.ajax({
+                        url: '/collaborator/' + id + '/send-notification',
+                        type: 'POST',
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr('content'),
+                            message: result.value
+                        },
+                        success: function(response) {
+                            toastr['success']('', response.message, {
+                                closeButton: true,
+                                tapToDismiss: false,
+                                rtl: false
+                            });
+                        },
+                        error: function(response) {
+                            Swal.fire({
+                                title: 'Error',
+                                text: response.responseJSON.message || 'Ha ocurrido un error',
+                                icon: 'error',
+                                customClass: {
+                                    confirmButton: 'btn btn-primary'
+                                },
+                                buttonsStyling: false
+                            });
+                        }
                     });
                 }
             });

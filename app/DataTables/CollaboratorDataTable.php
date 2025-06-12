@@ -18,20 +18,20 @@ class CollaboratorDataTable extends DataTable
                 return view('collaborator.action', compact('contact'));
             })
             ->addColumn('rating', function ($contact) {
-                // Depending on the contact's status, return different rating badges
-                $status = $contact->status ?? 'top'; // Default to 'top' if no status
+                // Get the valoration name from the relationship
+                $valoration = $contact->valoration ? $contact->valoration->name : 'Top';
                 
-                switch($status) {
-                    case 'top':
+                switch($valoration) {
+                    case 'Top':
                         return '<div class="d-flex align-items-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
-                    case 'blacklist':
+                    case 'Lista negra':
                         return '<div class="d-flex align-items-center"><i class="ti ti-x text-danger ti-sm me-2"></i> Lista negra</div>';
-                    case 'validated':
+                    case 'Validada':
                         return '<div class="d-flex align-items-center"><i class="ti ti-check text-success ti-sm me-2"></i> Validada</div>';
-                    case 'pending':
-                        return '<div class="d-flex align-items-center"><i class="ti ti-clock text-warning ti-sm me-2"></i> En espera</div>';
-                    case 'watch':
-                        return '<div class="d-flex align-items-center"><i class="ti ti-eye text-danger ti-sm me-2"></i> Ojo</div>';
+                    case 'En espera':
+                        return '<div class="d-flex align-items-center"><i class="ti ti-eye text-warning ti-sm me-2"></i> Ojo</div>';
+                    case 'Interesante':
+                        return '<div class="d-flex align-items-center"><i class="ti ti-clock text-info ti-sm me-2"></i> Interesante</div>';
                     default:
                         return '<div class="d-flex align-items-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
                 }
@@ -76,7 +76,7 @@ class CollaboratorDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery();
+        return $model->newQuery()->with(['valoration']);
     }
 
     public function html(): HtmlBuilder
