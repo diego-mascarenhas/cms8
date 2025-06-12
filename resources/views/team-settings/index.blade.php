@@ -18,57 +18,50 @@
                 </div>
             @endif
 
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Available Settings</h5>
+            <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-brand-stripe mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Stripe Integration</h5>
+                            <p class="card-text">Configure Stripe API keys and webhook settings</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'stripe']) }}" class="btn btn-primary">Configure</a>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="ti ti-brand-stripe mb-3" style="font-size: 2rem;"></i>
-                                    <h5 class="card-title">Stripe Integration</h5>
-                                    <p class="card-text">Configure Stripe API keys and webhook settings</p>
-                                    <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'stripe']) }}" class="btn btn-primary">Configure</a>
-                                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-category mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Categories</h5>
+                            <p class="card-text">Configure default category settings and preferences</p>
+                            <div class="btn-group">
+                                <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'categories']) }}" class="btn btn-primary">Configure</a>
+                                <a href="{{ route('categories.index') }}" class="btn btn-outline-primary">Manage</a>
                             </div>
                         </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="ti ti-category mb-3" style="font-size: 2rem;"></i>
-                                    <h5 class="card-title">Categories</h5>
-                                    <p class="card-text">Configure default category settings and preferences</p>
-                                    <div class="btn-group">
-                                        <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'categories']) }}" class="btn btn-primary">Configure</a>
-                                        <a href="{{ route('categories.index') }}" class="btn btn-outline-primary">Manage</a>
-                                    </div>
-                                </div>
-                            </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-bell mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Notifications</h5>
+                            <p class="card-text">Manage notification preferences for your team</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'notifications']) }}" class="btn btn-primary">Configure</a>
                         </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="ti ti-bell mb-3" style="font-size: 2rem;"></i>
-                                    <h5 class="card-title">Notifications</h5>
-                                    <p class="card-text">Manage notification preferences for your team</p>
-                                    <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'notifications']) }}" class="btn btn-primary">Configure</a>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="ti ti-star mb-3" style="font-size: 2rem;"></i>
-                                    <h5 class="card-title">Valorations</h5>
-                                    <p class="card-text">Manage contact valorations for your team</p>
-                                    <a href="{{ route('team-settings.valorations', $team) }}" class="btn btn-primary">Manage</a>
-                                </div>
-                            </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-star mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Valorations</h5>
+                            <p class="card-text">Manage contact valorations for your team</p>
+                            <a href="{{ route('team-settings.valorations', $team) }}" class="btn btn-primary">Manage</a>
                         </div>
                     </div>
                 </div>
