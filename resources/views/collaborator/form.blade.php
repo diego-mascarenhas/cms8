@@ -11,10 +11,28 @@
 @endsection
 
 @section('content')
-    <div class="card">
-        <div class="card-header">
-            <h4 class="card-title">{{ isset($collaborator) ? __('Edit Collaborator') : __('New Collaborator') }}</h4>
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+        <div class="d-flex flex-column justify-content-center">
+            <h4 class="mb-1 mt-3">
+                <span class="text-muted fw-light">{{ __('Collaborators') }}/</span> 
+                {{ isset($collaborator) ? __('Edit') : __('Create') }}
+            </h4>
+            <p class="text-muted">{{ isset($collaborator) ? __('Update collaborator information') : __('Add a new collaborator') }}</p>
         </div>
+        <div class="d-flex align-content-center flex-wrap gap-3">
+            @if(isset($collaborator))
+                @can('collaborator.show')
+                <a href="{{ route('collaborator.show', $collaborator->id) }}" class="btn btn-primary waves-effect waves-light">
+                    <i class="ti ti-eye me-1"></i>{{ __('View Collaborator') }}
+                </a>
+                @endcan
+            @endif
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <h5 class="card-header">{{ isset($collaborator) ? __('Edit Collaborator') : __('New Collaborator') }}</h5>
         <div class="card-body">
             <form action="{{ isset($collaborator) ? route('collaborator.update', $collaborator) : route('collaborator.store') }}" method="POST">
                 @csrf
@@ -40,13 +58,11 @@
                     </div>
                 </div>
 
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary me-2">
-                        {{ isset($collaborator) ? __('Update') : __('Create') }}
-                    </button>
-                    <a href="{{ route('collaborator-list') }}" class="btn btn-label-secondary">
-                        {{ __('Cancel') }}
-                    </a>
+                <div class="pt-4">
+                    <div class="col-12 d-flex">
+                        <button type="submit" class="btn btn-primary me-sm-3 me-1">{{ isset($collaborator) ? __('Update') : __('Create') }}</button>
+                        <button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('collaborator-list') }}'">{{ __('Cancel') }}</button>
+                    </div>
                 </div>
             </form>
         </div>

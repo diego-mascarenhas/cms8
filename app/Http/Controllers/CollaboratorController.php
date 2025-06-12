@@ -58,7 +58,7 @@ class CollaboratorController extends Controller
 
         $collaborator->update($validated);
 
-        return redirect()->route('collaborator-list')
+        return redirect()->route('collaborator.show', $id)
             ->with('success', __('Collaborator updated successfully.'));
     }
 

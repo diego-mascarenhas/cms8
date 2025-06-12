@@ -70,6 +70,15 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'contact.update']);
         Permission::create(['name' => 'contact.destroy']);
         
+        Permission::create(['name' => 'collaborator.index']);
+        Permission::create(['name' => 'collaborator.list']);
+        Permission::create(['name' => 'collaborator.create']);
+        Permission::create(['name' => 'collaborator.show']);
+        Permission::create(['name' => 'collaborator.edit']);
+        Permission::create(['name' => 'collaborator.store']);
+        Permission::create(['name' => 'collaborator.update']);
+        Permission::create(['name' => 'collaborator.destroy']);
+        
         Permission::create(['name' => 'client.index']);
         Permission::create(['name' => 'client.list']);
         Permission::create(['name' => 'client.create']);
@@ -283,13 +292,15 @@ class RolesAndPermissionsSeeder extends Seeder
             'contact.store',
             'contact.update',
             'contact.destroy',
+            'collaborator.index',
+            'collaborator.list',
+            'collaborator.create',
+            'collaborator.show',
+            'collaborator.edit',
+            'collaborator.store',
+            'collaborator.update',
+            'collaborator.destroy',
             'client.list',
-            'client.create',
-            'client.show',
-            'client.edit',
-            'client.store',
-            'client.update',
-            'client.destroy',
             'list60.list',
             'project.index',
             'project.list',

@@ -32,6 +32,7 @@ class Contact extends Model
 		'responsible_id',
 		'data',
 		'status_id',
+		'valoration_id',
 	];
 
 	protected $casts = [
@@ -100,15 +101,19 @@ class Contact extends Model
 		return $this->hasOne(ContactSentimentHistory::class)->latest();
 	}
 
+	public function status()
+	{
+		return $this->belongsTo(ContactStatus::class);
+	}
+
+	public function valoration()
+	{
+		return $this->belongsTo(ContactValoration::class, 'valoration_id');
+	}
 
 	public function list60s()
 	{
 		return $this->hasMany(List60::class, 'contact_id');
-	}
-
-	public function status()
-	{
-		return $this->belongsTo(ContactStatus::class);
 	}
 
 	public function getStatusLabelAttribute()

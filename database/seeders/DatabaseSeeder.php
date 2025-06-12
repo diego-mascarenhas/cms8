@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             EnterpriseSeeder::class,
             ContactStatusSeeder::class,
             ContactSentimentSeeder::class,
+            ContactValorationSeeder::class,
             ContactSeeder::class,
             ContactSourceSeeder::class,
             EnterpriseOrganizationSeeder::class,

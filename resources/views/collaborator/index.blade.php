@@ -295,5 +295,94 @@
                 deleteRecord(id, this);
             });
         });
+
+        // Función para marcar como ojo
+        function markAsWatch(id) {
+            Swal.fire({
+                title: '¿Marcar como ojo?',
+                text: "Este colaborador será marcado para supervisión especial",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, marcar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-warning me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    // Aquí puedes implementar la lógica para marcar como ojo
+                    toastr['success']('', 'Colaborador marcado como ojo correctamente', {
+                        closeButton: true,
+                        tapToDismiss: false,
+                        rtl: false
+                    });
+                    $('#collaborator-table').DataTable().ajax.reload();
+                }
+            });
+        }
+
+        // Función para enviar a lista negra
+        function sendToBlacklist(id) {
+            Swal.fire({
+                title: '¿Enviar a lista negra?',
+                text: "Este colaborador será bloqueado y no podrá participar en proyectos",
+                icon: 'error',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, bloquear',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-danger me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    // Aquí puedes implementar la lógica para enviar a lista negra
+                    toastr['success']('', 'Colaborador enviado a lista negra', {
+                        closeButton: true,
+                        tapToDismiss: false,
+                        rtl: false
+                    });
+                    $('#collaborator-table').DataTable().ajax.reload();
+                }
+            });
+        }
+
+        // Función para enviar notificación
+        function sendNotification(id) {
+            Swal.fire({
+                title: 'Enviar notificación',
+                input: 'textarea',
+                inputLabel: 'Mensaje de notificación',
+                inputPlaceholder: 'Escribe tu mensaje aquí...',
+                inputAttributes: {
+                    'aria-label': 'Escribe tu mensaje de notificación'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Enviar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false,
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'Debes escribir un mensaje'
+                    }
+                }
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    // Aquí puedes implementar la lógica para enviar notificación
+                    toastr['success']('', 'Notificación enviada correctamente', {
+                        closeButton: true,
+                        tapToDismiss: false,
+                        rtl: false
+                    });
+                }
+            });
+        }
     </script>
 @endpush
