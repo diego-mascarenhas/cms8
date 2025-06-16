@@ -168,9 +168,10 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
     Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
     Route::post('/collaborator/{id}/mark-as-watch', [CollaboratorController::class, 'markAsWatch'])->name('collaborator.markAsWatch');
-Route::post('/collaborator/{id}/send-to-blacklist', [CollaboratorController::class, 'sendToBlacklist'])->name('collaborator.sendToBlacklist');
-Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
-Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware');
+    Route::post('/collaborator/{id}/send-to-blacklist', [CollaboratorController::class, 'sendToBlacklist'])->name('collaborator.sendToBlacklist');
+    Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
+    Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware');
+    Route::post('/collaborator/{id}/update-valoration', [CollaboratorController::class, 'updateValoration'])->name('collaborator.updateValoration');
     Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
     Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
     Route::get('/collaborator/{id}/absences', function ($id) {

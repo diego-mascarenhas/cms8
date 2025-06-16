@@ -219,4 +219,34 @@ class CollaboratorController extends Controller
             'softwares' => $softwares
         ]);
     }
+
+    /**
+     * Update collaborator valoration
+     */
+    public function updateValoration(Request $request, $id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $request->validate([
+            'valoration_id' => 'required|exists:contact_valorations,id'
+        ]);
+
+        $collaborator = Contact::findOrFail($id);
+        $collaborator->update(['valoration_id' => $request->valoration_id]);
+        
+        // Get the updated valoration details
+        $valoration = $collaborator->valoration;
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Valoración actualizada correctamente',
+            'valoration' => [
+                'id' => $valoration->id,
+                'name' => $valoration->name,
+                'icon' => $valoration->icon
+            ]
+        ]);
+    }
 } 
