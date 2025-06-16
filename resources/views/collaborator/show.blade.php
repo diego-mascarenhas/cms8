@@ -420,11 +420,11 @@
             <div class="card mb-4">
                 <div class="card-header border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Software de trabajo</h5>
-                    <button id="toggleSoftwareEdit" class="btn btn-sm btn-outline-secondary" type="button">
-                        <i class="ti ti-pencil"></i> Editar
-                    </button>
+                    <a href="javascript:void(0)" id="toggleSoftwareEdit" class="text-secondary">
+                        <i class="ti ti-edit ti-sm"></i>
+                    </a>
                 </div>
-                <div class="card-body">
+                <div class="card-body pt-4">
                     <!-- Vista de solo lectura -->
                     <div id="software-display">
                         @if($collaborator->softwares && $collaborator->softwares->count() > 0)
@@ -440,7 +440,6 @@
                         @endif
                     </div>
                     
-                    <!-- Formulario de edición (visible para testing) -->
                     <form id="software-edit-form" class="mt-3 d-none">
                         @csrf
                         <x-software-select 
@@ -451,7 +450,6 @@
                         <div class="mt-3">
                             <button type="button" id="saveSoftware" class="btn btn-primary btn-sm">Guardar</button>
                             <button type="button" id="cancelSoftwareEdit" class="btn btn-outline-secondary btn-sm">Cancelar</button>
-                            <button type="button" id="testButton" class="btn btn-outline-info btn-sm ms-2">Test jQuery</button>
                         </div>
                     </form>
                 </div>
@@ -488,11 +486,6 @@
     // Esperar a que el documento esté completamente cargado
     window.addEventListener('load', function() {
         console.log('Window loaded, setting up events...');
-        
-        // Test button
-        document.getElementById('testButton').addEventListener('click', function() {
-            alert('JavaScript está funcionando correctamente!');
-        });
         
         // Inicializar Select2
         try {
