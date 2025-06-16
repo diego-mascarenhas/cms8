@@ -4,10 +4,13 @@
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flag-icons/flag-icons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('content')
@@ -71,21 +74,21 @@
                     <div class="col-md-6 mb-3 mb-md-0">
                         <label for="source_language" class="form-label">{{ __('Lengua origen') }}</label>
                         <select class="form-select select2" id="source_language" name="source_language">
-                            <option value="es-ES" data-flag="es">🇪🇸 Español-España</option>
-                            <option value="en-US" data-flag="us">🇺🇸 English-United States</option>
-                            <option value="fr-FR" data-flag="fr">🇫🇷 Français-France</option>
-                            <option value="de-DE" data-flag="de">🇩🇪 Deutsch-Deutschland</option>
-                            <option value="it-IT" data-flag="it">🇮🇹 Italiano-Italia</option>
+                            <option value="es-ES" data-flag="es">Español-España</option>
+                            <option value="en-US" data-flag="us">English-United States</option>
+                            <option value="fr-FR" data-flag="fr">Français-France</option>
+                            <option value="de-DE" data-flag="de">Deutsch-Deutschland</option>
+                            <option value="it-IT" data-flag="it">Italiano-Italia</option>
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label for="target_language" class="form-label">{{ __('Lengua nativa') }}</label>
                         <select class="form-select select2" id="target_language" name="target_language">
-                            <option value="es-ES" data-flag="es" selected>🇪🇸 Español-España</option>
-                            <option value="en-US" data-flag="us">🇺🇸 English-United States</option>
-                            <option value="fr-FR" data-flag="fr">🇫🇷 Français-France</option>
-                            <option value="de-DE" data-flag="de">🇩🇪 Deutsch-Deutschland</option>
-                            <option value="it-IT" data-flag="it">🇮🇹 Italiano-Italia</option>
+                            <option value="es-ES" data-flag="es" selected>Español-España</option>
+                            <option value="en-US" data-flag="us">English-United States</option>
+                            <option value="fr-FR" data-flag="fr">Français-France</option>
+                            <option value="de-DE" data-flag="de">Deutsch-Deutschland</option>
+                            <option value="it-IT" data-flag="it">Italiano-Italia</option>
                         </select>
                     </div>
                 </div>
@@ -94,9 +97,9 @@
                     <div class="row g-3 language-pairs-list">
                         <div class="col-md-6 col-lg-4">
                             <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
-                                <span>🇪🇸 Español-España</span>
+                                <span><i class="fi fi-es me-2"></i>Español-España</span>
                                 <span class="mx-2">&gt;</span>
-                                <span>🇫🇷 Français-France</span>
+                                <span><i class="fi fi-fr me-2"></i>Français-France</span>
                                 <a href="javascript:void(0)" class="text-danger ms-auto remove-pair"><i class="ti ti-x"></i></a>
                             </div>
                         </div>
@@ -144,10 +147,20 @@
                 const targetText = targetLanguage.text;
                 const sourceValue = $('#source_language').val();
                 const targetValue = $('#target_language').val();
+                const sourceFlag = $('#source_language option:selected').data('flag');
+                const targetFlag = $('#target_language option:selected').data('flag');
                 
                 // Check if source and target are the same
                 if (sourceValue === targetValue) {
-                    alert('El idioma de origen y destino no pueden ser iguales');
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'El idioma de origen y destino no pueden ser iguales',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        },
+                        buttonsStyling: false
+                    });
                     return;
                 }
                 
@@ -155,7 +168,15 @@
                 const pairExists = checkIfPairExists(sourceValue, targetValue);
                 if (pairExists) {
                     // Show error or alert
-                    alert('Este par de idiomas ya existe');
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Este par de idiomas ya existe',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        },
+                        buttonsStyling: false
+                    });
                     return;
                 }
                 
@@ -163,9 +184,9 @@
                 const newPair = $(`
                     <div class="col-md-6 col-lg-4">
                         <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
-                            <span>${sourceText}</span>
+                            <span><i class="fi fi-${sourceFlag} me-2"></i>${sourceText}</span>
                             <span class="mx-2">&gt;</span>
-                            <span>${targetText}${targetValue === 'es-ES' ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
+                            <span><i class="fi fi-${targetFlag} me-2"></i>${targetText}${targetValue === 'es-ES' ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
                             <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
                                 <i class="ti ti-x"></i>
                             </a>
@@ -194,7 +215,8 @@
                     return option.text;
                 }
                 
-                return $(option.element).text();
+                const flag = $(option.element).data('flag');
+                return $(`<span><i class="fi fi-${flag} me-2"></i>${option.text}</span>`);
             }
             
             // Check if language pair already exists
@@ -226,13 +248,15 @@
                     const pairSourceText = "{{ $pair->source_language_text }}";
                     const pairTargetText = "{{ $pair->target_language_text }}";
                     const isNative = {{ $pair->is_native ? 'true' : 'false' }};
+                    const sourceFlag = pairSource.split('-')[1].toLowerCase();
+                    const targetFlag = pairTarget.split('-')[1].toLowerCase();
                     
                     const savedPair = $(`
                         <div class="col-md-6 col-lg-4">
                             <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
-                                <span>${pairSourceText}</span>
+                                <span><i class="fi fi-${sourceFlag} me-2"></i>${pairSourceText}</span>
                                 <span class="mx-2">&gt;</span>
-                                <span>${pairTargetText}${isNative ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
+                                <span><i class="fi fi-${targetFlag} me-2"></i>${pairTargetText}${isNative ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
                                 <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
                                     <i class="ti ti-x"></i>
                                 </a>
