@@ -133,7 +133,7 @@
                 </a>
             </div>
 
-            <!-- Proyectos con bbo -->
+            <!-- Projects with bbo -->
             <div class="card mb-4">
                 <div class="card-header border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
@@ -246,7 +246,7 @@
                 </div>
             </div>
 
-            <!-- Experiencia -->
+            <!-- Experience -->
             <div class="card mb-4">
                 <div class="card-header border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
@@ -323,7 +323,7 @@
                 </div>
             </div>
 
-            <!-- Actividad -->
+            <!-- Activity -->
             <div class="card mb-4">
                 <div class="card-header border-bottom">
                     <h5 class="mb-0">Actividad</h5>
@@ -394,7 +394,7 @@
                 </div>
             </div>
 
-            <!-- Servicios -->
+            <!-- Services -->
             <div class="card mb-4">
                 <div class="card-header border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Servicios</h5>
@@ -416,7 +416,7 @@
                 </div>
             </div>
 
-            <!-- Software de trabajo -->
+            <!-- Work Software -->
             <div class="card mb-4">
                 <div class="card-header border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Software de trabajo</h5>
@@ -425,7 +425,7 @@
                     </a>
                 </div>
                 <div class="card-body pt-4">
-                    <!-- Vista de solo lectura -->
+                    <!-- Read-only view -->
                     <div id="software-display">
                         @if($collaborator->softwares && $collaborator->softwares->count() > 0)
                             @foreach($collaborator->softwares as $software)
@@ -455,7 +455,7 @@
                 </div>
             </div>
 
-            <!-- Temáticas -->
+            <!-- Topics -->
             <div class="card">
                 <div class="card-header border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Temáticas</h5>
@@ -483,11 +483,11 @@
 
 @push('scripts')
 <script type="text/javascript">
-    // Esperar a que el documento esté completamente cargado
+    // Wait for the document to be fully loaded
     window.addEventListener('load', function() {
         console.log('Window loaded, setting up events...');
         
-        // Inicializar Select2
+        // Initialize Select2
         try {
             $('#collaborator_software_ids').select2({
                 placeholder: 'Seleccionar software',
@@ -500,7 +500,7 @@
             console.error('Error initializing Select2:', e);
         }
         
-        // Toggle entre vista y edición
+        // Toggle between view and edit
         document.getElementById('toggleSoftwareEdit').addEventListener('click', function() {
             console.log('Toggle edit clicked');
             document.getElementById('software-display').classList.add('d-none');
@@ -508,7 +508,7 @@
             this.classList.add('d-none');
         });
 
-        // Cancelar edición
+        // Cancel edit
         document.getElementById('cancelSoftwareEdit').addEventListener('click', function() {
             console.log('Cancel edit clicked');
             document.getElementById('software-edit-form').classList.add('d-none');
@@ -516,11 +516,11 @@
             document.getElementById('toggleSoftwareEdit').classList.remove('d-none');
         });
 
-        // Guardar cambios
+        // Save changes
         document.getElementById('saveSoftware').addEventListener('click', function() {
             console.log('Save software clicked');
             
-            // Usar vanilla JS o jQuery dependiendo de lo que esté disponible
+            // Use vanilla JS or jQuery depending on what's available
             let softwareIds;
             if (typeof $ !== 'undefined' && $.fn.select2) {
                 softwareIds = $('#collaborator_software_ids').val();
@@ -535,7 +535,7 @@
             console.log('Collaborator ID:', collaboratorId);
             console.log('CSRF Token:', csrfToken);
             
-            // Usar fetch API en lugar de jQuery AJAX
+            // Use fetch API instead of jQuery AJAX
             fetch(`/collaborator/${collaboratorId}/update-software`, {
                 method: 'POST',
                 headers: {
@@ -550,7 +550,7 @@
             .then(data => {
                 console.log('Fetch Success:', data);
                 if (data.success) {
-                    // Actualizar las badges en la vista
+                    // Update the badges in the view
                     let badgesHtml = '';
                     if (data.softwares && data.softwares.length > 0) {
                         data.softwares.forEach(function(software) {
@@ -563,12 +563,12 @@
                     
                     document.getElementById('software-display').innerHTML = badgesHtml;
                     
-                    // Volver a la vista de solo lectura
+                    // Return to read-only view
                     document.getElementById('software-edit-form').classList.add('d-none');
                     document.getElementById('software-display').classList.remove('d-none');
                     document.getElementById('toggleSoftwareEdit').classList.remove('d-none');
                     
-                    // Mostrar notificación de éxito
+                    // Show success notification
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
                             icon: 'success',
