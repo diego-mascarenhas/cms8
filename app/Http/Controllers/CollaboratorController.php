@@ -192,9 +192,14 @@ class CollaboratorController extends Controller
         if (!is_array($softwareIds) && !empty($softwareIds)) {
             $softwareIds = [$softwareIds];
         }
+        
+        // Filtrar valores vacíos o nulos que puedan causar errores
+        $softwareIds = array_filter($softwareIds, function($value) {
+            return !empty($value) && $value !== '' && $value !== null;
+        });
 
-        // Sync software
-        $collaborator->softwares()->sync($softwareIds);
+        // Sync software - usar array vacío explícitamente si no hay IDs
+        $collaborator->softwares()->sync(empty($softwareIds) ? [] : $softwareIds);
 
         // Load updated softwares with types
         $collaborator->load('softwares.type');
