@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Services\WhmService;
+use App\Services\WHMService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -19,7 +19,7 @@ class WhmDomainSync implements ShouldQueue
         $this->onQueue('whm-sync');
     }
 
-    public function handle(WhmService $whmService)
+    public function handle(WHMService $whmService)
     {
         try {
             $result = $whmService->syncDomainsFromAllServers();

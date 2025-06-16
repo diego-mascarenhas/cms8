@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\Server;
 
-class WhmService
+class WHMService
 {
     public function syncDomainsFromAllServers()
     {

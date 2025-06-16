@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\ServerStatus;
 use App\Models\Server;
-use App\Services\WhmService;
+use App\Services\WHMService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,7 +21,7 @@ class WhmServerTest implements ShouldQueue
         $this->onQueue('whm-tests');
     }
 
-    public function handle(WhmService $whmService)
+    public function handle(WHMService $whmService)
     {
         try {
             $results = $whmService->testConnections();

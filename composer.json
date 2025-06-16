@@ -31,6 +31,7 @@
     "zbateson/mail-mime-parser": "^2.4"
   },
   "require-dev": {
+    "doctrine/dbal": "^3.9",
     "laravel-lang/common": "^6.4",
     "laravel/pint": "^1.0",
     "laravel/sail": "^1.25",
