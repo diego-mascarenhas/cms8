@@ -3,7 +3,9 @@
     <div class="card mb-4">
         <div class="card-body">
             <div class="d-flex align-items-center flex-column mb-3">
-                <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar" class="rounded-circle mb-3" width="100" height="100">
+                <img class="img-fluid rounded-circle mb-3" 
+                    src="https://ui-avatars.com/api/?format=svg&name={{ $collaborator->name }}" 
+                    height="100" width="100" alt="User avatar" />
                 <h4 class="mb-1">{{ $collaborator->name ?? 'Colaborador' }}</h4>
                 @if($collaborator->valoration)
                     <span class="badge bg-label-{{ $collaborator->valoration->name == 'Lista negra' ? 'danger' : ($collaborator->valoration->name == 'Top' ? 'warning' : 'primary') }} rounded-pill">
@@ -15,15 +17,15 @@
             </div>
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="text-center me-4">
-                    <div class="badge bg-label-primary rounded-circle p-2">
-                        <i class="ti ti-file-text ti-sm"></i>
+                    <div class="badge bg-label-primary rounded-circle p-4">
+                        <i class="ti ti-folder ti-lg"></i>
                     </div>
                     <h6 class="mt-2 mb-0">5</h6>
                     <span class="text-muted small">Proyectos</span>
                 </div>
                 <div class="text-center">
-                    <div class="badge bg-label-info rounded-circle p-2">
-                        <i class="ti ti-clock ti-sm"></i>
+                    <div class="badge bg-label-info rounded-circle p-4">
+                        <i class="ti ti-clock ti-lg"></i>
                     </div>
                     <h6 class="mt-2 mb-0">648</h6>
                     <span class="text-muted small">Minutos</span>
