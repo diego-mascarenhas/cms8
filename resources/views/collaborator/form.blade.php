@@ -72,24 +72,18 @@
                 
                 <div class="row mb-4">
                     <div class="col-md-6 mb-3 mb-md-0">
-                        <label for="source_language" class="form-label">{{ __('Lengua origen') }}</label>
-                        <select class="form-select select2" id="source_language" name="source_language">
-                            <option value="es-ES" data-flag="es">Español-España</option>
-                            <option value="en-US" data-flag="us">English-United States</option>
-                            <option value="fr-FR" data-flag="fr">Français-France</option>
-                            <option value="de-DE" data-flag="de">Deutsch-Deutschland</option>
-                            <option value="it-IT" data-flag="it">Italiano-Italia</option>
-                        </select>
+                        <x-variant-language-select 
+                            name="source_language" 
+                            id="source_language" 
+                            label="Lengua origen" 
+                        />
                     </div>
                     <div class="col-md-6">
-                        <label for="target_language" class="form-label">{{ __('Lengua nativa') }}</label>
-                        <select class="form-select select2" id="target_language" name="target_language">
-                            <option value="es-ES" data-flag="es" selected>Español-España</option>
-                            <option value="en-US" data-flag="us">English-United States</option>
-                            <option value="fr-FR" data-flag="fr">Français-France</option>
-                            <option value="de-DE" data-flag="de">Deutsch-Deutschland</option>
-                            <option value="it-IT" data-flag="it">Italiano-Italia</option>
-                        </select>
+                        <x-variant-language-select 
+                            name="target_language" 
+                            id="target_language" 
+                            label="Lengua nativa" 
+                        />
                     </div>
                 </div>
                 
