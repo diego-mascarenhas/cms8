@@ -441,7 +441,7 @@
                     </div>
                     
                     <!-- Formulario de edición (visible para testing) -->
-                    <form id="software-edit-form" class="mt-3">
+                    <form id="software-edit-form" class="mt-3 d-none">
                         @csrf
                         <x-software-select 
                             id="collaborator_software_ids" 
@@ -451,6 +451,7 @@
                         <div class="mt-3">
                             <button type="button" id="saveSoftware" class="btn btn-primary btn-sm">Guardar</button>
                             <button type="button" id="cancelSoftwareEdit" class="btn btn-outline-secondary btn-sm">Cancelar</button>
+                            <button type="button" id="testButton" class="btn btn-outline-info btn-sm ms-2">Test jQuery</button>
                         </div>
                     </form>
                 </div>
@@ -480,108 +481,119 @@
         </div>
         <!-- /Collaborator Content -->
     </div>
+@endsection 
 
-    @push('page-script')
-    <script>
-        $(function() {
-            console.log('Document ready, setting up events...');
-            
-            // Toggle entre vista y edición
-            $('#toggleSoftwareEdit').on('click', function() {
-                console.log('Toggle edit clicked');
-                $('#software-display').addClass('d-none');
-                $('#software-edit-form').removeClass('d-none');
-                $(this).addClass('d-none');
+@push('scripts')
+<script type="text/javascript">
+    // Esperar a que el documento esté completamente cargado
+    window.addEventListener('load', function() {
+        console.log('Window loaded, setting up events...');
+        
+        // Test button
+        document.getElementById('testButton').addEventListener('click', function() {
+            alert('JavaScript está funcionando correctamente!');
+        });
+        
+        // Inicializar Select2
+        try {
+            $('#collaborator_software_ids').select2({
+                placeholder: 'Seleccionar software',
+                allowClear: true,
+                closeOnSelect: false,
+                width: '100%'
             });
-
-            // Cancelar edición
-            $('#cancelSoftwareEdit').on('click', function() {
-                console.log('Cancel edit clicked');
-                $('#software-edit-form').addClass('d-none');
-                $('#software-display').removeClass('d-none');
-                $('#toggleSoftwareEdit').removeClass('d-none');
-            });
-
-            // Guardar cambios
-            $('#saveSoftware').on('click', function() {
-                console.log('Save software clicked');
-                const softwareIds = $('#collaborator_software_ids').val();
-                const collaboratorId = {{ $collaborator->id }};
-                
-                console.log('Software IDs:', softwareIds);
-                console.log('Collaborator ID:', collaboratorId);
-                
-                $.ajax({
-                    url: `/collaborator/${collaboratorId}/update-software`,
-                    type: 'POST',
-                    data: {
-                        _token: $('meta[name="csrf-token"]').attr('content'),
-                        software_ids: softwareIds
-                    },
-                    beforeSend: function() {
-                        console.log('Sending AJAX request...');
-                    },
-                    success: function(response) {
-                        console.log('AJAX Success:', response);
-                        if (response.success) {
-                            // Actualizar las badges en la vista
-                            let badgesHtml = '';
-                            if (response.softwares && response.softwares.length > 0) {
-                                response.softwares.forEach(function(software) {
-                                    const softwareText = software.name + (software.type_name ? ' (' + software.type_name + ')' : '');
-                                    badgesHtml += `<span class="badge bg-label-primary rounded-pill me-1 mb-1">${softwareText}</span>`;
-                                });
-                            } else {
-                                badgesHtml = '<div class="mt-2"><span class="text-muted">No hay software asignado</span></div>';
-                            }
-                            
-                            $('#software-display').html(badgesHtml);
-                            
-                            // Volver a la vista de solo lectura
-                            $('#software-edit-form').addClass('d-none');
-                            $('#software-display').removeClass('d-none');
-                            $('#toggleSoftwareEdit').removeClass('d-none');
-                            
-                            // Mostrar notificación de éxito
-                            if (typeof Swal !== 'undefined') {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: '¡Éxito!',
-                                    text: 'Software actualizado correctamente',
-                                    timer: 2000,
-                                    showConfirmButton: false
-                                });
-                            } else {
-                                alert('Software actualizado correctamente');
-                            }
-                        }
-                    },
-                    error: function(xhr) {
-                        console.log('AJAX Error:', xhr);
-                        let errorMessage = 'Error al actualizar el software';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            errorMessage = xhr.responseJSON.message;
-                        }
-                        
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: errorMessage
-                            });
-                        } else {
-                            alert(errorMessage);
-                        }
-                    }
-                });
-            });
+            console.log('Select2 initialized');
+        } catch (e) {
+            console.error('Error initializing Select2:', e);
+        }
+        
+        // Toggle entre vista y edición
+        document.getElementById('toggleSoftwareEdit').addEventListener('click', function() {
+            console.log('Toggle edit clicked');
+            document.getElementById('software-display').classList.add('d-none');
+            document.getElementById('software-edit-form').classList.remove('d-none');
+            this.classList.add('d-none');
         });
 
-        // Función para actualización automática (opcional)
-        function updateSoftware() {
-            // Esta función se puede usar si quieres actualización automática al cambiar la selección
-            // Por ahora la dejamos vacía para que solo se actualice con el botón Guardar
-        }
-    </script>
-    @endpush
-@endsection 
+        // Cancelar edición
+        document.getElementById('cancelSoftwareEdit').addEventListener('click', function() {
+            console.log('Cancel edit clicked');
+            document.getElementById('software-edit-form').classList.add('d-none');
+            document.getElementById('software-display').classList.remove('d-none');
+            document.getElementById('toggleSoftwareEdit').classList.remove('d-none');
+        });
+
+        // Guardar cambios
+        document.getElementById('saveSoftware').addEventListener('click', function() {
+            console.log('Save software clicked');
+            
+            // Usar vanilla JS o jQuery dependiendo de lo que esté disponible
+            let softwareIds;
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                softwareIds = $('#collaborator_software_ids').val();
+            } else {
+                softwareIds = Array.from(document.getElementById('collaborator_software_ids').selectedOptions).map(option => option.value);
+            }
+            
+            const collaboratorId = {{ $collaborator->id }};
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            console.log('Software IDs:', softwareIds);
+            console.log('Collaborator ID:', collaboratorId);
+            console.log('CSRF Token:', csrfToken);
+            
+            // Usar fetch API en lugar de jQuery AJAX
+            fetch(`/collaborator/${collaboratorId}/update-software`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    software_ids: softwareIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Fetch Success:', data);
+                if (data.success) {
+                    // Actualizar las badges en la vista
+                    let badgesHtml = '';
+                    if (data.softwares && data.softwares.length > 0) {
+                        data.softwares.forEach(function(software) {
+                            const softwareText = software.name + (software.type_name ? ' (' + software.type_name + ')' : '');
+                            badgesHtml += `<span class="badge bg-label-primary rounded-pill me-1 mb-1">${softwareText}</span>`;
+                        });
+                    } else {
+                        badgesHtml = '<div class="mt-2"><span class="text-muted">No hay software asignado</span></div>';
+                    }
+                    
+                    document.getElementById('software-display').innerHTML = badgesHtml;
+                    
+                    // Volver a la vista de solo lectura
+                    document.getElementById('software-edit-form').classList.add('d-none');
+                    document.getElementById('software-display').classList.remove('d-none');
+                    document.getElementById('toggleSoftwareEdit').classList.remove('d-none');
+                    
+                    // Mostrar notificación de éxito
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: 'Software actualizado correctamente',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert('Software actualizado correctamente');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Fetch Error:', error);
+                alert('Error al actualizar el software');
+            });
+        });
+    });
+</script>
+@endpush 

@@ -171,13 +171,30 @@ class CollaboratorController extends Controller
 
         $collaborator = Contact::findOrFail($id);
         
-        $validated = $request->validate([
-            'software_ids' => 'array',
-            'software_ids.*' => 'exists:software,id',
-        ]);
+        // Obtener los IDs de software, pueden venir como array o como string o como JSON
+        $softwareIds = [];
+        
+        // Si es una solicitud JSON
+        if ($request->isJson()) {
+            $data = $request->json()->all();
+            $softwareIds = $data['software_ids'] ?? [];
+        } else {
+            // Si es una solicitud normal
+            $softwareIds = $request->input('software_ids', []);
+        }
+        
+        // Si viene como string vacío, convertir a array vacío
+        if ($softwareIds === '') {
+            $softwareIds = [];
+        }
+        
+        // Si viene un solo ID como string, convertirlo a array
+        if (!is_array($softwareIds) && !empty($softwareIds)) {
+            $softwareIds = [$softwareIds];
+        }
 
         // Sync software
-        $collaborator->softwares()->sync($validated['software_ids'] ?? []);
+        $collaborator->softwares()->sync($softwareIds);
 
         // Load updated softwares with types
         $collaborator->load('softwares.type');
