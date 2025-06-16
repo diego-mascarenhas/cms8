@@ -91,12 +91,14 @@
                 </div>
                 
                 <div class="language-pairs-container mb-4">
-                    <div class="d-flex flex-wrap gap-2">
-                        <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8;">
-                            <span>🇪🇸 Español-España</span>
-                            <span class="mx-2">&gt;</span>
-                            <span>🇫🇷 Français-France</span>
-                            <a href="javascript:void(0)" class="text-danger ms-2 remove-pair"><i class="ti ti-x"></i></a>
+                    <div class="row g-3 language-pairs-list">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
+                                <span>🇪🇸 Español-España</span>
+                                <span class="mx-2">&gt;</span>
+                                <span>🇫🇷 Français-France</span>
+                                <a href="javascript:void(0)" class="text-danger ms-auto remove-pair"><i class="ti ti-x"></i></a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -159,20 +161,22 @@
                 
                 // Create new pair badge
                 const newPair = $(`
-                    <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8;">
-                        <span>${sourceText}</span>
-                        <span class="mx-2">&gt;</span>
-                        <span>${targetText}${targetValue === 'es-ES' ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
-                        <a href="javascript:void(0)" class="text-danger ms-2 remove-pair">
-                            <i class="ti ti-x"></i>
-                        </a>
-                        <input type="hidden" name="language_pairs[]" value="${sourceValue}|${targetValue}">
-                        <input type="hidden" name="is_native[]" value="${targetValue === 'es-ES' ? '1' : '0'}">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
+                            <span>${sourceText}</span>
+                            <span class="mx-2">&gt;</span>
+                            <span>${targetText}${targetValue === 'es-ES' ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
+                            <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
+                                <i class="ti ti-x"></i>
+                            </a>
+                            <input type="hidden" name="language_pairs[]" value="${sourceValue}|${targetValue}">
+                            <input type="hidden" name="is_native[]" value="${targetValue === 'es-ES' ? '1' : '0'}">
+                        </div>
                     </div>
                 `);
                 
                 // Add to container
-                $('.language-pairs-container .d-flex').append(newPair);
+                $('.language-pairs-list').append(newPair);
                 
                 // Reset selections
                 $('#source_language').val(null).trigger('change');
@@ -181,7 +185,7 @@
             
             // Remove language pair
             $(document).on('click', '.remove-pair', function() {
-                $(this).closest('.border').remove();
+                $(this).closest('.col-md-6').remove();
             });
             
             // Format language options with flags
@@ -210,7 +214,7 @@
             }
             
             // Clear example pairs on load
-            $('.language-pairs-container .d-flex').empty();
+            $('.language-pairs-list').empty();
             
             // If editing, load existing pairs
             // This would be populated from the backend with actual data
@@ -224,19 +228,21 @@
                     const isNative = {{ $pair->is_native ? 'true' : 'false' }};
                     
                     const savedPair = $(`
-                        <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8;">
-                            <span>${pairSourceText}</span>
-                            <span class="mx-2">&gt;</span>
-                            <span>${pairTargetText}${isNative ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
-                            <a href="javascript:void(0)" class="text-danger ms-2 remove-pair">
-                                <i class="ti ti-x"></i>
-                            </a>
-                            <input type="hidden" name="language_pairs[]" value="${pairSource}|${pairTarget}">
-                            <input type="hidden" name="is_native[]" value="${isNative ? '1' : '0'}">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
+                                <span>${pairSourceText}</span>
+                                <span class="mx-2">&gt;</span>
+                                <span>${pairTargetText}${isNative ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
+                                <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
+                                    <i class="ti ti-x"></i>
+                                </a>
+                                <input type="hidden" name="language_pairs[]" value="${pairSource}|${pairTarget}">
+                                <input type="hidden" name="is_native[]" value="${isNative ? '1' : '0'}">
+                            </div>
                         </div>
                     `);
                     
-                    $('.language-pairs-container .d-flex').append(savedPair);
+                    $('.language-pairs-list').append(savedPair);
                 @endforeach
             @endif
         });
