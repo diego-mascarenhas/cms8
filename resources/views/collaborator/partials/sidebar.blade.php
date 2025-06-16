@@ -15,20 +15,24 @@
                     <span class="badge bg-label-secondary rounded-pill">Sin valoración</span>
                 @endif
             </div>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="text-center me-4">
-                    <div class="badge bg-label-primary rounded-circle p-4">
-                        <i class="ti ti-folder ti-lg"></i>
+            <div class="d-flex flex-wrap justify-content-around mt-3 pt-3 pb-4 border-bottom">
+                <div class="d-flex align-items-start gap-3 mb-2 px-3">
+                    <div class="bg-label-primary p-3 rounded" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                        <i class='ti ti-folder text-primary' style="font-size: 1.25rem;"></i>
                     </div>
-                    <h6 class="mt-2 mb-0">5</h6>
-                    <span class="text-muted small">Proyectos</span>
+                    <div>
+                        <p class="mb-0 fw-bold fs-4" style="line-height: 1.2;">5</p>
+                        <small class="text-muted" style="line-height: 1.2;">Proyectos</small>
+                    </div>
                 </div>
-                <div class="text-center">
-                    <div class="badge bg-label-info rounded-circle p-4">
-                        <i class="ti ti-clock ti-lg"></i>
+                <div class="d-flex align-items-start gap-3 mb-2 px-3">
+                    <div class="bg-label-primary p-3 rounded" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                        <i class='ti ti-clock text-primary' style="font-size: 1.25rem;"></i>
                     </div>
-                    <h6 class="mt-2 mb-0">648</h6>
-                    <span class="text-muted small">Minutos</span>
+                    <div>
+                        <p class="mb-0 fw-bold fs-4" style="line-height: 1.2;">648</p>
+                        <small class="text-muted" style="line-height: 1.2;">Minutos</small>
+                    </div>
                 </div>
             </div>
             <h5 class="pb-2 border-bottom mb-4">Detalles</h5>
