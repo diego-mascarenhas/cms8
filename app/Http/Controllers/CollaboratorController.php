@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\CollaboratorDataTable;
 use App\Models\Contact;
+use App\Models\ContactLanguageVariant;
 use App\Models\ContactValoration;
 use Illuminate\Http\Request;
 
@@ -23,14 +24,38 @@ class CollaboratorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255'
+            'email' => 'required|email|max:255',
+            'language_pairs' => 'nullable|array',
+            'is_native' => 'nullable|array'
         ]);
 
         // Add creator_id and team_id automatically
         $validated['creator_id'] = auth()->user()->id;
         $validated['team_id'] = auth()->user()->currentTeam->id;
 
-        $contact = Contact::create($validated);
+        $contact = Contact::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'creator_id' => $validated['creator_id'],
+            'team_id' => $validated['team_id']
+        ]);
+
+        // Process language pairs if they exist
+        if ($request->has('language_pairs')) {
+            foreach ($request->language_pairs as $index => $pair) {
+                list($sourceLanguage, $targetLanguage) = explode('|', $pair);
+                
+                $isNative = isset($request->is_native[$index]) ? (bool)$request->is_native[$index] : false;
+                
+                ContactLanguageVariant::create([
+                    'contact_id' => $contact->id,
+                    'source_language_code' => $sourceLanguage,
+                    'target_language_code' => $targetLanguage,
+                    'proficiency_level' => $isNative ? 5 : 3, // Higher level for native languages
+                    'is_certified' => $isNative
+                ]);
+            }
+        }
 
         return redirect()->route('collaborator.show', $contact->id)
             ->with('success', __('Collaborator created successfully.'));
@@ -38,13 +63,27 @@ class CollaboratorController extends Controller
 
     public function show($id)
     {
-        $collaborator = Contact::with('softwares.type')->findOrFail($id);
+        $collaborator = Contact::with(['softwares.type', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage'])->findOrFail($id);
         return view('collaborator.show', compact('collaborator'));
     }
 
     public function edit($id)
     {
-        $collaborator = Contact::findOrFail($id);
+        $collaborator = Contact::with(['languageVariants.sourceLanguage', 'languageVariants.targetLanguage'])->findOrFail($id);
+        
+        // Format language pairs for the view
+        $languagePairs = $collaborator->languageVariants->map(function($variant) {
+            return [
+                'source_language' => $variant->source_language_code,
+                'target_language' => $variant->target_language_code,
+                'source_language_text' => $variant->sourceLanguage->name ?? $variant->source_language_code,
+                'target_language_text' => $variant->targetLanguage->name ?? $variant->target_language_code,
+                'is_native' => $variant->is_certified
+            ];
+        });
+        
+        $collaborator->languagePairs = $languagePairs;
+        
         return view('collaborator.form', compact('collaborator'));
     }
 
@@ -54,10 +93,36 @@ class CollaboratorController extends Controller
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255'
+            'email' => 'required|email|max:255',
+            'language_pairs' => 'nullable|array',
+            'is_native' => 'nullable|array'
         ]);
 
-        $collaborator->update($validated);
+        $collaborator->update([
+            'name' => $validated['name'],
+            'email' => $validated['email']
+        ]);
+
+        // Process language pairs if they exist
+        if ($request->has('language_pairs')) {
+            // Delete existing language pairs
+            $collaborator->languageVariants()->delete();
+            
+            // Add new language pairs
+            foreach ($request->language_pairs as $index => $pair) {
+                list($sourceLanguage, $targetLanguage) = explode('|', $pair);
+                
+                $isNative = isset($request->is_native[$index]) ? (bool)$request->is_native[$index] : false;
+                
+                ContactLanguageVariant::create([
+                    'contact_id' => $collaborator->id,
+                    'source_language_code' => $sourceLanguage,
+                    'target_language_code' => $targetLanguage,
+                    'proficiency_level' => $isNative ? 5 : 3, // Higher level for native languages
+                    'is_certified' => $isNative
+                ]);
+            }
+        }
 
         return redirect()->route('collaborator.show', $id)
             ->with('success', __('Collaborator updated successfully.'));

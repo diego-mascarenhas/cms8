@@ -174,13 +174,22 @@
                     return;
                 }
                 
+                // Get flag codes safely
+                const sourceFlagCode = sourceFlag || (sourceValue.split('-').length > 1 ? 
+                    sourceValue.split('-')[1].toLowerCase() : 
+                    sourceValue.split('-')[0].toLowerCase());
+                
+                const targetFlagCode = targetFlag || (targetValue.split('-').length > 1 ? 
+                    targetValue.split('-')[1].toLowerCase() : 
+                    targetValue.split('-')[0].toLowerCase());
+                
                 // Create new pair badge
                 const newPair = $(`
                     <div class="col-md-6 col-lg-4">
                         <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
-                            <span><i class="fi fi-${sourceFlag} me-2"></i>${sourceText}</span>
+                            <span><i class="fi fi-${sourceFlagCode} me-2"></i>${sourceText}</span>
                             <span class="mx-2">&gt;</span>
-                            <span><i class="fi fi-${targetFlag} me-2"></i>${targetText}${targetValue === 'es-ES' ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
+                            <span><i class="fi fi-${targetFlagCode} me-2"></i>${targetText}${targetValue === 'es-ES' ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
                             <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
                                 <i class="ti ti-x"></i>
                             </a>
@@ -237,13 +246,17 @@
             @if(isset($collaborator) && isset($collaborator->languagePairs))
                 @foreach($collaborator->languagePairs as $pair)
                     // Add each pair from the database
-                    const pairSource = "{{ $pair->source_language }}";
-                    const pairTarget = "{{ $pair->target_language }}";
-                    const pairSourceText = "{{ $pair->source_language_text }}";
-                    const pairTargetText = "{{ $pair->target_language_text }}";
-                    const isNative = {{ $pair->is_native ? 'true' : 'false' }};
-                    const sourceFlag = pairSource.split('-')[1].toLowerCase();
-                    const targetFlag = pairTarget.split('-')[1].toLowerCase();
+                    const pairSource = "{{ $pair['source_language'] }}";
+                    const pairTarget = "{{ $pair['target_language'] }}";
+                    const pairSourceText = "{{ $pair['source_language_text'] }}";
+                    const pairTargetText = "{{ $pair['target_language_text'] }}";
+                    const isNative = {{ $pair['is_native'] ? 'true' : 'false' }};
+                    
+                    // Extract flag codes safely
+                    const sourceParts = pairSource.split('-');
+                    const targetParts = pairTarget.split('-');
+                    const sourceFlag = sourceParts.length > 1 ? sourceParts[1].toLowerCase() : sourceParts[0].toLowerCase();
+                    const targetFlag = targetParts.length > 1 ? targetParts[1].toLowerCase() : targetParts[0].toLowerCase();
                     
                     const savedPair = $(`
                         <div class="col-md-6 col-lg-4">

@@ -91,6 +91,11 @@ class Contact extends Model
 		return $this->belongsTo(Language::class, 'language', 'code');
 	}
 
+	public function languageVariants()
+	{
+		return $this->hasMany(ContactLanguageVariant::class);
+	}
+
 	public function sentimentHistories()
 	{
 		return $this->hasMany(ContactSentimentHistory::class);
