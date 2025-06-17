@@ -636,5 +636,10 @@
     "Update collaborator information": "Actualizar información del colaborador",
     "View Collaborator": "Ver colaborador",
     "New Collaborator": "Nuevo colaborador",
-    "Add a new collaborator": "Añadir un nuevo colaborador"
+    "Add a new collaborator": "Añadir un nuevo colaborador",
+    "Validation Error": "Error de validación",
+    "You must add at least one language pair": "Debes añadir al menos un par de idiomas",
+    "Some language pairs are invalid": "Algunos pares de idiomas son inválidos",
+    "Source language is required": "El idioma de origen es obligatorio",
+    "Target language is required": "El idioma de destino es obligatorio"
 }

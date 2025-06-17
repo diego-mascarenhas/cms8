@@ -264,5 +264,10 @@
   "Update collaborator information": "Update collaborator information",
   "View Collaborator": "View Collaborator",
   "New Collaborator": "New Collaborator",
-  "Add a new collaborator": "Add a new collaborator"
+  "Add a new collaborator": "Add a new collaborator",
+  "Validation Error": "Validation Error",
+  "You must add at least one language pair": "You must add at least one language pair",
+  "Some language pairs are invalid": "Some language pairs are invalid",
+  "Source language is required": "Source language is required",
+  "Target language is required": "Target language is required"
 }

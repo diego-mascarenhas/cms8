@@ -143,10 +143,25 @@
                 const sourceLanguage = $('#source_language').select2('data')[0];
                 const targetLanguage = $('#target_language').select2('data')[0];
                 
-                if (!sourceLanguage || !targetLanguage) {
+                // Validate source language
+                if (!sourceLanguage || !$('#source_language').val()) {
                     Swal.fire({
-                        title: 'Error',
-                        text: '{{ __("You must select both languages") }}',
+                        title: '{{ __("Validation Error") }}',
+                        text: '{{ __("Source language is required") }}',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        },
+                        buttonsStyling: false
+                    });
+                    return;
+                }
+                
+                // Validate target language
+                if (!targetLanguage || !$('#target_language').val()) {
+                    Swal.fire({
+                        title: '{{ __("Validation Error") }}',
+                        text: '{{ __("Target language is required") }}',
                         icon: 'error',
                         customClass: {
                             confirmButton: 'btn btn-primary'
@@ -325,12 +340,52 @@
                 @endforeach
             @endif
 
-            // Form submit handler for debugging
+            // Form submit handler for validation
             $('form').on('submit', function(e) {
+                // Validate language pairs if any exist
                 const languagePairs = [];
                 $('input[name="language_pairs[]"]').each(function() {
-                    languagePairs.push($(this).val());
+                    const value = $(this).val();
+                    if (value) {
+                        const parts = value.split('|');
+                        if (parts.length === 2 && parts[0] && parts[1]) {
+                            languagePairs.push(value);
+                        }
+                    }
                 });
+                
+                // Check for invalid pairs only if there are any pairs
+                if ($('input[name="language_pairs[]"]').length > 0) {
+                    let hasInvalidPairs = false;
+                    $('input[name="language_pairs[]"]').each(function() {
+                        const value = $(this).val();
+                        if (value) {
+                            const parts = value.split('|');
+                            if (parts.length !== 2 || !parts[0] || !parts[1]) {
+                                hasInvalidPairs = true;
+                                return false; // break the loop
+                            }
+                        }
+                    });
+                    
+                    if (hasInvalidPairs) {
+                        // Show error message
+                        e.preventDefault();
+                        Swal.fire({
+                            title: '{{ __("Validation Error") }}',
+                            text: '{{ __("Some language pairs are invalid") }}',
+                            icon: 'error',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            },
+                            buttonsStyling: false
+                        });
+                        return false;
+                    }
+                }
+                
+                // If all checks pass, allow the form to submit
+                return true;
             });
         });
     </script>
