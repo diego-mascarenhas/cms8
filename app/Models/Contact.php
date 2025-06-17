@@ -94,6 +94,37 @@ class Contact extends Model
 		return $this->hasMany(ContactLanguageVariant::class);
 	}
 
+	/**
+	 * Get formatted language pairs for the view
+	 */
+	public function getFormattedLanguagePairsAttribute()
+	{
+		\Log::info('Getting formatted language pairs for contact ID: ' . $this->id);
+		\Log::info('Language variants count: ' . $this->languageVariants->count());
+		
+		$pairs = $this->languageVariants->map(function($variant) {
+			\Log::info('Processing variant: ' . $variant->id . ' - ' . $variant->source_language_code . ' -> ' . $variant->target_language_code);
+			
+			$sourceLanguage = $variant->sourceLanguage;
+			$targetLanguage = $variant->targetLanguage;
+			
+			\Log::info('Source language: ' . ($sourceLanguage ? $sourceLanguage->name : 'null'));
+			\Log::info('Target language: ' . ($targetLanguage ? $targetLanguage->name : 'null'));
+			
+			return [
+				'source_language' => $variant->source_language_code,
+				'target_language' => $variant->target_language_code,
+				'source_language_text' => $sourceLanguage ? $sourceLanguage->name : $variant->source_language_code,
+				'target_language_text' => $targetLanguage ? $targetLanguage->name : $variant->target_language_code,
+				'is_native' => $variant->is_certified
+			];
+		});
+		
+		\Log::info('Formatted pairs: ' . json_encode($pairs));
+		
+		return $pairs;
+	}
+
 	public function sentimentHistories()
 	{
 		return $this->hasMany(ContactSentimentHistory::class);

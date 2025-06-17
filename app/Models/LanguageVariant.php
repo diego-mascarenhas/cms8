@@ -58,4 +58,20 @@ class LanguageVariant extends Model
     {
         return $this->country_code;
     }
+
+    /**
+     * Relación inversa con ContactLanguageVariant para source_language_code
+     */
+    public function sourceLanguageVariants()
+    {
+        return $this->hasMany(ContactLanguageVariant::class, 'source_language_code', 'code');
+    }
+    
+    /**
+     * Relación inversa con ContactLanguageVariant para target_language_code
+     */
+    public function targetLanguageVariants()
+    {
+        return $this->hasMany(ContactLanguageVariant::class, 'target_language_code', 'code');
+    }
 } 

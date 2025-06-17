@@ -22,6 +22,9 @@ class CollaboratorController extends Controller
 
     public function store(Request $request)
     {
+        // Depuración
+        // dd($request->all());
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
@@ -45,8 +48,10 @@ class CollaboratorController extends Controller
         ]);
 
         // Process language pairs if they exist
-        if ($request->has('language_pairs')) {
+        if ($request->has('language_pairs') && is_array($request->language_pairs) && count($request->language_pairs) > 0) {
             foreach ($request->language_pairs as $index => $pair) {
+                if (empty($pair)) continue;
+                
                 list($sourceLanguage, $targetLanguage) = explode('|', $pair);
                 
                 $isNative = isset($request->is_native[$index]) ? (bool)$request->is_native[$index] : false;
@@ -75,18 +80,30 @@ class CollaboratorController extends Controller
     {
         $collaborator = Contact::with(['languageVariants.sourceLanguage', 'languageVariants.targetLanguage'])->findOrFail($id);
         
-        // Format language pairs for the view
-        $languagePairs = $collaborator->languageVariants->map(function($variant) {
-            return [
+        // Verificar si hay variantes de idioma
+        \Log::info('Collaborator ID: ' . $id . ' has ' . $collaborator->languageVariants->count() . ' language variants');
+        
+        // Forzar la carga de los idiomas
+        $languagePairs = [];
+        
+        foreach ($collaborator->languageVariants as $variant) {
+            \Log::info('Language variant: ' . $variant->source_language_code . ' -> ' . $variant->target_language_code);
+            
+            $sourceLanguage = $variant->sourceLanguage;
+            $targetLanguage = $variant->targetLanguage;
+            
+            $languagePairs[] = [
                 'source_language' => $variant->source_language_code,
                 'target_language' => $variant->target_language_code,
-                'source_language_text' => $variant->sourceLanguage->name ?? $variant->source_language_code,
-                'target_language_text' => $variant->targetLanguage->name ?? $variant->target_language_code,
+                'source_language_text' => $sourceLanguage ? $sourceLanguage->name : $variant->source_language_code,
+                'target_language_text' => $targetLanguage ? $targetLanguage->name : $variant->target_language_code,
                 'is_native' => $variant->is_certified
             ];
-        });
+        }
         
         $collaborator->languagePairs = $languagePairs;
+        
+        \Log::info('Formatted language pairs: ' . json_encode($collaborator->languagePairs));
         
         return view('collaborator.form', compact('collaborator'));
     }
@@ -112,12 +129,14 @@ class CollaboratorController extends Controller
         ]);
 
         // Process language pairs if they exist
-        if ($request->has('language_pairs')) {
+        if ($request->has('language_pairs') && is_array($request->language_pairs) && count($request->language_pairs) > 0) {
             // Delete existing language pairs
             $collaborator->languageVariants()->delete();
             
             // Add new language pairs
             foreach ($request->language_pairs as $index => $pair) {
+                if (empty($pair)) continue;
+                
                 list($sourceLanguage, $targetLanguage) = explode('|', $pair);
                 
                 $isNative = isset($request->is_native[$index]) ? (bool)$request->is_native[$index] : false;
