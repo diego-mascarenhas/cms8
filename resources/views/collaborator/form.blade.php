@@ -169,6 +169,15 @@
                 
                 if (!sourceLanguage || !targetLanguage) {
                     console.error('Source or target language not selected');
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Debes seleccionar ambos idiomas',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        },
+                        buttonsStyling: false
+                    });
                     return;
                 }
                 
@@ -265,7 +274,12 @@
                 let exists = false;
                 $('input[name="language_pairs[]"]').each(function() {
                     const value = $(this).val();
-                    const [existingSource, existingTarget] = value.split('|');
+                    if (!value) return;
+                    
+                    const parts = value.split('|');
+                    if (parts.length !== 2) return;
+                    
+                    const [existingSource, existingTarget] = parts;
                     
                     if (existingSource === source && existingTarget === target) {
                         exists = true;
@@ -360,9 +374,53 @@
                 console.log('Pairs inputs:', pairsInputs.length);
                 
                 // Mostrar los valores de los inputs
+                const existingPairs = [];
+                const duplicatePairs = [];
+                
                 pairsInputs.each(function(index) {
-                    console.log(`Pair ${index + 1}:`, $(this).val());
+                    const value = $(this).val();
+                    console.log(`Pair ${index + 1}:`, value);
+                    
+                    if (value) {
+                        if (existingPairs.includes(value)) {
+                            duplicatePairs.push(value);
+                        } else {
+                            existingPairs.push(value);
+                        }
+                    }
                 });
+                
+                if (duplicatePairs.length > 0) {
+                    console.error('Duplicate pairs found:', duplicatePairs);
+                    alert('Se encontraron pares duplicados: ' + duplicatePairs.join(', '));
+                }
+                
+                // Verificar si hay errores en los pares de idiomas
+                const invalidPairs = [];
+                
+                pairsInputs.each(function(index) {
+                    const value = $(this).val();
+                    if (!value) {
+                        invalidPairs.push(`Pair ${index + 1}: Empty value`);
+                        return;
+                    }
+                    
+                    const parts = value.split('|');
+                    if (parts.length !== 2) {
+                        invalidPairs.push(`Pair ${index + 1}: Invalid format - ${value}`);
+                        return;
+                    }
+                    
+                    const [source, target] = parts;
+                    if (source === target) {
+                        invalidPairs.push(`Pair ${index + 1}: Source and target are the same - ${value}`);
+                    }
+                });
+                
+                if (invalidPairs.length > 0) {
+                    console.error('Invalid pairs found:', invalidPairs);
+                    alert('Se encontraron pares inválidos: ' + invalidPairs.join(', '));
+                }
                 
                 // Intentar añadir manualmente un par de idiomas
                 try {
@@ -370,6 +428,12 @@
                     const targetLang = 'en-US';
                     const sourceText = 'Español (España)';
                     const targetText = 'English (United States)';
+                    
+                    // Verificar si ya existe este par
+                    if (checkIfPairExists(sourceLang, targetLang)) {
+                        console.log('Test pair already exists, skipping...');
+                        return;
+                    }
                     
                     console.log('Adding test pair:', sourceLang, targetLang);
                     

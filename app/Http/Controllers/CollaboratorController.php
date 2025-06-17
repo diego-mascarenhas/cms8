@@ -49,20 +49,39 @@ class CollaboratorController extends Controller
 
         // Process language pairs if they exist
         if ($request->has('language_pairs') && is_array($request->language_pairs) && count($request->language_pairs) > 0) {
+            $processedPairs = []; // Para evitar duplicados
+            
             foreach ($request->language_pairs as $index => $pair) {
                 if (empty($pair)) continue;
                 
                 list($sourceLanguage, $targetLanguage) = explode('|', $pair);
                 
+                // Evitar duplicados en la misma solicitud
+                $pairKey = $sourceLanguage . '-' . $targetLanguage;
+                if (in_array($pairKey, $processedPairs)) {
+                    continue;
+                }
+                
+                $processedPairs[] = $pairKey;
+                
                 $isNative = isset($request->is_native[$index]) ? (bool)$request->is_native[$index] : false;
                 
-                ContactLanguageVariant::create([
-                    'contact_id' => $contact->id,
-                    'source_language_code' => $sourceLanguage,
-                    'target_language_code' => $targetLanguage,
-                    'proficiency_level' => $isNative ? 5 : 3, // Higher level for native languages
-                    'is_certified' => $isNative
-                ]);
+                try {
+                    ContactLanguageVariant::create([
+                        'contact_id' => $contact->id,
+                        'source_language_code' => $sourceLanguage,
+                        'target_language_code' => $targetLanguage,
+                        'proficiency_level' => $isNative ? 5 : 3, // Higher level for native languages
+                        'is_certified' => $isNative
+                    ]);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Si es un error de duplicado, simplemente lo ignoramos
+                    if ($e->errorInfo[1] == 1062) {
+                        \Log::warning("Duplicate language pair ignored: $sourceLanguage-$targetLanguage for contact {$contact->id}");
+                        continue;
+                    }
+                    throw $e; // Si es otro tipo de error, lo lanzamos
+                }
             }
         }
 
@@ -133,22 +152,44 @@ class CollaboratorController extends Controller
             // Delete existing language pairs
             $collaborator->languageVariants()->delete();
             
+            $processedPairs = []; // Para evitar duplicados
+            
             // Add new language pairs
             foreach ($request->language_pairs as $index => $pair) {
                 if (empty($pair)) continue;
                 
                 list($sourceLanguage, $targetLanguage) = explode('|', $pair);
                 
+                // Evitar duplicados en la misma solicitud
+                $pairKey = $sourceLanguage . '-' . $targetLanguage;
+                if (in_array($pairKey, $processedPairs)) {
+                    continue;
+                }
+                
+                $processedPairs[] = $pairKey;
+                
                 $isNative = isset($request->is_native[$index]) ? (bool)$request->is_native[$index] : false;
                 
-                ContactLanguageVariant::create([
-                    'contact_id' => $collaborator->id,
-                    'source_language_code' => $sourceLanguage,
-                    'target_language_code' => $targetLanguage,
-                    'proficiency_level' => $isNative ? 5 : 3, // Higher level for native languages
-                    'is_certified' => $isNative
-                ]);
+                try {
+                    ContactLanguageVariant::create([
+                        'contact_id' => $collaborator->id,
+                        'source_language_code' => $sourceLanguage,
+                        'target_language_code' => $targetLanguage,
+                        'proficiency_level' => $isNative ? 5 : 3, // Higher level for native languages
+                        'is_certified' => $isNative
+                    ]);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Si es un error de duplicado, simplemente lo ignoramos
+                    if ($e->errorInfo[1] == 1062) {
+                        \Log::warning("Duplicate language pair ignored: $sourceLanguage-$targetLanguage for contact {$collaborator->id}");
+                        continue;
+                    }
+                    throw $e; // Si es otro tipo de error, lo lanzamos
+                }
             }
+        } else {
+            // Si no hay pares de idiomas, eliminar todos los existentes
+            $collaborator->languageVariants()->delete();
         }
 
         return redirect()->route('collaborator.show', $id)
