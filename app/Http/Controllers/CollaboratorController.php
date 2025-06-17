@@ -24,7 +24,9 @@ class CollaboratorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'surname' => 'nullable|string|max:255',
             'email' => 'required|email|max:255',
+            'phone' => 'nullable|numeric',
             'language_pairs' => 'nullable|array',
             'is_native' => 'nullable|array'
         ]);
@@ -35,7 +37,9 @@ class CollaboratorController extends Controller
 
         $contact = Contact::create([
             'name' => $validated['name'],
+            'surname' => $validated['surname'] ?? null,
             'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
             'creator_id' => $validated['creator_id'],
             'team_id' => $validated['team_id']
         ]);
@@ -93,14 +97,18 @@ class CollaboratorController extends Controller
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'surname' => 'nullable|string|max:255',
             'email' => 'required|email|max:255',
+            'phone' => 'nullable|numeric',
             'language_pairs' => 'nullable|array',
             'is_native' => 'nullable|array'
         ]);
 
         $collaborator->update([
             'name' => $validated['name'],
-            'email' => $validated['email']
+            'surname' => $validated['surname'] ?? null,
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null
         ]);
 
         // Process language pairs if they exist

@@ -22,6 +22,7 @@ class Contact extends Model
 		'team_id',
 		'user_id',
 		'name',
+		'surname',
 		'email',
 		'phone',
 		'source_id',
