@@ -15,6 +15,8 @@ alwaysApply: false
 
 4. **Confirmation and execution**: After approval of the schema, always execute with `php artisan migrate:fresh --seed` to rebuild the database with fresh data.
 
+5. **SQL statement**: After executing the migration, provide the SQL CREATE TABLE statement that would be generated from the migration as plain text.
+
 ## Example constraint naming
 ```php
 $table->unique(['contact_id', 'source_language_code', 'target_language_code'], 'clv_lang_pair_unique');
