@@ -620,5 +620,21 @@
     "Text": "Texto",
     "Template": "Plantilla",
     "Language": "Idioma",
-    "Country": "País"
+    "Country": "País",
+    "Language Pairs": "Pares de idiomas",
+    "Add language pair": "Añadir par de idiomas",
+    "Source language": "Lengua origen",
+    "Target language": "Lengua destino",
+    "Native": "Nativo",
+    "You must select both languages": "Debes seleccionar ambos idiomas",
+    "Source and target languages cannot be the same": "El idioma de origen y destino no pueden ser iguales",
+    "This language pair already exists": "Este par de idiomas ya existe",
+    "Surname": "Apellidos",
+    "Phone": "Teléfono",
+    "Edit Collaborator": "Editar colaborador",
+    "Collaborators": "Colaboradores",
+    "Update collaborator information": "Actualizar información del colaborador",
+    "View Collaborator": "Ver colaborador",
+    "New Collaborator": "Nuevo colaborador",
+    "Add a new collaborator": "Añadir un nuevo colaborador"
 }

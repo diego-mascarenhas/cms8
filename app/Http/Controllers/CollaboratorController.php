@@ -22,9 +22,6 @@ class CollaboratorController extends Controller
 
     public function store(Request $request)
     {
-        // Depuración
-        // dd($request->all());
-        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
@@ -77,7 +74,6 @@ class CollaboratorController extends Controller
                 } catch (\Illuminate\Database\QueryException $e) {
                     // Si es un error de duplicado, simplemente lo ignoramos
                     if ($e->errorInfo[1] == 1062) {
-                        \Log::warning("Duplicate language pair ignored: $sourceLanguage-$targetLanguage for contact {$contact->id}");
                         continue;
                     }
                     throw $e; // Si es otro tipo de error, lo lanzamos
@@ -99,15 +95,10 @@ class CollaboratorController extends Controller
     {
         $collaborator = Contact::with(['languageVariants.sourceLanguage', 'languageVariants.targetLanguage'])->findOrFail($id);
         
-        // Verificar si hay variantes de idioma
-        \Log::info('Collaborator ID: ' . $id . ' has ' . $collaborator->languageVariants->count() . ' language variants');
-        
         // Forzar la carga de los idiomas
         $languagePairs = [];
         
         foreach ($collaborator->languageVariants as $variant) {
-            \Log::info('Language variant: ' . $variant->source_language_code . ' -> ' . $variant->target_language_code);
-            
             $sourceLanguage = $variant->sourceLanguage;
             $targetLanguage = $variant->targetLanguage;
             
@@ -121,8 +112,6 @@ class CollaboratorController extends Controller
         }
         
         $collaborator->languagePairs = $languagePairs;
-        
-        \Log::info('Formatted language pairs: ' . json_encode($collaborator->languagePairs));
         
         return view('collaborator.form', compact('collaborator'));
     }
@@ -181,7 +170,6 @@ class CollaboratorController extends Controller
                 } catch (\Illuminate\Database\QueryException $e) {
                     // Si es un error de duplicado, simplemente lo ignoramos
                     if ($e->errorInfo[1] == 1062) {
-                        \Log::warning("Duplicate language pair ignored: $sourceLanguage-$targetLanguage for contact {$collaborator->id}");
                         continue;
                     }
                     throw $e; // Si es otro tipo de error, lo lanzamos

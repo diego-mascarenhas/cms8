@@ -34,23 +34,6 @@
         </div>
     </div>
 
-    <!-- Debug info -->
-    @if(isset($collaborator) && isset($collaborator->languagePairs) && count($collaborator->languagePairs) > 0)
-    <div class="alert alert-info">
-        <h5>Debug Information</h5>
-        <p>Found {{ count($collaborator->languagePairs) }} language pairs for collaborator ID {{ $collaborator->id }}</p>
-        <ul>
-            @foreach($collaborator->languagePairs as $pair)
-            <li>
-                {{ $pair['source_language'] }} ({{ $pair['source_language_text'] }}) → 
-                {{ $pair['target_language'] }} ({{ $pair['target_language_text'] }})
-                {{ $pair['is_native'] ? '(Native)' : '' }}
-            </li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
-
     <form action="{{ isset($collaborator) ? route('collaborator.update', $collaborator) : route('collaborator.store') }}" method="POST">
         @csrf
         @if(isset($collaborator))
@@ -99,16 +82,14 @@
 
         <!-- Language Pairs Card -->
         <div class="card mb-4">
-            <h5 class="card-header">{{ __('Mis pares de idiomas') }}</h5>
+            <h5 class="card-header">{{ __('Language Pairs') }}</h5>
             <div class="card-body">
-                <p class="text-muted mb-4">{{ __('Define cuáles son los idiomas en los que trabajas. Puedes seleccionar más de una combinación.') }}</p>
-                
                 <div class="row mb-4">
                     <div class="col-md-6 mb-3 mb-md-0">
                         <x-variant-language-select 
                             name="source_language" 
                             id="source_language" 
-                            label="Lengua origen" 
+                            label="{{ __('Source language') }}" 
                             :required="false"
                         />
                     </div>
@@ -116,7 +97,7 @@
                         <x-variant-language-select 
                             name="target_language" 
                             id="target_language" 
-                            label="Lengua nativa" 
+                            label="{{ __('Target language') }}" 
                             :required="false"
                         />
                     </div>
@@ -124,18 +105,13 @@
                 
                 <div class="language-pairs-container mb-4">
                     <div class="row g-3 language-pairs-list">
-                        <!-- Aquí se cargarán los pares de idiomas -->
+                        <!-- Language pairs will be loaded here -->
                     </div>
                 </div>
                 
                 <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-primary rounded-pill" id="add_language_pair" style="background-color: #6366f1; border-color: #6366f1;">
-                        <i class="ti ti-plus me-1"></i>{{ __('Añadir par de idiomas') }}
-                    </button>
-                    
-                    <!-- Botón de depuración -->
-                    <button type="button" class="btn btn-secondary rounded-pill ms-2" id="debug_language_pairs" onclick="debugLanguagePairs()">
-                        <i class="ti ti-bug me-1"></i>{{ __('Debug') }}
+                    <button type="button" class="btn btn-primary" id="add_language_pair">
+                        <i class="ti ti-plus me-1"></i>{{ __('Add language pair') }}
                     </button>
                 </div>
             </div>
@@ -168,10 +144,9 @@
                 const targetLanguage = $('#target_language').select2('data')[0];
                 
                 if (!sourceLanguage || !targetLanguage) {
-                    console.error('Source or target language not selected');
                     Swal.fire({
                         title: 'Error',
-                        text: 'Debes seleccionar ambos idiomas',
+                        text: '{{ __("You must select both languages") }}',
                         icon: 'error',
                         customClass: {
                             confirmButton: 'btn btn-primary'
@@ -189,13 +164,11 @@
                 const sourceFlag = $('#source_language option:selected').data('flag');
                 const targetFlag = $('#target_language option:selected').data('flag');
                 
-                console.log('Adding new pair:', sourceValue, targetValue, sourceText, targetText);
-                
                 // Check if source and target are the same
                 if (sourceValue === targetValue) {
                     Swal.fire({
                         title: 'Error',
-                        text: 'El idioma de origen y destino no pueden ser iguales',
+                        text: '{{ __("Source and target languages cannot be the same") }}',
                         icon: 'error',
                         customClass: {
                             confirmButton: 'btn btn-primary'
@@ -211,7 +184,7 @@
                     // Show error or alert
                     Swal.fire({
                         title: 'Error',
-                        text: 'Este par de idiomas ya existe',
+                        text: '{{ __("This language pair already exists") }}',
                         icon: 'error',
                         customClass: {
                             confirmButton: 'btn btn-primary'
@@ -233,10 +206,19 @@
                 // Create new pair badge
                 const newPair = $(`
                     <div class="col-md-6 col-lg-4">
-                        <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
-                            <span><i class="fi fi-${sourceFlagCode} me-2"></i>${sourceText}</span>
-                            <span class="mx-2">&gt;</span>
-                            <span><i class="fi fi-${targetFlagCode} me-2"></i>${targetText}${targetValue === 'es-ES' ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
+                        <div class="border rounded d-flex align-items-center p-3" style="background-color: #f8f8f8; height: 100%;">
+                            <div class="d-flex flex-column flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="fi fi-${sourceFlagCode} me-2"></i>
+                                    <span class="fw-medium">${sourceText}</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <i class="ti ti-arrow-right me-2 text-muted"></i>
+                                    <i class="fi fi-${targetFlagCode} me-2"></i>
+                                    <span class="fw-medium">${targetText}</span>
+                                    ${targetValue === 'es-ES' ? '<span class="badge bg-label-success ms-2">{{ __("Native") }}</span>' : ''}
+                                </div>
+                            </div>
                             <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
                                 <i class="ti ti-x"></i>
                             </a>
@@ -296,9 +278,6 @@
             // If editing, load existing pairs
             // This would be populated from the backend with actual data
             @if(isset($collaborator) && isset($collaborator->languagePairs) && count($collaborator->languagePairs) > 0)
-                console.log('Loading {{ count($collaborator->languagePairs) }} existing language pairs');
-                
-                // Forzar la creación de pares de idiomas
                 @foreach($collaborator->languagePairs as $index => $pair)
                     // Add each pair from the database
                     try {
@@ -307,8 +286,6 @@
                         const pairSourceText = "{{ $pair['source_language_text'] }}";
                         const pairTargetText = "{{ $pair['target_language_text'] }}";
                         const isNative = {{ $pair['is_native'] ? 'true' : 'false' }};
-                        
-                        console.log('Adding pair {{ $index + 1 }}:', pairSource, pairTarget, pairSourceText, pairTargetText);
                         
                         // Extract flag codes safely
                         const sourceParts = pairSource.split('-');
@@ -319,10 +296,19 @@
                         // Create new pair badge
                         const savedPair = $(`
                             <div class="col-md-6 col-lg-4">
-                                <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
-                                    <span><i class="fi fi-${sourceFlag} me-2"></i>${pairSourceText}</span>
-                                    <span class="mx-2">&gt;</span>
-                                    <span><i class="fi fi-${targetFlag} me-2"></i>${pairTargetText}${isNative ? ' <i class="ti ti-circle-check text-success ms-1" style="font-size: 0.75rem;"></i>' : ''}</span>
+                                <div class="border rounded d-flex align-items-center p-3" style="background-color: #f8f8f8; height: 100%;">
+                                    <div class="d-flex flex-column flex-grow-1">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="fi fi-${sourceFlag} me-2"></i>
+                                            <span class="fw-medium">${pairSourceText}</span>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <i class="ti ti-arrow-right me-2 text-muted"></i>
+                                            <i class="fi fi-${targetFlag} me-2"></i>
+                                            <span class="fw-medium">${pairTargetText}</span>
+                                            ${isNative ? '<span class="badge bg-label-success ms-2">{{ __("Native") }}</span>' : ''}
+                                        </div>
+                                    </div>
                                     <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
                                         <i class="ti ti-x"></i>
                                     </a>
@@ -337,130 +323,15 @@
                         console.error('Error adding language pair:', e);
                     }
                 @endforeach
-            @else
-                console.log('No existing language pairs to load');
-                @if(isset($collaborator))
-                    console.log('Collaborator ID: {{ $collaborator->id }}');
-                    @if(isset($collaborator->languagePairs))
-                        console.log('languagePairs is set but empty');
-                    @else
-                        console.log('languagePairs is not set');
-                    @endif
-                @else
-                    console.log('collaborator is not set');
-                @endif
             @endif
 
             // Form submit handler for debugging
             $('form').on('submit', function(e) {
-                console.log('Form submitted');
                 const languagePairs = [];
                 $('input[name="language_pairs[]"]').each(function() {
                     languagePairs.push($(this).val());
                 });
-                console.log('Language pairs:', languagePairs);
             });
-            
-            // Función para depurar los pares de idiomas
-            function debugLanguagePairs() {
-                console.log('Debugging language pairs...');
-                
-                // Verificar si hay pares de idiomas en el DOM
-                const pairsInDOM = $('.language-pairs-list').children().length;
-                console.log('Pairs in DOM:', pairsInDOM);
-                
-                // Verificar los inputs hidden
-                const pairsInputs = $('input[name="language_pairs[]"]');
-                console.log('Pairs inputs:', pairsInputs.length);
-                
-                // Mostrar los valores de los inputs
-                const existingPairs = [];
-                const duplicatePairs = [];
-                
-                pairsInputs.each(function(index) {
-                    const value = $(this).val();
-                    console.log(`Pair ${index + 1}:`, value);
-                    
-                    if (value) {
-                        if (existingPairs.includes(value)) {
-                            duplicatePairs.push(value);
-                        } else {
-                            existingPairs.push(value);
-                        }
-                    }
-                });
-                
-                if (duplicatePairs.length > 0) {
-                    console.error('Duplicate pairs found:', duplicatePairs);
-                    alert('Se encontraron pares duplicados: ' + duplicatePairs.join(', '));
-                }
-                
-                // Verificar si hay errores en los pares de idiomas
-                const invalidPairs = [];
-                
-                pairsInputs.each(function(index) {
-                    const value = $(this).val();
-                    if (!value) {
-                        invalidPairs.push(`Pair ${index + 1}: Empty value`);
-                        return;
-                    }
-                    
-                    const parts = value.split('|');
-                    if (parts.length !== 2) {
-                        invalidPairs.push(`Pair ${index + 1}: Invalid format - ${value}`);
-                        return;
-                    }
-                    
-                    const [source, target] = parts;
-                    if (source === target) {
-                        invalidPairs.push(`Pair ${index + 1}: Source and target are the same - ${value}`);
-                    }
-                });
-                
-                if (invalidPairs.length > 0) {
-                    console.error('Invalid pairs found:', invalidPairs);
-                    alert('Se encontraron pares inválidos: ' + invalidPairs.join(', '));
-                }
-                
-                // Intentar añadir manualmente un par de idiomas
-                try {
-                    const sourceLang = 'es-ES';
-                    const targetLang = 'en-US';
-                    const sourceText = 'Español (España)';
-                    const targetText = 'English (United States)';
-                    
-                    // Verificar si ya existe este par
-                    if (checkIfPairExists(sourceLang, targetLang)) {
-                        console.log('Test pair already exists, skipping...');
-                        return;
-                    }
-                    
-                    console.log('Adding test pair:', sourceLang, targetLang);
-                    
-                    const testPair = $(`
-                        <div class="col-md-6 col-lg-4">
-                            <div class="border rounded d-flex align-items-center p-2" style="border-color: #ddd; background-color: #f8f8f8; height: 100%;">
-                                <span><i class="fi fi-es me-2"></i>${sourceText}</span>
-                                <span class="mx-2">&gt;</span>
-                                <span><i class="fi fi-us me-2"></i>${targetText}</span>
-                                <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
-                                    <i class="ti ti-x"></i>
-                                </a>
-                                <input type="hidden" name="language_pairs[]" value="${sourceLang}|${targetLang}">
-                                <input type="hidden" name="is_native[]" value="0">
-                            </div>
-                        </div>
-                    `);
-                    
-                    $('.language-pairs-list').append(testPair);
-                    console.log('Test pair added successfully');
-                } catch (e) {
-                    console.error('Error adding test pair:', e);
-                }
-            }
-            
-            // Llamar a la función de depuración después de que la página se cargue completamente
-            setTimeout(debugLanguagePairs, 1000);
         });
     </script>
 @endsection 

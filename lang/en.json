@@ -247,5 +247,22 @@
   "Undefined": "Undefined",
   "Updated": "Updated",
   "Language": "Language",
-  "Country": "Country"
+  "Country": "Country",
+  "Template": "Template",
+  "Language Pairs": "Language Pairs",
+  "Add language pair": "Add language pair",
+  "Source language": "Source language",
+  "Target language": "Target language",
+  "Native": "Native",
+  "You must select both languages": "You must select both languages",
+  "Source and target languages cannot be the same": "Source and target languages cannot be the same",
+  "This language pair already exists": "This language pair already exists",
+  "Surname": "Surname",
+  "Phone": "Phone",
+  "Edit Collaborator": "Edit Collaborator",
+  "Collaborators": "Collaborators",
+  "Update collaborator information": "Update collaborator information",
+  "View Collaborator": "View Collaborator",
+  "New Collaborator": "New Collaborator",
+  "Add a new collaborator": "Add a new collaborator"
 }
