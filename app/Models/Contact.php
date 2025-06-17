@@ -22,6 +22,8 @@ class Contact extends Model
 		'team_id',
 		'user_id',
 		'name',
+		'email',
+		'phone',
 		'source_id',
 		'birthday',
 		'profile',
@@ -54,11 +56,6 @@ class Contact extends Model
 	public function team()
 	{
 		return $this->belongsTo(Team::class);
-	}
-
-	public function phone()
-	{
-		return $this->belongsTo(User::class, 'user_id');
 	}
 
 	public function user()
@@ -246,23 +243,6 @@ class Contact extends Model
 		return $this->belongsTo(Source::class, 'source_id');
 	}
 
-	public function getEmailAttribute()
-	{
-		$emailSource = $this->sources()
-			->where('source_id', 1)
-			->first();
-
-		return $emailSource ? $emailSource->pivot->value : null;
-	}
-	public function getPhoneAttribute()
-	{
-		$phoneSource = $this->sources()
-			->where('source_id', 2)
-			->first();
-
-		return $phoneSource ? $phoneSource->pivot->value : null;
-	}
-
 	public function enterprises(): BelongsToMany
 	{
 		return $this->belongsToMany(Enterprise::class, 'contact_enterprise')
@@ -293,28 +273,23 @@ class Contact extends Model
 	}
 
 	/**
-	 * Get the WhatsApp formatted phone number from the user relation or from the contact sources
+	 * Get the WhatsApp formatted phone number from the contact
 	 * 
 	 * @return string|null
 	 */
 	public function getWhatsAppNumber()
 	{
-		// First try to get phone from related user
-		$userPhone = null;
-		$relatedUser = $this->phone()->first();
+		// First try to get phone from direct field
+		if ($this->phone) {
+			$cleanNumber = preg_replace('/[^0-9]/', '', (string)$this->phone);
+			return 'whatsapp:+' . $cleanNumber;
+		}
+		
+		// If no direct phone, try to get from related user
+		$relatedUser = $this->user()->first();
 		
 		if ($relatedUser && $relatedUser->phone) {
-			$userPhone = $relatedUser->phone;
-		}
-		
-		// If no user found, try to get from contact sources
-		if (!$userPhone) {
-			$userPhone = $this->getPhoneAttribute();
-		}
-		
-		if ($userPhone) {
-			// Ensure it's clean and properly formatted
-			$cleanNumber = preg_replace('/[^0-9]/', '', (string)$userPhone);
+			$cleanNumber = preg_replace('/[^0-9]/', '', (string)$relatedUser->phone);
 			return 'whatsapp:+' . $cleanNumber;
 		}
 		

@@ -15,9 +15,31 @@ alwaysApply: false
 
 4. **Confirmation and execution**: After approval of the schema, always execute with `php artisan migrate:fresh --seed` to rebuild the database with fresh data.
 
-5. **SQL statement**: After executing the migration, provide the SQL CREATE TABLE statement that would be generated from the migration as plain text.
+5. **SQL statement**: After executing the migration, provide the SQL CREATE TABLE or ALTER TABLE statement that would be generated from the migration as plain text.
+
+## For existing tables
+
+1. **Check if table exists**: First check if the table already exists in the database.
+
+2. **Create ALTER TABLE migration**: If the table exists, create an ALTER TABLE migration instead of modifying the original creation file.
+
+3. **Use Schema::table**: Use `Schema::table()` instead of `Schema::create()` to modify the existing table.
+
+4. **Check for column existence**: Use `if (!Schema::hasColumn())` to check if columns already exist before adding them.
 
 ## Example constraint naming
 ```php
 $table->unique(['contact_id', 'source_language_code', 'target_language_code'], 'clv_lang_pair_unique');
+```
+
+## Example ALTER TABLE migration
+```php
+Schema::table('contacts', function (Blueprint $table) {
+    if (!Schema::hasColumn('contacts', 'email')) {
+        $table->string('email')->nullable()->after('name');
+    }
+    if (!Schema::hasColumn('contacts', 'phone')) {
+        $table->bigInteger('phone')->nullable()->after('email');
+    }
+});
 ```

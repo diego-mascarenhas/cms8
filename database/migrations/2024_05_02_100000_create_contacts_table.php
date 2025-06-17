@@ -16,6 +16,8 @@ return new class extends Migration
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
+            $table->string('email')->nullable();
+            $table->bigInteger('phone')->nullable();
             $table->unsignedTinyInteger('source_id')->nullable();
             $table->date('birthday')->nullable();
             $table->text('profile')->nullable();
