@@ -75,7 +75,7 @@ class FareDataTable extends DataTable
         return [
             Column::make('name')->title('TARIFA')->searchable(true)->orderable(true),
             Column::computed('units')->title('UNIDADES')->searchable(false)->orderable(false),
-            Column::computed('type')->title('TIPO')->searchable(true)->orderable(true),
+            Column::computed('type')->title('GRUPO')->searchable(true)->orderable(true),
             Column::computed('glosary')->title('GLOSARIO')->searchable(false)->orderable(false),
             Column::computed('action')
                 ->exportable(false)

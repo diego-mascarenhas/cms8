@@ -269,5 +269,14 @@
   "You must add at least one language pair": "You must add at least one language pair",
   "Some language pairs are invalid": "Some language pairs are invalid",
   "Source language is required": "Source language is required",
-  "Target language is required": "Target language is required"
+  "Target language is required": "Target language is required",
+  "Certification": "Certification",
+  "Date": "Date",
+  "Style Books": "Style Books",
+  "Add Style Book": "Add Style Book",
+  "Manage your translation style books": "Manage your translation style books",
+  "Style Book Details": "Style Book Details",
+  "Manage translation style guides": "Manage translation style guides",
+  "Style Book Information": "Style Book Information",
+  "Back": "Back"
 }

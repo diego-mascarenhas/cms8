@@ -59,7 +59,7 @@ class SoftwareDataTable extends DataTable
     {
         return [
             Column::make('name')->title('NOMBRE')->searchable(true)->orderable(true),
-            Column::computed('type')->title('TIPO')->searchable(true)->orderable(true),
+            Column::computed('type')->title('Categoría')->searchable(true)->orderable(true),
             Column::computed('action')
                 ->exportable(false)
                 ->printable(false)

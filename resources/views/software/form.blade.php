@@ -100,9 +100,9 @@
             </div>
             
             <div class="col-md-6">
-                <label class="form-label" for="type_id">Tipo</label>
+                <label class="form-label" for="type_id">Categoría</label>
                 <select name="type_id" id="type_id" class="form-select @error('type_id') is-invalid @enderror">
-                    <option value="">Seleccione tipo (opcional)</option>
+                    <option value="">Seleccione categoría (opcional)</option>
                     @foreach($types as $type)
                         <option value="{{ $type->id }}" {{ isset($software) && $software->type_id == $type->id ? 'selected' : '' }}>
                             {{ $type->name }}

@@ -641,5 +641,14 @@
     "You must add at least one language pair": "Debes añadir al menos un par de idiomas",
     "Some language pairs are invalid": "Algunos pares de idiomas son inválidos",
     "Source language is required": "El idioma de origen es obligatorio",
-    "Target language is required": "El idioma de destino es obligatorio"
+    "Target language is required": "El idioma de destino es obligatorio",
+    "Certification": "Certificación",
+    "Date": "Fecha",
+    "Style Books": "Guías de estilo",
+    "Add Style Book": "Añadir guía de estilo",
+    "Manage your translation style books": "Gestiona tus guías de estilo de traducción",
+    "Style Book Details": "Detalles de la guía de estilo",
+    "Manage translation style guides": "Gestionar guías de estilo de traducción",
+    "Style Book Information": "Información de la guía de estilo",
+    "Back": "Volver"
 }
