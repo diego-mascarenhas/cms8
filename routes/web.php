@@ -412,3 +412,5 @@ Route::get('/cms7/empresa/{id}', [App\Http\Controllers\Cms7Controller::class, 'e
 Route::get('/user-link/{type}/{id}', [ContactController::class, 'showUserLinkPage'])->name('user-link.show');
 Route::post('/user-link/{type}/{id}/link', [ContactController::class, 'processUserLink'])->name('user-link.process');
 Route::post('/user-link/{type}/{id}/create', [ContactController::class, 'processUserCreate'])->name('user-link.create');
+Route::get('/user-unlink/{type}/{id}', [ContactController::class, 'showUserUnlinkPage'])->name('user-unlink.show');
+Route::post('/user-unlink/{type}/{id}/confirm', [ContactController::class, 'processUserUnlink'])->name('user-unlink.process');

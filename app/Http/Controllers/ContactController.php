@@ -1146,4 +1146,39 @@ class ContactController extends Controller
 			return back()->withErrors(['general' => 'Error al crear el usuario: ' . $e->getMessage()]);
 		}
 	}
+
+	/**
+	 * Show user unlink confirmation page
+	 */
+	public function showUserUnlinkPage($type, $id)
+	{
+		// Validate type
+		if (!in_array($type, ['contact', 'collaborator'])) {
+			abort(404);
+		}
+
+		$contact = Contact::findOrFail($id);
+		
+		// Check if contact has a linked user
+		if (!$contact->user_id) {
+			$redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';
+			return redirect()->route($redirectRoute, $id)->with('warning', 'Este ' . $type . ' no tiene un usuario vinculado');
+		}
+
+		$linkedUser = \App\Models\User::find($contact->user_id);
+
+		return view('user-link.unlink', compact('contact', 'linkedUser', 'type'));
+	}
+
+	/**
+	 * Process user unlinking
+	 */
+	public function processUserUnlink($type, $id)
+	{
+		$contact = Contact::findOrFail($id);
+		$contact->update(['user_id' => null]);
+
+		$redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';
+		return redirect()->route($redirectRoute, $id)->with('success', 'Usuario desvinculado correctamente');
+	}
 }

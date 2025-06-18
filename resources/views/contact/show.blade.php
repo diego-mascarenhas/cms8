@@ -150,9 +150,9 @@
                                                     </div>
                                                 </div>
                                                 @can('contact.edit')
-                                                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary" onclick="unlinkUser({{ $data->id }}, 'contact')">
+                                                    <a href="{{ route('user-unlink.show', ['contact', $data->id]) }}" class="btn btn-sm btn-icon btn-outline-secondary">
                                                         <i class="ti ti-unlink ti-xs"></i>
-                                                    </button>
+                                                    </a>
                                                 @endcan
                                             </div>
                                         @else
