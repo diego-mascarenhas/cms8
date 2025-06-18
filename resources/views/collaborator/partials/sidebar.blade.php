@@ -81,7 +81,7 @@
                                         </div>
                                     </div>
                                     @can('collaborator.edit')
-                                        <button type="button" class="btn btn-sm btn-icon btn-outline-secondary" onclick="unlinkCollaboratorUser({{ $collaborator->id }})">
+                                        <button type="button" class="btn btn-sm btn-icon btn-outline-secondary" onclick="unlinkUser({{ $collaborator->id }}, 'collaborator')">
                                             <i class="ti ti-unlink ti-xs"></i>
                                         </button>
                                     @endcan
@@ -89,17 +89,17 @@
                             @else
                                 <span class="badge bg-label-danger">Usuario no encontrado</span>
                                 @can('collaborator.edit')
-                                    <br><button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="showLinkCollaboratorUserModal({{ $collaborator->id }})">
+                                    <br><a href="{{ route('user-link.show', ['collaborator', $collaborator->id]) }}" class="btn btn-sm btn-outline-primary mt-1">
                                         <i class="ti ti-link ti-xs me-1"></i>Vincular
-                                    </button>
+                                    </a>
                                 @endcan
                             @endif
                         @else
                             <span class="text-muted">Sin vincular</span>
                             @can('collaborator.edit')
-                                <br><button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="showLinkCollaboratorUserModal({{ $collaborator->id }})">
+                                <br><a href="{{ route('user-link.show', ['collaborator', $collaborator->id]) }}" class="btn btn-sm btn-outline-primary mt-1">
                                     <i class="ti ti-link ti-xs me-1"></i>Vincular
-                                </button>
+                                </a>
                             @endcan
                         @endif
                     </li>

@@ -150,7 +150,7 @@
                                                     </div>
                                                 </div>
                                                 @can('contact.edit')
-                                                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary" onclick="unlinkUser({{ $data->id }})">
+                                                    <button type="button" class="btn btn-sm btn-icon btn-outline-secondary" onclick="unlinkUser({{ $data->id }}, 'contact')">
                                                         <i class="ti ti-unlink ti-xs"></i>
                                                     </button>
                                                 @endcan
@@ -158,9 +158,9 @@
                                         @else
                                             <span class="badge bg-label-danger">Usuario no encontrado</span>
                                             @can('contact.edit')
-                                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="showLinkUserModal({{ $data->id }})">
+                                                <a href="{{ route('user-link.show', ['contact', $data->id]) }}" class="btn btn-sm btn-outline-primary ms-2">
                                                     <i class="ti ti-link ti-xs me-1"></i>Vincular usuario
-                                                </button>
+                                                </a>
                                             @endcan
                                         @endif
                                     </span>
@@ -170,9 +170,9 @@
                                     <span class="fw-medium me-1">Usuario:</span>
                                     <span class="text-muted">Sin vincular</span>
                                     @can('contact.edit')
-                                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="showLinkUserModal({{ $data->id }})">
+                                        <a href="{{ route('user-link.show', ['contact', $data->id]) }}" class="btn btn-sm btn-outline-primary ms-2">
                                             <i class="ti ti-link ti-xs me-1"></i>Vincular usuario
-                                        </button>
+                                        </a>
                                     @endcan
                                 </li>
                             @endif
@@ -411,102 +411,7 @@
         </div>
     </div>
 
-    <!-- Modal para vincular usuario -->
-    <div class="modal fade" id="linkUserModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Vincular Usuario</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Tabs -->
-                    <ul class="nav nav-tabs" id="linkUserTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="existing-user-tab" data-bs-toggle="tab" data-bs-target="#existing-user" type="button" role="tab">
-                                <i class="ti ti-user ti-xs me-1"></i>Usuario Existente
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="new-user-tab" data-bs-toggle="tab" data-bs-target="#new-user" type="button" role="tab">
-                                <i class="ti ti-user-plus ti-xs me-1"></i>Crear Usuario
-                            </button>
-                        </li>
-                    </ul>
 
-                    <div class="tab-content pt-3" id="linkUserTabsContent">
-                        <!-- Existing User Tab -->
-                        <div class="tab-pane fade show active" id="existing-user" role="tabpanel">
-                            <form id="linkExistingUserForm">
-                                @csrf
-                                <div class="mb-3">
-                                    <label for="user_search" class="form-label">Buscar Usuario</label>
-                                    <select id="user_search" name="user_id" class="form-select select2" required>
-                                        <option value="">-- Seleccionar usuario --</option>
-                                        @foreach(\App\Models\User::whereHas('teams', function($q) { $q->where('team_id', auth()->user()->currentTeam->id); })->orderBy('name')->get() as $user)
-                                            <option value="{{ $user->id }}" data-email="{{ $user->email }}" data-role="{{ $user->roles->first()->name ?? 'user' }}">
-                                                {{ $user->name }} ({{ $user->email }}) - {{ $user->roles->first()->name ?? 'user' }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="d-flex justify-content-end">
-                                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-primary">Vincular Usuario</button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- New User Tab -->
-                        <div class="tab-pane fade" id="new-user" role="tabpanel">
-                            <form id="createUserForm">
-                                @csrf
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="new_user_name" class="form-label">Nombre *</label>
-                                        <input type="text" class="form-control" id="new_user_name" name="name" required>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="new_user_email" class="form-label">Email *</label>
-                                        <input type="email" class="form-control" id="new_user_email" name="email" required>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="new_user_phone" class="form-label">Teléfono</label>
-                                        <input type="text" class="form-control" id="new_user_phone" name="phone">
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="new_user_role" class="form-label">Rol *</label>
-                                        <select class="form-select" id="new_user_role" name="role" required>
-                                            <option value="">-- Seleccionar rol --</option>
-                                            @foreach(\Spatie\Permission\Models\Role::all() as $role)
-                                                <option value="{{ $role->name }}" {{ $role->name === 'collaborator' ? 'selected' : '' }}>
-                                                    {{ ucfirst($role->name) }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div class="col-12 mb-3">
-                                        <label for="new_user_password" class="form-label">Contraseña temporal *</label>
-                                        <div class="input-group">
-                                            <input type="password" class="form-control" id="new_user_password" name="password" required>
-                                            <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()">
-                                                <i class="ti ti-refresh ti-xs"></i>
-                                            </button>
-                                        </div>
-                                        <small class="text-muted">El usuario deberá cambiar esta contraseña en su primer acceso</small>
-                                    </div>
-                                </div>
-                                <div class="d-flex justify-content-end">
-                                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-primary">Crear y Vincular</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 @endpush
 
 @push('scripts')
@@ -627,143 +532,6 @@
             document.getElementById('totalTime').textContent = formattedTime;
         }, 1000);
 
-        // User linking functionality
-        function showLinkUserModal(contactId) {
-            window.currentContactId = contactId;
-            // Pre-fill contact data if available
-            const contactName = '{{ $data->name }}';
-            const contactEmail = '{{ $data->email }}';
-            
-            if (contactName) {
-                document.getElementById('new_user_name').value = contactName;
-            }
-            if (contactEmail) {
-                document.getElementById('new_user_email').value = contactEmail;
-            }
-            
-            $('#linkUserModal').modal('show');
-        }
 
-        function unlinkUser(contactId) {
-            if (confirm('¿Estás seguro de que quieres desvincular este usuario?')) {
-                fetch(`/contact/${contactId}/unlink-user`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        toastr.success('Usuario desvinculado correctamente');
-                        location.reload();
-                    } else {
-                        toastr.error(data.message || 'Error al desvincular usuario');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    toastr.error('Error al desvincular usuario');
-                });
-            }
-        }
-
-        function generatePassword() {
-            const length = 10;
-            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
-            let password = "";
-            for (let i = 0, n = charset.length; i < length; ++i) {
-                password += charset.charAt(Math.floor(Math.random() * n));
-            }
-            document.getElementById('new_user_password').value = password;
-        }
-
-        // Initialize Select2 when modal is shown
-        $('#linkUserModal').on('shown.bs.modal', function () {
-            $('#user_search').select2({
-                dropdownParent: $('#linkUserModal'),
-                placeholder: 'Buscar usuario...',
-                allowClear: true
-            });
-        });
-
-        // Handle existing user linking
-        $('#linkExistingUserForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            const userId = $('#user_search').val();
-            if (!userId) {
-                toastr.error('Por favor selecciona un usuario');
-                return;
-            }
-
-            fetch(`/contact/${window.currentContactId}/link-user`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    user_id: userId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    toastr.success('Usuario vinculado correctamente');
-                    $('#linkUserModal').modal('hide');
-                    location.reload();
-                } else {
-                    toastr.error(data.message || 'Error al vincular usuario');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                toastr.error('Error al vincular usuario');
-            });
-        });
-
-        // Handle new user creation and linking
-        $('#createUserForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData);
-
-            fetch(`/contact/${window.currentContactId}/create-and-link-user`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    toastr.success('Usuario creado y vinculado correctamente');
-                    $('#linkUserModal').modal('hide');
-                    location.reload();
-                } else {
-                    if (data.errors) {
-                        Object.keys(data.errors).forEach(field => {
-                            toastr.error(data.errors[field][0]);
-                        });
-                    } else {
-                        toastr.error(data.message || 'Error al crear usuario');
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                toastr.error('Error al crear usuario');
-            });
-        });
-
-        // Generate password on page load
-        $(document).ready(function() {
-            generatePassword();
-        });
     </script>
 @endpush

@@ -407,3 +407,8 @@ Route::middleware(['auth'])->prefix('language/variants')->name('language-variant
 Route::get('/cms7/empresa/{id}', [App\Http\Controllers\Cms7Controller::class, 'enterpriseDetails'])
     ->name('cms7.empresa')
     ->middleware(['auth', 'verified']);
+
+// User linking routes - unified page
+Route::get('/user-link/{type}/{id}', [ContactController::class, 'showUserLinkPage'])->name('user-link.show');
+Route::post('/user-link/{type}/{id}/link', [ContactController::class, 'processUserLink'])->name('user-link.process');
+Route::post('/user-link/{type}/{id}/create', [ContactController::class, 'processUserCreate'])->name('user-link.create');
