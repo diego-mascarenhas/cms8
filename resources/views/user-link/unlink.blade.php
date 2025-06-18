@@ -16,40 +16,26 @@
             
             <div class="card-body p-4">
                 <!-- Current Link Section -->
-                <div class="text-center mb-4">
-                    <div class="avatar avatar-lg mx-auto mb-3">
-                        <img class="rounded-circle" 
-                             src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($contact->name) }}" 
-                             alt="{{ $contact->name }}">
-                    </div>
-                    <h5 class="mb-2">{{ $contact->name }}</h5>
-                    <p class="text-muted mb-0">{{ $contact->email ?? 'Sin email' }}</p>
-                </div>
-
                 <div class="d-flex justify-content-center align-items-center mb-4">
                     <div class="text-center">
-                        <div class="avatar avatar-sm">
+                        <div class="avatar avatar-lg">
                             <img class="rounded-circle" 
                                  src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($contact->name) }}" 
                                  alt="{{ $contact->name }}">
                         </div>
-                        <small class="d-block text-muted mt-1">{{ ucfirst($type) }}</small>
+                        <div class="fw-medium mt-2">{{ $contact->name }}</div>
+                        <small class="d-block text-muted">{{ ucfirst($type) }}</small>
                     </div>
                     
-                    <div class="mx-3">
-                        <i class="ti ti-arrow-right text-primary"></i>
+                    <div class="mx-4">
+                        <i class="ti ti-x text-danger" style="font-size: 2rem;"></i>
                     </div>
                     
                     <div class="text-center">
-                        <div class="avatar avatar-sm">
-                            <img class="rounded-circle" 
-                                 src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($linkedUser->name) }}" 
-                                 alt="{{ $linkedUser->name }}">
-                        </div>
-                        <small class="d-block text-muted mt-1">{{ $linkedUser->name }}</small>
+                        <div class="fw-medium">{{ $linkedUser->name }}</div>
                         <small class="d-block text-muted">{{ $linkedUser->email }}</small>
                         @if($linkedUser->roles->count() > 0)
-                            <span class="badge bg-label-info badge-sm mt-1">{{ $linkedUser->roles->first()->name }}</span>
+                            <span class="badge bg-label-primary mt-1">{{ $linkedUser->roles->first()->name }}</span>
                         @endif
                     </div>
                 </div>

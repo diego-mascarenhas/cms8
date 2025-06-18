@@ -25,7 +25,7 @@
             <div class="card-body p-4">
                 <!-- Contact/Collaborator Info -->
                 <div class="text-center mb-4">
-                    <div class="avatar avatar-lg mx-auto mb-3">
+                    <div class="avatar avatar-xl mx-auto mb-3">
                         <img class="rounded-circle" 
                              src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($contact->name) }}" 
                              alt="{{ $contact->name }}">
@@ -77,13 +77,13 @@
                             <!-- User Preview -->
                             <div id="user-preview" class="d-none mb-4">
                                 <div class="alert alert-info d-flex align-items-center">
-                                    <div class="avatar avatar-sm me-3">
+                                    <div class="avatar avatar-md me-3">
                                         <div id="preview-avatar"></div>
                                     </div>
                                     <div>
                                         <h6 class="mb-1" id="preview-name"></h6>
-                                        <small class="text-muted" id="preview-email"></small>
-                                        <span class="badge bg-label-info ms-2" id="preview-role"></span>
+                                        <small class="text-muted d-block" id="preview-email"></small>
+                                        <span class="badge bg-label-primary mt-1" id="preview-role"></span>
                                     </div>
                                 </div>
                             </div>
