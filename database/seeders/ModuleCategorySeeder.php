@@ -42,7 +42,7 @@ class ModuleCategorySeeder extends Seeder
         $servicesParent = Category::create([
             'name' => 'Service Types',
             'module_id' => $moduleIds['services'],
-            'team_id' => null,
+            'team_id' => 1,
             'description' => 'Main service categories available to all teams',
             'status' => 1
         ]);
@@ -75,7 +75,7 @@ class ModuleCategorySeeder extends Seeder
             $parent = Category::create([
                 'name' => $mainCategory,
                 'module_id' => $moduleIds['services'],
-                'team_id' => null,
+                'team_id' => 1,
                 'parent_id' => $servicesParent->id,
                 'status' => 1
             ]);
@@ -84,7 +84,7 @@ class ModuleCategorySeeder extends Seeder
                 Category::create([
                     'name' => $subCategory,
                     'module_id' => $moduleIds['services'],
-                    'team_id' => null,
+                    'team_id' => 1,
                     'parent_id' => $parent->id,
                     'status' => 1
                 ]);
@@ -95,7 +95,7 @@ class ModuleCategorySeeder extends Seeder
         $communicationsParent = Category::create([
             'name' => 'Message Types',
             'module_id' => $moduleIds['communications'],
-            'team_id' => null,
+            'team_id' => 1,
             'description' => 'Types of communications',
             'status' => 1
         ]);
@@ -106,7 +106,7 @@ class ModuleCategorySeeder extends Seeder
             Category::create([
                 'name' => $type,
                 'module_id' => $moduleIds['communications'],
-                'team_id' => null,
+                'team_id' => 1,
                 'parent_id' => $communicationsParent->id,
                 'status' => 1
             ]);
@@ -116,7 +116,7 @@ class ModuleCategorySeeder extends Seeder
         $taskTypesParent = Category::create([
             'name' => 'Task Types',
             'module_id' => $moduleIds['tasks'],
-            'team_id' => null,
+            'team_id' => 1,
             'description' => 'Types of tasks',
             'status' => 1
         ]);
@@ -127,7 +127,7 @@ class ModuleCategorySeeder extends Seeder
             Category::create([
                 'name' => $category,
                 'module_id' => $moduleIds['tasks'],
-                'team_id' => null,
+                'team_id' => 1,
                 'parent_id' => $taskTypesParent->id,
                 'status' => 1
             ]);
@@ -137,7 +137,7 @@ class ModuleCategorySeeder extends Seeder
         $projectTypesParent = Category::create([
             'name' => 'Project Types',
             'module_id' => $moduleIds['projects'],
-            'team_id' => null,
+            'team_id' => 1,
             'description' => 'Types of projects',
             'status' => 1
         ]);
@@ -148,7 +148,7 @@ class ModuleCategorySeeder extends Seeder
             Category::create([
                 'name' => $category,
                 'module_id' => $moduleIds['projects'],
-                'team_id' => null,
+                'team_id' => 1,
                 'parent_id' => $projectTypesParent->id,
                 'status' => 1
             ]);
