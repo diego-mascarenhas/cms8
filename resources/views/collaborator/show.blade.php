@@ -373,6 +373,103 @@
 
     <!-- Include Valoration Modal -->
     @include('collaborator.partials.valoration-modal')
+
+    <!-- Modal para vincular usuario en colaboradores -->
+    <div class="modal fade" id="linkCollaboratorUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Vincular Usuario al Colaborador</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs" id="linkCollaboratorUserTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="existing-collab-user-tab" data-bs-toggle="tab" data-bs-target="#existing-collab-user" type="button" role="tab">
+                                <i class="ti ti-user ti-xs me-1"></i>Usuario Existente
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="new-collab-user-tab" data-bs-toggle="tab" data-bs-target="#new-collab-user" type="button" role="tab">
+                                <i class="ti ti-user-plus ti-xs me-1"></i>Crear Usuario
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content pt-3" id="linkCollaboratorUserTabsContent">
+                        <!-- Existing User Tab -->
+                        <div class="tab-pane fade show active" id="existing-collab-user" role="tabpanel">
+                            <form id="linkExistingCollaboratorUserForm">
+                                @csrf
+                                <div class="mb-3">
+                                    <label for="collab_user_search" class="form-label">Buscar Usuario</label>
+                                    <select id="collab_user_search" name="user_id" class="form-select select2" required>
+                                        <option value="">-- Seleccionar usuario --</option>
+                                        @foreach(\App\Models\User::whereHas('teams', function($q) { $q->where('team_id', auth()->user()->currentTeam->id); })->orderBy('name')->get() as $user)
+                                            <option value="{{ $user->id }}" data-email="{{ $user->email }}" data-role="{{ $user->roles->first()->name ?? 'user' }}">
+                                                {{ $user->name }} ({{ $user->email }}) - {{ $user->roles->first()->name ?? 'user' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Vincular Usuario</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- New User Tab -->
+                        <div class="tab-pane fade" id="new-collab-user" role="tabpanel">
+                            <form id="createCollaboratorUserForm">
+                                @csrf
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="new_collab_user_name" class="form-label">Nombre *</label>
+                                        <input type="text" class="form-control" id="new_collab_user_name" name="name" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="new_collab_user_email" class="form-label">Email *</label>
+                                        <input type="email" class="form-control" id="new_collab_user_email" name="email" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="new_collab_user_phone" class="form-label">Teléfono</label>
+                                        <input type="text" class="form-control" id="new_collab_user_phone" name="phone">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="new_collab_user_role" class="form-label">Rol *</label>
+                                        <select class="form-select" id="new_collab_user_role" name="role" required>
+                                            <option value="">-- Seleccionar rol --</option>
+                                            @foreach(\Spatie\Permission\Models\Role::all() as $role)
+                                                <option value="{{ $role->name }}" {{ $role->name === 'collaborator' ? 'selected' : '' }}>
+                                                    {{ ucfirst($role->name) }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <label for="new_collab_user_password" class="form-label">Contraseña temporal *</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="new_collab_user_password" name="password" required>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="generateCollaboratorPassword()">
+                                                <i class="ti ti-refresh ti-xs"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">El usuario deberá cambiar esta contraseña en su primer acceso</small>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Crear y Vincular</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection 
 
 @push('scripts')
@@ -480,6 +577,217 @@
                 console.error('Fetch Error:', error);
                 alert('Error al actualizar el software');
             });
+        });
+
+        // Collaborator User linking functionality
+        function showLinkCollaboratorUserModal(collaboratorId) {
+            window.currentCollaboratorId = collaboratorId;
+            // Pre-fill collaborator data if available
+            const collaboratorName = '{{ $collaborator->name ?? '' }}';
+            const collaboratorEmail = '{{ $collaborator->email ?? '' }}';
+            
+            if (collaboratorName) {
+                document.getElementById('new_collab_user_name').value = collaboratorName;
+            }
+            if (collaboratorEmail) {
+                document.getElementById('new_collab_user_email').value = collaboratorEmail;
+            }
+            
+            $('#linkCollaboratorUserModal').modal('show');
+        }
+
+        function unlinkCollaboratorUser(collaboratorId) {
+            if (confirm('¿Estás seguro de que quieres desvincular este usuario del colaborador?')) {
+                fetch(`/collaborator/${collaboratorId}/unlink-user`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Éxito!',
+                                text: 'Usuario desvinculado correctamente',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        }
+                        location.reload();
+                    } else {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Error al desvincular usuario'
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Error al desvincular usuario'
+                        });
+                    }
+                });
+            }
+        }
+
+        function generateCollaboratorPassword() {
+            const length = 10;
+            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
+            let password = "";
+            for (let i = 0, n = charset.length; i < length; ++i) {
+                password += charset.charAt(Math.floor(Math.random() * n));
+            }
+            document.getElementById('new_collab_user_password').value = password;
+        }
+
+        // Initialize Select2 when modal is shown
+        $('#linkCollaboratorUserModal').on('shown.bs.modal', function () {
+            $('#collab_user_search').select2({
+                dropdownParent: $('#linkCollaboratorUserModal'),
+                placeholder: 'Buscar usuario...',
+                allowClear: true
+            });
+        });
+
+        // Handle existing user linking for collaborators
+        $('#linkExistingCollaboratorUserForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            const userId = $('#collab_user_search').val();
+            if (!userId) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Atención',
+                        text: 'Por favor selecciona un usuario'
+                    });
+                }
+                return;
+            }
+
+            fetch(`/collaborator/${window.currentCollaboratorId}/link-user`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    user_id: userId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: 'Usuario vinculado correctamente',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }
+                    $('#linkCollaboratorUserModal').modal('hide');
+                    location.reload();
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Error al vincular usuario'
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al vincular usuario'
+                    });
+                }
+            });
+        });
+
+        // Handle new user creation and linking for collaborators
+        $('#createCollaboratorUserForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+
+            fetch(`/collaborator/${window.currentCollaboratorId}/create-and-link-user`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: 'Usuario creado y vinculado correctamente',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }
+                    $('#linkCollaboratorUserModal').modal('hide');
+                    location.reload();
+                } else {
+                    if (data.errors) {
+                        Object.keys(data.errors).forEach(field => {
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error de validación',
+                                    text: data.errors[field][0]
+                                });
+                            }
+                        });
+                    } else {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Error al crear usuario'
+                            });
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al crear usuario'
+                    });
+                }
+            });
+        });
+
+        // Generate password on page load
+        window.addEventListener('load', function() {
+            generateCollaboratorPassword();
         });
     });
 </script>

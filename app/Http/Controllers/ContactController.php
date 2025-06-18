@@ -115,7 +115,8 @@ class ContactController extends Controller
 			'country',
 			'language',
 			'sentimentHistories.sentiment',
-			'enterprise'
+			'enterprise',
+			'user.roles'
 		])->find($id);
 
 		if (!$data)
@@ -938,5 +939,116 @@ class ContactController extends Controller
 
 		return redirect()->route('contact-list')
 			->with('success', $contactsCreated . ' contactos importados correctamente.');
+	}
+
+	/**
+	 * Link an existing user to a contact
+	 */
+	public function linkUser(Request $request, $id)
+	{
+		$request->validate([
+			'user_id' => 'required|exists:users,id'
+		]);
+
+		$contact = Contact::findOrFail($id);
+		$user = \App\Models\User::findOrFail($request->user_id);
+
+		// Check if user belongs to the same team
+		if (!$user->teams->contains(auth()->user()->currentTeam->id)) {
+			return response()->json([
+				'success' => false,
+				'message' => 'El usuario no pertenece al equipo actual'
+			], 422);
+		}
+
+		// Check if user is already linked to another contact
+		$existingContact = Contact::where('user_id', $user->id)->first();
+		if ($existingContact && $existingContact->id !== $contact->id) {
+			return response()->json([
+				'success' => false,
+				'message' => 'Este usuario ya está vinculado a otro contacto'
+			], 422);
+		}
+
+		$contact->update(['user_id' => $user->id]);
+
+		return response()->json([
+			'success' => true,
+			'message' => 'Usuario vinculado correctamente',
+			'user' => [
+				'id' => $user->id,
+				'name' => $user->name,
+				'email' => $user->email,
+				'role' => $user->roles->first()->name ?? 'user'
+			]
+		]);
+	}
+
+	/**
+	 * Unlink user from contact
+	 */
+	public function unlinkUser($id)
+	{
+		$contact = Contact::findOrFail($id);
+		$contact->update(['user_id' => null]);
+
+		return response()->json([
+			'success' => true,
+			'message' => 'Usuario desvinculado correctamente'
+		]);
+	}
+
+	/**
+	 * Create a new user and link to contact
+	 */
+	public function createAndLinkUser(Request $request, $id)
+	{
+		$request->validate([
+			'name' => 'required|string|max:255',
+			'email' => 'required|email|max:255|unique:users',
+			'phone' => 'nullable|string|max:20',
+			'role' => 'required|exists:roles,name',
+			'password' => 'required|string|min:8'
+		]);
+
+		$contact = Contact::findOrFail($id);
+
+		try {
+			// Create the user
+			$user = \App\Models\User::create([
+				'name' => $request->name,
+				'email' => $request->email,
+				'phone' => $request->phone ? preg_replace('/[^0-9]/', '', $request->phone) : null,
+				'password' => \Hash::make($request->password),
+				'current_team_id' => auth()->user()->currentTeam->id,
+				'email_verified_at' => null, // Force email verification
+			]);
+
+			// Assign role
+			$user->assignRole($request->role);
+
+			// Add user to current team
+			$user->teams()->attach(auth()->user()->currentTeam->id);
+
+			// Link user to contact
+			$contact->update(['user_id' => $user->id]);
+
+			return response()->json([
+				'success' => true,
+				'message' => 'Usuario creado y vinculado correctamente',
+				'user' => [
+					'id' => $user->id,
+					'name' => $user->name,
+					'email' => $user->email,
+					'role' => $request->role
+				]
+			]);
+
+		} catch (\Exception $e) {
+			return response()->json([
+				'success' => false,
+				'message' => 'Error al crear el usuario: ' . $e->getMessage()
+			], 500);
+		}
 	}
 }

@@ -62,6 +62,47 @@
                         <span class="fw-medium me-1">Trabaja fines de semana:</span>
                         <span>Sí</span>
                     </li>
+                    <li class="mb-2">
+                        <span class="fw-medium me-1">Usuario vinculado:</span>
+                        @if ($collaborator->user_id)
+                            @php $linkedUser = \App\Models\User::find($collaborator->user_id); @endphp
+                            @if ($linkedUser)
+                                <div class="d-flex align-items-center justify-content-between mt-1">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-xs me-2">
+                                            <img class="rounded-circle" src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($linkedUser->name) }}" alt="{{ $linkedUser->name }}">
+                                        </div>
+                                        <div>
+                                            <span class="fw-medium small">{{ $linkedUser->name }}</span>
+                                            <small class="d-block text-muted">{{ $linkedUser->email }}</small>
+                                            @if($linkedUser->roles->count() > 0)
+                                                <span class="badge bg-label-info badge-sm">{{ $linkedUser->roles->first()->name }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    @can('collaborator.edit')
+                                        <button type="button" class="btn btn-sm btn-icon btn-outline-secondary" onclick="unlinkCollaboratorUser({{ $collaborator->id }})">
+                                            <i class="ti ti-unlink ti-xs"></i>
+                                        </button>
+                                    @endcan
+                                </div>
+                            @else
+                                <span class="badge bg-label-danger">Usuario no encontrado</span>
+                                @can('collaborator.edit')
+                                    <br><button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="showLinkCollaboratorUserModal({{ $collaborator->id }})">
+                                        <i class="ti ti-link ti-xs me-1"></i>Vincular
+                                    </button>
+                                @endcan
+                            @endif
+                        @else
+                            <span class="text-muted">Sin vincular</span>
+                            @can('collaborator.edit')
+                                <br><button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="showLinkCollaboratorUserModal({{ $collaborator->id }})">
+                                    <i class="ti ti-link ti-xs me-1"></i>Vincular
+                                </button>
+                            @endcan
+                        @endif
+                    </li>
                 </ul>
                 <div class="d-flex gap-3 mb-4">
                     <a href="{{ route('collaborator.edit', ['id' => $collaborator->id ?? 0]) }}" class="btn btn-primary flex-grow-1">

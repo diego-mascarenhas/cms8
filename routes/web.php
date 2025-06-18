@@ -155,6 +155,9 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
     Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
     Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
+    Route::post('/contact/{id}/link-user', [ContactController::class, 'linkUser'])->name('contact.link-user');
+    Route::post('/contact/{id}/unlink-user', [ContactController::class, 'unlinkUser'])->name('contact.unlink-user');
+    Route::post('/contact/{id}/create-and-link-user', [ContactController::class, 'createAndLinkUser'])->name('contact.create-and-link-user');
 
     // Collaborators
     Route::get('/collaborator/dashboard', function () {
@@ -172,6 +175,9 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
     Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware');
     Route::post('/collaborator/{id}/update-valoration', [CollaboratorController::class, 'updateValoration'])->name('collaborator.updateValoration');
+    Route::post('/collaborator/{id}/link-user', [CollaboratorController::class, 'linkUser'])->name('collaborator.link-user');
+    Route::post('/collaborator/{id}/unlink-user', [CollaboratorController::class, 'unlinkUser'])->name('collaborator.unlink-user');
+    Route::post('/collaborator/{id}/create-and-link-user', [CollaboratorController::class, 'createAndLinkUser'])->name('collaborator.create-and-link-user');
     Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
     Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
     Route::get('/collaborator/{id}/absences', function ($id) {
