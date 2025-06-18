@@ -3,111 +3,80 @@
 @section('title', 'Desvincular Usuario')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">
-            <span class="text-muted fw-light">
-                {{ ucfirst($type) }}/
-            </span> 
-            {{ $contact->name }} / Desvincular Usuario
-        </h4>
-        <p class="text-muted">Confirmar desvinculación de usuario</p>
-    </div>
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route($type === 'contact' ? 'contact.show' : 'collaborator.show', $contact->id) }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i>Volver
-        </a>
-    </div>
-</div>
-
 <div class="row justify-content-center">
-    <div class="col-lg-8">
-        <!-- Current Link Info -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="ti ti-link ti-sm me-2"></i>
-                    Vinculación Actual
-                </h5>
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header text-center bg-light">
+                <h4 class="mb-1 mt-3">
+                    <span class="text-muted fw-light">{{ ucfirst($type) }}/</span> 
+                    {{ $contact->name }} / Desvincular Usuario
+                </h4>
+                <p class="text-muted">Confirmar desvinculación de usuario</p>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <!-- Contact/Collaborator Info -->
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center">
-                            <div class="avatar avatar-lg me-3">
-                                <img class="rounded-circle" src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($contact->name) }}" alt="{{ $contact->name }}">
-                            </div>
-                            <div>
-                                <h6 class="mb-1">{{ $contact->name }}</h6>
-                                <p class="mb-0 text-muted">{{ $contact->email }}</p>
-                                <span class="badge bg-label-primary">{{ ucfirst($type) }}</span>
-                            </div>
+            
+            <div class="card-body p-4">
+                <!-- Current Link Section -->
+                <div class="text-center mb-4">
+                    <div class="avatar avatar-lg mx-auto mb-3">
+                        <img class="rounded-circle" 
+                             src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($contact->name) }}" 
+                             alt="{{ $contact->name }}">
+                    </div>
+                    <h5 class="mb-2">{{ $contact->name }}</h5>
+                    <p class="text-muted mb-0">{{ $contact->email ?? 'Sin email' }}</p>
+                </div>
+
+                <div class="d-flex justify-content-center align-items-center mb-4">
+                    <div class="text-center">
+                        <div class="avatar avatar-sm">
+                            <img class="rounded-circle" 
+                                 src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($contact->name) }}" 
+                                 alt="{{ $contact->name }}">
                         </div>
+                        <small class="d-block text-muted mt-1">{{ ucfirst($type) }}</small>
                     </div>
                     
-                    <!-- Arrow -->
-                    <div class="col-md-1 d-flex align-items-center justify-content-center">
-                        <i class="ti ti-arrow-right text-muted"></i>
+                    <div class="mx-3">
+                        <i class="ti ti-arrow-right text-primary"></i>
                     </div>
                     
-                    <!-- User Info -->
-                    <div class="col-md-5">
-                        @if($linkedUser)
-                            <div class="d-flex align-items-center">
-                                <div class="avatar avatar-lg me-3">
-                                    <img class="rounded-circle" src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($linkedUser->name) }}" alt="{{ $linkedUser->name }}">
-                                </div>
-                                <div>
-                                    <h6 class="mb-1">{{ $linkedUser->name }}</h6>
-                                    <p class="mb-0 text-muted">{{ $linkedUser->email }}</p>
-                                    @if($linkedUser->roles->count() > 0)
-                                        <span class="badge bg-label-info">{{ $linkedUser->roles->first()->name }}</span>
-                                    @endif
-                                </div>
-                            </div>
-                        @else
-                            <div class="text-center">
-                                <i class="ti ti-user-x text-muted mb-2" style="font-size: 2rem;"></i>
-                                <p class="text-muted mb-0">Usuario no encontrado</p>
-                            </div>
+                    <div class="text-center">
+                        <div class="avatar avatar-sm">
+                            <img class="rounded-circle" 
+                                 src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($linkedUser->name) }}" 
+                                 alt="{{ $linkedUser->name }}">
+                        </div>
+                        <small class="d-block text-muted mt-1">{{ $linkedUser->name }}</small>
+                        <small class="d-block text-muted">{{ $linkedUser->email }}</small>
+                        @if($linkedUser->roles->count() > 0)
+                            <span class="badge bg-label-info badge-sm mt-1">{{ $linkedUser->roles->first()->name }}</span>
                         @endif
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Confirmation Card -->
-        <div class="card">
-            <div class="card-header bg-label-warning">
-                <h5 class="mb-0 text-warning">
-                    <i class="ti ti-alert-triangle ti-sm me-2"></i>
-                    Confirmar Desvinculación
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-warning d-flex align-items-center" role="alert">
-                    <i class="ti ti-info-circle me-2"></i>
+                <!-- Warning Section -->
+                <div class="alert alert-warning d-flex align-items-start" role="alert">
+                    <i class="ti ti-alert-triangle me-2 mt-1"></i>
                     <div>
-                        <strong>¿Estás seguro?</strong><br>
-                        Esta acción desvinculará el usuario <strong>{{ $linkedUser ? $linkedUser->name : 'desconocido' }}</strong> 
-                        del {{ $type }} <strong>{{ $contact->name }}</strong>.
-                        <br><br>
-                        <small class="text-muted">
-                            • El usuario seguirá existiendo en el sistema<br>
-                            • Podrás vincular otro usuario en el futuro<br>
-                            • Esta acción se puede revertir
-                        </small>
+                        <h6 class="mb-1">¿Estás seguro?</h6>
+                        <p class="mb-2">Esta acción desvinculará el usuario <strong>{{ $linkedUser->name }}</strong> del {{ $type }} <strong>{{ $contact->name }}</strong>.</p>
+                        <ul class="mb-0 ps-3">
+                            <li>El usuario seguirá existiendo en el sistema</li>
+                            <li>Podrás vincular otro usuario en el futuro</li>
+                            <li>Esta acción se puede revertir</li>
+                        </ul>
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-between pt-3">
-                    <a href="{{ route($type === 'contact' ? 'contact.show' : 'collaborator.show', $contact->id) }}" 
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                    <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}" 
                        class="btn btn-outline-secondary">
                         <i class="ti ti-x me-1"></i>Cancelar
                     </a>
-                    
-                    <form action="{{ route('user-unlink.process', [$type, $contact->id]) }}" method="POST" class="d-inline">
+                    <form method="POST" 
+                          action="{{ route('user-unlink.process', [$type, $contact->id]) }}" 
+                          class="d-inline">
                         @csrf
                         <button type="submit" class="btn btn-danger">
                             <i class="ti ti-unlink me-1"></i>Confirmar Desvinculación
@@ -115,6 +84,14 @@
                     </form>
                 </div>
             </div>
+        </div>
+
+        <!-- Back Button -->
+        <div class="text-center mt-3">
+            <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}" 
+               class="btn btn-link">
+                <i class="ti ti-arrow-left me-1"></i>Volver
+            </a>
         </div>
     </div>
 </div>
