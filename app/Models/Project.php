@@ -13,15 +13,18 @@ class Project extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'team_id',
         'enterprise_id',
         'category_id',
         'name',
+        'real_name',
         'description',
         'price',
         'discount',
         'cost',
-        'start_date',
-        'end_date',
+        'date_material',
+        'date_start',
+        'date_end',
         'responsible_id',
         'status_id',
         'created_at',
@@ -32,11 +35,9 @@ class Project extends Model
     {
         static::addGlobalScope('team', function (Builder $builder)
         {
-            if (auth()->check() && auth()->user()->currentTeam)
+            if (auth()->check())
             {
-                $builder->whereHas('client', function($query) {
-                    $query->where('team_id', auth()->user()->currentTeam->id);
-                });
+                $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
     }
@@ -60,6 +61,16 @@ class Project extends Model
 	{
 		return $this->belongsTo(ProjectStatus::class);
 	}
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(Note::class, 'reference')->where('module_id', 1); // Assuming module_id 1 is for projects
+    }
 
     public function getStatusLabelAttribute()
     {

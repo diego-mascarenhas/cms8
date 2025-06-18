@@ -10,20 +10,24 @@ return new class extends Migration
     {
         Schema::create('projects', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('team_id');
             $table->unsignedBigInteger('enterprise_id');
             $table->unsignedBigInteger('category_id')->nullable();
             $table->unsignedBigInteger('responsible_id');
-            $table->string('name');
+            $table->string('name', 255);
+            $table->string('real_name', 255)->nullable();
             $table->text('description')->nullable();
-            $table->decimal('cost', 10, 2)->unsigned()->nullable();
+            $table->date('date_material')->nullable();
+            $table->date('date_start')->nullable();
+            $table->date('date_end')->nullable();
+            $table->decimal('cost', 10, 2)->nullable();
             $table->decimal('price', 10, 2)->nullable();
-            $table->decimal('discount', 10, 2)->unsigned()->default(0.00);
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
-            $table->unsignedTinyInteger('status_id')->default(1);
+            $table->decimal('discount', 10, 2)->nullable();
+            $table->unsignedTinyInteger('status_id');
             $table->timestamps();
             $table->softDeletes();
 
+            $table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
             $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('cascade');
             $table->foreign('category_id')->references('id')->on('categories')->onDelete('set null');
             $table->foreign('responsible_id')->references('id')->on('users')->onDelete('cascade');

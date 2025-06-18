@@ -33,11 +33,11 @@ class ProjectDataTable extends DataTable
                     $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
                 });
             })
-            ->editColumn('start_date', function ($data) {
-                return Carbon::parse($data->start_date)->format('d-m-Y');
+            ->editColumn('date_start', function ($data) {
+                return $data->date_start ? Carbon::parse($data->date_start)->format('d-m-Y') : '-';
             })
-            ->editColumn('end_date', function ($data) {
-                return Carbon::parse($data->end_date)->format('d-m-Y');
+            ->editColumn('date_end', function ($data) {
+                return $data->date_end ? Carbon::parse($data->date_end)->format('d-m-Y') : '-';
             })
             ->addColumn('responsible_name', function ($contact) {
                 return $contact->responsible->name ?? 'Sin asignar';
@@ -122,7 +122,7 @@ class ProjectDataTable extends DataTable
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false),
-            Column::make('end_date')
+            Column::make('date_end')
                 ->title('Entrega')
                 ->className('text-center')
                 ->addClass('min-desktop')

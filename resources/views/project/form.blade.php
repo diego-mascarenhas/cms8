@@ -48,6 +48,9 @@
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
+				<x-input-general id="real_name" label="Real Name" value="{{ old('real_name', $data->real_name?? '') }}" />
+			</div>
+			<div class="col-md-6">
 				<x-module-categories-select 
 					id="category_id" 
 					label="Categoría" 
@@ -55,56 +58,59 @@
 					:selected="old('category_id', $data->category_id ?? '')" 
 				/>
 			</div>
+			<div class="col-md-6">
+				<x-input-select id="status_id" label="Estado (*)" :options="$statuses" value="{{ old('status_id', $data->status_id ?? '1') }}" />
+			</div>
 			
 			@if(auth()->user()->hasRole('admin'))
 			<div class="col-md-3">
 				<x-input-general id="price" label="Precio" type="number" step="0.01" value="{{ old('price', $data->price ?? '') }}" />
 			</div>
 			<div class="col-md-3">
-				<x-input-general id="discount" label="Descuento (%)" type="number" step="1" min="0" max="20" pattern="\d*" value="{{ old('discount', intval($data->discount ?? 0)) }}" />
+				<x-input-general id="discount" label="Descuento (%)" type="number" step="0.01" min="0" max="100" value="{{ old('discount', $data->discount ?? '') }}" />
 			</div>
 			<div class="col-md-3">
 				<x-input-general id="cost" label="Costo" type="number" step="0.01" value="{{ old('cost', $data->cost ?? '') }}" />
 			</div>
 			<div class="col-md-3">
-				<x-input-select id="status_id" label="Estado" :options="$statuses" value="{{ old('status_id', $data->status_id ?? '1') }}" />
-			</div>
-			@else
-			<div class="col-md-4">
-				<x-input-select id="status_id" label="Estado" :options="$statuses" value="{{ old('status_id', $data->status_id ?? '1') }}" />
-			</div>
-			<div class="col-md-4">
-				<x-input-date id="start_date" label="Fecha inicio" 
-					value="{{ old('start_date', $data->start_date ?? '') }}" />
-			</div>
-			<div class="col-md-4">
-				<x-input-date id="end_date" label="Fecha finalización" 
-					value="{{ old('end_date', $data->end_date ?? '') }}" />
-			</div>
-			<div class="col-md-12">
-				<x-team-users-select 
-					id="responsible_id" 
-					label="Responsible" 
-					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())" 
-				/>
-			</div>
-			@endif
-			
-			@if(auth()->user()->hasRole('admin'))
-			<div class="col-md-3">
-				<x-input-date id="start_date" label="Fecha inicio" 
-					value="{{ old('start_date', $data->start_date ?? '') }}" />
+				<x-input-date id="date_material" label="Fecha Material" 
+					value="{{ old('date_material', $data->date_material ?? '') }}" />
 			</div>
 			
 			<div class="col-md-3">
-				<x-input-date id="end_date" label="Fecha finalización" 
-					value="{{ old('end_date', $data->end_date ?? '') }}" />
+				<x-input-date id="date_start" label="Fecha inicio" 
+					value="{{ old('date_start', $data->date_start ?? '') }}" />
+			</div>
+			
+			<div class="col-md-3">
+				<x-input-date id="date_end" label="Fecha finalización" 
+					value="{{ old('date_end', $data->date_end ?? '') }}" />
 			</div>
 			
 			<div class="col-md-6">
 				<x-team-users-select 
 					id="responsible_id" 
-					label="Responsible" 
+					label="Responsible (*)" 
+					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())" 
+				/>
+			</div>
+			@else
+			<div class="col-md-4">
+				<x-input-date id="date_start" label="Fecha inicio" 
+					value="{{ old('date_start', $data->date_start ?? '') }}" />
+			</div>
+			<div class="col-md-4">
+				<x-input-date id="date_end" label="Fecha finalización" 
+					value="{{ old('date_end', $data->date_end ?? '') }}" />
+			</div>
+			<div class="col-md-4">
+				<x-input-date id="date_material" label="Fecha Material" 
+					value="{{ old('date_material', $data->date_material ?? '') }}" />
+			</div>
+			<div class="col-md-12">
+				<x-team-users-select 
+					id="responsible_id" 
+					label="Responsible (*)" 
 					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())" 
 				/>
 			</div>

@@ -36,32 +36,37 @@ class ProjectController extends Controller
 
         $request->validate([
             'name' => 'required|string|min:3|max:255',
-            'description' => 'required|string|min:3|max:255',
+            'real_name' => 'nullable|string|max:255',
+            'description' => 'required|string|min:3',
             'enterprise_id' => 'required|exists:enterprises,id',
             'responsible_id' => 'required|exists:users,id',
             'price' => 'nullable|numeric|min:0',
-            'discount' => 'nullable|integer|min:0|max:20',
+            'discount' => 'nullable|numeric|min:0|max:100',
             'cost' => 'nullable|numeric|min:0',
             'status_id' => 'required|exists:project_statuses,id',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'date_material' => 'nullable|date',
+            'date_start' => 'nullable|date',
+            'date_end' => 'nullable|date|after_or_equal:date_start',
             'category_id' => 'nullable|exists:categories,id',
         ]);
 
         Project::updateOrCreate(
             ['id' => $request->id],
             [
+                'team_id' => auth()->user()->currentTeam->id,
                 'name' => $data['name'],
+                'real_name' => $data['real_name'] ?? null,
                 'enterprise_id' => $data['enterprise_id'],
                 'category_id' => $data['category_id'] ?? null,
                 'description' => $data['description'],
                 'responsible_id' => $data['responsible_id'],
                 'price' => $data['price'] ?? null,
-                'discount' => $data['discount'] ?? 0,
+                'discount' => $data['discount'] ?? null,
                 'cost' => $data['cost'] ?? null,
                 'status_id' => $data['status_id'] ?? 1,
-                'start_date' => $data['start_date'] ?? null,
-                'end_date' => $data['end_date'] ?? null,
+                'date_material' => $data['date_material'] ?? null,
+                'date_start' => $data['date_start'] ?? null,
+                'date_end' => $data['date_end'] ?? null,
             ]
         );
 
@@ -73,7 +78,7 @@ class ProjectController extends Controller
      */
     public function show(string $id)
     {
-        $project = Project::with(['client', 'responsible', 'status', 'category'])
+        $project = Project::with(['client', 'responsible', 'status', 'category', 'notes'])
             ->findOrFail($id);
             
         return view('project.show', compact('project'));

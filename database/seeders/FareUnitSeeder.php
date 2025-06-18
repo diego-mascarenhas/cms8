@@ -14,13 +14,26 @@ class FareUnitSeeder extends Seeder
      */
     public function run(): void
     {
-        // First, get all the unit IDs
-        $minuteId = Unit::where('type', 'Minute')->first()->id;
-        $tenMinutesId = Unit::where('type', '10 Minutes')->first()->id;
-        $hourId = Unit::where('type', 'Hour')->first()->id;
-        $wordId = Unit::where('type', 'Word')->first()->id;
-        $pageId = Unit::where('type', 'Page')->first()->id;
-        $rollId = Unit::where('type', 'Roll')->first()->id;
+        // First, get all the unit IDs - using Spanish names as defined in UnitsSeeder
+        $minuteUnit = Unit::where('type', 'Minutos')->first();
+        $tenMinutesUnit = Unit::where('type', '10 Minutos')->first();
+        $hourUnit = Unit::where('type', 'Horas')->first();
+        $wordUnit = Unit::where('type', 'Palabras')->first();
+        $pageUnit = Unit::where('type', 'Páginas')->first();
+        $rollUnit = Unit::where('type', 'Rollos')->first();
+
+        // Check if units exist before proceeding
+        if (!$minuteUnit || !$tenMinutesUnit || !$hourUnit || !$wordUnit || !$pageUnit || !$rollUnit) {
+            echo "Warning: Some units not found. Skipping FareUnitSeeder.\n";
+            return;
+        }
+
+        $minuteId = $minuteUnit->id;
+        $tenMinutesId = $tenMinutesUnit->id;
+        $hourId = $hourUnit->id;
+        $wordId = $wordUnit->id;
+        $pageId = $pageUnit->id;
+        $rollId = $rollUnit->id;
         
         // Define the relationships
         $relationships = [
