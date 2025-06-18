@@ -35,11 +35,6 @@
         <p class="text-muted">{{ __('Track your projects') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        @if(isset($data->id))
-            @can('project.edit')
-            <a href="{{ route('project.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i class="ti ti-edit me-1"></i>{{ __('Edit Project') }}</a>
-            @endcan
-        @endif
         @can('project.index')
         <a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Projects') }}</a>
         @endcan
@@ -57,7 +52,7 @@
 		@endif
 		
 		<div class="row g-4">
-			<!-- Nombre interno para colaboradoras -->
+			<!-- Internal name for collaborators -->
 			<div class="col-12">
 				<label for="name" class="form-label">{{ __('Internal Name for Collaborators') }} <i class="ti ti-eye ms-1"></i></label>
 				<input type="text" class="form-control" id="name" name="name" 
@@ -65,7 +60,7 @@
 					   placeholder="{{ __('What the collaborator sees') }}" required>
 			</div>
 
-			<!-- Nombre real -->
+			<!-- Real name -->
 			<div class="col-12">
 				<label for="real_name" class="form-label">{{ __('Real Name') }} <i class="ti ti-link ms-1"></i></label>
 				<input type="text" class="form-control" id="real_name" name="real_name" 
@@ -73,7 +68,7 @@
 					   placeholder="{{ __('What the collaborator sees when accepting the project') }}">
 			</div>
 
-			<!-- Estado de proyecto -->
+			<!-- Project status -->
 			<div class="col-md-6">
 				<label for="status_id" class="form-label">{{ __('Project Status') }}</label>
 				<select class="form-select" id="status_id" name="status_id" required>
@@ -86,7 +81,7 @@
 				</select>
 			</div>
 
-			<!-- Tipo de producto (Categoría) -->
+			<!-- Product type (Category) -->
 			<div class="col-md-6">
 				<x-module-categories-select 
 					id="category_id" 
@@ -96,7 +91,7 @@
 				/>
 			</div>
 
-			<!-- Fechas -->
+			<!-- Dates -->
 			<div class="col-md-6">
 				<x-input-date id="date_material" label="{{ __('Material Delivery Date') }}" 
 					value="{{ old('date_material', $data->date_material ?? '') }}" />
@@ -107,7 +102,7 @@
 					value="{{ old('date_end', $data->date_end ?? '') }}" />
 			</div>
 
-			<!-- Cliente -->
+			<!-- Client -->
 			@if(!$enterprise_id)
 			<div class="col-12">
 				<x-client-select 
@@ -118,7 +113,7 @@
 			</div>
 			@endif
 
-			<!-- Campos adicionales para admins -->
+			<!-- Additional fields for admins -->
 			@if(auth()->user()->hasRole('admin'))
 			<div class="col-md-4">
 				<label for="price" class="form-label">{{ __('Price') }}</label>
@@ -157,7 +152,7 @@
 				/>
 			</div>
 			@else
-			<!-- Vista simplificada para no-admins -->
+			<!-- Simplified view for non-admins -->
 			<div class="col-md-6">
 				<x-input-date id="date_start" label="{{ __('Start Date') }}" 
 					value="{{ old('date_start', $data->date_start ?? '') }}" />
