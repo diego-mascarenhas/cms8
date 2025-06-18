@@ -35,20 +35,19 @@
                     </div>
                 </div>
             </div>
-            <h5 class="pb-2 border-bottom mb-4">Detalles</h5>
             <div class="info-container">
-                <ul class="list-unstyled mb-4">
-                    <li class="mb-2">
-                        <span class="fw-medium me-1">Email:</span>
-                        <span>{{ $collaborator->email ?? '' }}</span>
-                    </li>
+                <ul class="list-unstyled mb-4 pt-3">
                     <li class="mb-2">
                         <span class="fw-medium me-1">Estado:</span>
                         <span class="badge bg-label-success">Activo</span>
                     </li>
                     <li class="mb-2">
+                        <span class="fw-medium me-1">Email:</span>
+                        <span>{{ $collaborator->email ?? 'Sin email' }}</span>
+                    </li>
+                    <li class="mb-2">
                         <span class="fw-medium me-1">Contacto:</span>
-                        <span>{{ $collaborator->phone ?? '' }}</span>
+                        <span>{{ $collaborator->phone ?? 'Sin teléfono' }}</span>
                     </li>
                     <li class="mb-2">
                         <span class="fw-medium me-1">Idiomas:</span>
@@ -62,23 +61,14 @@
                         <span class="fw-medium me-1">Trabaja fines de semana:</span>
                         <span>Sí</span>
                     </li>
-                    <li class="mb-2">
-                        <span class="fw-medium me-1">Usuario vinculado:</span>
+                    <li class="mb-2 pt-3">
                         @if ($collaborator->user_id)
                             @php $linkedUser = \App\Models\User::find($collaborator->user_id); @endphp
                             @if ($linkedUser)
-                                <div class="d-flex align-items-center justify-content-between mt-1">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-xs me-2">
-                                            <img class="rounded-circle" src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($linkedUser->name) }}" alt="{{ $linkedUser->name }}">
-                                        </div>
-                                        <div>
-                                            <span class="fw-medium small">{{ $linkedUser->name }}</span>
-                                            <small class="d-block text-muted">{{ $linkedUser->email }}</small>
-                                            @if($linkedUser->roles->count() > 0)
-                                                <span class="badge bg-label-info badge-sm">{{ $linkedUser->roles->first()->name }}</span>
-                                            @endif
-                                        </div>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <span class="badge bg-label-primary me-2">{{ $linkedUser->roles->first()->name ?? 'Sin rol' }}</span>
+                                        <span>{{ $linkedUser->name }} ({{ $linkedUser->email }})</span>
                                     </div>
                                     @can('collaborator.edit')
                                         <a href="{{ route('user-unlink.show', ['collaborator', $collaborator->id]) }}" class="btn btn-sm btn-icon btn-outline-secondary">
@@ -89,16 +79,15 @@
                             @else
                                 <span class="badge bg-label-danger">Usuario no encontrado</span>
                                 @can('collaborator.edit')
-                                    <br><a href="{{ route('user-link.show', ['collaborator', $collaborator->id]) }}" class="btn btn-sm btn-outline-primary mt-1">
-                                        <i class="ti ti-link ti-xs me-1"></i>Vincular
+                                    <a href="{{ route('user-link.show', ['collaborator', $collaborator->id]) }}" class="btn btn-sm btn-outline-primary ms-2">
+                                        <i class="ti ti-link ti-xs me-1"></i>Vincular usuario
                                     </a>
                                 @endcan
                             @endif
                         @else
-                            <span class="text-muted">Sin vincular</span>
                             @can('collaborator.edit')
-                                <br><a href="{{ route('user-link.show', ['collaborator', $collaborator->id]) }}" class="btn btn-sm btn-outline-primary mt-1">
-                                    <i class="ti ti-link ti-xs me-1"></i>Vincular
+                                <a href="{{ route('user-link.show', ['collaborator', $collaborator->id]) }}" class="btn btn-sm btn-outline-primary ms-2">
+                                    <i class="ti ti-link ti-xs me-1"></i>Vincular usuario
                                 </a>
                             @endcan
                         @endif
