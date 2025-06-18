@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Software')
+@section('title', __('Softwares'))
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
@@ -20,11 +20,11 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Software</h4>
-        <p class="text-muted">Gestión de programas de software</p>
+        <h4 class="mb-1 mt-3">{{ __('Softwares') }}</h4>
+        <p class="text-muted">{{ __('Software Management') }}</p>
     </div>
     <div class="mt-3 mt-md-0">
-        <a href="{{ route('software.create') }}" class="btn btn-primary"> <i class="ti ti-plus me-1"></i> Crear software </a>
+        <a href="{{ route('software.create') }}" class="btn btn-primary"> <i class="ti ti-plus me-1"></i> {{ __('Create Software') }} </a>
     </div>
 </div>
 

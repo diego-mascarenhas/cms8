@@ -61,7 +61,9 @@ class LanguageVariantDataTable extends DataTable
             ->dom('frtip')
             ->orderBy(1, 'asc')
             ->responsive(true)
-            ->processing(false)
+            ->processing(true)
+            ->serverSide(true)
+            ->pageLength(25)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'drawCallback' => "function() {

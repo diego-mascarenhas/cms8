@@ -672,6 +672,14 @@
   "Discount": "Descuento",
   "Cost": "Costo",
   "Start Date": "Fecha inicio",
-  "Save": "Guardar",
-  "Cancel": "Cancelar"
+      "Save": "Guardar",
+    "Cancel": "Cancelar",
+    "Software": "Programa",
+    "Softwares": "Programas",
+    "Software Management": "Gestión de programas",
+    "Create Software": "Crear programa",
+    "Edit Software": "Editar programa",
+    "Software created successfully": "Programa creado correctamente",
+    "Software updated successfully": "Programa actualizado correctamente",
+    "Software deleted successfully": "Programa eliminado correctamente"
 }
