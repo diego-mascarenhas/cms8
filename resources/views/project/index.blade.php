@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Projects')
+@section('title', __('Projects'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -43,9 +43,14 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Projects</h4>
-        <p class="text-muted">Track your projects</p>
+        <h4 class="mb-1 mt-3">{{ __('Projects') }}</h4>
+        <p class="text-muted">{{ __('Track your projects') }}</p>
     </div>
+    @can('project.create')
+    <div class="mt-3 mt-md-0">
+        <a href="{{ route('project.create') }}" class="btn btn-primary"> <i class="ti ti-plus me-1"></i> {{ __('Add Project') }} </a>
+    </div>
+    @endcan
 </div>
 
 @if(session('success'))
@@ -77,13 +82,13 @@
 <script>
     function deleteRecord(id, element) {
         Swal.fire({
-            title: 'Are you sure you want to delete this record?',
-            text: 'This action cannot be undone',
+            title: '{{ __("Are you sure you want to delete this record?") }}',
+            text: '{{ __("This action cannot be undone") }}',
             icon: 'warning',
             showCloseButton: false,
             showCancelButton: false,
             confirmButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete'
+            confirmButtonText: '{{ __("Yes, delete") }}'
         }).then((result) => {
             if (result.isConfirmed) {
                 fetch("{{ route('project.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
@@ -127,7 +132,7 @@
                     }
                 }).catch(error => {
                     console.error('Error:', error);
-                    Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
+                    Swal.fire('{{ __("Error") }}', '{{ __("An error occurred while deleting the record") }}', 'error');
                 });
             }
         });
