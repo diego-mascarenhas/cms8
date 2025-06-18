@@ -48,7 +48,7 @@
     </div>
     @can('project.create')
     <div class="mt-3 mt-md-0">
-        <a href="{{ route('project.create') }}" class="btn btn-primary"> <i class="ti ti-plus me-1"></i> {{ __('Add Project') }} </a>
+        <a href="{{ route('project.create') }}" class="btn btn-primary"> <i class="ti ti-plus me-1"></i> {{ __('Add New Project') }} </a>
     </div>
     @endcan
 </div>

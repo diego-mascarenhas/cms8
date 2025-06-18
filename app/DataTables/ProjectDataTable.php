@@ -102,38 +102,38 @@ class ProjectDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')
-                ->title('Nombre')
+                ->title(__('Name'))
                 ->addClass('all'),
             Column::make('enterprise_id')
-                ->title('Client')
+                ->title(__('Client'))
                 ->addClass('min-tablet')
                 ->searchable(true)
                 ->orderable(false),
             Column::make('category_id')
-                ->title('Category')
+                ->title(__('Category'))
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->searchable(true)
                 ->orderable(false)
                 ->width(150),
             Column::make('responsible_name')
-                ->title('Responsable')
+                ->title(__('Responsible'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('date_end')
-                ->title('Entrega')
+                ->title(__('Delivery'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('status_id')
-                ->title('Estado')
+                ->title(__('Status'))
                 ->className('text-center')
                 ->addClass('min-tablet'),
             Column::computed('action')
-                ->title('Acciones')
+                ->title(__('Actions'))
                 ->width(20)
                 ->className('text-center')
                 ->addClass('min-desktop')
