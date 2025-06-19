@@ -28,7 +28,8 @@ class CollaboratorController extends Controller
             'email' => 'required|email|max:255',
             'phone' => 'nullable|numeric',
             'language_pairs' => 'nullable|array',
-            'is_native' => 'nullable|array'
+            'is_native' => 'nullable|array',
+            'fare_ids' => 'nullable|array'
         ]);
 
         // Add creator_id and team_id automatically
@@ -81,19 +82,43 @@ class CollaboratorController extends Controller
             }
         }
 
+        // Process fares/services if they exist
+        if ($request->has('fare_ids') && is_array($request->fare_ids) && count($request->fare_ids) > 0) {
+            // Filter out empty values
+            $fareIds = array_filter($request->fare_ids, function($value) {
+                return !empty($value);
+            });
+            
+            // Sync fares with the contact
+            if (!empty($fareIds)) {
+                $contact->fares()->sync($fareIds);
+            }
+        }
+
         return redirect()->route('collaborator.show', $contact->id)
             ->with('success', __('Collaborator created successfully.'));
     }
 
     public function show($id)
     {
-        $collaborator = Contact::with(['softwares.type', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'user.roles', 'valoration'])->findOrFail($id);
+        $collaborator = Contact::with([
+            'softwares.type', 
+            'languageVariants.sourceLanguage', 
+            'languageVariants.targetLanguage', 
+            'user.roles', 
+            'valoration',
+            'fares.type'
+        ])->findOrFail($id);
         return view('collaborator.show', compact('collaborator'));
     }
 
     public function edit($id)
     {
-        $collaborator = Contact::with(['languageVariants.sourceLanguage', 'languageVariants.targetLanguage'])->findOrFail($id);
+        $collaborator = Contact::with([
+            'languageVariants.sourceLanguage', 
+            'languageVariants.targetLanguage',
+            'fares'
+        ])->findOrFail($id);
         
         // Forzar la carga de los idiomas
         $languagePairs = [];
@@ -126,7 +151,8 @@ class CollaboratorController extends Controller
             'email' => 'required|email|max:255',
             'phone' => 'nullable|numeric',
             'language_pairs' => 'nullable|array',
-            'is_native' => 'nullable|array'
+            'is_native' => 'nullable|array',
+            'fare_ids' => 'nullable|array'
         ]);
 
         $collaborator->update([
@@ -178,6 +204,20 @@ class CollaboratorController extends Controller
         } else {
             // Si no hay pares de idiomas, eliminar todos los existentes
             $collaborator->languageVariants()->delete();
+        }
+
+        // Process fares/services if they exist
+        if ($request->has('fare_ids')) {
+            // Get the fare IDs or use empty array if none provided
+            $fareIds = $request->fare_ids ?? [];
+            
+            // Filter out empty values
+            $fareIds = array_filter($fareIds, function($value) {
+                return !empty($value);
+            });
+            
+            // Sync fares with the collaborator - passing an empty array removes all associations
+            $collaborator->fares()->sync($fareIds);
         }
 
         return redirect()->route('collaborator.show', $id)
@@ -338,6 +378,66 @@ class CollaboratorController extends Controller
             'success' => true,
             'message' => 'Software actualizado correctamente',
             'softwares' => $softwares
+        ]);
+    }
+    
+    /**
+     * Update collaborator services
+     */
+    public function updateServices(Request $request, $id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $collaborator = Contact::findOrFail($id);
+        
+        // Obtener los IDs de servicios
+        $fareIds = [];
+        
+        // Si es una solicitud JSON
+        if ($request->isJson()) {
+            $data = $request->json()->all();
+            $fareIds = $data['fare_ids'] ?? [];
+        } else {
+            // Si es una solicitud normal
+            $fareIds = $request->input('fare_ids', []);
+        }
+        
+        // Si viene como string vacío, convertir a array vacío
+        if ($fareIds === '') {
+            $fareIds = [];
+        }
+        
+        // Si viene un solo ID como string, convertirlo a array
+        if (!is_array($fareIds) && !empty($fareIds)) {
+            $fareIds = [$fareIds];
+        }
+        
+        // Filtrar valores vacíos o nulos que puedan causar errores
+        $fareIds = array_filter($fareIds, function($value) {
+            return !empty($value) && $value !== '' && $value !== null;
+        });
+
+        // Sync fares
+        $collaborator->fares()->sync(empty($fareIds) ? [] : $fareIds);
+
+        // Load updated fares with types
+        $collaborator->load('fares.type');
+        
+        // Format response data
+        $services = $collaborator->fares->map(function($fare) {
+            return [
+                'id' => $fare->id,
+                'name' => $fare->name,
+                'type_name' => $fare->type ? $fare->type->name : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Servicios actualizados correctamente',
+            'services' => $services
         ]);
     }
 

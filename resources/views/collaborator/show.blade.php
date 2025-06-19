@@ -289,21 +289,38 @@
             <div class="card mb-4">
                 <div class="card-header border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Servicios</h5>
-                    <a href="javascript:void(0)" class="text-secondary"><i class="ti ti-pencil"></i></a>
+                    <a href="javascript:void(0)" id="toggleServicesEdit" class="text-secondary">
+                        <i class="ti ti-edit ti-sm"></i>
+                    </a>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <span class="badge bg-label-primary rounded-pill me-1">Subtitulado</span>
-                        <span class="badge bg-label-primary rounded-pill me-1">Transcripción</span>
-                        <span class="badge bg-label-primary rounded-pill">Documentos</span>
+                <div class="card-body pt-4">
+                    <!-- Read-only view -->
+                    <div id="services-display">
+                        @if($collaborator->fares && $collaborator->fares->count() > 0)
+                            @foreach($collaborator->fares as $fare)
+                                <span class="badge bg-label-primary rounded-pill me-1 mb-1">
+                                    {{ $fare->name }}{{ $fare->type ? ' (' . $fare->type->name . ')' : '' }}
+                                </span>
+                            @endforeach
+                        @else
+                            <div class="mt-2">
+                                <span class="text-muted">No hay servicios asignados</span>
+                            </div>
+                        @endif
                     </div>
-                    <div class="mt-3">
-                        <ul class="list-unstyled mb-0">
-                            <li class="mb-2">Transcripción</li>
-                            <li class="mb-2">Guiones</li>
-                            <li class="mb-2">Doblaje</li>
-                        </ul>
-                    </div>
+                    
+                    <form id="services-edit-form" class="mt-3 d-none">
+                        @csrf
+                        <x-fare-select 
+                            id="collaborator_fare_ids" 
+                            label="Servicios que ofrece"
+                            :selected="$collaborator->fares ? $collaborator->fares->pluck('id')->toArray() : []"
+                        />
+                        <div class="mt-3">
+                            <button type="button" id="saveServices" class="btn btn-primary btn-sm">Guardar</button>
+                            <button type="button" id="cancelServicesEdit" class="btn btn-outline-secondary btn-sm">Cancelar</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -383,10 +400,10 @@
     $(document).ready(function() {
         console.log('Document ready, setting up collaborator events...');
         
-        // Initialize Select2 for software
+        // Initialize Select2 for software and services
         try {
-            $('#collaborator_software_ids').select2({
-                placeholder: 'Seleccionar software',
+            $('#collaborator_software_ids, #collaborator_fare_ids').select2({
+                placeholder: 'Seleccionar',
                 allowClear: true,
                 closeOnSelect: false,
                 width: '100%'
@@ -410,6 +427,22 @@
             $('#software-edit-form').addClass('d-none');
             $('#software-display').removeClass('d-none');
             $('#toggleSoftwareEdit').removeClass('d-none');
+        });
+        
+        // Toggle between view and edit for services
+        $('#toggleServicesEdit').on('click', function() {
+            console.log('Toggle services edit clicked');
+            $('#services-display').addClass('d-none');
+            $('#services-edit-form').removeClass('d-none');
+            $(this).addClass('d-none');
+        });
+
+        // Cancel edit for services
+        $('#cancelServicesEdit').on('click', function() {
+            console.log('Cancel services edit clicked');
+            $('#services-edit-form').addClass('d-none');
+            $('#services-display').removeClass('d-none');
+            $('#toggleServicesEdit').removeClass('d-none');
         });
 
         // Save changes for software
@@ -472,6 +505,69 @@
             .catch(error => {
                 console.error('Fetch Error:', error);
                 alert('Error al actualizar el software');
+            });
+        });
+        
+        // Save changes for services
+        $('#saveServices').on('click', function() {
+            console.log('Save services clicked');
+            
+            const fareIds = $('#collaborator_fare_ids').val() || [];
+            const collaboratorId = {{ $collaborator->id }};
+            const csrfToken = $('meta[name="csrf-token"]').attr('content');
+            
+            console.log('Service IDs:', fareIds);
+            console.log('Collaborator ID:', collaboratorId);
+            
+            fetch(`/collaborator/${collaboratorId}/update-services`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    fare_ids: fareIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Fetch Success:', data);
+                if (data.success) {
+                    // Update the badges in the view
+                    let badgesHtml = '';
+                    if (data.services && data.services.length > 0) {
+                        data.services.forEach(function(service) {
+                            const serviceText = service.name + (service.type_name ? ' (' + service.type_name + ')' : '');
+                            badgesHtml += `<span class="badge bg-label-primary rounded-pill me-1 mb-1">${serviceText}</span>`;
+                        });
+                    } else {
+                        badgesHtml = '<div class="mt-2"><span class="text-muted">No hay servicios asignados</span></div>';
+                    }
+                    
+                    $('#services-display').html(badgesHtml);
+                    
+                    // Return to read-only view
+                    $('#services-edit-form').addClass('d-none');
+                    $('#services-display').removeClass('d-none');
+                    $('#toggleServicesEdit').removeClass('d-none');
+                    
+                    // Show success notification
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: 'Servicios actualizados correctamente',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert('Servicios actualizados correctamente');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Fetch Error:', error);
+                alert('Error al actualizar los servicios');
             });
         });
 

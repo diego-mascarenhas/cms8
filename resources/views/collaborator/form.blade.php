@@ -80,6 +80,22 @@
             </div>
         </div>
 
+        <!-- Services Card -->
+        <div class="card mb-4">
+            <h5 class="card-header">{{ __('Services') }}</h5>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <x-fare-select 
+                            id="collaborator_fare_ids" 
+                            label="{{ __('Services offered') }}"
+                            :selected="$collaborator->fares ?? [] ? $collaborator->fares->pluck('id')->toArray() : []"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Language Pairs Card -->
         <div class="card mb-4">
             <h5 class="card-header">{{ __('Language Pairs') }}</h5>
