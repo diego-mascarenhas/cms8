@@ -159,11 +159,26 @@
                 <div class="col">
                     <select class="form-select" id="servicio">
                         <option value="" selected>{{ __('Servicio') }}</option>
-                        <option value="transcreacion">Transcreación</option>
-                        <option value="documentos">Documentos</option>
-                        <option value="subtitulado">Subtitulado</option>
-                        <option value="traduccion-literaria">Traducción literaria</option>
-                        <option value="interpretacion">Interpretación</option>
+                        @php
+                        $faresByType = \App\Models\Fare::with('type')
+                            ->where(function($query) {
+                                $query->whereNull('team_id')
+                                    ->orWhere('team_id', auth()->user()->currentTeam->id);
+                            })
+                            ->orderBy('name')
+                            ->get()
+                            ->groupBy(function($fare) {
+                                return $fare->type ? $fare->type->name : 'Sin categoría';
+                            });
+                        @endphp
+                        
+                        @foreach($faresByType as $typeName => $fares)
+                            <optgroup label="{{ $typeName }}">
+                                @foreach($fares as $fare)
+                                    <option value="{{ $fare->id }}">{{ $fare->name }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
                     </select>
                 </div>
                 <div class="col">
