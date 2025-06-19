@@ -103,8 +103,6 @@ class CollaboratorController extends Controller
     {
         $collaborator = Contact::with([
             'softwares.type', 
-            'languageVariants.sourceLanguage', 
-            'languageVariants.targetLanguage', 
             'user.roles', 
             'valoration',
             'fares.type',
@@ -113,7 +111,7 @@ class CollaboratorController extends Controller
             'status'
         ])->findOrFail($id);
         
-        // Asegurarse de que las relaciones country y language están correctamente cargadas
+        // Ensure country and language relationships are properly loaded
         if ($collaborator->country && is_numeric($collaborator->country)) {
             $collaborator->country = \App\Models\Country::find($collaborator->country);
         }
@@ -133,7 +131,7 @@ class CollaboratorController extends Controller
             'fares'
         ])->findOrFail($id);
         
-        // Forzar la carga de los idiomas
+        // Force language loading
         $languagePairs = [];
         
         foreach ($collaborator->languageVariants as $variant) {
@@ -207,15 +205,15 @@ class CollaboratorController extends Controller
                         'is_certified' => $isNative
                     ]);
                 } catch (\Illuminate\Database\QueryException $e) {
-                    // Si es un error de duplicado, simplemente lo ignoramos
+                    // If it's a duplicate error, simply ignore it
                     if ($e->errorInfo[1] == 1062) {
                         continue;
                     }
-                    throw $e; // Si es otro tipo de error, lo lanzamos
+                    throw $e; // If it's another type of error, throw it
                 }
             }
         } else {
-            // Si no hay pares de idiomas, eliminar todos los existentes
+            // If there are no language pairs, delete all existing ones
             $collaborator->languageVariants()->delete();
         }
 
@@ -345,34 +343,34 @@ class CollaboratorController extends Controller
 
         $collaborator = Contact::findOrFail($id);
         
-        // Obtener los IDs de software, pueden venir como array o como string o como JSON
+        // Get software IDs, they can come as array, string or JSON
         $softwareIds = [];
         
-        // Si es una solicitud JSON
+        // If it's a JSON request
         if ($request->isJson()) {
             $data = $request->json()->all();
             $softwareIds = $data['software_ids'] ?? [];
         } else {
-            // Si es una solicitud normal
+            // If it's a normal request
             $softwareIds = $request->input('software_ids', []);
         }
         
-        // Si viene como string vacío, convertir a array vacío
+        // If it comes as empty string, convert to empty array
         if ($softwareIds === '') {
             $softwareIds = [];
         }
         
-        // Si viene un solo ID como string, convertirlo a array
+        // If it comes as a single ID as string, convert it to array
         if (!is_array($softwareIds) && !empty($softwareIds)) {
             $softwareIds = [$softwareIds];
         }
         
-        // Filtrar valores vacíos o nulos que puedan causar errores
+        // Filter out empty or null values that may cause errors
         $softwareIds = array_filter($softwareIds, function($value) {
             return !empty($value) && $value !== '' && $value !== null;
         });
 
-        // Sync software - usar array vacío explícitamente si no hay IDs
+        // Sync software - use empty array explicitly if no IDs
         $collaborator->softwares()->sync(empty($softwareIds) ? [] : $softwareIds);
 
         // Load updated softwares with types
@@ -405,24 +403,24 @@ class CollaboratorController extends Controller
 
         $collaborator = Contact::findOrFail($id);
         
-        // Obtener los IDs de servicios
+        // Get service IDs, they can come as array, string or JSON
         $fareIds = [];
         
-        // Si es una solicitud JSON
+        // If it's a JSON request
         if ($request->isJson()) {
             $data = $request->json()->all();
             $fareIds = $data['fare_ids'] ?? [];
         } else {
-            // Si es una solicitud normal
+            // If it's a normal request
             $fareIds = $request->input('fare_ids', []);
         }
         
-        // Si viene como string vacío, convertir a array vacío
+        // If it comes as empty string, convert to empty array
         if ($fareIds === '') {
             $fareIds = [];
         }
         
-        // Si viene un solo ID como string, convertirlo a array
+        // If it comes as a single ID as string, convert it to array
         if (!is_array($fareIds) && !empty($fareIds)) {
             $fareIds = [$fareIds];
         }
