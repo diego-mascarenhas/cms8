@@ -140,7 +140,7 @@
                     <x-variant-language-select 
                         name="idioma-origen" 
                         id="idioma-origen" 
-                        label="{{ __('Idioma origen') }}" 
+                        label="" 
                         :required="false"
                         placeholder="{{ __('Idioma origen') }}"
                     />
@@ -149,35 +149,19 @@
                     <x-variant-language-select 
                         name="idioma-destino" 
                         id="idioma-destino" 
-                        label="{{ __('Idioma destino') }}" 
+                        label="" 
                         :required="false"
                         placeholder="{{ __('Idioma destino') }}"
                     />
                 </div>
                 <div class="col">
-                    <select class="form-select" id="servicio">
-                        <option value="" selected>{{ __('Servicio') }}</option>
-                        @php
-                        $faresByType = \App\Models\Fare::with('type')
-                            ->where(function($query) {
-                                $query->whereNull('team_id')
-                                    ->orWhere('team_id', auth()->user()->currentTeam->id);
-                            })
-                            ->orderBy('name')
-                            ->get()
-                            ->groupBy(function($fare) {
-                                return $fare->type ? $fare->type->name : 'Sin categoría';
-                            });
-                        @endphp
-                        
-                        @foreach($faresByType as $typeName => $fares)
-                            <optgroup label="{{ $typeName }}">
-                                @foreach($fares as $fare)
-                                    <option value="{{ $fare->id }}">{{ $fare->name }}</option>
-                                @endforeach
-                            </optgroup>
-                        @endforeach
-                    </select>
+                    <x-fare-select 
+                        name="servicio" 
+                        id="servicio" 
+                        label="" 
+                        :required="false"
+                        placeholder="{{ __('Servicio') }}"
+                    />
                 </div>
                 <div class="col">
                     <select class="form-select" id="dias">
@@ -245,12 +229,7 @@
                 $('#collaborator-table').DataTable().column(columna).search(valor).draw();
             });
             
-            // Initialize Select2 for service dropdown
-            $('#servicio').select2({
-                placeholder: "{{ __('Servicio') }}",
-                allowClear: true,
-                width: '100%'
-            });
+
             
             // Longitud de entradas
             $('#entries-length').on('change', function() {

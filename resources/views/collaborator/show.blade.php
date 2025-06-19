@@ -313,7 +313,9 @@
                         @csrf
                         <x-fare-select 
                             id="collaborator_fare_ids" 
+                            name="fare_ids[]"
                             label="Servicios que ofrece"
+                            placeholder="Seleccione servicios"
                             :selected="$collaborator->fares ? $collaborator->fares->pluck('id')->toArray() : []"
                         />
                         <div class="mt-3">
