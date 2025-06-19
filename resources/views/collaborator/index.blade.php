@@ -137,24 +137,22 @@
             <h5 class="mb-3">Filtros</h5>
             <div class="row g-3 mb-3">
                 <div class="col">
-                    <select class="form-select" id="idioma-origen">
-                        <option value="" selected>{{ __('Idioma origen') }}</option>
-                        <option value="ES">Español</option>
-                        <option value="EN">Inglés</option>
-                        <option value="FR">Francés</option>
-                        <option value="DE">Alemán</option>
-                        <option value="CA">Catalán</option>
-                    </select>
+                    <x-variant-language-select 
+                        name="idioma-origen" 
+                        id="idioma-origen" 
+                        label="{{ __('Idioma origen') }}" 
+                        :required="false"
+                        placeholder="{{ __('Idioma origen') }}"
+                    />
                 </div>
                 <div class="col">
-                    <select class="form-select" id="idioma-destino">
-                        <option value="" selected>{{ __('Idioma destino') }}</option>
-                        <option value="ES">Español</option>
-                        <option value="EN">Inglés</option>
-                        <option value="FR">Francés</option>
-                        <option value="DE">Alemán</option>
-                        <option value="CA">Catalán</option>
-                    </select>
+                    <x-variant-language-select 
+                        name="idioma-destino" 
+                        id="idioma-destino" 
+                        label="{{ __('Idioma destino') }}" 
+                        :required="false"
+                        placeholder="{{ __('Idioma destino') }}"
+                    />
                 </div>
                 <div class="col">
                     <select class="form-select" id="servicio">
@@ -245,6 +243,13 @@
                 
                 let valor = $(this).val();
                 $('#collaborator-table').DataTable().column(columna).search(valor).draw();
+            });
+            
+            // Initialize Select2 for service dropdown
+            $('#servicio').select2({
+                placeholder: "{{ __('Servicio') }}",
+                allowClear: true,
+                width: '100%'
             });
             
             // Longitud de entradas
