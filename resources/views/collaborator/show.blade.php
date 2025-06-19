@@ -5,7 +5,14 @@
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flag-icons/flag-icons.css') }}" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        .fi {
+            font-size: 1.2em;
+            vertical-align: middle;
+        }
+    </style>
 @endsection
 
 @section('vendor-script')
@@ -323,6 +330,74 @@
                             <button type="button" id="cancelServicesEdit" class="btn btn-outline-secondary btn-sm">Cancelar</button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- Language Variants -->
+            <div class="card mb-4">
+                <div class="card-header border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Combinaciones de idiomas</h5>
+                    <a href="{{ route('collaborator.edit', ['id' => $collaborator->id ?? 0]) }}" class="text-secondary">
+                        <i class="ti ti-edit ti-sm"></i>
+                    </a>
+                </div>
+                <div class="card-body pt-4">
+                    @if($collaborator->languageVariants && $collaborator->languageVariants->count() > 0)
+                        <div class="row">
+                            @foreach($collaborator->languageVariants as $variant)
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="border rounded p-3" style="background-color: #f8f8f8;">
+                                        <div class="d-flex flex-column">
+                                            @php
+                                                $sourceFlag = strtolower($variant->sourceLanguage ? $variant->sourceLanguage->country_code ?? '' : '');
+                                                if (empty($sourceFlag) && $variant->sourceLanguage) {
+                                                    $sourceFlag = strtolower($variant->source_language_code);
+                                                }
+                                                
+                                                $targetFlag = strtolower($variant->targetLanguage ? $variant->targetLanguage->country_code ?? '' : '');
+                                                if (empty($targetFlag) && $variant->targetLanguage) {
+                                                    $targetFlag = strtolower($variant->target_language_code);
+                                                }
+                                            @endphp
+                                            
+                                            <div class="d-flex align-items-center mb-2">
+                                                @if(!empty($sourceFlag))
+                                                    <i class="fi fi-{{ $sourceFlag }} me-2"></i>
+                                                @endif
+                                                <span class="fw-medium">{{ $variant->sourceLanguage ? $variant->sourceLanguage->name : $variant->source_language_code }}</span>
+                                                <i class="ti ti-arrow-right mx-2 text-muted"></i>
+                                                @if(!empty($targetFlag))
+                                                    <i class="fi fi-{{ $targetFlag }} me-2"></i>
+                                                @endif
+                                                <span class="fw-medium">{{ $variant->targetLanguage ? $variant->targetLanguage->name : $variant->target_language_code }}</span>
+                                            </div>
+                                            
+                                            @if($variant->is_certified)
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge bg-label-success me-2">Nativo</span>
+                                                    <span class="text-muted small">Nivel profesional</span>
+                                                </div>
+                                            @else
+                                                <div class="d-flex align-items-center">
+                                                    <span class="text-muted small">Nivel profesional</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <div class="avatar avatar-md bg-label-primary mb-3 mx-auto">
+                                <i class="ti ti-language"></i>
+                            </div>
+                            <p class="mb-0 text-muted">No hay combinaciones de idiomas registradas</p>
+                            <a href="{{ route('collaborator.edit', ['id' => $collaborator->id ?? 0]) }}" class="btn btn-sm btn-primary mt-3">
+                                <i class="ti ti-plus me-1"></i>Añadir idiomas
+                            </a>
+                        </div>
+                    @endif
                 </div>
             </div>
 

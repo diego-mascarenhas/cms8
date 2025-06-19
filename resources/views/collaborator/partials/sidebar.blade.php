@@ -39,7 +39,11 @@
                 <ul class="list-unstyled mb-4 pt-3">
                     <li class="mb-2">
                         <span class="fw-medium me-1">Estado:</span>
-                        <span class="badge bg-label-success">Activo</span>
+                        @if($collaborator->status)
+                            <span class="badge bg-label-{{ $collaborator->status->label_class ?? 'success' }}">{{ $collaborator->status->name }}</span>
+                        @else
+                            <span class="badge bg-label-success">Activo</span>
+                        @endif
                     </li>
                     <li class="mb-2">
                         <span class="fw-medium me-1">Email:</span>
@@ -50,12 +54,58 @@
                         <span>{{ $collaborator->phone ?? 'Sin teléfono' }}</span>
                     </li>
                     <li class="mb-2">
-                        <span class="fw-medium me-1">Idiomas:</span>
-                        <span>Español, Inglés</span>
+                        <span class="fw-medium me-1">Idioma:</span>
+                        @if($collaborator->country)
+                            <span class="d-inline-flex align-items-center">
+                                @php
+                                    $countryCode = strtolower($collaborator->country->code ?? '');
+                                    
+                                    // Mapa de países a idiomas
+                                    $countryToLanguage = [
+                                        'es' => 'Español',
+                                        'fr' => 'Francés',
+                                        'gb' => 'Inglés',
+                                        'de' => 'Alemán',
+                                        'it' => 'Italiano',
+                                        'pt' => 'Portugués',
+                                        'us' => 'Inglés'
+                                    ];
+                                    
+                                    $nativeLanguage = $countryToLanguage[$countryCode] ?? 'Desconocido';
+                                @endphp
+                                @if($countryCode)
+                                    <i class="fi fi-{{ $countryCode }} me-1"></i>
+                                @endif
+                                {{ $nativeLanguage }}
+                            </span>
+                        @else
+                            <span class="text-muted">No especificado</span>
+                        @endif
                     </li>
                     <li class="mb-2">
                         <span class="fw-medium me-1">País:</span>
-                        <span>España</span>
+                        @php
+                            $countryObj = null;
+                            if (is_object($collaborator->country)) {
+                                $countryObj = $collaborator->country;
+                            } elseif (is_numeric($collaborator->country)) {
+                                $countryObj = \App\Models\Country::find($collaborator->country);
+                            }
+                        @endphp
+                        
+                        @if($countryObj)
+                            <span class="d-inline-flex align-items-center">
+                                @php
+                                    $countryCode = strtolower($countryObj->code ?? '');
+                                @endphp
+                                @if($countryCode)
+                                    <i class="fi fi-{{ $countryCode }} me-1"></i>
+                                @endif
+                                {{ $countryObj->name }}
+                            </span>
+                        @else
+                            <span class="text-muted">No especificado</span>
+                        @endif
                     </li>
                     <li class="mb-2">
                         <span class="fw-medium me-1">Trabaja fines de semana:</span>

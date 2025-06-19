@@ -107,8 +107,21 @@ class CollaboratorController extends Controller
             'languageVariants.targetLanguage', 
             'user.roles', 
             'valoration',
-            'fares.type'
+            'fares.type',
+            'country',
+            'language',
+            'status'
         ])->findOrFail($id);
+        
+        // Asegurarse de que las relaciones country y language están correctamente cargadas
+        if ($collaborator->country && is_numeric($collaborator->country)) {
+            $collaborator->country = \App\Models\Country::find($collaborator->country);
+        }
+        
+        if ($collaborator->language && is_numeric($collaborator->language)) {
+            $collaborator->language = \App\Models\Language::find($collaborator->language);
+        }
+        
         return view('collaborator.show', compact('collaborator'));
     }
 
