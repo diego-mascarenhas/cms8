@@ -26,6 +26,14 @@
         opacity: 0;
         transition: opacity 0.5s ease-out;
     }
+    
+    /* Hide native DataTables export buttons */
+    .dt-buttons,
+    .buttons-html5,
+    .buttons-print,
+    .btn-secondary {
+        display: none !important;
+    }
 </style>
 
 @section('content')
@@ -192,10 +200,16 @@
                 <div class="col-md-6"></div>
                 <div class="col-md-5 d-flex justify-content-end align-items-center gap-2">
                     <input type="text" class="form-control w-auto me-2" id="search" placeholder="{{ __('Buscar') }}" style="width: 350px;">
-                    <button class="btn btn-outline-primary me-2" style="height: 40px; min-width: 110px;">
-                        <i class="ti ti-download me-1"></i>
-                        <span style="white-space: nowrap;">{{ __('Exportar') }}</span>
-                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle me-2" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="height: 40px; min-width: 110px;">
+                            <i class="ti ti-download me-1"></i>
+                            <span style="white-space: nowrap;">{{ __('Exportar') }}</span>
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                            <li><a class="dropdown-item" href="#" id="export-csv"><i class="ti ti-file-text me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item" href="#" id="export-pdf"><i class="ti ti-file-text me-2"></i>PDF</a></li>
+                        </ul>
+                    </div>
                     <a href="{{ route('collaborator.create') }}" class="btn btn-primary ms-2 d-flex align-items-center gap-1" style="height: 40px; min-width: 170px;">
                         <i class="ti ti-plus"></i>
                         <span style="white-space: nowrap;">{{ __('Añadir nuevo') }}</span>
@@ -215,10 +229,13 @@
 
     <script>
         $(document).ready(function() {
-            // Eliminar el buscador duplicado
+            // Hide duplicate search box and DataTables buttons
             $('.dataTables_filter').hide();
+            $('.dt-buttons').hide();
+            $('.buttons-html5').hide();
+            $('.buttons-print').hide();
             
-            // Filtros de tabla
+            // Table filters
             $('#idioma-origen, #idioma-destino, #servicio, #dias, #fecha-entrega').on('change', function() {
                 var table = $('#collaborator-table').DataTable();
                 
@@ -244,17 +261,32 @@
             
 
             
-            // Longitud de entradas
+            // Entries length
             $('#entries-length').on('change', function() {
                 $('#collaborator-table').DataTable().page.len($(this).val()).draw();
             });
             
-            // Búsqueda
+            // Search
             $('#search').on('keyup', function() {
                 $('#collaborator-table').DataTable().search($(this).val()).draw();
             });
 
-            // Función para eliminar un colaborador
+            // Export functionality
+            $('#export-csv').on('click', function(e) {
+                e.preventDefault();
+                setTimeout(function() {
+                    $('#collaborator-table').DataTable().button('.buttons-csv').trigger();
+                }, 100);
+            });
+
+            $('#export-pdf').on('click', function(e) {
+                e.preventDefault();
+                setTimeout(function() {
+                    $('#collaborator-table').DataTable().button('.buttons-pdf').trigger();
+                }, 100);
+            });
+
+            // Function to delete a collaborator
             function deleteRecord(id, element) {
                 event.preventDefault();
                 Swal.fire({
@@ -301,14 +333,14 @@
                 });
             }
 
-            // Delegación de eventos para botones de acción
+            // Event delegation for action buttons
             $(document).on('click', '.btn-delete', function() {
                 var id = $(this).data('id');
                 deleteRecord(id, this);
             });
         });
 
-        // Función para marcar como ojo
+        // Function to mark as watch
         function markAsWatch(id) {
             Swal.fire({
                 title: '¿Marcar como ojo?',
@@ -354,7 +386,7 @@
             });
         }
 
-        // Función para enviar a lista negra
+        // Function to send to blacklist
         function sendToBlacklist(id) {
             Swal.fire({
                 title: '¿Enviar a lista negra?',
@@ -400,7 +432,7 @@
             });
         }
 
-        // Función para enviar notificación
+        // Function to send notification
         function sendNotification(id) {
             Swal.fire({
                 title: 'Enviar notificación',

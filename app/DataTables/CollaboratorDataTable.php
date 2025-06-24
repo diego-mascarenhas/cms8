@@ -132,11 +132,35 @@ class CollaboratorDataTable extends DataTable
             ->setTableId('collaborator-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
-            ->dom('rtip')
+            ->dom('Brtip')
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(false)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->buttons([
+                [
+                    'extend' => 'csv',
+                    'text' => '<i class="ti ti-file-text me-1"></i> CSV',
+                    'className' => 'btn btn-outline-info',
+                    'title' => 'Collaborators',
+                    'filename' => 'collaborators_' . date('Y-m-d_H-i-s'),
+                    'exportOptions' => [
+                        'columns' => [1, 2, 3, 4, 5] // Export only important visible columns
+                    ]
+                ],
+                [
+                    'extend' => 'pdf',
+                    'text' => '<i class="ti ti-file-text me-1"></i> PDF',
+                    'className' => 'btn btn-outline-danger',
+                    'title' => 'Collaborators',
+                    'filename' => 'collaborators_' . date('Y-m-d_H-i-s'),
+                    'exportOptions' => [
+                        'columns' => [1, 2, 3, 4, 5] // Export only important visible columns
+                    ],
+                    'orientation' => 'landscape',
+                    'pageSize' => 'A4'
+                ]
+            ])
             ->parameters([
                 'initComplete' => "function() {
                     var api = this.api();
