@@ -55,14 +55,20 @@ class CollaboratorDataTable extends DataTable
                 return empty($combinations) ? '' : implode('<br>', $combinations);
             })
             ->addColumn('services', function ($contact) {
-                // This should be pulled from the contact's services
-                $services = $contact->services ?? [];
+                // Get services from the contact's fares
+                $services = [];
                 
-                if (empty($services)) {
-                    return 'Documentos';
+                if ($contact->fares && $contact->fares->count() > 0) {
+                    foreach ($contact->fares as $fare) {
+                        $serviceName = $fare->name;
+                        if ($fare->type) {
+                            $serviceName .= ' (' . $fare->type->name . ')';
+                        }
+                        $services[] = $serviceName;
+                    }
                 }
                 
-                return implode('<br>', $services);
+                return empty($services) ? '' : implode('<br>', $services);
             })
             ->addColumn('projects', function ($contact) {
                 // Use a fixed number or random until we have a proper relationship
@@ -80,7 +86,10 @@ class CollaboratorDataTable extends DataTable
             })
             ->filterColumn('services', function($query, $keyword) {
                 if ($keyword !== '') {
-                    // Implement services filtering
+                    // Filter by fare ID
+                    $query->whereHas('fares', function($q) use ($keyword) {
+                        $q->where('fare_id', $keyword);
+                    });
                 }
             })
             ->rawColumns(['name', 'action', 'rating', 'language_combinations', 'services', 'projects']);
@@ -88,7 +97,7 @@ class CollaboratorDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        $query = $model->newQuery()->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage']);
+        $query = $model->newQuery()->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'fares.type']);
         
         // Handle custom filters from request
         $request = request();
@@ -104,6 +113,13 @@ class CollaboratorDataTable extends DataTable
         if ($request->has('target_language') && $request->target_language) {
             $query->whereHas('languageVariants', function($q) use ($request) {
                 $q->where('target_language_code', $request->target_language);
+            });
+        }
+        
+        // Filter by service/fare
+        if ($request->has('servicio') && $request->servicio) {
+            $query->whereHas('fares', function($q) use ($request) {
+                $q->where('fares.id', $request->servicio);
             });
         }
         

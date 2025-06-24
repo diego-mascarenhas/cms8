@@ -1,7 +1,9 @@
 @props(['id', 'label', 'name' => 'fare_ids[]', 'selected' => [], 'required' => false, 'showNull' => true, 'onchange' => null, 'placeholder' => 'Seleccione servicios'])
 
 <div>
+    @if($label)
     <label for="{{ $id }}" class="form-label">{{ $label }}</label>
+    @endif
     <select id="{{ $id }}" name="{{ $name }}" class="select2 form-select @error(str_replace('[]', '', $name)) is-invalid @enderror" @if($required) required @endif @if(str_contains($name, '[]')) multiple="multiple" @endif>
         <option value="">{{ $placeholder }}</option>
         
