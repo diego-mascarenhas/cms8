@@ -300,6 +300,13 @@ class Contact extends Model
 			->withTimestamps();
 	}
 
+	public function topics(): BelongsToMany
+	{
+		return $this->belongsToMany(Topic::class, 'contact_topics')
+			->withPivot('proficiency_level', 'notes')
+			->withTimestamps();
+	}
+
 	public function list60(): HasOne
 	{
 		return $this->hasOne(List60::class);

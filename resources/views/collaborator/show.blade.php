@@ -378,21 +378,38 @@
             <div class="card">
                 <div class="card-header border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Temáticas</h5>
-                    <a href="javascript:void(0)" class="text-secondary"><i class="ti ti-pencil"></i></a>
+                    <a href="javascript:void(0)" id="toggleTopicsEdit" class="text-secondary">
+                        <i class="ti ti-edit ti-sm"></i>
+                    </a>
                 </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <span class="badge bg-label-primary rounded-pill me-1">Medicina</span>
-                        <span class="badge bg-label-primary rounded-pill me-1">Viajes</span>
-                        <span class="badge bg-label-primary rounded-pill">Técnica</span>
+                <div class="card-body pt-4">
+                    <!-- Read-only view -->
+                    <div id="topics-display">
+                        @if($collaborator->topics && $collaborator->topics->count() > 0)
+                            @foreach($collaborator->topics as $topic)
+                                <span class="badge bg-label-primary rounded-pill me-1 mb-1">
+                                    {{ $topic->name }}
+                                </span>
+                            @endforeach
+                        @else
+                            <div class="mt-2">
+                                <span class="text-muted">No hay temáticas asignadas</span>
+                            </div>
+                        @endif
                     </div>
-                    <div class="mt-3">
-                        <ul class="list-unstyled mb-0">
-                            <li class="mb-2">Ciencia</li>
-                            <li class="mb-2">Cine</li>
-                            <li class="mb-2">Letras</li>
-                        </ul>
-                    </div>
+                    
+                    <form id="topics-edit-form" class="mt-3 d-none">
+                        @csrf
+                        <x-topics-select 
+                            id="collaborator_topic_ids" 
+                            label="Temáticas de especialización"
+                            :selected="$collaborator->topics ? $collaborator->topics->pluck('id')->toArray() : []"
+                        />
+                        <div class="mt-3">
+                            <button type="button" id="saveTopics" class="btn btn-primary btn-sm">Guardar</button>
+                            <button type="button" id="cancelTopicsEdit" class="btn btn-outline-secondary btn-sm">Cancelar</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -411,9 +428,9 @@
     $(document).ready(function() {
         console.log('Document ready, setting up collaborator events...');
         
-        // Initialize Select2 for software and services
+        // Initialize Select2 for software, services and topics
         try {
-            $('#collaborator_software_ids, #collaborator_fare_ids').select2({
+            $('#collaborator_software_ids, #collaborator_fare_ids, #collaborator_topic_ids').select2({
                 placeholder: 'Seleccionar',
                 allowClear: true,
                 closeOnSelect: false,
@@ -454,6 +471,22 @@
             $('#services-edit-form').addClass('d-none');
             $('#services-display').removeClass('d-none');
             $('#toggleServicesEdit').removeClass('d-none');
+        });
+        
+        // Toggle between view and edit for topics
+        $('#toggleTopicsEdit').on('click', function() {
+            console.log('Toggle topics edit clicked');
+            $('#topics-display').addClass('d-none');
+            $('#topics-edit-form').removeClass('d-none');
+            $(this).addClass('d-none');
+        });
+
+        // Cancel edit for topics
+        $('#cancelTopicsEdit').on('click', function() {
+            console.log('Cancel topics edit clicked');
+            $('#topics-edit-form').addClass('d-none');
+            $('#topics-display').removeClass('d-none');
+            $('#toggleTopicsEdit').removeClass('d-none');
         });
 
         // Save changes for software
@@ -579,6 +612,68 @@
             .catch(error => {
                 console.error('Fetch Error:', error);
                 alert('Error al actualizar los servicios');
+            });
+        });
+        
+        // Save changes for topics
+        $('#saveTopics').on('click', function() {
+            console.log('Save topics clicked');
+            
+            const topicIds = $('#collaborator_topic_ids').val() || [];
+            const collaboratorId = {{ $collaborator->id }};
+            const csrfToken = $('meta[name="csrf-token"]').attr('content');
+            
+            console.log('Topic IDs:', topicIds);
+            console.log('Collaborator ID:', collaboratorId);
+            
+            fetch(`/collaborator/${collaboratorId}/update-topics`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    topic_ids: topicIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Fetch Success:', data);
+                if (data.success) {
+                    // Update the badges in the view
+                    let badgesHtml = '';
+                    if (data.topics && data.topics.length > 0) {
+                        data.topics.forEach(function(topic) {
+                            badgesHtml += `<span class="badge bg-label-primary rounded-pill me-1 mb-1">${topic.name}</span>`;
+                        });
+                    } else {
+                        badgesHtml = '<div class="mt-2"><span class="text-muted">No hay temáticas asignadas</span></div>';
+                    }
+                    
+                    $('#topics-display').html(badgesHtml);
+                    
+                    // Return to read-only view
+                    $('#topics-edit-form').addClass('d-none');
+                    $('#topics-display').removeClass('d-none');
+                    $('#toggleTopicsEdit').removeClass('d-none');
+                    
+                    // Show success notification
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: 'Temáticas actualizadas correctamente',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert('Temáticas actualizadas correctamente');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Fetch Error:', error);
+                alert('Error al actualizar las temáticas');
             });
         });
 

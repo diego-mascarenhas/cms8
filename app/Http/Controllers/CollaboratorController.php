@@ -106,6 +106,7 @@ class CollaboratorController extends Controller
             'user.roles', 
             'valoration',
             'fares.type',
+            'topics',
             'country',
             'language',
             'status'
@@ -449,6 +450,65 @@ class CollaboratorController extends Controller
             'success' => true,
             'message' => 'Servicios actualizados correctamente',
             'services' => $services
+        ]);
+    }
+
+    /**
+     * Update collaborator topics
+     */
+    public function updateTopics(Request $request, $id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $collaborator = Contact::findOrFail($id);
+        
+        // Get topic IDs, they can come as array, string or JSON
+        $topicIds = [];
+        
+        // If it's a JSON request
+        if ($request->isJson()) {
+            $data = $request->json()->all();
+            $topicIds = $data['topic_ids'] ?? [];
+        } else {
+            // If it's a normal request
+            $topicIds = $request->input('topic_ids', []);
+        }
+        
+        // If it comes as empty string, convert to empty array
+        if ($topicIds === '') {
+            $topicIds = [];
+        }
+        
+        // If it comes as a single ID as string, convert it to array
+        if (!is_array($topicIds) && !empty($topicIds)) {
+            $topicIds = [$topicIds];
+        }
+        
+        // Filter out empty or null values that may cause errors
+        $topicIds = array_filter($topicIds, function($value) {
+            return !empty($value) && $value !== '' && $value !== null;
+        });
+
+        // Sync topics - use empty array explicitly if no IDs
+        $collaborator->topics()->sync(empty($topicIds) ? [] : $topicIds);
+
+        // Load updated topics
+        $collaborator->load('topics');
+        
+        // Format response data
+        $topics = $collaborator->topics->map(function($topic) {
+            return [
+                'id' => $topic->id,
+                'name' => $topic->name,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Temáticas actualizadas correctamente',
+            'topics' => $topics
         ]);
     }
 

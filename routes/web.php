@@ -175,6 +175,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
     Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware');
     Route::post('/collaborator/{id}/update-services', [CollaboratorController::class, 'updateServices'])->name('collaborator.updateServices');
+    Route::post('/collaborator/{id}/update-topics', [CollaboratorController::class, 'updateTopics'])->name('collaborator.updateTopics');
     Route::post('/collaborator/{id}/update-valoration', [CollaboratorController::class, 'updateValoration'])->name('collaborator.updateValoration');
     Route::post('/collaborator/{id}/link-user', [CollaboratorController::class, 'linkUser'])->name('collaborator.link-user');
     Route::post('/collaborator/{id}/unlink-user', [CollaboratorController::class, 'unlinkUser'])->name('collaborator.unlink-user');
