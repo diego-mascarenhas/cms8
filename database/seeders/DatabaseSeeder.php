@@ -49,6 +49,7 @@ class DatabaseSeeder extends Seeder
             FareUnitSeeder::class,
             SoftwareTypesSeeder::class,
             SoftwareSeeder::class,
+            TopicsSeeder::class,
             CertificationsSeeder::class,
             StylebooksSeeder::class,
         ]);

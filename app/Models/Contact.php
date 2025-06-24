@@ -303,7 +303,6 @@ class Contact extends Model
 	public function topics(): BelongsToMany
 	{
 		return $this->belongsToMany(Topic::class, 'contact_topics')
-			->withPivot('proficiency_level', 'notes')
 			->withTimestamps();
 	}
 
