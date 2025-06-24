@@ -71,7 +71,11 @@ class CollaboratorDataTable extends DataTable
             ->setRowId('id')
             ->filterColumn('language_combinations', function($query, $keyword) {
                 if ($keyword !== '') {
-                    // Implement language combination filtering
+                    // Filter by source or target language variant code
+                    $query->whereHas('languageVariants', function($q) use ($keyword) {
+                        $q->where('source_language_code', $keyword)
+                          ->orWhere('target_language_code', $keyword);
+                    });
                 }
             })
             ->filterColumn('services', function($query, $keyword) {
@@ -84,7 +88,26 @@ class CollaboratorDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery()->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage']);
+        $query = $model->newQuery()->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage']);
+        
+        // Handle custom filters from request
+        $request = request();
+        
+        // Filter by source language
+        if ($request->has('source_language') && $request->source_language) {
+            $query->whereHas('languageVariants', function($q) use ($request) {
+                $q->where('source_language_code', $request->source_language);
+            });
+        }
+        
+        // Filter by target language  
+        if ($request->has('target_language') && $request->target_language) {
+            $query->whereHas('languageVariants', function($q) use ($request) {
+                $q->where('target_language_code', $request->target_language);
+            });
+        }
+        
+        return $query;
     }
 
     public function html(): HtmlBuilder

@@ -1,9 +1,11 @@
-@props(['name' => 'language_variant', 'id' => null, 'value' => null, 'label' => 'Variante de idioma', 'required' => false])
+@props(['name' => 'language_variant', 'id' => null, 'value' => null, 'label' => 'Variante de idioma', 'required' => false, 'placeholder' => null])
 
 <div>
+    @if($label)
     <label for="{{ $id ?? $name }}" class="form-label">{{ $label }}</label>
+    @endif
     <select id="{{ $id ?? $name }}" name="{{ $name }}" class="select2 form-select @error($name) is-invalid @enderror" {{ $required ? 'required' : '' }}>
-        <option value="">Seleccione una variante de idioma</option>
+        <option value="">{{ $placeholder ?? 'Seleccione una variante de idioma' }}</option>
         @foreach($variants as $variant)
             <option value="{{ $variant->code }}" 
                     {{ old($name, $value) == $variant->code ? 'selected' : '' }}

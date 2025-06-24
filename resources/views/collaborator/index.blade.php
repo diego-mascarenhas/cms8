@@ -220,13 +220,26 @@
             
             // Filtros de tabla
             $('#idioma-origen, #idioma-destino, #servicio, #dias, #fecha-entrega').on('change', function() {
-                let columna = $(this).attr('id') === 'idioma-origen' ? 2 : 
-                              $(this).attr('id') === 'idioma-destino' ? 3 :
-                              $(this).attr('id') === 'servicio' ? 4 :
-                              $(this).attr('id') === 'dias' ? 5 : 6;
+                var table = $('#collaborator-table').DataTable();
                 
-                let valor = $(this).val();
-                $('#collaborator-table').DataTable().column(columna).search(valor).draw();
+                // Get current filter values
+                var sourceLanguage = $('#idioma-origen').val();
+                var targetLanguage = $('#idioma-destino').val();
+                var servicio = $('#servicio').val();
+                var dias = $('#dias').val();
+                var fechaEntrega = $('#fecha-entrega').val();
+                
+                // Add parameters to ajax request
+                table.settings()[0].ajax.data = function(d) {
+                    d.source_language = sourceLanguage;
+                    d.target_language = targetLanguage;
+                    d.servicio = servicio;
+                    d.dias = dias;
+                    d.fecha_entrega = fechaEntrega;
+                };
+                
+                // Reload table with new parameters
+                table.draw();
             });
             
 
