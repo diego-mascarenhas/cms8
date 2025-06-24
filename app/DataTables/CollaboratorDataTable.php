@@ -37,14 +37,22 @@ class CollaboratorDataTable extends DataTable
                 }
             })
             ->addColumn('language_combinations', function ($contact) {
-                // This should be pulled from the contact's language combinations
-                $combinations = $contact->language_combinations ?? [];
+                // Get language combinations from the contact's language variants
+                $combinations = [];
                 
-                if (empty($combinations)) {
-                    return 'ES > EN';
+                if ($contact->languageVariants && $contact->languageVariants->count() > 0) {
+                    foreach ($contact->languageVariants as $variant) {
+                        $sourceLanguage = $variant->sourceLanguage;
+                        $targetLanguage = $variant->targetLanguage;
+                        
+                        $sourceName = $sourceLanguage ? $sourceLanguage->name : $variant->source_language_code;
+                        $targetName = $targetLanguage ? $targetLanguage->name : $variant->target_language_code;
+                        
+                        $combinations[] = $sourceName . ' > ' . $targetName;
+                    }
                 }
                 
-                return implode('<br>', $combinations);
+                return empty($combinations) ? '' : implode('<br>', $combinations);
             })
             ->addColumn('services', function ($contact) {
                 // This should be pulled from the contact's services
@@ -76,7 +84,7 @@ class CollaboratorDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery()->with(['valoration']);
+        return $model->newQuery()->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage']);
     }
 
     public function html(): HtmlBuilder
