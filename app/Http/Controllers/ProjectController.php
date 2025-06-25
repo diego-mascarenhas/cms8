@@ -94,15 +94,8 @@ class ProjectController extends Controller
         $languages = Language::orderBy('name')->get();
         $fares = Fare::with('type')->orderBy('name')->get();
         
-        // Get collaborators (contacts with language variants and fares)
-        $collaborators = \App\Models\Contact::with([
-            'valoration', 
-            'languageVariants.sourceLanguage', 
-            'languageVariants.targetLanguage', 
-            'fares.type'
-        ])->whereHas('languageVariants') // Only contacts with language variants
-          ->whereHas('fares') // Only contacts with services/fares
-          ->get();
+        // Don't load any collaborators by default - they will be loaded via AJAX when filters are applied
+        $collaborators = collect();
             
         return view('project.select-collaborators', compact('project', 'languages', 'fares', 'collaborators'));
     }
@@ -114,7 +107,20 @@ class ProjectController extends Controller
     {
         $project = Project::findOrFail($projectId);
         
-        // Build the same query as CollaboratorDataTable
+        // Check if any filter is applied
+        $hasLanguageFilter = ($request->has('source_language') && $request->source_language) || 
+                            ($request->has('target_language') && $request->target_language);
+        $hasServiceFilter = $request->has('servicio') && $request->servicio;
+        
+        // Return empty if no language combination or service filter is applied
+        if (!$hasLanguageFilter && !$hasServiceFilter) {
+            return response()->json([
+                'html' => view('project.partials.collaborator-cards', ['collaborators' => collect()])->render(),
+                'count' => 0
+            ]);
+        }
+        
+        // Build the query for contacts with language variants and fares
         $query = \App\Models\Contact::with([
             'valoration', 
             'languageVariants.sourceLanguage', 
@@ -123,19 +129,27 @@ class ProjectController extends Controller
         ])->whereHas('languageVariants') // Only contacts with language variants
           ->whereHas('fares'); // Only contacts with services/fares
 
-        // Apply the same filters as in CollaboratorDataTable
-        if ($request->has('source_language') && $request->source_language) {
+        // Apply language filters (both source and target must be specified for language combination)
+        if ($request->has('source_language') && $request->source_language && 
+            $request->has('target_language') && $request->target_language) {
+            // Both source and target specified - find exact language combination
+            $query->whereHas('languageVariants', function ($q) use ($request) {
+                $q->where('source_language_code', $request->source_language)
+                  ->where('target_language_code', $request->target_language);
+            });
+        } elseif ($request->has('source_language') && $request->source_language) {
+            // Only source language specified
             $query->whereHas('languageVariants', function ($q) use ($request) {
                 $q->where('source_language_code', $request->source_language);
             });
-        }
-
-        if ($request->has('target_language') && $request->target_language) {
+        } elseif ($request->has('target_language') && $request->target_language) {
+            // Only target language specified
             $query->whereHas('languageVariants', function ($q) use ($request) {
                 $q->where('target_language_code', $request->target_language);
             });
         }
 
+        // Apply service filter
         if ($request->has('servicio') && $request->servicio) {
             $query->whereHas('fares', function ($q) use ($request) {
                 $q->where('fares.id', $request->servicio);

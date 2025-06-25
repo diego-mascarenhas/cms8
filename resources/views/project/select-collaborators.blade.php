@@ -156,6 +156,17 @@
 					fechaEntrega
 				});
 
+				// Check if any language or service filter is applied
+				const hasLanguageFilter = sourceLanguage || targetLanguage;
+				const hasServiceFilter = servicio;
+
+				// If no filters applied, show empty state immediately
+				if (!hasLanguageFilter && !hasServiceFilter) {
+					$('#collaborators-container').html('<div class="col-12"><div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>Selecciona una combinación de idiomas o un servicio para ver colaboradores disponibles.</div></div>');
+					updateSelectedCount();
+					return;
+				}
+
 				// Show loading state
 				$('#collaborators-container').html('<div class="col-12 text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>');
 

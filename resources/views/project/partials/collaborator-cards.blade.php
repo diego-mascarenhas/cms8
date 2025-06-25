@@ -80,7 +80,11 @@
     <div class="col-12">
         <div class="alert alert-info">
             <i class="ti ti-info-circle me-2"></i>
-            No hay colaboradores disponibles con los filtros seleccionados.
+            @if(request()->has('source_language') || request()->has('target_language') || request()->has('servicio'))
+                No hay colaboradores disponibles con los filtros seleccionados.
+            @else
+                Selecciona una combinación de idiomas o un servicio para ver colaboradores disponibles.
+            @endif
         </div>
     </div>
 @endforelse 
