@@ -34,7 +34,6 @@ class DatabaseSeeder extends Seeder
             ContactValorationSeeder::class,
             ContactSeeder::class,
             ContactSourceSeeder::class,
-            ContactSkillsSeeder::class,
             EnterpriseOrganizationSeeder::class,
             List60StatusesSeeder::class,
             List60Seeder::class,
@@ -51,6 +50,7 @@ class DatabaseSeeder extends Seeder
             SoftwareTypesSeeder::class,
             SoftwareSeeder::class,
             TopicsSeeder::class,
+            ContactSkillsSeeder::class,
             CertificationsSeeder::class,
             StylebooksSeeder::class,
         ]);
