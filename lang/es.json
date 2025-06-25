@@ -681,5 +681,7 @@
     "Edit Software": "Editar programa",
     "Software created successfully": "Programa creado correctamente",
     "Software updated successfully": "Programa actualizado correctamente",
-    "Software deleted successfully": "Programa eliminado correctamente"
+    "Software deleted successfully": "Programa eliminado correctamente",
+    "Select Collaborators": "Seleccionar Colaboradores",
+    "Select collaborators to send project notifications": "Selecciona colaboradores para enviar notificaciones del proyecto"
 }

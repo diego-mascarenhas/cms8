@@ -301,5 +301,7 @@
   "Cost": "Cost",
   "Start Date": "Start Date",
   "Save": "Save",
-  "Cancel": "Cancel"
+  "Cancel": "Cancel",
+  "Select Collaborators": "Select Collaborators",
+  "Select collaborators to send project notifications": "Select collaborators to send project notifications"
 }

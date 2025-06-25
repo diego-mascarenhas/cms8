@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Añadir nuevo proyecto - Mensaje a colaboradoras')
+@section('title', __('Projects'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
@@ -15,16 +15,19 @@
 
 @section('content')
 	<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-		<div class="d-flex flex-column justify-content-center">
-			<h4 class="mb-1 mt-3">Añadir nuevo proyecto - Mensaje a colaboradoras</h4>
-			<p class="text-muted">Proyecto: <strong>{{ $project->real_name ?? $project->name }}</strong></p>
-		</div>
-		<div class="d-flex align-content-center flex-wrap gap-3">
-			<a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary waves-effect waves-light">
-				<i class="ti ti-arrow-left me-1"></i>Ir al proyecto
-			</a>
-		</div>
-	</div>
+    <div class="d-flex flex-column justify-content-center">
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Projects') }}/</span> {{ __('Select Collaborators') }}</h4>
+        <p class="text-muted">{{ __('Select collaborators to send project notifications') }}</p>
+    </div>
+    <div class="d-flex align-content-center flex-wrap gap-3">
+        @can('project.show')
+        <a href="{{ route('project.show', $project->id) }}" class="btn btn-primary waves-effect waves-light"><i class="ti ti-eye me-1"></i>{{ __('View Project') }}</a>
+        @endcan
+        @can('project.edit')
+        <a href="{{ route('project.edit', $project->id) }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-edit me-1"></i>{{ __('Edit Project') }}</a>
+        @endcan
+    </div>
+</div>
 
 	<form action="{{ route('project.send-notifications', $project->id) }}" method="POST" id="collaborator-selection-form">
 		@csrf
