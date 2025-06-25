@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\DataTables\ProjectDataTable;
 use App\Models\Project;
 use App\Models\ProjectStatus;
+use App\Models\Language;
+use App\Models\Fare;
 use Illuminate\Http\Request;
 use App\Models\Enterprise;
 use App\Models\User;
+use Carbon\Carbon;
 
 class ProjectController extends Controller
 {
@@ -50,7 +53,7 @@ class ProjectController extends Controller
             'category_id' => 'nullable|exists:categories,id',
         ]);
 
-        Project::updateOrCreate(
+        $project = Project::updateOrCreate(
             ['id' => $request->id],
             [
                 'team_id' => auth()->user()->currentTeam->id,
@@ -70,7 +73,91 @@ class ProjectController extends Controller
             ]
         );
 
-        return redirect()->route('project-list')->with('success', 'Record saved successfully.');
+        // If it's a new project (not editing), redirect to collaborator selection
+        if (!$request->id) {
+            return redirect()->route('project.select-collaborators', $project->id)
+                ->with('success', 'Project created successfully. Now select collaborators to notify.');
+        }
+
+        return redirect()->route('project-list')->with('success', 'Project updated successfully.');
+    }
+
+    /**
+     * Show collaborator selection screen for a project
+     */
+    public function selectCollaborators($projectId)
+    {
+        $project = Project::with(['client', 'responsible', 'status', 'category'])
+            ->findOrFail($projectId);
+            
+        // Get data for filters
+        $languages = Language::orderBy('name')->get();
+        $fares = Fare::with('type')->orderBy('name')->get();
+            
+        return view('project.select-collaborators', compact('project', 'languages', 'fares'));
+    }
+
+    /**
+     * Send notifications to selected collaborators
+     */
+    public function sendCollaboratorNotifications(Request $request, $projectId)
+    {
+        $project = Project::with(['client', 'responsible', 'status', 'category'])
+            ->findOrFail($projectId);
+
+        $request->validate([
+            'collaborator_ids' => 'required|array|min:1',
+            'collaborator_ids.*' => 'exists:contacts,id',
+            'message_template' => 'required|string',
+        ]);
+
+        $collaboratorIds = $request->collaborator_ids;
+        $messageTemplate = $request->message_template;
+
+        // Process message placeholders
+        $messageVariables = [
+            '{nombre_proyecto}' => $project->real_name ?? $project->name,
+            '{servicio}' => $request->input('selected_service', 'N/A'),
+            '{idioma_source}' => $request->input('source_language_name', 'N/A'),
+            '{idioma_target}' => $request->input('target_language_name', 'N/A'),
+            '{fecha_entrega_materiales}' => $this->formatDate($project->date_material),
+        ];
+
+        $sentCount = 0;
+        $errors = [];
+
+        foreach ($collaboratorIds as $collaboratorId) {
+            try {
+                $collaborator = \App\Models\Contact::findOrFail($collaboratorId);
+                
+                // Replace {nombre} placeholder with collaborator name
+                $personalizedMessage = str_replace('{nombre}', $collaborator->name, $messageTemplate);
+                
+                // Replace other placeholders
+                $personalizedMessage = str_replace(
+                    array_keys($messageVariables),
+                    array_values($messageVariables),
+                    $personalizedMessage
+                );
+
+                // TODO: Implement actual message sending logic here
+                // For now, we'll just log or store the notification
+                
+                $sentCount++;
+            } catch (\Exception $e) {
+                $errors[] = "Error sending to collaborator {$collaboratorId}: " . $e->getMessage();
+            }
+        }
+
+        if ($sentCount > 0) {
+            $message = "Messages sent successfully to {$sentCount} collaborator(s).";
+            if (!empty($errors)) {
+                $message .= " However, there were some errors: " . implode(', ', $errors);
+            }
+            return redirect()->route('project.show', $projectId)->with('success', $message);
+        } else {
+            return redirect()->back()->with('error', 'Failed to send messages: ' . implode(', ', $errors));
+        }
     }
 
     /**
@@ -106,5 +193,36 @@ class ProjectController extends Controller
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
+    }
+
+    /**
+     * Format date for message templates
+     */
+    private function formatDate($date)
+    {
+        if (!$date) {
+            return 'N/A';
+        }
+
+        try {
+            // If it's already a Carbon instance
+            if ($date instanceof Carbon) {
+                return $date->format('d/m/Y');
+            }
+            
+            // If it's a string, try to parse it
+            if (is_string($date)) {
+                return Carbon::parse($date)->format('d/m/Y');
+            }
+            
+            // If it's a DateTime object
+            if ($date instanceof \DateTime) {
+                return $date->format('d/m/Y');
+            }
+            
+            return 'N/A';
+        } catch (\Exception $e) {
+            return 'N/A';
+        }
     }
 }

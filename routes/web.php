@@ -240,6 +240,8 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
+    Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
+    Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
 
     // Task Routes
     Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');
