@@ -93,8 +93,18 @@ class ProjectController extends Controller
         // Get data for filters
         $languages = Language::orderBy('name')->get();
         $fares = Fare::with('type')->orderBy('name')->get();
+        
+        // Get collaborators (contacts with language variants and fares)
+        $collaborators = \App\Models\Contact::with([
+            'valoration', 
+            'languageVariants.sourceLanguage', 
+            'languageVariants.targetLanguage', 
+            'fares.type'
+        ])->whereHas('languageVariants') // Only contacts with language variants
+          ->whereHas('fares') // Only contacts with services/fares
+          ->get();
             
-        return view('project.select-collaborators', compact('project', 'languages', 'fares'));
+        return view('project.select-collaborators', compact('project', 'languages', 'fares', 'collaborators'));
     }
 
     /**
