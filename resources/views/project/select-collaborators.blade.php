@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/flag-icons/flag-icons.css') }}" />
 @endsection
 
 @section('vendor-script')
@@ -135,10 +136,61 @@
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
 			// Initialize Select2 for filters (matching the collaborator index style)
-			$('#idioma-origen, #idioma-destino, #servicio, #dias, #fecha-entrega').select2({
-				allowClear: true,
-				placeholder: 'Seleccionar...'
+			$('#idioma-origen, #idioma-destino').each(function() {
+				$(this).select2({
+					allowClear: true,
+					placeholder: $(this).find('option[value=""]').text() || 'Seleccionar...',
+					dropdownParent: $(this).parent(),
+					templateResult: formatLanguage,
+					templateSelection: formatLanguage,
+					width: '100%'
+				});
 			});
+
+			$('#servicio').select2({
+				allowClear: true,
+				placeholder: $('#servicio').find('option[value=""]').text() || 'Seleccionar...',
+				width: '100%'
+			});
+
+			$('#dias, #fecha-entrega').select2({
+				allowClear: true,
+				placeholder: 'Seleccionar...',
+				width: '100%'
+			});
+
+			// Format language options with flags (copied from component)
+			function formatLanguage(language) {
+				if (!language.id) {
+					return language.text;
+				}
+				
+				const $option = $(language.element);
+				let flag = $option.data('flag');
+				
+				// If no flag specified, try to get it from base language code
+				if (!flag) {
+					const baseCode = $option.data('base')?.toLowerCase();
+					if (baseCode) {
+						// Map language codes to country codes for flags
+						const languageMap = {
+							'ja': 'jp', // Japanese -> Japan
+							'ko': 'kr', // Korean -> South Korea
+							'zh': 'cn', // Chinese -> China
+							'en': 'gb', // English -> Great Britain
+							'ar': 'sa'  // Arabic -> Saudi Arabia
+						};
+						
+						flag = languageMap[baseCode] || baseCode;
+					}
+				}
+				
+				if (!flag) {
+					return language.text;
+				}
+				
+				return $('<span><i class="fi fi-' + flag + ' me-2"></i>' + language.text + '</span>');
+			}
 
 			// Filter functionality via AJAX (same approach as collaborator index)
 			function applyFilters() {
