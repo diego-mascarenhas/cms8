@@ -108,6 +108,50 @@ class ProjectController extends Controller
     }
 
     /**
+     * Filter collaborators via AJAX (similar to CollaboratorDataTable filtering)
+     */
+    public function filterCollaborators(Request $request, $projectId)
+    {
+        $project = Project::findOrFail($projectId);
+        
+        // Build the same query as CollaboratorDataTable
+        $query = \App\Models\Contact::with([
+            'valoration', 
+            'languageVariants.sourceLanguage', 
+            'languageVariants.targetLanguage', 
+            'fares.type'
+        ])->whereHas('languageVariants') // Only contacts with language variants
+          ->whereHas('fares'); // Only contacts with services/fares
+
+        // Apply the same filters as in CollaboratorDataTable
+        if ($request->has('source_language') && $request->source_language) {
+            $query->whereHas('languageVariants', function ($q) use ($request) {
+                $q->where('source_language_code', $request->source_language);
+            });
+        }
+
+        if ($request->has('target_language') && $request->target_language) {
+            $query->whereHas('languageVariants', function ($q) use ($request) {
+                $q->where('target_language_code', $request->target_language);
+            });
+        }
+
+        if ($request->has('servicio') && $request->servicio) {
+            $query->whereHas('fares', function ($q) use ($request) {
+                $q->where('fares.id', $request->servicio);
+            });
+        }
+
+        $collaborators = $query->get();
+
+        // Return the HTML for the collaborator cards
+        return response()->json([
+            'html' => view('project.partials.collaborator-cards', compact('collaborators'))->render(),
+            'count' => $collaborators->count()
+        ]);
+    }
+
+    /**
      * Send notifications to selected collaborators
      */
     public function sendCollaboratorNotifications(Request $request, $projectId)
