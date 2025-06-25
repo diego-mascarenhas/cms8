@@ -235,6 +235,14 @@
             $('.buttons-html5').hide();
             $('.buttons-print').hide();
             
+            // Initialize tooltips
+            function initializeTooltips() {
+                $('[data-bs-toggle="tooltip"]').tooltip();
+            }
+            
+            // Initialize tooltips on page load
+            initializeTooltips();
+            
             // Table filters
             $('#idioma-origen, #idioma-destino, #servicio, #dias, #fecha-entrega').on('change', function() {
                 var table = $('#collaborator-table').DataTable();
@@ -257,6 +265,11 @@
                 
                 // Reload table with new parameters
                 table.draw();
+            });
+            
+            // Re-initialize tooltips after table draw
+            $('#collaborator-table').on('draw.dt', function() {
+                initializeTooltips();
             });
             
 

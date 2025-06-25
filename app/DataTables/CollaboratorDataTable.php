@@ -68,7 +68,15 @@ class CollaboratorDataTable extends DataTable
                     }
                 }
                 
-                return empty($services) ? '' : implode('<br>', $services);
+                if (empty($services)) {
+                    return '';
+                }
+                
+                $count = count($services);
+                $servicesList = implode(', ', $services);
+                $label = $count === 1 ? 'servicio' : 'servicios';
+                
+                return '<span class="badge bg-label-info rounded-pill" title="' . htmlspecialchars($servicesList) . '" data-bs-toggle="tooltip" data-bs-placement="top">' . $count . ' ' . $label . '</span>';
             })
             ->addColumn('projects', function ($contact) {
                 // Use a fixed number or random until we have a proper relationship
