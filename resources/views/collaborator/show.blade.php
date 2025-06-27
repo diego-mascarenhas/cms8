@@ -204,7 +204,13 @@
                         </thead>
                         <tbody>
                             @foreach($collaborator->portfolios as $portfolio)
-                            <tr>
+                            <tr data-portfolio-id="{{ $portfolio->id }}" 
+                                data-title="{{ $portfolio->title }}"
+                                data-description="{{ $portfolio->description }}"
+                                data-position="{{ $portfolio->position }}"
+                                data-year="{{ $portfolio->year }}"
+                                data-notes="{{ $portfolio->notes }}"
+                                data-languages="{{ json_encode($portfolio->languages) }}">
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="avatar avatar-sm bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][array_rand(['primary', 'success', 'info', 'warning', 'danger'])] }} me-2">
@@ -236,8 +242,8 @@
                                 <td>{{ $portfolio->notes ? Str::limit($portfolio->notes, 50) : '-' }}</td>
                                 <td>
                                     <div class="dropdown">
-                                        <button class="btn btn-icon btn-text-secondary p-0" data-bs-toggle="dropdown">
-                                            <i class="ti ti-dots-vertical"></i>
+                                        <button class="btn p-0" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="ti ti-dots-vertical ti-sm text-muted"></i>
                                         </button>
                                         <div class="dropdown-menu">
                                             <a class="dropdown-item" href="javascript:void(0)" onclick="viewPortfolio({{ $portfolio->id }})">Ver</a>
@@ -774,6 +780,9 @@
 
         Swal.fire({
             title: title,
+            showDenyButton: false,
+            showCancelButton: true,
+            allowOutsideClick: false,
             html: `
                 <form id="portfolio-form">
                     <div class="row g-3">
@@ -887,10 +896,13 @@
                 initializeLanguagePairs();
                 
                 // Load existing language pairs if editing
-                if (isEdit && portfolioData.languages) {
+                if (isEdit && portfolioData.languages && Array.isArray(portfolioData.languages)) {
                     portfolioData.languages.forEach(pair => {
                         if (typeof pair === 'object' && pair.source && pair.target) {
                             addLanguagePairToContainer(pair.source, pair.target);
+                        } else if (typeof pair === 'string') {
+                            // Handle legacy format if needed
+                            console.log('Legacy language format detected:', pair);
                         }
                     });
                 }
@@ -907,9 +919,29 @@
     }
 
     function getPortfolioData(portfolioId) {
-        // This would normally be from a data attribute or AJAX call
-        // For now, return empty object - in a real implementation you'd fetch the data
-        return {};
+        // Get portfolio data from the table row using data attributes
+        const portfolioRow = document.querySelector(`tr[data-portfolio-id="${portfolioId}"]`);
+        if (!portfolioRow) return {};
+        
+        let languages = [];
+        try {
+            const languagesData = portfolioRow.getAttribute('data-languages');
+            if (languagesData && languagesData !== 'null') {
+                languages = JSON.parse(languagesData);
+            }
+        } catch (e) {
+            console.error('Error parsing languages data:', e);
+            languages = [];
+        }
+        
+        return {
+            title: portfolioRow.getAttribute('data-title') || '',
+            description: portfolioRow.getAttribute('data-description') || '',
+            position: portfolioRow.getAttribute('data-position') || '',
+            year: portfolioRow.getAttribute('data-year') || '',
+            notes: portfolioRow.getAttribute('data-notes') || '',
+            languages: languages
+        };
     }
 
     function createPortfolio(data) {
@@ -984,9 +1016,10 @@
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
+            cancelButtonColor: '#6c757d',
             confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
                 const collaboratorId = {{ $collaborator->id }};
@@ -1072,23 +1105,24 @@
         
         // Get text if not provided
         if (!sourceText || !targetText) {
-            const sourceSelect = document.getElementById('source_language_portfolio');
-            const targetSelect = document.getElementById('target_language_portfolio');
+            const languageNames = {
+                'es-ES': 'Español (España)',
+                'es-MX': 'Español (México)',
+                'es-AR': 'Español (Argentina)',
+                'en-US': 'English (US)',
+                'en-GB': 'English (UK)',
+                'fr-FR': 'Français',
+                'de-DE': 'Deutsch',
+                'it-IT': 'Italiano',
+                'pt-BR': 'Português (Brasil)',
+                'pt-PT': 'Português (Portugal)',
+                'zh-CN': '中文 (简体)',
+                'ja-JP': '日本語',
+                'ko-KR': '한국어'
+            };
             
-            // Find the text for the values
-            for (let i = 0; i < sourceSelect.options.length; i++) {
-                if (sourceSelect.options[i].value === sourceValue) {
-                    sourceText = sourceSelect.options[i].text;
-                    break;
-                }
-            }
-            
-            for (let i = 0; i < targetSelect.options.length; i++) {
-                if (targetSelect.options[i].value === targetValue) {
-                    targetText = targetSelect.options[i].text;
-                    break;
-                }
-            }
+            sourceText = languageNames[sourceValue] || sourceValue;
+            targetText = languageNames[targetValue] || targetValue;
         }
         
         // Get flag codes
