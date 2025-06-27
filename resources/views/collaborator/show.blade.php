@@ -246,10 +246,16 @@
                                             <i class="ti ti-dots-vertical ti-sm text-muted"></i>
                                         </button>
                                         <div class="dropdown-menu">
-                                            <a class="dropdown-item" href="javascript:void(0)" onclick="viewPortfolio({{ $portfolio->id }})">Ver</a>
+                                            <a class="dropdown-item" href="javascript:void(0)" onclick="viewPortfolio({{ $portfolio->id }})">
+                                                <i class="ti ti-eye me-2"></i>Ver
+                                            </a>
                                             @can('collaborator.edit')
-                                            <a class="dropdown-item" href="javascript:void(0)" onclick="editPortfolio({{ $portfolio->id }})">Editar</a>
-                                            <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deletePortfolio({{ $portfolio->id }})">Eliminar</a>
+                                            <a class="dropdown-item" href="javascript:void(0)" onclick="editPortfolio({{ $portfolio->id }})">
+                                                <i class="ti ti-edit me-2"></i>Editar
+                                            </a>
+                                            <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deletePortfolio({{ $portfolio->id }})">
+                                                <i class="ti ti-trash me-2"></i>Eliminar
+                                            </a>
                                             @endcan
                                         </div>
                                     </div>
@@ -494,6 +500,14 @@
     // Document ready function
     $(document).ready(function() {
         console.log('Document ready, setting up collaborator events...');
+        
+        // Configure SweetAlert2 defaults to prevent extra buttons
+        if (typeof Swal !== 'undefined') {
+            Swal.mixin({
+                showDenyButton: false,
+                denyButtonText: false
+            });
+        }
         
         // Initialize Select2 for software, services and topics
         try {
@@ -782,7 +796,13 @@
             title: title,
             showDenyButton: false,
             showCancelButton: true,
+            denyButtonText: null,
             allowOutsideClick: false,
+            buttonsStyling: true,
+            customClass: {
+                confirmButton: 'btn btn-primary',
+                cancelButton: 'btn btn-outline-secondary'
+            },
             html: `
                 <form id="portfolio-form">
                     <div class="row g-3">
@@ -861,6 +881,7 @@
             showCancelButton: true,
             confirmButtonText: isEdit ? 'Actualizar' : 'Agregar',
             cancelButtonText: 'Cancelar',
+            showDenyButton: false,
             preConfirm: () => {
                 const form = document.getElementById('portfolio-form');
                 const formData = new FormData(form);
@@ -1005,8 +1026,100 @@
     }
 
     function viewPortfolio(portfolioId) {
-        // Implementation for viewing portfolio details
-        console.log('View portfolio:', portfolioId);
+        // Get portfolio data
+        const portfolioData = getPortfolioData(portfolioId);
+        
+        if (!portfolioData.title) {
+            Swal.fire('Error', 'No se pudo cargar la información del portfolio', 'error');
+            return;
+        }
+        
+        // Format languages for display
+        let languagesHtml = '-';
+        if (portfolioData.languages && Array.isArray(portfolioData.languages) && portfolioData.languages.length > 0) {
+            languagesHtml = portfolioData.languages.map(pair => {
+                if (typeof pair === 'object' && pair.source && pair.target) {
+                    const sourceFlag = getLanguageFlag(pair.source);
+                    const targetFlag = getLanguageFlag(pair.target);
+                    const sourceLang = getLanguageName(pair.source);
+                    const targetLang = getLanguageName(pair.target);
+                    return `<div class="mb-1"><i class="fi fi-${sourceFlag} me-1"></i>${sourceLang} <i class="ti ti-arrow-right mx-1 text-muted"></i> <i class="fi fi-${targetFlag} me-1"></i>${targetLang}</div>`;
+                } else {
+                    return `<div class="mb-1">${pair}</div>`;
+                }
+            }).join('');
+        }
+        
+        Swal.fire({
+            title: portfolioData.title,
+            showConfirmButton: true,
+            showCancelButton: false,
+            showDenyButton: false,
+            confirmButtonText: 'Cerrar',
+            allowOutsideClick: true,
+            customClass: {
+                confirmButton: 'btn btn-primary'
+            },
+            html: `
+                <div class="text-start">
+                    ${portfolioData.description ? `
+                        <div class="mb-3">
+                            <h6 class="fw-semibold mb-2">Descripción:</h6>
+                            <p class="text-muted mb-0">${portfolioData.description}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="row mb-3">
+                        ${portfolioData.position ? `
+                            <div class="col-md-6">
+                                <h6 class="fw-semibold mb-1">Puesto:</h6>
+                                <p class="text-muted mb-0">${portfolioData.position}</p>
+                            </div>
+                        ` : ''}
+                        
+                        ${portfolioData.year ? `
+                            <div class="col-md-6">
+                                <h6 class="fw-semibold mb-1">Año:</h6>
+                                <p class="text-muted mb-0">${portfolioData.year}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="fw-semibold mb-2">Variantes de idioma:</h6>
+                        <div class="text-muted">${languagesHtml}</div>
+                    </div>
+                    
+                    ${portfolioData.notes ? `
+                        <div class="mb-3">
+                            <h6 class="fw-semibold mb-2">Notas:</h6>
+                            <p class="text-muted mb-0">${portfolioData.notes}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `,
+            width: '600px'
+        });
+    }
+
+    function getLanguageName(languageCode) {
+        const languageNames = {
+            'es-ES': 'Español (España)',
+            'es-MX': 'Español (México)', 
+            'es-AR': 'Español (Argentina)',
+            'en-US': 'English (US)',
+            'en-GB': 'English (UK)',
+            'fr-FR': 'Français',
+            'de-DE': 'Deutsch',
+            'it-IT': 'Italiano',
+            'pt-BR': 'Português (Brasil)',
+            'pt-PT': 'Português (Portugal)',
+            'zh-CN': '中文 (简体)',
+            'ja-JP': '日本語',
+            'ko-KR': '한국어'
+        };
+        
+        return languageNames[languageCode] || languageCode;
     }
 
     function deletePortfolio(portfolioId) {
@@ -1015,11 +1128,17 @@
             text: 'Esta acción no se puede deshacer',
             icon: 'warning',
             showCancelButton: true,
+            showDenyButton: false,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#6c757d',
             confirmButtonText: 'Sí, eliminar',
             cancelButtonText: 'Cancelar',
-            reverseButtons: true
+            reverseButtons: true,
+            buttonsStyling: true,
+            customClass: {
+                confirmButton: 'btn btn-danger',
+                cancelButton: 'btn btn-outline-secondary'
+            }
         }).then((result) => {
             if (result.isConfirmed) {
                 const collaboratorId = {{ $collaborator->id }};
