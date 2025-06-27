@@ -91,8 +91,9 @@ class CollaboratorDataTable extends DataTable
 			})
 			->addColumn('projects', function ($contact)
 			{
-				// Use a fixed number or random until we have a proper relationship
-				return '<span class="badge bg-label-primary rounded-pill">' . rand(0, 10) . '</span>';
+				// Get the actual count of projects for this collaborator
+				$projectCount = $contact->projects_count ?? $contact->projects->count();
+				return '<span class="badge bg-label-primary rounded-pill">' . $projectCount . '</span>';
 			})
 			->setRowId('id')
 			->filterColumn('language_combinations', function ($query, $keyword)
@@ -123,7 +124,9 @@ class CollaboratorDataTable extends DataTable
 
 	public function query(Contact $model): QueryBuilder
 	{
-		$query = $model->newQuery()->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'fares.type']);
+		$query = $model->newQuery()
+			->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'fares.type'])
+			->withCount('projects');
 
 		// Handle custom filters from request
 		$request = request();
