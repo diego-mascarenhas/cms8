@@ -171,7 +171,7 @@
                 @endif
             </div>
 
-            <!-- Experience -->
+            <!-- Portfolio -->
             <div class="card mb-4">
                 <div class="card-header border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
@@ -179,16 +179,19 @@
                         <div class="d-flex">
                             <div class="input-group input-group-merge me-2">
                                 <span class="input-group-text"><i class="ti ti-search"></i></span>
-                                <input type="text" class="form-control" placeholder="Buscar">
+                                <input type="text" class="form-control" placeholder="Buscar" id="portfolio-search">
                             </div>
-                            <button class="btn btn-icon btn-primary">
+                            @can('collaborator.edit')
+                            <button class="btn btn-icon btn-primary" id="add-portfolio-btn">
                                 <i class="ti ti-plus"></i>
                             </button>
+                            @endcan
                         </div>
                     </div>
                 </div>
+                @if($collaborator->portfolios && $collaborator->portfolios->count() > 0)
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="portfolio-table">
                         <thead>
                             <tr>
                                 <th></th>
@@ -201,6 +204,7 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @foreach($collaborator->portfolios as $portfolio)
                             <tr>
                                 <td>
                                     <div class="form-check">
@@ -209,43 +213,75 @@
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm bg-label-info me-2">
-                                            <span class="avatar-initial rounded-circle">T</span>
+                                        <div class="avatar avatar-sm bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][array_rand(['primary', 'success', 'info', 'warning', 'danger'])] }} me-2">
+                                            <span class="avatar-initial rounded-circle">{{ strtoupper(substr($portfolio->title, 0, 1)) }}</span>
                                         </div>
-                                        <span>Titanic</span>
+                                        <div>
+                                            <span class="fw-medium">{{ $portfolio->title }}</span>
+                                            @if($portfolio->description)
+                                                <small class="d-block text-muted">{{ Str::limit($portfolio->description, 50) }}</small>
+                                            @endif
+                                        </div>
                                     </div>
                                 </td>
-                                <td>Qué hizo</td>
-                                <td>1995</td>
-                                <td>ES<br>EN</td>
-                                <td>Aquí algo de la experiencia</td>
+                                <td>{{ $portfolio->position ?? '-' }}</td>
+                                <td>{{ $portfolio->year ?? '-' }}</td>
+                                <td>
+                                    @if($portfolio->languages && is_array($portfolio->languages))
+                                        @foreach($portfolio->languages as $language)
+                                            {{ strtoupper($language) }}@if(!$loop->last)<br>@endif
+                                        @endforeach
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>{{ $portfolio->notes ? Str::limit($portfolio->notes, 50) : '-' }}</td>
                                 <td>
                                     <div class="dropdown">
                                         <button class="btn btn-icon btn-text-secondary p-0" data-bs-toggle="dropdown">
                                             <i class="ti ti-dots-vertical"></i>
                                         </button>
                                         <div class="dropdown-menu">
-                                            <a class="dropdown-item" href="javascript:void(0)">Ver</a>
-                                            <a class="dropdown-item" href="javascript:void(0)">Editar</a>
-                                            <a class="dropdown-item" href="javascript:void(0)">Eliminar</a>
+                                            <a class="dropdown-item" href="javascript:void(0)" onclick="viewPortfolio({{ $portfolio->id }})">Ver</a>
+                                            @can('collaborator.edit')
+                                            <a class="dropdown-item" href="javascript:void(0)" onclick="editPortfolio({{ $portfolio->id }})">Editar</a>
+                                            <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deletePortfolio({{ $portfolio->id }})">Eliminar</a>
+                                            @endcan
                                         </div>
                                     </div>
                                 </td>
                             </tr>
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
                 <div class="card-footer">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span>Mostrando 1 a 3 de 3 proyectos</span>
-                        <div class="d-flex">
-                            <button class="btn btn-icon btn-sm btn-outline-secondary me-1"><i class="ti ti-chevron-left"></i></button>
-                            <button class="btn btn-icon btn-sm btn-primary me-1">1</button>
-                            <button class="btn btn-icon btn-sm btn-outline-secondary me-1"><i class="ti ti-chevron-right"></i></button>
-                            <button class="btn btn-icon btn-sm btn-outline-secondary"><i class="ti ti-chevrons-right"></i></button>
-                        </div>
+                        <span>Mostrando {{ $collaborator->portfolios->count() }} proyecto{{ $collaborator->portfolios->count() !== 1 ? 's' : '' }}</span>
+                        @if($collaborator->portfolios->count() > 0)
+                        <small class="text-muted">
+                            Último proyecto: {{ $collaborator->portfolios->first()->created_at->format('d/m/Y') }}
+                        </small>
+                        @endif
                     </div>
                 </div>
+                @else
+                <!-- Empty State -->
+                <div class="card-body text-center py-5">
+                    <div class="avatar avatar-xl mx-auto mb-3">
+                        <span class="avatar-initial rounded-circle bg-label-secondary">
+                            <i class="ti ti-briefcase ti-md"></i>
+                        </span>
+                    </div>
+                    <h5 class="mb-2">No hay experiencias registradas</h5>
+                    <p class="mb-4 text-muted">Este colaborador aún no ha registrado experiencias laborales.</p>
+                    @can('collaborator.edit')
+                    <button class="btn btn-primary" id="add-first-portfolio-btn">
+                        <i class="ti ti-plus me-1"></i>Agregar primera experiencia
+                    </button>
+                    @endcan
+                </div>
+                @endif
             </div>
 
             <!-- Activity -->
@@ -712,6 +748,206 @@
             });
         });
 
+        // Portfolio search functionality
+        $('#portfolio-search').on('keyup', function() {
+            const value = $(this).val().toLowerCase();
+            $('#portfolio-table tbody tr').filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+            });
+        });
+
+        // Portfolio management
+        $('#add-portfolio-btn, #add-first-portfolio-btn').on('click', function() {
+            showPortfolioModal();
+        });
+
     });
+
+    // Portfolio functions
+    function showPortfolioModal(portfolioId = null) {
+        const isEdit = portfolioId !== null;
+        const title = isEdit ? 'Editar Experiencia' : 'Agregar Experiencia';
+        
+        let portfolioData = {};
+        if (isEdit) {
+            // Get portfolio data from the table or make an AJAX call
+            portfolioData = getPortfolioData(portfolioId);
+        }
+
+        Swal.fire({
+            title: title,
+            html: `
+                <form id="portfolio-form">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Proyecto *</label>
+                            <input type="text" class="form-control" name="title" placeholder="Nombre del proyecto" value="${portfolioData.title || ''}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" name="description" rows="3" placeholder="Descripción del proyecto">${portfolioData.description || ''}</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Puesto</label>
+                            <input type="text" class="form-control" name="position" placeholder="Puesto desempeñado" value="${portfolioData.position || ''}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Año</label>
+                            <input type="number" class="form-control" name="year" placeholder="Año" min="1900" max="${new Date().getFullYear() + 10}" value="${portfolioData.year || ''}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Idiomas</label>
+                            <input type="text" class="form-control" name="languages" placeholder="Idiomas separados por comas (ej: ES, EN, FR)" value="${portfolioData.languages ? portfolioData.languages.join(', ') : ''}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Notas</label>
+                            <textarea class="form-control" name="notes" rows="3" placeholder="Notas adicionales">${portfolioData.notes || ''}</textarea>
+                        </div>
+                    </div>
+                </form>
+            `,
+            showCancelButton: true,
+            confirmButtonText: isEdit ? 'Actualizar' : 'Agregar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const form = document.getElementById('portfolio-form');
+                const formData = new FormData(form);
+                
+                if (!formData.get('title')) {
+                    Swal.showValidationMessage('El título del proyecto es requerido');
+                    return false;
+                }
+                
+                const data = {
+                    title: formData.get('title'),
+                    description: formData.get('description'),
+                    position: formData.get('position'),
+                    year: formData.get('year') ? parseInt(formData.get('year')) : null,
+                    languages: formData.get('languages') ? formData.get('languages').split(',').map(lang => lang.trim()).filter(lang => lang) : [],
+                    notes: formData.get('notes')
+                };
+                
+                return data;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (isEdit) {
+                    updatePortfolio(portfolioId, result.value);
+                } else {
+                    createPortfolio(result.value);
+                }
+            }
+        });
+    }
+
+    function getPortfolioData(portfolioId) {
+        // This would normally be from a data attribute or AJAX call
+        // For now, return empty object - in a real implementation you'd fetch the data
+        return {};
+    }
+
+    function createPortfolio(data) {
+        const collaboratorId = {{ $collaborator->id }};
+        const csrfToken = $('meta[name="csrf-token"]').attr('content');
+        
+        fetch(`/collaborator/${collaboratorId}/portfolio`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                Swal.fire('¡Éxito!', result.message, 'success').then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Error', result.message || 'Error al crear la experiencia', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire('Error', 'Error al crear la experiencia', 'error');
+        });
+    }
+
+    function updatePortfolio(portfolioId, data) {
+        const collaboratorId = {{ $collaborator->id }};
+        const csrfToken = $('meta[name="csrf-token"]').attr('content');
+        
+        fetch(`/collaborator/${collaboratorId}/portfolio/${portfolioId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                Swal.fire('¡Éxito!', result.message, 'success').then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Error', result.message || 'Error al actualizar la experiencia', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire('Error', 'Error al actualizar la experiencia', 'error');
+        });
+    }
+
+    function editPortfolio(portfolioId) {
+        showPortfolioModal(portfolioId);
+    }
+
+    function viewPortfolio(portfolioId) {
+        // Implementation for viewing portfolio details
+        console.log('View portfolio:', portfolioId);
+    }
+
+    function deletePortfolio(portfolioId) {
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: 'Esta acción no se puede deshacer',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const collaboratorId = {{ $collaborator->id }};
+                const csrfToken = $('meta[name="csrf-token"]').attr('content');
+                
+                fetch(`/collaborator/${collaboratorId}/portfolio/${portfolioId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        Swal.fire('¡Eliminado!', result.message, 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', result.message || 'Error al eliminar la experiencia', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire('Error', 'Error al eliminar la experiencia', 'error');
+                });
+            }
+        });
+    }
 </script>
 @endpush 

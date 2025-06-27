@@ -325,6 +325,11 @@ class Contact extends Model
 		return $this->list60()->exists();
 	}
 
+	public function portfolios()
+	{
+		return $this->hasMany(ContactPortfolio::class);
+	}
+
 	/**
 	 * Get the WhatsApp formatted phone number from the contact
 	 * 

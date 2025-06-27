@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\CollaboratorDataTable;
 use App\Models\Contact;
 use App\Models\ContactLanguageVariant;
+use App\Models\ContactPortfolio;
 use App\Models\ContactValoration;
 use Illuminate\Http\Request;
 
@@ -110,6 +111,9 @@ class CollaboratorController extends Controller
             'country',
             'language',
             'status',
+            'portfolios' => function ($query) {
+                $query->orderBy('year', 'desc');
+            },
             'projects' => function ($query) {
                 $query->with(['responsible', 'enterprise', 'status'])
                       ->orderBy('created_at', 'desc');
@@ -655,5 +659,112 @@ class CollaboratorController extends Controller
                 'message' => 'Error al crear el usuario: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Store a new portfolio item
+     */
+    public function storePortfolio(Request $request, $id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'year' => 'nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'notes' => 'nullable|string',
+            'position' => 'nullable|string',
+            'languages' => 'nullable|array'
+        ]);
+
+        $collaborator = Contact::findOrFail($id);
+        
+        $data = [];
+        if ($request->position) {
+            $data['position'] = $request->position;
+        }
+        if ($request->languages) {
+            $data['languages'] = $request->languages;
+        }
+
+        $portfolio = $collaborator->portfolios()->create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'year' => $request->year,
+            'notes' => $request->notes,
+            'data' => $data
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Portfolio agregado correctamente',
+            'portfolio' => $portfolio
+        ]);
+    }
+
+    /**
+     * Update a portfolio item
+     */
+    public function updatePortfolio(Request $request, $id, $portfolioId)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'year' => 'nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'notes' => 'nullable|string',
+            'position' => 'nullable|string',
+            'languages' => 'nullable|array'
+        ]);
+
+        $collaborator = Contact::findOrFail($id);
+        $portfolio = $collaborator->portfolios()->findOrFail($portfolioId);
+        
+        $data = [];
+        if ($request->position) {
+            $data['position'] = $request->position;
+        }
+        if ($request->languages) {
+            $data['languages'] = $request->languages;
+        }
+
+        $portfolio->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'year' => $request->year,
+            'notes' => $request->notes,
+            'data' => $data
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Portfolio actualizado correctamente',
+            'portfolio' => $portfolio
+        ]);
+    }
+
+    /**
+     * Delete a portfolio item
+     */
+    public function destroyPortfolio($id, $portfolioId)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $collaborator = Contact::findOrFail($id);
+        $portfolio = $collaborator->portfolios()->findOrFail($portfolioId);
+        
+        $portfolio->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Portfolio eliminado correctamente'
+        ]);
     }
 } 
