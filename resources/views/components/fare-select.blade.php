@@ -24,7 +24,7 @@
         @foreach($faresByType as $typeName => $fareList)
             <optgroup label="{{ $typeName }}">
                 @foreach($fareList as $fare)
-                    <option value="{{ $fare->id }}" {{ in_array($fare->id, old(str_replace('[]', '', $name), $selected)) ? 'selected' : '' }}>
+                    <option value="{{ $fare->id }}" {{ in_array($fare->id, old(str_replace('[]', '', $name), $selected) ?? []) ? 'selected' : '' }}>
                         {{ $fare->name }}
                     </option>
                 @endforeach

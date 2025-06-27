@@ -173,14 +173,18 @@ class ProjectController extends Controller
         $project = Project::with(['client', 'responsible', 'status', 'category'])
             ->findOrFail($projectId);
 
+        // Debug: Log all request data
+        \Log::info('Send Notifications Request Data:', $request->all());
+
         $request->validate([
             'collaborator_ids' => 'required|array|min:1',
             'collaborator_ids.*' => 'exists:contacts,id',
-            'message_template' => 'required|string',
         ]);
 
         $collaboratorIds = $request->collaborator_ids;
-        $messageTemplate = $request->message_template;
+        
+        // Use default message template if not provided
+        $messageTemplate = $request->message_template ?? 'Hola, {nombre}: Te contactamos desde bbo porque tenemos un nuevo proyecto. Hay que hacer {servicio}, de un {nombre_proyecto}, de {idioma_source} a {idioma_target}. La fecha de entrega ideal es {fecha_entrega_materiales}. ¿Puedes confirmarnos tu tarifa y cuándo lo podrías tener? ¡Gracias!';
 
         // Process message placeholders
         $messageVariables = [
@@ -198,6 +202,8 @@ class ProjectController extends Controller
             try {
                 $collaborator = \App\Models\Contact::findOrFail($collaboratorId);
                 
+                \Log::info("Processing collaborator: {$collaborator->name} (ID: {$collaboratorId})");
+                
                 // Replace {nombre} placeholder with collaborator name
                 $personalizedMessage = str_replace('{nombre}', $collaborator->name, $messageTemplate);
                 
@@ -208,11 +214,28 @@ class ProjectController extends Controller
                     $personalizedMessage
                 );
 
-                // TODO: Implement actual message sending logic here
-                // For now, we'll just log or store the notification
-                
+                \Log::info("Personalized message: {$personalizedMessage}");
+
+                // Create or update the contact_project relationship
+                $result = $project->collaborators()->syncWithoutDetaching([
+                    $collaboratorId => [
+                        'message_sent' => $personalizedMessage,
+                        'status' => 'sent',
+                        'sent_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]
+                ]);
+
+                \Log::info("Sync result for collaborator {$collaboratorId}:", $result);
+
+                // Verify the relationship was created
+                $relationshipExists = $project->collaborators()->where('contact_id', $collaboratorId)->exists();
+                \Log::info("Relationship exists check: " . ($relationshipExists ? 'YES' : 'NO'));
+
                 $sentCount++;
             } catch (\Exception $e) {
+                \Log::error("Error processing collaborator {$collaboratorId}: " . $e->getMessage());
                 $errors[] = "Error sending to collaborator {$collaboratorId}: " . $e->getMessage();
             }
         }

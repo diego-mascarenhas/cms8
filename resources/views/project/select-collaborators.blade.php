@@ -40,6 +40,7 @@
 
 	<form action="{{ route('project.send-notifications', $project->id) }}" method="POST" id="collaborator-selection-form">
 		@csrf
+		<input type="hidden" name="message_template" id="message_template" value="">
 
 		    <!-- Filters Section -->
     <div class="card mb-4">
@@ -272,6 +273,31 @@
 				}
 
 				updateSelectedCount();
+			});
+
+			// Form submission handler
+			$('#collaborator-selection-form').on('submit', function(e) {
+				e.preventDefault();
+				
+				// Check if any collaborators are selected
+				const selectedCollaborators = $('.collaborator-checkbox:checked');
+				if (selectedCollaborators.length === 0) {
+					alert('Por favor, selecciona al menos un colaborador');
+					return false;
+				}
+				
+				// Use Spanish template as default
+				const messageTemplate = $('#spanish-template').val();
+				$('#message_template').val(messageTemplate);
+				
+				// Log data being sent for debugging
+				console.log('Sending form with:', {
+					collaborators: selectedCollaborators.length,
+					template: messageTemplate.substring(0, 50) + '...'
+				});
+				
+				// Submit the form
+				this.submit();
 			});
 
 			// Initialize count

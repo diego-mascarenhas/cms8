@@ -306,6 +306,13 @@ class Contact extends Model
 			->withTimestamps();
 	}
 
+	public function projects(): BelongsToMany
+	{
+		return $this->belongsToMany(Project::class, 'contact_project')
+			->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message')
+			->withTimestamps();
+	}
+
 	public function list60(): HasOne
 	{
 		return $this->hasOne(List60::class);

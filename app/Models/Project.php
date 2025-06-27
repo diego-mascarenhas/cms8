@@ -72,6 +72,13 @@ class Project extends Model
         return $this->hasMany(Note::class, 'reference')->where('module_id', 1); // Assuming module_id 1 is for projects
     }
 
+    public function collaborators()
+    {
+        return $this->belongsToMany(Contact::class, 'contact_project')
+            ->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message')
+            ->withTimestamps();
+    }
+
     public function getStatusLabelAttribute()
     {
         if ($this->status)
