@@ -54,7 +54,6 @@
                     <table class="table table-hover" id="projects-table">
                         <thead>
                             <tr>
-                                <th></th>
                                 <th>PROYECTO</th>
                                 <th>PM</th>
                                 <th>CLIENTE</th>
@@ -66,11 +65,6 @@
                         <tbody>
                             @foreach($collaborator->projects as $project)
                             <tr>
-                                <td>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" value="{{ $project->id }}">
-                                    </div>
-                                </td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="avatar avatar-sm bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][array_rand(['primary', 'success', 'info', 'warning', 'danger'])] }} me-2">
@@ -106,8 +100,8 @@
                                 </td>
                                 <td>
                                     <div class="dropdown">
-                                        <button class="btn btn-icon btn-text-secondary p-0" data-bs-toggle="dropdown">
-                                            <i class="ti ti-dots-vertical"></i>
+                                        <button class="btn p-0" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="ti ti-dots-vertical ti-sm text-muted"></i>
                                         </button>
                                         <div class="dropdown-menu">
                                             @can('project.show')

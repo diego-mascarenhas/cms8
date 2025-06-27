@@ -194,26 +194,31 @@
                                         </div>
                                     </div>
                                     <div class="text-end">
-                                        <span class="badge {{ $messageStatusClass }} rounded-pill mb-1">
-                                            {{ ucfirst($messageStatus) }}
-                                        </span>
-                                        @if($collaborator->pivot->sent_at)
-                                        <div>
+                                        <div class="d-flex flex-column align-items-end gap-1">
+                                            <span class="badge {{ $messageStatusClass }} rounded-pill">
+                                                {{ ucfirst($messageStatus) }}
+                                            </span>
+                                            @if($collaborator->pivot->sent_at)
                                             <small class="text-muted">
                                                 {{ \Carbon\Carbon::parse($collaborator->pivot->sent_at)->format('d/m/Y') }}
                                             </small>
+                                            @endif
+                                            <div class="d-flex gap-1">
+                                                @if($collaborator->pivot->message_sent)
+                                                <button class="btn btn-xs btn-outline-secondary" 
+                                                        data-bs-toggle="collapse" 
+                                                        data-bs-target="#message-{{ $collaborator->id }}" 
+                                                        aria-expanded="false">
+                                                    <i class="ti ti-message ti-xs"></i>
+                                                </button>
+                                                @endif
+                                                <a href="{{ route('collaborator.show', $collaborator->id) }}" 
+                                                   class="btn btn-xs btn-outline-primary" 
+                                                   title="Ver perfil del colaborador">
+                                                    <i class="ti ti-eye ti-xs"></i>
+                                                </a>
+                                            </div>
                                         </div>
-                                        @endif
-                                        @if($collaborator->pivot->message_sent)
-                                        <div class="mt-1">
-                                            <button class="btn btn-xs btn-outline-secondary" 
-                                                    data-bs-toggle="collapse" 
-                                                    data-bs-target="#message-{{ $collaborator->id }}" 
-                                                    aria-expanded="false">
-                                                <i class="ti ti-message ti-xs"></i>
-                                            </button>
-                                        </div>
-                                        @endif
                                     </div>
                                 </div>
                                 @if($collaborator->pivot->message_sent)
