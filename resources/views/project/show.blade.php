@@ -72,95 +72,6 @@
         <!-- Main Dashboard Content -->
         <div class="col-xl-8 col-lg-8">
 
-            <!-- Project Stats Cards -->
-            <div class="row project-stats mb-4">
-                <!-- Days Left Card -->
-                <div class="col-xl-3 col-md-6 col-12 mb-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <div class="avatar mx-auto mb-3">
-                                <span class="avatar-initial rounded-circle bg-label-{{ $project->date_end && \Carbon\Carbon::parse($project->date_end)->isPast() ? 'danger' : ($project->date_end && \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($project->date_end), false) < 5 ? 'warning' : 'success') }}">
-                                    <i class="ti ti-calendar-due ti-md"></i>
-                                </span>
-                            </div>
-                            @if($project->date_end)
-                                @php
-                                    $daysLeft = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($project->date_end), false);
-                                @endphp
-                                <h4 class="mb-0 {{ $daysLeft < 0 ? 'text-danger' : ($daysLeft < 5 ? 'text-warning' : 'text-success') }}">
-                                    {{ abs($daysLeft) }}
-                                </h4>
-                                <small class="text-muted">{{ $daysLeft < 0 ? __('days overdue') : __('days left') }}</small>
-                            @else
-                                <h4 class="mb-0">--</h4>
-                                <small class="text-muted">{{ __('Not set') }}</small>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Profit Card -->
-                @if(auth()->user()->hasRole('admin'))
-                <div class="col-xl-3 col-md-6 col-12 mb-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <div class="avatar mx-auto mb-3">
-                                <span class="avatar-initial rounded-circle bg-label-success">
-                                    <i class="ti ti-trending-up ti-md"></i>
-                                </span>
-                            </div>
-                            @if($project->price && $project->cost)
-                                @php
-                                    $profit = $project->price - $project->cost;
-                                    $discountAmount = $project->discount ? ($project->price * $project->discount / 100) : 0;
-                                    $finalProfit = $profit - $discountAmount;
-                                @endphp
-                                <h4 class="mb-0 {{ $finalProfit > 0 ? 'text-success' : 'text-danger' }}">
-                                    €{{ number_format($finalProfit, 0) }}
-                                </h4>
-                                <small class="text-muted">{{ __('Estimated Profit') }}</small>
-                            @else
-                                <h4 class="mb-0">--</h4>
-                                <small class="text-muted">{{ __('Not calculated') }}</small>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-                @endif
-
-                <!-- Price Card -->
-                @if(auth()->user()->hasRole('admin') && $project->price)
-                <div class="col-xl-3 col-md-6 col-12 mb-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <div class="avatar mx-auto mb-3">
-                                <span class="avatar-initial rounded-circle bg-label-info">
-                                    <i class="ti ti-currency-euro ti-md"></i>
-                                </span>
-                            </div>
-                            <h4 class="mb-0">€{{ number_format($project->price, 0) }}</h4>
-                            <small class="text-muted">{{ __('Project Value') }}</small>
-                        </div>
-                    </div>
-                </div>
-                @endif
-
-                <!-- Collaborators Card -->
-                <div class="col-xl-3 col-md-6 col-12 mb-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <div class="avatar mx-auto mb-3">
-                                <span class="avatar-initial rounded-circle bg-label-primary">
-                                    <i class="ti ti-users ti-md"></i>
-                                </span>
-                            </div>
-                            <h4 class="mb-0">3</h4>
-                            <small class="text-muted">{{ __('Collaborators') }}</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Project Details Card -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -212,7 +123,112 @@
                 </div>
             </div>
 
+            <!-- Collaborators Section (Floating Cards) -->
+            @if($project->collaborators && $project->collaborators->count() > 0)
+            <div class="row mb-4" style="align-items: stretch;">
+                @foreach($project->collaborators as $index => $collaborator)
+                    @php
+                        // Get the valoration for display
+                        $valorationIcon = 'ti-star-filled text-warning';
+                        $valorationText = 'Top';
+                        if ($collaborator->valoration) {
+                            switch($collaborator->valoration->name) {
+                                case 'Lista negra':
+                                    $valorationIcon = 'ti-x text-danger';
+                                    $valorationText = 'Lista negra';
+                                    break;
+                                case 'Validada':
+                                    $valorationIcon = 'ti-check text-success';
+                                    $valorationText = 'Validada';
+                                    break;
+                                case 'En espera':
+                                    $valorationIcon = 'ti-eye text-warning';
+                                    $valorationText = 'Ojo';
+                                    break;
+                                case 'Interesante':
+                                    $valorationIcon = 'ti-clock text-info';
+                                    $valorationText = 'Interesante';
+                                    break;
+                            }
+                        }
+                        
+                        // Get primary language combination for display
+                        $primaryLanguage = '';
+                        if ($collaborator->languageVariants->count() > 0) {
+                            $firstVariant = $collaborator->languageVariants->first();
+                            $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
+                            $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
+                            $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+                        }
 
+                        // Get message status
+                        $messageStatus = $collaborator->pivot->status ?? 'sent';
+                        $messageStatusClass = [
+                            'sent' => 'bg-label-info',
+                            'viewed' => 'bg-label-warning', 
+                            'accepted' => 'bg-label-success',
+                            'rejected' => 'bg-label-danger'
+                        ][$messageStatus] ?? 'bg-label-secondary';
+                    @endphp
+                    
+                    <div class="col-md-6 mb-3 d-flex">
+                        <div class="card border w-100">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-md me-3">
+                                            <img src="{{asset('assets/img/avatars/' . (($index % 16) + 1) . '.png')}}" 
+                                                 alt="{{ $collaborator->name }}" class="rounded-circle">
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">
+                                                <a href="{{ route('contact.show', $collaborator->id) }}" class="text-body">
+                                                    {{ $collaborator->name }}
+                                                </a>
+                                            </h6>
+                                            <small class="text-muted">{{ $primaryLanguage }}</small>
+                                            <div class="d-flex align-items-center mt-1">
+                                                <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
+                                                <small class="text-muted">{{ $valorationText }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge {{ $messageStatusClass }} rounded-pill mb-1">
+                                            {{ ucfirst($messageStatus) }}
+                                        </span>
+                                        @if($collaborator->pivot->sent_at)
+                                        <div>
+                                            <small class="text-muted">
+                                                {{ \Carbon\Carbon::parse($collaborator->pivot->sent_at)->format('d/m/Y') }}
+                                            </small>
+                                        </div>
+                                        @endif
+                                        @if($collaborator->pivot->message_sent)
+                                        <div class="mt-1">
+                                            <button class="btn btn-xs btn-outline-secondary" 
+                                                    data-bs-toggle="collapse" 
+                                                    data-bs-target="#message-{{ $collaborator->id }}" 
+                                                    aria-expanded="false">
+                                                <i class="ti ti-message ti-xs"></i>
+                                            </button>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @if($collaborator->pivot->message_sent)
+                                <div class="collapse mt-2" id="message-{{ $collaborator->id }}">
+                                    <div class="bg-light p-2 rounded">
+                                        <small>{{ Str::limit($collaborator->pivot->message_sent, 150) }}</small>
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            @endif
 
             <!-- Notes Section -->
             @if($project->notes && $project->notes->count() > 0)

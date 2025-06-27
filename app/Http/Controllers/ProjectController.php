@@ -79,7 +79,7 @@ class ProjectController extends Controller
                 ->with('success', 'Project created successfully. Now select collaborators to notify.');
         }
 
-        return redirect()->route('project-list')->with('success', 'Project updated successfully.');
+        return redirect()->route('project.show', $project->id)->with('success', 'Project updated successfully.');
     }
 
     /**
@@ -256,8 +256,17 @@ class ProjectController extends Controller
      */
     public function show(string $id)
     {
-        $project = Project::with(['client', 'responsible', 'status', 'category', 'notes'])
-            ->findOrFail($id);
+        $project = Project::with([
+            'client', 
+            'responsible', 
+            'status', 
+            'category', 
+            'notes',
+            'collaborators.valoration',
+            'collaborators.languageVariants.sourceLanguage',
+            'collaborators.languageVariants.targetLanguage',
+            'collaborators.fares.type'
+        ])->findOrFail($id);
             
         return view('project.show', compact('project'));
     }
