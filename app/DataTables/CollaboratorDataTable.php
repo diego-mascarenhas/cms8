@@ -89,11 +89,17 @@ class CollaboratorDataTable extends DataTable
 
 				return '<span class="badge bg-label-info rounded-pill" title="' . htmlspecialchars($servicesList) . '" data-bs-toggle="tooltip" data-bs-placement="auto">' . $count . ' ' . $label . '</span>';
 			})
+			->orderColumn('services', function ($query, $order) {
+				$query->withCount('fares')->orderBy('fares_count', $order);
+			})
 			->addColumn('projects', function ($contact)
 			{
 				// Get the actual count of projects for this collaborator
 				$projectCount = $contact->projects_count ?? $contact->projects->count();
 				return '<span class="badge bg-label-primary rounded-pill">' . $projectCount . '</span>';
+			})
+			->orderColumn('projects', function ($query, $order) {
+				$query->orderBy('projects_count', $order);
 			})
 			->setRowId('id')
 			->filterColumn('language_combinations', function ($query, $keyword)
@@ -126,7 +132,7 @@ class CollaboratorDataTable extends DataTable
 	{
 		$query = $model->newQuery()
 			->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'fares.type'])
-			->withCount('projects');
+			->withCount(['projects', 'fares']);
 
 		// Handle custom filters from request
 		$request = request();
@@ -227,12 +233,14 @@ class CollaboratorDataTable extends DataTable
 				->title(__('Valoración'))
 				->className('text-center')
 				->addClass('min-phone')
-				->searchable(false),
+				->searchable(false)
+				->orderable(false),
 			Column::make('language_combinations')
 				->title(__('Combinación'))
 				->className('text-center')
 				->addClass('min-tablet')
-				->searchable(true),
+				->searchable(true)
+				->orderable(false),
 			Column::make('services')
 				->title(__('Servicios'))
 				->className('text-center')
@@ -249,6 +257,7 @@ class CollaboratorDataTable extends DataTable
 				->addClass('min-desktop')
 				->exportable(false)
 				->printable(false)
+				->orderable(false)
 				->width(30),
 		];
 	}
