@@ -683,5 +683,11 @@
     "Software updated successfully": "Programa actualizado correctamente",
     "Software deleted successfully": "Programa eliminado correctamente",
     "Select Collaborators": "Seleccionar Colaboradores",
-    "Select collaborators to send project notifications": "Selecciona colaboradores para enviar notificaciones del proyecto"
+    "Select collaborators to send project notifications": "Selecciona colaboradores para enviar notificaciones del proyecto",
+    "View Details": "Ver detalles",
+    "Remove from Project": "Eliminar del proyecto",
+    "Project Details": "Detalles del proyecto",
+    "Project Timeline": "Cronología del proyecto",
+    "Manage Collaborators": "Gestionar colaboradores",
+    "Add Note": "Agregar nota"
 }

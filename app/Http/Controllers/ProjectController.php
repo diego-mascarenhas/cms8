@@ -296,6 +296,43 @@ class ProjectController extends Controller
     }
 
     /**
+     * Remove a collaborator from a project (Soft Delete)
+     */
+    public function removeCollaborator(Project $project, $collaborator)
+    {
+        try {
+            // Find the collaborator
+            $collaboratorModel = \App\Models\Contact::findOrFail($collaborator);
+            
+            // Find the pivot record using the ContactProject model
+            $pivotRecord = \App\Models\ContactProject::where('contact_id', $collaborator)
+                ->where('project_id', $project->id)
+                ->whereNull('deleted_at')
+                ->first();
+            
+            if (!$pivotRecord) {
+                return response()->json([
+                    'message' => 'El colaborador no está asociado con este proyecto.'
+                ], 404);
+            }
+            
+            // Soft delete the pivot record
+            $pivotRecord->delete();
+            
+            return response()->json([
+                'message' => 'Colaborador eliminado del proyecto exitosamente.'
+            ], 200);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error removing collaborator from project: ' . $e->getMessage());
+            
+            return response()->json([
+                'message' => 'Ha ocurrido un error al eliminar el colaborador.'
+            ], 500);
+        }
+    }
+
+    /**
      * Format date for message templates
      */
     private function formatDate($date)

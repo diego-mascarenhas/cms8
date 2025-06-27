@@ -173,61 +173,40 @@
                     
                     <div class="col-md-6 mb-3 d-flex">
                         <div class="card border w-100">
-                            <div class="card-body p-3">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-md me-3">
-                                            <img src="{{asset('assets/img/avatars/' . (($index % 16) + 1) . '.png')}}" 
-                                                 alt="{{ $collaborator->name }}" class="rounded-circle">
-                                        </div>
-                                        <div>
-                                            <h6 class="mb-0">
-                                                <a href="{{ route('contact.show', $collaborator->id) }}" class="text-body">
-                                                    {{ $collaborator->name }}
-                                                </a>
-                                            </h6>
-                                            <small class="text-muted">{{ $primaryLanguage }}</small>
-                                            <div class="d-flex align-items-center mt-1">
-                                                <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
-                                                <small class="text-muted">{{ $valorationText }}</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="text-end">
-                                        <div class="d-flex flex-column align-items-end gap-1">
-                                            <span class="badge {{ $messageStatusClass }} rounded-pill">
-                                                {{ ucfirst($messageStatus) }}
-                                            </span>
-                                            @if($collaborator->pivot->sent_at)
-                                            <small class="text-muted">
-                                                {{ \Carbon\Carbon::parse($collaborator->pivot->sent_at)->format('d/m/Y') }}
-                                            </small>
-                                            @endif
-                                            <div class="d-flex gap-1">
-                                                @if($collaborator->pivot->message_sent)
-                                                <button class="btn btn-xs btn-outline-secondary" 
-                                                        data-bs-toggle="collapse" 
-                                                        data-bs-target="#message-{{ $collaborator->id }}" 
-                                                        aria-expanded="false">
-                                                    <i class="ti ti-message ti-xs"></i>
-                                                </button>
-                                                @endif
-                                                <a href="{{ route('collaborator.show', $collaborator->id) }}" 
-                                                   class="btn btn-xs btn-outline-primary" 
-                                                   title="Ver perfil del colaborador">
-                                                    <i class="ti ti-eye ti-xs"></i>
-                                                </a>
-                                            </div>
+                            <div class="card-body p-3 position-relative">
+                                <!-- Dropdown Menu in top right corner -->
+                                <div class="position-absolute top-0 end-0 mt-2 me-2">
+                                    <div class="dropdown">
+                                        <button class="btn p-0" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="ti ti-dots-vertical ti-sm text-muted"></i>
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <a class="dropdown-item" href="{{ route('collaborator.show', $collaborator->id) }}">
+                                                <i class="ti ti-eye me-2"></i>{{ __('View Details') }}
+                                            </a>
+                                            <a class="dropdown-item text-danger" href="javascript:void(0)" 
+                                               onclick="removeCollaboratorFromProject({{ $project->id }}, {{ $collaborator->id }}, '{{ $collaborator->name }}')">
+                                                <i class="ti ti-trash me-2"></i>{{ __('Remove from Project') }}
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
-                                @if($collaborator->pivot->message_sent)
-                                <div class="collapse mt-2" id="message-{{ $collaborator->id }}">
-                                    <div class="bg-light p-2 rounded">
-                                        <small>{{ Str::limit($collaborator->pivot->message_sent, 150) }}</small>
+
+                                <!-- Collaborator Info -->
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar avatar-md me-3">
+                                        <img src="{{asset('assets/img/avatars/' . (($index % 16) + 1) . '.png')}}" 
+                                             alt="{{ $collaborator->name }}" class="rounded-circle">
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ $collaborator->name }}</h6>
+                                        <small class="text-muted">{{ $primaryLanguage }}</small>
+                                        <div class="d-flex align-items-center mt-1">
+                                            <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
+                                            <small class="text-muted">{{ $valorationText }}</small>
+                                        </div>
                                     </div>
                                 </div>
-                                @endif
                             </div>
                         </div>
                     </div>
@@ -423,5 +402,50 @@
             }
         });
     });
+
+    // Function to remove collaborator from project
+    function removeCollaboratorFromProject(projectId, collaboratorId, collaboratorName) {
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: `¿Deseas eliminar a ${collaboratorName} de este proyecto?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            customClass: {
+                confirmButton: 'btn btn-danger me-3',
+                cancelButton: 'btn btn-label-secondary'
+            },
+            buttonsStyling: false
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: `/project/${projectId}/remove-collaborator/${collaboratorId}`,
+                    type: 'DELETE',
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                    },
+                    success: function (response) {
+                        toastr.success('Colaborador eliminado del proyecto exitosamente');
+                        // Reload the page to update the collaborator list
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    },
+                    error: function (response) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: response.responseJSON?.message || 'Ha ocurrido un error',
+                            icon: 'error',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            },
+                            buttonsStyling: false
+                        });
+                    }
+                });
+            }
+        });
+    }
 </script>
 @endpush

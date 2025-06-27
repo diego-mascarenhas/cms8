@@ -22,6 +22,7 @@ return new class extends Migration
             $table->timestamp('responded_at')->nullable();
             $table->text('response_message')->nullable();
             $table->timestamps();
+            $table->softDeletes(); // Add soft deletes support
 
             // Prevent duplicate entries
             $table->unique(['contact_id', 'project_id']);

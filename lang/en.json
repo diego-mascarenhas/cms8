@@ -303,5 +303,11 @@
   "Save": "Save",
   "Cancel": "Cancel",
   "Select Collaborators": "Select Collaborators",
-  "Select collaborators to send project notifications": "Select collaborators to send project notifications"
+  "Select collaborators to send project notifications": "Select collaborators to send project notifications",
+  "View Details": "View Details",
+  "Remove from Project": "Remove from Project",
+  "Project Details": "Project Details",
+  "Project Timeline": "Project Timeline",
+  "Manage Collaborators": "Manage Collaborators",
+  "Add Note": "Add Note"
 }

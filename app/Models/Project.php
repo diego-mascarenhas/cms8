@@ -80,8 +80,10 @@ class Project extends Model
     public function collaborators()
     {
         return $this->belongsToMany(Contact::class, 'contact_project')
-            ->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message')
-            ->withTimestamps();
+            ->using(ContactProject::class)
+            ->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message', 'deleted_at')
+            ->withTimestamps()
+            ->wherePivotNull('deleted_at'); // Only get non-deleted relationships
     }
 
     public function getStatusLabelAttribute()
