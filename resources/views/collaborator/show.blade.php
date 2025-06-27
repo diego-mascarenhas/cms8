@@ -194,7 +194,6 @@
                     <table class="table table-hover" id="portfolio-table">
                         <thead>
                             <tr>
-                                <th></th>
                                 <th>PROYECTO</th>
                                 <th>PUESTO</th>
                                 <th>AÑO</th>
@@ -206,11 +205,6 @@
                         <tbody>
                             @foreach($collaborator->portfolios as $portfolio)
                             <tr>
-                                <td>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox">
-                                    </div>
-                                </td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="avatar avatar-sm bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][array_rand(['primary', 'success', 'info', 'warning', 'danger'])] }} me-2">
@@ -229,7 +223,11 @@
                                 <td>
                                     @if($portfolio->languages && is_array($portfolio->languages))
                                         @foreach($portfolio->languages as $language)
-                                            {{ strtoupper($language) }}@if(!$loop->last)<br>@endif
+                                            @if(is_array($language) && isset($language['source']) && isset($language['target']))
+                                                {{ strtoupper(explode('-', $language['source'])[0]) }} → {{ strtoupper(explode('-', $language['target'])[0]) }}@if(!$loop->last)<br>@endif
+                                            @else
+                                                {{ strtoupper($language) }}@if(!$loop->last)<br>@endif
+                                            @endif
                                         @endforeach
                                     @else
                                         -
@@ -796,8 +794,53 @@
                             <input type="number" class="form-control" name="year" placeholder="Año" min="1900" max="${new Date().getFullYear() + 10}" value="${portfolioData.year || ''}">
                         </div>
                         <div class="col-12">
-                            <label class="form-label">Idiomas</label>
-                            <input type="text" class="form-control" name="languages" placeholder="Idiomas separados por comas (ej: ES, EN, FR)" value="${portfolioData.languages ? portfolioData.languages.join(', ') : ''}">
+                            <label class="form-label">Variantes de idioma</label>
+                            <div class="row mb-3">
+                                <div class="col-md-5">
+                                    <select id="source_language_portfolio" class="form-select">
+                                        <option value="">Idioma origen</option>
+                                        <option value="es-ES" data-flag="es">Español (España)</option>
+                                        <option value="es-MX" data-flag="mx">Español (México)</option>
+                                        <option value="es-AR" data-flag="ar">Español (Argentina)</option>
+                                        <option value="en-US" data-flag="us">English (US)</option>
+                                        <option value="en-GB" data-flag="gb">English (UK)</option>
+                                        <option value="fr-FR" data-flag="fr">Français</option>
+                                        <option value="de-DE" data-flag="de">Deutsch</option>
+                                        <option value="it-IT" data-flag="it">Italiano</option>
+                                        <option value="pt-BR" data-flag="br">Português (Brasil)</option>
+                                        <option value="pt-PT" data-flag="pt">Português (Portugal)</option>
+                                        <option value="zh-CN" data-flag="cn">中文 (简体)</option>
+                                        <option value="ja-JP" data-flag="jp">日本語</option>
+                                        <option value="ko-KR" data-flag="kr">한국어</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-5">
+                                    <select id="target_language_portfolio" class="form-select">
+                                        <option value="">Idioma destino</option>
+                                        <option value="es-ES" data-flag="es">Español (España)</option>
+                                        <option value="es-MX" data-flag="mx">Español (México)</option>
+                                        <option value="es-AR" data-flag="ar">Español (Argentina)</option>
+                                        <option value="en-US" data-flag="us">English (US)</option>
+                                        <option value="en-GB" data-flag="gb">English (UK)</option>
+                                        <option value="fr-FR" data-flag="fr">Français</option>
+                                        <option value="de-DE" data-flag="de">Deutsch</option>
+                                        <option value="it-IT" data-flag="it">Italiano</option>
+                                        <option value="pt-BR" data-flag="br">Português (Brasil)</option>
+                                        <option value="pt-PT" data-flag="pt">Português (Portugal)</option>
+                                        <option value="zh-CN" data-flag="cn">中文 (简体)</option>
+                                        <option value="ja-JP" data-flag="jp">日本語</option>
+                                        <option value="ko-KR" data-flag="kr">한국어</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-primary btn-sm w-100" id="add_language_pair_portfolio">
+                                        <i class="ti ti-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="language-pairs-container-portfolio" class="mb-3">
+                                <!-- Language pairs will be added here -->
+                            </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Notas</label>
@@ -818,16 +861,39 @@
                     return false;
                 }
                 
+                // Collect language pairs
+                const languagePairs = [];
+                document.querySelectorAll('#language-pairs-container-portfolio .language-pair-item').forEach(item => {
+                    const pairValue = item.querySelector('input[name="language_pairs[]"]')?.value;
+                    if (pairValue) {
+                        const [source, target] = pairValue.split('|');
+                        languagePairs.push({source: source, target: target});
+                    }
+                });
+                
                 const data = {
                     title: formData.get('title'),
                     description: formData.get('description'),
                     position: formData.get('position'),
                     year: formData.get('year') ? parseInt(formData.get('year')) : null,
-                    languages: formData.get('languages') ? formData.get('languages').split(',').map(lang => lang.trim()).filter(lang => lang) : [],
+                    languages: languagePairs,
                     notes: formData.get('notes')
                 };
                 
                 return data;
+            },
+            didOpen: () => {
+                // Initialize language pair functionality after modal opens
+                initializeLanguagePairs();
+                
+                // Load existing language pairs if editing
+                if (isEdit && portfolioData.languages) {
+                    portfolioData.languages.forEach(pair => {
+                        if (typeof pair === 'object' && pair.source && pair.target) {
+                            addLanguagePairToContainer(pair.source, pair.target);
+                        }
+                    });
+                }
             }
         }).then((result) => {
             if (result.isConfirmed) {
@@ -948,6 +1014,129 @@
                 });
             }
         });
+    }
+
+    // Initialize language pairs functionality
+    function initializeLanguagePairs() {
+        // Add language pair button click handler
+        document.getElementById('add_language_pair_portfolio').addEventListener('click', function() {
+            const sourceSelect = document.getElementById('source_language_portfolio');
+            const targetSelect = document.getElementById('target_language_portfolio');
+            
+            const sourceValue = sourceSelect.value;
+            const targetValue = targetSelect.value;
+            const sourceText = sourceSelect.options[sourceSelect.selectedIndex].text;
+            const targetText = targetSelect.options[targetSelect.selectedIndex].text;
+            
+            // Validate selections
+            if (!sourceValue) {
+                Swal.showValidationMessage('Seleccione un idioma origen');
+                return;
+            }
+            
+            if (!targetValue) {
+                Swal.showValidationMessage('Seleccione un idioma destino');
+                return;
+            }
+            
+            if (sourceValue === targetValue) {
+                Swal.showValidationMessage('Los idiomas origen y destino no pueden ser iguales');
+                return;
+            }
+            
+            // Check if pair already exists
+            const existingPairs = document.querySelectorAll('#language-pairs-container-portfolio input[name="language_pairs[]"]');
+            let pairExists = false;
+            existingPairs.forEach(input => {
+                if (input.value === sourceValue + '|' + targetValue) {
+                    pairExists = true;
+                }
+            });
+            
+            if (pairExists) {
+                Swal.showValidationMessage('Esta combinación de idiomas ya existe');
+                return;
+            }
+            
+            // Add language pair to container
+            addLanguagePairToContainer(sourceValue, targetValue, sourceText, targetText);
+            
+            // Reset selects
+            sourceSelect.value = '';
+            targetSelect.value = '';
+        });
+    }
+
+    function addLanguagePairToContainer(sourceValue, targetValue, sourceText = null, targetText = null) {
+        const container = document.getElementById('language-pairs-container-portfolio');
+        
+        // Get text if not provided
+        if (!sourceText || !targetText) {
+            const sourceSelect = document.getElementById('source_language_portfolio');
+            const targetSelect = document.getElementById('target_language_portfolio');
+            
+            // Find the text for the values
+            for (let i = 0; i < sourceSelect.options.length; i++) {
+                if (sourceSelect.options[i].value === sourceValue) {
+                    sourceText = sourceSelect.options[i].text;
+                    break;
+                }
+            }
+            
+            for (let i = 0; i < targetSelect.options.length; i++) {
+                if (targetSelect.options[i].value === targetValue) {
+                    targetText = targetSelect.options[i].text;
+                    break;
+                }
+            }
+        }
+        
+        // Get flag codes
+        const sourceFlag = getLanguageFlag(sourceValue);
+        const targetFlag = getLanguageFlag(targetValue);
+        
+        const pairHtml = `
+            <div class="language-pair-item border rounded p-2 mb-2 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <i class="fi fi-${sourceFlag} me-2"></i>
+                    <span class="fw-medium me-2">${sourceText}</span>
+                    <i class="ti ti-arrow-right me-2 text-muted"></i>
+                    <i class="fi fi-${targetFlag} me-2"></i>
+                    <span class="fw-medium">${targetText}</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-language-pair">
+                    <i class="ti ti-x"></i>
+                </button>
+                <input type="hidden" name="language_pairs[]" value="${sourceValue}|${targetValue}">
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('beforeend', pairHtml);
+        
+        // Add remove functionality to the new button
+        container.lastElementChild.querySelector('.remove-language-pair').addEventListener('click', function() {
+            this.closest('.language-pair-item').remove();
+        });
+    }
+
+    function getLanguageFlag(languageCode) {
+        const flagMap = {
+            'es-ES': 'es',
+            'es-MX': 'mx',
+            'es-AR': 'ar',
+            'en-US': 'us',
+            'en-GB': 'gb',
+            'fr-FR': 'fr',
+            'de-DE': 'de',
+            'it-IT': 'it',
+            'pt-BR': 'br',
+            'pt-PT': 'pt',
+            'zh-CN': 'cn',
+            'ja-JP': 'jp',
+            'ko-KR': 'kr'
+        };
+        
+        return flagMap[languageCode] || languageCode.split('-')[1]?.toLowerCase() || 'us';
     }
 </script>
 @endpush 
