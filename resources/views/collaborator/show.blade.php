@@ -35,113 +35,146 @@
             <div class="card mb-4">
                 <div class="card-header border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Proyectos con bbo</h5>
+                        <h5 class="mb-0">Proyectos con bbo ({{ $collaborator->projects->count() }})</h5>
                         <div class="d-flex">
                             <div class="input-group input-group-merge me-2">
                                 <span class="input-group-text"><i class="ti ti-search"></i></span>
-                                <input type="text" class="form-control" placeholder="Buscar">
+                                <input type="text" class="form-control" placeholder="Buscar" id="projects-search">
                             </div>
-                            <button class="btn btn-icon btn-primary">
+                            @can('project.create')
+                            <a href="{{ route('project.create') }}" class="btn btn-icon btn-primary" title="Crear nuevo proyecto">
                                 <i class="ti ti-plus"></i>
-                            </button>
+                            </a>
+                            @endcan
                         </div>
                     </div>
                 </div>
+                @if($collaborator->projects && $collaborator->projects->count() > 0)
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="projects-table">
                         <thead>
                             <tr>
                                 <th></th>
                                 <th>PROYECTO</th>
                                 <th>PM</th>
-                                <th>CANTIDAD</th>
-                                <th>UNIDAD</th>
+                                <th>CLIENTE</th>
+                                <th>ESTADO</th>
                                 <th>FECHA</th>
                                 <th>ACCIÓN</th>
                             </tr>
                         </thead>
                         <tbody>
+                            @foreach($collaborator->projects as $project)
                             <tr>
                                 <td>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox">
+                                        <input class="form-check-input" type="checkbox" value="{{ $project->id }}">
                                     </div>
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm bg-label-info me-2">
-                                            <span class="avatar-initial rounded-circle">F</span>
+                                        <div class="avatar avatar-sm bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][array_rand(['primary', 'success', 'info', 'warning', 'danger'])] }} me-2">
+                                            <span class="avatar-initial rounded-circle">{{ strtoupper(substr($project->name, 0, 1)) }}</span>
                                         </div>
                                         <div>
-                                            <span class="fw-medium">Fifa 2025</span>
-                                            <small class="d-block text-muted">Manual de usuario</small>
+                                            <span class="fw-medium">{{ $project->name }}</span>
+                                            @if($project->real_name && $project->real_name !== $project->name)
+                                                <small class="d-block text-muted">{{ $project->real_name }}</small>
+                                            @endif
                                         </div>
                                     </div>
                                 </td>
-                                <td>Rocio</td>
-                                <td>34</td>
-                                <td>pág</td>
-                                <td>12-04-2024</td>
+                                <td>{{ $project->responsible ? $project->responsible->name : '-' }}</td>
+                                <td>{{ $project->enterprise ? $project->enterprise->name : '-' }}</td>
+                                <td>
+                                    @if($project->status)
+                                        <span class="badge {{ $project->status->label_class ?? 'bg-label-secondary' }}">
+                                            {{ $project->status->name }}
+                                        </span>
+                                    @else
+                                        <span class="badge bg-label-secondary">Sin estado</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($project->date_end)
+                                        {{ \Carbon\Carbon::parse($project->date_end)->format('d-m-Y') }}
+                                    @elseif($project->date_material)
+                                        {{ \Carbon\Carbon::parse($project->date_material)->format('d-m-Y') }}
+                                    @else
+                                        {{ \Carbon\Carbon::parse($project->created_at)->format('d-m-Y') }}
+                                    @endif
+                                </td>
                                 <td>
                                     <div class="dropdown">
                                         <button class="btn btn-icon btn-text-secondary p-0" data-bs-toggle="dropdown">
                                             <i class="ti ti-dots-vertical"></i>
                                         </button>
                                         <div class="dropdown-menu">
-                                            <a class="dropdown-item" href="javascript:void(0)">Ver</a>
-                                            <a class="dropdown-item" href="javascript:void(0)">Editar</a>
-                                            <a class="dropdown-item" href="javascript:void(0)">Eliminar</a>
+                                            @can('project.show')
+                                            <a class="dropdown-item" href="{{ route('project.show', $project->id) }}">
+                                                <i class="ti ti-eye me-2"></i>Ver
+                                            </a>
+                                            @endcan
+                                            @can('project.edit')
+                                            <a class="dropdown-item" href="{{ route('project.edit', $project->id) }}">
+                                                <i class="ti ti-edit me-2"></i>Editar
+                                            </a>
+                                            @endcan
+                                            @if($project->pivot && $project->pivot->status)
+                                            <div class="dropdown-divider"></div>
+                                            <h6 class="dropdown-header">Estado colaboración:</h6>
+                                            <span class="dropdown-item-text">
+                                                @switch($project->pivot->status)
+                                                    @case('sent')
+                                                        <i class="ti ti-clock me-1 text-warning"></i>Mensaje enviado
+                                                        @break
+                                                    @case('viewed')
+                                                        <i class="ti ti-eye me-1 text-info"></i>Visto
+                                                        @break
+                                                    @case('accepted')
+                                                        <i class="ti ti-check me-1 text-success"></i>Aceptado
+                                                        @break
+                                                    @case('rejected')
+                                                        <i class="ti ti-x me-1 text-danger"></i>Rechazado
+                                                        @break
+                                                @endswitch
+                                            </span>
+                                            @endif
                                         </div>
                                     </div>
                                 </td>
                             </tr>
-                            <tr>
-                                <td>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm bg-label-danger me-2">
-                                            <span class="avatar-initial rounded-circle">K</span>
-                                        </div>
-                                        <div>
-                                            <span class="fw-medium">Kiarna</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>Carla</td>
-                                <td>174</td>
-                                <td>min</td>
-                                <td>23-10-2023</td>
-                                <td>
-                                    <div class="dropdown">
-                                        <button class="btn btn-icon btn-text-secondary p-0" data-bs-toggle="dropdown">
-                                            <i class="ti ti-dots-vertical"></i>
-                                        </button>
-                                        <div class="dropdown-menu">
-                                            <a class="dropdown-item" href="javascript:void(0)">Ver</a>
-                                            <a class="dropdown-item" href="javascript:void(0)">Editar</a>
-                                            <a class="dropdown-item" href="javascript:void(0)">Eliminar</a>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
                 <div class="card-footer">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span>Mostrando 1 a 3 de 3 proyectos</span>
-                        <div class="d-flex">
-                            <button class="btn btn-icon btn-sm btn-outline-secondary me-1"><i class="ti ti-chevron-left"></i></button>
-                            <button class="btn btn-icon btn-sm btn-primary me-1">1</button>
-                            <button class="btn btn-icon btn-sm btn-outline-secondary me-1"><i class="ti ti-chevron-right"></i></button>
-                            <button class="btn btn-icon btn-sm btn-outline-secondary"><i class="ti ti-chevrons-right"></i></button>
-                        </div>
+                        <span>Mostrando {{ $collaborator->projects->count() }} proyecto{{ $collaborator->projects->count() !== 1 ? 's' : '' }}</span>
+                        @if($collaborator->projects->count() > 0)
+                        <small class="text-muted">
+                            Último proyecto: {{ $collaborator->projects->first()->created_at->format('d/m/Y') }}
+                        </small>
+                        @endif
                     </div>
                 </div>
+                @else
+                <!-- Empty State -->
+                <div class="card-body text-center py-5">
+                    <div class="avatar avatar-xl mx-auto mb-3">
+                        <span class="avatar-initial rounded-circle bg-label-secondary">
+                            <i class="ti ti-briefcase ti-md"></i>
+                        </span>
+                    </div>
+                    <h5 class="mb-2">No hay proyectos asociados</h5>
+                    <p class="mb-4 text-muted">Este colaborador aún no está asociado a ningún proyecto.</p>
+                    @can('project.create')
+                    <a href="{{ route('project.create') }}" class="btn btn-primary">
+                        <i class="ti ti-plus me-1"></i>Crear primer proyecto
+                    </a>
+                    @endcan
+                </div>
+                @endif
             </div>
 
             <!-- Experience -->
@@ -677,6 +710,13 @@
             });
         });
 
+        // Projects search functionality
+        $('#projects-search').on('keyup', function() {
+            const value = $(this).val().toLowerCase();
+            $('#projects-table tbody tr').filter(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+            });
+        });
 
     });
 </script>

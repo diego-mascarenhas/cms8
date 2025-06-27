@@ -109,7 +109,11 @@ class CollaboratorController extends Controller
             'topics',
             'country',
             'language',
-            'status'
+            'status',
+            'projects' => function ($query) {
+                $query->with(['responsible', 'enterprise', 'status'])
+                      ->orderBy('created_at', 'desc');
+            }
         ])->findOrFail($id);
         
         // Ensure country and language relationships are properly loaded
