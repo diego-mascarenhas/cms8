@@ -40,6 +40,7 @@ class DatabaseSeeder extends Seeder
             FareTypesSeeder::class,
             FaresSeeder::class,
             UnitsSeeder::class,
+            FareUnitSeeder::class,
             ContactSkillsSeeder::class,
             CategorySeeder::class,
             CertificationsSeeder::class,

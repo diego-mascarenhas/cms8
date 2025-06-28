@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
+use App\Models\Module;
 use Illuminate\Database\Seeder;
 
 class CategorySeeder extends Seeder
@@ -50,14 +51,18 @@ class CategorySeeder extends Seeder
         //     'status' => 1
         // ]);
 
-        // Services main category - Create parent category first
+        // Get the hosting module ID dynamically
+        $hostingModule = Module::where('key', 'hosting')->first();
+        $hostingModuleId = $hostingModule ? $hostingModule->id : null;
+        
+        // Services main category
         Category::firstOrCreate(
             ['id' => 1],
             [
                 'name' => 'Services',
                 'parent_id' => null,
-                'status' => 1,
-            ],
+                'status' => 1
+            ]
         );
 
         // OVH service categories as subcategories
@@ -66,11 +71,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'VPS (Virtual Private Server)',
                 'description' => 'Virtual servers for hosting applications and websites',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         Category::firstOrCreate(
@@ -78,11 +83,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Web Hosting',
                 'description' => 'Shared hosting solutions for websites',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         Category::firstOrCreate(
@@ -90,11 +95,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Domain Names',
                 'description' => 'Domain name registration and management',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         Category::firstOrCreate(
@@ -102,11 +107,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'DNS Zones',
                 'description' => 'DNS management for domains',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         Category::firstOrCreate(
@@ -114,11 +119,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Email Domain',
                 'description' => 'Email services attached to domains',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         Category::firstOrCreate(
@@ -126,11 +131,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Email Pro',
                 'description' => 'Professional email hosting solutions',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         Category::firstOrCreate(
@@ -138,11 +143,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'cPanel License',
                 'description' => 'Control panel licenses for web hosting management',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         Category::firstOrCreate(
@@ -150,11 +155,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Private Database',
                 'description' => 'Dedicated database servers',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         Category::firstOrCreate(
@@ -162,11 +167,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Cloud Project',
                 'description' => 'Infrastructure as a Service cloud platform',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         Category::firstOrCreate(
@@ -174,11 +179,11 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'vRack',
                 'description' => 'Private virtual network',
-                'module_id' => 9,
+                'module_id' => $hostingModuleId,
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ],
+            ]
         );
 
         $this->command->info('Basic system categories created successfully.');
