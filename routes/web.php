@@ -181,11 +181,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
     Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
     Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getCollaboratorRates'])->name('collaborator.rates.get');
-    Route::get('/collaborator/{id}/absences', function ($id) {
-        $collaborator = Contact::findOrFail($id);
-
-        return view('collaborator.absences', compact('collaborator'));
-    })->name('collaborator.absences');
+    Route::get('/collaborator/{id}/absences', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'index'])->name('collaborator.absences');
+    Route::post('/collaborator/{id}/absences/toggle-date', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'toggleDate'])->name('collaborator.absences.toggle-date');
+    Route::post('/collaborator/{id}/absences/update-weekly', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'updateWeekly'])->name('collaborator.absences.update-weekly');
 
     Route::get('/collaborator/{id}/notifications', function ($id) {
         $collaborator = Contact::findOrFail($id);

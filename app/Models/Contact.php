@@ -326,6 +326,22 @@ class Contact extends Model
     }
 
     /**
+     * Get collaborator absences
+     */
+    public function absences()
+    {
+        return $this->hasMany(CollaboratorAbsence::class);
+    }
+
+    /**
+     * Get collaborator weekly availability
+     */
+    public function weeklyAvailability()
+    {
+        return $this->hasOne(CollaboratorWeeklyAvailability::class);
+    }
+
+    /**
      * Get the WhatsApp formatted phone number from the contact
      *
      * @return string|null

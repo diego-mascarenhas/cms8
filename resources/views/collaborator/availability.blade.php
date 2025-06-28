@@ -1,10 +1,9 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Ausencias')
+@section('title', 'Disponibilidad')
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
-    <meta name="csrf-token" content="{{ csrf_token() }}">
 @endsection
 
 @section('page-style')
@@ -75,22 +74,22 @@
 @endsection
 
 @section('content')
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+    <div class="d-flex flex-column justify-content-center">
+        <h4 class="mb-1 mt-3">Disponibilidad</h4>
+        <p class="text-muted">Gestiona tu disponibilidad para proyectos</p>
+    </div>
+</div>
+
 <div class="row">
-    <!-- Collaborator Sidebar -->
-    @include('collaborator.partials.sidebar')
-    <!--/ Collaborator Sidebar -->
-
-    <!-- Absences Content -->
-    <div class="col-xl-8 col-lg-7 col-md-7">
-        <!-- Tabs -->
-        @include('collaborator.partials.tabs')
-        
+    <div class="col-12">
         <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Períodos de no disponibilidad</h5>
+                <p class="card-subtitle text-muted mt-1">Selecciona los períodos en los que no estarás disponible para aceptar proyectos.</p>
+                <p class="text-muted">Esto nos ayudará a contactarte solo cuando realmente puedas colaborar.</p>
+            </div>
             <div class="card-body">
-                <h5 class="mb-4">Períodos de no disponibilidad</h5>
-                <p class="text-muted">Selecciona los períodos en los que el colaborador no estará disponible para aceptar proyectos.</p>
-                <p class="text-muted mb-4">Esto te ayudará a contactarle solo cuando realmente pueda colaborar.</p>
-
                 <h6 class="mb-3">Disponibilidad por día de la semana</h6>
                 <div class="d-flex flex-wrap mb-4">
                     <div class="btn-group w-100 mb-3">
@@ -102,11 +101,11 @@
                         <button type="button" class="btn weekday-toggle {{ $weeklyAvailability->saturday ? '' : 'active' }}" data-day="saturday">Sábado</button>
                         <button type="button" class="btn weekday-toggle {{ $weeklyAvailability->sunday ? '' : 'active' }}" data-day="sunday">Domingo</button>
                     </div>
-                    <p class="text-muted w-100 mt-2">Los días marcados indican que <strong>NO</strong> está disponible ese día de la semana.</p>
+                    <p class="text-muted w-100 mt-2">Los días marcados indican que <strong>NO</strong> estás disponible ese día de la semana.</p>
                 </div>
 
                 <h6 class="mb-3">Fechas específicas de no disponibilidad</h6>
-                <p class="text-muted mb-4">Selecciona los días específicos en los que no estará disponible.</p>
+                <p class="text-muted mb-4">Selecciona los días específicos en los que no estarás disponible.</p>
                 
                 <div class="row">
                     @foreach($months as $index => $month)
@@ -144,14 +143,16 @@
                         </div>
                     @endforeach
                 </div>
+                
+                <div class="d-flex justify-content-center mt-3">
+                    <a href="{{ route('availability.index', ['page' => 'next']) }}" class="btn btn-outline-primary">
+                        Siguientes 6 meses <i class="ti ti-arrow-right"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-    <!--/ Absences Content -->
 </div>
-
-<!-- Include Valoration Modal -->
-@include('collaborator.partials.valoration-modal')
 @endsection
 
 @section('page-script')
@@ -159,7 +160,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // CSRF Token setup for AJAX
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const collaboratorId = {{ $collaborator->id }};
     
     // Weekly availability toggle
     const weekdayToggles = document.querySelectorAll('.weekday-toggle');
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
             weeklyAvailability[day] = !this.classList.contains('active');
             
             // Send update to server
-            fetch(`/collaborator/${collaboratorId}/absences/update-weekly`, {
+            fetch('{{ route('availability.update-weekly') }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.status === 'success') {
                     Swal.fire({
                         title: 'Actualizado',
-                        text: 'La disponibilidad semanal ha sido actualizada',
+                        text: 'Tu disponibilidad semanal ha sido actualizada',
                         icon: 'success',
                         customClass: {
                             confirmButton: 'btn btn-primary'
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const date = this.getAttribute('data-date');
             
             // Send update to server
-            fetch(`/collaborator/${collaboratorId}/absences/toggle-date`, {
+            fetch('{{ route('availability.toggle-date') }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

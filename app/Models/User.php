@@ -99,4 +99,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Project::class, 'leader_id');
     }
+
+    /**
+     * Get associated contact record
+     */
+    public function contact()
+    {
+        return $this->hasOne(Contact::class);
+    }
 }
