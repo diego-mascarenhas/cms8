@@ -130,12 +130,7 @@
                                 </label>
                             </div>
                             
-                            <!-- Debug button - Remove after testing -->
-                            <div class="mt-2">
-                                <button type="button" class="btn btn-sm btn-info" onclick="debugCheckboxState()">
-                                    🐛 Debug: Ver estado del checkbox
-                                </button>
-                            </div>
+
                             
                             <input type="hidden" name="current_language_pair" id="current_language_pair" 
                                    value="{{ $currentLanguagePair ?? '' }}">
@@ -323,7 +318,6 @@
         // Function to load rates from server for specific language combination
         function loadRatesFromServer(sourceCode, targetCode) {
             const collaboratorId = {{ $collaborator->id }};
-            console.log('Loading rates from server for:', sourceCode, '->', targetCode);
             
             $.ajax({
                 url: `{{ route('collaborator.rates.get', ':id') }}`.replace(':id', collaboratorId),
@@ -333,8 +327,6 @@
                     target_language: targetCode
                 },
                 success: function(response) {
-                    console.log('Server response:', response);
-                    
                     if (response.rates && response.rates.length > 0) {
                         const key = `${sourceCode}|${targetCode}`;
                         ratesData[key] = {
@@ -351,8 +343,6 @@
                             }
                         });
                         
-                        console.log('Processed rates data:', ratesData[key]);
-                        
                         // Update the form with loaded data
                         $('select[name="currency"]').val(ratesData[key].currency).trigger('change');
                         
@@ -366,10 +356,7 @@
                                 unitSelect.val(ratesData[key].units[fareId]);
                             }
                         });
-                        
-                        console.log('Form updated with server data');
                     } else {
-                        console.log('No rates found for this combination, clearing form');
                         // No rates found, clear the form
                         $('.fare-input').val('0.00');
                         $('.unit-select').each(function() {
@@ -378,7 +365,6 @@
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error loading rates:', error, xhr.responseText);
                     // Clear the form on error
                     $('.fare-input').val('0.00');
                 }
@@ -391,17 +377,13 @@
             const targetCode = $(this).data('target');
             const isSameRates = $('#sameRates').is(':checked');
             
-            console.log('Language combination clicked:', sourceCode, '->', targetCode, 'Same rates:', isSameRates);
-            
             // If same rates mode, don't allow switching between combinations
             if (isSameRates) {
-                console.log('Same rates mode - ignoring click');
                 return;
             }
             
             // Save current state before switching
             saveCurrentRatesState();
-            console.log('Saved current state before switching');
             
             // Update active state - act like radio buttons
             $('[data-source][data-target]').removeClass('active').addClass('opacity-50');
@@ -412,7 +394,6 @@
                 $('#current_language_pair').val(sourceCode + '|' + targetCode);
                 
                 // Load rates for this combination
-                console.log('Loading rates for combination:', sourceCode, '->', targetCode);
                 restoreRatesState(sourceCode, targetCode);
             }
         });
@@ -420,7 +401,6 @@
         // Same rates checkbox handler
         $('#sameRates').on('change', function() {
             const isChecked = $(this).is(':checked');
-            console.log('Checkbox changed. Checked:', isChecked);
             
             if (isChecked) {
                 // Same rates for all combinations - show all as selected
@@ -428,8 +408,6 @@
                 
                 // Save current state before switching to same rates mode
                 saveCurrentRatesState();
-                
-                console.log('Same rates mode enabled - all combinations selected');
             } else {
                 // Different rates for each combination - show only current active one
                 $('[data-source][data-target]').removeClass('active').addClass('opacity-50');
@@ -441,8 +419,6 @@
                     const activeBtn = $(`[data-source="${sourceCode}"][data-target="${targetCode}"]`);
                     activeBtn.removeClass('opacity-50').addClass('active');
                 }
-                
-                console.log('Different rates per combination mode enabled');
             }
         });
         
@@ -526,13 +502,11 @@
         if (urlCurrency || urlLanguagePair || urlSameRates) {
             const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
             window.history.replaceState({path: cleanUrl}, '', cleanUrl);
-            console.log('URL parameters cleaned after setting initial state');
         }
         
         // Initialize checkbox state LAST (this will trigger proper visual behavior)
         setTimeout(() => {
             $('#sameRates').trigger('change');
-            console.log('Checkbox initialized with checked state:', $('#sameRates').is(':checked'));
         }, 10);
         
                                 // Only load rates from server if we don't have initial data from PHP
@@ -550,8 +524,6 @@
                     }
                 }
             }, 50); // Small delay to avoid flicker during initialization
-        } else {
-            console.log('Using initial data from PHP, skipping server load');
         }
         
         // Form submission handler
@@ -576,12 +548,6 @@
                 alert('Debe especificar al menos una tarifa.');
                 return false;
             }
-            
-            console.log('🚀 FORM SUBMISSION:');
-            console.log('- Same rates mode:', isSameRates);
-            console.log('- Current language pair:', $('#current_language_pair').val());
-            console.log('- Stored rates data:', ratesData);
-            console.log('- Form rates visible:', $('.fare-input').map(function() { return this.name + ': ' + this.value; }).get());
             
             // If using different rates per combination, add stored data
             if (!isSameRates) {
@@ -617,33 +583,10 @@
                         }
                     }
                 }
-                
-                console.log('Added hidden inputs for different rates per language');
-            } else {
-                console.log('Same rates mode - using visible form data only');
             }
         });
         
-        // Debug function - Remove after testing
-        window.debugCheckboxState = function() {
-            const isChecked = $('#sameRates').is(':checked');
-            const currentPair = $('#current_language_pair').val();
-            const formData = new FormData(document.getElementById('rates-form'));
-            
-            console.log('🐛 DEBUG CHECKBOX STATE:');
-            console.log('- Checkbox checked:', isChecked);
-            console.log('- Current language pair:', currentPair);
-            console.log('- Same rates in form data:', formData.get('same_rates'));
-            console.log('- All form data:');
-            for (let [key, value] of formData.entries()) {
-                console.log(`  ${key}: ${value}`);
-            }
-            console.log('- Stored rates data:', ratesData);
-            console.log('- Active language buttons:', $('[data-source][data-target].active').length);
-            
-            // Show visual feedback
-            alert(`Checkbox: ${isChecked ? 'MARCADO' : 'NO MARCADO'}\nCurrent pair: ${currentPair}\nActive buttons: ${$('[data-source][data-target].active').length}`);
-        };
+
     });
 </script>
 @endpush 
