@@ -85,7 +85,8 @@
                             </div>
                             
                             <div class="form-check mt-2">
-                                <input class="form-check-input" type="checkbox" id="sameRates" name="same_rates">
+                                <input class="form-check-input" type="checkbox" id="sameRates" name="same_rates" 
+                                       {{ request('same_rates') ? 'checked' : '' }}>
                                 <label class="form-check-label" for="sameRates">
                                     Usar las mismas tarifas para todas las combinaciones
                                 </label>
@@ -337,7 +338,7 @@
         }
         
         // Language combination button click handler
-        $('.btn-group .btn').on('click', function() {
+        $('[data-source][data-target]').on('click', function() {
             const sourceCode = $(this).data('source');
             const targetCode = $(this).data('target');
             const isSameRates = $('#sameRates').is(':checked');
@@ -350,8 +351,9 @@
                 console.log('Saved current state before switching');
             }
             
-            // Update active state
-            $(this).addClass('active').siblings().removeClass('active');
+            // Update active state - Remove active from ALL language buttons and add to clicked one
+            $('[data-source][data-target]').removeClass('active');
+            $(this).addClass('active');
             
             if (sourceCode && targetCode) {
                 // Update hidden field
@@ -373,8 +375,8 @@
             console.log('Checkbox changed. Checked:', isChecked);
             
             if (isChecked) {
-                // Enable all combinations to use same rates
-                $('.btn-group .btn').removeClass('opacity-50');
+                // Same rates for all combinations - show all as selected
+                $('[data-source][data-target]').addClass('active').removeClass('opacity-50');
                 
                 // Clear stored data except current
                 const currentPair = $('#current_language_pair').val();
@@ -386,10 +388,20 @@
                     }
                 }
                 
-                console.log('Same rates mode enabled');
+                console.log('Same rates mode enabled - all combinations selected');
             } else {
-                // Different rates for each combination
-                $('.btn-group .btn').not('.active').addClass('opacity-50');
+                // Different rates for each combination - show only active one
+                $('[data-source][data-target]').removeClass('active opacity-50');
+                
+                // Activate only the current language pair
+                const currentPair = $('#current_language_pair').val();
+                if (currentPair) {
+                    const [sourceCode, targetCode] = currentPair.split('|');
+                    $(`[data-source="${sourceCode}"][data-target="${targetCode}"]`).addClass('active');
+                }
+                
+                // Show inactive ones with opacity
+                $('[data-source][data-target]').not('.active').addClass('opacity-50');
                 
                 // Save current state if there are any values
                 saveCurrentRatesState();
@@ -418,12 +430,51 @@
         $('select[name="currency"]').trigger('change');
         
         // Set initial language combination
-        const activeBtn = $('.btn-group .btn.active');
+        const activeBtn = $('[data-source][data-target].active');
         if (activeBtn.length) {
             const sourceCode = activeBtn.data('source');
             const targetCode = activeBtn.data('target');
             if (sourceCode && targetCode) {
                 $('#current_language_pair').val(sourceCode + '|' + targetCode);
+            }
+        } else {
+            // If no active button, activate the first one
+            const firstBtn = $('[data-source][data-target]').first();
+            if (firstBtn.length) {
+                firstBtn.addClass('active');
+                const sourceCode = firstBtn.data('source');
+                const targetCode = firstBtn.data('target');
+                if (sourceCode && targetCode) {
+                    $('#current_language_pair').val(sourceCode + '|' + targetCode);
+                }
+            }
+        }
+        
+        // Get current currency from URL params, existing rate, or default to EUR
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCurrency = urlParams.get('currency');
+        const urlLanguagePair = urlParams.get('language_pair');
+        
+        if (urlCurrency) {
+            $('select[name="currency"]').val(urlCurrency);
+        } else {
+            const firstRateWithCurrency = @json($collaborator->fares->first());
+            if (firstRateWithCurrency && firstRateWithCurrency.pivot && firstRateWithCurrency.pivot.currency_code) {
+                $('select[name="currency"]').val(firstRateWithCurrency.pivot.currency_code);
+            }
+        }
+        
+        // Set active language combination from URL if provided
+        if (urlLanguagePair) {
+            const [urlSourceCode, urlTargetCode] = urlLanguagePair.split('|');
+            if (urlSourceCode && urlTargetCode) {
+                // Remove active from all and set to URL specified combination
+                $('[data-source][data-target]').removeClass('active');
+                const targetBtn = $(`[data-source="${urlSourceCode}"][data-target="${urlTargetCode}"]`);
+                if (targetBtn.length) {
+                    targetBtn.addClass('active');
+                    $('#current_language_pair').val(urlLanguagePair);
+                }
             }
         }
         
@@ -431,13 +482,22 @@
         $('#sameRates').trigger('change');
         
         // Load initial rates AFTER checkbox initialization
-        if (activeBtn.length && !$('#sameRates').is(':checked')) {
-            const sourceCode = activeBtn.data('source');
-            const targetCode = activeBtn.data('target');
+        const currentActiveBtn = $('[data-source][data-target].active');
+        if (currentActiveBtn.length && !$('#sameRates').is(':checked')) {
+            const sourceCode = currentActiveBtn.data('source');
+            const targetCode = currentActiveBtn.data('target');
             if (sourceCode && targetCode) {
                 loadRatesFromServer(sourceCode, targetCode);
             }
         }
+        
+                 // Clean URL parameters after setting initial state
+         if (urlCurrency || urlLanguagePair || urlParams.get('same_rates')) {
+             // Use replaceState to remove query parameters without reloading the page
+             const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+             window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+             console.log('URL parameters cleaned after setting initial state');
+         }
         
         // Form submission handler
         $('#rates-form').on('submit', function(e) {

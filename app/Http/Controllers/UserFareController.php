@@ -193,7 +193,24 @@ class UserFareController extends Controller
                 ]);
             }
             
-            return redirect()->back()->with('success', 'Tarifas actualizadas exitosamente.');
+            // Preserve state parameters when redirecting back
+            $queryParams = [];
+            if ($validated['currency']) {
+                $queryParams['currency'] = $validated['currency'];
+            }
+            if ($validated['current_language_pair']) {
+                $queryParams['language_pair'] = $validated['current_language_pair'];
+            }
+            if ($sameRates) {
+                $queryParams['same_rates'] = '1';
+            }
+            
+            $redirectUrl = route('collaborator.rates', $id);
+            if (!empty($queryParams)) {
+                $redirectUrl .= '?' . http_build_query($queryParams);
+            }
+            
+            return redirect($redirectUrl)->with('success', 'Tarifas actualizadas exitosamente.');
             
         } catch (\Exception $e) {
             DB::rollBack();
