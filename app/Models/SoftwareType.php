@@ -21,4 +21,4 @@ class SoftwareType extends Model
     {
         return $this->hasMany(Software::class, 'type_id');
     }
-} 
+}

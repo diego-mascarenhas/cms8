@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\List60Status;
+use Illuminate\Database\Seeder;
 
 class List60StatusesSeeder extends Seeder
 {

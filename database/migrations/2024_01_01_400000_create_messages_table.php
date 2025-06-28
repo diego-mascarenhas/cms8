@@ -6,35 +6,34 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-	/**
-	 * Run the migrations.
-	 */
-	public function up(): void
-	{
-		Schema::create('messages', function (Blueprint $table)
-		{
-			$table->id();
-			$table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
-			$table->string('name');
-			$table->unsignedInteger('type_id');
-			$table->foreignId('category_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
-			$table->foreignId('template_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
-			$table->text('text');
-			$table->tinyInteger('status_id')->default(2);
-			$table->timestamps();
-			$table->softDeletes();
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('messages', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->unsignedInteger('type_id');
+            $table->foreignId('category_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
+            $table->foreignId('template_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
+            $table->text('text');
+            $table->tinyInteger('status_id')->default(2);
+            $table->timestamps();
+            $table->softDeletes();
 
-			$table->foreign('type_id')->references('id')->on('message_type')
-			    ->onUpdate('cascade')
-			    ->onDelete('cascade');
-		});
-	}
+            $table->foreign('type_id')->references('id')->on('message_type')
+                ->onUpdate('cascade')
+                ->onDelete('cascade');
+        });
+    }
 
-	/**
-	 * Reverse the migrations.
-	 */
-	public function down(): void
-	{
-		Schema::dropIfExists('messages');
-	}
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('messages');
+    }
 };

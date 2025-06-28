@@ -11,7 +11,7 @@ class Unit extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'type'
+        'type',
     ];
 
     /**
@@ -39,7 +39,7 @@ class Unit extends Model
             'pal' => 'Palabra',
             'pag' => 'Página',
             'rollo' => 'Rollo',
-            'hour' => 'Hora'
+            'hour' => 'Hora',
         ];
     }
-} 
+}

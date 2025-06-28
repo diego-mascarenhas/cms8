@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Team;
-use App\Models\ContactValoration;
 use App\Http\Requests\UpdateTeamSettingsRequest;
+use App\Models\ContactValoration;
+use App\Models\Team;
 use Illuminate\Http\Request;
 
 class TeamSettingController extends Controller
@@ -35,12 +35,9 @@ class TeamSettingController extends Controller
     {
         $this->authorize('update', $team);
 
-        foreach ($request->validated() as $group => $settings)
-        {
-            foreach ($settings as $key => $value)
-            {
-                if (!empty($value) || $value === "0")
-                {
+        foreach ($request->validated() as $group => $settings) {
+            foreach ($settings as $key => $value) {
+                if (! empty($value) || $value === '0') {
                     $team->setSetting($key, $value, [
                         'group' => $group,
                         'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook']),
@@ -84,8 +81,8 @@ class TeamSettingController extends Controller
                         'type' => 'password',
                         'value' => $team->getSetting('stripe_webhook'),
                         'is_encrypted' => true,
-                    ]
-                ]
+                    ],
+                ],
             ],
             'categories' => [
                 'title' => 'Categories Configuration',
@@ -134,7 +131,7 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('categories_default_ordering', 'name_asc'),
                         'is_encrypted' => false,
                     ],
-                ]
+                ],
             ],
             'notifications' => [
                 'title' => 'Notification Settings',
@@ -151,9 +148,9 @@ class TeamSettingController extends Controller
                         'type' => 'checkbox',
                         'value' => $team->getSetting('notifications_sms', '0'),
                         'is_encrypted' => false,
-                    ]
-                ]
-            ]
+                    ],
+                ],
+            ],
         ];
 
         return isset($config[$group]) ? [$group => $config[$group]] : [];
@@ -241,7 +238,7 @@ class TeamSettingController extends Controller
 
         // Check if any contacts are using this valoration
         $contactsCount = \App\Models\Contact::where('valoration_id', $valoration->id)->count();
-        
+
         if ($contactsCount > 0) {
             return redirect()->back()->with('error', "No se puede eliminar la valoración porque hay {$contactsCount} contactos que la están usando");
         }

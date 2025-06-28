@@ -5,7 +5,7 @@ use Illuminate\Support\ServiceProvider;
 
 return [
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Application Name
     |--------------------------------------------------------------------------
@@ -16,9 +16,9 @@ return [
     |
     */
 
-  'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Laravel'),
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
@@ -29,9 +29,9 @@ return [
     |
     */
 
-  'env' => env('APP_ENV', 'production'),
+    'env' => env('APP_ENV', 'production'),
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Application Debug Mode
     |--------------------------------------------------------------------------
@@ -42,9 +42,9 @@ return [
     |
     */
 
-  'debug' => (bool) env('APP_DEBUG', false),
+    'debug' => (bool) env('APP_DEBUG', false),
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
@@ -55,11 +55,11 @@ return [
     |
     */
 
-  'url' => env('APP_URL', 'http://localhost'),
+    'url' => env('APP_URL', 'http://localhost'),
 
-  'asset_url' => env('ASSET_URL'),
+    'asset_url' => env('ASSET_URL'),
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
@@ -70,9 +70,9 @@ return [
     |
     */
 
-  'timezone' => 'UTC',
+    'timezone' => 'UTC',
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
@@ -83,9 +83,9 @@ return [
     |
     */
 
-  'locale' => 'es',
+    'locale' => 'es',
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Application Fallback Locale
     |--------------------------------------------------------------------------
@@ -96,9 +96,9 @@ return [
     |
     */
 
-  'fallback_locale' => 'en',
+    'fallback_locale' => 'en',
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Faker Locale
     |--------------------------------------------------------------------------
@@ -109,9 +109,9 @@ return [
     |
     */
 
-  'faker_locale' => 'es_ES',
+    'faker_locale' => 'es_ES',
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Encryption Key
     |--------------------------------------------------------------------------
@@ -122,11 +122,11 @@ return [
     |
     */
 
-  'key' => env('APP_KEY'),
+    'key' => env('APP_KEY'),
 
-  'cipher' => 'AES-256-CBC',
+    'cipher' => 'AES-256-CBC',
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Maintenance Mode Driver
     |--------------------------------------------------------------------------
@@ -139,13 +139,13 @@ return [
     |
     */
 
-  'maintenance' => [
-    'driver' => 'file',
-    'path' => storage_path('framework/maintenance.php'),
-    'template' => 'pages/misc-under-maintenance',
-  ],
+    'maintenance' => [
+        'driver' => 'file',
+        'path' => storage_path('framework/maintenance.php'),
+        'template' => 'pages/misc-under-maintenance',
+    ],
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Autoloaded Service Providers
     |--------------------------------------------------------------------------
@@ -156,29 +156,29 @@ return [
     |
     */
 
-  'providers' => ServiceProvider::defaultProviders()->merge([
-    /*
+    'providers' => ServiceProvider::defaultProviders()->merge([
+        /*
          * Package Service Providers...
          */
 
-    /*
+        /*
          * Application Service Providers...
          */
-    App\Providers\AppServiceProvider::class,
-    App\Providers\AuthServiceProvider::class,
-    // App\Providers\BroadcastServiceProvider::class,
-    App\Providers\EventServiceProvider::class,
-    App\Providers\RouteServiceProvider::class,
-    App\Providers\FortifyServiceProvider::class,
-    App\Providers\JetstreamServiceProvider::class,
-    App\Providers\MenuServiceProvider::class,
-    App\Providers\GrapesJsServiceProvider::class,
-    Yajra\DataTables\DataTablesServiceProvider::class,
-    Spatie\Permission\PermissionServiceProvider::class,
-    App\Providers\BladeServiceProvider::class,
-  ])->toArray(),
+        App\Providers\AppServiceProvider::class,
+        App\Providers\AuthServiceProvider::class,
+        // App\Providers\BroadcastServiceProvider::class,
+        App\Providers\EventServiceProvider::class,
+        App\Providers\RouteServiceProvider::class,
+        App\Providers\FortifyServiceProvider::class,
+        App\Providers\JetstreamServiceProvider::class,
+        App\Providers\MenuServiceProvider::class,
+        App\Providers\GrapesJsServiceProvider::class,
+        Yajra\DataTables\DataTablesServiceProvider::class,
+        Spatie\Permission\PermissionServiceProvider::class,
+        App\Providers\BladeServiceProvider::class,
+    ])->toArray(),
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | Class Aliases
     |--------------------------------------------------------------------------
@@ -189,17 +189,17 @@ return [
     |
     */
 
-  'aliases' => Facade::defaultAliases()->merge([
-    // 'Example' => App\Facades\Example::class,
-    'Helper' => App\Helpers\Helpers::class,
-    'DataTables' => Yajra\DataTables\Facades\DataTables::class,
-  ])->toArray(),
+    'aliases' => Facade::defaultAliases()->merge([
+        // 'Example' => App\Facades\Example::class,
+        'Helper' => App\Helpers\Helpers::class,
+        'DataTables' => Yajra\DataTables\Facades\DataTables::class,
+    ])->toArray(),
 
-  /*
+    /*
     |--------------------------------------------------------------------------
     | WhatsApp Support Number
     |--------------------------------------------------------------------------
     */
-  'whatsapp_support' => env('WHATSAPP_SUPPORT_NUMBER', ''),
+    'whatsapp_support' => env('WHATSAPP_SUPPORT_NUMBER', ''),
 
 ];

@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -15,7 +14,7 @@ class ContactValorationSeeder extends Seeder
     {
         $valorations = [
             ['id' => 1, 'name' => 'Top', 'icon' => '⭐'],
-            ['id' => 2, 'name' => 'Validada', 'icon' => '✅'], 
+            ['id' => 2, 'name' => 'Validada', 'icon' => '✅'],
             ['id' => 3, 'name' => 'Interesante', 'icon' => '🕐'],
             ['id' => 4, 'name' => 'Lista negra', 'icon' => '❌'],
             ['id' => 5, 'name' => 'En espera', 'icon' => '👁️'],

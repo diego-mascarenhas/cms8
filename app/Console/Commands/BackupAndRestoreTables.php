@@ -3,8 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class BackupAndRestoreTables extends Command
 {
@@ -15,9 +13,10 @@ class BackupAndRestoreTables extends Command
     {
         $operation = $this->argument('operation');
         $tables = $this->option('tables');
-        
+
         if (empty($tables)) {
             $this->error('No tables specified for backup/restore.');
+
             return;
         }
 
@@ -25,7 +24,7 @@ class BackupAndRestoreTables extends Command
         $backupPath = storage_path('app/backups/');
 
         // Crear directorio si no existe
-        if (!is_dir($backupPath)) {
+        if (! is_dir($backupPath)) {
             mkdir($backupPath, 0755, true); // Crear el directorio con permisos adecuados
             $this->info("Created backup directory: $backupPath");
         }
@@ -53,7 +52,7 @@ class BackupAndRestoreTables extends Command
                 $dbConfig['password'],
                 $dbConfig['database'],
                 escapeshellarg($table), // Escapar el nombre de la tabla
-                escapeshellarg($backupFile) // Escapar el nombre del archivo
+                escapeshellarg($backupFile), // Escapar el nombre del archivo
             );
 
             exec($command, $output, $returnVar);
@@ -72,7 +71,7 @@ class BackupAndRestoreTables extends Command
 
         foreach ($tables as $table) {
             $backupFile = $backupPath . "backup_{$table}.sql";
-            if (!file_exists($backupFile)) {
+            if (! file_exists($backupFile)) {
                 $this->error("Backup file not found for table $table: $backupFile");
                 continue;
             }
@@ -84,7 +83,7 @@ class BackupAndRestoreTables extends Command
                 $dbConfig['username'],
                 $dbConfig['password'],
                 $dbConfig['database'],
-                escapeshellarg($backupFile) // Escapar el nombre del archivo
+                escapeshellarg($backupFile), // Escapar el nombre del archivo
             );
 
             exec($command, $output, $returnVar);

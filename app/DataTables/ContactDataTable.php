@@ -35,11 +35,12 @@ class ContactDataTable extends DataTable
                 if ($row->currentSentiment) {
                     return '<span style="font-size: 1.5em;">' . $row->currentSentiment->sentiment->emoji . '</span>';
                 }
+
                 return '<span style="font-size: 1.5em;">🤔</span>';
             })
-            ->filterColumn('current_sentiment', function($query, $keyword) {
+            ->filterColumn('current_sentiment', function ($query, $keyword) {
                 if ($keyword !== '') {
-                    $query->whereHas('currentSentiment', function($q) use ($keyword) {
+                    $query->whereHas('currentSentiment', function ($q) use ($keyword) {
                         $q->where('sentiment_id', $keyword);
                     });
                 }
@@ -50,19 +51,19 @@ class ContactDataTable extends DataTable
             ->addColumn('responsible_name', function ($contact) {
                 return $contact->responsible->name ?? __('Unassigned');
             })
-            ->filterColumn('responsible_name', function($query, $keyword) {
+            ->filterColumn('responsible_name', function ($query, $keyword) {
                 $query->whereHas('responsible', function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });
             })
             ->addColumn('categories', function ($row) {
-                return $row->categories->map(function($category) {
+                return $row->categories->map(function ($category) {
                     return '<span class="badge bg-label-primary me-1">' . e($category->name) . '</span>';
                 })->join(' ');
             })
-            ->filterColumn('categories', function($query, $keyword) {
+            ->filterColumn('categories', function ($query, $keyword) {
                 if ($keyword !== '') {
-                    $query->whereHas('categories', function($q) use ($keyword) {
+                    $query->whereHas('categories', function ($q) use ($keyword) {
                         $q->where('id', $keyword);
                     });
                 }
@@ -82,7 +83,7 @@ class ContactDataTable extends DataTable
             'status',
             'sources',
             'responsible:id,name',
-            'categories'
+            'categories',
         ]);
     }
 

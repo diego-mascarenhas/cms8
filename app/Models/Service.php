@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Carbon\Carbon;
 
 class Service extends Model
 {
@@ -45,7 +45,8 @@ class Service extends Model
     /**
      * Set the data attribute.
      *
-     * @param  mixed  $value
+     * @param mixed $value
+     *
      * @return void
      */
     public function setDataAttribute($value)
@@ -60,12 +61,14 @@ class Service extends Model
     /**
      * Get the data attribute.
      *
-     * @param  string  $value
+     * @param string $value
+     *
      * @return array
      */
     public function getDataAttribute($value)
     {
         $decoded = json_decode($value, true);
+
         return is_array($decoded) ? $decoded : [];
     }
 
@@ -144,8 +147,7 @@ class Service extends Model
 
     public function getStatusLabelAttribute()
     {
-        switch ($this->status)
-        {
+        switch ($this->status) {
             case 1:
                 return '<span class="badge rounded-pill bg-label-secondary">Suspendido</span>';
             case 2:
@@ -173,32 +175,23 @@ class Service extends Model
 
         $categoryData = [];
 
-        if (is_string($dataField))
-        {
+        if (is_string($dataField)) {
             $decodedData = json_decode($dataField, true);
 
-            if (json_last_error() === JSON_ERROR_NONE)
-            {
+            if (json_last_error() === JSON_ERROR_NONE) {
                 $categoryData = $decodedData;
             }
-        }
-        elseif (is_array($dataField))
-        {
+        } elseif (is_array($dataField)) {
             $categoryData = $dataField;
-        }
-        elseif (is_object($dataField))
-        {
+        } elseif (is_object($dataField)) {
             $categoryData = (array) $dataField;
         }
 
-        if ($this->price !== null && $this->price != 0)
-        {
+        if ($this->price !== null && $this->price != 0) {
             $basePrice = $this->price;
             $discount = $this->discount ?? 0;
             $frequency = $this->frequency ?? 1;
-        }
-        else
-        {
+        } else {
             $basePrice = $categoryData['price'] ?? 0;
             $discount = $categoryData['discount'] ?? 0;
             $frequency = $categoryData['frequency'] ?? 1;
@@ -211,27 +204,25 @@ class Service extends Model
 
     public static function calculateTotal($status, $operation)
     {
-        $services = self::where(function($query) use ($status) {
-                // If status is specifically provided, use exact status
-                if (is_numeric($status)) {
-                    // For status 4, include all status >= 4 (all active statuses)
-                    if ($status == 4) {
-                        $query->where('status', '>=', 4);
-                    } else {
-                        $query->where('status', $status);
-                    }
+        $services = self::where(function ($query) use ($status) {
+            // If status is specifically provided, use exact status
+            if (is_numeric($status)) {
+                // For status 4, include all status >= 4 (all active statuses)
+                if ($status == 4) {
+                    $query->where('status', '>=', 4);
+                } else {
+                    $query->where('status', $status);
                 }
-            })
-            ->whereHas('category', function ($query) use ($operation)
-            {
+            }
+        })
+            ->whereHas('category', function ($query) use ($operation) {
                 $query->where('operation', $operation);
             })
             ->get();
 
         $total = 0;
 
-        foreach ($services as $service)
-        {
+        foreach ($services as $service) {
             $total += $service->calculated_price;
         }
 

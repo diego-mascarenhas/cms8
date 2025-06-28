@@ -3,12 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\AccountDataTable;
-use App\Models\Account;
 use App\Models\Module;
 use App\Models\Team;
 use Illuminate\Http\Request;
-
-use Log;
 
 class AccountController extends Controller
 {
@@ -48,7 +45,7 @@ class AccountController extends Controller
     {
         $team = Team::findOrFail($id);
         $additionalModules = Module::where('is_core', false)->get();
-        
+
         return view('account.form', compact('team', 'additionalModules'));
     }
 
@@ -58,25 +55,25 @@ class AccountController extends Controller
     public function update(Request $request, string $id)
     {
         $team = Team::findOrFail($id);
-        
+
         $request->validate([
             'name' => 'required|string|max:255',
             'modules' => 'array',
-            'modules.*' => 'string|exists:modules,key'
+            'modules.*' => 'string|exists:modules,key',
         ]);
 
         $team->update([
-            'name' => $request->name
+            'name' => $request->name,
         ]);
 
         // Get all non-core modules
         $allModules = Module::where('is_core', false)->get();
-        
+
         // Disable all non-core modules first
         foreach ($allModules as $module) {
             $team->disableModule($module->key);
         }
-        
+
         // Enable selected modules
         if ($request->has('modules')) {
             foreach ($request->modules as $moduleKey) {

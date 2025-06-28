@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 
 class Enterprise extends Model
 {
@@ -58,7 +58,7 @@ class Enterprise extends Model
     {
         return $query->where('type_id', 2);
     }
-    
+
     public function team()
     {
         return $this->belongsTo(Team::class);
@@ -68,12 +68,12 @@ class Enterprise extends Model
     {
         return $this->belongsTo(Contact::class, 'responsible_id');
     }
-    
+
     public function type()
     {
         return $this->belongsTo(EnterpriseType::class);
     }
-    
+
     public function assignee()
     {
         return $this->belongsTo(User::class, 'assigned_to');
@@ -87,21 +87,22 @@ class Enterprise extends Model
     public function enterpriseBillingAddress()
     {
         return $this->enterpriseBillingAddresses()
-                    ->where('status', 1)
-                    ->latest()
-                    ->first();
+            ->where('status', 1)
+            ->latest()
+            ->first();
     }
 
     public function status()
     {
         return $this->belongsTo(EnterpriseStatus::class);
     }
-    
+
     public function getStatusLabelAttribute()
     {
         if ($this->status) {
             return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
         }
+
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
     }
 
@@ -129,7 +130,7 @@ class Enterprise extends Model
             $count = $contactStats[$statusId] ?? 0;
             $percentage = $totalContacts > 0 ? round(($count / $totalContacts) * 100, 2) : 0;
             $data["total$label"] = $count;
-            $data[lcfirst($label) . "Percentage"] = $percentage;
+            $data[lcfirst($label) . 'Percentage'] = $percentage;
         }
 
         $defaultData = [
@@ -164,6 +165,7 @@ class Enterprise extends Model
     {
         $this->code = $customerId;
         $this->code_type = 'stripe_customer';
+
         return $this;
     }
 

@@ -30,7 +30,7 @@ class EnterpriseBillingAddress extends Model
     {
         return $this->belongsTo(Enterprise::class);
     }
-    
+
     public function fiscalConditionType()
     {
         return $this->belongsTo(EnterpriseFiscalConditionType::class);

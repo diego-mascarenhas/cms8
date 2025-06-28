@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
 
 class ContactLanguageVariant extends Model
 {
@@ -16,7 +16,7 @@ class ContactLanguageVariant extends Model
         'target_language_code',
         'proficiency_level',
         'is_certified',
-        'notes'
+        'notes',
     ];
 
     protected $casts = [
@@ -26,10 +26,8 @@ class ContactLanguageVariant extends Model
 
     protected static function booted()
     {
-        static::addGlobalScope('team', function (Builder $builder)
-        {
-            if (auth()->check())
-            {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (auth()->check()) {
                 $builder->whereHas('contact', function ($query) {
                     $query->where('team_id', auth()->user()->currentTeam->id);
                 });

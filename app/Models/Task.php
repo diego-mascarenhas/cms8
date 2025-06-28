@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 
 class Task extends Model
 {
@@ -20,7 +20,7 @@ class Task extends Model
         'start_date',
         'due_date',
         'status_id',
-        'order'
+        'order',
     ];
 
     protected $casts = [
@@ -52,6 +52,7 @@ class Task extends Model
         if ($this->status) {
             return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->translated_name . '</span>';
         }
+
         return '<span class="badge rounded-pill bg-label-secondary">' . __('task_status.UNKNOWN') . '</span>';
     }
 
@@ -63,7 +64,7 @@ class Task extends Model
     public function scopePendingForUser($query, $userId)
     {
         return $query->where('responsible_id', $userId)
-            ->whereHas('status', function($q) {
+            ->whereHas('status', function ($q) {
                 $q->whereNotIn('name', ['DONE']);
             })
             ->orderBy('due_date', 'asc');
@@ -71,12 +72,13 @@ class Task extends Model
 
     /**
      * Default ordering for tasks
-     * 
+     *
      * @param \Illuminate\Database\Eloquent\Builder $query
+     *
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeDefaultOrder($query)
     {
         return $query->orderBy('status_id', 'asc')->orderBy('due_date', 'asc');
     }
-} 
+}

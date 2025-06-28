@@ -2,8 +2,8 @@
 
 namespace App\View\Components;
 
-use Illuminate\View\Component;
 use App\Models\Enterprise;
+use Illuminate\View\Component;
 
 class ClientSelect extends Component
 {
@@ -35,4 +35,4 @@ class ClientSelect extends Component
     {
         return view('components.client-select');
     }
-} 
+}

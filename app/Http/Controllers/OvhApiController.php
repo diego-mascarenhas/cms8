@@ -27,6 +27,7 @@ class OvhApiController extends Controller
     private function generateSignature($method, $url, $body, $timestamp)
     {
         $toSign = $this->appSecret . '+' . $this->consumerKey . '+' . $method . '+' . $url . '+' . $body . '+' . $timestamp;
+
         return '$1$' . sha1($toSign);
     }
 
@@ -37,7 +38,7 @@ class OvhApiController extends Controller
     {
         $url = $this->apiEndpoint . $path;
         $timestamp = time();
-        
+
         $headers = [
             'X-Ovh-Application' => $this->appKey,
             'X-Ovh-Consumer' => $this->consumerKey,
@@ -47,6 +48,7 @@ class OvhApiController extends Controller
         ];
 
         $response = Http::withHeaders($headers)->send($method, $url, ['body' => $body]);
+
         return $response->json();
     }
 
@@ -58,26 +60,26 @@ class OvhApiController extends Controller
         try {
             // Get list of invoice IDs
             $invoiceIds = $this->makeRequest('GET', '/me/bill');
-            
+
             $invoices = [];
             foreach ($invoiceIds as $id) {
                 $invoice = $this->makeRequest('GET', "/me/bill/{$id}");
                 $invoices[] = $invoice;
             }
-            
+
             // Save to JSON file
             Storage::put('ovh_data/invoices.json', json_encode($invoices, JSON_PRETTY_PRINT));
-            
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Invoices fetched successfully',
                 'count' => count($invoices),
-                'data' => $invoices
+                'data' => $invoices,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to fetch invoices: ' . $e->getMessage()
+                'message' => 'Failed to fetch invoices: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -90,33 +92,33 @@ class OvhApiController extends Controller
         try {
             // Get list of service IDs
             $serviceIds = $this->makeRequest('GET', '/service');
-            
+
             $services = [];
             foreach ($serviceIds as $id) {
                 $service = $this->makeRequest('GET', "/service/{$id}");
                 $services[] = $service;
             }
-            
+
             // Save to JSON file
             Storage::put('ovh_data/services.json', json_encode($services, JSON_PRETTY_PRINT));
-            
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Services fetched successfully',
                 'count' => count($services),
-                'data' => $services
+                'data' => $services,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to fetch services: ' . $e->getMessage()
+                'message' => 'Failed to fetch services: ' . $e->getMessage(),
             ], 500);
         }
     }
 
     /**
      * Get all services raw (for use by the job)
-     * 
+     *
      * @return array
      */
     public function getServicesRaw()
@@ -124,29 +126,29 @@ class OvhApiController extends Controller
         try {
             // Get list of service IDs
             $serviceIds = $this->makeRequest('GET', '/service');
-            
+
             $services = [];
             foreach ($serviceIds as $id) {
                 $service = $this->makeRequest('GET', "/service/{$id}");
-                
+
                 // For web hosting services, fetch additional details
                 if (isset($service['category']) && $service['category'] === 'hosting') {
                     $details = $this->makeRequest('GET', "/hosting/web/{$service['domain']}");
                     $service = array_merge($service, $details);
                 }
-                
+
                 $services[] = $service;
             }
-            
+
             return [
                 'status' => 'success',
                 'count' => count($services),
-                'data' => $services
+                'data' => $services,
             ];
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
-                'message' => 'Failed to fetch services: ' . $e->getMessage()
+                'message' => 'Failed to fetch services: ' . $e->getMessage(),
             ];
         }
     }
@@ -161,16 +163,16 @@ class OvhApiController extends Controller
 
     /**
      * Run the domain sync job manually
-     * 
+     *
      * @return \Illuminate\Http\Response
      */
     public function syncDomains()
     {
-        dispatch(new \App\Jobs\OvhServiceSync());
-        
+        dispatch(new \App\Jobs\OvhServiceSync);
+
         return response()->json([
             'status' => 'success',
-            'message' => 'OVH domain sync job dispatched successfully'
+            'message' => 'OVH domain sync job dispatched successfully',
         ]);
     }
-} 
+}

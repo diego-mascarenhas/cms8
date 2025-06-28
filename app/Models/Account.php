@@ -11,7 +11,7 @@ class Account extends Model
     protected $fillable = [
         'name',
         'user_id',
-        'personal_team'
+        'personal_team',
     ];
 
     protected $appends = ['active_clients_count'];
@@ -56,10 +56,11 @@ class Account extends Model
     {
         $hours = floor($seconds / 3600);
         $minutes = floor(($seconds % 3600) / 60);
-        
+
         if ($hours > 0) {
-            return sprintf("%dh %dm", $hours, $minutes);
+            return sprintf('%dh %dm', $hours, $minutes);
         }
-        return sprintf("%dm", $minutes);
+
+        return sprintf('%dm', $minutes);
     }
-} 
+}

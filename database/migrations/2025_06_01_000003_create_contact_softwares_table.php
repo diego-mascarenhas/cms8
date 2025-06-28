@@ -24,7 +24,7 @@ return new class extends Migration
 
             // Prevent duplicate entries
             $table->unique(['contact_id', 'software_id']);
-            
+
             // Add indexes for better performance
             $table->index(['contact_id']);
             $table->index(['software_id']);

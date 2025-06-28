@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use App\Models\Contact;
 use App\Models\ContactSource;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class LeadController extends Controller
 {
@@ -42,25 +42,25 @@ class LeadController extends Controller
             ContactSource::create([
                 'contact_id' => $contact->id,
                 'source_id' => 1,
-                'value' => $validated['email']
+                'value' => $validated['email'],
             ]);
 
             ContactSource::create([
                 'contact_id' => $contact->id,
                 'source_id' => 2,
-                'value' => $validated['phone']
+                'value' => $validated['phone'],
             ]);
 
             $logMessage = sprintf(
-                "[%s] Nuevo lead - Nombre: %s, Email: %s, Teléfono: %s",
+                '[%s] Nuevo lead - Nombre: %s, Email: %s, Teléfono: %s',
                 now()->format('Y-m-d H:i:s'),
                 $validated['name'],
                 $validated['email'],
-                $validated['phone']
+                $validated['phone'],
             );
-            
+
             Log::channel('leads')->info($logMessage);
-            
+
             return view('lead.success');
         } catch (\Exception $e) {
             return redirect()->back()

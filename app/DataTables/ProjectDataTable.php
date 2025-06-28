@@ -3,12 +3,12 @@
 namespace App\DataTables;
 
 use App\Models\Project;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
-use Carbon\Carbon;
 
 class ProjectDataTable extends DataTable
 {
@@ -22,7 +22,7 @@ class ProjectDataTable extends DataTable
             })
             ->filterColumn('enterprise_id', function ($query, $keyword) {
                 $query->whereHas('client', function ($q) use ($keyword) {
-                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
             ->editColumn('category_id', function ($data) {
@@ -30,7 +30,7 @@ class ProjectDataTable extends DataTable
             })
             ->filterColumn('category_id', function ($query, $keyword) {
                 $query->whereHas('category', function ($q) use ($keyword) {
-                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
             ->editColumn('date_start', function ($data) {
@@ -42,7 +42,7 @@ class ProjectDataTable extends DataTable
             ->addColumn('responsible_name', function ($contact) {
                 return $contact->responsible->name ?? 'Sin asignar';
             })
-            ->filterColumn('responsible_name', function($query, $keyword) {
+            ->filterColumn('responsible_name', function ($query, $keyword) {
                 $query->whereHas('responsible', function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });

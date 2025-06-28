@@ -26,7 +26,7 @@ class TaskStatus extends Model
 
     public function getLabelClassAttribute()
     {
-        return match($this->name) {
+        return match ($this->name) {
             'TO_DO' => 'bg-label-secondary',
             'IN_PROGRESS' => 'bg-label-primary',
             'REVIEW' => 'bg-label-warning',
@@ -34,4 +34,4 @@ class TaskStatus extends Model
             default => 'bg-label-info',
         };
     }
-} 
+}

@@ -58,4 +58,4 @@ class ContactProject extends Pivot
     {
         return $this->belongsTo(Project::class);
     }
-} 
+}

@@ -2,11 +2,11 @@
 
 namespace App\Providers;
 
+use App\Listeners\AssignAdminRole;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
-use App\Listeners\AssignAdminRole;
 
 class EventServiceProvider extends ServiceProvider
 {

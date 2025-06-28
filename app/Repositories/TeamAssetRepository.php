@@ -3,8 +3,8 @@
 namespace App\Repositories;
 
 use Dotlogics\Grapesjs\App\Repositories\AssetRepository;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class TeamAssetRepository extends AssetRepository
@@ -21,8 +21,9 @@ class TeamAssetRepository extends AssetRepository
 
     /**
      * Normalize filename for URL safety
-     * 
+     *
      * @param string $filename
+     *
      * @return string
      */
     protected function normalizeFilename($filename)
@@ -30,21 +31,21 @@ class TeamAssetRepository extends AssetRepository
         // Get file extension
         $extension = pathinfo($filename, PATHINFO_EXTENSION);
         $name = pathinfo($filename, PATHINFO_FILENAME);
-        
+
         // Transliterate accented characters to ASCII
         $name = Str::ascii($name);
-        
+
         // Convert to lowercase and replace spaces with hyphens
         $name = Str::slug($name);
-        
+
         // Remove any remaining non-alphanumeric characters except for hyphens
         $name = preg_replace('/[^a-z0-9\-]/', '', $name);
-        
+
         // Ensure name is not empty
         if (empty($name)) {
             $name = 'file_' . substr(md5(time() . rand()), 0, 8);
         }
-        
+
         // Combine with extension
         return $name . '.' . strtolower($extension);
     }
@@ -52,13 +53,13 @@ class TeamAssetRepository extends AssetRepository
     public function __construct()
     {
         parent::__construct();
-        
+
         // Set team-specific upload path with simplified structure
         $teamId = Auth::check() ? (Auth::user()->currentTeam->id ?? 'default') : 'default';
         $teamHash = $this->getTeamHash($teamId);
         $this->diskPath = "media/{$teamHash}";
     }
-    
+
     /**
      * Override the single file upload method to ensure team ID is included
      * and filenames are normalized
@@ -69,7 +70,7 @@ class TeamAssetRepository extends AssetRepository
         $teamId = Auth::check() ? (Auth::user()->currentTeam->id ?? 'default') : 'default';
         $teamHash = $this->getTeamHash($teamId);
         $this->diskPath = "media/{$teamHash}";
-        
+
         // Check if the file is from blob or has a real filename
         if ($file->getClientOriginalName() === 'blob') {
             // Use default method for blob files (these are typically from image editor)
@@ -77,14 +78,14 @@ class TeamAssetRepository extends AssetRepository
         } else {
             // Normalize the filename before storing
             $normalizedFilename = $this->normalizeFilename($file->getClientOriginalName());
-            
+
             // Store file with normalized name
             $path = $this->storage->putFileAs($this->diskPath, $file, $normalizedFilename, 'public');
-            
+
             return $this->storage->url($path);
         }
     }
-    
+
     /**
      * Get the current disk path for testing
      */
@@ -92,7 +93,7 @@ class TeamAssetRepository extends AssetRepository
     {
         return $this->diskPath;
     }
-    
+
     /**
      * For debugging - get the current team ID and hash
      */
@@ -100,14 +101,14 @@ class TeamAssetRepository extends AssetRepository
     {
         $teamId = Auth::check() ? (Auth::user()->currentTeam->id ?? 'default') : 'default';
         $teamHash = $this->getTeamHash($teamId);
-        
+
         return [
             'team_id' => $teamId,
             'team_hash' => $teamHash,
-            'path' => $this->diskPath
+            'path' => $this->diskPath,
         ];
     }
-    
+
     /**
      * Test filename normalization
      */
@@ -115,4 +116,4 @@ class TeamAssetRepository extends AssetRepository
     {
         return $this->normalizeFilename($filename);
     }
-} 
+}

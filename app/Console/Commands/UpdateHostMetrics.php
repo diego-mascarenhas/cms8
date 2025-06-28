@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\Services\VCenterService;
 use App\Models\Host;
+use App\Services\VCenterService;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class UpdateHostMetrics extends Command
@@ -24,10 +24,8 @@ class UpdateHostMetrics extends Command
 
     public function handle()
     {
-        try
-        {
-            if ($this->showConsoleOutput)
-            {
+        try {
+            if ($this->showConsoleOutput) {
                 $this->info('Starting host metrics update...');
             }
 
@@ -38,8 +36,7 @@ class UpdateHostMetrics extends Command
             //     $this->info('Hosts obtained from vCenter: ' . print_r($hosts, true));
             // }
 
-            foreach ($hosts['value'] as $hostData)
-            {
+            foreach ($hosts['value'] as $hostData) {
                 Host::updateOrCreate(
                     ['host' => $hostData['host']],
                     [
@@ -48,26 +45,21 @@ class UpdateHostMetrics extends Command
                         'power_state' => $hostData['power_state'] ?? 'N/A',
                         'connection_state' => $hostData['connection_state'] ?? 'N/A',
                         'type_id' => 1,
-                    ]
+                    ],
                 );
 
-                if ($this->showConsoleOutput)
-                {
+                if ($this->showConsoleOutput) {
                     $this->info("Updated metrics for host: {$hostData['name']} - {$hostData['host']}");
                 }
             }
 
-            if ($this->showConsoleOutput)
-            {
+            if ($this->showConsoleOutput) {
                 $this->info('Host metrics updated successfully.');
             }
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             Log::error('Error updating host metrics: ' . $e->getMessage());
 
-            if ($this->showConsoleOutput)
-            {
+            if ($this->showConsoleOutput) {
                 $this->error('Error updating host metrics: ' . $e->getMessage());
             }
         }

@@ -28,7 +28,7 @@ class EnterpriseOrganizationController extends Controller
                         'content' => $organization->description,
                         'time_allocation' => $organization->time_allocation,
                         'color' => $department->color ?? 'yellow',
-                        'availability' => $organization->availability
+                        'availability' => $organization->availability,
                     ];
                 });
 
@@ -43,11 +43,11 @@ class EnterpriseOrganizationController extends Controller
      */
     public function create()
     {
-        $data = new \stdClass();
+        $data = new \stdClass;
         $departments = EnterpriseDepartment::all()->map(function ($department) {
             return [
                 'id' => $department->id,
-                'name' => $department->name
+                'name' => $department->name,
             ];
         });
 
@@ -72,7 +72,7 @@ class EnterpriseOrganizationController extends Controller
         $maxOrder = EnterpriseOrganization::where('department_id', $request->department_id)
             ->where('team_id', auth()->user()->currentTeam->id)
             ->max('order');
-        
+
         EnterpriseOrganization::create([
             'name' => $request->name,
             'description' => $request->description,
@@ -81,7 +81,7 @@ class EnterpriseOrganizationController extends Controller
             'responsible_id' => $request->responsible_id,
             'time_allocation' => $request->time_allocation,
             'availability' => $request->availability,
-            'order' => ($maxOrder ?? 0) + 1
+            'order' => ($maxOrder ?? 0) + 1,
         ]);
 
         return redirect()->route('organization.index')->with('success', 'Task created successfully.');
@@ -95,11 +95,11 @@ class EnterpriseOrganizationController extends Controller
         $data = EnterpriseOrganization::where('id', $id)
             ->where('team_id', auth()->user()->currentTeam->id)
             ->firstOrFail();
-        
+
         $departments = EnterpriseDepartment::all()->map(function ($department) {
             return [
                 'id' => $department->id,
-                'name' => $department->name
+                'name' => $department->name,
             ];
         });
 
@@ -123,7 +123,7 @@ class EnterpriseOrganizationController extends Controller
         $organization = EnterpriseOrganization::where('id', $id)
             ->where('team_id', auth()->user()->currentTeam->id)
             ->firstOrFail();
-        
+
         $organization->update([
             'name' => $request->name,
             'description' => $request->description,
@@ -144,7 +144,7 @@ class EnterpriseOrganizationController extends Controller
         $organization = EnterpriseOrganization::where('id', $id)
             ->where('team_id', auth()->user()->currentTeam->id)
             ->firstOrFail();
-            
+
         $organization->delete();
 
         return redirect()->route('organization.index')->with('success', 'Task deleted successfully.');

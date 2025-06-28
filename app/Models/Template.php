@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\TemplateStatus;
+use Dotlogics\Grapesjs\App\Contracts\Editable;
+use Dotlogics\Grapesjs\App\Traits\EditableTrait;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Dotlogics\Grapesjs\App\Traits\EditableTrait;
-use Dotlogics\Grapesjs\App\Contracts\Editable;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Contracts\Encryption\DecryptException;
-use Illuminate\Database\Eloquent\Builder;
-use App\Enums\TemplateStatus;
 
 class Template extends Model implements Editable
 {
@@ -31,16 +31,14 @@ class Template extends Model implements Editable
 
     protected static function booted()
     {
-        static::addGlobalScope('team', function (Builder $builder)
-        {
-            if (auth()->check())
-            {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (auth()->check()) {
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
 
         static::creating(function ($model) {
-            if (!$model->team_id && auth()->check()) {
+            if (! $model->team_id && auth()->check()) {
                 $model->team_id = auth()->user()->currentTeam->id;
             }
         });
@@ -53,15 +51,14 @@ class Template extends Model implements Editable
 
     public static function getOptions()
     {
-        return self::all()->map(function ($data)
-        {
+        return self::all()->map(function ($data) {
             return [
                 'id' => $data->id,
                 'name' => $data->name,
             ];
         });
     }
-    
+
     /**
      * Get the route key for the model.
      *
@@ -71,7 +68,7 @@ class Template extends Model implements Editable
     {
         return $this->getHashedId();
     }
-    
+
     /**
      * Hash the ID for public URLs
      *
@@ -81,26 +78,28 @@ class Template extends Model implements Editable
     {
         return Crypt::encryptString($this->id);
     }
-    
+
     /**
      * Find a template by its hashed ID
      *
      * @param string $hashedId
+     *
      * @return Template|null
      */
     public static function findByHash($hashedId)
     {
         try {
             $id = Crypt::decryptString($hashedId);
+
             return self::find($id);
         } catch (DecryptException $e) {
             return null;
         }
     }
-    
+
     /**
      * Get the current team ID for the template
-     * 
+     *
      * @return int|null
      */
     public function getTeamId()

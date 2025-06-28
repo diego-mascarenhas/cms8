@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Task;
-use App\Models\User;
-use App\Models\Team;
 use App\Models\TaskStatus;
+use App\Models\Team;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class TaskSeeder extends Seeder
@@ -51,4 +51,4 @@ class TaskSeeder extends Seeder
             ]);
         }
     }
-} 
+}

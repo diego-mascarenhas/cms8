@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\List60;
 use App\Models\Contact;
+use App\Models\List60;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class List60Factory extends Factory

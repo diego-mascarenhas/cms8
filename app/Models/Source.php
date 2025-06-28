@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Traits\HasSourceIcons;
+use Illuminate\Database\Eloquent\Model;
 
 class Source extends Model
 {

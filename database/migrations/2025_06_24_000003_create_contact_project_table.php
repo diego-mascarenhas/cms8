@@ -26,7 +26,7 @@ return new class extends Migration
 
             // Prevent duplicate entries
             $table->unique(['contact_id', 'project_id']);
-            
+
             // Add indexes for better performance
             $table->index(['contact_id']);
             $table->index(['project_id']);

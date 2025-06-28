@@ -23,8 +23,9 @@ class FareUnitSeeder extends Seeder
         $rollUnit = Unit::where('type', 'Rollos')->first();
 
         // Check if units exist before proceeding
-        if (!$minuteUnit || !$tenMinutesUnit || !$hourUnit || !$wordUnit || !$pageUnit || !$rollUnit) {
+        if (! $minuteUnit || ! $tenMinutesUnit || ! $hourUnit || ! $wordUnit || ! $pageUnit || ! $rollUnit) {
             echo "Warning: Some units not found. Skipping FareUnitSeeder.\n";
+
             return;
         }
 
@@ -34,7 +35,7 @@ class FareUnitSeeder extends Seeder
         $wordId = $wordUnit->id;
         $pageId = $pageUnit->id;
         $rollId = $rollUnit->id;
-        
+
         // Define the relationships
         $relationships = [
             // Traducción audiovisual
@@ -53,7 +54,7 @@ class FareUnitSeeder extends Seeder
             ['fare_name' => 'Ajuste de traducción para doblaje', 'unit_ids' => [$minuteId, $rollId]],
             ['fare_name' => 'Posedición de traducción audiovisual', 'unit_ids' => [$hourId, $minuteId]],
             ['fare_name' => 'Posedición de transcripción', 'unit_ids' => [$hourId, $minuteId]],
-            
+
             // Traducción general (texto)
             ['fare_name' => 'Traducción general', 'unit_ids' => [$wordId]],
             ['fare_name' => 'Revisión general', 'unit_ids' => [$wordId]],
@@ -61,7 +62,7 @@ class FareUnitSeeder extends Seeder
             ['fare_name' => 'Traducción médica', 'unit_ids' => [$wordId]],
             ['fare_name' => 'Traducción técnica', 'unit_ids' => [$wordId]],
             ['fare_name' => 'Traducción científica', 'unit_ids' => [$wordId]],
-            
+
             // Accesibilidad audiovisual
             ['fare_name' => 'Posedición de traducción', 'unit_ids' => [$hourId, $wordId]],
             ['fare_name' => 'Subtítulos para sordos con guion', 'unit_ids' => [$minuteId]],
@@ -70,20 +71,20 @@ class FareUnitSeeder extends Seeder
             ['fare_name' => 'Revisión de subtítulos para sordos', 'unit_ids' => [$minuteId]],
             ['fare_name' => 'Creación guion de audiodescripción', 'unit_ids' => [$minuteId]],
             ['fare_name' => 'Locución de audiodescripción', 'unit_ids' => [$minuteId]],
-            ['fare_name' => 'Lengua de signos', 'unit_ids' => [$minuteId]]
+            ['fare_name' => 'Lengua de signos', 'unit_ids' => [$minuteId]],
         ];
-        
+
         // Create the relationships
         foreach ($relationships as $relationship) {
             $fare = Fare::where('name', $relationship['fare_name'])->first();
-            
+
             if ($fare) {
                 foreach ($relationship['unit_ids'] as $unitId) {
                     DB::table('fare_unit')->insert([
                         'fare_id' => $fare->id,
                         'unit_id' => $unitId,
                         'created_at' => now(),
-                        'updated_at' => now()
+                        'updated_at' => now(),
                     ]);
                 }
             }

@@ -16,11 +16,11 @@ class FareBlocksSeeder extends Seeder
             ['name' => 'Traducción'],
             ['name' => 'Subtitulado'],
             ['name' => 'Audiodescripción'],
-            ['name' => 'Otras tarifas']
+            ['name' => 'Otras tarifas'],
         ];
 
         foreach ($blocks as $block) {
             FareBlock::create($block);
         }
     }
-} 
+}

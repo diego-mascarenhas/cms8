@@ -9,8 +9,6 @@ use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-use Carbon\Carbon;
-
 class AccountDataTable extends DataTable
 {
     /**
@@ -24,8 +22,8 @@ class AccountDataTable extends DataTable
             ->addColumn('owner_name', function ($account) {
                 return $account->owner->name;
             })
-            ->filterColumn('owner_name', function($query, $keyword) {
-                $query->whereHas('owner', function($q) use ($keyword) {
+            ->filterColumn('owner_name', function ($query, $keyword) {
+                $query->whereHas('owner', function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });
             })
@@ -39,13 +37,14 @@ class AccountDataTable extends DataTable
                 $seconds = $account->total_time;
                 $hours = floor($seconds / 3600);
                 $minutes = floor(($seconds % 3600) / 60);
-                
+
                 if ($hours > 0) {
-                    return sprintf("%dh %dm", $hours, $minutes);
+                    return sprintf('%dh %dm', $hours, $minutes);
                 }
-                return sprintf("%dm", $minutes);
+
+                return sprintf('%dm', $minutes);
             })
-            ->editColumn('created_at', function($account) {
+            ->editColumn('created_at', function ($account) {
                 return $account->created_at->format('d/m/Y');
             })
             ->addColumn('action', function ($account) {
@@ -77,7 +76,7 @@ class AccountDataTable extends DataTable
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'pageLength' => 60,
-                'paging' => false
+                'paging' => false,
             ]);
     }
 

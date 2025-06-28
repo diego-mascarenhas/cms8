@@ -16,12 +16,12 @@ class UserFare extends Model
         'language_destination_id',
         'currency_id',
         'amount',
-        'negotiable'
+        'negotiable',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'negotiable' => 'boolean'
+        'negotiable' => 'boolean',
     ];
 
     /**
@@ -70,6 +70,7 @@ class UserFare extends Model
     public function getFormattedAmountAttribute()
     {
         $currencySymbol = $this->currency ? $this->currency->symbol : '€';
+
         return $currencySymbol . ' ' . number_format($this->amount, 2);
     }
-} 
+}

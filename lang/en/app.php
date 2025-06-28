@@ -13,26 +13,25 @@ return [
     'clients' => 'Clients',
     'list60' => 'List of 60',
 
-    
     // Messages
     'Are you sure you want to delete this record?' => 'Are you sure you want to delete this record?',
     'This action cannot be undone' => 'This action cannot be undone',
     'Yes, delete' => 'Yes, delete',
     'Error' => 'Error',
     'An error occurred while deleting the record' => 'An error occurred while deleting the record',
-    
+
     'languages' => [
         'english' => 'English',
         'spanish' => 'Spanish',
         'french' => 'French',
         'german' => 'German',
         'italian' => 'Italian',
-        'portuguese' => 'Portuguese'
+        'portuguese' => 'Portuguese',
     ],
     'theme' => [
         'light' => 'Light',
         'dark' => 'Dark',
-        'system' => 'System'
+        'system' => 'System',
     ],
     'shortcuts' => [
         'title' => 'Shortcuts',
@@ -45,7 +44,7 @@ return [
         'settings' => 'Setting',
         'account_settings' => 'Account Settings',
         'accounts' => 'Accounts',
-        'accounts_settings' => 'Accounts Settings'
+        'accounts_settings' => 'Accounts Settings',
     ],
     'profile' => [
         'my_profile' => 'My Profile',
@@ -54,9 +53,9 @@ return [
             'manage' => 'Manage Team',
             'settings' => 'Team Settings',
             'create' => 'Create New Team',
-            'switch' => 'Switch Teams'
+            'switch' => 'Switch Teams',
         ],
         'logout' => 'Logout',
-        'login' => 'Login'
-    ]
+        'login' => 'Login',
+    ],
 ];

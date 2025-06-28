@@ -17,7 +17,7 @@ class EnterpriseOrganization extends Model
         'responsible_id',
         'time_allocation',
         'availability',
-        'order'
+        'order',
     ];
 
     public function department()

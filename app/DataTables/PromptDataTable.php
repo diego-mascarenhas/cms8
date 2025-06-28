@@ -9,8 +9,6 @@ use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-use Carbon\Carbon;
-
 class PromptDataTable extends DataTable
 {
     /**
@@ -24,24 +22,18 @@ class PromptDataTable extends DataTable
             ->addColumn('action', 'prompt.action')
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status'])
-            ->editColumn('type_id', function ($data)
-            {
+            ->editColumn('type_id', function ($data) {
                 return $data->type->name ?? null;
             })
-            ->editColumn('status', function ($data)
-            {
+            ->editColumn('status', function ($data) {
                 return $data->status_label;
             })
-            ->editColumn('status', function ($data)
-            {
-                if ($data->status)
-                {
+            ->editColumn('status', function ($data) {
+                if ($data->status) {
                     return '<span class="badge rounded-pill bg-label-success">Active</span>';
-                }
-                else
-                {
+                } else {
                     return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
-                };
+                }
             });
     }
 

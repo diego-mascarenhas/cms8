@@ -2,39 +2,39 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ClaudeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
-use App\Services\ClaudeService;
 
 class ClaudePromptController extends Controller
 {
     protected $promptsDir;
     protected $claudeService;
-    
+
     public function __construct(ClaudeService $claudeService)
     {
         $this->claudeService = $claudeService;
         $this->promptsDir = storage_path('app/claude_prompts');
-        
+
         // Create the prompts directory if it doesn't exist
-        if (!File::exists($this->promptsDir)) {
+        if (! File::exists($this->promptsDir)) {
             File::makeDirectory($this->promptsDir, 0755, true);
         }
     }
-    
+
     /**
      * Display a list of saved prompts
      */
     public function index()
     {
         $prompts = $this->getPromptsList();
-        
+
         // Get active prompt from env if available
         $activePrompt = env('CLAUDE_SYSTEM_PROMPT') ? 'Custom (from .env)' : 'Default';
-        
+
         return view('claude.prompts', compact('prompts', 'activePrompt'));
     }
-    
+
     /**
      * Show the form to create a new prompt
      */
@@ -42,7 +42,7 @@ class ClaudePromptController extends Controller
     {
         return view('claude.create-prompt');
     }
-    
+
     /**
      * Store a new prompt
      */
@@ -52,17 +52,17 @@ class ClaudePromptController extends Controller
             'name' => 'required|string|max:255',
             'content' => 'required|string',
         ]);
-        
+
         $fileName = $this->sanitizeFileName($request->name) . '.txt';
         $filePath = $this->promptsDir . '/' . $fileName;
-        
+
         // Save the prompt
         File::put($filePath, $request->content);
-        
+
         return redirect()->route('claude.prompts.index')
             ->with('success', 'Prompt saved successfully.');
     }
-    
+
     /**
      * Show edit form for a prompt
      */
@@ -70,20 +70,20 @@ class ClaudePromptController extends Controller
     {
         $fileName = $promptName . '.txt';
         $filePath = $this->promptsDir . '/' . $fileName;
-        
-        if (!File::exists($filePath)) {
+
+        if (! File::exists($filePath)) {
             return redirect()->route('claude.prompts.index')
                 ->with('error', 'Prompt not found.');
         }
-        
+
         $content = File::get($filePath);
-        
+
         return view('claude.edit-prompt', [
             'name' => $promptName,
-            'content' => $content
+            'content' => $content,
         ]);
     }
-    
+
     /**
      * Update a prompt
      */
@@ -92,22 +92,22 @@ class ClaudePromptController extends Controller
         $request->validate([
             'content' => 'required|string',
         ]);
-        
+
         $fileName = $promptName . '.txt';
         $filePath = $this->promptsDir . '/' . $fileName;
-        
-        if (!File::exists($filePath)) {
+
+        if (! File::exists($filePath)) {
             return redirect()->route('claude.prompts.index')
                 ->with('error', 'Prompt not found.');
         }
-        
+
         // Update the prompt
         File::put($filePath, $request->content);
-        
+
         return redirect()->route('claude.prompts.index')
             ->with('success', 'Prompt updated successfully.');
     }
-    
+
     /**
      * Delete a prompt
      */
@@ -115,17 +115,18 @@ class ClaudePromptController extends Controller
     {
         $fileName = $promptName . '.txt';
         $filePath = $this->promptsDir . '/' . $fileName;
-        
+
         if (File::exists($filePath)) {
             File::delete($filePath);
+
             return redirect()->route('claude.prompts.index')
                 ->with('success', 'Prompt deleted successfully.');
         }
-        
+
         return redirect()->route('claude.prompts.index')
             ->with('error', 'Prompt not found.');
     }
-    
+
     /**
      * Activate a prompt (set in memory for current session)
      */
@@ -134,32 +135,33 @@ class ClaudePromptController extends Controller
         $request->validate([
             'prompt_name' => 'required|string',
         ]);
-        
+
         $promptName = $request->prompt_name;
-        
+
         if ($promptName === 'default') {
             // Reset to default prompt
             $this->claudeService->resetSystemPrompt();
+
             return redirect()->route('claude.prompts.index')
                 ->with('success', 'Default prompt activated.');
         }
-        
+
         $fileName = $promptName . '.txt';
         $filePath = $this->promptsDir . '/' . $fileName;
-        
-        if (!File::exists($filePath)) {
+
+        if (! File::exists($filePath)) {
             return redirect()->route('claude.prompts.index')
                 ->with('error', 'Prompt not found.');
         }
-        
+
         // Load and set the prompt
         $promptContent = File::get($filePath);
         $this->claudeService->setSystemPrompt($promptContent);
-        
+
         return redirect()->route('claude.prompts.index')
             ->with('success', "Prompt '{$promptName}' activated for current session.");
     }
-    
+
     /**
      * Preview a prompt response
      */
@@ -169,78 +171,80 @@ class ClaudePromptController extends Controller
             'prompt_name' => 'required|string',
             'test_message' => 'required|string',
         ]);
-        
+
         $promptName = $request->prompt_name;
         $testMessage = $request->test_message;
-        
+
         if ($promptName === 'default') {
             // Use default prompt
             $promptContent = null;
         } else {
             $fileName = $promptName . '.txt';
             $filePath = $this->promptsDir . '/' . $fileName;
-            
-            if (!File::exists($filePath)) {
+
+            if (! File::exists($filePath)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Prompt not found'
+                    'message' => 'Prompt not found',
                 ]);
             }
-            
+
             $promptContent = File::get($filePath);
         }
-        
+
         // Get response using the selected prompt
         try {
             $response = $this->claudeService->chat($testMessage, [], $promptContent);
-            
-            if (!$response['success']) {
+
+            if (! $response['success']) {
                 \Log::error('Claude API Error in preview: ' . json_encode($response));
+
                 return response()->json([
                     'success' => false,
                     'message' => $response['message'] ?? 'Error from Claude API',
-                    'details' => $response['error'] ?? 'No additional details'
+                    'details' => $response['error'] ?? 'No additional details',
                 ]);
             }
-            
+
             return response()->json([
                 'success' => $response['success'],
-                'response' => $response['text']
+                'response' => $response['text'],
             ]);
         } catch (\Exception $e) {
             \Log::error('Exception in Claude preview: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Exception: ' . $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
         }
     }
-    
+
     /**
      * Get a list of all saved prompts
      */
     private function getPromptsList()
     {
         $prompts = [];
-        
+
         if (File::exists($this->promptsDir)) {
             $files = File::files($this->promptsDir);
-            
+
             foreach ($files as $file) {
                 $name = pathinfo($file, PATHINFO_FILENAME);
                 $prompts[] = [
                     'name' => $name,
                     'path' => $file->getPathname(),
                     'size' => File::size($file),
-                    'modified' => File::lastModified($file)
+                    'modified' => File::lastModified($file),
                 ];
             }
         }
-        
+
         return $prompts;
     }
-    
+
     /**
      * Sanitize a filename to avoid security issues
      */
@@ -248,10 +252,10 @@ class ClaudePromptController extends Controller
     {
         // Replace spaces with underscores
         $name = str_replace(' ', '_', $name);
-        
+
         // Remove any unsafe characters
         $name = preg_replace('/[^a-zA-Z0-9_-]/', '', $name);
-        
+
         return $name;
     }
-} 
+}

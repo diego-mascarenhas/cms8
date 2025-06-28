@@ -13,11 +13,10 @@ class WHMService
     {
         $serversString = env('WHM_SERVERS');
 
-        if (empty($serversString))
-        {
+        if (empty($serversString)) {
             return [
                 'success' => false,
-                'errors' => ['No hay servidores configurados en WHM_SERVERS']
+                'errors' => ['No hay servidores configurados en WHM_SERVERS'],
             ];
         }
 
@@ -25,31 +24,25 @@ class WHMService
         $successCount = 0;
         $errors = [];
 
-        foreach ($serversList as $index => $serverString)
-        {
+        foreach ($serversList as $index => $serverString) {
             $server = explode(':', trim($serverString));
 
-            if (count($server) < 3)
-            {
-                $errors[] = "Configuración de servidor incorrecta. Formato requerido: hostname:usuario:token";
+            if (count($server) < 3) {
+                $errors[] = 'Configuración de servidor incorrecta. Formato requerido: hostname:usuario:token';
                 continue;
             }
 
-            try
-            {
+            try {
                 $url = "https://{$server[0]}:2087";
                 $response = Http::withHeaders([
                     'Authorization' => 'whm ' . $server[1] . ':' . $server[2],
                 ])->get($url . '/json-api/listaccts');
 
-                if ($response->successful())
-                {
+                if ($response->successful()) {
                     $data = $response->json();
 
-                    if (isset($data['acct']))
-                    {
-                        foreach ($data['acct'] as $account)
-                        {
+                    if (isset($data['acct'])) {
+                        foreach ($data['acct'] as $account) {
                             $plan = $account['plan'] ?? $account['owner'] ?? null;
 
                             $domain = Domain::withTrashed()
@@ -57,43 +50,38 @@ class WHMService
                                 ->where('server_url', $server[0])
                                 ->first();
 
-                            if ($domain && $domain->trashed())
-                            {
+                            if ($domain && $domain->trashed()) {
                                 $domain->restore();
                             }
 
                             Domain::updateOrCreate(
                                 [
                                     'domain' => $account['domain'],
-                                    'server_url' => $server[0]
+                                    'server_url' => $server[0],
                                 ],
                                 [
                                     'username' => $account['user'],
                                     'plan' => $plan,
                                     'status_id' => $account['suspended'],
-                                    'data' => $account
-                                ]
+                                    'data' => $account,
+                                ],
                             );
                         }
                         $successCount++;
                     }
-                }
-                else
-                {
+                } else {
                     $error = "Error en servidor {$server[0]}: " . $response->body();
                     $errors[] = $error;
                     Log::error($error);
                 }
-            }
-            catch (\Exception $e)
-            {
+            } catch (\Exception $e) {
                 $error = "Error en servidor {$server[0]}: " . $e->getMessage();
                 $errors[] = $error;
                 Log::error($error, [
                     'exception' => get_class($e),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         }
@@ -102,23 +90,21 @@ class WHMService
             'success' => $successCount > 0,
             'total_servers' => count($serversList),
             'successful_servers' => $successCount,
-            'errors' => $errors
+            'errors' => $errors,
         ];
     }
 
     public function testConnections()
     {
         $serversString = env('WHM_SERVERS');
-        if (empty($serversString))
-        {
+        if (empty($serversString)) {
             return ['error' => 'No hay servidores configurados en WHM_SERVERS'];
         }
 
         $results = [];
         $serversList = explode(',', $serversString);
 
-        foreach ($serversList as $index => $serverString)
-        {
+        foreach ($serversList as $index => $serverString) {
             $server = explode(':', trim($serverString));
 
             $results[] = [
@@ -126,7 +112,7 @@ class WHMService
                 'raw_string' => $serverString,
                 'parsed_components' => count($server),
                 'components' => $server,
-                'test_result' => $this->testSingleServer($server)
+                'test_result' => $this->testSingleServer($server),
             ];
         }
 
@@ -135,25 +121,22 @@ class WHMService
 
     private function testSingleServer($server)
     {
-        try
-        {
-            if (count($server) < 3)
-            {
+        try {
+            if (count($server) < 3) {
                 return [
                     'success' => false,
                     'error' => 'Faltan componentes. Se necesitan 3 (servidor:usuario:token)',
-                    'components_found' => count($server)
+                    'components_found' => count($server),
                 ];
             }
 
             // Intentar resolver el hostname
             $ip = gethostbyname($server[0]);
-            if ($ip === $server[0])
-            {
+            if ($ip === $server[0]) {
                 return [
                     'success' => false,
                     'error' => 'No se pudo resolver el hostname',
-                    'hostname' => $server[0]
+                    'hostname' => $server[0],
                 ];
             }
 
@@ -170,18 +153,16 @@ class WHMService
                 'status_code' => $response->status(),
                 'response' => $response->json(),
                 'ip' => $ip,
-                'url' => $url
+                'url' => $url,
             ];
 
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             return [
                 'success' => false,
                 'error' => $e->getMessage(),
                 'error_type' => get_class($e),
                 'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
             ];
         }
     }

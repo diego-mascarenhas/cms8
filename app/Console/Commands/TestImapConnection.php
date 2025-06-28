@@ -21,12 +21,12 @@ class TestImapConnection extends Command
                 'validate_cert' => env('MAILBOX_VALIDATE_CERT', true),
                 'username' => env('MAILBOX_USERNAME'),
                 'password' => env('MAILBOX_PASSWORD'),
-                'protocol' => 'imap'
+                'protocol' => 'imap',
             ];
 
             // Test connection
             $this->info('Connecting to IMAP...');
-            $client = (new ClientManager())->make($config);
+            $client = (new ClientManager)->make($config);
             $client->connect();
             $this->info('Connected successfully!');
 
@@ -38,9 +38,9 @@ class TestImapConnection extends Command
                 ->get();
 
             $this->info('Found ' . $messages->count() . ' messages');
-            
+
             // Display message details
-            foreach($messages as $message) {
+            foreach ($messages as $message) {
                 $this->line('-------------------');
                 $this->info('Subject: ' . $message->getSubject()->first());
                 $this->info('From: ' . $message->getFrom()->first()->mail);
@@ -51,4 +51,4 @@ class TestImapConnection extends Command
             $this->error('Error: ' . $e->getMessage());
         }
     }
-} 
+}

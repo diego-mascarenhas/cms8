@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
-use Yajra\DataTables\Html\Editor\Editor;
-use Yajra\DataTables\Html\Editor\Fields;
 use Yajra\DataTables\Services\DataTable;
 
 class DomainDataTable extends DataTable
@@ -16,16 +14,18 @@ class DomainDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', function($domain) {
-                if(request()->route()->getName() == 'hosting.index') {
+            ->addColumn('action', function ($domain) {
+                if (request()->route()->getName() == 'hosting.index') {
                     return view('hosting.action', ['id' => $domain->id])->render();
                 }
+
                 return view('domain.action', ['id' => $domain->id])->render();
             })
             ->setRowId('id')
             ->editColumn('suspended', function ($domain) {
                 $statusClass = $domain->suspended ? 'danger' : 'success';
                 $statusText = $domain->suspended ? 'Suspended' : 'Active';
+
                 return '<span class="badge bg-label-' . $statusClass . '">' . $statusText . '</span>';
             })
             ->editColumn('site_type', function ($domain) {
@@ -57,7 +57,7 @@ class DomainDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->language([
-                'url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'
+                'url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json',
             ]);
     }
 
@@ -83,4 +83,4 @@ class DomainDataTable extends DataTable
     {
         return 'Domain_' . date('YmdHis');
     }
-} 
+}

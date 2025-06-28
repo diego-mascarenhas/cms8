@@ -4,11 +4,11 @@ namespace App\DataTables;
 
 use App\Models\UserFare;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
-use Illuminate\Support\Facades\Auth;
 
 class UserFareDataTable extends DataTable
 {
@@ -19,10 +19,10 @@ class UserFareDataTable extends DataTable
                 return view('user-fare.action', compact('userFare'));
             })
             ->addColumn('languages', function ($userFare) {
-                return '<span class="badge bg-label-primary me-1">' . 
-                    ($userFare->languageOrigin ? $userFare->languageOrigin->name : 'N/A') . 
-                    ' → ' . 
-                    ($userFare->languageDestination ? $userFare->languageDestination->name : 'N/A') . 
+                return '<span class="badge bg-label-primary me-1">' .
+                    ($userFare->languageOrigin ? $userFare->languageOrigin->name : 'N/A') .
+                    ' → ' .
+                    ($userFare->languageDestination ? $userFare->languageDestination->name : 'N/A') .
                     '</span>';
             })
             ->addColumn('fare_type', function ($userFare) {
@@ -30,6 +30,7 @@ class UserFareDataTable extends DataTable
             })
             ->addColumn('price', function ($userFare) {
                 $negotiableTag = $userFare->negotiable ? '<span class="badge bg-label-warning ms-1">Negociable</span>' : '';
+
                 return $userFare->formatted_amount . ' / ' . ($userFare->fare->unit->type ?? 'N/A') . $negotiableTag;
             })
             ->addColumn('user', function ($userFare) {
@@ -60,7 +61,7 @@ class UserFareDataTable extends DataTable
             ->serverSide(true)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->buttons([
-                'copy', 'excel', 'pdf', 'print'
+                'copy', 'excel', 'pdf', 'print',
             ]);
     }
 
@@ -81,6 +82,6 @@ class UserFareDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'UserFares_'.date('YmdHis');
+        return 'UserFares_' . date('YmdHis');
     }
-} 
+}

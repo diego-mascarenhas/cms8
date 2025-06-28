@@ -23,17 +23,17 @@ class WhmDomainSync implements ShouldQueue
     {
         try {
             $result = $whmService->syncDomainsFromAllServers();
-            
-            if (!$result['success'] && empty($result['successful_servers'])) {
+
+            if (! $result['success'] && empty($result['successful_servers'])) {
                 Log::error('Critical error in WHM domain sync: No servers were processed successfully', $result);
             }
         } catch (\Exception $e) {
             Log::error('Critical error in WHM domain sync: ' . $e->getMessage(), [
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
             ]);
             throw $e;
         }
     }
-} 
+}

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('type_id')->nullable();
             $table->timestamps();
             $table->softDeletes();
-            
+
             $table->foreign('type_id')->references('id')->on('software_types');
         });
     }
@@ -30,4 +30,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('software');
     }
-}; 
+};

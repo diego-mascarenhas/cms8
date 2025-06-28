@@ -3,13 +3,12 @@
 namespace App\DataTables;
 
 use App\Models\Invoice;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
-
-use Carbon\Carbon;
 
 class InvoiceDataTable extends DataTable
 {
@@ -29,11 +28,10 @@ class InvoiceDataTable extends DataTable
             })
             ->filterColumn('enterprise_id', function ($query, $keyword) {
                 $query->whereHas('enterprise', function ($q) use ($keyword) {
-                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
-            ->editColumn('date', function ($data)
-            {
+            ->editColumn('date', function ($data) {
                 return Carbon::parse($data->date)->format('d-m-Y');
             })
             ->editColumn('status', function ($data) {
@@ -49,11 +47,11 @@ class InvoiceDataTable extends DataTable
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('invoice-table')
-                    ->columns($this->getColumns())
-                    ->minifiedAjax()
-                    ->dom('frtip')
-                    ->orderBy(0);
+            ->setTableId('invoice-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(0);
     }
 
     public function getColumns(): array

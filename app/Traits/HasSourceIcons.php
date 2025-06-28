@@ -6,8 +6,7 @@ trait HasSourceIcons
 {
     public function getSourcesIconsHtmlAttribute()
     {
-        $sourcesHtml = $this->sources->map(function ($source)
-        {
+        $sourcesHtml = $this->sources->map(function ($source) {
             $isPrimary = $source->id === $this->source_id;
             $style = $isPrimary ? 'font-size: 1.2em; margin-right: 12px; white-space: nowrap;' : 'margin-right: 12px; white-space: nowrap;';
             $title = $isPrimary ? 'Primary Source: ' . $source->name : $source->name;
@@ -23,7 +22,7 @@ trait HasSourceIcons
                 $style,
                 $iconClass,
                 $source->color,
-                $title
+                $title,
             );
         });
 
@@ -34,4 +33,4 @@ trait HasSourceIcons
     {
         return in_array($this->icon, ['fa-envelope', 'fa-phone']) ? 'fas' : 'fab';
     }
-} 
+}

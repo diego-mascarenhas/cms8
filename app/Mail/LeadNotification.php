@@ -20,6 +20,6 @@ class LeadNotification extends Mailable
     public function build()
     {
         return $this->subject('Nuevo Lead Recibido')
-                    ->view('emails.lead-notification');
+            ->view('emails.lead-notification');
     }
 }

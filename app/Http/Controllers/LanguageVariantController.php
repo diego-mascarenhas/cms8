@@ -16,17 +16,17 @@ class LanguageVariantController extends Controller
     {
         return $dataTable->render('language.variants.index');
     }
-    
+
     /**
      * Mostrar el formulario para crear una variante
      */
     public function create()
     {
         $languages = Language::orderBy('name')->get();
-        
+
         return view('language.variants.form', compact('languages'));
     }
-    
+
     /**
      * Almacenar una nueva variante de idioma
      */
@@ -38,13 +38,13 @@ class LanguageVariantController extends Controller
             'base_language' => 'required|string|exists:languages,code',
             'country_code' => 'required|string|max:2',
         ]);
-        
+
         LanguageVariant::create($validated);
-        
+
         return redirect()->route('language-variants.index')
             ->with('success', 'Variante de idioma creada correctamente');
     }
-    
+
     /**
      * Mostrar el formulario para editar una variante
      */
@@ -52,10 +52,10 @@ class LanguageVariantController extends Controller
     {
         $languages = Language::orderBy('name')->get();
         $variant = $languageVariant;
-        
+
         return view('language.variants.form', compact('variant', 'languages'));
     }
-    
+
     /**
      * Actualizar la variante de idioma
      */
@@ -67,35 +67,35 @@ class LanguageVariantController extends Controller
             'base_language' => 'required|string|exists:languages,code',
             'country_code' => 'required|string|max:2',
         ]);
-        
+
         $languageVariant->update($validated);
-        
+
         return redirect()->route('language-variants.index')
             ->with('success', 'Variante de idioma actualizada correctamente');
     }
-    
+
     /**
      * Eliminar la variante de idioma
      */
     public function destroy(LanguageVariant $languageVariant)
     {
         $languageVariant->delete();
-        
+
         if (request()->ajax()) {
             return response()->json(['success' => true]);
         }
-        
+
         return redirect()->route('language-variants.index')
             ->with('success', 'Variante de idioma eliminada correctamente');
     }
-    
+
     /**
      * Obtener variantes para un idioma base (AJAX)
      */
     public function getVariants($baseLanguage)
     {
         $variants = LanguageVariant::getVariantsFor($baseLanguage);
-        
+
         return response()->json($variants);
     }
-} 
+}

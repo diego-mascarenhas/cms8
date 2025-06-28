@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 
 class ProductionSeeder extends Seeder
 {
@@ -32,4 +32,4 @@ class ProductionSeeder extends Seeder
         ]);
         $revision->assignRole([1, 2, 10]);
     }
-} 
+}

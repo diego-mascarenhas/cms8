@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
 use App\Services\Bruler\AuthService;
 use App\Services\Bruler\OrderService;
+use Illuminate\Support\ServiceProvider;
 
 class BrulerServiceProvider extends ServiceProvider
 {
@@ -15,13 +15,11 @@ class BrulerServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton(AuthService::class, function ($app)
-        {
-            return new AuthService();
+        $this->app->singleton(AuthService::class, function ($app) {
+            return new AuthService;
         });
 
-        $this->app->singleton(OrderService::class, function ($app)
-        {
+        $this->app->singleton(OrderService::class, function ($app) {
             return new OrderService($app->make(AuthService::class));
         });
     }

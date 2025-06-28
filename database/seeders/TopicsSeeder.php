@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Team;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use App\Models\Team;
 
 class TopicsSeeder extends Seeder
 {
@@ -63,7 +63,7 @@ class TopicsSeeder extends Seeder
             'Textil',
             'Alimentación',
             'Bebidas',
-            'Entretenimiento'
+            'Entretenimiento',
         ];
 
         // Get all teams to assign topics to each one
@@ -80,4 +80,4 @@ class TopicsSeeder extends Seeder
             }
         }
     }
-} 
+}

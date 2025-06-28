@@ -15,12 +15,12 @@ class ContactPortfolio extends Model
         'description',
         'year',
         'notes',
-        'data'
+        'data',
     ];
 
     protected $casts = [
         'data' => 'array',
-        'year' => 'integer'
+        'year' => 'integer',
     ];
 
     /**
@@ -45,17 +45,17 @@ class ContactPortfolio extends Model
     public function getLanguagesAttribute()
     {
         $languages = $this->data['languages'] ?? [];
-        
+
         // If it's stored as language pairs with source/target
-        if (is_array($languages) && !empty($languages) && isset($languages[0]['source'])) {
+        if (is_array($languages) && ! empty($languages) && isset($languages[0]['source'])) {
             return $languages;
         }
-        
+
         // If it's stored as simple array, convert to pairs format for backwards compatibility
-        if (is_array($languages) && !empty($languages) && is_string($languages[0])) {
+        if (is_array($languages) && ! empty($languages) && is_string($languages[0])) {
             return $languages;
         }
-        
+
         return [];
     }
 

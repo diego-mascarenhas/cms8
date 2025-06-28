@@ -20,6 +20,6 @@ class BalanceMail extends Mailable
     public function build()
     {
         return $this->view('emails.balance')
-                    ->with(['balances' => $this->balances]);
+            ->with(['balances' => $this->balances]);
     }
 }

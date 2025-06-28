@@ -22,7 +22,7 @@ return new class extends Migration
             $table->boolean('is_certified')->default(false);
             $table->text('notes')->nullable();
             $table->timestamps();
-            
+
             // Use a shorter name for the unique constraint
             $table->unique(['contact_id', 'source_language_code', 'target_language_code'], 'clv_lang_pair_unique');
         });

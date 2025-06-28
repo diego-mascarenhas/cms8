@@ -2,8 +2,8 @@
 
 namespace App\View\Components;
 
-use Illuminate\View\Component;
 use App\Models\User;
+use Illuminate\View\Component;
 
 class TeamUsersSelect extends Component
 {
@@ -22,7 +22,7 @@ class TeamUsersSelect extends Component
 
     private function getTeamUsers()
     {
-        return User::whereHas('teams', function($query) {
+        return User::whereHas('teams', function ($query) {
             $query->where('team_id', auth()->user()->currentTeam->id);
         })->pluck('name', 'id');
     }
@@ -31,4 +31,4 @@ class TeamUsersSelect extends Component
     {
         return view('components.team-users-select');
     }
-} 
+}

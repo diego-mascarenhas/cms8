@@ -4,10 +4,9 @@ namespace App\Http\Controllers;
 
 use App\DataTables\FareDataTable;
 use App\Models\Fare;
-use App\Models\Unit;
 use App\Models\FareType;
+use App\Models\Unit;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class FareController extends Controller
 {
@@ -57,7 +56,7 @@ class FareController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Tarifa creada exitosamente'
+                'message' => 'Tarifa creada exitosamente',
             ]);
         }
 
@@ -70,7 +69,7 @@ class FareController extends Controller
     public function show(Fare $fare)
     {
         $fare->load(['units', 'type']);
-        
+
         return view('fare.show', compact('fare'));
     }
 
@@ -113,7 +112,7 @@ class FareController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Tarifa actualizada exitosamente'
+                'message' => 'Tarifa actualizada exitosamente',
             ]);
         }
 
@@ -130,7 +129,7 @@ class FareController extends Controller
         if (request()->ajax()) {
             return response()->json(['success' => true]);
         }
-        
+
         return redirect()->route('fare.index')->with('success', 'Tarifa eliminada exitosamente');
     }
-} 
+}

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Http;
 
 class Domain extends Model
@@ -22,14 +22,14 @@ class Domain extends Model
         'notes',
         'needs_update',
         'is_working',
-        'data'
+        'data',
     ];
 
     protected $casts = [
         'suspended' => 'boolean',
         'needs_update' => 'boolean',
         'is_working' => 'boolean',
-        'data' => 'array'
+        'data' => 'array',
     ];
 
     public function server()
@@ -77,9 +77,9 @@ class Domain extends Model
         try {
             $client = new Client(['timeout' => 5]);
             $response = $client->get('https://' . $this->domain . '/wp-json/wp/v2', [
-                'http_errors' => false
+                'http_errors' => false,
             ]);
-            
+
             return $response->getStatusCode() === 200;
         } catch (\Exception $e) {
             return false;
@@ -99,22 +99,23 @@ class Domain extends Model
         try {
             // Get the server from relation
             $server = $this->server;
-            
-            if (!$server) {
+
+            if (! $server) {
                 return null;
             }
-            
+
             // Get the WHM servers configuration
             $serversString = env('WHM_SERVERS');
             if (empty($serversString)) {
-                \Log::error("WHM_SERVERS environment variable not configured");
+                \Log::error('WHM_SERVERS environment variable not configured');
+
                 return null;
             }
-            
+
             // Find the matching server in the list
             $serversList = explode(',', $serversString);
             $serverConfig = null;
-            
+
             foreach ($serversList as $serverString) {
                 $serverParts = explode(':', trim($serverString));
                 if (count($serverParts) >= 3 && $serverParts[0] === $server->server_url) {
@@ -122,61 +123,65 @@ class Domain extends Model
                     break;
                 }
             }
-            
-            if (!$serverConfig) {
+
+            if (! $serverConfig) {
                 \Log::error("Server {$server->server_url} not found in WHM_SERVERS configuration");
+
                 return null;
             }
-            
+
             $hostname = $serverConfig[0];
             $username = $serverConfig[1];
             $token = $serverConfig[2];
-            
+
             // Use the same approach as WhmService
             $url = "https://{$hostname}:2087/json-api/php_get_vhost_versions";
             $query = http_build_query([
                 'api.filter.enable' => 1,
                 'api.filter.a.field' => 'vhost',
-                'api.filter.a.arg0' => $this->domain
+                'api.filter.a.arg0' => $this->domain,
             ]);
-            
+
             $response = Http::withHeaders([
                 'Authorization' => 'whm ' . $username . ':' . $token,
             ])->get($url . '?' . $query);
-            
-            if (!$response->successful()) {
+
+            if (! $response->successful()) {
                 \Log::error("WHM API request failed for {$this->domain}: " . $response->body());
+
                 return null;
             }
-            
+
             $data = $response->json();
-            
+
             // Check for the version in the response
             if (isset($data['data']['result'][0]['version'])) {
                 $version = $data['data']['result'][0]['version'];
-                
+
                 // Handle cases like "ea-php82"
                 if (preg_match('/ea-php(\d+)/', $version, $matches)) {
                     // Convert ea-php82 to 8.2
                     $majorMinor = $matches[1];
+
                     return substr($majorMinor, 0, 1) . '.' . substr($majorMinor, 1);
                 }
-                
+
                 return $version;
             }
-            
+
             return null;
         } catch (\Exception $e) {
             // Log error
             \Log::error('Error fetching PHP version: ' . $e->getMessage());
+
             return null;
         }
     }
-    
+
     public function updatePhpVersion(): void
     {
         $phpVersion = $this->getPhpVersionFromServer();
-        
+
         if ($phpVersion && $this->php_version !== $phpVersion) {
             $this->php_version = $phpVersion;
             $this->save();

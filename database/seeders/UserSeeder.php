@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
 use App\Models\Team;
+use App\Models\User;
 use Hash;
+use Illuminate\Database\Seeder;
 
 class UserSeeder extends Seeder
 {
@@ -46,9 +46,9 @@ class UserSeeder extends Seeder
         ]);
         $user->teams()->attach(1, [
             'role' => 'admin',
-            'created_at' => now()
+            'created_at' => now(),
         ]);
-        $user->update(['current_team_id' => 1]); 
+        $user->update(['current_team_id' => 1]);
 
         // Collaborator
         $user = User::factory()->create([
@@ -57,12 +57,12 @@ class UserSeeder extends Seeder
             'password' => Hash::make('Passw0rd!'),
             'email_verified_at' => null,
             'current_team_id' => 1,
-            
+
         ]);
         $user->assignRole(3);
         // $user->categories()->attach([5001]);
         $user->teams()->attach(1);
-        
+
         // Editor
         $user = User::factory()->create([
             'name' => 'Editor',
@@ -122,7 +122,7 @@ class UserSeeder extends Seeder
         $user->assignRole(8);
         // $user->categories()->attach([5001]);
         $user->teams()->attach(1);
-        
+
         // Guest
         $user = User::factory()->create([
             'name' => 'Guest',
@@ -143,7 +143,7 @@ class UserSeeder extends Seeder
 
         $revision->teams()->attach(2, [
             'role' => 'admin',
-            'created_at' => now()
+            'created_at' => now(),
         ]);
         $revision->update(['current_team_id' => 2]);
 
@@ -179,14 +179,14 @@ class UserSeeder extends Seeder
 
         $humano->teams()->attach(3, [
             'role' => 'admin',
-            'created_at' => now()
+            'created_at' => now(),
         ]);
         $humano->update(['current_team_id' => 3]);
 
         // Asing User to Team
         $team = Team::find(3);
         $team->users()->attach($revision->id, [
-            'role' => 'admin'
+            'role' => 'admin',
         ]);
     }
 }

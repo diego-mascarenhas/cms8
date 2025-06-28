@@ -57,7 +57,7 @@ class Team extends JetstreamTeam
         $defaultOptions = [
             'type' => 'string',
             'group' => 'general',
-            'is_encrypted' => false
+            'is_encrypted' => false,
         ];
 
         $options = array_merge($defaultOptions, $options);
@@ -67,11 +67,10 @@ class Team extends JetstreamTeam
         $setting->fill([
             'type' => $options['type'],
             'group' => $options['group'],
-            'is_encrypted' => $options['is_encrypted']
+            'is_encrypted' => $options['is_encrypted'],
         ]);
 
-        if (!$setting->exists)
-        {
+        if (! $setting->exists) {
             $setting->save();
         }
 
@@ -107,8 +106,8 @@ class Team extends JetstreamTeam
     public function enableModule($moduleKey, $settings = null)
     {
         $module = Module::where('key', $moduleKey)->first();
-        
-        if (!$module) {
+
+        if (! $module) {
             return false;
         }
 
@@ -137,8 +136,8 @@ class Team extends JetstreamTeam
     public function disableModule($moduleKey)
     {
         $module = Module::where('key', $moduleKey)->first();
-        
-        if (!$module) {
+
+        if (! $module) {
             return false;
         }
 

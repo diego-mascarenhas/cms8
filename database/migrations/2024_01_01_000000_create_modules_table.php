@@ -32,11 +32,11 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['module_id', 'team_id']);
-            
+
             $table->foreign('module_id')->references('id')->on('modules')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
-            
+
             $table->foreign('team_id')->references('id')->on('teams')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
@@ -51,4 +51,4 @@ return new class extends Migration
         Schema::dropIfExists('module_team');
         Schema::dropIfExists('modules');
     }
-}; 
+};

@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\CustomerFareDataTable;
-use App\Models\CustomerFare;
 use App\Models\Contact;
+use App\Models\Currency;
+use App\Models\CustomerFare;
 use App\Models\Fare;
 use App\Models\Language;
-use App\Models\LanguageVariant;
-use App\Models\Currency;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -28,7 +27,7 @@ class CustomerFareController extends Controller
     public function collaboratorRates($collaboratorId, CustomerFareDataTable $dataTable)
     {
         $collaborator = Contact::findOrFail($collaboratorId);
-        
+
         return $dataTable->with('customer_id', $collaboratorId)
             ->render('collaborator.rates-datatable', compact('collaborator'));
     }
@@ -57,7 +56,7 @@ class CustomerFareController extends Controller
             'fare_id' => 'required|exists:fares,id',
             'currency_id' => 'required|exists:currencies,code',
             'amount' => 'required|numeric|min:0',
-            'negotiable' => 'boolean'
+            'negotiable' => 'boolean',
         ]);
 
         // Find or create contact for this user
@@ -67,10 +66,10 @@ class CustomerFareController extends Controller
             [
                 'name' => $user->name,
                 'team_id' => auth()->user()->currentTeam->id,
-                'creator_id' => auth()->id()
-            ]
+                'creator_id' => auth()->id(),
+            ],
         );
-        
+
         // Replace user_id with contact_id
         $validated['customer_id'] = $contact->id;
 
@@ -79,7 +78,7 @@ class CustomerFareController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Tarifa creada exitosamente'
+                'message' => 'Tarifa creada exitosamente',
             ]);
         }
 
@@ -92,7 +91,7 @@ class CustomerFareController extends Controller
     public function show(CustomerFare $customerFare)
     {
         $customerFare->load(['fare.unit', 'fare.block', 'customer', 'languageOrigin', 'languageDestination', 'currency']);
-        
+
         return view('customer-fare.show', compact('customerFare'));
     }
 
@@ -104,7 +103,7 @@ class CustomerFareController extends Controller
         $fares = Fare::with(['unit', 'block'])->get();
         $languages = Language::all();
         $currencies = Currency::all();
-        
+
         // Get the user_id for the selected contact
         if ($customerFare->customer && $customerFare->customer->user_id) {
             $customerFare->customer_id = $customerFare->customer->user_id;
@@ -125,7 +124,7 @@ class CustomerFareController extends Controller
             'fare_id' => 'required|exists:fares,id',
             'currency_id' => 'required|exists:currencies,code',
             'amount' => 'required|numeric|min:0',
-            'negotiable' => 'boolean'
+            'negotiable' => 'boolean',
         ]);
 
         // Find or create contact for this user
@@ -135,10 +134,10 @@ class CustomerFareController extends Controller
             [
                 'name' => $user->name,
                 'team_id' => auth()->user()->currentTeam->id,
-                'creator_id' => auth()->id()
-            ]
+                'creator_id' => auth()->id(),
+            ],
         );
-        
+
         // Replace user_id with contact_id
         $validated['customer_id'] = $contact->id;
 
@@ -147,7 +146,7 @@ class CustomerFareController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Tarifa actualizada exitosamente'
+                'message' => 'Tarifa actualizada exitosamente',
             ]);
         }
 
@@ -163,4 +162,4 @@ class CustomerFareController extends Controller
 
         return response()->json(['success' => 'Tarifa eliminada exitosamente'], 200);
     }
-} 
+}

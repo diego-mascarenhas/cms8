@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Conversation;
 use App\Mail\IncomingMessageNotification;
-use Twilio\Rest\Client;
+use App\Models\Conversation;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Twilio\Rest\Client;
 
 class TwilioService
 {
@@ -26,8 +26,7 @@ class TwilioService
 
     public function sendSms($to, $message)
     {
-        try
-        {
+        try {
             // Get the full URL for the status callback
             $statusCallbackUrl = url(route('twilio.status'));
 
@@ -36,8 +35,8 @@ class TwilioService
                 [
                     'from' => $this->smsFromNumber,
                     'body' => $message,
-                    'statusCallback' => $statusCallbackUrl
-                ]
+                    'statusCallback' => $statusCallbackUrl,
+                ],
             );
 
             // Save outbound SMS to database
@@ -55,14 +54,12 @@ class TwilioService
                         'sid' => $twilioMessage->sid,
                         'status' => $twilioMessage->status,
                         'date_created' => $twilioMessage->dateCreated->format('Y-m-d H:i:s'),
-                    ]
-                ]
+                    ],
+                ],
             ]);
 
             return $twilioMessage;
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             Log::error('Twilio SMS Error: ' . $e->getMessage());
             throw $e;
         }
@@ -70,8 +67,7 @@ class TwilioService
 
     public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
     {
-        try
-        {
+        try {
             // Format the numbers with whatsapp: prefix for Twilio
             $formattedTo = 'whatsapp:' . $to;
 
@@ -83,8 +79,8 @@ class TwilioService
                 [
                     'from' => $this->whatsappFromNumber,
                     'body' => $message,
-                    'statusCallback' => $statusCallbackUrl
-                ]
+                    'statusCallback' => $statusCallbackUrl,
+                ],
             );
 
             // Clean phone numbers before saving to database
@@ -97,9 +93,9 @@ class TwilioService
                     'sid' => $twilioMessage->sid,
                     'status' => $twilioMessage->status,
                     'date_created' => $twilioMessage->dateCreated->format('Y-m-d H:i:s'),
-                ]
+                ],
             ];
-            
+
             // Merge custom metadata if provided
             if ($metadata) {
                 $messageMetadata = array_merge($messageMetadata, $metadata);
@@ -115,13 +111,11 @@ class TwilioService
                 'status' => 'sent',
                 'direction' => 'outbound',
                 'user_id' => $userId ?? auth()->id(),
-                'metadata' => $messageMetadata
+                'metadata' => $messageMetadata,
             ]);
 
             return $twilioMessage;
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             Log::error('Twilio WhatsApp Error: ' . $e->getMessage());
             throw $e;
         }
@@ -129,8 +123,7 @@ class TwilioService
 
     public function processIncomingMessage($request)
     {
-        try
-        {
+        try {
             $messageSid = $request->input('MessageSid');
             $from = $request->input('From');
             $to = $request->input('To');
@@ -143,8 +136,7 @@ class TwilioService
 
             // Determine the channel type
             $channel = 'sms';
-            if (strpos($from, 'whatsapp:') !== false || strpos($to, 'whatsapp:') !== false)
-            {
+            if (strpos($from, 'whatsapp:') !== false || strpos($to, 'whatsapp:') !== false) {
                 $channel = 'whatsapp';
             }
 
@@ -153,15 +145,13 @@ class TwilioService
 
             // Process media if present
             $media = [];
-            if ($numMedia > 0)
-            {
-                for ($i = 0; $i < $numMedia; $i++)
-                {
+            if ($numMedia > 0) {
+                for ($i = 0; $i < $numMedia; $i++) {
                     $mediaUrl = $request->input("MediaUrl{$i}");
                     $contentType = $request->input("MediaContentType{$i}");
                     $media[] = [
                         'url' => $mediaUrl,
-                        'content_type' => $contentType
+                        'content_type' => $contentType,
                     ];
                 }
             }
@@ -175,24 +165,22 @@ class TwilioService
                 'body' => $body,
                 'status' => 'received',
                 'direction' => 'inbound',
-                'media' => !empty($media) ? $media : null,
-                'metadata' => $request->except(['_token'])
+                'media' => ! empty($media) ? $media : null,
+                'metadata' => $request->except(['_token']),
             ]);
 
             // Send email notification for new message
             $notificationEmail = config('services.notifications.email');
-            if ($notificationEmail)
-            {
+            if ($notificationEmail) {
                 Mail::to($notificationEmail)->send(new IncomingMessageNotification($conversation));
                 \Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
             }
 
             // Check if this is part of a registration process
-            if ($channel == 'whatsapp')
-            {
+            if ($channel == 'whatsapp') {
                 $chatController = app(\App\Http\Controllers\ChatController::class);
                 $registrationResponse = $chatController->processRegistration($cleanFrom, $body);
-                
+
                 // If this was a registration step, we've already handled it
                 if ($registrationResponse) {
                     return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'registration' => true]);
@@ -200,8 +188,7 @@ class TwilioService
             }
 
             // Automatic AI response using Claude
-            if (config('services.claude.auto_respond', false) && $channel == 'whatsapp')
-            {
+            if (config('services.claude.auto_respond', false) && $channel == 'whatsapp') {
                 try {
                     // Get recent chat history for context
                     $history = Conversation::where('channel', 'whatsapp')
@@ -215,48 +202,47 @@ class TwilioService
                         ->sortBy('created_at')
                         ->values()
                         ->toArray();
-                    
+
                     // Process with Claude
                     $claudeService = app(\App\Services\ClaudeService::class);
                     $claudeResponse = $claudeService->chat($body, $history);
-                    
+
                     // If Claude responded successfully, send the response
                     if ($claudeResponse['success']) {
                         $aiMessage = $claudeResponse['text'];
-                        
+
                         // Send the AI message
                         $this->sendWhatsApp($cleanFrom, $aiMessage);
-                        
+
                         \Log::info("Auto AI response sent to {$cleanFrom}: " . \Illuminate\Support\Str::limit($aiMessage, 100));
                     } else {
-                        \Log::warning("Failed to get AI response: " . ($claudeResponse['message'] ?? 'Unknown error'));
+                        \Log::warning('Failed to get AI response: ' . ($claudeResponse['message'] ?? 'Unknown error'));
                     }
                 } catch (\Exception $e) {
-                    \Log::error("Error in auto AI response: " . $e->getMessage());
+                    \Log::error('Error in auto AI response: ' . $e->getMessage());
                 }
             }
 
             return response()->json(['status' => 'success', 'conversation_id' => $conversation->id]);
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             \Log::error('Error processing incoming message: ' . $e->getMessage());
+
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
 
     /**
      * Send WhatsApp message using a template
-     * 
-     * @param string $to Recipient phone number (without whatsapp: prefix)
+     *
+     * @param string $to           Recipient phone number (without whatsapp: prefix)
      * @param string $templateName The name of the approved template
-     * @param array $parameters Template parameters
+     * @param array  $parameters   Template parameters
+     *
      * @return \Twilio\Rest\Api\V2010\Account\MessageInstance
      */
     public function sendWhatsAppTemplate($to, $templateName, $parameters = [])
     {
-        try
-        {
+        try {
             // Format the numbers with whatsapp: prefix
             $formattedTo = 'whatsapp:' . $to;
 
@@ -267,8 +253,7 @@ class TwilioService
             $contentSid = null;
             $contentVariables = null;
 
-            if (!empty($parameters))
-            {
+            if (! empty($parameters)) {
                 $contentVariables = json_encode(['1' => $parameters]);
             }
 
@@ -279,8 +264,8 @@ class TwilioService
                     'from' => $this->whatsappFromNumber,
                     'statusCallback' => $statusCallbackUrl,
                     'contentSid' => $templateName,
-                    'contentVariables' => $contentVariables
-                ]
+                    'contentVariables' => $contentVariables,
+                ],
             );
 
             // Save outbound message to database
@@ -301,15 +286,13 @@ class TwilioService
                     ],
                     'template' => [
                         'name' => $templateName,
-                        'parameters' => $parameters
-                    ]
-                ]
+                        'parameters' => $parameters,
+                    ],
+                ],
             ]);
 
             return $twilioMessage;
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             Log::error('Twilio WhatsApp Template Error: ' . $e->getMessage());
             throw $e;
         }

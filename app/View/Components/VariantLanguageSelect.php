@@ -2,10 +2,10 @@
 
 namespace App\View\Components;
 
-use Illuminate\View\Component;
 use App\Models\Language;
 use App\Models\LanguageVariant;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\Component;
 
 class VariantLanguageSelect extends Component
 {
@@ -29,16 +29,16 @@ class VariantLanguageSelect extends Component
     public function render()
     {
         $languages = Language::orderBy('name')->get();
-        
+
         // Get all language variants, regardless of base language
         $variants = LanguageVariant::orderBy('name')->get();
-        
+
         // Log for debugging
         Log::info('VariantLanguageSelect: Found ' . $variants->count() . ' language variants');
-        
+
         return view('components.variant-language-select', [
             'languages' => $languages,
-            'variants' => $variants
+            'variants' => $variants,
         ]);
     }
-} 
+}

@@ -16,14 +16,14 @@ class Category extends Model
     protected $table = 'categories';
 
     protected $fillable = [
-        'name', 
-        'module_id', 
+        'name',
+        'module_id',
         'team_id',
-        'description', 
-        'data', 
-        'parent_id', 
-        'order', 
-        'status'
+        'description',
+        'data',
+        'parent_id',
+        'order',
+        'status',
     ];
 
     protected $casts = [
@@ -120,12 +120,12 @@ class Category extends Model
     {
         $path = $this->name;
         $category = $this;
-        
+
         while ($category->parent) {
             $category = $category->parent;
             $path = $category->name . ' > ' . $path;
         }
-        
+
         return $path;
     }
 
@@ -136,11 +136,11 @@ class Category extends Model
     {
         $query = self::query()->where('team_id', $teamId);
 
-        if (!is_null($parentId)) {
+        if (! is_null($parentId)) {
             $query->where('parent_id', $parentId);
         }
 
-        if (!is_null($moduleId)) {
+        if (! is_null($moduleId)) {
             $query->where('module_id', $moduleId);
         }
 
@@ -180,11 +180,11 @@ class Category extends Model
             ->with(['children.children']) // Load up to 3 levels deep
             ->orderBy('order')
             ->orderBy('name');
-        
-        if (!is_null($moduleId)) {
+
+        if (! is_null($moduleId)) {
             $query->where('module_id', $moduleId);
         }
-        
+
         return $query->get();
     }
 }

@@ -13,9 +13,9 @@ class UpdateDomainInfo extends Command
     public function handle()
     {
         $this->info('Dispatching domain info update job...');
-        
+
         dispatch(new UpdateDomainInfoJob);
-        
+
         $this->info('Domain info update job dispatched successfully!');
     }
-} 
+}

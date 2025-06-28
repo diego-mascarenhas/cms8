@@ -48,10 +48,10 @@ class ContactValoration extends Model
     public static function getOptions($teamId = null)
     {
         $teamId = $teamId ?? auth()->user()->currentTeam->id ?? 1;
-        
+
         return self::where('team_id', $teamId)
-                   ->pluck('name', 'id')
-                   ->toArray();
+            ->pluck('name', 'id')
+            ->toArray();
     }
 
     /**
@@ -64,7 +64,7 @@ class ContactValoration extends Model
             'Validada',
             'Interesante',
             'Lista negra',
-            'En espera'
+            'En espera',
         ];
     }
 

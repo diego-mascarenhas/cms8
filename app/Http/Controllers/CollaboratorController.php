@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\DataTables\CollaboratorDataTable;
 use App\Models\Contact;
 use App\Models\ContactLanguageVariant;
-use App\Models\ContactPortfolio;
 use App\Models\ContactValoration;
 use Illuminate\Http\Request;
 
@@ -30,7 +29,7 @@ class CollaboratorController extends Controller
             'phone' => 'nullable|numeric',
             'language_pairs' => 'nullable|array',
             'is_native' => 'nullable|array',
-            'fare_ids' => 'nullable|array'
+            'fare_ids' => 'nullable|array',
         ]);
 
         // Add creator_id and team_id automatically
@@ -43,35 +42,37 @@ class CollaboratorController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'creator_id' => $validated['creator_id'],
-            'team_id' => $validated['team_id']
+            'team_id' => $validated['team_id'],
         ]);
 
         // Process language pairs if they exist
         if ($request->has('language_pairs') && is_array($request->language_pairs) && count($request->language_pairs) > 0) {
             $processedPairs = []; // Para evitar duplicados
-            
+
             foreach ($request->language_pairs as $index => $pair) {
-                if (empty($pair)) continue;
-                
-                list($sourceLanguage, $targetLanguage) = explode('|', $pair);
-                
+                if (empty($pair)) {
+                    continue;
+                }
+
+                [$sourceLanguage, $targetLanguage] = explode('|', $pair);
+
                 // Evitar duplicados en la misma solicitud
                 $pairKey = $sourceLanguage . '-' . $targetLanguage;
                 if (in_array($pairKey, $processedPairs)) {
                     continue;
                 }
-                
+
                 $processedPairs[] = $pairKey;
-                
-                $isNative = isset($request->is_native[$index]) ? (bool)$request->is_native[$index] : false;
-                
+
+                $isNative = isset($request->is_native[$index]) ? (bool) $request->is_native[$index] : false;
+
                 try {
                     ContactLanguageVariant::create([
                         'contact_id' => $contact->id,
                         'source_language_code' => $sourceLanguage,
                         'target_language_code' => $targetLanguage,
                         'proficiency_level' => $isNative ? 5 : 3, // Higher level for native languages
-                        'is_certified' => $isNative
+                        'is_certified' => $isNative,
                     ]);
                 } catch (\Illuminate\Database\QueryException $e) {
                     // Si es un error de duplicado, simplemente lo ignoramos
@@ -86,12 +87,12 @@ class CollaboratorController extends Controller
         // Process fares/services if they exist
         if ($request->has('fare_ids') && is_array($request->fare_ids) && count($request->fare_ids) > 0) {
             // Filter out empty values
-            $fareIds = array_filter($request->fare_ids, function($value) {
-                return !empty($value);
+            $fareIds = array_filter($request->fare_ids, function ($value) {
+                return ! empty($value);
             });
-            
+
             // Sync fares with the contact
-            if (!empty($fareIds)) {
+            if (! empty($fareIds)) {
                 $contact->fares()->sync($fareIds);
             }
         }
@@ -103,8 +104,8 @@ class CollaboratorController extends Controller
     public function show($id)
     {
         $collaborator = Contact::with([
-            'softwares.type', 
-            'user.roles', 
+            'softwares.type',
+            'user.roles',
             'valoration',
             'fares.type',
             'topics',
@@ -116,55 +117,55 @@ class CollaboratorController extends Controller
             },
             'projects' => function ($query) {
                 $query->with(['responsible', 'enterprise', 'status'])
-                      ->orderBy('created_at', 'desc');
-            }
+                    ->orderBy('created_at', 'desc');
+            },
         ])->findOrFail($id);
-        
+
         // Ensure country and language relationships are properly loaded
         if ($collaborator->country && is_numeric($collaborator->country)) {
             $collaborator->country = \App\Models\Country::find($collaborator->country);
         }
-        
+
         if ($collaborator->language && is_numeric($collaborator->language)) {
             $collaborator->language = \App\Models\Language::find($collaborator->language);
         }
-        
+
         return view('collaborator.show', compact('collaborator'));
     }
 
     public function edit($id)
     {
         $collaborator = Contact::with([
-            'languageVariants.sourceLanguage', 
+            'languageVariants.sourceLanguage',
             'languageVariants.targetLanguage',
-            'fares'
+            'fares',
         ])->findOrFail($id);
-        
+
         // Force language loading
         $languagePairs = [];
-        
+
         foreach ($collaborator->languageVariants as $variant) {
             $sourceLanguage = $variant->sourceLanguage;
             $targetLanguage = $variant->targetLanguage;
-            
+
             $languagePairs[] = [
                 'source_language' => $variant->source_language_code,
                 'target_language' => $variant->target_language_code,
                 'source_language_text' => $sourceLanguage ? $sourceLanguage->name : $variant->source_language_code,
                 'target_language_text' => $targetLanguage ? $targetLanguage->name : $variant->target_language_code,
-                'is_native' => $variant->is_certified
+                'is_native' => $variant->is_certified,
             ];
         }
-        
+
         $collaborator->languagePairs = $languagePairs;
-        
+
         return view('collaborator.form', compact('collaborator'));
     }
 
     public function update(Request $request, $id)
     {
         $collaborator = Contact::findOrFail($id);
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
@@ -172,46 +173,48 @@ class CollaboratorController extends Controller
             'phone' => 'nullable|numeric',
             'language_pairs' => 'nullable|array',
             'is_native' => 'nullable|array',
-            'fare_ids' => 'nullable|array'
+            'fare_ids' => 'nullable|array',
         ]);
 
         $collaborator->update([
             'name' => $validated['name'],
             'surname' => $validated['surname'] ?? null,
             'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null
+            'phone' => $validated['phone'] ?? null,
         ]);
 
         // Process language pairs if they exist
         if ($request->has('language_pairs') && is_array($request->language_pairs) && count($request->language_pairs) > 0) {
             // Delete existing language pairs
             $collaborator->languageVariants()->delete();
-            
+
             $processedPairs = []; // Para evitar duplicados
-            
+
             // Add new language pairs
             foreach ($request->language_pairs as $index => $pair) {
-                if (empty($pair)) continue;
-                
-                list($sourceLanguage, $targetLanguage) = explode('|', $pair);
-                
+                if (empty($pair)) {
+                    continue;
+                }
+
+                [$sourceLanguage, $targetLanguage] = explode('|', $pair);
+
                 // Evitar duplicados en la misma solicitud
                 $pairKey = $sourceLanguage . '-' . $targetLanguage;
                 if (in_array($pairKey, $processedPairs)) {
                     continue;
                 }
-                
+
                 $processedPairs[] = $pairKey;
-                
-                $isNative = isset($request->is_native[$index]) ? (bool)$request->is_native[$index] : false;
-                
+
+                $isNative = isset($request->is_native[$index]) ? (bool) $request->is_native[$index] : false;
+
                 try {
                     ContactLanguageVariant::create([
                         'contact_id' => $collaborator->id,
                         'source_language_code' => $sourceLanguage,
                         'target_language_code' => $targetLanguage,
                         'proficiency_level' => $isNative ? 5 : 3, // Higher level for native languages
-                        'is_certified' => $isNative
+                        'is_certified' => $isNative,
                     ]);
                 } catch (\Illuminate\Database\QueryException $e) {
                     // If it's a duplicate error, simply ignore it
@@ -230,12 +233,12 @@ class CollaboratorController extends Controller
         if ($request->has('fare_ids')) {
             // Get the fare IDs or use empty array if none provided
             $fareIds = $request->fare_ids ?? [];
-            
+
             // Filter out empty values
-            $fareIds = array_filter($fareIds, function($value) {
-                return !empty($value);
+            $fareIds = array_filter($fareIds, function ($value) {
+                return ! empty($value);
             });
-            
+
             // Sync fares with the collaborator - passing an empty array removes all associations
             $collaborator->fares()->sync($fareIds);
         }
@@ -248,6 +251,7 @@ class CollaboratorController extends Controller
     {
         $collaborator = Contact::findOrFail($id);
         $collaborator->delete();
+
         return redirect()->route('collaborator-list')
             ->with('success', __('Collaborator deleted successfully.'));
     }
@@ -257,30 +261,30 @@ class CollaboratorController extends Controller
      */
     public function markAsWatch($id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
         $collaborator = Contact::findOrFail($id);
         $teamId = auth()->user()->currentTeam->id;
-        
+
         // Find the "Ojo" valoration (assuming it corresponds to "En espera" for watch status)
         $watchValoration = ContactValoration::where('team_id', $teamId)
             ->where('name', 'En espera')
             ->first();
-            
+
         if ($watchValoration) {
             $collaborator->update(['valoration_id' => $watchValoration->id]);
-            
+
             return response()->json([
                 'success' => true,
-                'message' => 'Colaborador marcado como ojo correctamente'
+                'message' => 'Colaborador marcado como ojo correctamente',
             ]);
         }
-        
+
         return response()->json([
             'success' => false,
-            'message' => 'No se pudo encontrar la valoración de supervisión'
+            'message' => 'No se pudo encontrar la valoración de supervisión',
         ], 400);
     }
 
@@ -289,30 +293,30 @@ class CollaboratorController extends Controller
      */
     public function sendToBlacklist($id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
         $collaborator = Contact::findOrFail($id);
         $teamId = auth()->user()->currentTeam->id;
-        
+
         // Find the "Lista negra" valoration
         $blacklistValoration = ContactValoration::where('team_id', $teamId)
             ->where('name', 'Lista negra')
             ->first();
-            
+
         if ($blacklistValoration) {
             $collaborator->update(['valoration_id' => $blacklistValoration->id]);
-            
+
             return response()->json([
                 'success' => true,
-                'message' => 'Colaborador enviado a lista negra'
+                'message' => 'Colaborador enviado a lista negra',
             ]);
         }
-        
+
         return response()->json([
             'success' => false,
-            'message' => 'No se pudo encontrar la valoración de lista negra'
+            'message' => 'No se pudo encontrar la valoración de lista negra',
         ], 400);
     }
 
@@ -321,23 +325,23 @@ class CollaboratorController extends Controller
      */
     public function sendNotification(Request $request, $id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
         $collaborator = Contact::findOrFail($id);
         $message = $request->input('message');
-        
+
         // TODO: Implement actual notification sending logic here
         // For now, just return success
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Notificación enviada correctamente',
             'data' => [
                 'collaborator_id' => $collaborator->id,
-                'message' => $message
-            ]
+                'message' => $message,
+            ],
         ]);
     }
 
@@ -346,15 +350,15 @@ class CollaboratorController extends Controller
      */
     public function updateSoftware(Request $request, $id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
         $collaborator = Contact::findOrFail($id);
-        
+
         // Get software IDs, they can come as array, string or JSON
         $softwareIds = [];
-        
+
         // If it's a JSON request
         if ($request->isJson()) {
             $data = $request->json()->all();
@@ -363,20 +367,20 @@ class CollaboratorController extends Controller
             // If it's a normal request
             $softwareIds = $request->input('software_ids', []);
         }
-        
+
         // If it comes as empty string, convert to empty array
         if ($softwareIds === '') {
             $softwareIds = [];
         }
-        
+
         // If it comes as a single ID as string, convert it to array
-        if (!is_array($softwareIds) && !empty($softwareIds)) {
+        if (! is_array($softwareIds) && ! empty($softwareIds)) {
             $softwareIds = [$softwareIds];
         }
-        
+
         // Filter out empty or null values that may cause errors
-        $softwareIds = array_filter($softwareIds, function($value) {
-            return !empty($value) && $value !== '' && $value !== null;
+        $softwareIds = array_filter($softwareIds, function ($value) {
+            return ! empty($value) && $value !== '' && $value !== null;
         });
 
         // Sync software - use empty array explicitly if no IDs
@@ -384,9 +388,9 @@ class CollaboratorController extends Controller
 
         // Load updated softwares with types
         $collaborator->load('softwares.type');
-        
+
         // Format response data
-        $softwares = $collaborator->softwares->map(function($software) {
+        $softwares = $collaborator->softwares->map(function ($software) {
             return [
                 'id' => $software->id,
                 'name' => $software->name,
@@ -397,24 +401,24 @@ class CollaboratorController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Software actualizado correctamente',
-            'softwares' => $softwares
+            'softwares' => $softwares,
         ]);
     }
-    
+
     /**
      * Update collaborator services
      */
     public function updateServices(Request $request, $id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
         $collaborator = Contact::findOrFail($id);
-        
+
         // Get service IDs, they can come as array, string or JSON
         $fareIds = [];
-        
+
         // If it's a JSON request
         if ($request->isJson()) {
             $data = $request->json()->all();
@@ -423,20 +427,20 @@ class CollaboratorController extends Controller
             // If it's a normal request
             $fareIds = $request->input('fare_ids', []);
         }
-        
+
         // If it comes as empty string, convert to empty array
         if ($fareIds === '') {
             $fareIds = [];
         }
-        
+
         // If it comes as a single ID as string, convert it to array
-        if (!is_array($fareIds) && !empty($fareIds)) {
+        if (! is_array($fareIds) && ! empty($fareIds)) {
             $fareIds = [$fareIds];
         }
-        
+
         // Filtrar valores vacíos o nulos que puedan causar errores
-        $fareIds = array_filter($fareIds, function($value) {
-            return !empty($value) && $value !== '' && $value !== null;
+        $fareIds = array_filter($fareIds, function ($value) {
+            return ! empty($value) && $value !== '' && $value !== null;
         });
 
         // Sync fares
@@ -444,9 +448,9 @@ class CollaboratorController extends Controller
 
         // Load updated fares with types
         $collaborator->load('fares.type');
-        
+
         // Format response data
-        $services = $collaborator->fares->map(function($fare) {
+        $services = $collaborator->fares->map(function ($fare) {
             return [
                 'id' => $fare->id,
                 'name' => $fare->name,
@@ -457,7 +461,7 @@ class CollaboratorController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Servicios actualizados correctamente',
-            'services' => $services
+            'services' => $services,
         ]);
     }
 
@@ -466,15 +470,15 @@ class CollaboratorController extends Controller
      */
     public function updateTopics(Request $request, $id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
         $collaborator = Contact::findOrFail($id);
-        
+
         // Get topic IDs, they can come as array, string or JSON
         $topicIds = [];
-        
+
         // If it's a JSON request
         if ($request->isJson()) {
             $data = $request->json()->all();
@@ -483,20 +487,20 @@ class CollaboratorController extends Controller
             // If it's a normal request
             $topicIds = $request->input('topic_ids', []);
         }
-        
+
         // If it comes as empty string, convert to empty array
         if ($topicIds === '') {
             $topicIds = [];
         }
-        
+
         // If it comes as a single ID as string, convert it to array
-        if (!is_array($topicIds) && !empty($topicIds)) {
+        if (! is_array($topicIds) && ! empty($topicIds)) {
             $topicIds = [$topicIds];
         }
-        
+
         // Filter out empty or null values that may cause errors
-        $topicIds = array_filter($topicIds, function($value) {
-            return !empty($value) && $value !== '' && $value !== null;
+        $topicIds = array_filter($topicIds, function ($value) {
+            return ! empty($value) && $value !== '' && $value !== null;
         });
 
         // Sync topics - use empty array explicitly if no IDs
@@ -504,9 +508,9 @@ class CollaboratorController extends Controller
 
         // Load updated topics
         $collaborator->load('topics');
-        
+
         // Format response data
-        $topics = $collaborator->topics->map(function($topic) {
+        $topics = $collaborator->topics->map(function ($topic) {
             return [
                 'id' => $topic->id,
                 'name' => $topic->name,
@@ -516,7 +520,7 @@ class CollaboratorController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Temáticas actualizadas correctamente',
-            'topics' => $topics
+            'topics' => $topics,
         ]);
     }
 
@@ -525,28 +529,28 @@ class CollaboratorController extends Controller
      */
     public function updateValoration(Request $request, $id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
         $request->validate([
-            'valoration_id' => 'required|exists:contact_valorations,id'
+            'valoration_id' => 'required|exists:contact_valorations,id',
         ]);
 
         $collaborator = Contact::findOrFail($id);
         $collaborator->update(['valoration_id' => $request->valoration_id]);
-        
+
         // Get the updated valoration details
         $valoration = $collaborator->valoration;
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Valoración actualizada correctamente',
             'valoration' => [
                 'id' => $valoration->id,
                 'name' => $valoration->name,
-                'icon' => $valoration->icon
-            ]
+                'icon' => $valoration->icon,
+            ],
         ]);
     }
 
@@ -556,17 +560,17 @@ class CollaboratorController extends Controller
     public function linkUser(Request $request, $id)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,id'
+            'user_id' => 'required|exists:users,id',
         ]);
 
         $collaborator = Contact::findOrFail($id);
         $user = \App\Models\User::findOrFail($request->user_id);
 
         // Check if user belongs to the same team
-        if (!$user->teams->contains(auth()->user()->currentTeam->id)) {
+        if (! $user->teams->contains(auth()->user()->currentTeam->id)) {
             return response()->json([
                 'success' => false,
-                'message' => 'El usuario no pertenece al equipo actual'
+                'message' => 'El usuario no pertenece al equipo actual',
             ], 422);
         }
 
@@ -575,7 +579,7 @@ class CollaboratorController extends Controller
         if ($existingContact && $existingContact->id !== $collaborator->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Este usuario ya está vinculado a otro contacto'
+                'message' => 'Este usuario ya está vinculado a otro contacto',
             ], 422);
         }
 
@@ -588,8 +592,8 @@ class CollaboratorController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => $user->roles->first()->name ?? 'user'
-            ]
+                'role' => $user->roles->first()->name ?? 'user',
+            ],
         ]);
     }
 
@@ -603,7 +607,7 @@ class CollaboratorController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Usuario desvinculado correctamente'
+            'message' => 'Usuario desvinculado correctamente',
         ]);
     }
 
@@ -617,7 +621,7 @@ class CollaboratorController extends Controller
             'email' => 'required|email|max:255|unique:users',
             'phone' => 'nullable|string|max:20',
             'role' => 'required|exists:roles,name',
-            'password' => 'required|string|min:8'
+            'password' => 'required|string|min:8',
         ]);
 
         $collaborator = Contact::findOrFail($id);
@@ -649,14 +653,14 @@ class CollaboratorController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'role' => $request->role
-                ]
+                    'role' => $request->role,
+                ],
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al crear el usuario: ' . $e->getMessage()
+                'message' => 'Error al crear el usuario: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -666,7 +670,7 @@ class CollaboratorController extends Controller
      */
     public function storePortfolio(Request $request, $id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
@@ -676,11 +680,11 @@ class CollaboratorController extends Controller
             'year' => 'nullable|integer|min:1900|max:' . (date('Y') + 10),
             'notes' => 'nullable|string',
             'position' => 'nullable|string',
-            'languages' => 'nullable|array'
+            'languages' => 'nullable|array',
         ]);
 
         $collaborator = Contact::findOrFail($id);
-        
+
         $data = [];
         if ($request->position) {
             $data['position'] = $request->position;
@@ -694,13 +698,13 @@ class CollaboratorController extends Controller
             'description' => $request->description,
             'year' => $request->year,
             'notes' => $request->notes,
-            'data' => $data
+            'data' => $data,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Portfolio agregado correctamente',
-            'portfolio' => $portfolio
+            'portfolio' => $portfolio,
         ]);
     }
 
@@ -709,7 +713,7 @@ class CollaboratorController extends Controller
      */
     public function updatePortfolio(Request $request, $id, $portfolioId)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
@@ -719,12 +723,12 @@ class CollaboratorController extends Controller
             'year' => 'nullable|integer|min:1900|max:' . (date('Y') + 10),
             'notes' => 'nullable|string',
             'position' => 'nullable|string',
-            'languages' => 'nullable|array'
+            'languages' => 'nullable|array',
         ]);
 
         $collaborator = Contact::findOrFail($id);
         $portfolio = $collaborator->portfolios()->findOrFail($portfolioId);
-        
+
         $data = [];
         if ($request->position) {
             $data['position'] = $request->position;
@@ -738,13 +742,13 @@ class CollaboratorController extends Controller
             'description' => $request->description,
             'year' => $request->year,
             'notes' => $request->notes,
-            'data' => $data
+            'data' => $data,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Portfolio actualizado correctamente',
-            'portfolio' => $portfolio
+            'portfolio' => $portfolio,
         ]);
     }
 
@@ -753,18 +757,18 @@ class CollaboratorController extends Controller
      */
     public function destroyPortfolio($id, $portfolioId)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
         $collaborator = Contact::findOrFail($id);
         $portfolio = $collaborator->portfolios()->findOrFail($portfolioId);
-        
+
         $portfolio->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Portfolio eliminado correctamente'
+            'message' => 'Portfolio eliminado correctamente',
         ]);
     }
-} 
+}

@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTables\DomainDataTable;
 use App\Models\Domain;
 use App\Models\Server;
 use Illuminate\Http\Request;
-use App\DataTables\DomainDataTable;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -18,6 +17,7 @@ class DomainController extends Controller
     public function index(DomainDataTable $dataTable)
     {
         $servers = Server::all();
+
         return $dataTable->render('domain.index', compact('servers'));
     }
 
@@ -27,6 +27,7 @@ class DomainController extends Controller
     public function create()
     {
         $servers = Server::all();
+
         return view('domain.create', compact('servers'));
     }
 
@@ -74,6 +75,7 @@ class DomainController extends Controller
     public function edit(Domain $domain)
     {
         $servers = Server::all();
+
         return view('domain.edit', compact('domain', 'servers'));
     }
 
@@ -116,6 +118,7 @@ class DomainController extends Controller
     public function destroy(Domain $domain)
     {
         $domain->delete();
+
         return redirect()->route('domain.index')
             ->with('success', 'Domain deleted successfully.');
     }
@@ -128,18 +131,19 @@ class DomainController extends Controller
         try {
             // Logic to connect to WHM/cPanel API and refresh domain data
             // This is a placeholder for the actual implementation
-            
+
             // Example: Update some domain data
             $domain->update([
                 'data' => array_merge($domain->data ?? [], [
-                    'last_refreshed' => now()->toIso8601String()
-                ])
+                    'last_refreshed' => now()->toIso8601String(),
+                ]),
             ]);
-            
+
             return redirect()->route('domain.show', $domain->id)
                 ->with('success', 'Domain data refreshed successfully.');
         } catch (\Exception $e) {
             Log::error('Error refreshing domain data: ' . $e->getMessage());
+
             return redirect()->route('domain.show', $domain->id)
                 ->with('error', 'Failed to refresh domain data: ' . $e->getMessage());
         }
@@ -151,11 +155,12 @@ class DomainController extends Controller
     public function toggleSuspension(Domain $domain)
     {
         $domain->update([
-            'suspended' => !$domain->suspended
+            'suspended' => ! $domain->suspended,
         ]);
 
         $status = $domain->suspended ? 'suspended' : 'unsuspended';
+
         return redirect()->route('domain.show', $domain->id)
             ->with('success', "Domain {$status} successfully.");
     }
-} 
+}

@@ -13,9 +13,9 @@ class WhmServerTest extends Command
     public function handle()
     {
         $this->info('Testing WHM servers...');
-        
+
         dispatch(new WhmServerTestJob);
-        
+
         $this->info('Job dispatched successfully!');
     }
-} 
+}

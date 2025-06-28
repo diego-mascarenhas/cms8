@@ -35,4 +35,4 @@ class Note extends Model
 
         return $modules[$this->module_id] ?? 'unknown';
     }
-} 
+}

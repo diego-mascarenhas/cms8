@@ -51,7 +51,7 @@ class StylebookController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Manual de estilo creado exitosamente'
+                'message' => 'Manual de estilo creado exitosamente',
             ]);
         }
 
@@ -98,7 +98,7 @@ class StylebookController extends Controller
             if ($stylebook->file && Storage::disk('public')->exists($stylebook->file)) {
                 Storage::disk('public')->delete($stylebook->file);
             }
-            
+
             // Store new file
             $filePath = $request->file('file')->store('stylebooks', 'public');
             $data['file'] = $filePath;
@@ -109,7 +109,7 @@ class StylebookController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Manual de estilo actualizado exitosamente'
+                'message' => 'Manual de estilo actualizado exitosamente',
             ]);
         }
 
@@ -125,13 +125,13 @@ class StylebookController extends Controller
         if ($stylebook->file && Storage::disk('public')->exists($stylebook->file)) {
             Storage::disk('public')->delete($stylebook->file);
         }
-        
+
         $stylebook->delete();
 
         if (request()->ajax()) {
             return response()->json(['success' => true]);
         }
-        
+
         return redirect()->route('stylebook.index')->with('success', 'Manual de estilo eliminado exitosamente');
     }
-} 
+}

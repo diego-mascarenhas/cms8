@@ -3,13 +3,12 @@
 namespace App\DataTables;
 
 use App\Models\Category;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
-
-use Carbon\Carbon;
 
 class CategoryDataTable extends DataTable
 {
@@ -27,24 +26,18 @@ class CategoryDataTable extends DataTable
             ->addColumn('user_count', function ($data) {
                 return $data->users_count;
             })
-            ->editColumn('created_at', function ($data)
-            {
+            ->editColumn('created_at', function ($data) {
                 return Carbon::parse($data->created_at)->format('d-m-Y H:i:s');
             })
-            ->editColumn('updated_at', function ($data)
-            {
+            ->editColumn('updated_at', function ($data) {
                 return Carbon::parse($data->updated_at)->format('d-m-Y H:i:s');
             })
-            ->editColumn('status', function ($data)
-            {
-                if ($data->status)
-                {
+            ->editColumn('status', function ($data) {
+                if ($data->status) {
                     return '<span class="badge rounded-pill bg-label-success">Active</span>';
-                }
-                else
-                {
+                } else {
                     return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
-                };
+                }
             });
     }
 
@@ -56,11 +49,11 @@ class CategoryDataTable extends DataTable
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('category-table')
-                    ->columns($this->getColumns())
-                    ->minifiedAjax()
-                    ->dom('frtip')
-                    ->orderBy(2);
+            ->setTableId('category-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(2);
     }
 
     public function getColumns(): array
@@ -73,10 +66,10 @@ class CategoryDataTable extends DataTable
             Column::make('updated_at')->title('Updated')->className('text-center'),
             Column::make('status')->title('Status')->className('text-center'),
             Column::computed('action')->title('Actions')->width(20)->className('text-center')
-                  ->exportable(false)
-                  ->printable(false)
-                  ->width(30)
-                  ->addClass('text-center'),
+                ->exportable(false)
+                ->printable(false)
+                ->width(30)
+                ->addClass('text-center'),
         ];
     }
 

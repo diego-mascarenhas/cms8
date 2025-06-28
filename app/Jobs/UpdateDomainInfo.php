@@ -43,10 +43,10 @@ class UpdateDomainInfo implements ShouldQueue
     {
         if ($domain = Domain::find($domainId)) {
             $domainInfo = $domainInfoService->getDomainInfo($domain->domain);
-            
+
             $domain->update([
-                'data' => $domainInfo
+                'data' => $domainInfo,
             ]);
         }
     }
-} 
+}

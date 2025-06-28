@@ -52,4 +52,4 @@ class Module extends Model
     {
         return $this->hasMany(Category::class);
     }
-} 
+}

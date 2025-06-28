@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Contact;
-use App\Models\Source;
 use App\Models\ContactSource;
+use App\Models\Source;
+use Illuminate\Database\Seeder;
 
 class ContactSourceSeeder extends Seeder
 {
@@ -21,6 +21,7 @@ class ContactSourceSeeder extends Seeder
 
         if ($contacts->isEmpty() || $sources->isEmpty()) {
             $this->command->info('Make sure there are contacts and sources in the database before running this seeder.');
+
             return;
         }
 

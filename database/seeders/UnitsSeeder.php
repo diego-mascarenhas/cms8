@@ -19,11 +19,11 @@ class UnitsSeeder extends Seeder
             ['type' => 'Palabras'],
             ['type' => 'Páginas'],
             ['type' => 'Rollos'],
-            ['type' => 'Total']
+            ['type' => 'Total'],
         ];
 
         foreach ($units as $unit) {
             Unit::create($unit);
         }
     }
-} 
+}

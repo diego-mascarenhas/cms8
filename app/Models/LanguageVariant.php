@@ -10,7 +10,7 @@ class LanguageVariant extends Model
         'code',
         'name',
         'base_language',
-        'country_code'
+        'country_code',
     ];
 
     protected $appends = ['flag'];
@@ -34,7 +34,7 @@ class LanguageVariant extends Model
     {
         return $this->belongsTo(Language::class, 'base_language', 'code');
     }
-    
+
     /**
      * Set the base language to lowercase
      */
@@ -42,7 +42,7 @@ class LanguageVariant extends Model
     {
         $this->attributes['base_language'] = strtolower($value);
     }
-    
+
     /**
      * Set the country code to uppercase
      */
@@ -50,7 +50,7 @@ class LanguageVariant extends Model
     {
         $this->attributes['country_code'] = $value ? strtoupper($value) : null;
     }
-    
+
     /**
      * Get flag code from country code
      */
@@ -66,7 +66,7 @@ class LanguageVariant extends Model
     {
         return $this->hasMany(ContactLanguageVariant::class, 'source_language_code', 'code');
     }
-    
+
     /**
      * Relación inversa con ContactLanguageVariant para target_language_code
      */
@@ -74,4 +74,4 @@ class LanguageVariant extends Model
     {
         return $this->hasMany(ContactLanguageVariant::class, 'target_language_code', 'code');
     }
-} 
+}

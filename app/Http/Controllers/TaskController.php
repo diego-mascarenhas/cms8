@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\DataTables\TaskDataTable;
 use App\Models\Task;
 use App\Models\TaskStatus;
-use App\Models\Category;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
@@ -48,9 +47,9 @@ class TaskController extends Controller
                 'order' => 0,
                 'status_id' => $data['status_id'] ?? 1,
                 'team_id' => auth()->user()->currentTeam->id,
-            ]
+            ],
         );
-        
+
         return redirect()->route('task.index')->with('success', 'Record saved successfully.');
     }
 
@@ -58,7 +57,7 @@ class TaskController extends Controller
     {
         $task = Task::with(['responsible', 'status', 'category'])
             ->findOrFail($id);
-            
+
         return view('task.show', compact('task'));
     }
 
@@ -72,4 +71,4 @@ class TaskController extends Controller
 
         return view('task.form', compact('data', 'statuses'));
     }
-} 
+}

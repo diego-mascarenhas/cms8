@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Stripe\Stripe;
 use Stripe\Customer;
 use Stripe\Invoice;
 use Stripe\PaymentMethod;
+use Stripe\Stripe;
 
 class ShowStripeCustomer extends Command
 {
@@ -22,7 +22,7 @@ class ShowStripeCustomer extends Command
             $customerId = $this->argument('customerId');
             $customer = Customer::retrieve([
                 'id' => $customerId,
-                'expand' => ['subscriptions', 'default_source']
+                'expand' => ['subscriptions', 'default_source'],
             ]);
 
             // Customer Details
@@ -40,7 +40,7 @@ class ShowStripeCustomer extends Command
             $this->info("\n💳 Payment Methods:");
             $paymentMethods = PaymentMethod::all([
                 'customer' => $customerId,
-                'type' => 'card'
+                'type' => 'card',
             ]);
 
             if ($paymentMethods->count() > 0) {
@@ -51,12 +51,12 @@ class ShowStripeCustomer extends Command
                         $pm->card->brand,
                         "**** {$pm->card->last4}",
                         "{$pm->card->exp_month}/{$pm->card->exp_year}",
-                        $pm->id === $customer->default_source ? 'Yes' : 'No'
+                        $pm->id === $customer->default_source ? 'Yes' : 'No',
                     ];
                 }
                 $this->table(
                     ['ID', 'Brand', 'Last 4', 'Expiration', 'Default'],
-                    $rows
+                    $rows,
                 );
             }
 
@@ -70,13 +70,13 @@ class ShowStripeCustomer extends Command
                         $subscription->items->data[0]->price->product,
                         $subscription->status,
                         date('Y-m-d', $subscription->current_period_end),
-                        $subscription->items->data[0]->price->unit_amount / 100 . ' ' . 
-                            strtoupper($subscription->items->data[0]->price->currency)
+                        $subscription->items->data[0]->price->unit_amount / 100 . ' ' .
+                            strtoupper($subscription->items->data[0]->price->currency),
                     ];
                 }
                 $this->table(
                     ['ID', 'Product', 'Status', 'Next Payment', 'Price'],
-                    $rows
+                    $rows,
                 );
             }
 
@@ -85,7 +85,7 @@ class ShowStripeCustomer extends Command
             $invoices = Invoice::all([
                 'customer' => $customerId,
                 'limit' => 5,
-                'expand' => ['data.payment_intent']
+                'expand' => ['data.payment_intent'],
             ]);
 
             if ($invoices->count() > 0) {
@@ -96,19 +96,19 @@ class ShowStripeCustomer extends Command
                         date('Y-m-d', $invoice->created),
                         $invoice->amount_paid / 100 . ' ' . strtoupper($invoice->currency),
                         $invoice->status,
-                        $invoice->payment_intent ? $invoice->payment_intent->status : 'N/A'
+                        $invoice->payment_intent ? $invoice->payment_intent->status : 'N/A',
                     ];
                 }
                 $this->table(
                     ['Number', 'Date', 'Amount', 'Status', 'Payment Status'],
-                    $rows
+                    $rows,
                 );
             } else {
-                $this->info("No invoices found");
+                $this->info('No invoices found');
             }
 
         } catch (\Exception $e) {
-            $this->error("Stripe Error: " . $e->getMessage());
+            $this->error('Stripe Error: ' . $e->getMessage());
         }
     }
-} 
+}

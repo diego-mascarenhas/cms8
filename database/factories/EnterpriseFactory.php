@@ -29,16 +29,16 @@ class EnterpriseFactory extends Factory
         $description = $enterpriseData['descriptions'][$nameIndex];
 
         $phone = $this->generatePhone($country);
-        $email = 'info@'.$website;
+        $email = 'info@' . $website;
         $address = $this->generateAddress($country);
-        $code = strtoupper(substr(str_replace(' ', '', $name), 0, 3)).$this->faker->numberBetween(100, 999);
+        $code = strtoupper(substr(str_replace(' ', '', $name), 0, 3)) . $this->faker->numberBetween(100, 999);
 
         return [
             'team_id' => 1,
             'type_id' => 1, // Cliente
             'name' => $name,
             'code' => $code,
-            'website' => 'https://'.$website,
+            'website' => 'https://' . $website,
             'phone' => $phone,
             'email' => $email,
             'whatsapp' => $phone,
@@ -81,7 +81,7 @@ class EnterpriseFactory extends Factory
 
             return [
                 'name' => $enterpriseData['names'][$nameIndex],
-                'website' => 'https://'.$enterpriseData['websites'][$nameIndex],
+                'website' => 'https://' . $enterpriseData['websites'][$nameIndex],
                 'data' => json_encode([
                     'description' => $enterpriseData['descriptions'][$nameIndex],
                     'category' => 'medical_pharmaceutical',
@@ -103,7 +103,7 @@ class EnterpriseFactory extends Factory
 
             return [
                 'name' => $enterpriseData['names'][$nameIndex],
-                'website' => 'https://'.$enterpriseData['websites'][$nameIndex],
+                'website' => 'https://' . $enterpriseData['websites'][$nameIndex],
                 'data' => json_encode([
                     'description' => $enterpriseData['descriptions'][$nameIndex],
                     'category' => 'entertainment_media',
@@ -125,7 +125,7 @@ class EnterpriseFactory extends Factory
 
             return [
                 'name' => $enterpriseData['names'][$nameIndex],
-                'website' => 'https://'.$enterpriseData['websites'][$nameIndex],
+                'website' => 'https://' . $enterpriseData['websites'][$nameIndex],
                 'data' => json_encode([
                     'description' => $enterpriseData['descriptions'][$nameIndex],
                     'category' => 'technology_software',
@@ -147,7 +147,7 @@ class EnterpriseFactory extends Factory
 
             return [
                 'name' => $enterpriseData['names'][$nameIndex],
-                'website' => 'https://'.$enterpriseData['websites'][$nameIndex],
+                'website' => 'https://' . $enterpriseData['websites'][$nameIndex],
                 'data' => json_encode([
                     'description' => $enterpriseData['descriptions'][$nameIndex],
                     'category' => 'legal_financial',
@@ -169,7 +169,7 @@ class EnterpriseFactory extends Factory
 
             return [
                 'name' => $enterpriseData['names'][$nameIndex],
-                'website' => 'https://'.$enterpriseData['websites'][$nameIndex],
+                'website' => 'https://' . $enterpriseData['websites'][$nameIndex],
                 'data' => json_encode([
                     'description' => $enterpriseData['descriptions'][$nameIndex],
                     'category' => 'marketing_advertising',
@@ -270,88 +270,88 @@ class EnterpriseFactory extends Factory
     private function generatePhone($country)
     {
         $phoneFormats = [
-            'us' => '+1 ('.$this->faker->numberBetween(200, 999).') '.$this->faker->numberBetween(100, 999).'-'.$this->faker->numberBetween(1000, 9999),
-            'gb' => '+44 20 '.$this->faker->numberBetween(1000, 9999).' '.$this->faker->numberBetween(1000, 9999),
-            'de' => '+49 '.$this->faker->numberBetween(30, 89).' '.$this->faker->numberBetween(10000000, 99999999),
-            'fr' => '+33 1 '.$this->faker->numberBetween(10, 99).' '.$this->faker->numberBetween(10, 99).' '.$this->faker->numberBetween(10, 99).' '.$this->faker->numberBetween(10, 99),
-            'es' => '+34 '.$this->faker->numberBetween(600, 999).' '.$this->faker->numberBetween(100, 999).' '.$this->faker->numberBetween(100, 999),
-            'ch' => '+41 '.$this->faker->numberBetween(21, 79).' '.$this->faker->numberBetween(100, 999).' '.$this->faker->numberBetween(10, 99).' '.$this->faker->numberBetween(10, 99),
-            'jp' => '+81 3-'.$this->faker->numberBetween(1000, 9999).'-'.$this->faker->numberBetween(1000, 9999),
-            'ca' => '+1 ('.$this->faker->numberBetween(200, 999).') '.$this->faker->numberBetween(100, 999).'-'.$this->faker->numberBetween(1000, 9999),
-            'au' => '+61 2 '.$this->faker->numberBetween(1000, 9999).' '.$this->faker->numberBetween(1000, 9999),
-            'sg' => '+65 '.$this->faker->numberBetween(6000, 9999).' '.$this->faker->numberBetween(1000, 9999),
-            'ie' => '+353 1 '.$this->faker->numberBetween(100, 999).' '.$this->faker->numberBetween(1000, 9999),
+            'us' => '+1 (' . $this->faker->numberBetween(200, 999) . ') ' . $this->faker->numberBetween(100, 999) . '-' . $this->faker->numberBetween(1000, 9999),
+            'gb' => '+44 20 ' . $this->faker->numberBetween(1000, 9999) . ' ' . $this->faker->numberBetween(1000, 9999),
+            'de' => '+49 ' . $this->faker->numberBetween(30, 89) . ' ' . $this->faker->numberBetween(10000000, 99999999),
+            'fr' => '+33 1 ' . $this->faker->numberBetween(10, 99) . ' ' . $this->faker->numberBetween(10, 99) . ' ' . $this->faker->numberBetween(10, 99) . ' ' . $this->faker->numberBetween(10, 99),
+            'es' => '+34 ' . $this->faker->numberBetween(600, 999) . ' ' . $this->faker->numberBetween(100, 999) . ' ' . $this->faker->numberBetween(100, 999),
+            'ch' => '+41 ' . $this->faker->numberBetween(21, 79) . ' ' . $this->faker->numberBetween(100, 999) . ' ' . $this->faker->numberBetween(10, 99) . ' ' . $this->faker->numberBetween(10, 99),
+            'jp' => '+81 3-' . $this->faker->numberBetween(1000, 9999) . '-' . $this->faker->numberBetween(1000, 9999),
+            'ca' => '+1 (' . $this->faker->numberBetween(200, 999) . ') ' . $this->faker->numberBetween(100, 999) . '-' . $this->faker->numberBetween(1000, 9999),
+            'au' => '+61 2 ' . $this->faker->numberBetween(1000, 9999) . ' ' . $this->faker->numberBetween(1000, 9999),
+            'sg' => '+65 ' . $this->faker->numberBetween(6000, 9999) . ' ' . $this->faker->numberBetween(1000, 9999),
+            'ie' => '+353 1 ' . $this->faker->numberBetween(100, 999) . ' ' . $this->faker->numberBetween(1000, 9999),
         ];
 
-        return $phoneFormats[$country] ?? '+1 ('.$this->faker->numberBetween(200, 999).') '.$this->faker->numberBetween(100, 999).'-'.$this->faker->numberBetween(1000, 9999);
+        return $phoneFormats[$country] ?? '+1 (' . $this->faker->numberBetween(200, 999) . ') ' . $this->faker->numberBetween(100, 999) . '-' . $this->faker->numberBetween(1000, 9999);
     }
 
     private function generateAddress($country)
     {
         $addresses = [
             'us' => [
-                'address' => $this->faker->numberBetween(100, 9999).' '.$this->faker->streetName(),
+                'address' => $this->faker->numberBetween(100, 9999) . ' ' . $this->faker->streetName(),
                 'postal_code' => $this->faker->postcode(),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->state(),
             ],
             'gb' => [
-                'address' => $this->faker->numberBetween(1, 999).' '.$this->faker->streetName(),
+                'address' => $this->faker->numberBetween(1, 999) . ' ' . $this->faker->streetName(),
                 'postal_code' => $this->faker->postcode(),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->randomElement(['England', 'Scotland', 'Wales', 'Northern Ireland']),
             ],
             'de' => [
-                'address' => $this->faker->streetName().' '.$this->faker->numberBetween(1, 200),
+                'address' => $this->faker->streetName() . ' ' . $this->faker->numberBetween(1, 200),
                 'postal_code' => $this->faker->numberBetween(10000, 99999),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->randomElement(['Bayern', 'Berlin', 'Hamburg', 'Nordrhein-Westfalen']),
             ],
             'fr' => [
-                'address' => $this->faker->numberBetween(1, 999).' '.$this->faker->streetName(),
+                'address' => $this->faker->numberBetween(1, 999) . ' ' . $this->faker->streetName(),
                 'postal_code' => $this->faker->numberBetween(10000, 95999),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->randomElement(['Île-de-France', 'Provence-Alpes-Côte d\'Azur', 'Auvergne-Rhône-Alpes']),
             ],
             'es' => [
-                'address' => $this->faker->streetName().' '.$this->faker->numberBetween(1, 200),
+                'address' => $this->faker->streetName() . ' ' . $this->faker->numberBetween(1, 200),
                 'postal_code' => $this->faker->numberBetween(10000, 52999),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->randomElement(['Madrid', 'Barcelona', 'Valencia', 'Sevilla']),
             ],
             'ch' => [
-                'address' => $this->faker->streetName().' '.$this->faker->numberBetween(1, 200),
+                'address' => $this->faker->streetName() . ' ' . $this->faker->numberBetween(1, 200),
                 'postal_code' => $this->faker->numberBetween(1000, 9999),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->randomElement(['Zürich', 'Geneva', 'Basel', 'Bern']),
             ],
             'jp' => [
-                'address' => $this->faker->numberBetween(1, 99).'-'.$this->faker->numberBetween(1, 99).' '.$this->faker->streetName(),
-                'postal_code' => $this->faker->numberBetween(100, 999).'-'.$this->faker->numberBetween(1000, 9999),
+                'address' => $this->faker->numberBetween(1, 99) . '-' . $this->faker->numberBetween(1, 99) . ' ' . $this->faker->streetName(),
+                'postal_code' => $this->faker->numberBetween(100, 999) . '-' . $this->faker->numberBetween(1000, 9999),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->randomElement(['Tokyo', 'Osaka', 'Kyoto', 'Yokohama']),
             ],
             'ca' => [
-                'address' => $this->faker->numberBetween(100, 9999).' '.$this->faker->streetName(),
+                'address' => $this->faker->numberBetween(100, 9999) . ' ' . $this->faker->streetName(),
                 'postal_code' => $this->faker->postcode(),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->randomElement(['Ontario', 'Quebec', 'British Columbia', 'Alberta']),
             ],
             'au' => [
-                'address' => $this->faker->numberBetween(1, 999).' '.$this->faker->streetName(),
+                'address' => $this->faker->numberBetween(1, 999) . ' ' . $this->faker->streetName(),
                 'postal_code' => $this->faker->numberBetween(1000, 9999),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->randomElement(['New South Wales', 'Victoria', 'Queensland', 'Western Australia']),
             ],
             'sg' => [
-                'address' => $this->faker->numberBetween(1, 999).' '.$this->faker->streetName(),
+                'address' => $this->faker->numberBetween(1, 999) . ' ' . $this->faker->streetName(),
                 'postal_code' => $this->faker->numberBetween(100000, 999999),
                 'locality' => 'Singapore',
                 'province' => 'Singapore',
             ],
             'ie' => [
-                'address' => $this->faker->numberBetween(1, 999).' '.$this->faker->streetName(),
-                'postal_code' => $this->faker->randomElement(['D01', 'D02', 'D03', 'D04']).' '.$this->faker->bothify('????'),
+                'address' => $this->faker->numberBetween(1, 999) . ' ' . $this->faker->streetName(),
+                'postal_code' => $this->faker->randomElement(['D01', 'D02', 'D03', 'D04']) . ' ' . $this->faker->bothify('????'),
                 'locality' => $this->faker->city(),
                 'province' => $this->faker->randomElement(['Dublin', 'Cork', 'Galway', 'Limerick']),
             ],

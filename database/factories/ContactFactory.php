@@ -4,8 +4,8 @@ namespace Database\Factories;
 
 use App\Models\Contact;
 use App\Models\ContactStatus;
-use App\Models\User;
 use App\Models\Source;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ContactFactory extends Factory

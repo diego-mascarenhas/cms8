@@ -3,17 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
+use App\Mail\MySendGridMail;
 use App\Models\Message;
 use App\Models\MessageType;
 use App\Models\Template;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-
-use Twilio\Rest\Client;
-use App\Mail\MySendGridMail;
-
 use stdClass;
+use Twilio\Rest\Client;
 
 class MessageController extends Controller
 {
@@ -27,7 +25,7 @@ class MessageController extends Controller
      */
     public function create()
     {
-        $data = new stdClass();
+        $data = new stdClass;
         $data->types = MessageType::getOptions();
         $data->templates = Template::getOptions();
 
@@ -58,7 +56,7 @@ class MessageController extends Controller
                 'template_id' => $data['template_id'],
                 'text' => $data['text'],
                 'status_id' => $status_id,
-            ]
+            ],
         );
 
         return redirect()->route('message-list')->with('success', 'Record saved successfully.');
@@ -81,8 +79,7 @@ class MessageController extends Controller
         $data->types = MessageType::getOptions();
         $data->templates = Template::getOptions();
 
-        if (!$data)
-        {
+        if (! $data) {
             return redirect()->route('message-list')->with('error', 'Message not found.');
         }
 
@@ -118,18 +115,15 @@ class MessageController extends Controller
         $token = env('TWILIO_TOKEN');
         $fromNumber = env('TWILIO_SMS_FROM');
 
-        try
-        {
+        try {
             $client = new Client($sid, $token);
             $client->messages->create($receiverNumber, [
                 'from' => $fromNumber,
-                'body' => $message
+                'body' => $message,
             ]);
 
             return response()->json(['status' => 'SMS Message Sent Successfully.']);
-        }
-        catch (\Twilio\Exceptions\RestException $e)
-        {
+        } catch (\Twilio\Exceptions\RestException $e) {
             return response()->json(['error' => 'Error: ' . $e->getMessage()], 400);
         }
     }
@@ -142,19 +136,16 @@ class MessageController extends Controller
         $sid = env('TWILIO_SID');
         $token = env('TWILIO_TOKEN');
         $fromNumber = env('TWILIO_WHATSAPP_FROM');
-        try
-        {
+        try {
             $client = new Client($sid, $token);
 
             $client->messages->create($receiverNumber, [
                 'from' => $fromNumber,
-                'body' => $message
+                'body' => $message,
             ]);
 
             return response()->json(['status' => 'WhatsApp Message Sent Successfully.']);
-        }
-        catch (\Twilio\Exceptions\RestException $e)
-        {
+        } catch (\Twilio\Exceptions\RestException $e) {
             return response()->json(['error' => 'Error: ' . $e->getMessage()], 400);
         }
     }
@@ -177,13 +168,11 @@ class MessageController extends Controller
     {
         $user = User::where('email', $email)->first();
 
-        if ($user)
-        {
+        if ($user) {
             $user->subscribed = false;
             $user->save();
         }
 
         return view('message.unsubscribe', ['email' => $email]);
     }
-
 }

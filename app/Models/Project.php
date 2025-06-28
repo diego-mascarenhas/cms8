@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 
 class Project extends Model
 {
@@ -28,15 +28,13 @@ class Project extends Model
         'responsible_id',
         'status_id',
         'created_at',
-        'updated_at'
+        'updated_at',
     ];
 
     protected static function booted()
     {
-        static::addGlobalScope('team', function (Builder $builder)
-        {
-            if (auth()->check())
-            {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (auth()->check()) {
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
@@ -58,14 +56,14 @@ class Project extends Model
     }
 
     public function responsible()
-	{
-		return $this->belongsTo(User::class, 'responsible_id');
-	}
+    {
+        return $this->belongsTo(User::class, 'responsible_id');
+    }
 
     public function status()
-	{
-		return $this->belongsTo(ProjectStatus::class);
-	}
+    {
+        return $this->belongsTo(ProjectStatus::class);
+    }
 
     public function team()
     {
@@ -88,11 +86,10 @@ class Project extends Model
 
     public function getStatusLabelAttribute()
     {
-        if ($this->status)
-        {
+        if ($this->status) {
             return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->translated_name . '</span>';
         }
+
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
     }
-
 }

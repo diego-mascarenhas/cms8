@@ -40,4 +40,4 @@ class InvoiceDownload extends Model
     {
         return $this->belongsTo(Team::class);
     }
-} 
+}

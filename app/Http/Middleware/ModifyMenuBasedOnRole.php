@@ -2,19 +2,19 @@
 
 namespace App\Http\Middleware;
 
+use App\Helpers\MenuHelper;
+use App\Models\Module;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Module;
-use App\Helpers\MenuHelper;
 
 class ModifyMenuBasedOnRole
 {
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response) $next
+     *
      * @return \Symfony\Component\HttpFoundation\Response
      */
     public function handle(Request $request, Closure $next)
@@ -25,57 +25,50 @@ class ModifyMenuBasedOnRole
 
         $user = Auth::user();
 
-        if ($user)
-        {
+        if ($user) {
             // Get the current team
             $team = $user->currentTeam;
-            
+
             // Get all core modules
             $coreModules = Module::where('is_core', true)->pluck('key')->toArray();
-            
+
             // Filter the menu based on the user's permissions and team's modules
             $filteredMenu = [];
             $currentSection = null;
             $sectionItems = [];
 
-            foreach ($menuConfig['menu'] as $menuItem)
-            {
-                if (isset($menuItem['menuHeader']))
-                {
+            foreach ($menuConfig['menu'] as $menuItem) {
+                if (isset($menuItem['menuHeader'])) {
                     // If we are starting a new section, add the previous section if it had items
-                    if ($currentSection && count($sectionItems) > 0)
-                    {
+                    if ($currentSection && count($sectionItems) > 0) {
                         $filteredMenu[] = $currentSection;
                         $filteredMenu = array_merge($filteredMenu, $sectionItems);
                     }
                     // Start a new section
                     $currentSection = $menuItem;
                     $sectionItems = [];
-                }
-                else
-                {
+                } else {
                     // Check if the menu item has a module key
                     $moduleKey = $menuItem['module_key'] ?? null;
-                    
+
                     // Skip if the user doesn't have permission
-                    if (isset($menuItem['permission']) && !$user->can($menuItem['permission'])) {
+                    if (isset($menuItem['permission']) && ! $user->can($menuItem['permission'])) {
                         continue;
                     }
-                    
+
                     // If it's a core module, always show it
                     // If it's not a core module, check if the team has access
-                    if ($moduleKey && !in_array($moduleKey, $coreModules) && !$team->hasModule($moduleKey)) {
+                    if ($moduleKey && ! in_array($moduleKey, $coreModules) && ! $team->hasModule($moduleKey)) {
                         continue;
                     }
-                    
+
                     // Add the item to the current section
                     $sectionItems[] = $menuItem;
                 }
             }
 
             // Add the last section if it had items
-            if ($currentSection && count($sectionItems) > 0)
-            {
+            if ($currentSection && count($sectionItems) > 0) {
                 $filteredMenu[] = $currentSection;
                 $filteredMenu = array_merge($filteredMenu, $sectionItems);
             }

@@ -8,8 +8,7 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('language_variants', function (Blueprint $table)
-        {
+        Schema::create('language_variants', function (Blueprint $table) {
             $table->id();
             $table->string('code', 10)->unique();
             $table->string('name');

@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\FareType;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class FareTypesSeeder extends Seeder
@@ -16,7 +15,7 @@ class FareTypesSeeder extends Seeder
         $types = [
             ['name' => 'Traducción audiovisual'],
             ['name' => 'Traducción general (texto)'],
-            ['name' => 'Accesibilidad audiovisual']
+            ['name' => 'Accesibilidad audiovisual'],
         ];
 
         foreach ($types as $type) {

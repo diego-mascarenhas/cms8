@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Invoice extends Model
 {
@@ -22,14 +21,14 @@ class Invoice extends Model
         'discount',
         'total_amount',
         'balance',
-        'status'
+        'status',
     ];
 
     public function enterprise()
     {
         return $this->belongsTo(Enterprise::class, 'enterprise_id');
     }
-    
+
     public function type()
     {
         return $this->belongsTo(InvoiceType::class);
@@ -37,8 +36,7 @@ class Invoice extends Model
 
     public function getStatusLabelAttribute()
     {
-        switch ($this->status)
-        {
+        switch ($this->status) {
             case 1:
                 return '<span class="badge rounded-pill bg-label-primary">Print</span>';
             case 2:
@@ -59,5 +57,4 @@ class Invoice extends Model
                 return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
         }
     }
-
 }

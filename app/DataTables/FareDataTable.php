@@ -21,11 +21,12 @@ class FareDataTable extends DataTable
                 if ($fare->units->isEmpty()) {
                     return '<span class="text-muted">N/A</span>';
                 }
-                
+
                 $badges = '';
                 foreach ($fare->units as $unit) {
                     $badges .= '<span class="badge bg-label-primary me-1">' . $unit->type . '</span>';
                 }
+
                 return $badges;
             })
             ->addColumn('type', function ($fare) {
@@ -36,7 +37,7 @@ class FareDataTable extends DataTable
             })
             ->orderColumn('type', function ($query, $order) {
                 $query->leftJoin('fare_types', 'fares.type_id', '=', 'fare_types.id')
-                      ->orderBy('fare_types.name', $order);
+                    ->orderBy('fare_types.name', $order);
             })
             ->orderColumn('units', function ($query, $order) {
                 // This is a simplified approach as units is a many-to-many relationship
@@ -87,6 +88,6 @@ class FareDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Fares_'.date('YmdHis');
+        return 'Fares_' . date('YmdHis');
     }
-} 
+}

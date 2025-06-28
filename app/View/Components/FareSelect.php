@@ -3,8 +3,8 @@
 namespace App\View\Components;
 
 use App\Models\Fare;
-use Illuminate\View\Component;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\Component;
 
 class FareSelect extends Component
 {
@@ -19,12 +19,8 @@ class FareSelect extends Component
     /**
      * Create a new component instance.
      *
-     * @param string $id
-     * @param string $name
-     * @param string $label
-     * @param bool $required
-     * @param string $placeholder
      * @param array $selected
+     *
      * @return void
      */
     public function __construct(
@@ -33,7 +29,7 @@ class FareSelect extends Component
         string $label = 'Servicios',
         bool $required = false,
         string $placeholder = 'Seleccione servicios',
-        $selected = []
+        $selected = [],
     ) {
         $this->id = $id;
         $this->name = $name;
@@ -52,13 +48,13 @@ class FareSelect extends Component
     protected function getFaresFromDatabase()
     {
         return Fare::with('type')
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->whereNull('team_id')
                     ->orWhere('team_id', Auth::user()->currentTeam->id);
             })
             ->orderBy('name')
             ->get()
-            ->groupBy(function($fare) {
+            ->groupBy(function ($fare) {
                 return $fare->type ? $fare->type->name : 'Sin categoría';
             });
     }
@@ -72,4 +68,4 @@ class FareSelect extends Component
     {
         return view('components.fare-select');
     }
-} 
+}

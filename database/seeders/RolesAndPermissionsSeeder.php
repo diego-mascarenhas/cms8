@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
@@ -33,7 +33,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'today.store']);
         Permission::create(['name' => 'today.update']);
         Permission::create(['name' => 'today.destroy']);
-        
+
         Permission::create(['name' => 'chat.index']);
         Permission::create(['name' => 'chat.list']);
         Permission::create(['name' => 'chat.create']);
@@ -69,7 +69,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'contact.store']);
         Permission::create(['name' => 'contact.update']);
         Permission::create(['name' => 'contact.destroy']);
-        
+
         Permission::create(['name' => 'collaborator.index']);
         Permission::create(['name' => 'collaborator.list']);
         Permission::create(['name' => 'collaborator.create']);
@@ -78,7 +78,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'collaborator.store']);
         Permission::create(['name' => 'collaborator.update']);
         Permission::create(['name' => 'collaborator.destroy']);
-        
+
         Permission::create(['name' => 'client.index']);
         Permission::create(['name' => 'client.list']);
         Permission::create(['name' => 'client.create']);
@@ -280,7 +280,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $rootRole->syncPermissions([
             'user.management',
         ]);
-        
+
         $administratorRole = Role::create(['name' => 'admin']);
         $administratorRole->syncPermissions([
             'client.index',
@@ -427,7 +427,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.update',
             'password.update',
         ]);
-        
+
         $technicalRole = Role::create(['name' => 'technical']);
         $technicalRole->syncPermissions([
             'profile.show',
@@ -435,7 +435,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.update',
             'password.update',
         ]);
-        
+
         $clientRole = Role::create(['name' => 'client']);
         $clientRole->syncPermissions([
             'profile.show',
@@ -451,7 +451,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.update',
             'password.update',
         ]);
-        
+
         $userRole = Role::create(['name' => 'guest']);
         $userRole->syncPermissions([
             'profile.show',

@@ -2,8 +2,8 @@
 
 namespace App\View\Components;
 
-use Illuminate\View\Component;
 use App\Models\Country;
+use Illuminate\View\Component;
 
 class CountrySelect extends Component
 {
@@ -23,6 +23,7 @@ class CountrySelect extends Component
     public function render()
     {
         $countries = Country::orderBy('name')->get();
+
         return view('components.country-select', [
             'countries' => $countries,
         ]);

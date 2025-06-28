@@ -2,8 +2,8 @@
 
 namespace App\DataTables;
 
-use App\Models\LanguageVariant;
 use App\Helpers\Helpers;
+use App\Models\LanguageVariant;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -34,8 +34,9 @@ class LanguageVariantDataTable extends DataTable
                     $langCode = strtolower(explode('-', $row->code)[0] ?? '');
                     $flagCode = Helpers::getLanguageFlag($langCode);
                 }
-                
+
                 $flag = $flagCode ? '<span class="fi fi-' . $flagCode . ' me-2"></span>' : '';
+
                 return $flag . e($row->name);
             })
             ->editColumn('base_language', function ($row) {
@@ -66,9 +67,9 @@ class LanguageVariantDataTable extends DataTable
             ->pageLength(25)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
-                'drawCallback' => "function() {
+                'drawCallback' => 'function() {
                     // Add any specific callback functionality here
-                }",
+                }',
             ]);
     }
 
@@ -88,7 +89,7 @@ class LanguageVariantDataTable extends DataTable
             Column::make('country_code')
                 ->title(__('Country'))
                 ->addClass('min-tablet'),
-                Column::computed('action')
+            Column::computed('action')
                 ->title(__('Actions'))
                 ->width(20)
                 ->className('text-center')
@@ -103,4 +104,4 @@ class LanguageVariantDataTable extends DataTable
     {
         return 'LanguageVariant_' . date('YmdHis');
     }
-} 
+}

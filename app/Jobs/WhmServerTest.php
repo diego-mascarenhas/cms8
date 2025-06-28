@@ -26,10 +26,8 @@ class WhmServerTest implements ShouldQueue
         try {
             $results = $whmService->testConnections();
 
-            foreach ($results as $result)
-            {
-                if (isset($result['components']) && count($result['components']) >= 3)
-                {
+            foreach ($results as $result) {
+                if (isset($result['components']) && count($result['components']) >= 3) {
                     $testResult = $result['test_result'];
                     $status = $testResult['success'] ?? false
                         ? ServerStatus::ACTIVE
@@ -41,8 +39,8 @@ class WhmServerTest implements ShouldQueue
                             'username' => $result['components'][1],
                             'success' => $testResult['success'] ?? false,
                             'status_id' => $status->value,
-                            'details' => $testResult
-                        ]
+                            'details' => $testResult,
+                        ],
                     );
                 }
             }
@@ -50,7 +48,7 @@ class WhmServerTest implements ShouldQueue
             Log::error('Critical error in WHM server test: ' . $e->getMessage(), [
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
             ]);
             throw $e;
         }

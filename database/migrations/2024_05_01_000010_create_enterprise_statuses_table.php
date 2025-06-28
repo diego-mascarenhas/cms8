@@ -20,9 +20,9 @@ class CreateEnterpriseStatusesTable extends Migration
             $table->string('label_class')->default('bg-label-secondary');
 
             $table->foreign('enterprise_type_id')
-                  ->references('id')
-                  ->on('enterprise_types')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('enterprise_types')
+                ->onDelete('cascade');
         });
     }
 

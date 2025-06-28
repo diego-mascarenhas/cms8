@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Language;
 use App\Models\LanguageVariant;
+use Illuminate\Database\Seeder;
 
 class LanguageSeeder extends Seeder
 {
@@ -27,7 +27,7 @@ class LanguageSeeder extends Seeder
         foreach ($languages as $language) {
             Language::updateOrCreate(
                 ['code' => $language['code']],
-                ['name' => $language['name']]
+                ['name' => $language['name']],
             );
         }
 
@@ -53,8 +53,8 @@ class LanguageSeeder extends Seeder
                 [
                     'name' => $variant['name'],
                     'base_language' => $variant['base_language'],
-                    'country_code' => $variant['country_code']
-                ]
+                    'country_code' => $variant['country_code'],
+                ],
             );
         }
     }

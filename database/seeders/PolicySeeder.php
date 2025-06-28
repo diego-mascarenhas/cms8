@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Enterprise;
 use App\Policies\ClientPolicy;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Gate;
 
 class PolicySeeder extends Seeder

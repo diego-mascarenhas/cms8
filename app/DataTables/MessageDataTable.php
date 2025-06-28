@@ -3,14 +3,12 @@
 namespace App\DataTables;
 
 use App\Models\Message;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
-use App\Enums\MessageStatus;
-
-use Carbon\Carbon;
 
 class MessageDataTable extends DataTable
 {
@@ -25,30 +23,23 @@ class MessageDataTable extends DataTable
             ->addColumn('action', 'message.action')
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status_id'])
-            ->editColumn('type_id', function ($data)
-            {
+            ->editColumn('type_id', function ($data) {
                 return $data->type->name;
             })
-            ->editColumn('category_id', function ($data)
-            {
+            ->editColumn('category_id', function ($data) {
                 return optional($data->category)->name;
             })
-            ->editColumn('updated_at', function ($data)
-            {
+            ->editColumn('updated_at', function ($data) {
                 return Carbon::parse($data->updated_at)->format('d-m-Y H:i:s');
             })
-            ->editColumn('status_id', function ($data)
-            {
+            ->editColumn('status_id', function ($data) {
                 $statusValue = is_object($data->status_id) ? $data->status_id->value : $data->status_id;
-                
-                if ($statusValue == 2)
-                {
+
+                if ($statusValue == 2) {
                     return '<span class="badge rounded-pill bg-label-success">Active</span>';
-                }
-                else
-                {
+                } else {
                     return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
-                };
+                }
             });
     }
 
@@ -60,12 +51,12 @@ class MessageDataTable extends DataTable
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('message-table')
-                    ->columns($this->getColumns())
-                    ->minifiedAjax()
-                    ->dom('frtip')
-                    ->orderBy(1)
-                    ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json']);
+            ->setTableId('message-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(1)
+            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json']);
     }
 
     public function getColumns(): array

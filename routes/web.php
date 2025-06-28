@@ -1,56 +1,53 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\language\LanguageController;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\LegalDocumentsController;
-use App\Http\Controllers\pages\AccountSettingsAccount;
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
-use App\Http\Controllers\PageController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\MessageController;
-use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ClientController;
-use App\Http\Controllers\List60Controller;
+use App\Http\Controllers\CollaboratorController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DomainController;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\EnterpriseOrganizationController;
-use App\Http\Controllers\MailController;
-use App\Http\Controllers\LeadController;
-use App\Http\Controllers\TeamSettingController;
-use App\Http\Controllers\CategoryController;
-use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\ProjectController;
-use App\Http\Controllers\KanbanController;
-use App\Http\Controllers\TaskController;
-use App\Http\Controllers\TwilioWebhookController;
-use App\Http\Controllers\HostingController;
-use App\Http\Controllers\DomainController;
-use App\Http\Controllers\AccountingController;
-use App\Http\Controllers\OvhApiController;
-use App\Http\Controllers\TemplateController;
-use App\Http\Controllers\ServerController;
-use App\Http\Controllers\CollaboratorController;
-use App\Http\Controllers\CustomerFareController;
-use App\Http\Controllers\UserFareController;
 use App\Http\Controllers\FareController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HostingController;
+use App\Http\Controllers\KanbanController;
+use App\Http\Controllers\language\LanguageController;
+use App\Http\Controllers\laravel_example\UserManagement;
+use App\Http\Controllers\LeadController;
+use App\Http\Controllers\LegalDocumentsController;
+use App\Http\Controllers\List60Controller;
+use App\Http\Controllers\MailController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\OvhApiController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\pages\AccountSettingsAccount;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ServerController;
+use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SoftwareController;
-use App\Models\Contact;
-use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\StylebookController;
+use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TeamSettingController;
+use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\TwilioWebhookController;
+use App\Http\Controllers\UserFareController;
+use App\Models\Contact;
+use Illuminate\Support\Facades\Route;
 
 // auth
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
-    ])->group(function ()
-    {
-    Route::get('/dashboard', function ()
-    {
+])->group(function () {
+    Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
 });
@@ -62,17 +59,17 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
-Route::get('/dashboard/collaborator', function() {
+Route::get('/dashboard/collaborator', function () {
     return view('collaborator.dashboard');
 })->name('dashboard.collaborator')->middleware('auth');
 
 // Adding routes for other dashboard types
-Route::get('/dashboard/client', function() {
+Route::get('/dashboard/client', function () {
     // This view doesn't exist yet, so we'll redirect to collaborator for now
     return view('collaborator.dashboard');
 })->name('dashboard.client')->middleware('auth');
 
-Route::get('/dashboard/project', function() {
+Route::get('/dashboard/project', function () {
     // This view doesn't exist yet, so we'll redirect to collaborator for now
     return view('collaborator.dashboard');
 })->name('dashboard.project')->middleware('auth');
@@ -100,24 +97,22 @@ Route::get('/legal/{document}', [LegalDocumentsController::class, 'show'])->name
 
 Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 
-Route::middleware(['auth'])->group(function ()
-{
-   Route::get('/dashboard', function ()
-    {
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', function () {
         return redirect()->route('dashboard');
     });
-    
+
     // Team Settings
     Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
-    
+
     // Team Valorations
     Route::get('/team/{team}/valorations', [TeamSettingController::class, 'valorations'])->name('team-settings.valorations');
     Route::post('/team/{team}/valorations', [TeamSettingController::class, 'storeValoration'])->name('team-settings.valorations.store');
     Route::put('/team/{team}/valorations/{valoration}', [TeamSettingController::class, 'updateValoration'])->name('team-settings.valorations.update');
     Route::delete('/team/{team}/valorations/{valoration}', [TeamSettingController::class, 'destroyValoration'])->name('team-settings.valorations.destroy');
-    
+
     // Categories Management
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
@@ -128,7 +123,7 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
     Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
     Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
-    
+
     // User Management
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
     Route::resource('/user-list', UserManagement::class);
@@ -180,19 +175,21 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/collaborator/{id}/link-user', [CollaboratorController::class, 'linkUser'])->name('collaborator.link-user');
     Route::post('/collaborator/{id}/unlink-user', [CollaboratorController::class, 'unlinkUser'])->name('collaborator.unlink-user');
     Route::post('/collaborator/{id}/create-and-link-user', [CollaboratorController::class, 'createAndLinkUser'])->name('collaborator.create-and-link-user');
-Route::post('/collaborator/{id}/portfolio', [CollaboratorController::class, 'storePortfolio'])->name('collaborator.portfolio.store');
-Route::put('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'updatePortfolio'])->name('collaborator.portfolio.update');
-Route::delete('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'destroyPortfolio'])->name('collaborator.portfolio.destroy');
-Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
-Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
-Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getCollaboratorRates'])->name('collaborator.rates.get');
+    Route::post('/collaborator/{id}/portfolio', [CollaboratorController::class, 'storePortfolio'])->name('collaborator.portfolio.store');
+    Route::put('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'updatePortfolio'])->name('collaborator.portfolio.update');
+    Route::delete('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'destroyPortfolio'])->name('collaborator.portfolio.destroy');
+    Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
+    Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
+    Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getCollaboratorRates'])->name('collaborator.rates.get');
     Route::get('/collaborator/{id}/absences', function ($id) {
         $collaborator = Contact::findOrFail($id);
+
         return view('collaborator.absences', compact('collaborator'));
     })->name('collaborator.absences');
-    
+
     Route::get('/collaborator/{id}/notifications', function ($id) {
         $collaborator = Contact::findOrFail($id);
+
         return view('collaborator.notifications', compact('collaborator'));
     })->name('collaborator.notifications');
 
@@ -200,7 +197,7 @@ Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getColla
     Route::get('/client/list', [ClientController::class, 'index'])
         ->middleware('role:admin,collaborator')
         ->name('client-list');
-        
+
     Route::post('/client/end-action/{id}', [ClientController::class, 'endAction'])->name('client.end-action');
     Route::get('/client/import', [ClientController::class, 'showImportForm'])->name('client.import');
     Route::post('/client/import-excel', [ClientController::class, 'importExcel'])->name('client.import-excel');
@@ -261,17 +258,16 @@ Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getColla
     // Hosting
     Route::resource('hosting', HostingController::class);
     Route::get('/hosting/data', [HostingController::class, 'data'])->name('hosting.data');
-    
+
     // Domains
     Route::resource('domain', DomainController::class);
     Route::post('/domain/{domain}/refresh', [DomainController::class, 'refresh'])->name('domain.refresh');
     Route::post('/domain/{domain}/toggle-suspension', [DomainController::class, 'toggleSuspension'])->name('domain.toggle-suspension');
-    
+
     // Servers
     Route::resource('server', ServerController::class);
     Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
-    Route::post('/server/{server}/sync-domains', [ServerController::class, 'syncDomains'])->name('server.syncDomains');
-    
+
     // Accounting
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
     Route::get('/accounting/invoice/{id}', [AccountingController::class, 'showInvoice'])->name('accounting.invoice');
@@ -314,13 +310,13 @@ Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getColla
     Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
 
     // Software Management
-Route::get('/software', [SoftwareController::class, 'index'])->name('software.index')->middleware('auth');
-Route::get('/software/create', [SoftwareController::class, 'create'])->name('software.create')->middleware('auth');
-Route::post('/software', [SoftwareController::class, 'store'])->name('software.store')->middleware('auth');
-Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit')->middleware('auth');
-Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update')->middleware('auth');
-Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy')->middleware('auth');
-Route::get('/software/autocomplete', [SoftwareController::class, 'autocomplete'])->name('software.autocomplete')->middleware('auth');
+    Route::get('/software', [SoftwareController::class, 'index'])->name('software.index')->middleware('auth');
+    Route::get('/software/create', [SoftwareController::class, 'create'])->name('software.create')->middleware('auth');
+    Route::post('/software', [SoftwareController::class, 'store'])->name('software.store')->middleware('auth');
+    Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit')->middleware('auth');
+    Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update')->middleware('auth');
+    Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy')->middleware('auth');
+    Route::get('/software/autocomplete', [SoftwareController::class, 'autocomplete'])->name('software.autocomplete')->middleware('auth');
 
     // Certification Management
     Route::get('/certification', [CertificationController::class, 'index'])->name('certification.index')->middleware('auth');
@@ -401,7 +397,7 @@ Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function (
 });
 
 // Language Variants
-Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function() {
+Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function () {
     Route::get('/', [App\Http\Controllers\LanguageVariantController::class, 'index'])->name('index');
     Route::get('/create', [App\Http\Controllers\LanguageVariantController::class, 'create'])->name('create');
     Route::post('/', [App\Http\Controllers\LanguageVariantController::class, 'store'])->name('store');

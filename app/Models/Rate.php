@@ -17,12 +17,12 @@ class Rate extends Model
         'service_type',
         'base_price',
         'currency',
-        'is_active'
+        'is_active',
     ];
 
     protected $casts = [
         'base_price' => 'decimal:2',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
     ];
 
     /**
@@ -56,4 +56,4 @@ class Rate extends Model
     {
         return $query->where('service_type', $serviceType);
     }
-} 
+}

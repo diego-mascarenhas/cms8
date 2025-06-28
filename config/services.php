@@ -64,7 +64,7 @@ return [
         'api_key' => env('CLAUDE_API_KEY'),
         'model' => env('CLAUDE_MODEL', 'claude-3-5-sonnet-20241022'),
         'base_url' => env('CLAUDE_BASE_URL', 'https://api.anthropic.com/v1'),
-        'max_tokens' => (int)env('CLAUDE_MAX_TOKENS', 1000),
+        'max_tokens' => (int) env('CLAUDE_MAX_TOKENS', 1000),
         'auto_respond' => env('CLAUDE_AUTO_RESPOND', false),
         'system_prompt' => env('CLAUDE_SYSTEM_PROMPT'),
     ],

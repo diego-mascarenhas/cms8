@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Contact;
-use App\Models\UserContactAction;
 use App\Models\List60;
 use App\Models\Project;
-
+use App\Models\UserContactAction;
 use Carbon\Carbon;
-use Stripe\Stripe;
 use Stripe\Balance;
+use Stripe\Stripe;
 
 class DashboardController extends Controller
 {
@@ -18,20 +16,18 @@ class DashboardController extends Controller
     {
         // Get active team
         $activeTeam = auth()->user()->currentTeam ?? auth()->user()->teams->first();
-        
+
         // Initialize Stripe variables
         $totalBalance = 0;
         $currentMonthRevenue = 0;
         $lastMonthRevenue = 0;
 
-        if (!$activeTeam)
-        {
+        if (! $activeTeam) {
             return redirect()->back()->with('error', 'No team assigned');
         }
 
         // Calculate total team minutes
-        $totalTeamSeconds = UserContactAction::whereHas('contact', function ($query) use ($activeTeam)
-        {
+        $totalTeamSeconds = UserContactAction::whereHas('contact', function ($query) use ($activeTeam) {
             $query->where('team_id', $activeTeam->id);
         })->whereNotNull('duration_seconds')
             ->sum('duration_seconds');
@@ -40,32 +36,27 @@ class DashboardController extends Controller
 
         // Filter dangerous contacts by team
         $dangerousContacts = Contact::where('team_id', $activeTeam->id)
-            ->whereHas('sentimentHistories', function ($query)
-            {
+            ->whereHas('sentimentHistories', function ($query) {
                 $query->whereIn('sentiment_id', [1, 2])
-                    ->whereIn('id', function ($subQuery)
-                    {
+                    ->whereIn('id', function ($subQuery) {
                         $subQuery->selectRaw('MAX(id)')
                             ->from('contact_sentiment_histories')
                             ->groupBy('contact_id');
                     });
             })->where('status_id', 5)
-            ->with(['currentSentiment' => function ($query)
-            {
+            ->with(['currentSentiment' => function ($query) {
                 $query->whereIn('sentiment_id', [1, 2]);
             }])->get();
 
         // Clients to contact today (filtered by team)
         $today = Carbon::today();
-        $clientsToContactToday = List60::whereHas('contact', function ($query) use ($activeTeam)
-        {
+        $clientsToContactToday = List60::whereHas('contact', function ($query) use ($activeTeam) {
             $query->where('team_id', $activeTeam->id);
         })->whereDate('date_next', $today)->count();
 
         // Get latest sentiment for each contact (filtered by team)
         $contacts = Contact::where('team_id', $activeTeam->id)
-            ->with(['currentSentiment' => function ($query)
-            {
+            ->with(['currentSentiment' => function ($query) {
                 $query->latest();
             }])->get();
 
@@ -84,18 +75,15 @@ class DashboardController extends Controller
         ];
 
         // Ensure all sentiments are represented
-        foreach ($sentiments as $id => $name)
-        {
-            if (!isset($sentimentCounts[$id]))
-            {
+        foreach ($sentiments as $id => $name) {
+            if (! isset($sentimentCounts[$id])) {
                 $sentimentCounts[$id] = 0;
             }
         }
 
         // Prepare data for view
         $sentimentData = [];
-        foreach ($sentiments as $id => $name)
-        {
+        foreach ($sentiments as $id => $name) {
             $sentimentData[] = [
                 'label' => $name,
                 'count' => $sentimentCounts[$id],
@@ -109,8 +97,7 @@ class DashboardController extends Controller
 
         // Get contacts to follow up today (filtered by team)
         $todayContacts = List60::with(['contact.enterprise', 'contact.currentSentiment.sentiment'])
-            ->whereHas('contact', function ($query) use ($activeTeam)
-            {
+            ->whereHas('contact', function ($query) use ($activeTeam) {
                 $query->where('team_id', $activeTeam->id);
             })
             ->whereDate('date_next', Carbon::today())
@@ -123,12 +110,10 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        if ($activeTeam && $activeTeam->getSetting('stripe_secret'))
-        {
-            try
-            {
+        if ($activeTeam && $activeTeam->getSetting('stripe_secret')) {
+            try {
                 Stripe::setApiKey($activeTeam->getSetting('stripe_secret'));
-                
+
                 // Get balance
                 $balance = Balance::retrieve();
                 \Log::info('Stripe Balance:', ['balance' => $balance]);
@@ -140,41 +125,41 @@ class DashboardController extends Controller
                 $startOfCurrentMonth = Carbon::now()->startOfMonth()->timestamp;
                 $startOfLastMonth = Carbon::now()->subMonth()->startOfMonth()->timestamp;
                 $endOfLastMonth = Carbon::now()->subMonth()->endOfMonth()->timestamp;
-                
+
                 \Log::info('Date ranges:', [
                     'current_month_start' => date('Y-m-d H:i:s', $startOfCurrentMonth),
                     'last_month_start' => date('Y-m-d H:i:s', $startOfLastMonth),
-                    'last_month_end' => date('Y-m-d H:i:s', $endOfLastMonth)
+                    'last_month_end' => date('Y-m-d H:i:s', $endOfLastMonth),
                 ]);
-                
+
                 // Get all paid invoices
                 $invoices = \Stripe\Invoice::all([
                     'status' => 'paid',
-                    'limit' => 100
+                    'limit' => 100,
                 ]);
-                
+
                 // Filter invoices by payment date
-                $currentMonthInvoices = collect($invoices->data)->filter(function($invoice) use ($startOfCurrentMonth) {
+                $currentMonthInvoices = collect($invoices->data)->filter(function ($invoice) use ($startOfCurrentMonth) {
                     $paidAt = $invoice->status_transitions->paid_at ?? $invoice->created;
+
                     return $paidAt >= $startOfCurrentMonth;
                 });
-                
-                $lastMonthInvoices = collect($invoices->data)->filter(function($invoice) use ($startOfLastMonth, $endOfLastMonth) {
+
+                $lastMonthInvoices = collect($invoices->data)->filter(function ($invoice) use ($startOfLastMonth, $endOfLastMonth) {
                     $paidAt = $invoice->status_transitions->paid_at ?? $invoice->created;
+
                     return $paidAt >= $startOfLastMonth && $paidAt <= $endOfLastMonth;
                 });
-                
+
                 // Use total instead of amount_paid for external payments
                 if ($currentMonthInvoices->isNotEmpty()) {
                     $currentMonthRevenue = $currentMonthInvoices->sum('total') / 100;
                 }
-                
+
                 if ($lastMonthInvoices->isNotEmpty()) {
                     $lastMonthRevenue = $lastMonthInvoices->sum('total') / 100;
                 }
-            }
-            catch (\Exception $e)
-            {
+            } catch (\Exception $e) {
                 \Log::error('Error fetching Stripe data: ' . $e->getMessage());
             }
         }
@@ -188,7 +173,7 @@ class DashboardController extends Controller
             'todayContacts',
             'currentMonthRevenue',
             'lastMonthRevenue',
-            'ongoingProjects'
+            'ongoingProjects',
         ));
     }
 }

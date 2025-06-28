@@ -25,7 +25,7 @@ class SoftwareDataTable extends DataTable
             })
             ->orderColumn('type', function ($query, $order) {
                 $query->leftJoin('software_types', 'software.type_id', '=', 'software_types.id')
-                      ->orderBy('software_types.name', $order);
+                    ->orderBy('software_types.name', $order);
             })
             ->rawColumns(['action'])
             ->setRowId('id');
@@ -71,6 +71,6 @@ class SoftwareDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Software_'.date('YmdHis');
+        return 'Software_' . date('YmdHis');
     }
-} 
+}

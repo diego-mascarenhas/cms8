@@ -6,14 +6,11 @@ use App\DataTables\List60DataTable;
 use App\Models\List60;
 use Illuminate\Http\Request;
 
-use Log;
-
 class List60Controller extends Controller
 {
     public function index(List60DataTable $dataTable)
     {
-        if (!auth()->user()->currentTeam)
-        {
+        if (! auth()->user()->currentTeam) {
             return redirect()->route('error-without-team');
         }
 
@@ -33,12 +30,10 @@ class List60Controller extends Controller
      */
     public function store(Request $request)
     {
-        try
-        {
-            if (!$request->has('contact_id'))
-            {
+        try {
+            if (! $request->has('contact_id')) {
                 return response()->json([
-                    'error' => 'El ID del contacto es requerido'
+                    'error' => 'El ID del contacto es requerido',
                 ], 400);
             }
 
@@ -47,49 +42,44 @@ class List60Controller extends Controller
                 ->where('contacts.team_id', auth()->user()->currentTeam->id)
                 ->where('list60.responsible_id', auth()->id())
                 ->count();
-            if ($totalContacts >= 60)
-            {
+            if ($totalContacts >= 60) {
                 return response()->json([
-                    'error' => 'La lista ya tiene 60 contactos'
+                    'error' => 'La lista ya tiene 60 contactos',
                 ], 400);
             }
 
             $existingContact = List60::where('contact_id', $request->contact_id)->first();
-            if ($existingContact)
-            {
+            if ($existingContact) {
                 return response()->json([
-                    'error' => 'El contacto ya está en la Lista de 60'
+                    'error' => 'El contacto ya está en la Lista de 60',
                 ], 400);
             }
 
             $nextDate = now();
             $businessDays = 0;
-            
-            while ($businessDays < 7)
-            {
+
+            while ($businessDays < 7) {
                 $nextDate = $nextDate->addDay();
-                if (!$nextDate->isWeekend())
-                {
+                if (! $nextDate->isWeekend()) {
                     $businessDays++;
                 }
             }
 
-            $list60 = new List60();
+            $list60 = new List60;
             $list60->contact_id = $request->contact_id;
             $list60->date_next = $nextDate;
             $list60->responsible_id = auth()->id();
             $list60->save();
 
             return response()->json([
-                'success' => 'Contacto agregado exitosamente a la Lista de 60'
+                'success' => 'Contacto agregado exitosamente a la Lista de 60',
             ], 200);
 
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             \Log::error('Error al agregar contacto a Lista60: ' . $e->getMessage());
+
             return response()->json([
-                'error' => 'No se pudo agregar el contacto a la Lista de 60: ' . $e->getMessage()
+                'error' => 'No se pudo agregar el contacto a la Lista de 60: ' . $e->getMessage(),
             ], 500);
         }
     }

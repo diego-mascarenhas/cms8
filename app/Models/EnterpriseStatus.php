@@ -15,7 +15,7 @@ class EnterpriseStatus extends Model
     {
         return $this->hasMany(Enterprise::class, 'status_id');
     }
-    
+
     public function list60s()
     {
         return $this->hasMany(List60::class, 'status_id');
@@ -25,7 +25,7 @@ class EnterpriseStatus extends Model
     {
         $query = self::query();
 
-        if (!is_null($enterpriseTypeId)) {
+        if (! is_null($enterpriseTypeId)) {
             $query->where('enterprise_type_id', $enterpriseTypeId);
         }
 

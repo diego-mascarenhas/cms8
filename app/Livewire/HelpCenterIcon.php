@@ -2,8 +2,8 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use App\Models\Conversation;
+use Livewire\Component;
 
 class HelpCenterIcon extends Component
 {
@@ -21,7 +21,7 @@ class HelpCenterIcon extends Component
         $this->inboundCount = Conversation::where('direction', 'inbound')
             ->where('status', '!=', 'received')
             ->count();
-            
+
         return view('livewire.help-center-icon');
     }
 }

@@ -2,8 +2,8 @@
 
 namespace App\View\Components;
 
-use Illuminate\View\Component;
 use App\Models\Language;
+use Illuminate\View\Component;
 
 class LanguageSelect extends Component
 {
@@ -23,6 +23,7 @@ class LanguageSelect extends Component
     public function render()
     {
         $languages = Language::orderBy('name')->get();
+
         return view('components.language-select', [
             'languages' => $languages,
         ]);

@@ -3,13 +3,10 @@
 namespace App\DataTables;
 
 use App\Models\Server;
-use App\Enums\ServerStatus;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
-use Yajra\DataTables\Html\Editor\Editor;
-use Yajra\DataTables\Html\Editor\Fields;
 use Yajra\DataTables\Services\DataTable;
 
 class ServerDataTable extends DataTable
@@ -17,13 +14,14 @@ class ServerDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', function($server) {
+            ->addColumn('action', function ($server) {
                 return view('server.action', ['id' => $server->id])->render();
             })
             ->setRowId('id')
             ->editColumn('status_id', function ($server) {
                 $statusClass = $server->status_id->color();
                 $statusText = $server->status_id->name();
+
                 return '<span class="badge bg-label-' . $statusClass . '">' . $statusText . '</span>';
             })
             ->rawColumns(['status_id', 'action']);
@@ -46,7 +44,7 @@ class ServerDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->language([
-                'url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'
+                'url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json',
             ]);
     }
 
@@ -71,4 +69,4 @@ class ServerDataTable extends DataTable
     {
         return 'Server_' . date('YmdHis');
     }
-} 
+}

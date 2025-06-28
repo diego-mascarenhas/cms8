@@ -3,13 +3,12 @@
 namespace App\DataTables;
 
 use App\Models\List60;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
-
-use Carbon\Carbon;
 
 class List60DataTable extends DataTable
 {
@@ -43,7 +42,7 @@ class List60DataTable extends DataTable
             ->editColumn('type_id', function ($row) {
                 return $row->type->name ?? __('Undefined');
             })
-            ->filterColumn('contact_id', function($query, $keyword) {
+            ->filterColumn('contact_id', function ($query, $keyword) {
                 $query->whereHas('contact', function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });
@@ -60,7 +59,7 @@ class List60DataTable extends DataTable
                 'contact.sources',
                 'contact.status',
                 'status',
-                'type'
+                'type',
             ]);
     }
 
@@ -77,7 +76,7 @@ class List60DataTable extends DataTable
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
                 'pageLength' => 60,
-                'paging' => false
+                'paging' => false,
             ]);
     }
 

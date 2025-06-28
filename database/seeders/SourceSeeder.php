@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Source;
+use Illuminate\Database\Seeder;
 
 class SourceSeeder extends Seeder
 {
@@ -90,7 +90,7 @@ class SourceSeeder extends Seeder
         foreach ($sources as $source) {
             Source::updateOrCreate(
                 ['name' => $source['name']],
-                $source
+                $source,
             );
         }
     }

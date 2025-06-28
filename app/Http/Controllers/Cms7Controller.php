@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class Cms7Controller extends Controller
 {
@@ -18,7 +17,7 @@ class Cms7Controller extends Controller
             ->where('id', $id)
             ->first();
 
-        if (!$contact) {
+        if (! $contact) {
             return redirect()
                 ->back()
                 ->with('error', 'Contacto no encontrado en el sistema antiguo');
@@ -46,7 +45,7 @@ class Cms7Controller extends Controller
             ->where('id', $id)
             ->first();
 
-        if (!$empresa) {
+        if (! $empresa) {
             return redirect()
                 ->back()
                 ->with('error', 'Empresa no encontrada en el sistema antiguo');
@@ -100,19 +99,19 @@ class Cms7Controller extends Controller
         }
 
         $facturas = $query->select(
-                'facturas.id',
-                'empresas_fiscales.id_empresa as enterprise_id',
-                'facturas.fecha',
-                'facturas.vencimiento',
-                'facturas.operacion',
-                'facturas.numero_talonario',
-                'facturas.numero_factura',
-                'facturas.bruto',
-                'facturas.descuento',
-                'facturas.total_neto',
-                'facturas.saldo',
-                'facturas.estado'
-            )
+            'facturas.id',
+            'empresas_fiscales.id_empresa as enterprise_id',
+            'facturas.fecha',
+            'facturas.vencimiento',
+            'facturas.operacion',
+            'facturas.numero_talonario',
+            'facturas.numero_factura',
+            'facturas.bruto',
+            'facturas.descuento',
+            'facturas.total_neto',
+            'facturas.saldo',
+            'facturas.estado',
+        )
             ->orderBy('facturas.fecha', 'desc')
             ->get();
 
@@ -125,7 +124,7 @@ class Cms7Controller extends Controller
     public function searchContacts(Request $request)
     {
         $query = $request->input('q');
-        
+
         if (empty($query)) {
             return view('cms7.search');
         }
@@ -133,12 +132,12 @@ class Cms7Controller extends Controller
         $contactos = DB::connection('mysql_tmp')
             ->table('contactos')
             ->where('grupo', env('CMS_GROUP', 501))
-            ->where(function($q) use ($query) {
+            ->where(function ($q) use ($query) {
                 $q->where('nombre', 'like', "%{$query}%")
-                  ->orWhere('apellido', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%")
-                  ->orWhere('telefono', 'like', "%{$query}%")
-                  ->orWhere('celular', 'like', "%{$query}%");
+                    ->orWhere('apellido', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%")
+                    ->orWhere('telefono', 'like', "%{$query}%")
+                    ->orWhere('celular', 'like', "%{$query}%");
             })
             ->orderBy('nombre')
             ->limit(50)
@@ -147,10 +146,10 @@ class Cms7Controller extends Controller
         $empresas = DB::connection('mysql_tmp')
             ->table('empresas')
             ->where('grupo', env('CMS_GROUP', 501))
-            ->where(function($q) use ($query) {
+            ->where(function ($q) use ($query) {
                 $q->where('empresa', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%")
-                  ->orWhere('telefono', 'like', "%{$query}%");
+                    ->orWhere('email', 'like', "%{$query}%")
+                    ->orWhere('telefono', 'like', "%{$query}%");
             })
             ->orderBy('empresa')
             ->limit(50)
@@ -169,17 +168,17 @@ class Cms7Controller extends Controller
             ->table('empresas')
             ->where('id', $id)
             ->first();
-            
-        if (!$empresa) {
+
+        if (! $empresa) {
             return response()->json(['error' => 'Empresa no encontrada'], 404);
         }
-        
+
         // Obtener los contactos relacionados
         $contactos = DB::connection('mysql_tmp')
             ->table('contactos')
             ->where('id_empresa', $id)
             ->get();
-        
+
         // Obtener servicios relacionados con categoría
         $servicios = DB::connection('mysql_tmp')
             ->table('servicios')
@@ -189,13 +188,13 @@ class Cms7Controller extends Controller
             ->where('servicios.estado', '>', 0)
             ->select('servicios.*', 'servicios_hosting.*', 'categorias_generales.categoria')
             ->get();
-            
+
         // Obtener datos fiscales si existen
         $datosFiscales = DB::connection('mysql_tmp')
             ->table('empresas_fiscales')
             ->where('id_empresa', $id)
             ->get();
-        
+
         // Obtener facturas si existen
         $facturas = DB::connection('mysql_tmp')
             ->table('facturas')
@@ -205,7 +204,7 @@ class Cms7Controller extends Controller
             ->orderBy('facturas.fecha', 'desc')
             ->limit(20)
             ->get();
-        
+
         return view('cms7.empresa-detalle', compact('empresa', 'contactos', 'servicios', 'datosFiscales', 'facturas'));
     }
-} 
+}

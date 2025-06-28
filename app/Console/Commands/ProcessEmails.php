@@ -30,16 +30,16 @@ class ProcessEmails extends Command
 
         try {
             $config = [
-                'host'          => env('MAILBOX_HOST'),
-                'port'          => env('MAILBOX_PORT', 993),
-                'encryption'    => env('MAILBOX_ENCRYPTION', 'ssl'),
+                'host' => env('MAILBOX_HOST'),
+                'port' => env('MAILBOX_PORT', 993),
+                'encryption' => env('MAILBOX_ENCRYPTION', 'ssl'),
                 'validate_cert' => env('MAILBOX_VALIDATE_CERT', true),
-                'username'      => env('MAILBOX_USERNAME'),
-                'password'      => env('MAILBOX_PASSWORD'),
-                'protocol'      => 'imap'
+                'username' => env('MAILBOX_USERNAME'),
+                'password' => env('MAILBOX_PASSWORD'),
+                'protocol' => 'imap',
             ];
-            
-            $cm = new ClientManager();
+
+            $cm = new ClientManager;
             $client = $cm->make($config);
 
             $client->connect();
@@ -47,12 +47,12 @@ class ProcessEmails extends Command
             $folder = $client->getFolder('INBOX');
             $messages = $folder->messages()->all()->get();
 
-            foreach($messages as $message) {
+            foreach ($messages as $message) {
                 $this->info($message->getFrom() . ': ' . $message->getSubject());
             }
-            
+
             $this->info('Emails processed successfully.');
-            
+
         } catch (\Exception $e) {
             $this->error('Error: ' . $e->getMessage());
         }

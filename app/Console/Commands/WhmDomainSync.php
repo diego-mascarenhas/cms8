@@ -13,9 +13,9 @@ class WhmDomainSync extends Command
     public function handle()
     {
         $this->info('Syncing domains from WHM servers...');
-        
+
         dispatch(new WhmDomainSyncJob);
-        
+
         $this->info('Domain sync job dispatched successfully!');
     }
-} 
+}

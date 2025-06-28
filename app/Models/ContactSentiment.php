@@ -11,7 +11,7 @@ class ContactSentiment extends Model
 
     public function getEmojiAttribute()
     {
-        return match($this->id) {
+        return match ($this->id) {
             1 => '😡',
             2 => '🙁',
             3 => '😐',

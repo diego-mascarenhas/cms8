@@ -11,14 +11,13 @@ class MessageType extends Model
 
     public $timestamps = false;
 
-	protected $table = 'message_type';
+    protected $table = 'message_type';
 
     protected $fillable = ['name', 'status'];
 
     public static function getOptions()
     {
-        return self::all()->map(function ($data)
-        {
+        return self::all()->map(function ($data) {
             return [
                 'id' => $data->id,
                 'name' => $data->name,

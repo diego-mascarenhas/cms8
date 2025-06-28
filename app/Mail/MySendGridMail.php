@@ -20,7 +20,7 @@ class MySendGridMail extends Mailable
 
     public function build()
     {
-        $email = new SendGridMail();
+        $email = new SendGridMail;
         $email->setFrom(config('mail.from.address'), config('mail.from.name'));
         $email->addTo($this->data['to']);
         $email->setTemplateId('tu_template_id');

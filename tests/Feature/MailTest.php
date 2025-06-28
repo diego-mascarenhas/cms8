@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Support\Facades\Mail;
 use App\Mail\TestMail;
+use Illuminate\Support\Facades\Mail;
+use Tests\TestCase;
 
 class MailTest extends TestCase
 {
@@ -19,7 +19,7 @@ class MailTest extends TestCase
             ];
 
             foreach ($recipients as $email) {
-                Mail::to($email)->send(new TestMail());
+                Mail::to($email)->send(new TestMail);
                 $this->assertTrue(true);
                 echo "\nEmail enviado correctamente a: " . $email;
             }

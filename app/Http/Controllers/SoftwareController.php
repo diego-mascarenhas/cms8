@@ -7,7 +7,6 @@ use App\Models\Software;
 use App\Models\SoftwareType;
 use App\Models\Team;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class SoftwareController extends Controller
 {
@@ -25,7 +24,7 @@ class SoftwareController extends Controller
     public function create()
     {
         $types = SoftwareType::all();
-        
+
         return view('software.form', compact('types'));
     }
 
@@ -54,7 +53,7 @@ class SoftwareController extends Controller
     public function edit(Software $software)
     {
         $types = SoftwareType::all();
-        
+
         return view('software.form', compact('software', 'types'));
     }
 
@@ -90,18 +89,18 @@ class SoftwareController extends Controller
     public function autocomplete(Request $request)
     {
         $search = $request->get('q', '');
-        
+
         $query = Software::with('type');
-        
-        if (!empty($search)) {
-            $query->where(function($q) use ($search) {
+
+        if (! empty($search)) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhereHas('type', function($subQuery) use ($search) {
-                      $subQuery->where('name', 'LIKE', "%{$search}%");
-                  });
+                    ->orWhereHas('type', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'LIKE', "%{$search}%");
+                    });
             });
         }
-        
+
         $softwares = $query->limit(15)
             ->get()
             ->map(function ($software) {
@@ -114,7 +113,7 @@ class SoftwareController extends Controller
             });
 
         return response()->json([
-            'results' => $softwares
+            'results' => $softwares,
         ]);
     }
-} 
+}

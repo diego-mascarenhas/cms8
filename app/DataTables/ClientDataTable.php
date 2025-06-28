@@ -21,38 +21,31 @@ class ClientDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'client.action')
             ->setRowId('id')
-            ->editColumn('name', function ($row)
-            {
+            ->editColumn('name', function ($row) {
                 return '<div class="d-flex flex-column">
                             <span class="fw-medium text-body text-truncate">' . e($row->name) . '</span>
                             <small class="text-muted">' . e($row->responsible->name ?? 'Sin asignar') . '</small>
                         </div>';
             })
-            ->addColumn('current_sentiment', function ($row)
-            {
-                if ($row->responsible && $row->responsible->currentSentiment)
-                {
+            ->addColumn('current_sentiment', function ($row) {
+                if ($row->responsible && $row->responsible->currentSentiment) {
                     return '<span style="font-size: 1.5em;">' . $row->responsible->currentSentiment->sentiment->emoji . '</span>';
                 }
+
                 return '<span style="font-size: 1.5em;">🤔</span>';
             })
-            ->addColumn('sources', function ($row)
-            {
+            ->addColumn('sources', function ($row) {
                 return $row->responsible ? $row->responsible->sources_icons_html : '';
             })
-            ->addColumn('responsible_name', function ($contact)
-            {
+            ->addColumn('responsible_name', function ($contact) {
                 return $contact->responsible->name ?? 'Sin asignar';
             })
-            ->filterColumn('responsible_name', function ($query, $keyword)
-            {
-                $query->whereHas('responsible', function ($q) use ($keyword)
-                {
+            ->filterColumn('responsible_name', function ($query, $keyword) {
+                $query->whereHas('responsible', function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });
             })
-            ->editColumn('status_id', function ($row)
-            {
+            ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
             ->rawColumns(['name', 'action', 'current_sentiment', 'sources', 'status_id', 'website', 'phone']);
@@ -66,7 +59,7 @@ class ClientDataTable extends DataTable
                 'responsible:id,name',
                 'responsible.currentSentiment.sentiment',
                 'responsible.sources',
-                'status'
+                'status',
             ]);
     }
 
@@ -155,10 +148,10 @@ class ClientDataTable extends DataTable
 
     private function ensureProtocol($url)
     {
-        if (!preg_match("~^(?:f|ht)tps?://~i", $url))
-        {
-            $url = "https://" . $url;
+        if (! preg_match('~^(?:f|ht)tps?://~i', $url)) {
+            $url = 'https://' . $url;
         }
+
         return $url;
     }
 }

@@ -2,356 +2,352 @@
 
 namespace App\Models;
 
+use App\Traits\HasSourceIcons;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Models\UserContactAction;
-use Carbon\Carbon;
-use App\Traits\HasSourceIcons;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Contact extends Model
 {
-	use HasFactory;
-	use SoftDeletes;
-	use HasSourceIcons;
+    use HasFactory;
+    use HasSourceIcons;
+    use SoftDeletes;
 
-	protected $fillable = [
-		'team_id',
-		'user_id',
-		'name',
-		'surname',
-		'email',
-		'phone',
-		'source_id',
-		'birthday',
-		'profile',
-		'engagment',
-		'country',
-		'language',
-		'creator_id',
-		'responsible_id',
-		'data',
-		'status_id',
-		'valoration_id',
-	];
+    protected $fillable = [
+        'team_id',
+        'user_id',
+        'name',
+        'surname',
+        'email',
+        'phone',
+        'source_id',
+        'birthday',
+        'profile',
+        'engagment',
+        'country',
+        'language',
+        'creator_id',
+        'responsible_id',
+        'data',
+        'status_id',
+        'valoration_id',
+    ];
 
-	protected $casts = [
-		'data' => 'object',
-		'birthday' => 'date',
-	];
+    protected $casts = [
+        'data' => 'object',
+        'birthday' => 'date',
+    ];
 
-	protected static function booted()
-	{
-		static::addGlobalScope('team', function (Builder $builder)
-		{
-			if (auth()->check())
-			{
-				$builder->where('team_id', auth()->user()->currentTeam->id);
-			}
-		});
-	}
+    protected static function booted()
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (auth()->check()) {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+    }
 
-	public function team()
-	{
-		return $this->belongsTo(Team::class);
-	}
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
 
-	public function user()
-	{
-		return $this->belongsTo(User::class);
-	}
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
-	public function creator()
-	{
-		return $this->belongsTo(User::class, 'creator_id');
-	}
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'creator_id');
+    }
 
-	public function responsible()
-	{
-		return $this->belongsTo(User::class, 'responsible_id');
-	}
+    public function responsible()
+    {
+        return $this->belongsTo(User::class, 'responsible_id');
+    }
 
-	public function enterprise()
-	{
-		return $this->hasOne(Enterprise::class, 'responsible_id');
-	}
+    public function enterprise()
+    {
+        return $this->hasOne(Enterprise::class, 'responsible_id');
+    }
 
-	public function country()
-	{
-		return $this->belongsTo(Country::class, 'country', 'id');
-	}
+    public function country()
+    {
+        return $this->belongsTo(Country::class, 'country', 'id');
+    }
 
-	public function language()
-	{
-		return $this->belongsTo(Language::class, 'language', 'code');
-	}
+    public function language()
+    {
+        return $this->belongsTo(Language::class, 'language', 'code');
+    }
 
-	public function languageVariants()
-	{
-		return $this->hasMany(ContactLanguageVariant::class);
-	}
+    public function languageVariants()
+    {
+        return $this->hasMany(ContactLanguageVariant::class);
+    }
 
-	/**
-	 * Get formatted language pairs for the view
-	 */
-	public function getFormattedLanguagePairsAttribute()
-	{
-		\Log::info('Getting formatted language pairs for contact ID: ' . $this->id);
-		\Log::info('Language variants count: ' . $this->languageVariants->count());
-		
-		$pairs = $this->languageVariants->map(function($variant) {
-			\Log::info('Processing variant: ' . $variant->id . ' - ' . $variant->source_language_code . ' -> ' . $variant->target_language_code);
-			
-			$sourceLanguage = $variant->sourceLanguage;
-			$targetLanguage = $variant->targetLanguage;
-			
-			\Log::info('Source language: ' . ($sourceLanguage ? $sourceLanguage->name : 'null'));
-			\Log::info('Target language: ' . ($targetLanguage ? $targetLanguage->name : 'null'));
-			
-			return [
-				'source_language' => $variant->source_language_code,
-				'target_language' => $variant->target_language_code,
-				'source_language_text' => $sourceLanguage ? $sourceLanguage->name : $variant->source_language_code,
-				'target_language_text' => $targetLanguage ? $targetLanguage->name : $variant->target_language_code,
-				'is_native' => $variant->is_certified
-			];
-		});
-		
-		\Log::info('Formatted pairs: ' . json_encode($pairs));
-		
-		return $pairs;
-	}
+    /**
+     * Get formatted language pairs for the view
+     */
+    public function getFormattedLanguagePairsAttribute()
+    {
+        \Log::info('Getting formatted language pairs for contact ID: ' . $this->id);
+        \Log::info('Language variants count: ' . $this->languageVariants->count());
 
-	public function sentimentHistories()
-	{
-		return $this->hasMany(ContactSentimentHistory::class);
-	}
+        $pairs = $this->languageVariants->map(function ($variant) {
+            \Log::info('Processing variant: ' . $variant->id . ' - ' . $variant->source_language_code . ' -> ' . $variant->target_language_code);
 
-	public function currentSentiment()
-	{
-		return $this->hasOne(ContactSentimentHistory::class)->latest();
-	}
+            $sourceLanguage = $variant->sourceLanguage;
+            $targetLanguage = $variant->targetLanguage;
 
-	public function status()
-	{
-		return $this->belongsTo(ContactStatus::class);
-	}
+            \Log::info('Source language: ' . ($sourceLanguage ? $sourceLanguage->name : 'null'));
+            \Log::info('Target language: ' . ($targetLanguage ? $targetLanguage->name : 'null'));
 
-	public function valoration()
-	{
-		return $this->belongsTo(ContactValoration::class, 'valoration_id');
-	}
+            return [
+                'source_language' => $variant->source_language_code,
+                'target_language' => $variant->target_language_code,
+                'source_language_text' => $sourceLanguage ? $sourceLanguage->name : $variant->source_language_code,
+                'target_language_text' => $targetLanguage ? $targetLanguage->name : $variant->target_language_code,
+                'is_native' => $variant->is_certified,
+            ];
+        });
 
-	public function list60s()
-	{
-		return $this->hasMany(List60::class, 'contact_id');
-	}
+        \Log::info('Formatted pairs: ' . json_encode($pairs));
 
-	public function getStatusLabelAttribute()
-	{
-		if ($this->status)
-		{
-			return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
-		}
-		return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
-	}
+        return $pairs;
+    }
 
-	public static function getContactStats($teamId)
-	{
-		$statusLabels = [
-			1 => 'Leads',
-			2 => 'FollowUp',
-			5 => 'Clients',
-			6 => 'Finished',
-		];
+    public function sentimentHistories()
+    {
+        return $this->hasMany(ContactSentimentHistory::class);
+    }
 
-		$contactStats = self::where('team_id', $teamId)
-			->whereIn('status_id', array_keys($statusLabels))
-			->get()
-			->groupBy('status_id')
-			->map(function ($group)
-			{
-				return $group->count();
-			});
+    public function currentSentiment()
+    {
+        return $this->hasOne(ContactSentimentHistory::class)->latest();
+    }
 
-		$totalContacts = $contactStats->sum();
+    public function status()
+    {
+        return $this->belongsTo(ContactStatus::class);
+    }
 
-		$data = ['totalContacts' => $totalContacts];
-		foreach ($statusLabels as $statusId => $label)
-		{
-			$count = $contactStats[$statusId] ?? 0;
-			$percentage = $totalContacts > 0 ? round(($count / $totalContacts) * 100, 2) : 0;
-			$data["total$label"] = $count;
-			$data[lcfirst($label) . 'Percentage'] = $percentage;
-		}
+    public function valoration()
+    {
+        return $this->belongsTo(ContactValoration::class, 'valoration_id');
+    }
 
-		$defaultData = [
-			'totalContacts' => 0,
-			'totalLeads' => 0,
-			'leadsPercentage' => 0,
-			'totalClients' => 0,
-			'clientsPercentage' => 0,
-			'totalFollowUp' => 0,
-			'followUpPercentage' => 0,
-			'totalFinished' => 0,
-			'finishedPercentage' => 0,
-		];
+    public function list60s()
+    {
+        return $this->hasMany(List60::class, 'contact_id');
+    }
 
-		$finalData = array_merge($defaultData, $data);
+    public function getStatusLabelAttribute()
+    {
+        if ($this->status) {
+            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
+        }
 
-		return $finalData;
-	}
+        return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
+    }
 
-	public function actions()
-	{
-		return $this->hasMany(UserContactAction::class, 'contact_id');
-	}
+    public static function getContactStats($teamId)
+    {
+        $statusLabels = [
+            1 => 'Leads',
+            2 => 'FollowUp',
+            5 => 'Clients',
+            6 => 'Finished',
+        ];
 
-	public function calculateCurrentActionSeconds()
-	{
-		$latestAction = UserContactAction::where('contact_id', $this->id)
-			->whereNull('end_time')
-			->latest('start_time')
-			->first();
+        $contactStats = self::where('team_id', $teamId)
+            ->whereIn('status_id', array_keys($statusLabels))
+            ->get()
+            ->groupBy('status_id')
+            ->map(function ($group) {
+                return $group->count();
+            });
 
-		if (!$latestAction)
-		{
-			return 0;
-		}
+        $totalContacts = $contactStats->sum();
 
-		$startTime = $latestAction->start_time;
-		$endTime = Carbon::now();
+        $data = ['totalContacts' => $totalContacts];
+        foreach ($statusLabels as $statusId => $label) {
+            $count = $contactStats[$statusId] ?? 0;
+            $percentage = $totalContacts > 0 ? round(($count / $totalContacts) * 100, 2) : 0;
+            $data["total$label"] = $count;
+            $data[lcfirst($label) . 'Percentage'] = $percentage;
+        }
 
-		return $endTime->diffInSeconds($startTime);
-	}
+        $defaultData = [
+            'totalContacts' => 0,
+            'totalLeads' => 0,
+            'leadsPercentage' => 0,
+            'totalClients' => 0,
+            'clientsPercentage' => 0,
+            'totalFollowUp' => 0,
+            'followUpPercentage' => 0,
+            'totalFinished' => 0,
+            'finishedPercentage' => 0,
+        ];
 
-	public function calculateTotalAccumulatedSeconds()
-	{
-		$completedActions = UserContactAction::where('contact_id', $this->id)
-			->whereNotNull('end_time')
-			->get();
+        $finalData = array_merge($defaultData, $data);
 
-		$totalSeconds = 0;
+        return $finalData;
+    }
 
-		foreach ($completedActions as $action)
-		{
-			$totalSeconds += Carbon::parse($action->end_time)->diffInSeconds($action->start_time);
-		}
+    public function actions()
+    {
+        return $this->hasMany(UserContactAction::class, 'contact_id');
+    }
 
-		$currentActionSeconds = $this->calculateCurrentActionSeconds();
-		$totalSeconds += $currentActionSeconds;
+    public function calculateCurrentActionSeconds()
+    {
+        $latestAction = UserContactAction::where('contact_id', $this->id)
+            ->whereNull('end_time')
+            ->latest('start_time')
+            ->first();
 
-		return $totalSeconds;
-	}
+        if (! $latestAction) {
+            return 0;
+        }
 
-	public static function getTotalTeamMinutes()
-	{
-		$totalTeamSeconds = self::sum('duration_seconds');
-		return round($totalTeamSeconds / 60);
-	}
+        $startTime = $latestAction->start_time;
+        $endTime = Carbon::now();
 
-	public static function getTotalTeamTime()
-	{
-		$totalMinutes = self::getTotalTeamMinutes();
-		$hours = floor($totalMinutes / 60);
-		$minutes = $totalMinutes % 60;
+        return $endTime->diffInSeconds($startTime);
+    }
 
-		return [
-			'hours' => $hours,
-			'minutes' => $minutes,
-		];
-	}
+    public function calculateTotalAccumulatedSeconds()
+    {
+        $completedActions = UserContactAction::where('contact_id', $this->id)
+            ->whereNotNull('end_time')
+            ->get();
 
-	public function sources()
-	{
-		return $this->belongsToMany(Source::class, 'contact_sources')->withPivot('value');
-	}
+        $totalSeconds = 0;
 
-	public function primarySource()
-	{
-		return $this->belongsTo(Source::class, 'source_id');
-	}
+        foreach ($completedActions as $action) {
+            $totalSeconds += Carbon::parse($action->end_time)->diffInSeconds($action->start_time);
+        }
 
-	public function enterprises(): BelongsToMany
-	{
-		return $this->belongsToMany(Enterprise::class, 'contact_enterprise')
-					->withPivot('position')
-					->withTimestamps();
-	}
+        $currentActionSeconds = $this->calculateCurrentActionSeconds();
+        $totalSeconds += $currentActionSeconds;
 
-	public function categories(): BelongsToMany
-	{
-		return $this->belongsToMany(Category::class, 'contact_category');
-	}
+        return $totalSeconds;
+    }
 
-	public function softwares(): BelongsToMany
-	{
-		return $this->belongsToMany(Software::class, 'contact_softwares')
-			->withPivot('proficiency_level', 'notes')
-			->withTimestamps();
-	}
+    public static function getTotalTeamMinutes()
+    {
+        $totalTeamSeconds = self::sum('duration_seconds');
 
-	public function fares(): BelongsToMany
-	{
-		return $this->belongsToMany(Fare::class, 'contact_fare')
-			->withPivot('price', 'unit_id', 'currency_code', 'source_language_code', 'target_language_code')
-			->withTimestamps();
-	}
+        return round($totalTeamSeconds / 60);
+    }
 
-	public function topics(): BelongsToMany
-	{
-		return $this->belongsToMany(Topic::class, 'contact_topics')
-			->withTimestamps();
-	}
+    public static function getTotalTeamTime()
+    {
+        $totalMinutes = self::getTotalTeamMinutes();
+        $hours = floor($totalMinutes / 60);
+        $minutes = $totalMinutes % 60;
 
-	public function projects(): BelongsToMany
-	{
-		return $this->belongsToMany(Project::class, 'contact_project')
-			->using(ContactProject::class)
-			->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message', 'deleted_at')
-			->withTimestamps()
-			->wherePivotNull('deleted_at'); // Only get non-deleted relationships
-	}
+        return [
+            'hours' => $hours,
+            'minutes' => $minutes,
+        ];
+    }
 
-	public function list60(): HasOne
-	{
-		return $this->hasOne(List60::class);
-	}
+    public function sources()
+    {
+        return $this->belongsToMany(Source::class, 'contact_sources')->withPivot('value');
+    }
 
-	public function isInList60(): bool
-	{
-		return $this->list60()->exists();
-	}
+    public function primarySource()
+    {
+        return $this->belongsTo(Source::class, 'source_id');
+    }
 
-	public function portfolios()
-	{
-		return $this->hasMany(ContactPortfolio::class);
-	}
+    public function enterprises(): BelongsToMany
+    {
+        return $this->belongsToMany(Enterprise::class, 'contact_enterprise')
+            ->withPivot('position')
+            ->withTimestamps();
+    }
 
-	/**
-	 * Get the WhatsApp formatted phone number from the contact
-	 * 
-	 * @return string|null
-	 */
-	public function getWhatsAppNumber()
-	{
-		// First try to get phone from direct field
-		if ($this->phone) {
-			$cleanNumber = preg_replace('/[^0-9]/', '', (string)$this->phone);
-			return 'whatsapp:+' . $cleanNumber;
-		}
-		
-		// If no direct phone, try to get from related user
-		$relatedUser = $this->user()->first();
-		
-		if ($relatedUser && $relatedUser->phone) {
-			$cleanNumber = preg_replace('/[^0-9]/', '', (string)$relatedUser->phone);
-			return 'whatsapp:+' . $cleanNumber;
-		}
-		
-		return null;
-	}
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'contact_category');
+    }
+
+    public function softwares(): BelongsToMany
+    {
+        return $this->belongsToMany(Software::class, 'contact_softwares')
+            ->withPivot('proficiency_level', 'notes')
+            ->withTimestamps();
+    }
+
+    public function fares(): BelongsToMany
+    {
+        return $this->belongsToMany(Fare::class, 'contact_fare')
+            ->withPivot('price', 'unit_id', 'currency_code', 'source_language_code', 'target_language_code')
+            ->withTimestamps();
+    }
+
+    public function topics(): BelongsToMany
+    {
+        return $this->belongsToMany(Topic::class, 'contact_topics')
+            ->withTimestamps();
+    }
+
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'contact_project')
+            ->using(ContactProject::class)
+            ->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message', 'deleted_at')
+            ->withTimestamps()
+            ->wherePivotNull('deleted_at'); // Only get non-deleted relationships
+    }
+
+    public function list60(): HasOne
+    {
+        return $this->hasOne(List60::class);
+    }
+
+    public function isInList60(): bool
+    {
+        return $this->list60()->exists();
+    }
+
+    public function portfolios()
+    {
+        return $this->hasMany(ContactPortfolio::class);
+    }
+
+    /**
+     * Get the WhatsApp formatted phone number from the contact
+     *
+     * @return string|null
+     */
+    public function getWhatsAppNumber()
+    {
+        // First try to get phone from direct field
+        if ($this->phone) {
+            $cleanNumber = preg_replace('/[^0-9]/', '', (string) $this->phone);
+
+            return 'whatsapp:+' . $cleanNumber;
+        }
+
+        // If no direct phone, try to get from related user
+        $relatedUser = $this->user()->first();
+
+        if ($relatedUser && $relatedUser->phone) {
+            $cleanNumber = preg_replace('/[^0-9]/', '', (string) $relatedUser->phone);
+
+            return 'whatsapp:+' . $cleanNumber;
+        }
+
+        return null;
+    }
 }

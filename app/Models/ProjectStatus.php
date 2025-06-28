@@ -33,7 +33,7 @@ class ProjectStatus extends Model
      */
     public function getLabelClassAttribute()
     {
-        switch($this->id) {
+        switch ($this->id) {
             case 8: // PENDING
                 return 'bg-label-warning';
             case 9: // IN_PROGRESS
