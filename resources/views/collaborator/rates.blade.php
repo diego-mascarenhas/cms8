@@ -130,6 +130,13 @@
                                 </label>
                             </div>
                             
+                            <!-- Debug button - Remove after testing -->
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-info" onclick="debugCheckboxState()">
+                                    🐛 Debug: Ver estado del checkbox
+                                </button>
+                            </div>
+                            
                             <input type="hidden" name="current_language_pair" id="current_language_pair" 
                                    value="{{ $currentLanguagePair ?? '' }}">
                         @else
@@ -455,10 +462,7 @@
             }
         });
         
-        // Initialize with current currency
-        $('select[name="currency"]').trigger('change');
-        
-        // Set initial language combination
+        // Set initial language combination FIRST
         const activeBtn = $('[data-source][data-target].active');
         if (activeBtn.length) {
             const sourceCode = activeBtn.data('source');
@@ -514,12 +518,9 @@
             }
         }
         
-        // Initialize currency symbols
+        // Initialize currency symbols WITHOUT triggering events
         const currentCurrency = $('select[name="currency"]').val();
         updateCurrencySymbols(currentCurrency);
-        
-        // Initialize checkbox state (this will trigger proper visual behavior)
-        $('#sameRates').trigger('change');
         
         // Clean URL parameters immediately after setting initial state
         if (urlCurrency || urlLanguagePair || urlSameRates) {
@@ -527,6 +528,12 @@
             window.history.replaceState({path: cleanUrl}, '', cleanUrl);
             console.log('URL parameters cleaned after setting initial state');
         }
+        
+        // Initialize checkbox state LAST (this will trigger proper visual behavior)
+        setTimeout(() => {
+            $('#sameRates').trigger('change');
+            console.log('Checkbox initialized with checked state:', $('#sameRates').is(':checked'));
+        }, 10);
         
                                 // Only load rates from server if we don't have initial data from PHP
         const hasInitialData = @json(!empty($currentRatesData));
@@ -570,8 +577,11 @@
                 return false;
             }
             
-            console.log('Form submission - Same rates mode:', isSameRates);
-            console.log('Stored rates data:', ratesData);
+            console.log('🚀 FORM SUBMISSION:');
+            console.log('- Same rates mode:', isSameRates);
+            console.log('- Current language pair:', $('#current_language_pair').val());
+            console.log('- Stored rates data:', ratesData);
+            console.log('- Form rates visible:', $('.fare-input').map(function() { return this.name + ': ' + this.value; }).get());
             
             // If using different rates per combination, add stored data
             if (!isSameRates) {
@@ -613,6 +623,27 @@
                 console.log('Same rates mode - using visible form data only');
             }
         });
+        
+        // Debug function - Remove after testing
+        window.debugCheckboxState = function() {
+            const isChecked = $('#sameRates').is(':checked');
+            const currentPair = $('#current_language_pair').val();
+            const formData = new FormData(document.getElementById('rates-form'));
+            
+            console.log('🐛 DEBUG CHECKBOX STATE:');
+            console.log('- Checkbox checked:', isChecked);
+            console.log('- Current language pair:', currentPair);
+            console.log('- Same rates in form data:', formData.get('same_rates'));
+            console.log('- All form data:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`  ${key}: ${value}`);
+            }
+            console.log('- Stored rates data:', ratesData);
+            console.log('- Active language buttons:', $('[data-source][data-target].active').length);
+            
+            // Show visual feedback
+            alert(`Checkbox: ${isChecked ? 'MARCADO' : 'NO MARCADO'}\nCurrent pair: ${currentPair}\nActive buttons: ${$('[data-source][data-target].active').length}`);
+        };
     });
 </script>
 @endpush 

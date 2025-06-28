@@ -213,26 +213,45 @@ class UserFareController extends Controller
     {
         $collaborator = \App\Models\Contact::findOrFail($id);
         
+        // Log RAW request data first
+        \Log::info('🚨 RAW REQUEST DATA', [
+            'all_request_data' => $request->all(),
+            'has_same_rates' => $request->has('same_rates'),
+            'same_rates_value' => $request->get('same_rates'),
+            'boolean_same_rates' => $request->boolean('same_rates', false)
+        ]);
+
         $validated = $request->validate([
             'currency' => 'required|exists:currencies,code',
             'rates' => 'array',
             'rates.*' => 'nullable|numeric|min:0',
             'units' => 'array',
             'units.*' => 'nullable|exists:units,id',
-            'same_rates' => 'boolean',
+            'same_rates' => 'nullable',  // Accept any value
             'current_language_pair' => 'nullable|string',
             'language_rates' => 'array'
         ]);
         
         $currency = $validated['currency'];
-        $sameRates = $request->boolean('same_rates', false); // Default to false (different rates per combination)
         
-        \Log::info('Saving collaborator rates', [
+        // Proper checkbox detection
+        $sameRates = $request->has('same_rates') && in_array($request->get('same_rates'), ['on', '1', 'true', true, 1]);
+        
+        \Log::info('🚨 CHECKBOX DETECTION', [
+            'has_same_rates' => $request->has('same_rates'),
+            'same_rates_value' => $request->get('same_rates'),
+            'in_array_check' => in_array($request->get('same_rates'), ['on', '1', 'true', true, 1]),
+            'final_same_rates' => $sameRates
+        ]);
+        
+        \Log::info('🚀 CONTROLLER - Saving collaborator rates', [
             'collaborator_id' => $collaborator->id,
-            'same_rates' => $sameRates,
+            'same_rates_detected' => $sameRates,
             'currency' => $currency,
             'rates' => $validated['rates'] ?? [],
-            'current_language_pair' => $validated['current_language_pair'] ?? null
+            'units' => $validated['units'] ?? [],
+            'current_language_pair' => $validated['current_language_pair'] ?? null,
+            'validated_same_rates' => $validated['same_rates'] ?? 'NOT_SET'
         ]);
         
         try {
@@ -307,21 +326,43 @@ class UserFareController extends Controller
         $rates = $validated['rates'] ?? [];
         $units = $validated['units'] ?? [];
         
+        \Log::info('🔥 SAME RATES - Starting process', [
+            'collaborator_id' => $collaborator->id,
+            'rates_received' => $rates,
+            'units_received' => $units,
+            'currency' => $currency
+        ]);
+        
         // Get collaborator's language variants
         $languageVariants = $collaborator->languageVariants;
+        
+        \Log::info('🔥 SAME RATES - Language variants found', [
+            'variants_count' => $languageVariants->count(),
+            'variants' => $languageVariants->map(function($v) {
+                return $v->source_language_code . ' -> ' . $v->target_language_code;
+            })->toArray()
+        ]);
         
         if ($languageVariants->isEmpty()) {
             throw new \Exception('El colaborador no tiene variantes de idiomas configuradas.');
         }
         
         // Delete existing rates for this collaborator
+        $deletedCount = $collaborator->fares()->count();
         $collaborator->fares()->detach();
+        \Log::info('🔥 SAME RATES - Deleted existing rates', ['deleted_count' => $deletedCount]);
+        
+        $createdCount = 0;
         
         // Create rates for each language combination using the same rates
         foreach ($languageVariants as $variant) {
+            \Log::info('🔥 SAME RATES - Processing variant', [
+                'variant' => $variant->source_language_code . ' -> ' . $variant->target_language_code
+            ]);
+            
             foreach ($rates as $fareId => $price) {
                 if (!empty($price) && $price > 0) {
-                    $collaborator->fares()->attach($fareId, [
+                    $attachData = [
                         'price' => $price,
                         'currency_code' => $currency,
                         'unit_id' => $units[$fareId] ?? null,
@@ -329,15 +370,26 @@ class UserFareController extends Controller
                         'target_language_code' => $variant->target_language_code,
                         'created_at' => now(),
                         'updated_at' => now()
+                    ];
+                    
+                    $collaborator->fares()->attach($fareId, $attachData);
+                    $createdCount++;
+                    
+                    \Log::info('🔥 SAME RATES - Created rate', [
+                        'fare_id' => $fareId,
+                        'price' => $price,
+                        'variant' => $variant->source_language_code . ' -> ' . $variant->target_language_code,
+                        'data' => $attachData
                     ]);
                 }
             }
         }
         
-        \Log::info('Saved same rates for all language combinations', [
+        \Log::info('🔥 SAME RATES - Process completed', [
             'collaborator_id' => $collaborator->id,
             'language_combinations' => $languageVariants->count(),
-            'rates_count' => count(array_filter($rates, fn($price) => !empty($price) && $price > 0))
+            'rates_processed' => count(array_filter($rates, fn($price) => !empty($price) && $price > 0)),
+            'total_records_created' => $createdCount
         ]);
     }
     
