@@ -2,21 +2,22 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Enterprise;
+use Illuminate\Database\Seeder;
 
 class EnterpriseSeeder extends Seeder
 {
     public function run()
     {
-        $enterprises = [
+        // Crear empresas básicas del sistema (necesarias para funcionamiento básico)
+        $basicEnterprises = [
             [
                 'team_id' => 2,
                 'name' => 'Revision Alpha',
                 'type_id' => 1,
                 'referred_by' => null,
                 'address' => 'González Besada 39',
-                'postal_code' => '33007',   
+                'postal_code' => '33007',
                 'locality' => 'Oviedo',
                 'province' => 'Asturias',
                 'country' => 'es',
@@ -32,8 +33,8 @@ class EnterpriseSeeder extends Seeder
                         'Desarrollo web',
                         'Diseño web',
                         'Marketing de contenidos',
-                        'Analítica web'
-                    ]
+                        'Analítica web',
+                    ],
                 ]),
                 'status_id' => 2,
             ],
@@ -73,8 +74,55 @@ class EnterpriseSeeder extends Seeder
             ],
         ];
 
-        foreach ($enterprises as $enterprise) {
+        // Crear empresas básicas
+        $this->command->info('Creating basic enterprises...');
+        foreach ($basicEnterprises as $enterprise) {
             Enterprise::create($enterprise);
         }
+
+        // Crear empresas adicionales usando Factory
+        $this->command->info('Creating additional enterprises using Factory...');
+
+        // Crear 5 empresas de cada tipo
+        $this->command->info('  ✓ Creating 5 medical/pharmaceutical enterprises...');
+        Enterprise::factory()->medical()->count(5)->create();
+
+        $this->command->info('  ✓ Creating 5 entertainment/media enterprises...');
+        Enterprise::factory()->entertainment()->count(5)->create();
+
+        $this->command->info('  ✓ Creating 5 technology/software enterprises...');
+        Enterprise::factory()->technology()->count(5)->create();
+
+        $this->command->info('  ✓ Creating 5 legal/financial enterprises...');
+        Enterprise::factory()->legal()->count(5)->create();
+
+        $this->command->info('  ✓ Creating 5 marketing/advertising enterprises...');
+        Enterprise::factory()->marketing()->count(5)->create();
+
+        $this->command->info('EnterpriseSeeder completed! Created 28 enterprises total (3 basic + 25 from Factory).');
+
+        // Crear proyectos usando el ProjectFactory
+        $this->command->info('Creating projects using ProjectFactory...');
+
+        // Crear 30 proyectos distribuidos por tipo
+        $this->command->info('  ✓ Creating 5 medical translation projects...');
+        \App\Models\Project::factory()->medical()->count(5)->create();
+
+        $this->command->info('  ✓ Creating 5 subtitle projects...');
+        \App\Models\Project::factory()->subtitle()->count(5)->create();
+
+        $this->command->info('  ✓ Creating 5 dubbing projects...');
+        \App\Models\Project::factory()->dubbing()->count(5)->create();
+
+        $this->command->info('  ✓ Creating 5 legal translation projects...');
+        \App\Models\Project::factory()->legal()->count(5)->create();
+
+        $this->command->info('  ✓ Creating 5 marketing projects...');
+        \App\Models\Project::factory()->marketing()->count(5)->create();
+
+        $this->command->info('  ✓ Creating 5 technical projects...');
+        \App\Models\Project::factory()->technical()->count(5)->create();
+
+        $this->command->info('ProjectFactory completed! Created 30 projects for team_id 1.');
     }
 }

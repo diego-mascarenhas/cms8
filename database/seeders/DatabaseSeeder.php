@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 
-
 class DatabaseSeeder extends Seeder
 {
     /**
@@ -25,6 +24,9 @@ class DatabaseSeeder extends Seeder
             LanguageVariantSeeder::class,
             SourceSeeder::class,
             UserSeeder::class,
+            PaymentTypeSeeder::class,
+            InvoiceTypeSeeder::class,
+            ProjectStatusSeeder::class,
             EnterpriseTypeSeeder::class,
             EnterpriseStatusSeeder::class,
             EnterpriseDepartmentSeeder::class,
@@ -33,26 +35,14 @@ class DatabaseSeeder extends Seeder
             ContactSentimentSeeder::class,
             ContactValorationSeeder::class,
             ContactSeeder::class,
-            ContactSourceSeeder::class,
-            EnterpriseOrganizationSeeder::class,
-            List60StatusesSeeder::class,
-            List60Seeder::class,
-            ProjectStatusSeeder::class,
-            TaskStatusSeeder::class,
-            TaskSeeder::class,
-            ModuleSeeder::class,
-            ModuleCategorySeeder::class,
-            CategorySeeder::class,
-            UnitsSeeder::class,
-            FareTypesSeeder::class,
-            FaresSeeder::class,
-            FareUnitSeeder::class,
-            SoftwareTypesSeeder::class,
             SoftwareSeeder::class,
             TopicsSeeder::class,
+            FareTypesSeeder::class,
+            FaresSeeder::class,
+            UnitsSeeder::class,
             ContactSkillsSeeder::class,
+            CategorySeeder::class,
             CertificationsSeeder::class,
-            StylebooksSeeder::class,
         ]);
     }
 }
