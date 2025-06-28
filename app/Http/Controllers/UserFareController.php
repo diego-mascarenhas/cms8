@@ -125,7 +125,7 @@ class UserFareController extends Controller
     /**
      * Display the fare rates available for a collaborator
      */
-    public function collaboratorRates($id)
+    public function collaboratorRates($id, Request $request)
     {
         $collaborator = \App\Models\Contact::findOrFail($id);
         
@@ -142,8 +142,68 @@ class UserFareController extends Controller
         
         // Obtener unidades disponibles
         $units = \App\Models\Unit::all();
+        
+        // Determinar qué combinación de idiomas mostrar
+        $currentLanguagePair = $request->get('language_pair');
+        $currentRatesData = [];
+        $currentCurrency = $request->get('currency', 'EUR');
+        
+        if ($currentLanguagePair && $collaborator->languageVariants->count() > 0) {
+            [$sourceCode, $targetCode] = explode('|', $currentLanguagePair);
+            
+            // Cargar las tarifas específicas para esta combinación
+            $specificRates = $collaborator->fares()
+                ->wherePivot('source_language_code', $sourceCode)
+                ->wherePivot('target_language_code', $targetCode)
+                ->with('units')
+                ->get();
+            
+            foreach ($specificRates as $fare) {
+                $currentRatesData[$fare->id] = [
+                    'price' => $fare->pivot->price,
+                    'unit_id' => $fare->pivot->unit_id,
+                    'currency_code' => $fare->pivot->currency_code
+                ];
+                
+                // Usar la moneda de las tarifas existentes si no se especifica
+                if (!$request->has('currency') && $fare->pivot->currency_code) {
+                    $currentCurrency = $fare->pivot->currency_code;
+                }
+            }
+        } else if ($collaborator->languageVariants->count() > 0) {
+            // Si no hay language_pair específico, usar la primera combinación
+            $firstVariant = $collaborator->languageVariants->first();
+            $currentLanguagePair = $firstVariant->source_language_code . '|' . $firstVariant->target_language_code;
+            
+            // Cargar las tarifas para la primera combinación
+            $specificRates = $collaborator->fares()
+                ->wherePivot('source_language_code', $firstVariant->source_language_code)
+                ->wherePivot('target_language_code', $firstVariant->target_language_code)
+                ->with('units')
+                ->get();
+            
+            foreach ($specificRates as $fare) {
+                $currentRatesData[$fare->id] = [
+                    'price' => $fare->pivot->price,
+                    'unit_id' => $fare->pivot->unit_id,
+                    'currency_code' => $fare->pivot->currency_code
+                ];
+                
+                if (!$request->has('currency') && $fare->pivot->currency_code) {
+                    $currentCurrency = $fare->pivot->currency_code;
+                }
+            }
+        }
 
-        return view('collaborator.rates', compact('collaborator', 'allFares', 'currencies', 'units'));
+        return view('collaborator.rates', compact(
+            'collaborator', 
+            'allFares', 
+            'currencies', 
+            'units', 
+            'currentRatesData', 
+            'currentLanguagePair', 
+            'currentCurrency'
+        ));
     }
 
     /**
@@ -167,20 +227,33 @@ class UserFareController extends Controller
         $currency = $validated['currency'];
         $sameRates = $request->boolean('same_rates', false); // Default to false (different rates per combination)
         
+        \Log::info('Saving collaborator rates', [
+            'collaborator_id' => $collaborator->id,
+            'same_rates' => $sameRates,
+            'currency' => $currency,
+            'rates' => $validated['rates'] ?? [],
+            'current_language_pair' => $validated['current_language_pair'] ?? null
+        ]);
+        
         try {
             DB::beginTransaction();
             
-            // First, update ALL existing currency codes for this collaborator to the new currency
-            $collaborator->fares()->updateExistingPivot(
-                $collaborator->fares->pluck('id')->toArray(),
-                ['currency_code' => $currency]
-            );
-            
             if ($sameRates) {
-                // Same rates for all language combinations
+                // Same rates for all language combinations - OVERWRITE ALL
+                \Log::info('Using same rates mode - will overwrite all language combinations');
                 $this->saveSameRatesForAllLanguages($collaborator, $validated, $currency);
             } else {
                 // Different rates per language combination
+                \Log::info('Using different rates mode');
+                
+                // First, update existing currency codes for consistency
+                if ($collaborator->fares->count() > 0) {
+                    $collaborator->fares()->updateExistingPivot(
+                        $collaborator->fares->pluck('id')->toArray(),
+                        ['currency_code' => $currency]
+                    );
+                }
+                
                 $this->saveDifferentRatesPerLanguage($collaborator, $validated, $currency);
             }
             
@@ -244,7 +317,7 @@ class UserFareController extends Controller
         // Delete existing rates for this collaborator
         $collaborator->fares()->detach();
         
-        // Create rates for each language combination
+        // Create rates for each language combination using the same rates
         foreach ($languageVariants as $variant) {
             foreach ($rates as $fareId => $price) {
                 if (!empty($price) && $price > 0) {
@@ -260,6 +333,12 @@ class UserFareController extends Controller
                 }
             }
         }
+        
+        \Log::info('Saved same rates for all language combinations', [
+            'collaborator_id' => $collaborator->id,
+            'language_combinations' => $languageVariants->count(),
+            'rates_count' => count(array_filter($rates, fn($price) => !empty($price) && $price > 0))
+        ]);
     }
     
     /**

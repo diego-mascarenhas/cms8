@@ -6,6 +6,35 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flag-icons/flag-icons.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        .btn-group .btn {
+            transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
+        }
+        
+        .btn-group .btn.opacity-50 {
+            opacity: 0.5;
+        }
+        
+        .btn-group .btn:not(.opacity-50) {
+            opacity: 1;
+        }
+        
+        /* Ensure active buttons have proper styling */
+        .btn-group .btn.active {
+            background-color: var(--bs-primary) !important;
+            border-color: var(--bs-primary) !important;
+            color: white !important;
+            opacity: 1 !important;
+        }
+        
+        /* Same rates mode - all buttons should appear active */
+        .btn-group .btn.same-rates-mode {
+            background-color: var(--bs-primary);
+            border-color: var(--bs-primary);
+            color: white;
+            opacity: 1;
+        }
+    </style>
 @endsection
 
 @section('vendor-script')
@@ -34,7 +63,7 @@
                         <div class="col-md-4">
                             <select class="form-select" name="currency" required>
                                 @foreach($currencies as $currency)
-                                    <option value="{{ $currency->code }}" {{ $currency->code === 'EUR' ? 'selected' : '' }}>
+                                    <option value="{{ $currency->code }}" {{ $currency->code === $currentCurrency ? 'selected' : '' }}>
                                         {{ $currency->code }} - {{ $currency->name }}
                                     </option>
                                 @endforeach
@@ -60,7 +89,16 @@
                                             $targetFlag = strtolower($variant->target_language_code);
                                         }
                                         
-                                        $isActive = $index === 0; // Primera combinación activa por defecto
+                                        // Check if this combination should be active based on URL params or default
+                                        $urlLanguagePair = request('language_pair');
+                                        $isActive = false;
+                                        
+                                        if ($urlLanguagePair) {
+                                            [$urlSource, $urlTarget] = explode('|', $urlLanguagePair);
+                                            $isActive = ($variant->source_language_code === $urlSource && $variant->target_language_code === $urlTarget);
+                                        } else {
+                                            $isActive = $index === 0; // Primera combinación activa por defecto si no hay URL param
+                                        }
                                     @endphp
                                     
                                     <div class="btn-group me-2">
@@ -86,14 +124,14 @@
                             
                             <div class="form-check mt-2">
                                 <input class="form-check-input" type="checkbox" id="sameRates" name="same_rates" 
-                                       {{ request('same_rates') ? 'checked' : '' }}>
+                                       {{ request('same_rates') === '1' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="sameRates">
                                     Usar las mismas tarifas para todas las combinaciones
                                 </label>
                             </div>
                             
                             <input type="hidden" name="current_language_pair" id="current_language_pair" 
-                                   value="{{ $collaborator->languageVariants->first() ? $collaborator->languageVariants->first()->source_language_code . '|' . $collaborator->languageVariants->first()->target_language_code : '' }}">
+                                   value="{{ $currentLanguagePair ?? '' }}">
                         @else
                             <div class="alert alert-warning">
                                 <div class="d-flex align-items-center">
@@ -128,14 +166,9 @@
                                 <div class="row mb-3">
                                     @foreach($fareChunk as $fare)
                                         @php
-                                            // Get current collaborator's rate for this fare and default language pair
-                                            $currentRate = $collaborator->fares
-                                                ->where('id', $fare->id)
-                                                ->where('pivot.source_language_code', $defaultSourceCode)
-                                                ->where('pivot.target_language_code', $defaultTargetCode)
-                                                ->first();
-                                            $currentPrice = $currentRate ? $currentRate->pivot->price : 0;
-                                            $currentUnitId = $currentRate ? $currentRate->pivot->unit_id : ($fare->units->count() > 0 ? $fare->units->first()->id : null);
+                                            // Use specific rates data if available, otherwise default to empty
+                                            $currentPrice = $currentRatesData[$fare->id]['price'] ?? 0;
+                                            $currentUnitId = $currentRatesData[$fare->id]['unit_id'] ?? ($fare->units->count() > 0 ? $fare->units->first()->id : null);
                                         @endphp
                                         <div class="col-md-6">
                                             <label class="form-label">{{ $fare->name }}</label>
@@ -254,7 +287,9 @@
             
             if (ratesData[key]) {
                 // Restore from stored data
-                $('select[name="currency"]').val(ratesData[key].currency).trigger('change');
+                $('select[name="currency"]').val(ratesData[key].currency);
+                // Don't trigger change to avoid loop
+                updateCurrencySymbols(ratesData[key].currency);
                 
                 $('.fare-input').each(function() {
                     const fareId = $(this).data('fare-id');
@@ -270,6 +305,12 @@
                 // Load from server
                 loadRatesFromServer(sourceCode, targetCode);
             }
+        }
+        
+        // Function to update currency symbols without triggering events
+        function updateCurrencySymbols(currency) {
+            const symbol = currencySymbols[currency] || '€';
+            $('.currency-symbol').text(symbol);
         }
         
         // Function to load rates from server for specific language combination
@@ -345,27 +386,27 @@
             
             console.log('Language combination clicked:', sourceCode, '->', targetCode, 'Same rates:', isSameRates);
             
-            // Save current state before switching (only if different rates mode)
-            if (!isSameRates) {
-                saveCurrentRatesState();
-                console.log('Saved current state before switching');
+            // If same rates mode, don't allow switching between combinations
+            if (isSameRates) {
+                console.log('Same rates mode - ignoring click');
+                return;
             }
             
-            // Update active state - Remove active from ALL language buttons and add to clicked one
-            $('[data-source][data-target]').removeClass('active');
-            $(this).addClass('active');
+            // Save current state before switching
+            saveCurrentRatesState();
+            console.log('Saved current state before switching');
+            
+            // Update active state - act like radio buttons
+            $('[data-source][data-target]').removeClass('active').addClass('opacity-50');
+            $(this).removeClass('opacity-50').addClass('active');
             
             if (sourceCode && targetCode) {
                 // Update hidden field
                 $('#current_language_pair').val(sourceCode + '|' + targetCode);
                 
-                // Load rates for this combination (only if different rates mode)
-                if (!isSameRates) {
-                    console.log('Loading rates for combination:', sourceCode, '->', targetCode);
-                    restoreRatesState(sourceCode, targetCode);
-                } else {
-                    console.log('Same rates mode - not loading specific combination');
-                }
+                // Load rates for this combination
+                console.log('Loading rates for combination:', sourceCode, '->', targetCode);
+                restoreRatesState(sourceCode, targetCode);
             }
         });
         
@@ -376,35 +417,23 @@
             
             if (isChecked) {
                 // Same rates for all combinations - show all as selected
-                $('[data-source][data-target]').addClass('active').removeClass('opacity-50');
+                $('[data-source][data-target]').removeClass('opacity-50').addClass('active');
                 
-                // Clear stored data except current
-                const currentPair = $('#current_language_pair').val();
-                if (currentPair) {
-                    const tempData = ratesData[currentPair];
-                    ratesData = {};
-                    if (tempData) {
-                        ratesData[currentPair] = tempData;
-                    }
-                }
+                // Save current state before switching to same rates mode
+                saveCurrentRatesState();
                 
                 console.log('Same rates mode enabled - all combinations selected');
             } else {
-                // Different rates for each combination - show only active one
-                $('[data-source][data-target]').removeClass('active opacity-50');
+                // Different rates for each combination - show only current active one
+                $('[data-source][data-target]').removeClass('active').addClass('opacity-50');
                 
                 // Activate only the current language pair
                 const currentPair = $('#current_language_pair').val();
                 if (currentPair) {
                     const [sourceCode, targetCode] = currentPair.split('|');
-                    $(`[data-source="${sourceCode}"][data-target="${targetCode}"]`).addClass('active');
+                    const activeBtn = $(`[data-source="${sourceCode}"][data-target="${targetCode}"]`);
+                    activeBtn.removeClass('opacity-50').addClass('active');
                 }
-                
-                // Show inactive ones with opacity
-                $('[data-source][data-target]').not('.active').addClass('opacity-50');
-                
-                // Save current state if there are any values
-                saveCurrentRatesState();
                 
                 console.log('Different rates per combination mode enabled');
             }
@@ -450,11 +479,13 @@
             }
         }
         
-        // Get current currency from URL params, existing rate, or default to EUR
+        // Get parameters from URL for initial state
         const urlParams = new URLSearchParams(window.location.search);
         const urlCurrency = urlParams.get('currency');
         const urlLanguagePair = urlParams.get('language_pair');
+        const urlSameRates = urlParams.get('same_rates');
         
+        // Set currency from URL or existing rate
         if (urlCurrency) {
             $('select[name="currency"]').val(urlCurrency);
         } else {
@@ -462,6 +493,11 @@
             if (firstRateWithCurrency && firstRateWithCurrency.pivot && firstRateWithCurrency.pivot.currency_code) {
                 $('select[name="currency"]').val(firstRateWithCurrency.pivot.currency_code);
             }
+        }
+        
+        // Set checkbox state from URL
+        if (urlSameRates === '1') {
+            $('#sameRates').prop('checked', true);
         }
         
         // Set active language combination from URL if provided
@@ -478,30 +514,44 @@
             }
         }
         
-        // Initialize checkbox state (this will trigger proper behavior based on checked/unchecked)
+        // Initialize currency symbols
+        const currentCurrency = $('select[name="currency"]').val();
+        updateCurrencySymbols(currentCurrency);
+        
+        // Initialize checkbox state (this will trigger proper visual behavior)
         $('#sameRates').trigger('change');
         
-        // Load initial rates AFTER checkbox initialization
-        const currentActiveBtn = $('[data-source][data-target].active');
-        if (currentActiveBtn.length && !$('#sameRates').is(':checked')) {
-            const sourceCode = currentActiveBtn.data('source');
-            const targetCode = currentActiveBtn.data('target');
-            if (sourceCode && targetCode) {
-                loadRatesFromServer(sourceCode, targetCode);
-            }
+        // Clean URL parameters immediately after setting initial state
+        if (urlCurrency || urlLanguagePair || urlSameRates) {
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+            console.log('URL parameters cleaned after setting initial state');
         }
         
-                 // Clean URL parameters after setting initial state
-         if (urlCurrency || urlLanguagePair || urlParams.get('same_rates')) {
-             // Use replaceState to remove query parameters without reloading the page
-             const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-             window.history.replaceState({path: cleanUrl}, '', cleanUrl);
-             console.log('URL parameters cleaned after setting initial state');
-         }
+                                // Only load rates from server if we don't have initial data from PHP
+        const hasInitialData = @json(!empty($currentRatesData));
+        
+        if (!hasInitialData) {
+            // Load initial rates AFTER everything is set up (only in different rates mode)
+            setTimeout(() => {
+                const currentActiveBtn = $('[data-source][data-target].active');
+                if (currentActiveBtn.length && !$('#sameRates').is(':checked')) {
+                    const sourceCode = currentActiveBtn.data('source');
+                    const targetCode = currentActiveBtn.data('target');
+                    if (sourceCode && targetCode) {
+                        loadRatesFromServer(sourceCode, targetCode);
+                    }
+                }
+            }, 50); // Small delay to avoid flicker during initialization
+        } else {
+            console.log('Using initial data from PHP, skipping server load');
+        }
         
         // Form submission handler
         $('#rates-form').on('submit', function(e) {
-            // Save current state before submitting
+            const isSameRates = $('#sameRates').is(':checked');
+            
+            // Save current state before submitting (always do this)
             saveCurrentRatesState();
             
             let hasRates = false;
@@ -520,12 +570,17 @@
                 return false;
             }
             
-            // Add stored rates data to form if using different rates per combination
-            if (!$('#sameRates').is(':checked')) {
+            console.log('Form submission - Same rates mode:', isSameRates);
+            console.log('Stored rates data:', ratesData);
+            
+            // If using different rates per combination, add stored data
+            if (!isSameRates) {
                 // Create hidden inputs for each language combination's rates
                 for (let langPair in ratesData) {
                     const [sourceCode, targetCode] = langPair.split('|');
                     const data = ratesData[langPair];
+                    
+                    if (!data || !data.rates) continue;
                     
                     // Add hidden inputs for this language pair
                     for (let fareId in data.rates) {
@@ -536,7 +591,7 @@
                                 value: data.rates[fareId]
                             }).appendTo(this);
                             
-                            if (data.units[fareId]) {
+                            if (data.units && data.units[fareId]) {
                                 $('<input>').attr({
                                     type: 'hidden',
                                     name: `language_rates[${sourceCode}|${targetCode}][units][${fareId}]`,
@@ -552,6 +607,10 @@
                         }
                     }
                 }
+                
+                console.log('Added hidden inputs for different rates per language');
+            } else {
+                console.log('Same rates mode - using visible form data only');
             }
         });
     });
