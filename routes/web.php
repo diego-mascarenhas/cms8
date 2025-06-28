@@ -185,6 +185,7 @@ Route::put('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController
 Route::delete('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'destroyPortfolio'])->name('collaborator.portfolio.destroy');
 Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
 Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
+Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getCollaboratorRates'])->name('collaborator.rates.get');
     Route::get('/collaborator/{id}/absences', function ($id) {
         $collaborator = Contact::findOrFail($id);
         return view('collaborator.absences', compact('collaborator'));

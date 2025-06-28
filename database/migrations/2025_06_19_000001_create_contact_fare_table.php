@@ -15,16 +15,20 @@ return new class extends Migration
             $table->id();
             $table->foreignId('contact_id')->constrained()->onDelete('cascade');
             $table->foreignId('fare_id')->constrained()->onDelete('cascade');
+            $table->string('source_language_code', 10)->nullable();
+            $table->string('target_language_code', 10)->nullable();
             $table->decimal('price', 10, 2)->default(0.00);
             $table->foreignId('unit_id')->nullable()->constrained('units');
             $table->string('currency_code', 3)->default('EUR');
             $table->timestamps();
             
-            // Foreign key constraint for currency
+            // Foreign key constraints (nullable references)
+            $table->foreign('source_language_code')->references('code')->on('language_variants')->nullOnDelete();
+            $table->foreign('target_language_code')->references('code')->on('language_variants')->nullOnDelete();
             $table->foreign('currency_code')->references('code')->on('currencies');
             
-            // Prevent duplicate entries
-            $table->unique(['contact_id', 'fare_id']);
+            // Prevent duplicate entries for the same contact and fare (language combinations handled separately)
+            $table->index(['contact_id', 'fare_id', 'source_language_code', 'target_language_code'], 'contact_fare_idx');
         });
     }
 
