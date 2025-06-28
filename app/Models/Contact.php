@@ -330,7 +330,7 @@ class Contact extends Model
      */
     public function absences()
     {
-        return $this->hasMany(CollaboratorAbsence::class);
+        return $this->hasMany(ContactAbsence::class);
     }
 
     /**
@@ -338,7 +338,7 @@ class Contact extends Model
      */
     public function weeklyAvailability()
     {
-        return $this->hasOne(CollaboratorWeeklyAvailability::class);
+        return $this->hasOne(ContactWeeklyAvailability::class);
     }
 
     /**

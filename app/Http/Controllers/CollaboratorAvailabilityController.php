@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CollaboratorWeeklyAvailability;
 use App\Models\Contact;
+use App\Models\ContactWeeklyAvailability;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -120,7 +120,7 @@ class CollaboratorAvailabilityController extends Controller
         // Get or create weekly availability
         $weeklyAvailability = $contact->weeklyAvailability;
         if (! $weeklyAvailability) {
-            $weeklyAvailability = new CollaboratorWeeklyAvailability;
+            $weeklyAvailability = new ContactWeeklyAvailability;
             $weeklyAvailability->contact_id = $contact->id;
             $weeklyAvailability->team_id = auth()->user()->currentTeam->id;
         }

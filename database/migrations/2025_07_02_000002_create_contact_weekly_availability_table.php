@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('collaborator_weekly_availability', function (Blueprint $table) {
+        Schema::create('contact_weekly_availability', function (Blueprint $table) {
             $table->id();
             $table->foreignId('contact_id')->constrained('contacts')->onDelete('cascade');
             $table->boolean('monday')->default(true);
@@ -32,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('collaborator_weekly_availability');
+        Schema::dropIfExists('contact_weekly_availability');
     }
 };
