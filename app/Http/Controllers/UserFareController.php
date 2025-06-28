@@ -128,28 +128,21 @@ class UserFareController extends Controller
     {
         $collaborator = \App\Models\Contact::findOrFail($id);
         
-        // Intentar encontrar un usuario asociado con este contacto
-        $user = \App\Models\User::where('email', $collaborator->email)->first();
+        // Obtener las tarifas del colaborador con sus precios configurados
+        $collaborator->load(['fares.units', 'fares.type']);
         
-        // Obtener las tarifas personalizadas del usuario (si existen)
-        if ($user) {
-            $userFares = UserFare::where('user_id', $user->id)
-                ->with(['fare.units', 'languageOrigin', 'languageDestination', 'currency'])
-                ->get();
-        } else {
-            $userFares = collect();
-        }
-
-        // Obtener las tarifas predefinidas
-        $fares = Fare::with(['units', 'type'])->get();
+        // Obtener todas las tarifas disponibles agrupadas por tipo
+        $allFares = Fare::with(['units', 'type'])
+            ->get()
+            ->groupBy('type.name');
         
         // Obtener divisas disponibles
         $currencies = \App\Models\Currency::all();
         
-        // Obtener variantes de idioma
-        $languages = \App\Models\LanguageVariant::all();
+        // Obtener unidades disponibles
+        $units = \App\Models\Unit::all();
 
-        return view('collaborator.rates', compact('collaborator', 'userFares', 'fares', 'currencies', 'languages'));
+        return view('collaborator.rates', compact('collaborator', 'allFares', 'currencies', 'units'));
     }
 
     /**
@@ -159,33 +152,45 @@ class UserFareController extends Controller
     {
         $collaborator = \App\Models\Contact::findOrFail($id);
         
-        // Intentar encontrar un usuario asociado con este contacto
-        $user = \App\Models\User::where('email', $collaborator->email)->first();
+        $validated = $request->validate([
+            'currency' => 'required|exists:currencies,code',
+            'rates' => 'required|array',
+            'rates.*' => 'nullable|numeric|min:0',
+            'units' => 'array',
+            'units.*' => 'nullable|exists:units,id'
+        ]);
         
-        if (!$user) {
-            return redirect()->back()->with('error', 'No se pudo encontrar un usuario asociado a este colaborador.');
+        $currency = $validated['currency'];
+        $rates = $validated['rates'];
+        $units = $validated['units'] ?? [];
+        
+        // Get all fares to process
+        $allFares = \App\Models\Fare::all()->keyBy('id');
+        
+        // Prepare data for sync - only include fares with prices > 0
+        $syncData = [];
+        
+        foreach ($rates as $fareId => $price) {
+            if (!empty($price) && $price > 0 && $allFares->has($fareId)) {
+                $syncData[$fareId] = [
+                    'price' => $price,
+                    'currency_code' => $currency,
+                    'unit_id' => $units[$fareId] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ];
+            }
         }
         
-        // Validar y procesar los datos del formulario
-        // Aquí se procesarían todos los campos de tarifas
+        // Sync the collaborator's fares with their rates
+        $collaborator->fares()->sync($syncData);
         
-        // Ejemplo de procesamiento
-        // foreach ($request->input('rates', []) as $rateType => $value) {
-        //     // Buscar o crear la tarifa
-        //     UserFare::updateOrCreate(
-        //         [
-        //             'user_id' => $user->id,
-        //             'fare_id' => $rateType,
-        //             'language_origin_id' => $request->input('language_origin'),
-        //             'language_destination_id' => $request->input('language_destination'),
-        //         ],
-        //         [
-        //             'currency_id' => $request->input('currency'),
-        //             'amount' => $value,
-        //             'negotiable' => false
-        //         ]
-        //     );
-        // }
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tarifas actualizadas exitosamente'
+            ]);
+        }
         
         return redirect()->back()->with('success', 'Tarifas actualizadas exitosamente.');
     }

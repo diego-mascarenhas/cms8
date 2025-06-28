@@ -37,5 +37,13 @@ class CurrencySeeder extends Seeder
             'symbol' => '$',
             'status' => true,
         ]);
+
+        Currency::create([
+            'id' => 826,
+            'code' => 'GBP',
+            'name' => 'British Pound Sterling',
+            'symbol' => '£',
+            'status' => true,
+        ]);
     }
 }

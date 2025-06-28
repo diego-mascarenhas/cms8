@@ -297,6 +297,7 @@ class Contact extends Model
 	public function fares(): BelongsToMany
 	{
 		return $this->belongsToMany(Fare::class, 'contact_fare')
+			->withPivot('price', 'unit_id', 'currency_code')
 			->withTimestamps();
 	}
 

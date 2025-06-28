@@ -15,9 +15,13 @@ return new class extends Migration
             $table->id();
             $table->foreignId('contact_id')->constrained()->onDelete('cascade');
             $table->foreignId('fare_id')->constrained()->onDelete('cascade');
-            $table->text('notes')->nullable();
-            $table->unsignedTinyInteger('proficiency_level')->default(3)->comment('1-5 scale');
+            $table->decimal('price', 10, 2)->default(0.00);
+            $table->foreignId('unit_id')->nullable()->constrained('units');
+            $table->string('currency_code', 3)->default('EUR');
             $table->timestamps();
+            
+            // Foreign key constraint for currency
+            $table->foreign('currency_code')->references('code')->on('currencies');
             
             // Prevent duplicate entries
             $table->unique(['contact_id', 'fare_id']);

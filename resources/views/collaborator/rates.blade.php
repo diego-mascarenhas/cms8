@@ -32,178 +32,75 @@
                     <div class="mb-3 row">
                         <label class="col-form-label col-md-2">Divisa *</label>
                         <div class="col-md-4">
-                            <select class="form-select" name="currency">
-                                <option value="EUR" selected>EUR</option>
-                                <option value="USD">USD</option>
-                                <option value="GBP">GBP</option>
+                            <select class="form-select" name="currency" required>
+                                @foreach($currencies as $currency)
+                                    <option value="{{ $currency->code }}" {{ $currency->code === 'EUR' ? 'selected' : '' }}>
+                                        {{ $currency->code }} - {{ $currency->name }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                     </div>
 
-                    <!-- Selección de idiomas -->
-                    <div class="mb-3">
-                        <h5 class="mb-3">Combinaciones de idiomas</h5>
-                        
-                        @if($collaborator->languageVariants && $collaborator->languageVariants->count() > 0)
-                            <div class="d-flex flex-wrap gap-2 mb-3">
-                                @foreach($collaborator->languageVariants as $index => $variant)
-                                    @php
-                                        $sourceFlag = strtolower($variant->sourceLanguage ? $variant->sourceLanguage->country_code ?? '' : '');
-                                        if (empty($sourceFlag) && $variant->sourceLanguage) {
-                                            $sourceFlag = strtolower($variant->source_language_code);
-                                        }
-                                        
-                                        $targetFlag = strtolower($variant->targetLanguage ? $variant->targetLanguage->country_code ?? '' : '');
-                                        if (empty($targetFlag) && $variant->targetLanguage) {
-                                            $targetFlag = strtolower($variant->target_language_code);
-                                        }
-                                        
-                                        $isActive = $index === 0; // Primera combinación activa por defecto
-                                    @endphp
-                                    
-                                                                         <div class="btn-group me-2">
-                                        <button type="button" class="btn btn-outline-primary {{ $isActive ? 'active' : '' }} px-3"
-                                                data-source="{{ $variant->source_language_code }}" 
-                                                data-target="{{ $variant->target_language_code }}">
-                                            @if(!empty($sourceFlag))
-                                                <span class="fi fi-{{ $sourceFlag }} me-1"></span>
-                                            @endif
-                                            {{ $variant->sourceLanguage ? $variant->sourceLanguage->name : $variant->source_language_code }}
-                                            <span class="mx-1"><i class="ti ti-arrow-right text-muted"></i></span>
-                                            @if(!empty($targetFlag))
-                                                <span class="fi fi-{{ $targetFlag }} me-1"></span>
-                                            @endif
-                                            {{ $variant->targetLanguage ? $variant->targetLanguage->name : $variant->target_language_code }}
-                                            @if($variant->is_certified)
-                                                <span class="badge bg-label-success ms-1">Nativo</span>
-                                            @endif
-                                        </button>
-                                    </div>
-                                @endforeach
-                            </div>
-                            
-                            <div class="form-check mt-2">
-                                <input class="form-check-input" type="checkbox" id="sameRates" name="same_rates" checked>
-                                <label class="form-check-label" for="sameRates">
-                                    Usar las mismas tarifas para todas las combinaciones
-                                </label>
-                            </div>
-                            
-                            <input type="hidden" name="current_language_pair" id="current_language_pair" 
-                                   value="{{ $collaborator->languageVariants->first() ? $collaborator->languageVariants->first()->source_language_code . '|' . $collaborator->languageVariants->first()->target_language_code : '' }}">
-                        @else
-                            <div class="alert alert-warning">
-                                <div class="d-flex align-items-center">
-                                    <i class="ti ti-alert-triangle me-2"></i>
-                                    <span>No hay combinaciones de idiomas registradas para este colaborador.</span>
-                                </div>
-                                <a href="{{ route('collaborator.edit', ['id' => $collaborator->id ?? 0]) }}" class="btn btn-sm btn-warning mt-2">
-                                    <i class="ti ti-plus me-1"></i>Añadir idiomas
-                                </a>
-                            </div>
-                        @endif
-                    </div>
-
                     <hr>
 
-                    <!-- Tarifas audiovisuales -->
-                    <h5 class="mt-4 mb-3">Traducción audiovisual</h5>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Traducción de plantilla</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[template]" value="0.00" step="0.01" min="0">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                            <small class="text-muted">Traducción básica de guiones o plantillas.</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Traducción + subtitulado sin guion</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[sub_no_script]" value="0.00" step="0.01" min="0">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Traducción + subtitulado con guion</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[sub_with_script]" value="0.00" step="0.01" min="0">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Traducción para locución/voice over/doblaje</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[voice_over]" value="0.00" step="0.01" min="0">
-                                <span class="input-group-text">/10 min</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Traducción de guion literario</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[literary_script]" value="0.00" step="0.01" min="0">
-                                <span class="input-group-text">/pág</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Transcripción (publicidad)</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[transcription_ad]" value="0.00" step="0.01" min="0">
-                                <span class="input-group-text">/hora</span>
+                    <!-- Dynamic Fares by Type -->
+                    @if($allFares && $allFares->count() > 0)
+                        @foreach($allFares as $typeName => $fares)
+                            <h5 class="mt-4 mb-3">{{ $typeName ?: 'Sin categoría' }}</h5>
+                            
+                            @php
+                                $fareChunks = $fares->chunk(2);
+                            @endphp
+                            
+                            @foreach($fareChunks as $fareChunk)
+                                <div class="row mb-3">
+                                    @foreach($fareChunk as $fare)
+                                        @php
+                                            // Get current collaborator's rate for this fare
+                                            $currentRate = $collaborator->fares->where('id', $fare->id)->first();
+                                            $currentPrice = $currentRate ? $currentRate->pivot->price : 0;
+                                            $currentUnitId = $currentRate ? $currentRate->pivot->unit_id : null;
+                                        @endphp
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ $fare->name }}</label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text currency-symbol">€</span>
+                                                <input type="number" 
+                                                       class="form-control" 
+                                                       name="rates[{{ $fare->id }}]" 
+                                                       value="{{ number_format($currentPrice, 2, '.', '') }}" 
+                                                       step="0.01" 
+                                                       min="0"
+                                                       placeholder="0.00">
+                                                
+                                                @if($fare->units && $fare->units->count() > 0)
+                                                    <select class="form-select" name="units[{{ $fare->id }}]" style="max-width: 120px;">
+                                                        <option value="">Unidad</option>
+                                                        @foreach($fare->units as $unit)
+                                                            <option value="{{ $unit->id }}" 
+                                                                {{ $currentUnitId == $unit->id ? 'selected' : '' }}>
+                                                                /{{ $unit->type }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                @else
+                                                    <span class="input-group-text">/unidad</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endforeach
+                        @endforeach
+                    @else
+                        <div class="alert alert-info">
+                            <div class="d-flex align-items-center">
+                                <i class="ti ti-info-circle me-2"></i>
+                                <span>No hay tarifas disponibles para configurar.</span>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Transcripción</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[transcription]" value="10" step="0.01" min="0">
-                                <span class="input-group-text">/pág</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Transcripción + subtitulado</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[transcription_sub]" value="0.00" step="0.01" min="0">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Adaptación + subtitulado</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[adaptation_sub]" value="0.00" step="0.01" min="0">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Revisión de subtítulos</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Eur</span>
-                                <input type="number" class="form-control" name="rates[sub_review]" value="0.00" step="0.01" min="0">
-                                <span class="input-group-text">/min</span>
-                            </div>
-                        </div>
-                    </div>
+                    @endif
 
                     <div class="text-end mt-4">
                         <button type="submit" class="btn btn-primary">Guardar tarifas</button>
@@ -222,59 +119,44 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Funcionalidad para los botones de selección de idiomas
-        $('.btn-group .btn').on('click', function() {
-            // Actualizar estado activo
-            $(this).addClass('active').siblings().removeClass('active');
+        // Currency symbol mapping
+        const currencySymbols = {
+            'EUR': '€',
+            'USD': '$',
+            'GBP': '£',
+            'ARS': '$'
+        };
+        
+        // Handle currency change
+        $('select[name="currency"]').on('change', function() {
+            const selectedCurrency = $(this).val();
+            const symbol = currencySymbols[selectedCurrency] || '€';
             
-            // Obtener los códigos de idioma
-            const sourceCode = $(this).data('source');
-            const targetCode = $(this).data('target');
-            
-            if (sourceCode && targetCode) {
-                // Actualizar el campo oculto con la combinación actual
-                $('#current_language_pair').val(sourceCode + '|' + targetCode);
-                
-                // Aquí podrías cargar las tarifas específicas para esta combinación mediante AJAX
-                // Por ejemplo:
-                /*
-                $.ajax({
-                    url: '/collaborator/' + {{ $collaborator->id }} + '/rates/get',
-                    method: 'GET',
-                    data: {
-                        source_language: sourceCode,
-                        target_language: targetCode
-                    },
-                    success: function(response) {
-                        // Actualizar los campos del formulario con las tarifas recibidas
-                        if (response.rates) {
-                            for (const [key, value] of Object.entries(response.rates)) {
-                                $(`input[name="rates[${key}]"]`).val(value);
-                            }
-                        }
-                    },
-                    error: function(error) {
-                        console.error('Error al cargar las tarifas:', error);
-                    }
-                });
-                */
-            }
+            // Update all currency symbols in the form
+            $('.currency-symbol').text(symbol);
         });
         
-        // Manejar el checkbox de mismas tarifas
-        $('#sameRates').on('change', function() {
-            if ($(this).is(':checked')) {
-                // Si está marcado, se usarán las mismas tarifas para todas las combinaciones
-                // Podrías deshabilitar la selección de combinaciones o mostrar un mensaje
-                $('.btn-group .btn').not('.active').addClass('opacity-50');
-            } else {
-                // Si no está marcado, se pueden seleccionar diferentes combinaciones
-                $('.btn-group .btn').removeClass('opacity-50');
+        // Initialize with current currency
+        $('select[name="currency"]').trigger('change');
+        
+        // Form submission validation
+        $('#rates-form').on('submit', function(e) {
+            let hasRates = false;
+            
+            // Check if at least one rate is filled
+            $('input[name^="rates["]').each(function() {
+                if ($(this).val() && parseFloat($(this).val()) > 0) {
+                    hasRates = true;
+                    return false; // break the loop
+                }
+            });
+            
+            if (!hasRates) {
+                e.preventDefault();
+                alert('Debe especificar al menos una tarifa.');
+                return false;
             }
         });
-        
-        // Inicializar el estado del checkbox
-        $('#sameRates').trigger('change');
     });
 </script>
 @endpush 
