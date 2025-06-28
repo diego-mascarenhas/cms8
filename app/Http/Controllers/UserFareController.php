@@ -165,7 +165,7 @@ class UserFareController extends Controller
         ]);
         
         $currency = $validated['currency'];
-        $sameRates = $request->boolean('same_rates', true);
+        $sameRates = $request->boolean('same_rates', false); // Default to false (different rates per combination)
         
         try {
             DB::beginTransaction();
@@ -250,59 +250,73 @@ class UserFareController extends Controller
      */
     private function saveDifferentRatesPerLanguage($collaborator, $validated, $currency)
     {
-        $languageRates = $validated['language_rates'] ?? [];
         $currentRates = $validated['rates'] ?? [];
         $currentUnits = $validated['units'] ?? [];
         $currentLanguagePair = $validated['current_language_pair'] ?? '';
         
-        // Delete existing rates for this collaborator
-        $collaborator->fares()->detach();
+        if (!$currentLanguagePair) {
+            throw new \Exception('No se especificó la combinación de idiomas actual.');
+        }
         
-        // Process each language combination
+        [$sourceCode, $targetCode] = explode('|', $currentLanguagePair);
+        
+        // Delete existing rates for ONLY this specific language combination
+        $collaborator->fares()
+            ->wherePivot('source_language_code', $sourceCode)
+            ->wherePivot('target_language_code', $targetCode)
+            ->detach();
+        
+        // Save new rates for this specific language combination
+        foreach ($currentRates as $fareId => $price) {
+            if (!empty($price) && $price > 0) {
+                $collaborator->fares()->attach($fareId, [
+                    'price' => $price,
+                    'currency_code' => $currency,
+                    'unit_id' => $currentUnits[$fareId] ?? null,
+                    'source_language_code' => $sourceCode,
+                    'target_language_code' => $targetCode,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+        }
+        
+        // Process any additional language combinations from the form data
+        $languageRates = $validated['language_rates'] ?? [];
         foreach ($languageRates as $langPair => $data) {
-            [$sourceCode, $targetCode] = explode('|', $langPair);
+            // Skip the current language pair as it's already processed above
+            if ($langPair === $currentLanguagePair) {
+                continue;
+            }
+            
+            $langPairParts = explode('|', $langPair);
+            if (count($langPairParts) !== 2) {
+                continue; // Skip invalid language pairs
+            }
+            
+            $langSourceCode = $langPairParts[0];
+            $langTargetCode = $langPairParts[1];
             $rates = $data['rates'] ?? [];
             $units = $data['units'] ?? [];
             
+            // Delete existing rates for this specific language combination
+            $collaborator->fares()
+                ->wherePivot('source_language_code', $langSourceCode)
+                ->wherePivot('target_language_code', $langTargetCode)
+                ->detach();
+            
+            // Save new rates for this language combination
             foreach ($rates as $fareId => $price) {
                 if (!empty($price) && $price > 0) {
                     $collaborator->fares()->attach($fareId, [
                         'price' => $price,
                         'currency_code' => $currency,
                         'unit_id' => $units[$fareId] ?? null,
-                        'source_language_code' => $sourceCode,
-                        'target_language_code' => $targetCode,
+                        'source_language_code' => $langSourceCode,
+                        'target_language_code' => $langTargetCode,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
-                }
-            }
-        }
-        
-        // Also save current form rates if language pair is specified
-        if ($currentLanguagePair && !empty($currentRates)) {
-            [$sourceCode, $targetCode] = explode('|', $currentLanguagePair);
-            
-            foreach ($currentRates as $fareId => $price) {
-                if (!empty($price) && $price > 0) {
-                    // Check if this combination doesn't already exist
-                    $exists = $collaborator->fares()
-                        ->wherePivot('fare_id', $fareId)
-                        ->wherePivot('source_language_code', $sourceCode)
-                        ->wherePivot('target_language_code', $targetCode)
-                        ->exists();
-                    
-                    if (!$exists) {
-                        $collaborator->fares()->attach($fareId, [
-                            'price' => $price,
-                            'currency_code' => $currency,
-                            'unit_id' => $currentUnits[$fareId] ?? null,
-                            'source_language_code' => $sourceCode,
-                            'target_language_code' => $targetCode,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ]);
-                    }
                 }
             }
         }
