@@ -2,162 +2,13 @@
 
 @section('title', 'Dashboard Colaboradores')
 
-@section('vendor-style')
-<link rel="stylesheet" href="{{ asset('assets/vendor/libs/apex-charts/apex-charts.css') }}" />
-@endsection
 
-@section('vendor-script')
-<script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
-@endsection
 
 @section('page-script')
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // Collaborators chart
-    const collaboratorsOptions = {
-      chart: {
-        height: 90,
-        type: 'line',
-        toolbar: {
-          show: false
-        },
-        sparkline: {
-          enabled: true
-        }
-      },
-      colors: ['#28c76f'],
-      dataLabels: {
-        enabled: false
-      },
-      stroke: {
-        curve: 'smooth',
-        width: 3
-      },
-      series: [{
-        name: 'Colaboradoras',
-        data: [105, 120, 90, 170, 130, 190, 140, 200, 120, 170]
-      }],
-      grid: {
-        show: false
-      },
-      xaxis: {
-        labels: {
-          show: false
-        },
-        axisBorder: {
-          show: false
-        }
-      },
-      yaxis: {
-        labels: {
-          show: false
-        }
-      }
-    };
-    
-    // Projects chart
-    const projectsOptions = {
-      chart: {
-        height: 90,
-        type: 'line',
-        toolbar: {
-          show: false
-        },
-        sparkline: {
-          enabled: true
-        }
-      },
-      colors: ['#ff9f43'],
-      dataLabels: {
-        enabled: false
-      },
-      stroke: {
-        curve: 'smooth',
-        width: 3
-      },
-      series: [{
-        name: 'Proyectos',
-        data: [50, 90, 30, 70, 20, 80, 30, 90, 50, 70]
-      }],
-      grid: {
-        show: false
-      },
-      xaxis: {
-        labels: {
-          show: false
-        },
-        axisBorder: {
-          show: false
-        }
-      },
-      yaxis: {
-        labels: {
-          show: false
-        }
-      }
-    };
-    
-    // Circle chart
-    const circleOptions = {
-      chart: {
-        height: 170,
-        type: 'radialBar',
-      },
-      series: [83],
-      colors: ['#28c76f'],
-      plotOptions: {
-        radialBar: {
-          hollow: {
-            size: '65%',
-          },
-          dataLabels: {
-            name: {
-              show: false,
-            },
-            value: {
-              fontSize: '22px',
-              fontWeight: 600,
-              offsetY: 10,
-              formatter: function() {
-                return '1250';
-              }
-            },
-            total: {
-              show: true,
-              label: 'Total',
-              formatter: function() {
-                return '';
-              }
-            }
-          }
-        }
-      },
-    };
-    
-    // Initialize charts
-    if (document.getElementById('collaborators-chart')) {
-      const collaboratorsChart = new ApexCharts(
-        document.getElementById('collaborators-chart'),
-        collaboratorsOptions
-      );
-      collaboratorsChart.render();
-    }
-    
-    if (document.getElementById('projects-chart')) {
-      const projectsChart = new ApexCharts(
-        document.getElementById('projects-chart'),
-        projectsOptions
-      );
-      projectsChart.render();
-    }
-    
-    if (document.getElementById('total-circle-chart')) {
-      const circleChart = new ApexCharts(
-        document.getElementById('total-circle-chart'),
-        circleOptions
-      );
-      circleChart.render();
-    }
+    // Dashboard loaded successfully
+    console.log('Dashboard collaboradores cargado');
   });
 </script>
 @endsection
@@ -165,54 +16,73 @@
 @section('content')
 <div class="row">
   <!-- Cards section -->
-  <div class="col-xl-4 col-md-4 mb-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="d-flex align-items-start">
-          <div class="badge bg-label-success rounded p-2 me-3">
-            <i class="ti ti-id-badge ti-sm"></i>
-          </div>
-          <div class="d-flex flex-column">
-            <h4 class="mb-0">1262</h4>
-            <span>Colaboradoras</span>
-          </div>
-        </div>
-        <div id="collaborators-chart" class="mt-3"></div>
-      </div>
-    </div>
-  </div>
-  
-  <div class="col-xl-4 col-md-4 mb-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="d-flex align-items-start">
-          <div class="badge bg-label-warning rounded p-2 me-3">
-            <i class="ti ti-file-text ti-sm"></i>
-          </div>
-          <div class="d-flex flex-column">
-            <h4 class="mb-0">186</h4>
-            <span>Proyectos activos</span>
-          </div>
-        </div>
-        <div id="projects-chart" class="mt-3"></div>
-      </div>
-    </div>
-  </div>
-  
-  <div class="col-xl-4 col-md-4 mb-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card">
+      <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between">
           <div>
-            <h6 class="mb-0">Colaboradoras</h6>
-            <small class="text-muted">Último mes</small>
-            <h4 class="mb-0 mt-2">+49</h4>
-            <span class="text-success d-flex align-items-center gap-1">
-              <i class="ti ti-trending-up"></i>
-              <span>15.8%</span>
+            <h4 class="mb-1">1,262</h4>
+            <small class="text-muted">Total colaboradoras</small>
+          </div>
+          <div class="avatar">
+            <span class="avatar-initial rounded bg-label-success">
+              <i class="ti ti-users ti-md"></i>
             </span>
           </div>
-          <div id="total-circle-chart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card">
+      <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <h4 class="mb-1">186</h4>
+            <small class="text-muted">Proyectos activos</small>
+          </div>
+          <div class="avatar">
+            <span class="avatar-initial rounded bg-label-warning">
+              <i class="ti ti-briefcase ti-md"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card">
+      <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <h4 class="mb-1">49</h4>
+            <small class="text-muted">Nuevas este mes</small>
+          </div>
+          <div class="avatar">
+            <span class="avatar-initial rounded bg-label-info">
+              <i class="ti ti-user-plus ti-md"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-xl-3 col-md-6 mb-4">
+    <div class="card">
+      <div class="card-body p-3">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <h4 class="mb-1">{{ $topLanguages->count() ?? 0 }}</h4>
+            <small class="text-muted">Idiomas activos</small>
+          </div>
+          <div class="avatar">
+            <span class="avatar-initial rounded bg-label-primary">
+              <i class="ti ti-language ti-md"></i>
+            </span>
+          </div>
         </div>
       </div>
     </div>
