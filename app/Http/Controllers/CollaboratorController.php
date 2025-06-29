@@ -329,20 +329,8 @@ class CollaboratorController extends Controller
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
-        $collaborator = Contact::findOrFail($id);
-        $message = $request->input('message');
-
-        // TODO: Implement actual notification sending logic here
-        // For now, just return success
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Notificación enviada correctamente',
-            'data' => [
-                'collaborator_id' => $collaborator->id,
-                'message' => $message,
-            ],
-        ]);
+        // Redirect to the new notification system
+        return app(NotificationController::class)->quickSend($request, $id);
     }
 
     /**

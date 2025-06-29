@@ -70,12 +70,6 @@
 			"slug": "notification-list"
 		},
 		{
-			"url": "other/list",
-			"name": "Otros",
-			"icon": "menu-icon tf-icons ti ti-settings",
-			"slug": "other-list"
-		},
-		{
 			"url": "user-management",
 			"name": "Usuarias",
 			"icon": "menu-icon tf-icons ti ti-users",

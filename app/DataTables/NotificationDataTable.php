@@ -1,0 +1,120 @@
+<?php
+
+namespace App\DataTables;
+
+use App\Models\Notification;
+use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Yajra\DataTables\EloquentDataTable;
+use Yajra\DataTables\Html\Builder as HtmlBuilder;
+use Yajra\DataTables\Html\Button;
+use Yajra\DataTables\Html\Column;
+use Yajra\DataTables\Services\DataTable;
+
+class NotificationDataTable extends DataTable
+{
+    /**
+     * Build DataTable class.
+     */
+    public function dataTable(QueryBuilder $query): EloquentDataTable
+    {
+        return (new EloquentDataTable($query))
+            ->addColumn('action', function ($notification) {
+                return view('notification.action', compact('notification'));
+            })
+            ->addColumn('contact_name', function ($notification) {
+                return $notification->contact ? $notification->contact->name . ' ' . $notification->contact->surname : 'N/A';
+            })
+            ->addColumn('type_name', function ($notification) {
+                return $notification->type ? $notification->type->name : 'N/A';
+            })
+            ->addColumn('status', function ($notification) {
+                return $notification->status_badge;
+            })
+            ->addColumn('read_status', function ($notification) {
+                return $notification->read_status_badge;
+            })
+            ->addColumn('sent_date', function ($notification) {
+                return $notification->formatted_sent_date;
+            })
+            ->editColumn('created_at', function ($notification) {
+                return $notification->created_at->format('d/m/Y H:i');
+            })
+            ->editColumn('subject', function ($notification) {
+                return '<span title="' . e($notification->subject) . '">' . 
+                       e(\Str::limit($notification->subject, 50)) . '</span>';
+            })
+            ->rawColumns(['action', 'status', 'read_status', 'subject'])
+            ->setRowId('id');
+    }
+
+    /**
+     * Get query source of dataTable.
+     */
+    public function query(Notification $model): QueryBuilder
+    {
+        return $model->newQuery()
+            ->with(['contact', 'type', 'user'])
+            ->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Optional method if you want to use html builder.
+     */
+    public function html(): HtmlBuilder
+    {
+        return $this->builder()
+            ->setTableId('notifications-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('Bfrtip')
+            ->orderBy(0, 'desc')
+            ->selectStyleSingle()
+            ->buttons([
+                Button::make('excel'),
+                Button::make('csv'),
+                Button::make('pdf'),
+                Button::make('print'),
+                Button::make('reload'),
+            ])
+            ->parameters([
+                'language' => [
+                    'url' => asset('assets/json/datatables/es.json'),
+                ],
+                'responsive' => true,
+                'autoWidth' => false,
+                'pageLength' => 25,
+                'lengthMenu' => [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'Todo']],
+            ]);
+    }
+
+    /**
+     * Get the dataTable columns definition.
+     */
+    public function getColumns(): array
+    {
+        return [
+            Column::make('id')->title('ID')->width(60)->visible(false),
+            Column::make('subject')->title('Asunto'),
+            Column::make('contact_name')->title('Contacto')->searchable(false)->orderable(false),
+            Column::make('type_name')->title('Tipo')->searchable(false)->orderable(false),
+            Column::make('status')->title('Estado')->searchable(false)->orderable(false),
+            Column::make('read_status')->title('Leído')->searchable(false)->orderable(false),
+            Column::make('sent_date')->title('Enviado')->searchable(false)->orderable(false),
+            Column::make('created_at')->title('Creado'),
+            Column::computed('action')
+                ->title('Acciones')
+                ->exportable(false)
+                ->printable(false)
+                ->width(120)
+                ->addClass('text-center'),
+        ];
+    }
+
+    /**
+     * Get filename for export.
+     */
+    protected function filename(): string
+    {
+        return 'Notifications_' . date('YmdHis');
+    }
+} 

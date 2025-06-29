@@ -25,6 +25,7 @@ use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
@@ -332,6 +333,20 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/stylebook/{stylebook}/edit', [StylebookController::class, 'edit'])->name('stylebook.edit')->middleware('auth');
     Route::put('/stylebook/{stylebook}', [StylebookController::class, 'update'])->name('stylebook.update')->middleware('auth');
     Route::delete('/stylebook/{stylebook}', [StylebookController::class, 'destroy'])->name('stylebook.destroy')->middleware('auth');
+
+    // Notification Management
+    Route::get('/notification/list', [NotificationController::class, 'index'])->name('notification-list')->middleware('auth');
+    Route::get('/notification/create', [NotificationController::class, 'create'])->name('notification.create')->middleware('auth');
+    Route::post('/notification', [NotificationController::class, 'store'])->name('notification.store')->middleware('auth');
+    Route::get('/notification/{notification}', [NotificationController::class, 'show'])->name('notification.show')->middleware('auth');
+    Route::get('/notification/{notification}/edit', [NotificationController::class, 'edit'])->name('notification.edit')->middleware('auth');
+    Route::put('/notification/{notification}', [NotificationController::class, 'update'])->name('notification.update')->middleware('auth');
+    Route::delete('/notification/{notification}', [NotificationController::class, 'destroy'])->name('notification.destroy')->middleware('auth');
+    Route::post('/notification/{notification}/send', [NotificationController::class, 'send'])->name('notification.send')->middleware('auth');
+    Route::post('/notification/{notification}/resend', [NotificationController::class, 'resend'])->name('notification.resend')->middleware('auth');
+    Route::post('/notification/get-template', [NotificationController::class, 'getTemplate'])->name('notification.get-template')->middleware('auth');
+    Route::post('/notification/bulk-send', [NotificationController::class, 'bulkSend'])->name('notification.bulk-send')->middleware('auth');
+    Route::post('/notification/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notification.bulk-delete')->middleware('auth');
 
     // Tarifas Personalizadas de Usuario
     Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
