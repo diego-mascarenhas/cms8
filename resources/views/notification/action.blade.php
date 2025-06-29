@@ -22,14 +22,4 @@
             <i class="ti ti-refresh ti-sm"></i>
         </a>
     @endif
-
-    <!-- Delete -->
-    <form action="{{ route('notification.destroy', $notification->id) }}" method="POST" class="d-inline">
-        @csrf
-        @method('DELETE')
-        <a href="javascript:;" class="text-danger" title="Eliminar" 
-           onclick="deleteRecord({{ $notification->id }}, this)">
-            <i class="ti ti-trash ti-sm"></i>
-        </a>
-    </form>
 </div> 
