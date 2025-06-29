@@ -36,6 +36,7 @@ class ContactFactory extends Factory
             'team_id' => 1,
             'name' => $this->faker->company,
             'language' => $this->faker->randomElement($weightedLanguages),
+            'country' => 724, // Spain - matches the default value in migration
             'creator_id' => $this->faker->boolean(70) ? $users->random()->id : $this->faker->randomElement($users)->id,
             'responsible_id' => $this->faker->boolean(70) ? $users->random()->id : $this->faker->randomElement($users)->id,
             'status_id' => ContactStatus::inRandomOrder()->first()->id,
