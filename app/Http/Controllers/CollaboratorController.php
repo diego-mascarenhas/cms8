@@ -759,4 +759,22 @@ class CollaboratorController extends Controller
             'message' => 'Portfolio eliminado correctamente',
         ]);
     }
+
+    /**
+     * Show notifications for a collaborator
+     */
+    public function notifications($id)
+    {
+        $collaborator = Contact::findOrFail($id);
+        
+        // Get notifications for this collaborator (contact)
+        $notifications = \App\Models\Notification::with(['type', 'user'])
+            ->where('contact_id', $id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('collaborator.notifications', compact('collaborator', 'notifications'));
+    }
 }

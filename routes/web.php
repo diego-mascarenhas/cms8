@@ -186,11 +186,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/collaborator/{id}/absences/toggle-date', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'toggleDate'])->name('collaborator.absences.toggle-date');
     Route::post('/collaborator/{id}/absences/update-weekly', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'updateWeekly'])->name('collaborator.absences.update-weekly');
 
-    Route::get('/collaborator/{id}/notifications', function ($id) {
-        $collaborator = Contact::findOrFail($id);
-
-        return view('collaborator.notifications', compact('collaborator'));
-    })->name('collaborator.notifications');
+    Route::get('/collaborator/{id}/notifications', [CollaboratorController::class, 'notifications'])->name('collaborator.notifications');
 
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])

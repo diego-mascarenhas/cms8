@@ -123,21 +123,21 @@ function initializeFilters() {
 
 function initializeDatePickers() {
     // Initialize flatpickr for date filters
-    flatpickr('#dateFromFilter', {
-        dateFormat: 'd/m/Y',
-        locale: 'es',
+    $('.flatpickr-input').flatpickr({
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd/m/Y',
         allowInput: true,
-        onChange: function(selectedDates, dateStr, instance) {
-            // Optional: auto-apply filters when date changes
-        }
-    });
-    
-    flatpickr('#dateToFilter', {
-        dateFormat: 'd/m/Y',
-        locale: 'es',
-        allowInput: true,
-        onChange: function(selectedDates, dateStr, instance) {
-            // Optional: auto-apply filters when date changes
+        locale: {
+            firstDayOfWeek: 1,
+            weekdays: {
+                shorthand: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+                longhand: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+            },
+            months: {
+                shorthand: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+                longhand: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+            }
         }
     });
 }
