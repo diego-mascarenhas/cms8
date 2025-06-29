@@ -34,19 +34,8 @@
 </div>
 
 <div class="card">
-    <div class="card-header flex-column flex-md-row">
-        <div class="head-label text-center">
-            <h5 class="card-title mb-0">Notificaciones</h5>
-        </div>
-        <div class="dt-action-buttons text-end pt-3 pt-md-0">
-            <div class="dt-buttons">
-                <a href="{{ route('notification.create') }}" class="btn btn-primary">
-                    <span><i class="ti ti-plus me-1"></i>Crear notificación</span>
-                </a>
-            </div>
-        </div>
-    </div>
-    <div class="card-body">
+    <div class="card-header border-bottom">
+        <h5 class="mb-3">Filtros</h5>
         <!-- Filters Form -->
         <form method="GET" id="filtersForm" class="mb-3">
             <div class="d-flex flex-column flex-md-row gap-3">
@@ -75,7 +64,8 @@
                 </div>
             </div>
         </form>
-        
+    </div>
+    <div class="card-body">
         {{ $dataTable->table() }}
     </div>
 </div>
