@@ -157,7 +157,6 @@
     <!-- Sidebar -->
     <div class="col-md-4">
         <!-- Notification Timeline -->
-        @if($notification->is_sent)
         <div class="card mb-4">
             <h5 class="card-header">
                 <i class="ti ti-clock me-2"></i>{{ __('Timeline') }}
@@ -171,6 +170,7 @@
                             <small class="text-muted">{{ $notification->formatted_created_date }}</small>
                         </div>
                     </div>
+                    @if($notification->is_sent)
                     <div class="timeline-item">
                         <div class="timeline-point bg-success"></div>
                         <div class="timeline-content">
@@ -178,6 +178,7 @@
                             <small class="text-muted">{{ $notification->formatted_sent_date }}</small>
                         </div>
                     </div>
+                    @endif
                     @if($notification->is_read)
                     <div class="timeline-item">
                         <div class="timeline-point bg-info"></div>
@@ -190,7 +191,6 @@
                 </div>
             </div>
         </div>
-        @endif
     </div>
 </div>
 @endsection 
