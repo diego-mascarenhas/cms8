@@ -7,7 +7,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Notifications') }}/</span> {{ $notification->subject }}</h4>
-        <p class="text-muted">{{ __('Notification details') }}</p>
+        <p class="text-muted">{{ __('Notification Details') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         @if(!$notification->is_sent)
@@ -36,11 +36,12 @@
             </form>
             @endcan
         @endif
-        @can('notification.edit')
-        <a href="{{ route('notification-list') }}" class="btn btn-outline-secondary">
+        <a href="{{ route('collaborator.notifications', $notification->contact->id) }}" class="btn btn-info waves-effect waves-light">
+            <i class="ti ti-bell me-1"></i>Ver notificaciones del colaborador
+        </a>
+        <a href="{{ route('notification-list') }}" class="btn btn-label-secondary waves-effect waves-light">
             <i class="ti ti-arrow-left me-1"></i>Volver al listado
         </a>
-        @endcan
     </div>
 </div>
 
@@ -155,125 +156,41 @@
 
     <!-- Sidebar -->
     <div class="col-md-4">
-        <!-- Quick Actions -->
+        <!-- Notification Timeline -->
+        @if($notification->is_sent)
         <div class="card mb-4">
             <h5 class="card-header">
-                <i class="ti ti-settings me-2"></i>{{ __('Actions') }}
+                <i class="ti ti-clock me-2"></i>{{ __('Timeline') }}
             </h5>
             <div class="card-body">
-                <div class="d-grid gap-2">
-                    @if(!$notification->is_sent)
-                        @can('notification.edit')
-                        <a href="{{ route('notification.edit', $notification->id) }}" class="btn btn-outline-primary">
-                            <i class="ti ti-edit me-2"></i>Editar notificación
-                        </a>
-                        @endcan
-                        @can('notification.send')
-                        <form action="{{ route('notification.send', $notification->id) }}" method="POST">
-                            @csrf
-                            <button type="submit" class="btn btn-success w-100" 
-                                    onclick="return confirm('¿Estás seguro de que quieres enviar esta notificación?')">
-                                <i class="ti ti-send me-2"></i>Enviar ahora
-                            </button>
-                        </form>
-                        @endcan
-                        @can('notification.destroy')
-                        <form action="{{ route('notification.destroy', $notification->id) }}" method="POST">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-outline-danger w-100" 
-                                    onclick="return confirm('¿Estás seguro de que quieres eliminar esta notificación?')">
-                                <i class="ti ti-trash me-2"></i>Eliminar
-                            </button>
-                        </form>
-                        @endcan
-                    @else
-                        @can('notification.resend')
-                        <form action="{{ route('notification.resend', $notification->id) }}" method="POST">
-                            @csrf
-                            <button type="submit" class="btn btn-warning w-100" 
-                                    onclick="return confirm('¿Estás seguro de que quieres reenviar esta notificación?')">
-                                <i class="ti ti-repeat me-2"></i>Reenviar
-                            </button>
-                        </form>
-                        @endcan
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-point bg-primary"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Notificación creada</h6>
+                            <small class="text-muted">{{ $notification->formatted_created_date }}</small>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-point bg-success"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Notificación enviada</h6>
+                            <small class="text-muted">{{ $notification->formatted_sent_date }}</small>
+                        </div>
+                    </div>
+                    @if($notification->is_read)
+                    <div class="timeline-item">
+                        <div class="timeline-point bg-info"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Notificación leída</h6>
+                            <small class="text-muted">{{ $notification->read_at ? $notification->read_at->format('d/m/Y H:i') : 'Fecha desconocida' }}</small>
+                        </div>
+                    </div>
                     @endif
-                    
-                    <a href="{{ route('notification-list') }}" class="btn btn-outline-secondary">
-                        <i class="ti ti-arrow-left me-2"></i>Volver al listado
-                    </a>
                 </div>
             </div>
         </div>
-
-        <!-- Contact Information -->
-        <div class="card mb-4">
-            <h5 class="card-header">
-                <i class="ti ti-user me-2"></i>{{ __('Contact Information') }}
-            </h5>
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="avatar me-2">
-                        <span class="avatar-initial rounded-circle bg-label-primary">
-                            {{ strtoupper(substr($notification->contact->name, 0, 1)) }}
-                        </span>
-                    </div>
-                    <div>
-                        <h6 class="mb-0">{{ $notification->contact->name }} {{ $notification->contact->surname }}</h6>
-                        <small class="text-muted">{{ $notification->contact->email }}</small>
-                    </div>
-                </div>
-                
-                @if($notification->contact->phone)
-                <div class="mb-2">
-                    <small class="text-muted">Teléfono:</small>
-                    <div>{{ $notification->contact->phone }}</div>
-                </div>
-                @endif
-                
-                @if($notification->contact->company)
-                <div class="mb-2">
-                    <small class="text-muted">Empresa:</small>
-                    <div>{{ $notification->contact->company }}</div>
-                </div>
-                @endif
-
-                <div class="mt-3">
-                    <a href="{{ route('contact.show', $notification->contact->id) }}" class="btn btn-sm btn-outline-primary w-100">
-                        <i class="ti ti-external-link me-1"></i>Ver contacto completo
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Notification Type Info -->
-        <div class="card">
-            <h5 class="card-header">
-                <i class="ti ti-template me-2"></i>{{ __('Template Information') }}
-            </h5>
-            <div class="card-body">
-                <div class="mb-2">
-                    <small class="text-muted">Tipo:</small>
-                    <div>{{ $notification->type->name }}</div>
-                </div>
-                @if($notification->type->description)
-                <div class="mb-2">
-                    <small class="text-muted">Descripción:</small>
-                    <div class="small">{{ $notification->type->description }}</div>
-                </div>
-                @endif
-                <div class="mb-2">
-                    <small class="text-muted">Personalizable:</small>
-                    <div>
-                        @if($notification->type->is_customizable)
-                            <span class="badge bg-success">Sí</span>
-                        @else
-                            <span class="badge bg-secondary">No</span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
+        @endif
     </div>
 </div>
 @endsection 

@@ -26,10 +26,14 @@ class NotificationFactory extends Factory
         // Get notification subjects and messages based on type
         $notificationContent = $this->getRandomNotificationContent();
 
+        // Get a random existing contact from team_id 1
+        $contact = Contact::where('team_id', 1)->inRandomOrder()->first();
+        $contactId = $contact ? $contact->id : null;
+
         return [
             'team_id' => 1,
-            'user_id' => User::factory(),
-            'contact_id' => Contact::factory(),
+            'user_id' => User::inRandomOrder()->first()?->id ?? User::factory(),
+            'contact_id' => $contactId,
             'type_id' => NotificationType::inRandomOrder()->first()?->id ?? NotificationType::factory(),
             'reference' => $this->faker->optional(0.3)->randomElement([
                 'project_' . $this->faker->numberBetween(1, 100),

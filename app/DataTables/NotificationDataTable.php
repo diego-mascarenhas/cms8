@@ -102,8 +102,21 @@ class NotificationDataTable extends DataTable
                         'targets' => [0], // ID column
                         'visible' => false,
                         'searchable' => false,
+                        'orderable' => false,
                     ],
                 ],
+                'pageLength' => 25,
+                'select' => false, // Disable row selection
+                'autoWidth' => false,
+                'drawCallback' => 'function() {
+                    // Disable text selection on table rows
+                    $("#notifications-table tbody tr").css({
+                        "user-select": "none",
+                        "-webkit-user-select": "none",
+                        "-moz-user-select": "none",
+                        "-ms-user-select": "none"
+                    });
+                }',
             ]);
     }
 

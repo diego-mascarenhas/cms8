@@ -3,22 +3,120 @@ description:
 globs: 
 alwaysApply: true
 ---
-## DataTables Actions
+# DataTables Actions Pattern
 
+## Standard Action Column Template
+
+This template provides a consistent pattern for action buttons in DataTables across the application.
+
+### Key Features:
+- **Centered alignment**: Uses flexbox for perfect center alignment
+- **Permission-based**: Each action respects Laravel's Gate permissions
+- **Consistent styling**: Uses standard Bootstrap and Tabler icons
+- **Responsive spacing**: Proper margins and padding for mobile/desktop
+
+```blade
+{{-- Action column template for DataTables --}}
 <div class="d-flex justify-content-center align-items-center">
-    <a href="javascript:;" class="text-body edit-sentiment" data-id="{{ $contact->id }}"><i class="ti ti-mood-happy ti-sm me-2"></i></a>
+    {{-- Custom action example: Edit sentiment with JavaScript handler --}}
+    <a href="javascript:;" class="text-body edit-sentiment" data-id="{{ $contact->id }}">
+        <i class="ti ti-mood-happy ti-sm me-2"></i>
+    </a>
+    
+    {{-- Commented out actions can be enabled as needed --}}
     {{-- <a href="#" class="text-body"><i class="ti ti-message-chatbot ti-sm me-2"></i></a> --}}
+    
+    {{-- Conditional action: Only show if user has edit permission --}}
     @if (auth()->user()->can('contact.edit'))
+        {{-- State-dependent action: Different display based on model state --}}
         @if ($contact->isInList60())
+            {{-- Read-only state: Shows success icon without action --}}
             <a class="text-success"><i class="ti ti-list-check ti-sm me-2"></i></a>
         @else
-            <a href="#" class="text-body" onclick="addToList({{ $contact->id }}, this)"><i class="ti ti-list-check ti-sm me-2"></i></a>
+            {{-- Interactive state: Clickable action with JavaScript handler --}}
+            <a href="#" class="text-body" onclick="addToList({{ $contact->id }}, this)">
+                <i class="ti ti-list-check ti-sm me-2"></i>
+            </a>
         @endif
     @endif
+    
+    {{-- Standard view/edit action: Links to resource show page --}}
     @if (auth()->user()->can('contact.show'))
-        <a href="{{ route('contact.show', $contact->id) }}" class="text-body"><i class="ti ti-edit ti-sm me-2"></i></a>
+        <a href="{{ route('contact.show', $contact->id) }}" class="text-body">
+            <i class="ti ti-edit ti-sm me-2"></i>
+        </a>
     @endif
+    
+    {{-- Destructive action: Delete with confirmation and danger styling --}}
     @if (auth()->user()->can('contact.destroy'))
-        <a href="#" class="text-danger" onclick="deleteRecord({{ $contact->id }}, this)"><i class="ti ti-trash ti-sm"></i></a>
+        <a href="#" class="text-danger" onclick="deleteRecord({{ $contact->id }}, this)">
+            <i class="ti ti-trash ti-sm"></i>
+        </a>
     @endif
 </div>
+```
+
+### Design Guidelines:
+
+#### **Icon Standards:**
+- Use **ti-sm** size for action icons (consistent across all tables)
+- Apply **me-2** margin for proper spacing between icons
+- Use semantic colors: `text-body` (default), `text-success`, `text-danger`
+
+#### **Permission Pattern:**
+- Always wrap actions in permission checks: `@if (auth()->user()->can('model.action'))`
+- Use descriptive permission names: `model.show`, `model.edit`, `model.destroy`
+
+#### **JavaScript Integration:**
+- Use `href="javascript:;"` for JavaScript-only actions
+- Pass model ID as data attribute or function parameter
+- Include confirmation dialogs for destructive actions
+
+#### **State Management:**
+- Show different icons/colors based on model state
+- Disable actions when not applicable (read-only states)
+- Provide visual feedback for current states
+
+---
+
+## Disable Row Selection in DataTables
+
+To prevent table rows from being selectable by users, use one of these methods:
+
+### Method 1: DataTables Parameters (Recommended)
+
+This approach disables selection at the DataTables level and applies CSS to prevent text selection:
+
+```php
+->parameters([
+    'select' => false, // Disable DataTables row selection feature
+    'autoWidth' => false,
+    'drawCallback' => 'function() {
+        // Apply CSS to prevent text selection on table rows
+        $("#TABLE_ID tbody tr").css({
+            "user-select": "none",           // Standard CSS property
+            "-webkit-user-select": "none",   // WebKit browsers (Chrome, Safari)
+            "-moz-user-select": "none",      // Firefox
+            "-ms-user-select": "none"        // Internet Explorer/Edge
+        });
+    }',
+])
+```
+
+### Method 2: Global CSS (Alternative)
+
+Apply styles globally to all DataTables:
+
+```css
+.dataTable tbody tr {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+```
+
+### When to Use:
+- **Action-only tables**: When rows should not be selectable for bulk operations
+- **Read-only displays**: When selection would confuse the user experience
+- **Mobile optimization**: To prevent accidental text selection on touch devices
