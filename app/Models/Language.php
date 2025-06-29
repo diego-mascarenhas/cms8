@@ -67,4 +67,19 @@ class Language extends Model
 				];
 			});
 	}
+
+	/**
+	 * Get count of active languages (languages with at least 1 collaborator)
+	 */
+	public static function getActiveLanguagesCount($teamId = null)
+	{
+		$teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+
+		return static::select('languages.code')
+			->join('contacts', 'languages.code', '=', 'contacts.language')
+			->where('contacts.team_id', $teamId)
+			->groupBy('languages.code')
+			->get()
+			->count();
+	}
 }

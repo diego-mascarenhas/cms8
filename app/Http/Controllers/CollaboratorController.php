@@ -798,6 +798,9 @@ class CollaboratorController extends Controller
         // Get count of active projects
         $activeProjects = Project::getActiveProjectsCount();
         
+        // Get count of active languages (languages with at least 1 collaborator)
+        $activeLanguages = Language::getActiveLanguagesCount();
+        
         // Get language combinations with less than 10 collaborators using the model method
         $languageCombinations = ContactLanguageVariant::getCombinationsWithFewCollaborators();
         
@@ -807,6 +810,6 @@ class CollaboratorController extends Controller
         // Get collaborators with incomplete data
         $incompleteCollaborators = Contact::getIncompleteCollaborators(20);
 
-        return view('collaborator.dashboard', compact('totalCollaborators', 'newCollaboratorsThisMonth', 'activeProjects', 'languageCombinations', 'topLanguages', 'incompleteCollaborators'));
+        return view('collaborator.dashboard', compact('totalCollaborators', 'newCollaboratorsThisMonth', 'activeProjects', 'activeLanguages', 'languageCombinations', 'topLanguages', 'incompleteCollaborators'));
     }
 }

@@ -75,7 +75,7 @@
       <div class="card-body p-3">
         <div class="d-flex align-items-center justify-content-between">
           <div>
-            <h4 class="mb-1">{{ $topLanguages->count() ?? 0 }}</h4>
+            <h4 class="mb-1">{{ number_format($activeLanguages) }}</h4>
             <small class="text-muted">Idiomas activos</small>
           </div>
           <div class="avatar">
