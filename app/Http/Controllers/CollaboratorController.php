@@ -6,6 +6,7 @@ use App\DataTables\CollaboratorDataTable;
 use App\Models\Contact;
 use App\Models\ContactLanguageVariant;
 use App\Models\ContactValoration;
+use App\Models\Language;
 use Illuminate\Http\Request;
 
 class CollaboratorController extends Controller
@@ -789,7 +790,10 @@ class CollaboratorController extends Controller
     {
         // Get language combinations with less than 10 collaborators using the model method
         $languageCombinations = ContactLanguageVariant::getCombinationsWithFewCollaborators();
+        
+        // Get top languages by collaborator count
+        $topLanguages = Language::getTopLanguages(5);
 
-        return view('collaborator.dashboard', compact('languageCombinations'));
+        return view('collaborator.dashboard', compact('languageCombinations', 'topLanguages'));
     }
 }

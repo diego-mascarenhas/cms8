@@ -42,4 +42,29 @@ class Language extends Model
 	{
 		return $this->hasMany(Contact::class, 'language', 'code');
 	}
+
+	/**
+	 * Get top languages by collaborator count
+	 */
+	public static function getTopLanguages($limit = 5, $teamId = null)
+	{
+		$teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+
+		return static::select(['languages.code', 'languages.name'])
+			->selectRaw('COUNT(contacts.id) as collaborator_count')
+			->join('contacts', 'languages.code', '=', 'contacts.language')
+			->where('contacts.team_id', $teamId)
+			->groupBy('languages.code', 'languages.name')
+			->orderBy('collaborator_count', 'desc')
+			->limit($limit)
+			->get()
+			->map(function ($language) {
+				return [
+					'code' => $language->code,
+					'name' => $language->name,
+					'count' => $language->collaborator_count,
+					'flag' => $language->flag
+				];
+			});
+	}
 }

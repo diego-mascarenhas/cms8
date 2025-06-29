@@ -442,72 +442,42 @@
   
   <!-- Top languages section -->
   <div class="col-md-6 mb-4">
-    <div class="card h-100">
+    <div class="card">
       <div class="card-header">
         <h5 class="card-title mb-0">Top idiomas</h5>
       </div>
-      <div class="card-body">
-        <ul class="list-group list-group-flush">
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar avatar-sm bg-label-primary me-3 rounded">
-                <i class="ti ti-video ti-sm"></i>
-              </div>
-              <span>Inglés</span>
+      <div class="card-body px-0 pt-0 pb-3">
+        @if($topLanguages->count() > 0)
+          <ul class="list-group list-group-flush">
+            @foreach($topLanguages as $index => $language)
+              @php
+                // Define badge colors rotating through different styles
+                $badgeColors = ['primary', 'info', 'success', 'warning', 'danger'];
+                $badgeColor = $badgeColors[$index % count($badgeColors)];
+              @endphp
+              
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                  <i class="fi fi-{{ $language['flag'] }} me-2" style="font-size: 1.1em;"></i>
+                  <span>{{ $language['name'] }}</span>
+                </div>
+                <div>
+                  <span class="badge bg-label-{{ $badgeColor }} rounded-pill">
+                    {{ $language['count'] }} colaborador{{ $language['count'] !== 1 ? 'as' : 'a' }}
+                  </span>
+                </div>
+              </li>
+            @endforeach
+          </ul>
+        @else
+          <div class="text-center py-4">
+            <div class="avatar avatar-xl bg-light-secondary rounded-circle mx-auto mb-3">
+              <i class="ti ti-language ti-lg text-secondary"></i>
             </div>
-            <div>
-              <span class="badge bg-label-primary rounded-pill">1.1k colaboradoras</span>
-            </div>
-          </li>
-          
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar avatar-sm bg-label-info me-3 rounded">
-                <i class="ti ti-code ti-sm"></i>
-              </div>
-              <span>Español</span>
-            </div>
-            <div>
-              <span class="badge bg-label-info rounded-pill">931 colaboradoras</span>
-            </div>
-          </li>
-          
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar avatar-sm bg-label-success me-3 rounded">
-                <i class="ti ti-camera ti-sm"></i>
-              </div>
-              <span>Chino</span>
-            </div>
-            <div>
-              <span class="badge bg-label-success rounded-pill">294 colaboradoras</span>
-            </div>
-          </li>
-          
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar avatar-sm bg-label-warning me-3 rounded">
-                <i class="ti ti-world ti-sm"></i>
-              </div>
-              <span>Alemán</span>
-            </div>
-            <div>
-              <span class="badge bg-label-warning rounded-pill">167 colaboradoras</span>
-            </div>
-          </li>
-          
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar avatar-sm bg-label-danger me-3 rounded">
-                <i class="ti ti-brand-html5 ti-sm"></i>
-              </div>
-              <span>Noruego</span>
-            </div>
-            <div>
-              <span class="badge bg-label-danger rounded-pill">67 colaboradoras</span>
-            </div>
-          </li>
-        </ul>
+            <h6 class="mb-1">Sin datos de idiomas</h6>
+            <p class="text-muted mb-0">No hay colaboradores registrados con idiomas asignados.</p>
+          </div>
+        @endif
       </div>
     </div>
   </div>
