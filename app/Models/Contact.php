@@ -86,6 +86,46 @@ class Contact extends Model
         return $this->belongsTo(Language::class, 'language', 'code');
     }
 
+    /**
+     * Get the language name accessor
+     */
+    public function getLanguageNameAttribute()
+    {
+        if ($this->relationLoaded('language')) {
+            $languageRelation = $this->getRelation('language');
+            if ($languageRelation) {
+                return $languageRelation->name;
+            }
+        }
+        
+        if (isset($this->attributes['language'])) {
+            $language = Language::where('code', $this->attributes['language'])->first();
+            return $language ? $language->name : $this->attributes['language'];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get the language flag accessor
+     */
+    public function getLanguageFlagAttribute()
+    {
+        if ($this->relationLoaded('language')) {
+            $languageRelation = $this->getRelation('language');
+            if ($languageRelation) {
+                return $languageRelation->flag;
+            }
+        }
+        
+        if (isset($this->attributes['language'])) {
+            $language = Language::where('code', $this->attributes['language'])->first();
+            return $language ? $language->flag : $this->attributes['language'];
+        }
+        
+        return null;
+    }
+
     public function languageVariants()
     {
         return $this->hasMany(ContactLanguageVariant::class);

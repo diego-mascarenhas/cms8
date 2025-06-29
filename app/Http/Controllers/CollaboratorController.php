@@ -127,15 +127,6 @@ class CollaboratorController extends Controller
             },
         ])->findOrFail($id);
 
-        // Ensure country and language relationships are properly loaded
-        if ($collaborator->country && is_numeric($collaborator->country)) {
-            $collaborator->country = \App\Models\Country::find($collaborator->country);
-        }
-
-        if ($collaborator->language && is_numeric($collaborator->language)) {
-            $collaborator->language = \App\Models\Language::find($collaborator->language);
-        }
-
         return view('collaborator.show', compact('collaborator'));
     }
 

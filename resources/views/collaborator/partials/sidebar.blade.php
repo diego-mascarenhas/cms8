@@ -55,28 +55,10 @@
                     </li>
                     <li class="mb-2">
                         <span class="fw-medium me-1">Idioma:</span>
-                        @if($collaborator->country)
+                        @if($collaborator->language_name)
                             <span class="d-inline-flex align-items-center">
-                                @php
-                                    $countryCode = strtolower($collaborator->country->code ?? '');
-                                    
-                                    // Mapa de países a idiomas
-                                    $countryToLanguage = [
-                                        'es' => 'Español',
-                                        'fr' => 'Francés',
-                                        'gb' => 'Inglés',
-                                        'de' => 'Alemán',
-                                        'it' => 'Italiano',
-                                        'pt' => 'Portugués',
-                                        'us' => 'Inglés'
-                                    ];
-                                    
-                                    $nativeLanguage = $countryToLanguage[$countryCode] ?? 'Desconocido';
-                                @endphp
-                                @if($countryCode)
-                                    <i class="fi fi-{{ $countryCode }} me-1"></i>
-                                @endif
-                                {{ $nativeLanguage }}
+                                <i class="fi fi-{{ $collaborator->language_flag }} me-1"></i>
+                                {{ $collaborator->language_name }}
                             </span>
                         @else
                             <span class="text-muted">No especificado</span>
