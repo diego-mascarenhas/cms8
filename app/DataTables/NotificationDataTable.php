@@ -90,17 +90,13 @@ class NotificationDataTable extends DataTable
             ->setTableId('notifications-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
-            ->dom('lfrtip')
+            ->dom('frtip')
             ->orderBy(7, 'desc') // Order by created_at column (index 7)
             ->selectStyleSingle()
+            ->responsive(true)
+            ->processing(false)
+            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->parameters([
-                'language' => [
-                    'url' => asset('assets/json/datatables/es.json'),
-                ],
-                'responsive' => true,
-                'autoWidth' => false,
-                'pageLength' => 25,
-                'lengthMenu' => [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'Todo']],
                 'columnDefs' => [
                     [
                         'targets' => [0], // ID column

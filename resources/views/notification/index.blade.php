@@ -33,96 +33,54 @@
     @endcan
 </div>
 
-<!-- Filters Card -->
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label">Estado</label>
+<div class="card">
+    <div class="card-header border-bottom">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+            <div class="d-flex gap-2">
+                @can('notification.create')
+                <a href="{{ route('notification.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
+                    <i class="ti ti-plus me-sm-1"></i>
+                    <span class="d-none d-sm-inline-block">{{ __('Create Notification') }}</span>
+                </a>
+                @endcan
+            </div>
+        </div>
+        <div class="d-flex flex-column flex-md-row gap-3">
+            <div class="flex-grow-1">
                 <select class="form-select" id="statusFilter">
-                    <option value="">Todos</option>
+                    <option value="">Todos los estados</option>
                     <option value="sent">Enviados</option>
                     <option value="unsent">Pendientes</option>
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label">Tipo</label>
+            <div class="flex-grow-1">
                 <select class="form-select" id="typeFilter">
-                    <option value="">Todos</option>
+                    <option value="">Todos los tipos</option>
                     @foreach(\App\Models\NotificationType::getActiveOptions() as $type)
                         <option value="{{ $type['id'] }}">{{ $type['name'] }}</option>
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="form-label">Fecha desde</label>
+            <div class="flex-grow-1">
                 <div class="input-group input-group-merge">
                     <span class="input-group-text"><i class="ti ti-calendar"></i></span>
-                    <input type="text" class="form-control flatpickr-input" id="dateFromFilter" placeholder="dd/mm/yyyy" readonly>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Fecha hasta</label>
-                <div class="input-group input-group-merge">
-                    <span class="input-group-text"><i class="ti ti-calendar"></i></span>
-                    <input type="text" class="form-control flatpickr-input" id="dateToFilter" placeholder="dd/mm/yyyy" readonly>
+                    <input type="text" class="form-control flatpickr-input" id="dateFromFilter" placeholder="Desde" readonly>
                 </div>
             </div>
         </div>
-        <div class="row mt-3">
-            <div class="col-12">
-                <button type="button" class="btn btn-primary me-2" onclick="applyFilters()">
-                    <i class="ti ti-search me-1"></i>Filtrar
-                </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
-                    <i class="ti ti-x me-1"></i>Limpiar
-                </button>
-            </div>
-        </div>
+    </div>
+    <div class="card-body">
+        {{ $dataTable->table() }}
     </div>
 </div>
-
-<!-- Notifications DataTable -->
-<div class="card">
-    <div class="card-header border-bottom">
-        <h5 class="card-title mb-3">Lista de Notificaciones</h5>
-        <div class="d-flex justify-content-between align-items-center row pb-2 gap-3 gap-md-0">
-            <div class="col-md-4 user_role"></div>
-            <div class="col-md-4 user_plan"></div>
-            <div class="col-md-4 user_status"></div>
-        </div>
-    </div>
-    <div class="card-datatable table-responsive">
-        {{ $dataTable->table(['class' => 'table table-hover']) }}
-    </div>
-</div>
-
 @endsection
 
-@section('page-script')
-{{ $dataTable->scripts() }}
+@push('scripts')
+{{ $dataTable->scripts(attributes: ['type' => 'module']) }}
 
 <script>
 $(document).ready(function() {
-    // Make DataTable variable global
-    window.LaravelDataTables = window.LaravelDataTables || {};
-    
-    // Initialize filters
-    initializeFilters();
-    
-    // Initialize date pickers
-    initializeDatePickers();
-});
-
-function initializeFilters() {
-    $('#statusFilter, #typeFilter, #dateFromFilter, #dateToFilter').on('change', function() {
-        // Auto-apply filters when changed
-        // applyFilters();
-    });
-}
-
-function initializeDatePickers() {
-    // Initialize flatpickr for date filters
+    // Initialize date picker
     $('.flatpickr-input').flatpickr({
         dateFormat: 'Y-m-d',
         altInput: true,
@@ -140,39 +98,28 @@ function initializeDatePickers() {
             }
         }
     });
-}
 
-function applyFilters() {
-    if (window.LaravelDataTables && window.LaravelDataTables['notifications-table']) {
-        var table = window.LaravelDataTables['notifications-table'];
-        
-        // Add filter parameters to the URL
-        var params = {
-            status: $('#statusFilter').val(),
-            type: $('#typeFilter').val(),
-            date_from: $('#dateFromFilter').val(),
-            date_to: $('#dateToFilter').val()
-        };
-        
-        // Update the URL parameters for the ajax request
-        var newUrl = table.ajax.url();
-        var separator = newUrl.indexOf('?') === -1 ? '?' : '&';
-        var queryString = $.param(params);
-        
-        if (queryString) {
-            // Remove existing filter parameters
-            newUrl = newUrl.split('?')[0];
-            newUrl += '?' + queryString;
-        }
-        
-        table.ajax.url(newUrl).load();
-    }
-}
+    // Get DataTable instance
+    let table = $('.datatable').DataTable();
 
-function clearFilters() {
-    $('#statusFilter, #typeFilter, #dateFromFilter, #dateToFilter').val('');
-    applyFilters();
-}
+    // Status filter
+    $('#statusFilter').on('change', function() {
+        let selectedValue = $(this).val();
+        table.column(4).search(selectedValue).draw(); // Status column
+    });
+
+    // Type filter  
+    $('#typeFilter').on('change', function() {
+        let selectedValue = $(this).val();
+        table.column(3).search(selectedValue).draw(); // Type column
+    });
+
+    // Date filter
+    $('#dateFromFilter').on('change', function() {
+        let selectedValue = $(this).val();
+        table.column(7).search(selectedValue).draw(); // Created at column
+    });
+});
 
 // Notification actions
 function sendNotification(id) {
@@ -209,9 +156,7 @@ function sendNotification(id) {
                         });
                         
                         // Reload DataTable
-                        if (window.LaravelDataTables && window.LaravelDataTables['notifications-table']) {
-                            window.LaravelDataTables['notifications-table'].ajax.reload(null, false);
-                        }
+                        $('.datatable').DataTable().ajax.reload(null, false);
                     } else {
                         Swal.fire({
                             title: 'Error',
@@ -274,9 +219,7 @@ function resendNotification(id) {
                         });
                         
                         // Reload DataTable
-                        if (window.LaravelDataTables && window.LaravelDataTables['notifications-table']) {
-                            window.LaravelDataTables['notifications-table'].ajax.reload(null, false);
-                        }
+                        $('.datatable').DataTable().ajax.reload(null, false);
                     } else {
                         Swal.fire({
                             title: 'Error',
@@ -304,25 +247,5 @@ function resendNotification(id) {
         }
     });
 }
-
-function deleteRecord(id, element) {
-    Swal.fire({
-        title: '¿Eliminar notificación?',
-        text: 'Esta acción no se puede deshacer.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar',
-        customClass: {
-            confirmButton: 'btn btn-danger me-3',
-            cancelButton: 'btn btn-label-secondary'
-        },
-        buttonsStyling: false
-    }).then(function (result) {
-        if (result.isConfirmed) {
-            $(element).closest('form').submit();
-        }
-    });
-}
 </script>
-@endsection 
+@endpush 
