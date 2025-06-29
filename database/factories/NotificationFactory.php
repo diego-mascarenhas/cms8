@@ -28,12 +28,24 @@ class NotificationFactory extends Factory
 
         // Get a random existing contact from team_id 1
         $contact = Contact::where('team_id', 1)->inRandomOrder()->first();
-        $contactId = $contact ? $contact->id : null;
+        
+        // If no contact exists with team_id 1, throw an exception
+        if (!$contact) {
+            throw new \Exception('No contacts found with team_id = 1. Please run ContactSeeder first.');
+        }
+
+        // Get a random existing user
+        $user = User::inRandomOrder()->first();
+        
+        // If no user exists, throw an exception
+        if (!$user) {
+            throw new \Exception('No users found. Please run UserSeeder first.');
+        }
 
         return [
             'team_id' => 1,
-            'user_id' => User::inRandomOrder()->first()?->id ?? User::factory(),
-            'contact_id' => $contactId,
+            'user_id' => $user->id,
+            'contact_id' => $contact->id,
             'type_id' => NotificationType::inRandomOrder()->first()?->id ?? NotificationType::factory(),
             'reference' => $this->faker->optional(0.3)->randomElement([
                 'project_' . $this->faker->numberBetween(1, 100),

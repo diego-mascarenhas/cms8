@@ -36,9 +36,11 @@
             </form>
             @endcan
         @endif
+        @if($notification->contact)
         <a href="{{ route('collaborator.notifications', $notification->contact->id) }}" class="btn btn-info waves-effect waves-light">
             <i class="ti ti-bell me-1"></i>Ver notificaciones del colaborador
         </a>
+        @endif
         <a href="{{ route('notification-list') }}" class="btn btn-label-secondary waves-effect waves-light">
             <i class="ti ti-arrow-left me-1"></i>Volver al listado
         </a>
@@ -71,14 +73,18 @@
                     <div class="col-md-6">
                         <label class="form-label fw-medium">Contacto</label>
                         <p class="text-body">
-                            <a href="{{ route('contact.show', $notification->contact->id) }}" class="text-decoration-none">
-                                {{ $notification->contact->name }} {{ $notification->contact->surname }}
-                            </a>
+                            @if($notification->contact)
+                                <a href="{{ route('contact.show', $notification->contact->id) }}" class="text-decoration-none">
+                                    {{ $notification->contact->name }} {{ $notification->contact->surname }}
+                                </a>
+                            @else
+                                <span class="text-danger">Contacto no disponible</span>
+                            @endif
                         </p>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-medium">Email del contacto</label>
-                        <p class="text-body">{{ $notification->contact->email }}</p>
+                        <p class="text-body">{{ $notification->contact ? $notification->contact->email : 'N/A' }}</p>
                     </div>
                     @if($notification->reference)
                     <div class="col-md-6">

@@ -44,6 +44,7 @@ class DatabaseSeeder extends Seeder
             ContactSkillsSeeder::class,
             CategorySeeder::class,
             CertificationsSeeder::class,
+            StylebooksSeeder::class,
             NotificationTypesSeeder::class,
             NotificationSeeder::class,
         ]);
