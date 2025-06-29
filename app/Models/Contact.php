@@ -10,11 +10,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Contact extends Model
 {
     use HasFactory;
     use HasSourceIcons;
+    use LogsActivity;
     use SoftDeletes;
 
     protected $fillable = [
@@ -515,5 +518,16 @@ class Contact extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Configure activity log options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'surname', 'email', 'phone', 'source_id', 'country', 'language', 'responsible_id', 'status_id', 'valoration_id'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

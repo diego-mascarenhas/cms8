@@ -127,6 +127,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
     Route::resource('/user-list', UserManagement::class);
 
+    // Activity Log
+    Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-log.index');
+    Route::get('/activity-log/statistics', [App\Http\Controllers\ActivityLogController::class, 'statistics'])->name('activity-log.statistics');
+    Route::get('/activity-log/recent', [App\Http\Controllers\ActivityLogController::class, 'recent'])->name('activity-log.recent');
+    Route::get('/activity-log/{activity}', [App\Http\Controllers\ActivityLogController::class, 'show'])->name('activity-log.show');
+    Route::get('/activity-log/user/{userId}', [App\Http\Controllers\ActivityLogController::class, 'userActivities'])->name('activity-log.user');
+
     Route::get('/account-management', [AccountController::class, 'index'])->name('account-management');
     Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
     Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
@@ -182,6 +189,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/collaborator/{id}/absences/update-weekly', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'updateWeekly'])->name('collaborator.absences.update-weekly');
 
     Route::get('/collaborator/{id}/notifications', [CollaboratorController::class, 'notifications'])->name('collaborator.notifications');
+    Route::get('/collaborator/{id}/activity', [CollaboratorController::class, 'activity'])->name('collaborator.activity');
 
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])

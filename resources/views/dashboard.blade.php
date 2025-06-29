@@ -167,7 +167,7 @@
             </div>
 
             <!-- Clients in danger -->
-            <div class="card">
+            <div class="card mb-4">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <div class="card-title mb-0">
                         <h5 class="m-0 me-2">Clientes en peligro</h5>
@@ -211,6 +211,104 @@
                             @endif
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="card">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="card-title mb-0">
+                        <h5 class="m-0 me-2">
+                            <i class="ti ti-pulse me-2"></i>Actividad
+                        </h5>
+                        <small class="text-muted">Últimas acciones del equipo</small>
+                    </div>
+                    <div class="dropdown">
+                        <a href="{{ route('activity-log.index') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="ti ti-external-link ti-xs me-1"></i>Ver todo
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if(isset($formattedActivities) && $formattedActivities->count() > 0)
+                        <div class="activity-feed">
+                            @foreach($formattedActivities as $activity)
+                                <div class="activity-item d-flex align-items-start mb-3 @if(!$loop->last) pb-3 border-bottom @endif">
+                                    <div class="flex-shrink-0 me-3">
+                                        @if($activity['user_photo'])
+                                            <img src="{{ $activity['user_photo'] }}" alt="{{ $activity['user_name'] }}" class="rounded-circle" width="32" height="32">
+                                        @else
+                                            <div class="avatar avatar-sm">
+                                                <span class="avatar-initial rounded-circle bg-label-primary">
+                                                    {{ substr($activity['user_name'], 0, 2) }}
+                                                </span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="activity-content">
+                                            <p class="mb-0 text-sm">
+                                                <strong>{{ $activity['user_name'] }}</strong>
+                                                @php
+                                                    $description = $activity['description'];
+                                                    // Translate common activity descriptions
+                                                    $translations = [
+                                                        'created' => 'creó',
+                                                        'updated' => 'actualizó',
+                                                        'deleted' => 'eliminó',
+                                                        'User logged in' => 'se conectó',
+                                                        'User logged out' => 'se desconectó',
+                                                        'File uploaded' => 'subió un archivo',
+                                                    ];
+                                                    
+                                                    foreach ($translations as $en => $es) {
+                                                        if (str_contains($description, $en)) {
+                                                            $description = str_replace($en, $es, $description);
+                                                            break;
+                                                        }
+                                                    }
+                                                @endphp
+                                                {{ $description }}
+                                                @if($activity['subject_type'] && $activity['subject_id'])
+                                                    <span class="text-muted">{{ $activity['subject_type'] }} #{{ $activity['subject_id'] }}</span>
+                                                @endif
+                                            </p>
+                                            <small class="text-muted">{{ $activity['time_ago'] }}</small>
+                                        </div>
+                                        @if($activity['properties'] && $activity['properties']->count() > 0)
+                                            @php
+                                                $properties = $activity['properties'];
+                                            @endphp
+                                            @if(isset($properties['file_name']))
+                                                <div class="mt-1">
+                                                    <span class="badge bg-label-info">
+                                                        <i class="ti ti-file ti-xs me-1"></i>{{ $properties['file_name'] }}
+                                                    </span>
+                                                </div>
+                                            @elseif(isset($properties['email_to']))
+                                                <div class="mt-1">
+                                                    <span class="badge bg-label-success">
+                                                        <i class="ti ti-mail ti-xs me-1"></i>{{ $properties['email_to'] }}
+                                                    </span>
+                                                </div>
+                                            @elseif(isset($properties['ip_address']))
+                                                <div class="mt-1">
+                                                    <span class="badge bg-label-secondary">
+                                                        <i class="ti ti-world ti-xs me-1"></i>{{ $properties['ip_address'] }}
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <i class="ti ti-clock text-muted ti-2x mb-2"></i>
+                            <p class="mb-0 text-muted">No hay actividad reciente</p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -459,5 +557,38 @@
         .sentiment-chart .d-flex {
             height: 120px !important;
         }
+    }
+
+    /* Activity Feed Styles */
+    .activity-feed {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .activity-item {
+        transition: background-color 0.2s ease;
+    }
+
+    .activity-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+        border-radius: 8px;
+        padding: 8px;
+        margin: -8px;
+        margin-bottom: 4px;
+    }
+
+    .activity-content p {
+        line-height: 1.4;
+        font-size: 0.875rem;
+    }
+
+    .activity-content small {
+        font-size: 0.75rem;
+    }
+
+    .avatar-sm {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
     }
 </style>

@@ -9,6 +9,7 @@ use App\Models\ContactValoration;
 use App\Models\Language;
 use App\Models\Project;
 use Illuminate\Http\Request;
+use Spatie\Activitylog\Models\Activity;
 
 class CollaboratorController extends Controller
 {
@@ -782,6 +783,71 @@ class CollaboratorController extends Controller
             ->get();
 
         return view('collaborator.notifications', compact('collaborator', 'notifications'));
+    }
+
+    /**
+     * Show activity history for a collaborator
+     */
+    public function activity($id)
+    {
+        $collaborator = Contact::with(['user'])->findOrFail($id);
+        
+        // Get activities for this collaborator's user
+        $activities = collect();
+        
+        if ($collaborator->user_id) {
+            // Get activities where this user was the causer (performer)
+            $userActivities = Activity::with(['subject'])
+                ->where('causer_id', $collaborator->user_id)
+                ->latest()
+                ->paginate(20);
+            
+            // Also get activities where this contact was the subject
+            $contactActivities = Activity::with(['causer'])
+                ->where('subject_type', Contact::class)
+                ->where('subject_id', $collaborator->id)
+                ->latest()
+                ->paginate(20);
+            
+            // Merge and sort activities
+            $allActivities = $userActivities->items();
+            foreach ($contactActivities->items() as $activity) {
+                $allActivities[] = $activity;
+            }
+            
+            // Sort by created_at descending
+            $activities = collect($allActivities)->sortByDesc('created_at')->take(50);
+        } else {
+            // If no user linked, just get activities where this contact was the subject
+            $contactActivities = Activity::with(['causer'])
+                ->where('subject_type', Contact::class)
+                ->where('subject_id', $collaborator->id)
+                ->latest()
+                ->paginate(20);
+                
+            $activities = collect($contactActivities->items());
+        }
+
+        // Format activities for display
+        $formattedActivities = $activities->map(function ($activity) use ($collaborator) {
+            $isOwnActivity = $activity->causer_id == $collaborator->user_id;
+            
+            return [
+                'id' => $activity->id,
+                'user_name' => $activity->causer ? $activity->causer->name : 'Sistema',
+                'user_photo' => $activity->causer ? $activity->causer->profile_photo_url : null,
+                'is_own_activity' => $isOwnActivity,
+                'description' => $activity->description,
+                'subject_type' => $activity->subject ? class_basename($activity->subject_type) : null,
+                'subject_id' => $activity->subject_id,
+                'time_ago' => $activity->created_at->diffForHumans(),
+                'created_at' => $activity->created_at,
+                'properties' => $activity->properties,
+                'raw_activity' => $activity
+            ];
+        });
+
+        return view('collaborator.activity', compact('collaborator', 'formattedActivities'));
     }
 
     /**

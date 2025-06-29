@@ -9,7 +9,10 @@
     <a href="{{ route('collaborator.absences', ['id' => $collaborator->id]) }}" class="btn {{ Request::routeIs('collaborator.absences') ? 'btn-primary' : 'btn-outline-secondary' }} me-3">
         <i class="ti ti-users me-1"></i>Ausencias
     </a>
-    <a href="{{ route('collaborator.notifications', ['id' => $collaborator->id]) }}" class="btn {{ Request::routeIs('collaborator.notifications') ? 'btn-primary' : 'btn-outline-secondary' }}">
+    <a href="{{ route('collaborator.notifications', ['id' => $collaborator->id]) }}" class="btn {{ Request::routeIs('collaborator.notifications') ? 'btn-primary' : 'btn-outline-secondary' }} me-3">
         <i class="ti ti-bell me-1"></i>Notificaciones
+    </a>
+    <a href="{{ route('collaborator.activity', ['id' => $collaborator->id]) }}" class="btn {{ Request::routeIs('collaborator.activity') ? 'btn-primary' : 'btn-outline-secondary' }}">
+        <i class="ti ti-activity me-1"></i>Actividad
     </a>
 </div> 

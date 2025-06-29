@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Project extends Model
 {
     use HasFactory;
+    use LogsActivity;
     use SoftDeletes;
 
     protected $fillable = [
@@ -106,5 +109,16 @@ class Project extends Model
         return static::where('team_id', $teamId)
             ->whereIn('status_id', $activeStatuses)
             ->count();
+    }
+
+    /**
+     * Configure activity log options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'real_name', 'description', 'price', 'discount', 'cost', 'date_start', 'date_end', 'responsible_id', 'status_id'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

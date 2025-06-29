@@ -10,6 +10,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
@@ -19,6 +21,7 @@ class User extends Authenticatable
     use HasProfilePhoto;
     use HasRoles;
     use HasTeams;
+    use LogsActivity;
     use Notifiable;
     use SoftDeletes;
     use TwoFactorAuthenticatable;
@@ -106,5 +109,16 @@ class User extends Authenticatable
     public function contact()
     {
         return $this->hasOne(Contact::class);
+    }
+
+    /**
+     * Configure activity log options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'phone'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }
