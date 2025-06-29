@@ -53,7 +53,7 @@ class ContactLanguageVariant extends Model
     /**
      * Get language combinations with less than the specified number of collaborators
      */
-    public static function getCombinationsWithFewCollaborators($maxCount = 10, $limit = 6, $teamId = null)
+    public static function getCombinationsWithFewCollaborators($maxCount = 10, $limit = 15, $teamId = null)
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
         

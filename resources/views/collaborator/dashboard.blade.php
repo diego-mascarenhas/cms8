@@ -319,27 +319,33 @@
   
   <!-- Language combinations section -->
   <div class="col-md-6 mb-4">
-    <div class="card h-100">
+    <div class="card">
       <div class="card-header">
-        <h5 class="card-title mb-0">Combinaciones con menos de 10 colaboradoras</h5>
+        <h5 class="card-title mb-0">Combinaciones con pocas colaboradoras</h5>
       </div>
       <div class="card-body">
         @if($languageCombinations->count() > 0)
-          <ul class="list-unstyled mb-0">
-            @foreach($languageCombinations as $combination)
-            <li class="mb-3 pb-1">
-              <div class="d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                  <i class="fi fi-{{ $combination['source_flag'] }} me-2"></i>
-                  <i class="ti ti-arrow-right mx-2 text-muted"></i>
-                  <i class="fi fi-{{ $combination['target_flag'] }} me-2"></i>
-                  <span class="ms-2">{{ $combination['source_name'] }} a {{ $combination['target_name'] }}</span>
+          <div class="table-responsive">
+            <ul class="list-unstyled mb-0" style="max-height: 400px; overflow-y: auto;">
+              @foreach($languageCombinations as $combination)
+              <li class="mb-2 pb-2 border-bottom">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center flex-grow-1">
+                    <i class="fi fi-{{ $combination['source_flag'] }} me-2" style="font-size: 1.1em;"></i>
+                    <i class="ti ti-arrow-right mx-2 text-muted" style="font-size: 0.9em;"></i>
+                    <i class="fi fi-{{ $combination['target_flag'] }} me-2" style="font-size: 1.1em;"></i>
+                    <span class="ms-2 text-truncate" title="{{ $combination['source_name'] }} a {{ $combination['target_name'] }}">
+                      {{ $combination['source_name'] }} a {{ $combination['target_name'] }}
+                    </span>
+                  </div>
+                  <span class="badge bg-label-warning rounded-pill ms-2 flex-shrink-0">
+                    {{ $combination['count'] }} colaborador{{ $combination['count'] !== 1 ? 'as' : 'a' }}
+                  </span>
                 </div>
-                <span class="badge bg-label-warning rounded-pill">{{ $combination['count'] }} colaborador{{ $combination['count'] !== 1 ? 'as' : 'a' }}</span>
-              </div>
-            </li>
-            @endforeach
-          </ul>
+              </li>
+              @endforeach
+            </ul>
+          </div>
         @else
           <div class="text-center py-4">
             <div class="avatar avatar-xl bg-light-success rounded-circle mx-auto mb-3">
