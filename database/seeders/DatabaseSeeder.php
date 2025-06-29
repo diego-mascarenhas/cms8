@@ -44,6 +44,8 @@ class DatabaseSeeder extends Seeder
             ContactSkillsSeeder::class,
             CategorySeeder::class,
             CertificationsSeeder::class,
+            NotificationTypesSeeder::class,
+            NotificationSeeder::class,
         ]);
     }
 }

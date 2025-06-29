@@ -163,4 +163,58 @@ class Notification extends Model
         
         return '<span class="badge bg-secondary">No leído</span>';
     }
+
+    /**
+     * Get formatted created date
+     */
+    public function getFormattedCreatedDateAttribute()
+    {
+        return $this->created_at->format('d/m/Y H:i');
+    }
+
+    /**
+     * Get avatar color based on notification type
+     */
+    public function getAvatarColor()
+    {
+        if ($this->type) {
+            // Map notification type names to colors
+            $colorMap = [
+                'Project Assignment' => 'primary',
+                'Project Update' => 'info',
+                'General Message' => 'secondary',
+                'Payment Reminder' => 'warning',
+                'Task Assignment' => 'success',
+                'Welcome Message' => 'primary',
+            ];
+            
+            return $colorMap[$this->type->name] ?? 'secondary';
+        }
+        
+        return 'secondary';
+    }
+
+    /**
+     * Get avatar initials
+     */
+    public function getAvatarInitials()
+    {
+        if ($this->user) {
+            $names = explode(' ', $this->user->name);
+            $initials = '';
+            
+            foreach ($names as $name) {
+                $initials .= strtoupper(substr($name, 0, 1));
+                if (strlen($initials) >= 2) break;
+            }
+            
+            return $initials ?: 'UN';
+        }
+        
+        if ($this->type) {
+            return strtoupper(substr($this->type->name, 0, 2));
+        }
+        
+        return 'NO';
+    }
 } 
