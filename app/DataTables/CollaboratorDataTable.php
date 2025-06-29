@@ -163,6 +163,8 @@ class CollaboratorDataTable extends DataTable
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(false)
+            ->serverSide(true)
+            ->pageLength(25)
             ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
             ->buttons([
                 [
