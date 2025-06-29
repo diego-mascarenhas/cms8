@@ -28,7 +28,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between">
                     <h5 class="card-title m-0 me-2 pt-1 mb-2 d-flex align-items-center">
-                        <i class="ti ti-activity me-2"></i>Historial de Actividad
+                        Historial de Actividad
                     </h5>
                     <div class="d-flex align-items-center gap-3">
                         <div class="legend-item">
@@ -203,7 +203,7 @@
                         <div class="text-center py-5">
                             <div class="avatar avatar-xl mx-auto mb-3">
                                 <span class="avatar-initial rounded-circle bg-label-secondary">
-                                    <i class="ti ti-pulse ti-md"></i>
+                                    <i class="ti ti-activity ti-md"></i>
                                 </span>
                             </div>
                             <h5 class="mb-2">Sin actividad registrada</h5>

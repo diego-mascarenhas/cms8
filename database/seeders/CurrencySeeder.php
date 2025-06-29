@@ -30,13 +30,7 @@ class CurrencySeeder extends Seeder
             'status' => true,
         ]);
 
-        Currency::create([
-            'id' => 32,
-            'code' => 'ARS',
-            'name' => 'Argentine Peso',
-            'symbol' => '$',
-            'status' => true,
-        ]);
+
 
         Currency::create([
             'id' => 826,

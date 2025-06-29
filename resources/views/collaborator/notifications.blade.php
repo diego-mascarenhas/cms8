@@ -86,8 +86,10 @@
                     @endif
                 @else
                     <div class="text-center py-4">
-                        <div class="avatar avatar-xl bg-light-secondary rounded-circle mx-auto mb-3">
-                            <i class="ti ti-bell-off ti-lg"></i>
+                        <div class="avatar avatar-xl mx-auto mb-3">
+                            <span class="avatar-initial rounded-circle bg-label-secondary">
+                                <i class="ti ti-bell-off ti-md"></i>
+                            </span>
                         </div>
                         <h6 class="mb-1">No hay notificaciones</h6>
                         <p class="text-muted mb-3">Este colaborador no tiene notificaciones enviadas.</p>

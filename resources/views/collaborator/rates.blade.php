@@ -69,20 +69,6 @@
             <div class="card-body">
                 <form id="rates-form" method="POST" action="{{ route('collaborator.rates.save', $collaborator->id) }}">
                     @csrf
-                    <!-- Selección de divisa -->
-                    <div class="mb-3 row">
-                        <label class="col-form-label col-md-2">Divisa (*)</label>
-                        <div class="col-md-4">
-                            <select class="form-select" name="currency" required>
-                                @foreach($currencies as $currency)
-                                    <option value="{{ $currency->code }}" {{ $currency->code === $currentCurrency ? 'selected' : '' }}>
-                                        {{ $currency->code }} - {{ $currency->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-
                     <!-- Selección de idiomas -->
                     <div class="mb-3">
                         <h5 class="mb-3">Combinaciones de idiomas</h5>
@@ -156,6 +142,19 @@
                         @endif
                     </div>
 
+                    <!-- Selección de divisa -->
+                    <div class="mb-3 row">
+                        <label class="col-form-label col-md-2">Divisa (*)</label>
+                        <div class="col-md-4">
+                            <select class="form-select" name="currency" required>
+                                @foreach($currencies as $currency)
+                                    <option value="{{ $currency->code }}" {{ $currency->code === $currentCurrency ? 'selected' : '' }}>
+                                        {{ $currency->code }} - {{ $currency->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
                     <hr>
 
                     <!-- Dynamic Fares by Type -->
@@ -266,8 +265,7 @@
         const currencySymbols = {
             'EUR': '€',
             'USD': '$',
-            'GBP': '£',
-            'ARS': '$'
+            'GBP': '£'
         };
         
         // Store rates data for each language combination
