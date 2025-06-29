@@ -3,8 +3,8 @@
 @section('title', 'Tarifas de ' . $collaborator->name)
 
 @section('vendor-style')
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flag-icons/flag-icons.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
-	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/typeahead-js/typeahead.css') }}" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         .btn-group .btn {
@@ -40,7 +40,6 @@
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
-	<script src="{{ asset('assets/vendor/libs/typeahead-js/typeahead.js') }}"></script>
 @endsection
 
 @section('content')
