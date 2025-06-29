@@ -80,13 +80,12 @@
 						<div>
 							<h6 class="text-muted mb-0">{{ __('Por aceptar') }}</h6>
 							<div class="d-flex align-items-center mt-1">
-								<h3 class="mb-0 me-1">237</h3>
-								<small class="text-success">(+42%)</small>
+								<h3 class="mb-0 me-1">{{ number_format($dashboardStats['pendingAcceptance']) }}</h3>
 							</div>
-							<small class="text-muted">{{ __('Último mes') }}</small>
+							<small class="text-muted">{{ __('Contactos sin usuario') }}</small>
 						</div>
 						<div class="avatar bg-label-warning rounded p-2">
-							<i class="ti ti-search"></i>
+							<i class="ti ti-clock"></i>
 						</div>
 					</div>
 				</div>
@@ -100,10 +99,9 @@
 						<div>
 							<h6 class="text-muted mb-0">{{ __('Colaboradoras') }}</h6>
 							<div class="d-flex align-items-center mt-1">
-								<h3 class="mb-0 me-1">1,459</h3>
-								<small class="text-success">(+29%)</small>
+								<h3 class="mb-0 me-1">{{ number_format($dashboardStats['totalCollaborators']) }}</h3>
 							</div>
-							<small class="text-muted">{{ __('Total') }}</small>
+							<small class="text-muted">{{ __('Con rol colaborador') }}</small>
 						</div>
 						<div class="avatar bg-label-primary rounded p-2">
 							<i class="ti ti-users"></i>
@@ -120,12 +118,11 @@
 						<div>
 							<h6 class="text-muted mb-0">{{ __('Nuevos') }}</h6>
 							<div class="d-flex align-items-center mt-1">
-								<h3 class="mb-0 me-1">67</h3>
-								<small class="text-success">(+18%)</small>
+								<h3 class="mb-0 me-1">{{ number_format($dashboardStats['newThisWeek']) }}</h3>
 							</div>
 							<small class="text-muted">{{ __('Última semana') }}</small>
 						</div>
-						<div class="avatar bg-label-danger rounded p-2">
+						<div class="avatar bg-label-success rounded p-2">
 							<i class="ti ti-user-plus"></i>
 						</div>
 					</div>
@@ -140,12 +137,11 @@
 						<div>
 							<h6 class="text-muted mb-0">{{ __('Sin actualizar') }}</h6>
 							<div class="d-flex align-items-center mt-1">
-								<h3 class="mb-0 me-1">540</h3>
-								<small class="text-danger">(-14%)</small>
+								<h3 class="mb-0 me-1">{{ number_format($dashboardStats['notUpdatedSixMonths']) }}</h3>
 							</div>
 							<small class="text-muted">{{ __('Últimos 6 meses') }}</small>
 						</div>
-						<div class="avatar bg-label-success rounded p-2">
+						<div class="avatar bg-label-danger rounded p-2">
 							<i class="ti ti-user-check"></i>
 						</div>
 					</div>

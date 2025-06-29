@@ -234,6 +234,43 @@ class Contact extends Model
     }
 
     /**
+     * Get count of contacts pending acceptance (not linked to any user)
+     */
+    public static function getPendingAcceptanceCount($teamId = null)
+    {
+        $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+        
+        return static::where('team_id', $teamId)
+            ->whereNull('user_id')
+            ->count();
+    }
+
+    /**
+     * Get count of new collaborators created in the last week and linked to a user
+     */
+    public static function getNewCollaboratorsThisWeek($teamId = null)
+    {
+        $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+        
+        return static::where('team_id', $teamId)
+            ->whereNotNull('user_id')
+            ->where('created_at', '>=', now()->subWeek())
+            ->count();
+    }
+
+    /**
+     * Get count of contacts not updated in the last 6 months
+     */
+    public static function getNotUpdatedInSixMonths($teamId = null)
+    {
+        $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+        
+        return static::where('team_id', $teamId)
+            ->where('updated_at', '<=', now()->subMonths(6))
+            ->count();
+    }
+
+    /**
      * Get collaborators with incomplete data
      */
     public static function getIncompleteCollaborators($limit = 20, $teamId = null)

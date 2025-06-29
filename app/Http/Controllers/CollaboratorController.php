@@ -15,7 +15,15 @@ class CollaboratorController extends Controller
 {
     public function index(CollaboratorDataTable $dataTable)
     {
-        return $dataTable->render('collaborator.index');
+        // Get real statistics for the dashboard cards
+        $dashboardStats = [
+            'pendingAcceptance' => Contact::getPendingAcceptanceCount(),
+            'totalCollaborators' => Contact::getTotalCollaborators(),
+            'newThisWeek' => Contact::getNewCollaboratorsThisWeek(),
+            'notUpdatedSixMonths' => Contact::getNotUpdatedInSixMonths(),
+        ];
+
+        return $dataTable->render('collaborator.index', compact('dashboardStats'));
     }
 
     public function create()
