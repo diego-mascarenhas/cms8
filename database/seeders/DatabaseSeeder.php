@@ -2,10 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Traits\ClearsActivityLog;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
+use Spatie\Activitylog\Models\Activity;
 
 class DatabaseSeeder extends Seeder
 {
+    use ClearsActivityLog;
     /**
      * Seed the application's database.
      */
@@ -48,6 +52,9 @@ class DatabaseSeeder extends Seeder
             NotificationTypesSeeder::class,
             NotificationSeeder::class,
         ]);
+
+        // Clear activity log entries generated during seeding
+        $this->clearAllActivities();
     }
 }
 // Test comment
