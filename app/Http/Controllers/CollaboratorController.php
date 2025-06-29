@@ -26,7 +26,10 @@ class CollaboratorController extends Controller
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
             'email' => 'required|email|max:255',
-            'phone' => 'nullable|numeric',
+            'phone' => 'nullable|string|max:20',
+            'birthday' => 'nullable|date',
+            'language' => 'required|string|exists:languages,code',
+            'profile' => 'nullable|string',
             'language_pairs' => 'nullable|array',
             'is_native' => 'nullable|array',
             'fare_ids' => 'nullable|array',
@@ -41,6 +44,9 @@ class CollaboratorController extends Controller
             'surname' => $validated['surname'] ?? null,
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
+            'birthday' => $validated['birthday'] ?? null,
+            'language' => $validated['language'],
+            'profile' => $validated['profile'] ?? null,
             'creator_id' => $validated['creator_id'],
             'team_id' => $validated['team_id'],
         ]);
@@ -170,7 +176,10 @@ class CollaboratorController extends Controller
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
             'email' => 'required|email|max:255',
-            'phone' => 'nullable|numeric',
+            'phone' => 'nullable|string|max:20',
+            'birthday' => 'nullable|date',
+            'language' => 'required|string|exists:languages,code',
+            'profile' => 'nullable|string',
             'language_pairs' => 'nullable|array',
             'is_native' => 'nullable|array',
             'fare_ids' => 'nullable|array',
@@ -181,6 +190,9 @@ class CollaboratorController extends Controller
             'surname' => $validated['surname'] ?? null,
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
+            'birthday' => $validated['birthday'] ?? null,
+            'language' => $validated['language'],
+            'profile' => $validated['profile'] ?? null,
         ]);
 
         // Process language pairs if they exist

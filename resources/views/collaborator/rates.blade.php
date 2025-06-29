@@ -33,6 +33,20 @@
             color: white;
             opacity: 1;
         }
+        
+        /* Disabled/Non-assigned service fields */
+        .fare-input:disabled,
+        .unit-select:disabled {
+            background-color: #f8f9fa !important;
+            color: #6c757d !important;
+            border-color: #e0e0e0 !important;
+            cursor: not-allowed;
+        }
+        
+        .input-group-text.bg-light {
+            background-color: #f8f9fa !important;
+            border-color: #e0e0e0 !important;
+        }
     </style>
 @endsection
 
@@ -57,7 +71,7 @@
                     @csrf
                     <!-- Selección de divisa -->
                     <div class="mb-3 row">
-                        <label class="col-form-label col-md-2">Divisa *</label>
+                        <label class="col-form-label col-md-2">Divisa (*)</label>
                         <div class="col-md-4">
                             <select class="form-select" name="currency" required>
                                 @foreach($currencies as $currency)
@@ -166,29 +180,38 @@
                                 <div class="row mb-3">
                                     @foreach($fareChunk as $fare)
                                         @php
+                                            // Check if this fare is assigned to the collaborator
+                                            $isCollaboratorFare = $collaborator->fares->contains('id', $fare->id);
+                                            
                                             // Use specific rates data if available, otherwise default to empty
                                             $currentPrice = $currentRatesData[$fare->id]['price'] ?? 0;
                                             $currentUnitId = $currentRatesData[$fare->id]['unit_id'] ?? ($fare->units->count() > 0 ? $fare->units->first()->id : null);
                                         @endphp
                                         <div class="col-md-6">
-                                            <label class="form-label">{{ $fare->name }}</label>
+                                            <label class="form-label {{ !$isCollaboratorFare ? 'text-muted' : '' }}">
+                                                {{ $fare->name }}
+                                                @if(!$isCollaboratorFare)
+                                                    <small class="text-muted">(No asignado)</small>
+                                                @endif
+                                            </label>
                                             <div class="input-group input-group-sm">
-                                                <span class="input-group-text currency-symbol">€</span>
+                                                <span class="input-group-text currency-symbol {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}">€</span>
                                                 <input type="number" 
-                                                       class="form-control fare-input" 
+                                                       class="form-control fare-input {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}" 
                                                        data-fare-id="{{ $fare->id }}"
                                                        name="rates[{{ $fare->id }}]" 
-                                                       value="{{ number_format($currentPrice, 2, '.', '') }}" 
+                                                       value="{{ $isCollaboratorFare ? number_format($currentPrice, 2, '.', '') : '' }}" 
                                                        step="0.01" 
                                                        min="0"
-                                                       placeholder="0.00">
+                                                       placeholder="{{ $isCollaboratorFare ? '0.00' : 'No disponible' }}"
+                                                       {{ !$isCollaboratorFare ? 'disabled readonly' : '' }}>
                                                 
                                                 @if($fare->units && $fare->units->count() > 1)
-                                                    <select class="form-select unit-select" 
+                                                    <select class="form-select unit-select {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}" 
                                                             data-fare-id="{{ $fare->id }}"
                                                             name="units[{{ $fare->id }}]" 
                                                             style="max-width: 120px;" 
-                                                            required>
+                                                            {{ !$isCollaboratorFare ? 'disabled' : 'required' }}>
                                                         @foreach($fare->units as $unit)
                                                             <option value="{{ $unit->id }}" 
                                                                 {{ $currentUnitId == $unit->id ? 'selected' : '' }}>
@@ -197,10 +220,12 @@
                                                         @endforeach
                                                     </select>
                                                 @elseif($fare->units && $fare->units->count() == 1)
-                                                    <span class="input-group-text">/{{ $fare->units->first()->type }}</span>
-                                                    <input type="hidden" name="units[{{ $fare->id }}]" value="{{ $fare->units->first()->id }}">
+                                                    <span class="input-group-text {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}">/{{ $fare->units->first()->type }}</span>
+                                                    @if($isCollaboratorFare)
+                                                        <input type="hidden" name="units[{{ $fare->id }}]" value="{{ $fare->units->first()->id }}">
+                                                    @endif
                                                 @else
-                                                    <span class="input-group-text">/unidad</span>
+                                                    <span class="input-group-text {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}">/unidad</span>
                                                 @endif
                                             </div>
                                         </div>
@@ -265,11 +290,11 @@
                 units: {}
             };
             
-            $('.fare-input').each(function() {
+            $('.fare-input:not(:disabled)').each(function() {
                 const fareId = $(this).data('fare-id');
                 ratesData[key].rates[fareId] = $(this).val();
                 
-                const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]`);
+                const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]:not(:disabled)`);
                 if (unitSelect.length) {
                     ratesData[key].units[fareId] = unitSelect.val();
                 }
@@ -291,12 +316,12 @@
                 // Don't trigger change to avoid loop
                 updateCurrencySymbols(ratesData[key].currency);
                 
-                $('.fare-input').each(function() {
+                $('.fare-input:not(:disabled)').each(function() {
                     const fareId = $(this).data('fare-id');
                     const rate = ratesData[key].rates[fareId] || '0.00';
                     $(this).val(rate);
                     
-                    const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]`);
+                    const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]:not(:disabled)`);
                     if (unitSelect.length && ratesData[key].units[fareId]) {
                         unitSelect.val(ratesData[key].units[fareId]);
                     }
@@ -344,27 +369,27 @@
                         // Update the form with loaded data
                         $('select[name="currency"]').val(ratesData[key].currency).trigger('change');
                         
-                        $('.fare-input').each(function() {
+                        $('.fare-input:not(:disabled)').each(function() {
                             const fareId = $(this).data('fare-id');
                             const rate = ratesData[key].rates[fareId] || '0.00';
                             $(this).val(rate);
                             
-                            const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]`);
+                            const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]:not(:disabled)`);
                             if (unitSelect.length && ratesData[key].units[fareId]) {
                                 unitSelect.val(ratesData[key].units[fareId]);
                             }
                         });
                     } else {
-                        // No rates found, clear the form
-                        $('.fare-input').val('0.00');
-                        $('.unit-select').each(function() {
+                        // No rates found, clear the form (only enabled inputs)
+                        $('.fare-input:not(:disabled)').val('0.00');
+                        $('.unit-select:not(:disabled)').each(function() {
                             $(this).val($(this).find('option:first').val());
                         });
                     }
                 },
                 error: function(xhr, status, error) {
-                    // Clear the form on error
-                    $('.fare-input').val('0.00');
+                    // Clear the form on error (only enabled inputs)
+                    $('.fare-input:not(:disabled)').val('0.00');
                 }
             });
         }
@@ -533,8 +558,8 @@
             
             let hasRates = false;
             
-            // Check if at least one rate is filled
-            $('.fare-input').each(function() {
+            // Check if at least one rate is filled (only enabled inputs)
+            $('.fare-input:not(:disabled)').each(function() {
                 if ($(this).val() && parseFloat($(this).val()) > 0) {
                     hasRates = true;
                     return false;

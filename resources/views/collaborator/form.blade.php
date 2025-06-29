@@ -5,11 +5,13 @@
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 @endsection
 
 @section('content')
@@ -45,7 +47,7 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="name" class="form-label">{{ __('Name') }}</label>
+                        <label for="name" class="form-label">{{ __('Name') }} (*)</label>
                         <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $collaborator->name ?? '') }}" required>
                         @error('name')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -61,7 +63,7 @@
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <label for="email" class="form-label">{{ __('Email') }}</label>
+                        <label for="email" class="form-label">{{ __('Email') }} (*)</label>
                         <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $collaborator->email ?? '') }}" required>
                         @error('email')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -75,6 +77,46 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+
+                    <div class="col-md-6 mb-3">
+                        <x-input-date 
+                            id="birthday" 
+                            label="{{ __('Birthday') }}"
+                            name="birthday"
+                            value="{{ old('birthday', $collaborator->birthday ?? '') }}" 
+                        />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <x-language-select 
+                            name="language" 
+                            id="language" 
+                            label="{{ __('Language') }} (*)" 
+                            :value="old('language', $collaborator->language ?? '')" 
+                            :required="true"
+                        />
+                        @error('language')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Card -->
+        <div class="card mb-4">
+            <h5 class="card-header">{{ __('Profile') }}</h5>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="profile" class="form-label">{{ __('Profile Description') }}</label>
+                    <textarea class="form-control @error('profile') is-invalid @enderror" 
+                              id="profile" 
+                              name="profile" 
+                              rows="4" 
+                              placeholder="{{ __('Describe the collaborator\'s professional profile, experience, and specialties...') }}">{{ old('profile', $collaborator->profile ?? '') }}</textarea>
+                    @error('profile')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
         </div>
@@ -128,7 +170,7 @@
 @section('page-script')
     <script>
         $(document).ready(function() {
-            // Initialize Select2
+            // Initialize Select2 for basic fields (excluding language which uses x-language-select component)
             $('#enterprise_id, #responsible_id').select2();
             
             // Initialize Select2 for language selectors with custom template
@@ -341,6 +383,22 @@
 
             // Form submit handler for validation
             $('form').on('submit', function(e) {
+                // Validate required language field
+                const language = $('#language').val();
+                if (!language) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: '{{ __("Validation Error") }}',
+                        text: '{{ __("Language field is required") }}',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-primary'
+                        },
+                        buttonsStyling: false
+                    });
+                    return false;
+                }
+
                 // Validate language pairs if any exist
                 const languagePairs = [];
                 $('input[name="language_pairs[]"]').each(function() {
