@@ -60,9 +60,7 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
-Route::get('/dashboard/collaborator', function () {
-    return view('collaborator.dashboard');
-})->name('dashboard.collaborator')->middleware('auth');
+Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
 
 // Adding routes for other dashboard types
 Route::get('/dashboard/client', function () {
@@ -156,9 +154,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/contact/{id}/create-and-link-user', [ContactController::class, 'createAndLinkUser'])->name('contact.create-and-link-user');
 
     // Collaborators
-    Route::get('/collaborator/dashboard', function () {
-        return view('collaborator.dashboard');
-    })->name('collaborator.dashboard');
     Route::get('/collaborator/list', [CollaboratorController::class, 'index'])->name('collaborator-list');
     Route::get('/collaborator/create', [CollaboratorController::class, 'create'])->name('collaborator.create');
     Route::post('/collaborator', [CollaboratorController::class, 'store'])->name('collaborator.store');

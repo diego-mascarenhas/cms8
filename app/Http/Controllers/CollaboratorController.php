@@ -781,4 +781,15 @@ class CollaboratorController extends Controller
 
         return view('collaborator.notifications', compact('collaborator', 'notifications'));
     }
+
+    /**
+     * Show collaborators dashboard
+     */
+    public function dashboard()
+    {
+        // Get language combinations with less than 10 collaborators using the model method
+        $languageCombinations = ContactLanguageVariant::getCombinationsWithFewCollaborators();
+
+        return view('collaborator.dashboard', compact('languageCombinations'));
+    }
 }

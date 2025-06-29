@@ -322,64 +322,34 @@
     <div class="card h-100">
       <div class="card-header d-flex justify-content-between">
         <h5 class="card-title mb-0">Combinaciones con menos de 10 colaboradoras</h5>
-        <a href="#" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+        <a href="{{ route('collaborator-list') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
       </div>
       <div class="card-body">
-        <ul class="list-unstyled mb-0">
-          <li class="mb-3 pb-1">
-            <div class="d-flex align-items-center">
-              <span class="flag-icon flag-icon-es me-2"></span>
-              <i class="ti ti-arrow-right mx-3"></i>
-              <span class="flag-icon flag-icon-cn me-2"></span>
-              <span class="ms-2">Español a Chino</span>
+        @if($languageCombinations->count() > 0)
+          <ul class="list-unstyled mb-0">
+            @foreach($languageCombinations as $combination)
+            <li class="mb-3 pb-1">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                  <i class="fi fi-{{ $combination['source_flag'] }} me-2"></i>
+                  <i class="ti ti-arrow-right mx-2 text-muted"></i>
+                  <i class="fi fi-{{ $combination['target_flag'] }} me-2"></i>
+                  <span class="ms-2">{{ $combination['source_name'] }} a {{ $combination['target_name'] }}</span>
+                </div>
+                <span class="badge bg-label-warning rounded-pill">{{ $combination['count'] }} colaborador{{ $combination['count'] !== 1 ? 'as' : 'a' }}</span>
+              </div>
+            </li>
+            @endforeach
+          </ul>
+        @else
+          <div class="text-center py-4">
+            <div class="avatar avatar-xl bg-light-success rounded-circle mx-auto mb-3">
+              <i class="ti ti-check ti-lg text-success"></i>
             </div>
-          </li>
-          
-          <li class="mb-3 pb-1">
-            <div class="d-flex align-items-center">
-              <span class="flag-icon flag-icon-br me-2"></span>
-              <i class="ti ti-arrow-right mx-3"></i>
-              <span class="flag-icon flag-icon-us me-2"></span>
-              <span class="ms-2">Brasileño a Inglés EEUU</span>
-            </div>
-          </li>
-          
-          <li class="mb-3 pb-1">
-            <div class="d-flex align-items-center">
-              <span class="flag-icon flag-icon-au me-2"></span>
-              <i class="ti ti-arrow-right mx-3"></i>
-              <span class="flag-icon flag-icon-br me-2"></span>
-              <span class="ms-2">Australiano a Brasileño</span>
-            </div>
-          </li>
-          
-          <li class="mb-3 pb-1">
-            <div class="d-flex align-items-center">
-              <span class="flag-icon flag-icon-it me-2"></span>
-              <i class="ti ti-arrow-right mx-3"></i>
-              <span class="flag-icon flag-icon-in me-2"></span>
-              <span class="ms-2">Italiano a Indio</span>
-            </div>
-          </li>
-          
-          <li class="mb-3 pb-1">
-            <div class="d-flex align-items-center">
-              <span class="flag-icon flag-icon-br me-2"></span>
-              <i class="ti ti-arrow-right mx-3"></i>
-              <span class="flag-icon flag-icon-au me-2"></span>
-              <span class="ms-2">Portugués a Australiano</span>
-            </div>
-          </li>
-          
-          <li>
-            <div class="d-flex align-items-center">
-              <span class="flag-icon flag-icon-it me-2"></span>
-              <i class="ti ti-arrow-right mx-3"></i>
-              <span class="flag-icon flag-icon-fr me-2"></span>
-              <span class="ms-2">Italiano a Francés</span>
-            </div>
-          </li>
-        </ul>
+            <h6 class="mb-1">¡Excelente cobertura!</h6>
+            <p class="text-muted mb-0">Todas las combinaciones de idiomas tienen 10 o más colaboradoras.</p>
+          </div>
+        @endif
       </div>
     </div>
   </div>
