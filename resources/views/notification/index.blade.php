@@ -34,42 +34,48 @@
 </div>
 
 <div class="card">
-    <div class="card-header border-bottom">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
-            <div class="d-flex gap-2">
-                @can('notification.create')
-                <a href="{{ route('notification.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
-                    <i class="ti ti-plus me-sm-1"></i>
-                    <span class="d-none d-sm-inline-block">{{ __('Create Notification') }}</span>
-                </a>
-                @endcan
-            </div>
+    <div class="card-header flex-column flex-md-row">
+        <div class="head-label text-center">
+            <h5 class="card-title mb-0">Notificaciones</h5>
         </div>
-        <div class="d-flex flex-column flex-md-row gap-3">
-            <div class="flex-grow-1">
-                <select class="form-select" id="statusFilter">
-                    <option value="">Todos los estados</option>
-                    <option value="sent">Enviados</option>
-                    <option value="unsent">Pendientes</option>
-                </select>
-            </div>
-            <div class="flex-grow-1">
-                <select class="form-select" id="typeFilter">
-                    <option value="">Todos los tipos</option>
-                    @foreach(\App\Models\NotificationType::getActiveOptions() as $type)
-                        <option value="{{ $type['id'] }}">{{ $type['name'] }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="flex-grow-1">
-                <div class="input-group input-group-merge">
-                    <span class="input-group-text"><i class="ti ti-calendar"></i></span>
-                    <input type="text" class="form-control flatpickr-input" id="dateFromFilter" placeholder="Desde" readonly>
-                </div>
+        <div class="dt-action-buttons text-end pt-3 pt-md-0">
+            <div class="dt-buttons">
+                <a href="{{ route('notification.create') }}" class="btn btn-primary">
+                    <span><i class="ti ti-plus me-1"></i>Crear notificación</span>
+                </a>
             </div>
         </div>
     </div>
     <div class="card-body">
+        <!-- Filters Form -->
+        <form method="GET" id="filtersForm" class="mb-3">
+            <div class="d-flex flex-column flex-md-row gap-3">
+                <div class="flex-grow-1">
+                    <select class="form-select" id="statusFilter" name="status" onchange="document.getElementById('filtersForm').submit()">
+                        <option value="">Todos los estados</option>
+                        <option value="sent" {{ request('status') == 'sent' ? 'selected' : '' }}>Enviados</option>
+                        <option value="unsent" {{ request('status') == 'unsent' ? 'selected' : '' }}>Pendientes</option>
+                    </select>
+                </div>
+                <div class="flex-grow-1">
+                    <select class="form-select" id="typeFilter" name="type" onchange="document.getElementById('filtersForm').submit()">
+                        <option value="">Todos los tipos</option>
+                        @foreach(\App\Models\NotificationType::getActiveOptions() as $type)
+                            <option value="{{ $type['id'] }}" {{ request('type') == $type['id'] ? 'selected' : '' }}>{{ $type['name'] }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="input-group input-group-merge">
+                        <span class="input-group-text"><i class="ti ti-calendar"></i></span>
+                        <input type="text" class="form-control flatpickr-input" id="dateFromFilter" name="date_from" 
+                               placeholder="Desde" readonly value="{{ request('date_from') }}"
+                               onchange="document.getElementById('filtersForm').submit()">
+                    </div>
+                </div>
+            </div>
+        </form>
+        
         {{ $dataTable->table() }}
     </div>
 </div>
@@ -97,27 +103,6 @@ $(document).ready(function() {
                 longhand: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
             }
         }
-    });
-
-    // Get DataTable instance
-    let table = $('.datatable').DataTable();
-
-    // Status filter
-    $('#statusFilter').on('change', function() {
-        let selectedValue = $(this).val();
-        table.column(4).search(selectedValue).draw(); // Status column
-    });
-
-    // Type filter  
-    $('#typeFilter').on('change', function() {
-        let selectedValue = $(this).val();
-        table.column(3).search(selectedValue).draw(); // Type column
-    });
-
-    // Date filter
-    $('#dateFromFilter').on('change', function() {
-        let selectedValue = $(this).val();
-        table.column(7).search(selectedValue).draw(); // Created at column
     });
 });
 
@@ -155,8 +140,8 @@ function sendNotification(id) {
                             buttonsStyling: false
                         });
                         
-                        // Reload DataTable
-                        $('.datatable').DataTable().ajax.reload(null, false);
+                        // Reload page to refresh data
+                        location.reload();
                     } else {
                         Swal.fire({
                             title: 'Error',
@@ -218,8 +203,8 @@ function resendNotification(id) {
                             buttonsStyling: false
                         });
                         
-                        // Reload DataTable
-                        $('.datatable').DataTable().ajax.reload(null, false);
+                        // Reload page to refresh data
+                        location.reload();
                     } else {
                         Swal.fire({
                             title: 'Error',
