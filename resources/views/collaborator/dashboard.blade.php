@@ -39,12 +39,12 @@
       <div class="card-body p-3">
         <div class="d-flex align-items-center justify-content-between">
           <div>
-            <h4 class="mb-1">186</h4>
-            <small class="text-muted">Proyectos activos</small>
+            <h4 class="mb-1">{{ number_format($newCollaboratorsThisMonth) }}</h4>
+            <small class="text-muted">Nuevas este mes</small>
           </div>
           <div class="avatar">
-            <span class="avatar-initial rounded bg-label-warning">
-              <i class="ti ti-briefcase ti-md"></i>
+            <span class="avatar-initial rounded bg-label-info">
+              <i class="ti ti-user-plus ti-md"></i>
             </span>
           </div>
         </div>
@@ -57,12 +57,12 @@
       <div class="card-body p-3">
         <div class="d-flex align-items-center justify-content-between">
           <div>
-            <h4 class="mb-1">49</h4>
-            <small class="text-muted">Nuevas este mes</small>
+            <h4 class="mb-1">186</h4>
+            <small class="text-muted">Proyectos activos</small>
           </div>
           <div class="avatar">
-            <span class="avatar-initial rounded bg-label-info">
-              <i class="ti ti-user-plus ti-md"></i>
+            <span class="avatar-initial rounded bg-label-warning">
+              <i class="ti ti-briefcase ti-md"></i>
             </span>
           </div>
         </div>

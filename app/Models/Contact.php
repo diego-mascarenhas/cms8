@@ -213,6 +213,24 @@ class Contact extends Model
     }
 
     /**
+     * Get count of collaborators created this month
+     */
+    public static function getNewCollaboratorsThisMonth($teamId = null)
+    {
+        $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+        
+        return static::where('team_id', $teamId)
+            ->whereHas('user', function ($query) {
+                $query->whereHas('roles', function ($q) {
+                    $q->where('name', 'collaborator');
+                });
+            })
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count();
+    }
+
+    /**
      * Get collaborators with incomplete data
      */
     public static function getIncompleteCollaborators($limit = 20, $teamId = null)
