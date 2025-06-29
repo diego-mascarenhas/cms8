@@ -152,10 +152,10 @@ class CollaboratorDataTable extends DataTable
         }
 
         // Filter by availability (days and delivery date)
-        // Temporarily commented for debugging
-        // if (($request->has('days') && $request->days) || ($request->has('delivery_date') && $request->delivery_date)) {
-        //     $query = $this->applyAvailabilityFilter($query, $request);
-        // }
+        if (($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date)) {
+            // Only apply filter if BOTH days and delivery_date are provided
+            $query = $this->applyAvailabilityFilter($query, $request);
+        }
 
         return $query;
     }
@@ -178,7 +178,12 @@ class CollaboratorDataTable extends DataTable
                     $deliveryDate = now()->endOfWeek()->format('Y-m-d');
                     break;
                 case 'month':
-                    $deliveryDate = now()->endOfMonth()->format('Y-m-d');
+                    // If we're near the end of the month, use next month end
+                    if (now()->day > 25) {
+                        $deliveryDate = now()->addMonth()->endOfMonth()->format('Y-m-d');
+                    } else {
+                        $deliveryDate = now()->endOfMonth()->format('Y-m-d');
+                    }
                     break;
             }
         }
@@ -188,16 +193,23 @@ class CollaboratorDataTable extends DataTable
             $startDate = now()->format('Y-m-d');
             $endDate = $deliveryDate;
             
-            $query->whereHas('weeklyAvailability', function ($q) use ($startDate, $endDate, $days) {
-                // This is a complex query, so we'll filter the results in PHP
-                // by checking each collaborator's availability
-            })->whereDoesntHave('absences', function ($q) use ($startDate, $endDate) {
-                // Exclude collaborators who have absences in the entire period
-                $q->whereBetween('absence_date', [$startDate, $endDate]);
-            });
+            // Debug: Log the parameters
+            \Log::info('Availability Filter Debug', [
+                'days' => $days,
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'deliveryDate' => $deliveryDate
+            ]);
 
             // Apply a more precise filter using a subquery
             $availableCollaboratorIds = $this->getAvailableCollaboratorIds($startDate, $endDate, $days);
+            
+            // Debug: Log available IDs
+            \Log::info('Available Collaborator IDs', [
+                'count' => count($availableCollaboratorIds),
+                'ids' => $availableCollaboratorIds
+            ]);
+            
             if (!empty($availableCollaboratorIds)) {
                 $query->whereIn('id', $availableCollaboratorIds);
             } else {
