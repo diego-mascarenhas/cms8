@@ -793,7 +793,10 @@ class CollaboratorController extends Controller
         
         // Get top languages by collaborator count
         $topLanguages = Language::getTopLanguages(5);
+        
+        // Get collaborators with incomplete data
+        $incompleteCollaborators = Contact::getIncompleteCollaborators(20);
 
-        return view('collaborator.dashboard', compact('languageCombinations', 'topLanguages'));
+        return view('collaborator.dashboard', compact('languageCombinations', 'topLanguages', 'incompleteCollaborators'));
     }
 }

@@ -225,94 +225,48 @@
     <div class="card h-100">
       <div class="card-header d-flex justify-content-between">
         <h5 class="card-title mb-0">Colaboradoras con datos incompletos</h5>
-        <a href="#" class="btn btn-sm btn-outline-secondary">Ver todos</a>
+        @can('collaborator.edit')
+        <a href="{{ route('collaborator-list') }}" class="btn btn-sm btn-outline-secondary">Ver todos</a>
+        @endcan
       </div>
       <div class="card-body p-0">
-        <div class="list-group list-group-flush">
-          <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar me-3">
-                <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar" class="rounded-circle">
+        @if($incompleteCollaborators->count() > 0)
+          <div class="list-group list-group-flush">
+            @foreach($incompleteCollaborators as $collaborator)
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center">
+                <div class="avatar me-3">
+                  <img src="{{ $collaborator['avatar'] }}" alt="Avatar" class="rounded-circle">
+                </div>
+                <div>
+                  <h6 class="mb-0">{{ $collaborator['name'] }}</h6>
+                  @if($collaborator['missing_count'] > 1)
+                    <small class="text-muted">Faltan: {{ implode(', ', array_slice($collaborator['missing_fields'], 0, 3)) }}{{ count($collaborator['missing_fields']) > 3 ? '...' : '' }}</small>
+                  @endif
+                </div>
               </div>
-              <div>
-                <h6 class="mb-0">Jordan Stevenson</h6>
-              </div>
-            </div>
-            <span class="text-muted">12 campos a rellenar</span>
-          </div>
-          
-          <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar me-3">
-                <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar" class="rounded-circle">
-              </div>
-              <div>
-                <h6 class="mb-0">Benedetto Rossiter</h6>
-              </div>
-            </div>
-            <span class="text-muted">Faltan: 5 tarifas, 7 campos</span>
-          </div>
-          
-          <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar me-3">
-                <img src="{{ asset('assets/img/avatars/3.png') }}" alt="Avatar" class="rounded-circle">
-              </div>
-              <div>
-                <h6 class="mb-0">Bentlee Emblin</h6>
+              <div class="text-end">
+                <span class="text-muted">{{ $collaborator['missing_text'] }}</span>
+                @can('collaborator.edit')
+                <br><a href="{{ route('collaborator.edit', $collaborator['id']) }}" class="btn btn-xs btn-outline-primary mt-1">
+                  <i class="ti ti-edit ti-xs"></i> Editar
+                </a>
+                @endcan
               </div>
             </div>
-            <span class="text-muted"></span>
+            @endforeach
           </div>
-          
-          <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar me-3">
-                <img src="{{ asset('assets/img/avatars/4.png') }}" alt="Avatar" class="rounded-circle">
-              </div>
-              <div>
-                <h6 class="mb-0">Bertha Biner</h6>
-              </div>
+        @else
+          <div class="card-body text-center py-5">
+            <div class="avatar avatar-xl mx-auto mb-3">
+              <span class="avatar-initial rounded-circle bg-label-success">
+                <i class="ti ti-check ti-md"></i>
+              </span>
             </div>
-            <span class="text-muted"></span>
+            <h5 class="mb-2">¡Excelente!</h5>
+            <p class="mb-0 text-muted">Todas las colaboradoras tienen sus datos completos.</p>
           </div>
-          
-          <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar me-3">
-                <img src="{{ asset('assets/img/avatars/5.png') }}" alt="Avatar" class="rounded-circle">
-              </div>
-              <div>
-                <h6 class="mb-0">Beverlie Krabbe</h6>
-              </div>
-            </div>
-            <span class="text-muted"></span>
-          </div>
-          
-          <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar me-3">
-                <img src="{{ asset('assets/img/avatars/6.png') }}" alt="Avatar" class="rounded-circle">
-              </div>
-              <div>
-                <h6 class="mb-0">Bradan Rosebotham</h6>
-              </div>
-            </div>
-            <span class="text-muted"></span>
-          </div>
-          
-          <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-              <div class="avatar me-3">
-                <img src="{{ asset('assets/img/avatars/7.png') }}" alt="Avatar" class="rounded-circle">
-              </div>
-              <div>
-                <h6 class="mb-0">Bree Kilday</h6>
-              </div>
-            </div>
-            <span class="text-muted"></span>
-          </div>
-        </div>
+        @endif
       </div>
     </div>
   </div>

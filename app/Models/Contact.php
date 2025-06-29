@@ -196,6 +196,82 @@ class Contact extends Model
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
     }
 
+    /**
+     * Get collaborators with incomplete data
+     */
+    public static function getIncompleteCollaborators($limit = 20, $teamId = null)
+    {
+        $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+        
+        return static::where('team_id', $teamId)
+            ->where(function ($query) {
+                $query->whereNull('email')
+                      ->orWhere('email', '')
+                      ->orWhereNull('phone')
+                      ->orWhere('phone', '');
+            })
+            ->with(['language', 'fares', 'softwares'])
+            ->limit($limit)
+            ->get()
+            ->map(function ($contact) {
+                $missingFields = [];
+                $missingCount = 0;
+                
+                // Check required fields
+                if (empty($contact->email)) {
+                    $missingFields[] = 'email';
+                    $missingCount++;
+                }
+                
+                if (empty($contact->phone)) {
+                    $missingFields[] = 'teléfono';
+                    $missingCount++;
+                }
+                
+                // Check optional but important fields
+                if (empty($contact->language)) {
+                    $missingFields[] = 'idioma';
+                    $missingCount++;
+                }
+                
+                if (empty($contact->profile)) {
+                    $missingFields[] = 'perfil';
+                    $missingCount++;
+                }
+                
+                if (empty($contact->birthday)) {
+                    $missingFields[] = 'cumpleaños';
+                    $missingCount++;
+                }
+                
+                // Check related data
+                if ($contact->fares->count() === 0) {
+                    $missingFields[] = 'servicios';
+                    $missingCount++;
+                }
+                
+                if ($contact->softwares->count() === 0) {
+                    $missingFields[] = 'software';
+                    $missingCount++;
+                }
+                
+                return [
+                    'id' => $contact->id,
+                    'name' => $contact->name,
+                    'avatar' => "https://ui-avatars.com/api/?format=svg&name=" . urlencode($contact->name),
+                    'missing_count' => $missingCount,
+                    'missing_fields' => $missingFields,
+                    'missing_text' => $missingCount > 0 ? 
+                        ($missingCount === 1 ? 
+                            "Falta: " . implode(', ', $missingFields) : 
+                            "{$missingCount} campos por completar"
+                        ) : 'Datos completos'
+                ];
+            })
+            ->sortByDesc('missing_count')
+            ->take($limit);
+    }
+
     public static function getContactStats($teamId)
     {
         $statusLabels = [
