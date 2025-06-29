@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Contact;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -118,7 +119,7 @@ class CollaboratorDataTable extends DataTable
     public function query(Contact $model): QueryBuilder
     {
         $query = $model->newQuery()
-            ->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'fares.type'])
+            ->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'fares.type', 'weeklyAvailability'])
             ->withCount([
                 'projects', 
                 'fares as unique_fares_count' => function ($q) {
@@ -144,13 +145,159 @@ class CollaboratorDataTable extends DataTable
         }
 
         // Filter by service/fare
-        if ($request->has('servicio') && $request->servicio) {
+        if ($request->has('service') && $request->service) {
             $query->whereHas('fares', function ($q) use ($request) {
-                $q->where('fares.id', $request->servicio);
+                $q->where('fares.id', $request->service);
             });
         }
 
+        // Filter by availability (days and delivery date)
+        // Temporarily commented for debugging
+        // if (($request->has('days') && $request->days) || ($request->has('delivery_date') && $request->delivery_date)) {
+        //     $query = $this->applyAvailabilityFilter($query, $request);
+        // }
+
         return $query;
+    }
+
+    /**
+     * Apply availability filter based on days and delivery date
+     */
+    private function applyAvailabilityFilter(QueryBuilder $query, $request)
+    {
+        $days = $request->days ? (int) $request->days : null;
+        $deliveryDate = null;
+        
+        // Parse delivery date filter
+        if ($request->delivery_date) {
+            switch ($request->delivery_date) {
+                case 'today':
+                    $deliveryDate = now()->format('Y-m-d');
+                    break;
+                case 'week':
+                    $deliveryDate = now()->endOfWeek()->format('Y-m-d');
+                    break;
+                case 'month':
+                    $deliveryDate = now()->endOfMonth()->format('Y-m-d');
+                    break;
+            }
+        }
+
+        // If both days and delivery date are provided, filter by availability
+        if ($days && $deliveryDate) {
+            $startDate = now()->format('Y-m-d');
+            $endDate = $deliveryDate;
+            
+            $query->whereHas('weeklyAvailability', function ($q) use ($startDate, $endDate, $days) {
+                // This is a complex query, so we'll filter the results in PHP
+                // by checking each collaborator's availability
+            })->whereDoesntHave('absences', function ($q) use ($startDate, $endDate) {
+                // Exclude collaborators who have absences in the entire period
+                $q->whereBetween('absence_date', [$startDate, $endDate]);
+            });
+
+            // Apply a more precise filter using a subquery
+            $availableCollaboratorIds = $this->getAvailableCollaboratorIds($startDate, $endDate, $days);
+            if (!empty($availableCollaboratorIds)) {
+                $query->whereIn('id', $availableCollaboratorIds);
+            } else {
+                // If no collaborators are available, return empty result
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        return $query;
+    }
+
+    /**
+     * Get collaborator IDs that have enough available days in the given period
+     */
+    private function getAvailableCollaboratorIds($startDate, $endDate, $requiredDays)
+    {
+        $availableIds = [];
+        
+        // Get all collaborators with their weekly availability and absences
+        // Note: Global scope 'team' is already applied automatically
+        $collaborators = Contact::with(['weeklyAvailability', 'absences' => function ($q) use ($startDate, $endDate) {
+            $q->whereBetween('absence_date', [$startDate, $endDate]);
+        }])
+        // Temporarily commented for debugging - only get collaborators that are linked to users with collaborator role
+        // ->whereHas('user', function ($q) {
+        //     $q->whereHas('roles', function ($roleQuery) {
+        //         $roleQuery->where('name', 'collaborator');
+        //     });
+        // })
+        ->get();
+
+        foreach ($collaborators as $collaborator) {
+            $availableDays = $this->calculateAvailableDays($collaborator, $startDate, $endDate);
+            
+            if ($availableDays >= $requiredDays) {
+                $availableIds[] = $collaborator->id;
+            }
+        }
+
+        return $availableIds;
+    }
+
+    /**
+     * Calculate available days for a collaborator in a given period
+     */
+    private function calculateAvailableDays($collaborator, $startDate, $endDate)
+    {
+        $weeklyAvailability = $collaborator->weeklyAvailability;
+        
+        // If no weekly availability is set, assume all days are available
+        if (!$weeklyAvailability) {
+            $weeklyPattern = [
+                'monday' => true,
+                'tuesday' => true,
+                'wednesday' => true,
+                'thursday' => true,
+                'friday' => true,
+                'saturday' => false,
+                'sunday' => false,
+            ];
+        } else {
+            $weeklyPattern = [
+                'monday' => $weeklyAvailability->monday,
+                'tuesday' => $weeklyAvailability->tuesday,
+                'wednesday' => $weeklyAvailability->wednesday,
+                'thursday' => $weeklyAvailability->thursday,
+                'friday' => $weeklyAvailability->friday,
+                'saturday' => $weeklyAvailability->saturday,
+                'sunday' => $weeklyAvailability->sunday,
+            ];
+        }
+
+        // Get specific absence dates
+        $absenceDates = $collaborator->absences->pluck('absence_date')->map(function ($date) {
+            return $date->format('Y-m-d');
+        })->toArray();
+
+        $availableDays = 0;
+        $currentDate = Carbon::parse($startDate);
+        $endDateCarbon = Carbon::parse($endDate);
+
+        while ($currentDate->lte($endDateCarbon)) {
+            $dayOfWeek = strtolower($currentDate->format('l'));
+            $dateString = $currentDate->format('Y-m-d');
+
+            // Check if this day is available according to weekly pattern
+            $isWeeklyAvailable = $weeklyPattern[$dayOfWeek] ?? false;
+            
+            // Check if this specific date is not in absences
+            $isNotAbsent = !in_array($dateString, $absenceDates);
+
+            // Day is available if both conditions are met
+            if ($isWeeklyAvailable && $isNotAbsent) {
+                $availableDays++;
+            }
+
+            $currentDate->addDay();
+        }
+
+        return $availableDays;
     }
 
     public function html(): HtmlBuilder

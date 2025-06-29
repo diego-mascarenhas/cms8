@@ -155,19 +155,19 @@
 			<h5 class="mb-3">Filtros</h5>
 			<div class="row g-3 mb-3">
 				<div class="col">
-					<x-variant-language-select name="idioma-origen" id="idioma-origen" label="" :required="false"
+					<x-variant-language-select name="source-language" id="source-language" label="" :required="false"
 						placeholder="{{ __('Idioma origen') }}" />
 				</div>
 				<div class="col">
-					<x-variant-language-select name="idioma-destino" id="idioma-destino" label="" :required="false"
+					<x-variant-language-select name="target-language" id="target-language" label="" :required="false"
 						placeholder="{{ __('Idioma destino') }}" />
 				</div>
 				<div class="col">
-					<x-fare-select name="servicio" id="servicio" label="" :required="false"
+					<x-fare-select name="service" id="service" label="" :required="false"
 						placeholder="{{ __('Servicio') }}" />
 				</div>
 				<div class="col">
-					<select class="form-select" id="dias">
+					<select class="form-select" id="days">
 						<option value="" selected>{{ __('Días') }}</option>
 						<option value="5">5 días</option>
 						<option value="10">10 días</option>
@@ -176,7 +176,7 @@
 					</select>
 				</div>
 				<div class="col">
-					<select class="form-select" id="fecha-entrega">
+					<select class="form-select" id="delivery-date">
 						<option value="" selected>{{ __('Fecha entrega') }}</option>
 						<option value="today">Hoy</option>
 						<option value="week">Esta semana</option>
@@ -249,23 +249,23 @@
 			initializeTooltips();
 
 			// Table filters
-			$('#idioma-origen, #idioma-destino, #servicio, #dias, #fecha-entrega').on('change', function () {
+			$('#source-language, #target-language, #service, #days, #delivery-date').on('change', function () {
 				var table = $('#collaborator-table').DataTable();
 
 				// Get current filter values
-				var sourceLanguage = $('#idioma-origen').val();
-				var targetLanguage = $('#idioma-destino').val();
-				var servicio = $('#servicio').val();
-				var dias = $('#dias').val();
-				var fechaEntrega = $('#fecha-entrega').val();
+				var sourceLanguage = $('#source-language').val();
+				var targetLanguage = $('#target-language').val();
+				var service = $('#service').val();
+				var days = $('#days').val();
+				var deliveryDate = $('#delivery-date').val();
 
 				// Add parameters to ajax request
 				table.settings()[0].ajax.data = function (d) {
 					d.source_language = sourceLanguage;
 					d.target_language = targetLanguage;
-					d.servicio = servicio;
-					d.dias = dias;
-					d.fecha_entrega = fechaEntrega;
+					d.service = service;
+					d.days = days;
+					d.delivery_date = deliveryDate;
 				};
 
 				// Reload table with new parameters
