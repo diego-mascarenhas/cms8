@@ -13,6 +13,57 @@
     </script>
 @endsection
 
+@section('page-style')
+<style>
+.legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.timeline-point {
+    position: absolute;
+    left: -6px;
+    border: 2px solid #fff;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #696cff;
+}
+
+.timeline-point-primary {
+    background-color: #696cff;
+}
+
+.timeline-point-success {
+    background-color: #71dd37;
+}
+
+.timeline-item-transparent {
+    border-left: 1px solid #d9dee3;
+}
+
+.timeline-item-transparent.border-transparent {
+    border-left-color: transparent;
+}
+
+.timeline-event {
+    padding: 0 0 1.5rem 1rem;
+}
+
+.timeline-header {
+    margin-bottom: 0.5rem;
+}
+</style>
+@endsection
+
 @section('content')
     <div class="row">
         <!-- Cards section -->
@@ -181,11 +232,18 @@
 
             <!-- Activity section (below top languages) -->
             <div class="card mt-4">
-                <div class="card-header">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
-                            <i class="ti ti-activity me-2"></i>
-                            <h5 class="card-title mb-0">Actividad del equipo</h5>
+                <div class="card-header d-flex justify-content-between">
+                    <h5 class="card-title m-0 me-2 pt-1 mb-2 d-flex align-items-center">
+                        <i class="ti ti-activity me-2"></i>Actividad del equipo
+                    </h5>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="legend-item">
+                            <span class="legend-dot bg-primary me-1"></span>
+                            <small>Sistema</small>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot bg-success me-1"></span>
+                            <small>Usuarios</small>
                         </div>
                         @can('activity-log.index')
                             <a href="{{ route('activity-log.index') }}" class="btn btn-sm btn-outline-primary">
@@ -194,69 +252,175 @@
                         @endcan
                     </div>
                 </div>
-                <div class="card-body pt-2">
+                <div class="card-body pb-0">
                     @if ($formattedActivities && $formattedActivities->count() > 0)
-                        <ul class="timeline ps-0 mb-0">
+                        <ul class="timeline ms-1 mb-0">
                             @foreach ($formattedActivities as $activity)
-                                <li class="timeline-item ps-4 {{ $activity['is_system_activity'] ? 'border-left-primary' : 'border-left-success' }} {{ !$loop->last ? 'mt-4' : '' }}">
-                                    <span class="timeline-indicator-dot {{ $activity['is_system_activity'] ? 'bg-primary' : 'bg-success' }}"></span>
-                                    <div class="d-flex flex-column">
-                                        <small class="text-muted mb-1">{{ $activity['time_ago'] }}</small>
-                                        <div class="d-flex flex-column">
-                                            <span class="fw-semibold">
-                                                @php
-                                                    $description = $activity['description'];
-                                                    // Translate common activity descriptions
-                                                    $translations = [
-                                                        'created' => 'Creación',
-                                                        'updated' => 'Actualización', 
-                                                        'deleted' => 'Eliminación',
-                                                        'User logged in' => 'se conectó al sistema',
-                                                        'User logged out' => 'se desconectó del sistema',
-                                                        'File uploaded' => 'subió un archivo',
-                                                        'Data exported' => 'exportó datos',
-                                                        'Email sent' => 'envió un email',
-                                                        'Search performed' => 'realizó una búsqueda',
-                                                    ];
-                                                    
-                                                    foreach ($translations as $en => $es) {
-                                                        if (str_contains($description, $en)) {
-                                                            $description = str_replace($en, $es, $description);
-                                                            break;
+                                <li class="timeline-item timeline-item-transparent ps-4 {{ $loop->last ? 'border-transparent' : '' }}">
+                                    <span class="timeline-point {{ $activity['is_system_activity'] ? 'timeline-point-primary' : 'timeline-point-success' }}"></span>
+                                    <div class="timeline-event {{ $loop->last ? 'pb-0' : '' }}">
+                                        <div class="timeline-header">
+                                            <div class="d-flex align-items-center w-100">
+                                                <h6 class="mb-0 flex-grow-1">
+                                                    @php
+                                                        $description = $activity['description'];
+                                                        // Translate common activity descriptions
+                                                        $translations = [
+                                                            'created' => 'Creación',
+                                                            'updated' => 'Actualización', 
+                                                            'deleted' => 'Eliminación',
+                                                            'User logged in' => 'Se conectó al sistema',
+                                                            'User logged out' => 'Se desconectó del sistema',
+                                                            'File uploaded' => 'Subió un archivo',
+                                                            'Data exported' => 'Exportó datos',
+                                                            'Email sent' => 'Envió un email',
+                                                            'Search performed' => 'Realizó una búsqueda',
+                                                        ];
+                                                        
+                                                        foreach ($translations as $en => $es) {
+                                                            if (str_contains($description, $en)) {
+                                                                $description = str_replace($en, $es, $description);
+                                                                break;
+                                                            }
                                                         }
-                                                    }
-                                                @endphp
-                                                {{ $description }}
-                                                @if ($activity['subject_name'])
-                                                    - {{ $activity['subject_name'] }}
+                                                    @endphp
+                                                    {{ $description }}
+                                                    @if ($activity['subject_name'])
+                                                        - {{ $activity['subject_name'] }}
+                                                    @endif
+                                                </h6>
+                                                
+                                                @if($activity['properties'] && $activity['properties']->count() > 0)
+                                                    @php 
+                                                        $properties = $activity['properties']; 
+                                                        $hasChanges = false;
+                                                        
+                                                        // Check for changes in different formats
+                                                        if ((isset($properties['old']) && isset($properties['attributes'])) || 
+                                                            (isset($properties->old) && isset($properties->attributes)) ||
+                                                            (property_exists($properties, 'old') && property_exists($properties, 'attributes'))) {
+                                                            $hasChanges = true;
+                                                        }
+                                                    @endphp
+                                                    
+                                                    @if($hasChanges)
+                                                        <a href="javascript:void(0)" class="text-info me-2 d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#changes-dashboard-{{ $activity['id'] }}" aria-expanded="false" title="Ver cambios">
+                                                            <i class="ti ti-eye ti-sm"></i>
+                                                        </a>
+                                                    @endif
                                                 @endif
-                                            </span>
-                                            @if ($activity['user_name'])
-                                                <span class="text-muted">por {{ $activity['user_name'] }}</span>
+                                                
+                                                <small class="text-muted">{{ $activity['time_ago'] }}</small>
+                                            </div>
+                                        </div>
+                                        @if ($activity['user_name'])
+                                            <p class="mb-2">Por {{ $activity['user_name'] }}</p>
+                                        @endif
+                                        
+                                        @if($activity['properties'] && $activity['properties']->count() > 0)
+                                            @php $properties = $activity['properties']; @endphp
+                                            
+                                            @if(isset($properties['file_name']) || isset($properties['email_to']) || isset($properties['search_term']) || isset($properties['export_type']))
+                                                <div class="d-flex flex-wrap gap-2 pt-1">
+                                                    @if(isset($properties['file_name']))
+                                                        <span class="fw-medium text-heading">{{ $properties['file_name'] }}</span>
+                                                    @endif
+                                                    @if(isset($properties['email_to']))
+                                                        <span class="fw-medium text-heading">{{ $properties['email_to'] }}</span>
+                                                    @endif
+                                                    @if(isset($properties['search_term']))
+                                                        <span class="fw-medium text-heading">Búsqueda: {{ $properties['search_term'] }}</span>
+                                                    @endif
+                                                    @if(isset($properties['export_type']))
+                                                        <span class="fw-medium text-heading">{{ $properties['export_type'] }}</span>
+                                                    @endif
+                                                </div>
                                             @endif
                                             
-                                            @if ($activity['user_photo'])
-                                                <div class="d-flex align-items-center mt-2">
-                                                    <div class="avatar me-2">
-                                                        <img src="{{ $activity['user_photo'] }}" alt="Avatar" class="rounded-circle">
-                                                    </div>
-                                                    <div class="d-flex flex-column">
-                                                        <span class="fw-semibold">{{ $activity['user_name'] }}</span>
+                                            @if(isset($properties['ip_address']))
+                                                <div class="mt-1">
+                                                    <small class="text-muted">IP: {{ $properties['ip_address'] }}</small>
+                                                </div>
+                                            @endif
+                                        @endif
+                                        
+                                        @if($activity['properties'] && $activity['properties']->count() > 0)
+                                            @php 
+                                                $properties = $activity['properties']; 
+                                                $hasChanges = false;
+                                                
+                                                // Check for changes in different formats
+                                                if ((isset($properties['old']) && isset($properties['attributes'])) || 
+                                                    (isset($properties->old) && isset($properties->attributes)) ||
+                                                    (property_exists($properties, 'old') && property_exists($properties, 'attributes'))) {
+                                                    $hasChanges = true;
+                                                }
+                                            @endphp
+                                            
+                                            @if($hasChanges)
+                                                <div class="collapse" id="changes-dashboard-{{ $activity['id'] }}">
+                                                    <div class="mt-2 p-2 bg-light rounded" style="font-size: 0.8rem;">
+                                                        @php
+                                                            // Try different ways to access the data
+                                                            $oldData = $properties['old'] ?? $properties->old ?? [];
+                                                            $newData = $properties['attributes'] ?? $properties->attributes ?? [];
+                                                            
+                                                            // Convert to arrays if they're objects
+                                                            if (is_object($oldData)) {
+                                                                $oldData = (array) $oldData;
+                                                            }
+                                                            if (is_object($newData)) {
+                                                                $newData = (array) $newData;
+                                                            }
+                                                            
+                                                            // Handle Collection case
+                                                            if (method_exists($properties, 'toArray')) {
+                                                                $propsArray = $properties->toArray();
+                                                                $oldData = $propsArray['old'] ?? [];
+                                                                $newData = $propsArray['attributes'] ?? [];
+                                                            }
+                                                        @endphp
+                                                        
+                                                        @if(is_array($newData) && count($newData) > 0)
+                                                            @foreach($newData as $key => $newValue)
+                                                                <div class="mb-1">
+                                                                    <strong>{{ ucfirst(str_replace('_', ' ', $key)) }}:</strong><br>
+                                                                    @if(array_key_exists($key, $oldData) && $oldData[$key] !== null)
+                                                                        <span class="text-danger">- {{ $oldData[$key] }}</span><br>
+                                                                    @endif
+                                                                    <span class="text-success">+ {{ $newValue ?? 'null' }}</span>
+                                                                </div>
+                                                            @endforeach
+                                                        @endif
                                                     </div>
                                                 </div>
                                             @endif
-                                        </div>
+                                        @endif
+                                        
+                                        @if ($activity['user_photo'])
+                                            <div class="d-flex flex-wrap mt-2">
+                                                <div class="avatar me-2">
+                                                    <img src="{{ $activity['user_photo'] }}" alt="{{ $activity['user_name'] }}" class="rounded-circle">
+                                                </div>
+                                                <div class="ms-1">
+                                                    <h6 class="mb-0">{{ $activity['user_name'] }}</h6>
+                                                    <span>{{ $activity['is_system_activity'] ? 'Sistema' : 'Usuario del equipo' }}</span>
+                                                </div>
+                                            </div>
+                                        @endif
                                     </div>
                                 </li>
                             @endforeach
                         </ul>
                     @else
-                        <div class="text-center py-4">
-                            <div class="avatar avatar-xl bg-light-secondary rounded-circle mx-auto mb-3">
-                                <i class="ti ti-activity ti-lg text-secondary"></i>
+                        <div class="text-center py-5">
+                            <div class="avatar avatar-xl mx-auto mb-3">
+                                <span class="avatar-initial rounded-circle bg-label-secondary">
+                                    <i class="ti ti-activity ti-md"></i>
+                                </span>
                             </div>
-                            <h6 class="mb-1">Sin actividad reciente</h6>
-                            <p class="text-muted mb-0">No hay actividades recientes del equipo para mostrar.</p>
+                            <h5 class="mb-2">Sin actividad reciente</h5>
+                            <p class="mb-0 text-muted">No hay actividades recientes del equipo para mostrar.</p>
                         </div>
                     @endif
                 </div>
