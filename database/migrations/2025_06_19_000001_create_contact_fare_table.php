@@ -29,6 +29,9 @@ return new class extends Migration
 
             // Prevent duplicate entries for the same contact and fare (language combinations handled separately)
             $table->index(['contact_id', 'fare_id', 'source_language_code', 'target_language_code'], 'contact_fare_idx');
+            
+            // Unique constraint to prevent duplicates
+            $table->unique(['contact_id', 'fare_id', 'source_language_code', 'target_language_code'], 'contact_fare_unique');
         });
     }
 
