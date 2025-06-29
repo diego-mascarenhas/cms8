@@ -3,7 +3,6 @@
 @section('title', 'Tarifas de ' . $collaborator->name)
 
 @section('vendor-style')
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flag-icons/flag-icons.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
@@ -38,7 +37,6 @@
 @endsection
 
 @section('vendor-script')
-    <script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
