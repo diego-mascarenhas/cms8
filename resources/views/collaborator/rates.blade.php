@@ -191,7 +191,7 @@
                                                 @endif
                                             </label>
                                             <div class="input-group input-group-sm">
-                                                <span class="input-group-text currency-symbol {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}">€</span>
+                                                <span class="input-group-text currency-symbol {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}"></span>
                                                 <input type="number" 
                                                        class="form-control fare-input {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}" 
                                                        data-fare-id="{{ $fare->id }}"
@@ -306,11 +306,7 @@
             const key = `${sourceCode}|${targetCode}`;
             
             if (ratesData[key]) {
-                // Restore from stored data
-                $('select[name="currency"]').val(ratesData[key].currency);
-                // Don't trigger change to avoid loop
-                updateCurrencySymbols(ratesData[key].currency);
-                
+                // Restore rates and units only, keep current currency
                 $('.fare-input:not(:disabled)').each(function() {
                     const fareId = $(this).data('fare-id');
                     const rate = ratesData[key].rates[fareId] || '0.00';
@@ -361,8 +357,7 @@
                             }
                         });
                         
-                        // Update the form with loaded data
-                        $('select[name="currency"]').val(ratesData[key].currency).trigger('change');
+                        // Update only the rates, keep current currency selection
                         
                         $('.fare-input:not(:disabled)').each(function() {
                             const fareId = $(this).data('fare-id');
@@ -483,13 +478,17 @@
         const urlLanguagePair = urlParams.get('language_pair');
         const urlSameRates = urlParams.get('same_rates');
         
-        // Set currency from URL or existing rate
+        // Set currency from URL or default to EUR
         if (urlCurrency) {
             $('select[name="currency"]').val(urlCurrency);
         } else {
+            // Check if there's an existing rate with currency
             const firstRateWithCurrency = @json($collaborator->fares->first());
             if (firstRateWithCurrency && firstRateWithCurrency.pivot && firstRateWithCurrency.pivot.currency_code) {
                 $('select[name="currency"]').val(firstRateWithCurrency.pivot.currency_code);
+            } else {
+                // Default to EUR if no existing currency
+                $('select[name="currency"]').val('EUR');
             }
         }
         
