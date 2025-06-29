@@ -21,17 +21,17 @@
                         <i class='ti ti-folder text-primary' style="font-size: 1.25rem;"></i>
                     </div>
                     <div>
-                        <p class="mb-0 fw-bold fs-4" style="line-height: 1.2;">5</p>
+                        <p class="mb-0 fw-bold fs-4" style="line-height: 1.2;">{{ $collaborator->projects->count() }}</p>
                         <small class="text-muted" style="line-height: 1.2;">Proyectos</small>
                     </div>
                 </div>
                 <div class="d-flex align-items-start gap-3 mb-2 px-3">
                     <div class="bg-label-primary p-3 rounded" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
-                        <i class='ti ti-clock text-primary' style="font-size: 1.25rem;"></i>
+                        <i class='ti ti-briefcase text-primary' style="font-size: 1.25rem;"></i>
                     </div>
                     <div>
-                        <p class="mb-0 fw-bold fs-4" style="line-height: 1.2;">648</p>
-                        <small class="text-muted" style="line-height: 1.2;">Minutos</small>
+                        <p class="mb-0 fw-bold fs-4" style="line-height: 1.2;">{{ $collaborator->fares->count() ?? 0 }}</p>
+                        <small class="text-muted" style="line-height: 1.2;">Servicios</small>
                     </div>
                 </div>
             </div>

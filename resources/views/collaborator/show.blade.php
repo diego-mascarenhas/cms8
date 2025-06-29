@@ -34,7 +34,7 @@
             <div class="card mb-4">
                 <div class="card-header border-bottom">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Proyectos con bbo ({{ $collaborator->projects->count() }})</h5>
+                        <h5 class="mb-0">Proyectos con bbo</h5>
                         <div class="d-flex">
                             <div class="input-group input-group-merge me-2">
                                 <span class="input-group-text"><i class="ti ti-search"></i></span>
@@ -293,76 +293,7 @@
                 @endif
             </div>
 
-            <!-- Activity -->
-            <div class="card mb-4">
-                <div class="card-header border-bottom">
-                    <h5 class="mb-0">Actividad</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="timeline ps-3 pt-2">
-                        <li class="timeline-item pb-4 border-left-dashed">
-                            <span class="timeline-indicator timeline-indicator-success">
-                                <i class="ti ti-login"></i>
-                            </span>
-                            <div class="timeline-event ps-0 pb-0">
-                                <div class="timeline-header">
-                                    <h6 class="mb-0">Acceso a la plataforma</h6>
-                                    <small class="text-muted">Hace 10 min</small>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="timeline-item pb-4 border-left-dashed">
-                            <span class="timeline-indicator timeline-indicator-primary">
-                                <i class="ti ti-file-text"></i>
-                            </span>
-                            <div class="timeline-event ps-0 pb-0">
-                                <div class="timeline-header">
-                                    <h6 class="mb-0">Envio Acuerdo de colaboración</h6>
-                                    <small class="text-muted">Hace 25 min</small>
-                                </div>
-                                <div class="d-flex flex-wrap">
-                                    <div class="avatar me-3">
-                                        <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar">
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-0">Acuerdo de colaboración.pdf</h6>
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="timeline-item pb-4 border-left-dashed">
-                            <span class="timeline-indicator timeline-indicator-warning">
-                                <i class="ti ti-user-check"></i>
-                            </span>
-                            <div class="timeline-event ps-0 pb-0">
-                                <div class="timeline-header">
-                                    <h6 class="mb-0">Aceptado como colaborador</h6>
-                                    <small class="text-muted">Hace 45 min</small>
-                                </div>
-                                <div class="d-flex flex-wrap">
-                                    <div class="avatar me-3">
-                                        <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar">
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-0">Aceptado por Romi</h6>
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="timeline-item border-transparent">
-                            <span class="timeline-indicator timeline-indicator-info">
-                                <i class="ti ti-send"></i>
-                            </span>
-                            <div class="timeline-event ps-0 pb-0">
-                                <div class="timeline-header">
-                                    <h6 class="mb-0">Envio de datos personales</h6>
-                                    <small class="text-muted">Hace 2 días</small>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </div>
+
 
             <!-- Services -->
             <div class="card mb-4">
