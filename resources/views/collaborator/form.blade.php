@@ -271,16 +271,14 @@
                                 <div class="d-flex align-items-center">
                                     <i class="ti ti-arrow-right me-2 text-muted"></i>
                                     <i class="fi fi-${targetFlagCode} me-2"></i>
-                                    <span class="fw-medium">${targetText}</span>
-                                    ${targetValue === 'es-ES' ? '<span class="badge bg-label-success ms-2">{{ __("Native") }}</span>' : ''}
+                                                                        <span class="fw-medium">${targetText}</span>
                                 </div>
                             </div>
                             <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
                                 <i class="ti ti-x"></i>
                             </a>
-                            <input type="hidden" name="language_pairs[]" value="${sourceValue}|${targetValue}">
-                            <input type="hidden" name="is_native[]" value="${targetValue === 'es-ES' ? '1' : '0'}">
-                        </div>
+                                                                    <input type="hidden" name="language_pairs[]" value="${sourceValue}|${targetValue}">
+                                    </div>
                     </div>
                 `);
                 
@@ -340,8 +338,7 @@
                         const pairSource = "{{ $pair['source_language'] }}";
                         const pairTarget = "{{ $pair['target_language'] }}";
                         const pairSourceText = "{{ $pair['source_language_text'] }}";
-                        const pairTargetText = "{{ $pair['target_language_text'] }}";
-                        const isNative = {{ $pair['is_native'] ? 'true' : 'false' }};
+                                                const pairTargetText = "{{ $pair['target_language_text'] }}";
                         
                         // Extract flag codes safely
                         const sourceParts = pairSource.split('-');
@@ -361,16 +358,14 @@
                                         <div class="d-flex align-items-center">
                                             <i class="ti ti-arrow-right me-2 text-muted"></i>
                                             <i class="fi fi-${targetFlag} me-2"></i>
-                                            <span class="fw-medium">${pairTargetText}</span>
-                                            ${isNative ? '<span class="badge bg-label-success ms-2">{{ __("Native") }}</span>' : ''}
+                                                                                        <span class="fw-medium">${pairTargetText}</span>
                                         </div>
                                     </div>
                                     <a href="javascript:void(0)" class="text-danger ms-auto remove-pair">
                                         <i class="ti ti-x"></i>
                                     </a>
-                                    <input type="hidden" name="language_pairs[]" value="${pairSource}|${pairTarget}">
-                                    <input type="hidden" name="is_native[]" value="${isNative ? '1' : '0'}">
-                                </div>
+                                                                            <input type="hidden" name="language_pairs[]" value="${pairSource}|${pairTarget}">
+                                    </div>
                             </div>
                         `);
                         

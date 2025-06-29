@@ -126,9 +126,6 @@
                                                 <span class="fi fi-{{ $targetFlag }} me-1"></span>
                                             @endif
                                             {{ $variant->targetLanguage ? $variant->targetLanguage->name : $variant->target_language_code }}
-                                            @if($variant->is_certified)
-                                                <span class="badge bg-label-success ms-1">Nativo</span>
-                                            @endif
                                         </button>
                                     </div>
                                 @endforeach
