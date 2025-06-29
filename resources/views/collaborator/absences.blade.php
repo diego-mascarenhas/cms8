@@ -128,13 +128,13 @@
                                 <div class="card-body">
                                     <h5 class="text-center mb-4">{{ $month['name'] }}</h5>
                                     <div class="calendar-grid">
-                                        <div class="calendar-header">Do</div>
                                         <div class="calendar-header">Lu</div>
                                         <div class="calendar-header">Ma</div>
                                         <div class="calendar-header">Mi</div>
                                         <div class="calendar-header">Ju</div>
                                         <div class="calendar-header">Vi</div>
                                         <div class="calendar-header">Sa</div>
+                                        <div class="calendar-header">Do</div>
                                         
                                         @for($i = 0; $i < $month['startPadding']; $i++)
                                             <div class="calendar-day day-disabled"></div>
@@ -256,15 +256,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para actualizar el calendario cuando cambia un día de la semana
     function updateCalendarForWeekday(day, isUnavailable) {
-        // Mapear los nombres de los días a sus números correspondientes en JavaScript Date (0=domingo, 1=lunes, etc.)
+        // Mapear los nombres de los días a sus números correspondientes en JavaScript Date 
+        // Ajustados para usar lunes como primer día: 0=lunes, 1=martes, etc., 6=domingo
         const dayOfWeekMap = {
-            'sunday': 0,
-            'monday': 1,
-            'tuesday': 2,
-            'wednesday': 3,
-            'thursday': 4,
-            'friday': 5,
-            'saturday': 6
+            'monday': 0,
+            'tuesday': 1,
+            'wednesday': 2,
+            'thursday': 3,
+            'friday': 4,
+            'saturday': 5,
+            'sunday': 6
         };
         
         const dayNumber = dayOfWeekMap[day];
@@ -273,8 +274,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.calendar-day:not(.day-disabled)').forEach(calendarDay => {
             const date = calendarDay.getAttribute('data-date');
             
-            // Obtener el día de la semana de la fecha (0-6, domingo-sábado)
-            const dateDayOfWeek = new Date(date).getDay();
+            // Obtener el día de la semana de la fecha ajustado para empezar en lunes
+            let dateDayOfWeek = new Date(date).getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+            
+            // Convertir al formato donde lunes=0, martes=1, ..., domingo=6
+            dateDayOfWeek = dateDayOfWeek === 0 ? 6 : dateDayOfWeek - 1;
             
             // Si este día del calendario corresponde al día de la semana modificado
             if (dateDayOfWeek === dayNumber) {
