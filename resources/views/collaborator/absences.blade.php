@@ -45,8 +45,8 @@
     }
     
     .day-unavailable {
-        background-color: #e7f6df;
-        color: #71dd37;
+        background-color: #ffebeb;
+        color: #e55353;
         font-weight: bold;
     }
     
@@ -60,12 +60,18 @@
     }
     
     .weekday-toggle.active {
-        background-color: #696cff;
+        background-color: #e55353;
         color: white;
     }
     
     .weekday-toggle:not(.active) {
         background-color: #f0f0f0;
+    }
+    
+    /* Asegurar que los botones de peligro tengan fondo rojo completo */
+    .btn-danger {
+        background-color: #e55353 !important;
+        border-color: #e55353 !important;
     }
 </style>
 @endsection
@@ -94,15 +100,15 @@
                 <h6 class="mb-3">Disponibilidad por día de la semana</h6>
                 <div class="d-flex flex-wrap mb-4">
                     <div class="btn-group w-100 mb-3">
-                        <button type="button" class="btn weekday-toggle {{ $weeklyAvailability->monday ? '' : 'active' }}" data-day="monday">Lunes</button>
-                        <button type="button" class="btn weekday-toggle {{ $weeklyAvailability->tuesday ? '' : 'active' }}" data-day="tuesday">Martes</button>
-                        <button type="button" class="btn weekday-toggle {{ $weeklyAvailability->wednesday ? '' : 'active' }}" data-day="wednesday">Miércoles</button>
-                        <button type="button" class="btn weekday-toggle {{ $weeklyAvailability->thursday ? '' : 'active' }}" data-day="thursday">Jueves</button>
-                        <button type="button" class="btn weekday-toggle {{ $weeklyAvailability->friday ? '' : 'active' }}" data-day="friday">Viernes</button>
-                        <button type="button" class="btn weekday-toggle {{ $weeklyAvailability->saturday ? '' : 'active' }}" data-day="saturday">Sábado</button>
-                        <button type="button" class="btn weekday-toggle {{ $weeklyAvailability->sunday ? '' : 'active' }}" data-day="sunday">Domingo</button>
+                        <button type="button" class="btn {{ $weeklyAvailability->monday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="monday">Lunes</button>
+                        <button type="button" class="btn {{ $weeklyAvailability->tuesday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="tuesday">Martes</button>
+                        <button type="button" class="btn {{ $weeklyAvailability->wednesday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="wednesday">Miércoles</button>
+                        <button type="button" class="btn {{ $weeklyAvailability->thursday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="thursday">Jueves</button>
+                        <button type="button" class="btn {{ $weeklyAvailability->friday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="friday">Viernes</button>
+                        <button type="button" class="btn {{ $weeklyAvailability->saturday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="saturday">Sábado</button>
+                        <button type="button" class="btn {{ $weeklyAvailability->sunday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="sunday">Domingo</button>
                     </div>
-                    <p class="text-muted w-100 mt-2">Los días marcados indican que <strong>NO</strong> está disponible ese día de la semana.</p>
+                    <p class="text-muted w-100 mt-2">Los días marcados en <strong class="text-danger">rojo</strong> indican que <strong class="text-danger">NO</strong> está disponible ese día de la semana.</p>
                 </div>
 
                 <h6 class="mb-3">Fechas específicas de no disponibilidad</h6>
@@ -162,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const collaboratorId = {{ $collaborator->id }};
     
     // Weekly availability toggle
-    const weekdayToggles = document.querySelectorAll('.weekday-toggle');
+    const weekdayToggles = document.querySelectorAll('.btn-group button');
     const weeklyAvailability = {
         monday: {{ $weeklyAvailability->monday ? 'true' : 'false' }},
         tuesday: {{ $weeklyAvailability->tuesday ? 'true' : 'false' }},
@@ -176,8 +182,18 @@ document.addEventListener('DOMContentLoaded', function() {
     weekdayToggles.forEach(toggle => {
         toggle.addEventListener('click', function() {
             const day = this.getAttribute('data-day');
-            this.classList.toggle('active');
-            weeklyAvailability[day] = !this.classList.contains('active');
+            
+            if (this.classList.contains('btn-danger')) {
+                this.classList.remove('btn-danger');
+                this.classList.remove('text-white');
+                this.classList.add('btn-outline-secondary');
+                weeklyAvailability[day] = true;
+            } else {
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-danger');
+                this.classList.add('text-white');
+                weeklyAvailability[day] = false;
+            }
             
             // Send update to server
             fetch(`/collaborator/${collaboratorId}/absences/update-weekly`, {
