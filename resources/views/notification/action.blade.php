@@ -10,11 +10,6 @@
            onclick="sendNotification({{ $notification->id }})">
             <i class="ti ti-send ti-sm"></i>
         </a>
-
-        <!-- Edit -->
-        <a href="{{ route('notification.edit', $notification->id) }}" class="text-primary me-2" title="Editar">
-            <i class="ti ti-edit ti-sm"></i>
-        </a>
     @else
         <!-- Resend -->
         <a href="javascript:;" class="text-warning me-2" title="Reenviar notificación" 
