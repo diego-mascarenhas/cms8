@@ -7,9 +7,9 @@
         }
         $languageString = implode(',', $languageCombinations);
         
-        // Build services string for filtering (using fare IDs to match the selector)
+        // Build services string for filtering (using unique fare IDs to match the selector)
         $serviceIds = [];
-        foreach($collaborator->fares as $fare) {
+        foreach($collaborator->fares->unique('id') as $fare) {
             $serviceIds[] = $fare->id;
         }
         $servicesString = implode(',', $serviceIds);

@@ -307,7 +307,7 @@
                     <!-- Read-only view -->
                     <div id="services-display">
                         @if($collaborator->fares && $collaborator->fares->count() > 0)
-                            @foreach($collaborator->fares as $fare)
+                            @foreach($collaborator->fares->unique('id') as $fare)
                                 <span class="badge bg-label-primary rounded-pill me-1 mb-1">
                                     {{ $fare->name }}{{ $fare->type ? ' (' . $fare->type->name . ')' : '' }}
                                 </span>
@@ -326,7 +326,7 @@
                             name="fare_ids[]"
                             label="Servicios que ofrece"
                             placeholder="Seleccione servicios"
-                            :selected="$collaborator->fares ? $collaborator->fares->pluck('id')->toArray() : []"
+                            :selected="$collaborator->fares ? $collaborator->fares->unique('id')->pluck('id')->toArray() : []"
                         />
                         <div class="mt-3">
                             <button type="button" id="saveServices" class="btn btn-primary btn-sm">Guardar</button>

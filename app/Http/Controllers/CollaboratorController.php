@@ -440,8 +440,8 @@ class CollaboratorController extends Controller
         // Load updated fares with types
         $collaborator->load('fares.type');
 
-        // Format response data
-        $services = $collaborator->fares->map(function ($fare) {
+        // Format response data (use unique fares to avoid duplicates)
+        $services = $collaborator->fares->unique('id')->map(function ($fare) {
             return [
                 'id' => $fare->id,
                 'name' => $fare->name,

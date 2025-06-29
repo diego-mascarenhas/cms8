@@ -55,11 +55,12 @@ class CollaboratorDataTable extends DataTable
                 return empty($combinations) ? '' : implode('<br>', $combinations);
             })
             ->addColumn('services', function ($contact) {
-                // Get services from the contact's fares
+                // Get unique services from the contact's fares (group by fare_id)
                 $services = [];
 
                 if ($contact->fares && $contact->fares->count() > 0) {
-                    foreach ($contact->fares as $fare) {
+                    $uniqueFares = $contact->fares->unique('id');
+                    foreach ($uniqueFares as $fare) {
                         $serviceName = $fare->name;
                         if ($fare->type) {
                             $serviceName .= ' (' . $fare->type->name . ')';
@@ -79,7 +80,10 @@ class CollaboratorDataTable extends DataTable
                 return '<span class="badge bg-label-info rounded-pill" title="' . htmlspecialchars($servicesList) . '" data-bs-toggle="tooltip" data-bs-placement="auto">' . $count . ' ' . $label . '</span>';
             })
             ->orderColumn('services', function ($query, $order) {
-                $query->withCount('fares')->orderBy('fares_count', $order);
+                // Count unique fares (services) for proper ordering
+                $query->withCount(['fares as unique_fares_count' => function ($q) {
+                    $q->selectRaw('COUNT(DISTINCT fare_id)');
+                }])->orderBy('unique_fares_count', $order);
             })
             ->addColumn('projects', function ($contact) {
                 // Get the actual count of projects for this collaborator
@@ -115,7 +119,12 @@ class CollaboratorDataTable extends DataTable
     {
         $query = $model->newQuery()
             ->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'fares.type'])
-            ->withCount(['projects', 'fares']);
+            ->withCount([
+                'projects', 
+                'fares as unique_fares_count' => function ($q) {
+                    $q->selectRaw('COUNT(DISTINCT fare_id)');
+                }
+            ]);
 
         // Handle custom filters from request
         $request = request();

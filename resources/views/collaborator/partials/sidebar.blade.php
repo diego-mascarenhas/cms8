@@ -30,7 +30,7 @@
                         <i class='ti ti-briefcase text-primary' style="font-size: 1.25rem;"></i>
                     </div>
                     <div>
-                        <p class="mb-0 fw-bold fs-4" style="line-height: 1.2;">{{ $collaborator->fares->count() ?? 0 }}</p>
+                        <p class="mb-0 fw-bold fs-4" style="line-height: 1.2;">{{ $collaborator->fares->unique('id')->count() ?? 0 }}</p>
                         <small class="text-muted" style="line-height: 1.2;">Servicios</small>
                     </div>
                 </div>
