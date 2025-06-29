@@ -178,9 +178,11 @@
 				<div class="col">
 					<select class="form-select" id="delivery-date">
 						<option value="" selected>{{ __('Fecha entrega') }}</option>
-						<option value="today">Hoy</option>
-						<option value="week">Esta semana</option>
-						<option value="month">Este mes</option>
+						<option value="today" data-days="1">Hoy</option>
+						<option value="1_week" data-days="7">En 1 semana</option>
+						<option value="15_days" data-days="15">En 15 días</option>
+						<option value="1_month" data-days="30">En 1 mes</option>
+						<option value="3_months" data-days="90">En 3 meses</option>
 					</select>
 				</div>
 			</div>
@@ -248,8 +250,42 @@
 			// Initialize tooltips on page load
 			initializeTooltips();
 
+			// Validation function for days vs delivery date
+			function validateDeliveryOptions() {
+				var selectedDays = parseInt($('#days').val()) || 0;
+				var deliverySelect = $('#delivery-date');
+				
+				// Reset all options to enabled and remove disabled text
+				deliverySelect.find('option').prop('disabled', false).each(function() {
+					var originalText = $(this).data('original-text') || $(this).text();
+					$(this).data('original-text', originalText);
+					$(this).text(originalText);
+				});
+				
+				if (selectedDays > 0) {
+					deliverySelect.find('option').each(function() {
+						var optionDays = parseInt($(this).data('days'));
+						if (!isNaN(optionDays) && optionDays < selectedDays) {
+							$(this).prop('disabled', true);
+							var originalText = $(this).data('original-text') || $(this).text();
+							$(this).text(originalText + ' (insuficiente)');
+							
+							// If currently selected option becomes invalid, reset
+							if ($(this).val() === deliverySelect.val()) {
+								deliverySelect.val('');
+							}
+						}
+					});
+				}
+			}
+
 			// Table filters
 			$('#source-language, #target-language, #service, #days, #delivery-date').on('change', function () {
+				// Validate delivery options when days change
+				if (this.id === 'days') {
+					validateDeliveryOptions();
+				}
+				
 				var table = $('#collaborator-table').DataTable();
 
 				// Get current filter values
@@ -271,6 +307,9 @@
 				// Reload table with new parameters
 				table.draw();
 			});
+
+			// Initialize validation on page load
+			validateDeliveryOptions();
 
 			// Re-initialize tooltips after table draw
 			$('#collaborator-table').on('draw.dt', function () {

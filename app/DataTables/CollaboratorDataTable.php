@@ -174,16 +174,17 @@ class CollaboratorDataTable extends DataTable
                 case 'today':
                     $deliveryDate = now()->format('Y-m-d');
                     break;
-                case 'week':
-                    $deliveryDate = now()->endOfWeek()->format('Y-m-d');
+                case '1_week':
+                    $deliveryDate = now()->addWeek()->format('Y-m-d');
                     break;
-                case 'month':
-                    // If we're near the end of the month, use next month end
-                    if (now()->day > 25) {
-                        $deliveryDate = now()->addMonth()->endOfMonth()->format('Y-m-d');
-                    } else {
-                        $deliveryDate = now()->endOfMonth()->format('Y-m-d');
-                    }
+                case '15_days':
+                    $deliveryDate = now()->addDays(15)->format('Y-m-d');
+                    break;
+                case '1_month':
+                    $deliveryDate = now()->addMonth()->format('Y-m-d');
+                    break;
+                case '3_months':
+                    $deliveryDate = now()->addMonths(3)->format('Y-m-d');
                     break;
             }
         }
@@ -204,11 +205,15 @@ class CollaboratorDataTable extends DataTable
             // Apply a more precise filter using a subquery
             $availableCollaboratorIds = $this->getAvailableCollaboratorIds($startDate, $endDate, $days);
             
-            // Debug: Log available IDs
-            \Log::info('Available Collaborator IDs', [
-                'count' => count($availableCollaboratorIds),
-                'ids' => $availableCollaboratorIds
-            ]);
+            // Debug: Log available IDs (only if very few results)
+            if (count($availableCollaboratorIds) < 10) {
+                \Log::info('Available Collaborator IDs', [
+                    'count' => count($availableCollaboratorIds),
+                    'ids' => $availableCollaboratorIds,
+                    'requiredDays' => $days,
+                    'period' => $startDate . ' to ' . $endDate
+                ]);
+            }
             
             if (!empty($availableCollaboratorIds)) {
                 $query->whereIn('id', $availableCollaboratorIds);
@@ -259,7 +264,7 @@ class CollaboratorDataTable extends DataTable
     {
         $weeklyAvailability = $collaborator->weeklyAvailability;
         
-        // If no weekly availability is set, assume all days are available
+        // If no weekly availability is set, assume all days are available (many work weekends)
         if (!$weeklyAvailability) {
             $weeklyPattern = [
                 'monday' => true,
@@ -267,8 +272,8 @@ class CollaboratorDataTable extends DataTable
                 'wednesday' => true,
                 'thursday' => true,
                 'friday' => true,
-                'saturday' => false,
-                'sunday' => false,
+                'saturday' => true,
+                'sunday' => true,
             ];
         } else {
             $weeklyPattern = [
@@ -307,6 +312,20 @@ class CollaboratorDataTable extends DataTable
             }
 
             $currentDate->addDay();
+        }
+
+        // Debug for first few collaborators (only when there are issues)
+        if ($collaborator->id <= 3 && $availableDays < 5) {
+            \Log::info("Collaborator {$collaborator->id} availability calculation", [
+                'name' => $collaborator->name,
+                'hasWeeklyAvailability' => $weeklyAvailability ? 'yes' : 'no',
+                'weeklyPattern' => $weeklyPattern,
+                'absencesCount' => count($absenceDates),
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'calculatedDays' => $availableDays,
+                'totalPeriodDays' => Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) + 1
+            ]);
         }
 
         return $availableDays;
