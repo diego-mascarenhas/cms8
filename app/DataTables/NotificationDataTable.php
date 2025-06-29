@@ -90,15 +90,9 @@ class NotificationDataTable extends DataTable
             ->setTableId('notifications-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
-            ->dom('Bfrtip')
+            ->dom('lfrtip')
             ->orderBy(7, 'desc') // Order by created_at column (index 7)
             ->selectStyleSingle()
-            ->buttons([
-                Button::make('excel'),
-                Button::make('csv'),
-                Button::make('pdf'),
-                Button::make('print'),
-            ])
             ->parameters([
                 'language' => [
                     'url' => asset('assets/json/datatables/es.json'),
