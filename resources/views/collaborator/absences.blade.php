@@ -236,6 +236,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
+                    // Actualizar el calendario para reflejar el cambio sin refrescar
+                    updateCalendarForWeekday(day, !weeklyAvailability[day]);
+                    
                     Swal.fire({
                         title: 'Actualizado',
                         text: 'La disponibilidad semanal ha sido actualizada',
@@ -250,6 +253,47 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => console.error('Error:', error));
         });
     });
+    
+    // Función para actualizar el calendario cuando cambia un día de la semana
+    function updateCalendarForWeekday(day, isUnavailable) {
+        // Mapear los nombres de los días a sus números correspondientes en JavaScript Date (0=domingo, 1=lunes, etc.)
+        const dayOfWeekMap = {
+            'sunday': 0,
+            'monday': 1,
+            'tuesday': 2,
+            'wednesday': 3,
+            'thursday': 4,
+            'friday': 5,
+            'saturday': 6
+        };
+        
+        const dayNumber = dayOfWeekMap[day];
+        
+        // Actualizar todos los días del calendario que correspondan al día de la semana modificado
+        document.querySelectorAll('.calendar-day:not(.day-disabled)').forEach(calendarDay => {
+            const date = calendarDay.getAttribute('data-date');
+            
+            // Obtener el día de la semana de la fecha (0-6, domingo-sábado)
+            const dateDayOfWeek = new Date(date).getDay();
+            
+            // Si este día del calendario corresponde al día de la semana modificado
+            if (dateDayOfWeek === dayNumber) {
+                if (isUnavailable) {
+                    // Marcar como no disponible por patrón semanal
+                    calendarDay.classList.add('weekly-unavailable');
+                    calendarDay.setAttribute('data-weekly-unavailable', 'true');
+                    
+                    // Si estaba manualmente marcado como no disponible, quitamos esa marca
+                    // ya que ahora está no disponible por el patrón semanal
+                    calendarDay.classList.remove('day-unavailable');
+                } else {
+                    // Marcar como disponible
+                    calendarDay.classList.remove('weekly-unavailable');
+                    calendarDay.setAttribute('data-weekly-unavailable', 'false');
+                }
+            }
+        });
+    }
     
     // Date availability toggle
     const calendarDays = document.querySelectorAll('.calendar-day:not(.day-disabled)');
