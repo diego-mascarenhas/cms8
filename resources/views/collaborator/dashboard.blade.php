@@ -182,82 +182,83 @@
             <!-- Activity section (below top languages) -->
             <div class="card mt-4">
                 <div class="card-header">
-                    <div class="d-flex align-items-center">
-                        <i class="ti ti-activity me-2"></i>
-                        <h5 class="card-title mb-0">Actividad</h5>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <i class="ti ti-activity me-2"></i>
+                            <h5 class="card-title mb-0">Actividad del equipo</h5>
+                        </div>
+                        @can('activity-log.index')
+                            <a href="{{ route('activity-log.index') }}" class="btn btn-sm btn-outline-primary">
+                                Ver todo
+                            </a>
+                        @endcan
                     </div>
                 </div>
                 <div class="card-body pt-2">
-                    <ul class="timeline ps-0 mb-0">
-                        <li class="timeline-item ps-4 border-left-primary">
-                            <span class="timeline-indicator-dot bg-primary"></span>
-                            <div class="d-flex flex-column">
-                                <small class="text-muted mb-1">12 min ago</small>
-                                <div class="d-flex flex-column">
-                                    <span class="fw-semibold">María ha dado de alta a Pedro García</span>
-                                    <span class="text-muted">Invoices have been paid to the company</span>
-                                    <div class="d-flex align-items-center mt-2">
-                                        <div class="d-flex align-items-center bg-lighter p-2 rounded">
-                                            <i class="ti ti-file-text text-danger me-2"></i>
-                                            <span>invoices.pdf</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-
-                        <li class="timeline-item ps-4 border-left-success mt-4">
-                            <span class="timeline-indicator-dot bg-success"></span>
-                            <div class="d-flex flex-column">
-                                <small class="text-muted mb-1">45 min ago</small>
-                                <div class="d-flex flex-column">
-                                    <span class="fw-semibold">Juana Gutiérrez ha aceptado los cambios</span>
-                                    <span class="text-muted">Project meeting with john @10:15am</span>
-                                    <div class="d-flex align-items-center mt-2">
-                                        <div class="avatar me-2">
-                                            <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar"
-                                                class="rounded-circle">
-                                        </div>
+                    @if ($formattedActivities && $formattedActivities->count() > 0)
+                        <ul class="timeline ps-0 mb-0">
+                            @foreach ($formattedActivities as $activity)
+                                <li class="timeline-item ps-4 {{ $activity['is_system_activity'] ? 'border-left-primary' : 'border-left-success' }} {{ !$loop->last ? 'mt-4' : '' }}">
+                                    <span class="timeline-indicator-dot {{ $activity['is_system_activity'] ? 'bg-primary' : 'bg-success' }}"></span>
+                                    <div class="d-flex flex-column">
+                                        <small class="text-muted mb-1">{{ $activity['time_ago'] }}</small>
                                         <div class="d-flex flex-column">
-                                            <span class="fw-semibold">Lester McCarthy (Client)</span>
-                                            <small class="text-muted">CEO of ThemeSelection</small>
+                                            <span class="fw-semibold">
+                                                @php
+                                                    $description = $activity['description'];
+                                                    // Translate common activity descriptions
+                                                    $translations = [
+                                                        'created' => 'Creación',
+                                                        'updated' => 'Actualización', 
+                                                        'deleted' => 'Eliminación',
+                                                        'User logged in' => 'se conectó al sistema',
+                                                        'User logged out' => 'se desconectó del sistema',
+                                                        'File uploaded' => 'subió un archivo',
+                                                        'Data exported' => 'exportó datos',
+                                                        'Email sent' => 'envió un email',
+                                                        'Search performed' => 'realizó una búsqueda',
+                                                    ];
+                                                    
+                                                    foreach ($translations as $en => $es) {
+                                                        if (str_contains($description, $en)) {
+                                                            $description = str_replace($en, $es, $description);
+                                                            break;
+                                                        }
+                                                    }
+                                                @endphp
+                                                {{ $description }}
+                                                @if ($activity['subject_name'])
+                                                    - {{ $activity['subject_name'] }}
+                                                @endif
+                                            </span>
+                                            @if ($activity['user_name'])
+                                                <span class="text-muted">por {{ $activity['user_name'] }}</span>
+                                            @endif
+                                            
+                                            @if ($activity['user_photo'])
+                                                <div class="d-flex align-items-center mt-2">
+                                                    <div class="avatar me-2">
+                                                        <img src="{{ $activity['user_photo'] }}" alt="Avatar" class="rounded-circle">
+                                                    </div>
+                                                    <div class="d-flex flex-column">
+                                                        <span class="fw-semibold">{{ $activity['user_name'] }}</span>
+                                                    </div>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
-                                </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <div class="text-center py-4">
+                            <div class="avatar avatar-xl bg-light-secondary rounded-circle mx-auto mb-3">
+                                <i class="ti ti-activity ti-lg text-secondary"></i>
                             </div>
-                        </li>
-
-                        <li class="timeline-item ps-4 border-left-info mt-4">
-                            <span class="timeline-indicator-dot bg-info"></span>
-                            <div class="d-flex flex-column">
-                                <small class="text-muted mb-1">2 Day Ago</small>
-                                <div class="d-flex flex-column">
-                                    <span class="fw-semibold">Envío de notificación a Iván Fernández</span>
-                                    <span class="text-muted">6 team members in a project</span>
-                                    <div class="d-flex align-items-center mt-2">
-                                        <div class="avatar-group">
-                                            <div class="avatar me-1">
-                                                <img src="{{ asset('assets/img/avatars/1.png') }}" alt="Avatar"
-                                                    class="rounded-circle">
-                                            </div>
-                                            <div class="avatar me-1">
-                                                <img src="{{ asset('assets/img/avatars/2.png') }}" alt="Avatar"
-                                                    class="rounded-circle">
-                                            </div>
-                                            <div class="avatar me-1">
-                                                <img src="{{ asset('assets/img/avatars/3.png') }}" alt="Avatar"
-                                                    class="rounded-circle">
-                                            </div>
-                                            <div
-                                                class="avatar rounded-circle d-flex align-items-center justify-content-center bg-light text-secondary">
-                                                <span>+3</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
+                            <h6 class="mb-1">Sin actividad reciente</h6>
+                            <p class="text-muted mb-0">No hay actividades recientes del equipo para mostrar.</p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

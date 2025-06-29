@@ -876,6 +876,57 @@ class CollaboratorController extends Controller
         // Get collaborators with incomplete data
         $incompleteCollaborators = Contact::getIncompleteCollaborators(20);
 
-        return view('collaborator.dashboard', compact('totalCollaborators', 'newCollaboratorsThisMonth', 'activeProjects', 'activeLanguages', 'languageCombinations', 'topLanguages', 'incompleteCollaborators'));
+        // Get recent team activities (simplified approach)
+        $teamId = auth()->user()->currentTeam->id;
+        
+        // Get all team users IDs
+        $teamUserIds = \App\Models\User::whereHas('teams', function($query) use ($teamId) {
+            $query->where('teams.id', $teamId);
+        })->pluck('id');
+        
+        // Get team contact IDs
+        $teamContactIds = Contact::where('team_id', $teamId)->pluck('id');
+        
+        // Get team project IDs  
+        $teamProjectIds = Project::where('team_id', $teamId)->pluck('id');
+        
+        // Get recent activities from team members or on team subjects (limited to last 10)
+        $recentActivities = Activity::with(['causer', 'subject'])
+            ->where(function($query) use ($teamUserIds, $teamContactIds, $teamProjectIds) {
+                // Activities by team members
+                $query->whereIn('causer_id', $teamUserIds)
+                      // Or activities on team contacts
+                      ->orWhere(function($subQuery) use ($teamContactIds) {
+                          $subQuery->where('subject_type', Contact::class)
+                                   ->whereIn('subject_id', $teamContactIds);
+                      })
+                      // Or activities on team projects
+                      ->orWhere(function($subQuery) use ($teamProjectIds) {
+                          $subQuery->where('subject_type', Project::class)
+                                   ->whereIn('subject_id', $teamProjectIds);
+                      });
+            })
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        // Format activities for display
+        $formattedActivities = $recentActivities->map(function ($activity) {
+            return [
+                'id' => $activity->id,
+                'user_name' => $activity->causer ? $activity->causer->name : 'Sistema',
+                'user_photo' => $activity->causer ? $activity->causer->profile_photo_url : null,
+                'is_system_activity' => !$activity->causer,
+                'description' => $activity->description,
+                'subject_type' => $activity->subject ? class_basename($activity->subject_type) : null,
+                'subject_id' => $activity->subject_id,
+                'subject_name' => $activity->subject && method_exists($activity->subject, 'name') ? $activity->subject->name : null,
+                'time_ago' => $activity->created_at->diffForHumans(),
+                'created_at' => $activity->created_at,
+                'properties' => $activity->properties,
+            ];
+        });
+
+        return view('collaborator.dashboard', compact('totalCollaborators', 'newCollaboratorsThisMonth', 'activeProjects', 'activeLanguages', 'languageCombinations', 'topLanguages', 'incompleteCollaborators', 'formattedActivities'));
     }
 }
