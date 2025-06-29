@@ -28,7 +28,7 @@
         transition: all 0.2s;
     }
     
-    .calendar-day:hover:not(.day-disabled) {
+    .calendar-day:hover:not(.day-disabled):not(.weekly-unavailable) {
         background-color: #f0f0f0;
     }
     
@@ -48,6 +48,13 @@
         background-color: #ffebeb;
         color: #e55353;
         font-weight: bold;
+    }
+    
+    .weekly-unavailable {
+        background-color: #f8d7da;
+        color: #842029;
+        cursor: not-allowed;
+        opacity: 0.7;
     }
     
     .day-today {
@@ -138,9 +145,31 @@
                                                 $date = $month['year'] . '-' . str_pad($month['month'], 2, '0', STR_PAD_LEFT) . '-' . str_pad($day, 2, '0', STR_PAD_LEFT);
                                                 $isUnavailable = in_array($date, $absences);
                                                 $isToday = date('Y-m-d') === $date;
+                                                
+                                                // Determinar el día de la semana (0 = domingo, 1 = lunes, etc.)
+                                                $dayOfWeek = date('w', strtotime($date));
+                                                
+                                                // Verificar si el día de la semana está marcado como no disponible
+                                                $weeklyUnavailable = false;
+                                                switch($dayOfWeek) {
+                                                    case 0: $weeklyUnavailable = !$weeklyAvailability->sunday; break;
+                                                    case 1: $weeklyUnavailable = !$weeklyAvailability->monday; break;
+                                                    case 2: $weeklyUnavailable = !$weeklyAvailability->tuesday; break;
+                                                    case 3: $weeklyUnavailable = !$weeklyAvailability->wednesday; break;
+                                                    case 4: $weeklyUnavailable = !$weeklyAvailability->thursday; break;
+                                                    case 5: $weeklyUnavailable = !$weeklyAvailability->friday; break;
+                                                    case 6: $weeklyUnavailable = !$weeklyAvailability->saturday; break;
+                                                }
+                                                
+                                                $classes = [];
+                                                if ($isUnavailable) $classes[] = 'day-unavailable';
+                                                if ($weeklyUnavailable) $classes[] = 'weekly-unavailable';
+                                                if ($isToday) $classes[] = 'day-today';
+                                                $classString = implode(' ', $classes);
                                             @endphp
-                                            <div class="calendar-day {{ $isUnavailable ? 'day-unavailable' : '' }} {{ $isToday ? 'day-today' : '' }}" 
-                                                 data-date="{{ $date }}">
+                                            <div class="calendar-day {{ $classString }}" 
+                                                 data-date="{{ $date }}"
+                                                 data-weekly-unavailable="{{ $weeklyUnavailable ? 'true' : 'false' }}">
                                                 {{ $day }}
                                             </div>
                                         @endfor
@@ -227,6 +256,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     calendarDays.forEach(day => {
         day.addEventListener('click', function() {
+            // No permitir seleccionar días que están marcados como no disponibles semanalmente
+            if (this.getAttribute('data-weekly-unavailable') === 'true') {
+                Swal.fire({
+                    title: 'Día no seleccionable',
+                    text: 'Este día no está disponible según el patrón semanal configurado.',
+                    icon: 'info',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
+                return;
+            }
+            
             const date = this.getAttribute('data-date');
             
             // Send update to server
