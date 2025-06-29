@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\ContactLanguageVariant;
 use App\Models\ContactValoration;
 use App\Models\Language;
+use App\Models\Project;
 use Illuminate\Http\Request;
 
 class CollaboratorController extends Controller
@@ -794,6 +795,9 @@ class CollaboratorController extends Controller
         // Get new collaborators this month
         $newCollaboratorsThisMonth = Contact::getNewCollaboratorsThisMonth();
         
+        // Get count of active projects
+        $activeProjects = Project::getActiveProjectsCount();
+        
         // Get language combinations with less than 10 collaborators using the model method
         $languageCombinations = ContactLanguageVariant::getCombinationsWithFewCollaborators();
         
@@ -803,6 +807,6 @@ class CollaboratorController extends Controller
         // Get collaborators with incomplete data
         $incompleteCollaborators = Contact::getIncompleteCollaborators(20);
 
-        return view('collaborator.dashboard', compact('totalCollaborators', 'newCollaboratorsThisMonth', 'languageCombinations', 'topLanguages', 'incompleteCollaborators'));
+        return view('collaborator.dashboard', compact('totalCollaborators', 'newCollaboratorsThisMonth', 'activeProjects', 'languageCombinations', 'topLanguages', 'incompleteCollaborators'));
     }
 }

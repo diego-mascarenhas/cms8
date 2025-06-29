@@ -92,4 +92,19 @@ class Project extends Model
 
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
     }
+
+    /**
+     * Get count of active projects (projects in progress states)
+     */
+    public static function getActiveProjectsCount($teamId = null)
+    {
+        $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+        
+        // Active project statuses: AUTHORIZED, APPROVED, WAITING_FOR_RESPONSE, IN_PROGRESS
+        $activeStatuses = [3, 7, 8, 9];
+        
+        return static::where('team_id', $teamId)
+            ->whereIn('status_id', $activeStatuses)
+            ->count();
+    }
 }

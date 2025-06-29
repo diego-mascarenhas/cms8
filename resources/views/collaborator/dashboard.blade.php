@@ -57,7 +57,7 @@
       <div class="card-body p-3">
         <div class="d-flex align-items-center justify-content-between">
           <div>
-            <h4 class="mb-1">186</h4>
+            <h4 class="mb-1">{{ number_format($activeProjects) }}</h4>
             <small class="text-muted">Proyectos activos</small>
           </div>
           <div class="avatar">
