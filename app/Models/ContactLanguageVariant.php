@@ -62,56 +62,30 @@ class ContactLanguageVariant extends Model
                 'target_language_code'
             ])
             ->selectRaw('COUNT(DISTINCT contact_id) as collaborator_count')
+            ->with(['sourceLanguage', 'targetLanguage'])
             ->whereHas('contact', function ($query) use ($teamId) {
                 $query->where('team_id', $teamId);
             })
+            ->whereRaw('SUBSTRING_INDEX(source_language_code, "-", 1) != SUBSTRING_INDEX(target_language_code, "-", 1)') // Exclude same language combinations (comparing base language codes)
             ->groupBy('source_language_code', 'target_language_code')
             ->havingRaw('COUNT(DISTINCT contact_id) < ?', [$maxCount])
             ->orderBy('collaborator_count', 'asc')
             ->limit($limit)
             ->get()
             ->map(function ($combination) {
-                // Extract base language codes (e.g., 'es' from 'es-MX')
-                $sourceBaseCode = explode('-', $combination->source_language_code)[0];
-                $targetBaseCode = explode('-', $combination->target_language_code)[0];
-                
-                // Get language names using base codes
-                $sourceLanguage = Language::where('code', $sourceBaseCode)->first();
-                $targetLanguage = Language::where('code', $targetBaseCode)->first();
+                // Get language variant instances for this combination
+                $sourceVariant = LanguageVariant::where('code', $combination->source_language_code)->first();
+                $targetVariant = LanguageVariant::where('code', $combination->target_language_code)->first();
                 
                 return [
                     'source_code' => $combination->source_language_code,
                     'target_code' => $combination->target_language_code,
-                    'source_name' => $sourceLanguage ? $sourceLanguage->name : ucfirst($sourceBaseCode),
-                    'target_name' => $targetLanguage ? $targetLanguage->name : ucfirst($targetBaseCode),
-                    'source_flag' => static::getLanguageFlag($combination->source_language_code),
-                    'target_flag' => static::getLanguageFlag($combination->target_language_code),
+                    'source_name' => $sourceVariant ? $sourceVariant->name : $combination->source_language_code,
+                    'target_name' => $targetVariant ? $targetVariant->name : $combination->target_language_code,
+                    'source_flag' => $sourceVariant ? strtolower($sourceVariant->country_code) : strtolower(explode('-', $combination->source_language_code)[1] ?? 'us'),
+                    'target_flag' => $targetVariant ? strtolower($targetVariant->country_code) : strtolower(explode('-', $combination->target_language_code)[1] ?? 'us'),
                     'count' => $combination->collaborator_count
                 ];
             });
-    }
-
-    /**
-     * Helper method to get flag code from language code
-     */
-    public static function getLanguageFlag($languageCode)
-    {
-        $flagMap = [
-            'es-ES' => 'es',
-            'es-MX' => 'mx',
-            'es-AR' => 'ar',
-            'en-US' => 'us',
-            'en-GB' => 'gb',
-            'fr-FR' => 'fr',
-            'de-DE' => 'de',
-            'it-IT' => 'it',
-            'pt-BR' => 'br',
-            'pt-PT' => 'pt',
-            'zh-CN' => 'cn',
-            'ja-JP' => 'jp',
-            'ko-KR' => 'kr'
-        ];
-        
-        return $flagMap[$languageCode] ?? strtolower(explode('-', $languageCode)[1] ?? explode('-', $languageCode)[0]);
     }
 }

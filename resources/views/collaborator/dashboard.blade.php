@@ -320,9 +320,8 @@
   <!-- Language combinations section -->
   <div class="col-md-6 mb-4">
     <div class="card h-100">
-      <div class="card-header d-flex justify-content-between">
+      <div class="card-header">
         <h5 class="card-title mb-0">Combinaciones con menos de 10 colaboradoras</h5>
-        <a href="{{ route('collaborator-list') }}" class="btn btn-sm btn-outline-secondary">Ver todas</a>
       </div>
       <div class="card-body">
         @if($languageCombinations->count() > 0)
