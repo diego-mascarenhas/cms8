@@ -788,6 +788,9 @@ class CollaboratorController extends Controller
      */
     public function dashboard()
     {
+        // Get total count of active collaborators
+        $totalCollaborators = Contact::getTotalCollaborators();
+        
         // Get language combinations with less than 10 collaborators using the model method
         $languageCombinations = ContactLanguageVariant::getCombinationsWithFewCollaborators();
         
@@ -797,6 +800,6 @@ class CollaboratorController extends Controller
         // Get collaborators with incomplete data
         $incompleteCollaborators = Contact::getIncompleteCollaborators(20);
 
-        return view('collaborator.dashboard', compact('languageCombinations', 'topLanguages', 'incompleteCollaborators'));
+        return view('collaborator.dashboard', compact('totalCollaborators', 'languageCombinations', 'topLanguages', 'incompleteCollaborators'));
     }
 }

@@ -197,6 +197,22 @@ class Contact extends Model
     }
 
     /**
+     * Get total count of active collaborators (contacts linked to users with collaborator role)
+     */
+    public static function getTotalCollaborators($teamId = null)
+    {
+        $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+        
+        return static::where('team_id', $teamId)
+            ->whereHas('user', function ($query) {
+                $query->whereHas('roles', function ($q) {
+                    $q->where('name', 'collaborator');
+                });
+            })
+            ->count();
+    }
+
+    /**
      * Get collaborators with incomplete data
      */
     public static function getIncompleteCollaborators($limit = 20, $teamId = null)

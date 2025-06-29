@@ -21,7 +21,7 @@
       <div class="card-body p-3">
         <div class="d-flex align-items-center justify-content-between">
           <div>
-            <h4 class="mb-1">1,262</h4>
+            <h4 class="mb-1">{{ number_format($totalCollaborators) }}</h4>
             <small class="text-muted">Total colaboradoras</small>
           </div>
           <div class="avatar">
