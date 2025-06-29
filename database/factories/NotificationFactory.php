@@ -27,7 +27,7 @@ class NotificationFactory extends Factory
         $notificationContent = $this->getRandomNotificationContent();
 
         return [
-            'team_id' => Team::factory(),
+            'team_id' => 1,
             'user_id' => User::factory(),
             'contact_id' => Contact::factory(),
             'type_id' => NotificationType::inRandomOrder()->first()?->id ?? NotificationType::factory(),

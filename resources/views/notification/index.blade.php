@@ -146,7 +146,7 @@ function applyFilters() {
     if (window.LaravelDataTables && window.LaravelDataTables['notifications-table']) {
         var table = window.LaravelDataTables['notifications-table'];
         
-        // Add filter parameters
+        // Add filter parameters to the URL
         var params = {
             status: $('#statusFilter').val(),
             type: $('#typeFilter').val(),
@@ -154,8 +154,18 @@ function applyFilters() {
             date_to: $('#dateToFilter').val()
         };
         
-        // Apply filters and reload
-        table.ajax.reload();
+        // Update the URL parameters for the ajax request
+        var newUrl = table.ajax.url();
+        var separator = newUrl.indexOf('?') === -1 ? '?' : '&';
+        var queryString = $.param(params);
+        
+        if (queryString) {
+            // Remove existing filter parameters
+            newUrl = newUrl.split('?')[0];
+            newUrl += '?' + queryString;
+        }
+        
+        table.ajax.url(newUrl).load();
     }
 }
 

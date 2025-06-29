@@ -34,9 +34,9 @@ class NotificationSeeder extends Seeder
         // Create 15 random notifications with mixed states
         Notification::factory()
             ->count(15)
-            ->state(function () use ($teams, $users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes) {
                 return [
-                    'team_id' => $teams->random()->id,
+                    'team_id' => 1,
                     'user_id' => $users->random()->id,
                     'contact_id' => $contacts->random()->id,
                     'type_id' => $notificationTypes->random()->id,
@@ -50,9 +50,9 @@ class NotificationSeeder extends Seeder
         Notification::factory()
             ->count(8)
             ->projectRelated()
-            ->state(function () use ($teams, $users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes) {
                 return [
-                    'team_id' => $teams->random()->id,
+                    'team_id' => 1,
                     'user_id' => $users->random()->id,
                     'contact_id' => $contacts->random()->id,
                     'type_id' => $notificationTypes->where('name', 'Project Assignment')->first()?->id ?? $notificationTypes->random()->id,
@@ -66,9 +66,9 @@ class NotificationSeeder extends Seeder
         Notification::factory()
             ->count(5)
             ->paymentRelated()
-            ->state(function () use ($teams, $users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes) {
                 return [
-                    'team_id' => $teams->random()->id,
+                    'team_id' => 1,
                     'user_id' => $users->random()->id,
                     'contact_id' => $contacts->random()->id,
                     'type_id' => $notificationTypes->where('name', 'Payment Reminder')->first()?->id ?? $notificationTypes->random()->id,
@@ -83,9 +83,9 @@ class NotificationSeeder extends Seeder
             ->count(3)
             ->urgent()
             ->sentUnread()
-            ->state(function () use ($teams, $users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes) {
                 return [
-                    'team_id' => $teams->random()->id,
+                    'team_id' => 1,
                     'user_id' => $users->random()->id,
                     'contact_id' => $contacts->random()->id,
                     'type_id' => $notificationTypes->random()->id,
@@ -99,9 +99,9 @@ class NotificationSeeder extends Seeder
         Notification::factory()
             ->count(5)
             ->unsent()
-            ->state(function () use ($teams, $users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes) {
                 return [
-                    'team_id' => $teams->random()->id,
+                    'team_id' => 1,
                     'user_id' => $users->random()->id,
                     'contact_id' => $contacts->random()->id,
                     'type_id' => $notificationTypes->random()->id,
@@ -115,9 +115,9 @@ class NotificationSeeder extends Seeder
         Notification::factory()
             ->count(7)
             ->sentRead()
-            ->state(function () use ($teams, $users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes) {
                 return [
-                    'team_id' => $teams->random()->id,
+                    'team_id' => 1,
                     'user_id' => $users->random()->id,
                     'contact_id' => $contacts->random()->id,
                     'type_id' => $notificationTypes->random()->id,
@@ -134,7 +134,7 @@ class NotificationSeeder extends Seeder
             Notification::factory()
                 ->sentRead()
                 ->state([
-                    'team_id' => $firstContact->team_id,
+                    'team_id' => 1,
                     'user_id' => $users->random()->id,
                     'contact_id' => $firstContact->id,
                     'type_id' => $notificationTypes->where('name', 'Welcome Message')->first()?->id ?? $notificationTypes->random()->id,
@@ -148,7 +148,7 @@ class NotificationSeeder extends Seeder
                 ->sentUnread()
                 ->projectRelated()
                 ->state([
-                    'team_id' => $firstContact->team_id,
+                    'team_id' => 1,
                     'user_id' => $users->random()->id,
                     'contact_id' => $firstContact->id,
                     'type_id' => $notificationTypes->where('name', 'Project Assignment')->first()?->id ?? $notificationTypes->random()->id,
@@ -159,7 +159,7 @@ class NotificationSeeder extends Seeder
             Notification::factory()
                 ->unsent()
                 ->state([
-                    'team_id' => $firstContact->team_id,
+                    'team_id' => 1,
                     'user_id' => $users->random()->id,
                     'contact_id' => $firstContact->id,
                     'type_id' => $notificationTypes->where('name', 'General Message')->first()?->id ?? $notificationTypes->random()->id,

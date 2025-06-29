@@ -52,9 +52,33 @@ class NotificationDataTable extends DataTable
      */
     public function query(Notification $model): QueryBuilder
     {
-        return $model->newQuery()
+        $query = $model->newQuery()
             ->with(['contact', 'type', 'user'])
             ->orderBy('created_at', 'desc');
+
+        // Apply filters
+        if (request()->has('status') && request()->status != '') {
+            $status = request()->status;
+            if ($status === 'sent') {
+                $query->where('is_sent', true);
+            } elseif ($status === 'unsent') {
+                $query->where('is_sent', false);
+            }
+        }
+
+        if (request()->has('type') && request()->type != '') {
+            $query->where('type_id', request()->type);
+        }
+
+        if (request()->has('date_from') && request()->date_from != '') {
+            $query->whereDate('created_at', '>=', request()->date_from);
+        }
+
+        if (request()->has('date_to') && request()->date_to != '') {
+            $query->whereDate('created_at', '<=', request()->date_to);
+        }
+
+        return $query;
     }
 
     /**
@@ -67,7 +91,7 @@ class NotificationDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('Bfrtip')
-            ->orderBy(0, 'desc')
+            ->orderBy(7, 'desc') // Order by created_at column (index 7)
             ->selectStyleSingle()
             ->buttons([
                 Button::make('excel'),
@@ -84,6 +108,13 @@ class NotificationDataTable extends DataTable
                 'autoWidth' => false,
                 'pageLength' => 25,
                 'lengthMenu' => [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'Todo']],
+                'columnDefs' => [
+                    [
+                        'targets' => [0], // ID column
+                        'visible' => false,
+                        'searchable' => false,
+                    ],
+                ],
             ]);
     }
 
