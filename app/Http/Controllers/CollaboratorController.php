@@ -118,6 +118,7 @@ class CollaboratorController extends Controller
             'country',
             'language',
             'status',
+            'weeklyAvailability',
             'portfolios' => function ($query) {
                 $query->orderBy('year', 'desc');
             },
