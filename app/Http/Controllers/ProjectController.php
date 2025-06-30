@@ -71,6 +71,29 @@ class ProjectController extends Controller
             ],
         );
 
+        // Handle linked services
+        if ($request->has('services') && is_array($request->services)) {
+            // Clear existing services if editing
+            if ($request->id) {
+                $project->projectFares()->delete();
+            }
+
+            // Add new services
+            foreach ($request->services as $serviceData) {
+                if (!empty($serviceData['fare_id']) && !empty($serviceData['source_language_code']) && 
+                    !empty($serviceData['target_language_code']) && !empty($serviceData['quantity'])) {
+                    
+                    $project->projectFares()->create([
+                        'fare_id' => $serviceData['fare_id'],
+                        'source_language_code' => $serviceData['source_language_code'],
+                        'target_language_code' => $serviceData['target_language_code'],
+                        'quantity' => $serviceData['quantity'],
+                        'unit' => $serviceData['unit'] ?? null,
+                    ]);
+                }
+            }
+        }
+
         // If it's a new project (not editing), redirect to collaborator selection
         if (! $request->id) {
             return redirect()->route('project.select-collaborators', $project->id)
@@ -275,7 +298,8 @@ class ProjectController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Project::findOrFail($id);
+        $data = Project::with(['projectFares.fare', 'projectFares.sourceLanguage', 'projectFares.targetLanguage'])
+            ->findOrFail($id);
         $enterprise_id = $data->enterprise_id;
         $statuses = ProjectStatus::getOptions();
 
@@ -329,6 +353,19 @@ class ProjectController extends Controller
                 'message' => 'Ha ocurrido un error al eliminar el colaborador.',
             ], 500);
         }
+    }
+
+    /**
+     * Get service template for dynamic addition
+     */
+    public function getServiceTemplate(Request $request)
+    {
+        $index = $request->get('index', 0);
+        
+        return view('project.partials.service-row', [
+            'index' => $index,
+            'projectFare' => null
+        ])->render();
     }
 
     /**

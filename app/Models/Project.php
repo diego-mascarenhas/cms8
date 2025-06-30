@@ -87,6 +87,18 @@ class Project extends Model
             ->wherePivotNull('deleted_at'); // Only get non-deleted relationships
     }
 
+    public function projectFares()
+    {
+        return $this->hasMany(ProjectFare::class);
+    }
+
+    public function fares()
+    {
+        return $this->belongsToMany(Fare::class, 'project_fares')
+            ->withPivot('source_language_code', 'target_language_code', 'quantity', 'unit', 'id')
+            ->withTimestamps();
+    }
+
     public function getStatusLabelAttribute()
     {
         if ($this->status) {

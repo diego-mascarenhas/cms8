@@ -184,6 +184,26 @@
 				<textarea class="form-control" id="description" name="description" rows="6" 
 						  placeholder="{{ __('Free text') }}" required>{{ old('description', $data->description ?? '') }}</textarea>
 			</div>
+
+			<!-- Servicios vinculados -->
+			<div class="col-12">
+				<hr class="my-4">
+				<h6 class="mb-3">{{ __('Linked Services') }}</h6>
+				
+				<div id="services-container">
+					@if(isset($data) && $data->projectFares->count() > 0)
+						@foreach($data->projectFares as $index => $projectFare)
+							@include('project.partials.service-row', ['index' => $index, 'projectFare' => $projectFare])
+						@endforeach
+					@else
+						@include('project.partials.service-row', ['index' => 0, 'projectFare' => null])
+					@endif
+				</div>
+				
+				<button type="button" id="add-service" class="btn btn-outline-primary btn-sm">
+					<i class="ti ti-plus me-1"></i>{{ __('Add Service') }}
+				</button>
+			</div>
 		</div>
 		
 		<div class="pt-4">
@@ -205,6 +225,30 @@
             });
             // Note: #responsible_id is initialized by the team-users-select component
         }
+
+        // Servicios vinculados - Funcionalidad
+        let serviceIndex = {{ isset($data) && $data->projectFares ? $data->projectFares->count() : 1 }};
+
+        // Agregar nuevo servicio
+        $('#add-service').on('click', function() {
+            $.get('{{ route("project.get-service-template") }}', { index: serviceIndex })
+                .done(function(template) {
+                    $('#services-container').append(template);
+                    serviceIndex++;
+                })
+                .fail(function() {
+                    alert('{{ __('Error adding service. Please try again.') }}');
+                });
+        });
+
+        // Eliminar servicio
+        $(document).on('click', '.remove-service', function() {
+            if ($('.service-row').length > 1) {
+                $(this).closest('.service-row').remove();
+            } else {
+                alert('{{ __('At least one service is required') }}');
+            }
+        });
     });
 </script>
 
