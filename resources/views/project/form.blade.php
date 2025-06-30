@@ -5,10 +5,6 @@
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
-
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/typography.css')}}" />
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/katex.css')}}" />
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/editor.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -17,15 +13,25 @@
 <script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
-
-<script src="{{asset('assets/vendor/libs/quill/katex.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/quill/quill.js')}}"></script>
 @endsection
 
 @section('page-script')
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
 
-<script src="{{asset('assets/js/forms-editors.js')}}"></script>
+<script>
+    $(function() {
+        // Inicializar Select2 si está disponible
+        if ($.fn.select2) {
+            $('#enterprise_id, #category_id, #status_id').select2({
+                placeholder: "{{ __('Choose an option') }}",
+                allowClear: true
+            });
+            // Note: #responsible_id is initialized by the team-users-select component
+        }
+
+
+    });
+</script>
 @endsection
 
 @section('content')
@@ -185,25 +191,7 @@
 						  placeholder="{{ __('Free text') }}" required>{{ old('description', $data->description ?? '') }}</textarea>
 			</div>
 
-			<!-- Servicios vinculados -->
-			<div class="col-12">
-				<hr class="my-4">
-				                <h6 class="mb-3">Servicios vinculados</h6>
-				
-				<div id="services-container">
-					@if(isset($data) && $data->projectFares->count() > 0)
-						@foreach($data->projectFares as $index => $projectFare)
-							@include('project.partials.service-row', ['index' => $index, 'projectFare' => $projectFare])
-						@endforeach
-					@else
-						@include('project.partials.service-row', ['index' => 0, 'projectFare' => null])
-					@endif
-				</div>
-				
-				                <button type="button" id="add-service" class="btn btn-outline-primary btn-sm">
-					<i class="ti ti-plus me-1"></i>Agregar servicio
-				</button>
-			</div>
+
 		</div>
 		
 		<div class="pt-4">
@@ -214,79 +202,5 @@
 		</div>
 	</form>
 </div>
-
-<script>
-    $(function() {
-        // Inicializar Select2 si está disponible
-        if ($.fn.select2) {
-            $('#enterprise_id, #category_id, #status_id').select2({
-                placeholder: "{{ __('Choose an option') }}",
-                allowClear: true
-            });
-            // Note: #responsible_id is initialized by the team-users-select component
-        }
-
-        // Servicios vinculados - Funcionalidad
-        let serviceIndex = {{ isset($data) && $data->projectFares ? $data->projectFares->count() : 1 }};
-
-        // Agregar nuevo servicio
-        $('#add-service').on('click', function() {
-            $.get('{{ route("project.get-service-template") }}', { index: serviceIndex })
-                .done(function(template) {
-                    $('#services-container').append(template);
-                    serviceIndex++;
-                })
-                .fail(function() {
-                    alert('Error agregando servicio. Por favor intente de nuevo.');
-                });
-        });
-
-        // Eliminar servicio
-        $(document).on('click', '.remove-service', function() {
-            if ($('.service-row').length > 1) {
-                $(this).closest('.service-row').remove();
-            } else {
-                alert('Al menos un servicio es requerido');
-            }
-        });
-
-        // Manejar cambio de tarifa para actualizar unidades
-        $(document).on('change', 'select[id^="fare_"]', function() {
-            const fareId = $(this).val();
-            const serviceRow = $(this).closest('.service-row');
-            const index = serviceRow.data('index');
-            const unitSelect = serviceRow.find(`select[id="unit_${index}"]`);
-            
-            console.log('Tarifa seleccionada:', fareId);
-            console.log('Índice de fila:', index);
-            console.log('Selector de unidad encontrado:', unitSelect.length);
-            
-            if (!fareId) {
-                // Si no hay tarifa seleccionada, limpiar unidades
-                unitSelect.html('<option value="">Seleccionar unidad</option>');
-                return;
-            }
-
-            // Hacer llamada AJAX para obtener unidades
-            $.get('{{ route("project.get-fare-units") }}', { fare_id: fareId })
-                .done(function(response) {
-                    console.log('Respuesta de unidades:', response);
-                    let options = '<option value="">Seleccionar unidad</option>';
-                    
-                    if (response.units && response.units.length > 0) {
-                        response.units.forEach(function(unit) {
-                            options += `<option value="${unit.type}">${unit.label}</option>`;
-                        });
-                    }
-                    
-                    unitSelect.html(options);
-                })
-                .fail(function(xhr, status, error) {
-                    console.error('Error cargando unidades para tarifa:', fareId, error);
-                    unitSelect.html('<option value="">Error cargando unidades</option>');
-                });
-        });
-    });
-</script>
 
 @endsection

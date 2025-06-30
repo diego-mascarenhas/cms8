@@ -62,9 +62,9 @@
             <a href="{{ route('project.select-collaborators', $project->id) }}" class="btn btn-success waves-effect waves-light">
                 <i class="ti ti-users me-1"></i>{{ __('Manage Collaborators') }}
             </a>
-            <button class="btn btn-info waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#addNoteModal">
-                <i class="ti ti-note me-1"></i>{{ __('Add Note') }}
-            </button>
+            <a href="{{ route('project.add-services', $project->id) }}" class="btn btn-info waves-effect waves-light">
+                <i class="ti ti-settings me-1"></i>Vincular servicios
+            </a>
         </div>
     </div>
 
@@ -122,6 +122,82 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Linked Services Section -->
+            @if($project->projectFares && $project->projectFares->count() > 0)
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Servicios vinculados</h5>
+                    <a href="{{ route('project.add-services', $project->id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="ti ti-edit ti-xs me-1"></i>Editar servicios
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Idioma origen</th>
+                                    <th>Idioma destino</th>
+                                    <th>Servicio</th>
+                                    <th>Cantidad</th>
+                                    <th>Unidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($project->projectFares as $projectFare)
+                                <tr>
+                                    <td>
+                                        @if($projectFare->sourceLanguage)
+                                            <span class="d-flex align-items-center">
+                                                @if($projectFare->sourceLanguage->country_code)
+                                                    <i class="fi fi-{{ strtolower($projectFare->sourceLanguage->country_code) }} me-2"></i>
+                                                @endif
+                                                {{ $projectFare->sourceLanguage->name }}
+                                            </span>
+                                        @else
+                                            {{ $projectFare->source_language_code }}
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($projectFare->targetLanguage)
+                                            <span class="d-flex align-items-center">
+                                                @if($projectFare->targetLanguage->country_code)
+                                                    <i class="fi fi-{{ strtolower($projectFare->targetLanguage->country_code) }} me-2"></i>
+                                                @endif
+                                                {{ $projectFare->targetLanguage->name }}
+                                            </span>
+                                        @else
+                                            {{ $projectFare->target_language_code }}
+                                        @endif
+                                    </td>
+                                    <td>
+                                        {{ $projectFare->fare->name ?? 'N/A' }}
+                                        @if($projectFare->fare && $projectFare->fare->type)
+                                            <br><small class="text-muted">{{ $projectFare->fare->type->name }}</small>
+                                        @endif
+                                    </td>
+                                    <td>{{ $projectFare->quantity }}</td>
+                                    <td>{{ $projectFare->unit }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @else
+            <div class="card mb-4">
+                <div class="card-body text-center py-4">
+                    <i class="ti ti-settings ti-xl text-muted mb-3"></i>
+                    <h6 class="mb-2">No hay servicios vinculados</h6>
+                    <p class="text-muted mb-3">Este proyecto aún no tiene servicios vinculados.</p>
+                    <a href="{{ route('project.add-services', $project->id) }}" class="btn btn-primary">
+                        <i class="ti ti-plus me-1"></i>Vincular servicios
+                    </a>
+                </div>
+            </div>
+            @endif
 
             <!-- Collaborators Section (Floating Cards) -->
             @if($project->collaborators && $project->collaborators->count() > 0)
@@ -356,53 +432,11 @@
         </div>
     </div>
 
-    <!-- Add Note Modal -->
-    <div class="modal fade" id="addNoteModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">{{ __('Add Note') }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="addNoteForm">
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="noteContent" class="form-label">{{ __('Note Content') }}</label>
-                            <textarea class="form-control" id="noteContent" name="content" rows="4" placeholder="{{ __('Enter your note here...') }}" required></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                        <button type="submit" class="btn btn-primary">{{ __('Add Note') }}</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+
 @endsection
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-        // Handle note form submission
-        $('#addNoteForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            // TODO: Implement note saving functionality
-            const content = $('#noteContent').val();
-            if (content.trim()) {
-                // Here you would normally send an AJAX request to save the note
-                toastr.success('{{ __("Note added successfully") }}');
-                $('#addNoteModal').modal('hide');
-                $('#noteContent').val('');
-                // Reload the page or add the note dynamically
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            }
-        });
-    });
-
     // Function to remove collaborator from project
     function removeCollaboratorFromProject(projectId, collaboratorId, collaboratorName) {
         Swal.fire({

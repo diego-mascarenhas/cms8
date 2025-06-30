@@ -49,12 +49,6 @@ class ProjectController extends Controller
             'date_start' => 'nullable|date',
             'date_end' => 'nullable|date|after_or_equal:date_start',
             'category_id' => 'nullable|exists:categories,id',
-            'services' => 'required|array|min:1',
-            'services.*.fare_id' => 'required|exists:fares,id',
-            'services.*.source_language_code' => 'required|exists:language_variants,code',
-            'services.*.target_language_code' => 'required|exists:language_variants,code',
-            'services.*.quantity' => 'required|numeric|min:1',
-            'services.*.unit' => 'required|string',
         ]);
 
         $project = Project::updateOrCreate(
@@ -77,36 +71,11 @@ class ProjectController extends Controller
             ],
         );
 
-        // Handle linked services
-        if ($request->has('services') && is_array($request->services)) {
-            // Clear existing services if editing
-            if ($request->id) {
-                $project->projectFares()->delete();
-            }
-
-            // Add new services
-            foreach ($request->services as $serviceData) {
-                if (!empty($serviceData['fare_id']) && !empty($serviceData['source_language_code']) && 
-                    !empty($serviceData['target_language_code']) && !empty($serviceData['quantity'])) {
-                    
-                    $project->projectFares()->create([
-                        'fare_id' => $serviceData['fare_id'],
-                        'source_language_code' => $serviceData['source_language_code'],
-                        'target_language_code' => $serviceData['target_language_code'],
-                        'quantity' => $serviceData['quantity'],
-                        'unit' => $serviceData['unit'] ?? null,
-                    ]);
-                }
-            }
-        }
-
-        // If it's a new project (not editing), redirect to collaborator selection
         if (! $request->id) {
-            return redirect()->route('project.select-collaborators', $project->id)
-                ->with('success', 'Project created successfully. Now select collaborators to notify.');
+            return redirect()->route('project.show', $project->id)->with('success', 'Proyecto creado exitosamente.');
         }
 
-        return redirect()->route('project.show', $project->id)->with('success', 'Project updated successfully.');
+        return redirect()->route('project.show', $project->id)->with('success', 'Proyecto actualizado exitosamente.');
     }
 
     /**
@@ -294,6 +263,9 @@ class ProjectController extends Controller
             'collaborators.languageVariants.sourceLanguage',
             'collaborators.languageVariants.targetLanguage',
             'collaborators.fares.type',
+            'projectFares.fare.type',
+            'projectFares.sourceLanguage',
+            'projectFares.targetLanguage',
         ])->findOrFail($id);
 
         return view('project.show', compact('project'));
@@ -400,6 +372,51 @@ class ProjectController extends Controller
         });
 
         return response()->json(['units' => $units]);
+    }
+
+    /**
+     * Show add services page for a project
+     */
+    public function addServices(string $projectId)
+    {
+        $project = Project::with(['client', 'responsible', 'status', 'category'])
+            ->findOrFail($projectId);
+
+        return view('project.add-services', compact('project'));
+    }
+
+    /**
+     * Store services for a project
+     */
+    public function storeServices(Request $request, string $projectId)
+    {
+        $project = Project::findOrFail($projectId);
+
+        $request->validate([
+            'services' => 'required|array|min:1',
+            'services.*.fare_id' => 'required|exists:fares,id',
+            'services.*.source_language_code' => 'required|exists:language_variants,code',
+            'services.*.target_language_code' => 'required|exists:language_variants,code',
+            'services.*.quantity' => 'required|numeric|min:1',
+            'services.*.unit' => 'required|string',
+        ]);
+
+        // Clear existing services
+        $project->projectFares()->delete();
+
+        // Add new services
+        foreach ($request->services as $serviceData) {
+            $project->projectFares()->create([
+                'fare_id' => $serviceData['fare_id'],
+                'source_language_code' => $serviceData['source_language_code'],
+                'target_language_code' => $serviceData['target_language_code'],
+                'quantity' => $serviceData['quantity'],
+                'unit' => $serviceData['unit'],
+            ]);
+        }
+
+        return redirect()->route('project.select-collaborators', $project->id)
+            ->with('success', 'Servicios agregados exitosamente. Ahora selecciona colaboradores para notificar.');
     }
 
     /**
