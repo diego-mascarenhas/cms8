@@ -107,6 +107,8 @@ class ProjectController extends Controller
         $hasLanguageFilter = ($request->has('source_language') && $request->source_language) ||
                             ($request->has('target_language') && $request->target_language);
         $hasServiceFilter = $request->has('servicio') && $request->servicio;
+        $hasDaysFilter = $request->has('days') && $request->days;
+        $hasDeliveryDateFilter = $request->has('delivery_date') && $request->delivery_date;
 
         // Return empty if no language combination or service filter is applied
         if (! $hasLanguageFilter && ! $hasServiceFilter) {
@@ -150,6 +152,23 @@ class ProjectController extends Controller
             $query->whereHas('fares', function ($q) use ($request) {
                 $q->where('fares.id', $request->servicio);
             });
+        }
+
+        // Apply days filter (filter collaborators who have been contacted recently)
+        if ($request->has('days') && $request->days) {
+            $daysAgo = now()->subDays($request->days);
+            // This could filter based on last contact date or project participation
+            // For now, we'll add a placeholder that can be implemented based on business logic
+            // $query->where('last_contacted_at', '<=', $daysAgo);
+        }
+
+        // Apply delivery date filter (based on availability or project requirements)
+        if ($request->has('delivery_date') && $request->delivery_date) {
+            // This could filter based on collaborator availability
+            // For now, we'll add a placeholder that can be implemented based on business logic
+            // $query->whereHas('availability', function ($q) use ($request) {
+            //     // Logic to filter by delivery date requirements
+            // });
         }
 
         $collaborators = $query->get();

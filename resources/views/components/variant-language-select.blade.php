@@ -62,6 +62,7 @@
 @endpush
 @endonce
 
+@push('page-script')
 <script>
     $(function () {
         // Inicializar Select2 solo si no está ya inicializado
@@ -75,4 +76,5 @@
             });
         }
     });
-</script> 
+</script>
+@endpush 

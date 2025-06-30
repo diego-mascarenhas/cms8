@@ -58,7 +58,7 @@
                         placeholder="{{ __('Servicio') }}" />
                 </div>
                 <div class="col">
-                    <select class="form-select" id="dias">
+                    <select class="form-select" id="days">
                         <option value="" selected>{{ __('Días') }}</option>
                         <option value="5">5 días</option>
                         <option value="10">10 días</option>
@@ -67,11 +67,13 @@
                     </select>
                 </div>
                 <div class="col">
-                    <select class="form-select" id="fecha-entrega">
+                    <select class="form-select" id="delivery-date">
                         <option value="" selected>{{ __('Fecha entrega') }}</option>
-                        <option value="today">Hoy</option>
-                        <option value="week">Esta semana</option>
-                        <option value="month">Este mes</option>
+                        <option value="today" data-days="1">Hoy</option>
+                        <option value="1_week" data-days="7">En 1 semana</option>
+                        <option value="15_days" data-days="15">En 15 días</option>
+                        <option value="1_month" data-days="30">En 1 mes</option>
+                        <option value="3_months" data-days="90">En 3 meses</option>
                     </select>
                 </div>
             </div>
@@ -134,17 +136,8 @@
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
-			// Initialize Select2 for filters (matching the collaborator index style)
-			$('#idioma-origen, #idioma-destino').each(function() {
-				$(this).select2({
-					allowClear: true,
-					placeholder: $(this).find('option[value=""]').text() || 'Seleccionar...',
-					dropdownParent: $(this).parent(),
-					templateResult: formatLanguage,
-					templateSelection: formatLanguage,
-					width: '100%'
-				});
-			});
+			// Los componentes x-variant-language-select ya inicializan Select2 para idioma-origen e idioma-destino
+			// No necesitamos inicializarlos aquí
 
 			$('#servicio').select2({
 				allowClear: true,
@@ -152,43 +145,48 @@
 				width: '100%'
 			});
 
-			$('#dias, #fecha-entrega').select2({
+			// Initialize days and delivery-date selects (copied from collaborator index)
+			$('#days').select2({
 				allowClear: true,
 				placeholder: 'Seleccionar...',
 				width: '100%'
 			});
 
-			// Format language options with flags (copied from component)
-			function formatLanguage(language) {
-				if (!language.id) {
-					return language.text;
+			$('#delivery-date').select2({
+				allowClear: true,
+				placeholder: 'Seleccionar...',
+				width: '100%'
+			});
+
+			// La función formatLanguage ya está definida globalmente por el componente x-variant-language-select
+
+			// Validation function for days vs delivery date (copied exactly from collaborator index)
+			function validateDeliveryOptions() {
+				var selectedDays = parseInt($('#days').val()) || 0;
+				var deliverySelect = $('#delivery-date');
+				
+				// Reset all options to enabled and remove disabled text
+				deliverySelect.find('option').prop('disabled', false).each(function() {
+					var originalText = $(this).data('original-text') || $(this).text();
+					$(this).data('original-text', originalText);
+					$(this).text(originalText);
+				});
+				
+				if (selectedDays > 0) {
+					deliverySelect.find('option').each(function() {
+						var optionDays = parseInt($(this).data('days'));
+						if (!isNaN(optionDays) && optionDays < selectedDays) {
+							$(this).prop('disabled', true);
+							var originalText = $(this).data('original-text') || $(this).text();
+							$(this).text(originalText + ' (insuficiente)');
+							
+							// If currently selected option becomes invalid, reset
+							if ($(this).val() === deliverySelect.val()) {
+								deliverySelect.val('');
+							}
+						}
+					});
 				}
-				
-				const $option = $(language.element);
-				let flag = $option.data('flag');
-				
-				// If no flag specified, try to get it from base language code
-				if (!flag) {
-					const baseCode = $option.data('base')?.toLowerCase();
-					if (baseCode) {
-						// Map language codes to country codes for flags
-						const languageMap = {
-							'ja': 'jp', // Japanese -> Japan
-							'ko': 'kr', // Korean -> South Korea
-							'zh': 'cn', // Chinese -> China
-							'en': 'gb', // English -> Great Britain
-							'ar': 'sa'  // Arabic -> Saudi Arabia
-						};
-						
-						flag = languageMap[baseCode] || baseCode;
-					}
-				}
-				
-				if (!flag) {
-					return language.text;
-				}
-				
-				return $('<span><i class="fi fi-' + flag + ' me-2"></i>' + language.text + '</span>');
 			}
 
 			// Filter functionality via AJAX (same approach as collaborator index)
@@ -196,15 +194,15 @@
 				const sourceLanguage = $('#idioma-origen').val();
 				const targetLanguage = $('#idioma-destino').val();
 				const servicio = $('#servicio').val();
-				const dias = $('#dias').val();
-				const fechaEntrega = $('#fecha-entrega').val();
+				const days = $('#days').val();
+				const deliveryDate = $('#delivery-date').val();
 
 				console.log('Applying filters via AJAX:', {
 					sourceLanguage,
 					targetLanguage,
 					servicio,
-					dias,
-					fechaEntrega
+					days,
+					deliveryDate
 				});
 
 				// Check if any language or service filter is applied
@@ -230,8 +228,8 @@
 						source_language: sourceLanguage,
 						target_language: targetLanguage,
 						servicio: servicio,
-						dias: dias,
-						fecha_entrega: fechaEntrega
+						days: days,
+						delivery_date: deliveryDate
 					},
 					success: function(response) {
 						$('#collaborators-container').html(response.html);
@@ -245,11 +243,19 @@
 				});
 			}
 
-			// Auto-apply filters when changed
-			$('#idioma-origen, #idioma-destino, #servicio, #dias, #fecha-entrega').on('change', function() {
+			// Table filters (copied from collaborator index)
+			$('#idioma-origen, #idioma-destino, #servicio, #days, #delivery-date').on('change', function () {
+				// Validate delivery options when days change
+				if (this.id === 'days') {
+					validateDeliveryOptions();
+				}
+				
 				console.log('Filter changed:', this.id, 'Value:', $(this).val());
 				applyFilters();
 			});
+
+			// Initialize validation on page load
+			validateDeliveryOptions();
 
 			// Update selected count
 			function updateSelectedCount() {
