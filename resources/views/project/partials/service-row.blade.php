@@ -4,26 +4,26 @@
             <x-variant-language-select 
                 name="services[{{ $index }}][source_language_code]" 
                 id="source_language_{{ $index }}" 
-                label="{{ __('Origin') }}" 
+                label="Idioma origen" 
                 :value="$projectFare->source_language_code ?? ''" 
                 :required="true"
-                placeholder="{{ __('Select origin language') }}"
+                placeholder="Seleccionar idioma origen"
             />
         </div>
         <div class="col-md-2">
             <x-variant-language-select 
                 name="services[{{ $index }}][target_language_code]" 
                 id="target_language_{{ $index }}" 
-                label="{{ __('Target') }}" 
+                label="Idioma destino" 
                 :value="$projectFare->target_language_code ?? ''" 
                 :required="true"
-                placeholder="{{ __('Select target language') }}"
+                placeholder="Seleccionar idioma destino"
             />
         </div>
         <div class="col-md-3">
-            <label class="form-label">{{ __('Service Type') }}</label>
+            <label class="form-label">Tipo de servicio</label>
             <select name="services[{{ $index }}][fare_id]" id="fare_{{ $index }}" class="form-select" required>
-                <option value="">{{ __('Select service') }}</option>
+                <option value="">Seleccionar servicio</option>
                 @php
                     $faresByType = \App\Models\Fare::with('type')
                         ->where(function($query) {
@@ -49,17 +49,21 @@
             </select>
         </div>
         <div class="col-md-2">
-            <label class="form-label">{{ __('Quantity') }}</label>
+            <label class="form-label">Cantidad</label>
             <input type="number" name="services[{{ $index }}][quantity]" class="form-control" 
                    value="{{ $projectFare->quantity ?? '' }}" required>
         </div>
         <div class="col-md-2">
-            <label class="form-label">{{ __('Unit') }}</label>
-            <select name="services[{{ $index }}][unit]" class="form-select">
-                <option value="min/pag" {{ ($projectFare->unit ?? '') == 'min/pag' ? 'selected' : '' }}>min/pag</option>
-                <option value="words" {{ ($projectFare->unit ?? '') == 'words' ? 'selected' : '' }}>words</option>
-                <option value="pages" {{ ($projectFare->unit ?? '') == 'pages' ? 'selected' : '' }}>pages</option>
-                <option value="hours" {{ ($projectFare->unit ?? '') == 'hours' ? 'selected' : '' }}>hours</option>
+            <label class="form-label">Unidad</label>
+            <select name="services[{{ $index }}][unit]" id="unit_{{ $index }}" class="form-select unit-select" data-index="{{ $index }}">
+                <option value="">Seleccionar unidad</option>
+                @if(isset($projectFare) && $projectFare->fare && $projectFare->fare->units->count() > 0)
+                    @foreach($projectFare->fare->units as $unit)
+                        <option value="{{ $unit->type }}" {{ ($projectFare->unit ?? '') == $unit->type ? 'selected' : '' }}>
+                            {{ $unit->type }}
+                        </option>
+                    @endforeach
+                @endif
             </select>
         </div>
         <div class="col-md-1">

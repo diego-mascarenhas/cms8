@@ -244,6 +244,7 @@ Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'fi
 Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
 Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
 Route::get('/project/service-template', [ProjectController::class, 'getServiceTemplate'])->name('project.get-service-template');
+Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])->name('project.get-fare-units');
 
     // Task Routes
     Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');

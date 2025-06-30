@@ -49,6 +49,12 @@ class ProjectController extends Controller
             'date_start' => 'nullable|date',
             'date_end' => 'nullable|date|after_or_equal:date_start',
             'category_id' => 'nullable|exists:categories,id',
+            'services' => 'required|array|min:1',
+            'services.*.fare_id' => 'required|exists:fares,id',
+            'services.*.source_language_code' => 'required|exists:language_variants,code',
+            'services.*.target_language_code' => 'required|exists:language_variants,code',
+            'services.*.quantity' => 'required|numeric|min:1',
+            'services.*.unit' => 'required|string',
         ]);
 
         $project = Project::updateOrCreate(
@@ -298,7 +304,7 @@ class ProjectController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Project::with(['projectFares.fare', 'projectFares.sourceLanguage', 'projectFares.targetLanguage'])
+        $data = Project::with(['projectFares.fare.units', 'projectFares.sourceLanguage', 'projectFares.targetLanguage'])
             ->findOrFail($id);
         $enterprise_id = $data->enterprise_id;
         $statuses = ProjectStatus::getOptions();
@@ -366,6 +372,34 @@ class ProjectController extends Controller
             'index' => $index,
             'projectFare' => null
         ])->render();
+    }
+
+    /**
+     * Get units for a specific fare
+     */
+    public function getFareUnits(Request $request)
+    {
+        $fareId = $request->get('fare_id');
+        
+        if (!$fareId) {
+            return response()->json(['units' => []]);
+        }
+
+        $fare = \App\Models\Fare::with('units')->find($fareId);
+        
+        if (!$fare) {
+            return response()->json(['units' => []]);
+        }
+
+        $units = $fare->units->map(function($unit) {
+            return [
+                'id' => $unit->id,
+                'type' => $unit->type,
+                'label' => $unit->type
+            ];
+        });
+
+        return response()->json(['units' => $units]);
     }
 
     /**

@@ -188,7 +188,7 @@
 			<!-- Servicios vinculados -->
 			<div class="col-12">
 				<hr class="my-4">
-				<h6 class="mb-3">{{ __('Linked Services') }}</h6>
+				                <h6 class="mb-3">Servicios vinculados</h6>
 				
 				<div id="services-container">
 					@if(isset($data) && $data->projectFares->count() > 0)
@@ -200,8 +200,8 @@
 					@endif
 				</div>
 				
-				<button type="button" id="add-service" class="btn btn-outline-primary btn-sm">
-					<i class="ti ti-plus me-1"></i>{{ __('Add Service') }}
+				                <button type="button" id="add-service" class="btn btn-outline-primary btn-sm">
+					<i class="ti ti-plus me-1"></i>Agregar servicio
 				</button>
 			</div>
 		</div>
@@ -237,7 +237,7 @@
                     serviceIndex++;
                 })
                 .fail(function() {
-                    alert('{{ __('Error adding service. Please try again.') }}');
+                    alert('Error agregando servicio. Por favor intente de nuevo.');
                 });
         });
 
@@ -246,8 +246,45 @@
             if ($('.service-row').length > 1) {
                 $(this).closest('.service-row').remove();
             } else {
-                alert('{{ __('At least one service is required') }}');
+                alert('Al menos un servicio es requerido');
             }
+        });
+
+        // Manejar cambio de tarifa para actualizar unidades
+        $(document).on('change', 'select[id^="fare_"]', function() {
+            const fareId = $(this).val();
+            const serviceRow = $(this).closest('.service-row');
+            const index = serviceRow.data('index');
+            const unitSelect = serviceRow.find(`select[id="unit_${index}"]`);
+            
+            console.log('Tarifa seleccionada:', fareId);
+            console.log('Índice de fila:', index);
+            console.log('Selector de unidad encontrado:', unitSelect.length);
+            
+            if (!fareId) {
+                // Si no hay tarifa seleccionada, limpiar unidades
+                unitSelect.html('<option value="">Seleccionar unidad</option>');
+                return;
+            }
+
+            // Hacer llamada AJAX para obtener unidades
+            $.get('{{ route("project.get-fare-units") }}', { fare_id: fareId })
+                .done(function(response) {
+                    console.log('Respuesta de unidades:', response);
+                    let options = '<option value="">Seleccionar unidad</option>';
+                    
+                    if (response.units && response.units.length > 0) {
+                        response.units.forEach(function(unit) {
+                            options += `<option value="${unit.type}">${unit.label}</option>`;
+                        });
+                    }
+                    
+                    unitSelect.html(options);
+                })
+                .fail(function(xhr, status, error) {
+                    console.error('Error cargando unidades para tarifa:', fareId, error);
+                    unitSelect.html('<option value="">Error cargando unidades</option>');
+                });
         });
     });
 </script>
