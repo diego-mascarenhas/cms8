@@ -5,6 +5,7 @@
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -13,6 +14,7 @@
 <script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -31,6 +33,60 @@
 
 
     });
+
+    @if(isset($data->id))
+    // Function to delete project
+    function deleteProject(projectId, projectName) {
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: `¿Deseas eliminar el proyecto "${projectName}"? Esta acción no se puede deshacer.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            customClass: {
+                confirmButton: 'btn btn-danger me-3',
+                cancelButton: 'btn btn-label-secondary'
+            },
+            buttonsStyling: false
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: `/project/${projectId}`,
+                    type: 'DELETE',
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                    },
+                    success: function (response) {
+                        Swal.fire({
+                            title: 'Eliminado!',
+                            text: 'El proyecto ha sido eliminado exitosamente.',
+                            icon: 'success',
+                            customClass: {
+                                confirmButton: 'btn btn-success'
+                            },
+                            buttonsStyling: false
+                        }).then(function() {
+                            // Redirect to projects list
+                            window.location.href = '{{ route("project-list") }}';
+                        });
+                    },
+                    error: function (response) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: response.responseJSON?.message || 'Ha ocurrido un error al eliminar el proyecto',
+                            icon: 'error',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            },
+                            buttonsStyling: false
+                        });
+                    }
+                });
+            }
+        });
+    }
+    @endif
 </script>
 @endsection
 
@@ -41,9 +97,13 @@
         <p class="text-muted">{{ __('Track your projects') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        @can('project.index')
-        <a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Projects') }}</a>
-        @endcan
+        @if(isset($data->id))
+            @can('project.destroy')
+                <button type="button" class="btn btn-danger waves-effect waves-light" onclick="deleteProject({{ $data->id }}, '{{ $data->name }}')">
+                    <i class="ti ti-trash me-1"></i>{{ __('Delete Project') }}
+                </button>
+            @endcan
+        @endif
     </div>
 </div>
 
@@ -197,7 +257,11 @@
 		<div class="pt-4">
 			<div class="d-flex gap-3">
 				<button type="submit" class="btn btn-primary px-5">{{ __('Save') }}</button>
-				<button type="button" class="btn btn-label-secondary" onclick="location.href='{{ route('project-list') }}'">{{ __('Cancel') }}</button>
+				@if(isset($data->id))
+					<button type="button" class="btn btn-label-secondary" onclick="location.href='{{ route('project.show', $data->id) }}'">{{ __('Cancel') }}</button>
+				@else
+					<button type="button" class="btn btn-label-secondary" onclick="location.href='{{ route('project-list') }}'">{{ __('Cancel') }}</button>
+				@endif
 			</div>
 		</div>
 	</form>
