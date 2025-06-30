@@ -11,20 +11,30 @@ class TeamUsersSelect extends Component
     public $selected;
     public $label;
     public $id;
+    public $role;
 
-    public function __construct($selected = null, $label = 'Team Member', $id = 'user_id')
+    public function __construct($selected = null, $label = 'Team Member', $id = 'user_id', $role = null)
     {
         $this->selected = $selected;
         $this->label = $label;
         $this->id = $id;
+        $this->role = $role;
         $this->options = $this->getTeamUsers();
     }
 
     private function getTeamUsers()
     {
-        return User::whereHas('teams', function ($query) {
-            $query->where('team_id', auth()->user()->currentTeam->id);
-        })->pluck('name', 'id');
+        // Get all users from the current team (includes owner and members)
+        $teamUsers = auth()->user()->currentTeam->allUsers();
+
+        // If a specific role is requested, filter by that role
+        if ($this->role) {
+            $teamUsers = $teamUsers->filter(function ($user) {
+                return $user->hasRole($this->role);
+            });
+        }
+
+        return $teamUsers->pluck('name', 'id');
     }
 
     public function render()

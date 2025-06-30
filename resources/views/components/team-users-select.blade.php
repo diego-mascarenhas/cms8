@@ -7,9 +7,9 @@
             <option value="">Seleccione {{ $label }}</option>
         @endif
         
-        @foreach(auth()->user()->currentTeam->allUsers() as $user)
-            <option value="{{ $user->id }}" {{ $selected == $user->id ? 'selected' : '' }}>
-                {{ $user->name }}
+        @foreach($options as $userId => $userName)
+            <option value="{{ $userId }}" {{ $selected == $userId ? 'selected' : '' }}>
+                {{ $userName }}
             </option>
         @endforeach
     </select>

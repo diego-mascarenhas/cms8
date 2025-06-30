@@ -115,6 +115,8 @@
 
 			<!-- Additional fields for admins -->
 			@if(auth()->user()->hasRole('admin'))
+			{{-- Hidden: Price, discount and cost fields --}}
+			{{-- 
 			<div class="col-md-4">
 				<label for="price" class="form-label">{{ __('Price') }}</label>
 				<div class="input-group">
@@ -138,30 +140,39 @@
 						   step="0.01" min="0" value="{{ old('cost', $data->cost ?? '') }}">
 				</div>
 			</div>
+			--}}
 
+			{{-- Hidden: Start date field --}}
+			{{-- 
 			<div class="col-md-6">
 				<x-input-date id="date_start" label="{{ __('Start Date') }}" 
 					value="{{ old('date_start', $data->date_start ?? '') }}" />
 			</div>
+			--}}
 
-			<div class="col-md-6">
+			<div class="col-md-12">
 				<x-team-users-select 
 					id="responsible_id" 
 					label="{{ __('Responsible') }} (*)" 
+					role="admin"
 					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())" 
 				/>
 			</div>
 			@else
 			<!-- Simplified view for non-admins -->
+			{{-- Hidden: Start date field --}}
+			{{-- 
 			<div class="col-md-6">
 				<x-input-date id="date_start" label="{{ __('Start Date') }}" 
 					value="{{ old('date_start', $data->date_start ?? '') }}" />
 			</div>
+			--}}
 
-			<div class="col-md-6">
+			<div class="col-md-12">
 				<x-team-users-select 
 					id="responsible_id" 
 					label="{{ __('Responsible') }} (*)" 
+					role="admin"
 					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())" 
 				/>
 			</div>
@@ -188,10 +199,11 @@
     $(function() {
         // Inicializar Select2 si está disponible
         if ($.fn.select2) {
-            $('#enterprise_id, #category_id, #status_id, #responsible_id').select2({
+            $('#enterprise_id, #category_id, #status_id').select2({
                 placeholder: "{{ __('Choose an option') }}",
                 allowClear: true
             });
+            // Note: #responsible_id is initialized by the team-users-select component
         }
     });
 </script>
