@@ -28,12 +28,11 @@
         <p class="text-muted">{{ __('Select collaborators to send project notifications') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        @can('project.show')
-        <a href="{{ route('project.show', $project->id) }}" class="btn btn-primary waves-effect waves-light"><i class="ti ti-eye me-1"></i>{{ __('View') }} {{ __('Project') }}</a>
-        @endcan
-        @can('project.edit')
-        <a href="{{ route('project.edit', $project->id) }}" class="btn btn-success waves-effect waves-light"><i class="ti ti-edit me-1"></i>{{ __('Edit') }} {{ __('Project') }}</a>
-        @endcan
+		<div class="d-flex align-content-center flex-wrap gap-3">
+			<a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary waves-effect waves-light">
+				<i class="ti ti-arrow-left me-1"></i>Volver al proyecto
+			</a>
+		</div>
     </div>
 </div>
 
