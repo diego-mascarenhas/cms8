@@ -220,10 +220,6 @@
 				</div>
 				<div class="col-md-6"></div>
 				<div class="col-md-5 d-flex justify-content-end align-items-center gap-2">
-					<button class="btn btn-outline-secondary me-2" id="clear-filters" style="height: 40px;">
-						<i class="ti ti-x me-1"></i>
-						<span style="white-space: nowrap;">{{ __('Limpiar') }}</span>
-					</button>
 					<input type="text" class="form-control w-auto me-2" id="search" placeholder="{{ __('Buscar') }}"
 						style="width: 350px;">
 					<div class="dropdown">
@@ -245,6 +241,9 @@
 						<i class="ti ti-plus"></i>
 						<span style="white-space: nowrap;">{{ __('Añadir nuevo') }}</span>
 					</a>
+					<button class="btn btn-outline-secondary ms-2" id="clear-filters" style="height: 40px;" title="{{ __('Limpiar filtros') }}">
+						<i class="ti ti-refresh"></i>
+					</button>
 				</div>
 			</div>
 
