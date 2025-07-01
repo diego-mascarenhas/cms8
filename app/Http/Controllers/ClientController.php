@@ -75,7 +75,20 @@ class ClientController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $client = Enterprise::with([
+            'responsible',
+            'status',
+            'projects.responsible',
+            'projects.status',
+            'projects.category'
+        ])->findOrFail($id);
+
+        // Ensure it's a client (type_id = 1)
+        if ($client->type_id != 1) {
+            return redirect()->route('client-list')->with('error', 'Record not found.');
+        }
+
+        return view('client.show', compact('client'));
     }
 
     /**

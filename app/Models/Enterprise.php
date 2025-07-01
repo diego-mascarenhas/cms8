@@ -97,6 +97,11 @@ class Enterprise extends Model
         return $this->belongsTo(EnterpriseStatus::class);
     }
 
+    public function projects()
+    {
+        return $this->hasMany(Project::class, 'enterprise_id');
+    }
+
     public function getStatusLabelAttribute()
     {
         if ($this->status) {

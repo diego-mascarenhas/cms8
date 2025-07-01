@@ -284,6 +284,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $administratorRole = Role::create(['name' => 'admin']);
         $administratorRole->syncPermissions([
             'client.index',
+            'client.list',
+            'client.create',
+            'client.show',
+            'client.edit',
+            'client.store',
+            'client.update',
+            'client.destroy',
             'contact.index',
             'contact.list',
             'contact.create',
@@ -300,7 +307,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'collaborator.store',
             'collaborator.update',
             'collaborator.destroy',
-            'client.list',
             'list60.list',
             'project.index',
             'project.list',

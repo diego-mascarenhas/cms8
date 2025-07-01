@@ -60,9 +60,14 @@
 
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">Clientes</h4>
+            <h4 class="mb-1 mt-3">{{ __('Clients') }}</h4>
             <p class="text-muted">Gestiona y personaliza a tus clientes</p>
         </div>
+        @can('client.create')
+        <div class="mt-3 mt-md-0">
+            <a href="{{ route('client.create') }}" class="btn btn-primary"> <i class="ti ti-plus me-1"></i> {{ __('Add') }} {{ __('Client') }} </a>
+        </div>
+        @endcan
     </div>
 
     <div class="card">
