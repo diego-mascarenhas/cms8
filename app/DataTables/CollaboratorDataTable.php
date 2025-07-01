@@ -130,6 +130,11 @@ class CollaboratorDataTable extends DataTable
         // Handle custom filters from request
         $request = request();
 
+        // Handle dashboard filters
+        if ($request->has('dashboard_filter') && $request->dashboard_filter) {
+            $query = $this->applyDashboardFilter($query, $request->dashboard_filter);
+        }
+
         // Filter by source language
         if ($request->has('source_language') && $request->source_language) {
             $query->whereHas('languageVariants', function ($q) use ($request) {
@@ -221,6 +226,45 @@ class CollaboratorDataTable extends DataTable
                 // If no collaborators are available, return empty result
                 $query->whereRaw('1 = 0');
             }
+        }
+
+        return $query;
+    }
+
+    /**
+     * Apply dashboard filter based on the selected filter type
+     */
+    private function applyDashboardFilter(QueryBuilder $query, $filterType)
+    {
+        switch ($filterType) {
+            case 'pending-acceptance':
+                // Contacts without a linked user
+                $query->whereNull('user_id');
+                break;
+                
+            case 'collaborators':
+                // Contacts with a user that has the 'collaborator' role
+                $query->whereHas('user', function ($q) {
+                    $q->whereHas('roles', function ($roleQuery) {
+                        $roleQuery->where('name', 'collaborator');
+                    });
+                });
+                break;
+                
+            case 'new-this-week':
+                // Contacts created in the last week and linked to a user
+                $query->whereNotNull('user_id')
+                      ->where('created_at', '>=', now()->subWeek());
+                break;
+                
+            case 'not-updated-six-months':
+                // Contacts not updated in the last 6 months
+                $query->where('updated_at', '<=', now()->subMonths(6));
+                break;
+                
+            default:
+                // No filter applied
+                break;
         }
 
         return $query;

@@ -48,6 +48,22 @@
 		font-size: 12px;
 		line-height: 1.4;
 	}
+
+	/* Active filter styling */
+	.filter-status.active-filter {
+		transform: scale(1.1);
+		box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.25);
+		transition: all 0.2s ease-in-out;
+	}
+
+	.filter-status {
+		transition: all 0.2s ease-in-out;
+		cursor: pointer;
+	}
+
+	.filter-status:hover {
+		transform: scale(1.05);
+	}
 </style>
 
 @section('content')
@@ -84,8 +100,10 @@
 							</div>
 							<small class="text-muted">{{ __('Contactos sin usuario') }}</small>
 						</div>
-						<div class="avatar bg-label-warning rounded p-2">
-							<i class="ti ti-clock"></i>
+						<div class="avatar">
+							<a href="#" class="avatar-initial rounded bg-label-warning filter-status" data-filter="pending-acceptance">
+								<i class="ti ti-clock"></i>
+							</a>
 						</div>
 					</div>
 				</div>
@@ -103,8 +121,10 @@
 							</div>
 							<small class="text-muted">{{ __('Con rol colaborador') }}</small>
 						</div>
-						<div class="avatar bg-label-primary rounded p-2">
-							<i class="ti ti-users"></i>
+						<div class="avatar">
+							<a href="#" class="avatar-initial rounded bg-label-primary filter-status" data-filter="collaborators">
+								<i class="ti ti-users"></i>
+							</a>
 						</div>
 					</div>
 				</div>
@@ -122,8 +142,10 @@
 							</div>
 							<small class="text-muted">{{ __('Última semana') }}</small>
 						</div>
-						<div class="avatar bg-label-success rounded p-2">
-							<i class="ti ti-user-plus"></i>
+						<div class="avatar">
+							<a href="#" class="avatar-initial rounded bg-label-success filter-status" data-filter="new-this-week">
+								<i class="ti ti-user-plus"></i>
+							</a>
 						</div>
 					</div>
 				</div>
@@ -141,8 +163,10 @@
 							</div>
 							<small class="text-muted">{{ __('Últimos 6 meses') }}</small>
 						</div>
-						<div class="avatar bg-label-danger rounded p-2">
-							<i class="ti ti-user-check"></i>
+						<div class="avatar">
+							<a href="#" class="avatar-initial rounded bg-label-danger filter-status" data-filter="not-updated-six-months">
+								<i class="ti ti-user-check"></i>
+							</a>
 						</div>
 					</div>
 				</div>
@@ -196,6 +220,10 @@
 				</div>
 				<div class="col-md-6"></div>
 				<div class="col-md-5 d-flex justify-content-end align-items-center gap-2">
+					<button class="btn btn-outline-secondary me-2" id="clear-filters" style="height: 40px;">
+						<i class="ti ti-x me-1"></i>
+						<span style="white-space: nowrap;">{{ __('Limpiar') }}</span>
+					</button>
 					<input type="text" class="form-control w-auto me-2" id="search" placeholder="{{ __('Buscar') }}"
 						style="width: 350px;">
 					<div class="dropdown">
@@ -295,6 +323,9 @@
 				var days = $('#days').val();
 				var deliveryDate = $('#delivery-date').val();
 
+				// Clear dashboard filter when using regular filters
+				$('.filter-status').removeClass('active-filter');
+
 				// Add parameters to ajax request
 				table.settings()[0].ajax.data = function (d) {
 					d.source_language = sourceLanguage;
@@ -302,6 +333,7 @@
 					d.service = service;
 					d.days = days;
 					d.delivery_date = deliveryDate;
+					// Don't include dashboard_filter when using regular filters
 				};
 
 				// Reload table with new parameters
@@ -310,6 +342,49 @@
 
 			// Initialize validation on page load
 			validateDeliveryOptions();
+
+			// Dashboard filters
+			$('.filter-status').on('click', function(e) {
+				e.preventDefault();
+				var filter = $(this).data('filter');
+				var table = $('#collaborator-table').DataTable();
+
+				// Clear other filters first
+				$('#source-language, #target-language, #service, #days, #delivery-date').val('');
+
+				// Add the custom filter parameter
+				table.settings()[0].ajax.data = function (d) {
+					d.dashboard_filter = filter;
+				};
+
+				// Reload table with new filter
+				table.draw();
+
+				// Visual feedback - add active state
+				$('.filter-status').removeClass('active-filter');
+				$(this).addClass('active-filter');
+			});
+
+			// Clear all filters
+			$('#clear-filters').on('click', function(e) {
+				e.preventDefault();
+				var table = $('#collaborator-table').DataTable();
+
+				// Clear all form filters
+				$('#source-language, #target-language, #service, #days, #delivery-date').val('');
+				$('#search').val('');
+
+				// Clear dashboard filter active state
+				$('.filter-status').removeClass('active-filter');
+
+				// Reset table filters
+				table.settings()[0].ajax.data = function (d) {
+					// No additional parameters
+				};
+
+				// Clear search and reload table
+				table.search('').draw();
+			});
 
 			// Re-initialize tooltips after table draw
 			$('#collaborator-table').on('draw.dt', function () {
