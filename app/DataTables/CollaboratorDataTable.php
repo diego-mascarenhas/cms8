@@ -437,27 +437,27 @@ class CollaboratorDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')
-                ->title(__('Colaborador'))
+                ->title(__('Collaborator'))
                 ->addClass('all'),
             Column::make('rating')
-                ->title(__('Valoración'))
+                ->title(__('Rating'))
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('language_combinations')
-                ->title(__('Combinación'))
+                ->title(__('Combination'))
                 ->className('text-center')
                 ->addClass('min-tablet')
                 ->searchable(true)
                 ->orderable(false),
             Column::make('services')
-                ->title(__('Servicios'))
+                ->title(__('Services'))
                 ->className('text-center')
                 ->addClass('min-tablet')
                 ->searchable(true),
             Column::make('projects')
-                ->title(__('Proyectos'))
+                ->title(__('Projects'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false),

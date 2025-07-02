@@ -30,7 +30,7 @@
     <div class="d-flex align-content-center flex-wrap gap-3">
 		<div class="d-flex align-content-center flex-wrap gap-3">
 			<a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary waves-effect waves-light">
-				<i class="ti ti-arrow-left me-1"></i>Volver al proyecto
+				<i class="ti ti-arrow-left me-1"></i>{{ __('Back to project') }}
 			</a>
 		</div>
     </div>
@@ -43,23 +43,23 @@
 		    <!-- Filters Section -->
     <div class="card mb-4">
         <div class="card-body">
-            <h5 class="mb-3">Filtros</h5>
+            <h5 class="mb-3">{{ __('Filters') }}</h5>
             <div class="row g-3">
                 <div class="col">
                     <x-variant-language-select name="idioma-origen" id="idioma-origen" label="" :required="false"
-                        placeholder="{{ __('Idioma origen') }}" />
+                        placeholder="{{ __('Source language') }}" />
                 </div>
                 <div class="col">
                     <x-variant-language-select name="idioma-destino" id="idioma-destino" label="" :required="false"
-                        placeholder="{{ __('Idioma destino') }}" />
+                        placeholder="{{ __('Target language') }}" />
                 </div>
                 <div class="col">
                     <x-fare-select name="servicio" id="servicio" label="" :required="false"
-                        placeholder="{{ __('Servicio') }}" />
+                        placeholder="{{ __('Service') }}" />
                 </div>
                 <div class="col">
                     <select class="form-select" id="days">
-                        <option value="" selected>{{ __('Días') }}</option>
+                        <option value="" selected>{{ __('Days') }}</option>
                         <option value="5">5 días</option>
                         <option value="10">10 días</option>
                         <option value="15">15 días</option>

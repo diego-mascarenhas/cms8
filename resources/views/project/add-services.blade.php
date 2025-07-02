@@ -195,15 +195,15 @@
 				</div>
 				
 				<button type="button" id="add-service" class="btn btn-outline-primary btn-sm">
-					<i class="ti ti-plus me-1"></i>Agregar servicio
+					<i class="ti ti-plus me-1"></i>{{ __('Add service') }}
 				</button>
 			</div>
 		</div>
 		
 		<div class="pt-4">
 			<div class="d-flex gap-3">
-				<button type="submit" class="btn btn-primary px-5">Guardar servicios</button>
-				<a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary">Omitir por ahora</a>
+				<button type="submit" class="btn btn-primary px-5">{{ __('Save services') }}</button>
+				<a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary">{{ __('Skip for now') }}</a>
 			</div>
 		</div>
 	</form>

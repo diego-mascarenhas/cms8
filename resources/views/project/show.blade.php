@@ -63,7 +63,7 @@
 				<i class="ti ti-users me-1"></i>{{ __('Manage Collaborators') }}
 			</a>
 			<a href="{{ route('project.add-services', $project->id) }}" class="btn btn-info waves-effect waves-light">
-				<i class="ti ti-settings me-1"></i>Vincular servicios
+				<i class="ti ti-settings me-1"></i>{{ __('Link services') }}
 			</a>
 			@can('project.index')
 				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Projects') }}</a>
@@ -130,9 +130,9 @@
 			@if($project->projectFares && $project->projectFares->count() > 0)
 			<div class="card mb-4">
 				<div class="card-header d-flex justify-content-between align-items-center">
-					<h5 class="mb-0">Servicios vinculados</h5>
+					<h5 class="mb-0">{{ __('Linked services') }}</h5>
 					<a href="{{ route('project.add-services', $project->id) }}" class="btn btn-sm btn-outline-primary">
-						<i class="ti ti-edit ti-xs me-1"></i>Editar servicios
+						<i class="ti ti-edit ti-xs me-1"></i>{{ __('Edit services') }}
 					</a>
 				</div>
 				<div class="card-body">
@@ -140,11 +140,11 @@
 						<table class="table table-sm">
 							<thead>
 								<tr>
-									<th>Idioma origen</th>
-									<th>Idioma destino</th>
-									<th>Servicio</th>
-									<th>Cantidad</th>
-									<th>Unidad</th>
+									<th>{{ __('Source language') }}</th>
+									<th>{{ __('Target language') }}</th>
+									<th>{{ __('Service') }}</th>
+									<th>{{ __('Quantity') }}</th>
+									<th>{{ __('Unit') }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -193,10 +193,10 @@
 			<div class="card mb-4">
 				<div class="card-body text-center py-4">
 					<i class="ti ti-settings ti-xl text-muted mb-3"></i>
-					<h6 class="mb-2">No hay servicios vinculados</h6>
-					<p class="text-muted mb-3">Este proyecto aún no tiene servicios vinculados.</p>
+					<h6 class="mb-2">{{ __('No linked services') }}</h6>
+					<p class="text-muted mb-3">{{ __('This project has no linked services yet') }}</p>
 					<a href="{{ route('project.add-services', $project->id) }}" class="btn btn-primary">
-						<i class="ti ti-plus me-1"></i>Vincular servicios
+						<i class="ti ti-plus me-1"></i>{{ __('Link services') }}
 					</a>
 				</div>
 			</div>
