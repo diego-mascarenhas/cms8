@@ -24,12 +24,18 @@ class NewUserNotification extends Mailable
         $this->user = $user;
         $this->team = $team;
         
-        // Generate password reset token and URL
-        $token = Password::createToken($user);
-        $this->resetUrl = url(route('password.reset', [
-            'token' => $token,
-            'email' => $user->email,
-        ], false));
+        try {
+            // Generate password reset token and URL
+            $token = Password::createToken($user);
+            $this->resetUrl = url(route('password.reset', [
+                'token' => $token,
+                'email' => $user->email,
+            ], false));
+        } catch (\Exception $e) {
+            \Log::error("Failed to generate password reset token for user {$user->id}: " . $e->getMessage());
+            // Fallback URL to password reset request page
+            $this->resetUrl = url(route('password.request'));
+        }
     }
 
     /**

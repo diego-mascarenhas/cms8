@@ -49,14 +49,43 @@ class SendNewUserWelcomeEmail implements ShouldQueue
     public function handle()
     {
         try {
-            Log::info("Sending welcome email to user: {$this->user->email}");
+            // Verify user still exists
+            if (!$this->user) {
+                Log::warning("User not found when trying to send welcome email");
+                return;
+            }
 
-            Mail::to($this->user->email)->send(new NewUserNotification($this->user, $this->team));
+            // Verify email is valid
+            if (!filter_var($this->user->email, FILTER_VALIDATE_EMAIL)) {
+                Log::error("Invalid email address for user {$this->user->id}: {$this->user->email}");
+                return;
+            }
 
-            Log::info("Welcome email sent successfully to: {$this->user->email}");
+            // Refresh user from database to ensure it still exists
+            $user = \App\Models\User::find($this->user->id);
+            if (!$user) {
+                Log::warning("User {$this->user->id} no longer exists in database");
+                return;
+            }
+
+            // Refresh team from database if provided
+            $team = null;
+            if ($this->team) {
+                $team = \App\Models\Team::find($this->team->id);
+                if (!$team) {
+                    Log::warning("Team {$this->team->id} no longer exists, sending email without team info");
+                }
+            }
+
+            Log::info("Sending welcome email to user: {$user->email}");
+
+            Mail::to($user->email)->send(new NewUserNotification($user, $team));
+
+            Log::info("Welcome email sent successfully to: {$user->email}");
 
         } catch (\Exception $e) {
-            Log::error("Failed to send welcome email to {$this->user->email}: " . $e->getMessage());
+            Log::error("Failed to send welcome email to user {$this->user->id}: " . $e->getMessage());
+            Log::error("Exception details: " . $e->getTraceAsString());
             
             // Re-throw the exception to trigger retry mechanism
             throw $e;
