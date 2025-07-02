@@ -19,6 +19,7 @@ class ContactSeeder extends Seeder
                 [
                     'team_id' => 2,
                     'name' => 'Diego Mascarenhas',
+                    'email' => 'diego.mascarenhas@revisionalpha.com',
                     'position' => 'CEO',
                     'birthday' => '1975-11-25',
                     'profile' => 'Software Artisan & Freaky ;-)',
@@ -29,6 +30,7 @@ class ContactSeeder extends Seeder
                 [
                     'team_id' => 2,
                     'name' => 'Carla de Loureiro',
+                    'email' => 'carla.loureiro@revisionalpha.com',
                     'position' => 'CTO',
                     'birthday' => '1976-09-24',
                     'profile' => 'Developer Senior',
@@ -38,7 +40,8 @@ class ContactSeeder extends Seeder
                 ],
                 [
                     'team_id' => 2,
-                    'name' => 'Lucio Buxal',
+                    'name' => 'Fernando Barneto',
+                    'email' => 'fernando@revisionalpha.com',
                     'position' => 'TSS',
                     'profile' => 'Technical Support Specialist',
                     'creator_id' => 1,
@@ -47,7 +50,8 @@ class ContactSeeder extends Seeder
                 ],
                 [
                     'team_id' => 2,
-                    'name' => 'Victoria',
+                    'name' => 'Cecilia Nuñez',
+                    'email' => 'cecilia@revisionalpha.com',
                     'position' => 'ADM',
                     'profile' => 'Administrative Manager',
                     'creator_id' => 1,
@@ -60,6 +64,7 @@ class ContactSeeder extends Seeder
                 $contact = Contact::create([
                     'team_id' => $contactData['team_id'],
                     'name' => $contactData['name'],
+                    'email' => $contactData['email'],
                     'creator_id' => $contactData['creator_id'],
                     'responsible_id' => $contactData['responsible_id'],
                     'status_id' => $contactData['status_id'],
@@ -84,6 +89,7 @@ class ContactSeeder extends Seeder
                 [
                     'team_id' => 1,
                     'name' => 'Guzmán',
+                    'email' => 'guzman@brandty.com',
                     'position' => 'CEO',
                     'birthday' => '1985-05-15',
                     'profile' => 'Experienced entrepreneur and marketing expert.',
@@ -94,6 +100,7 @@ class ContactSeeder extends Seeder
                 [
                     'team_id' => 1,
                     'name' => 'Eva',
+                    'email' => 'eva@brandty.com',
                     'position' => 'COO',
                     'birthday' => '1988-09-22',
                     'profile' => 'Operations specialist with a background in project management.',
@@ -104,6 +111,7 @@ class ContactSeeder extends Seeder
                 [
                     'team_id' => 1,
                     'name' => 'Cristina',
+                    'email' => 'cristina@brandty.com',
                     'position' => 'Creative Director',
                     'birthday' => '1990-03-10',
                     'profile' => 'Innovative designer with a passion for branding and visual communication.',
@@ -117,6 +125,7 @@ class ContactSeeder extends Seeder
                 $contact = Contact::create([
                     'team_id' => $contactData['team_id'],
                     'name' => $contactData['name'],
+                    'email' => $contactData['email'],
                     'creator_id' => $contactData['creator_id'],
                     'responsible_id' => $contactData['responsible_id'],
                     'status_id' => $contactData['status_id'],
@@ -160,6 +169,7 @@ class ContactSeeder extends Seeder
                 [
                     'team_id' => 1,
                     'name' => 'Lluis Sarda',
+                    'email' => 'lluis.sarda@generatorlanding.com',
                     'position' => 'CEO',
                     'birthday' => '1985-05-15',
                     'profile' => 'Experienced entrepreneur and marketing expert.',
@@ -173,6 +183,7 @@ class ContactSeeder extends Seeder
                 $contact = Contact::create([
                     'team_id' => $contactData['team_id'],
                     'name' => $contactData['name'],
+                    'email' => $contactData['email'],
                     'creator_id' => $contactData['creator_id'],
                     'responsible_id' => $contactData['responsible_id'],
                     'status_id' => $contactData['status_id'],

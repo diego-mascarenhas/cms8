@@ -937,4 +937,122 @@ class CollaboratorController extends Controller
 
         return view('collaborator.dashboard', compact('totalCollaborators', 'newCollaboratorsThisMonth', 'activeProjects', 'activeLanguages', 'languageCombinations', 'topLanguages', 'incompleteCollaborators', 'formattedActivities'));
     }
+
+    /**
+     * Show the accept form for a pending collaborator
+     */
+    public function showAcceptForm($id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            abort(403, 'No tienes permisos para esta acción.');
+        }
+
+        $collaborator = Contact::findOrFail($id);
+
+        // Check if collaborator is already accepted (has user_id)
+        if ($collaborator->user_id) {
+            return redirect()->route('collaborator.show', $id)
+                ->with('warning', 'Este colaborador ya ha sido aceptado.');
+        }
+
+        return view('collaborator.accept', compact('collaborator'));
+    }
+
+    /**
+     * Process the acceptance of a collaborator
+     */
+    public function processAccept(Request $request, $id)
+    {
+        if (!auth()->user()->can('collaborator.edit')) {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+        }
+
+        $collaborator = Contact::findOrFail($id);
+
+        // Check if collaborator is already accepted
+        if ($collaborator->user_id) {
+            return redirect()->route('collaborator.show', $id)
+                ->with('warning', 'Este colaborador ya ha sido aceptado.');
+        }
+
+        $validated = $request->validate([
+            'action' => 'required|in:accept,reject',
+            'rejection_reason' => 'required_if:action,reject|nullable|string|max:500',
+        ]);
+
+        if ($validated['action'] === 'reject') {
+            // Handle rejection
+            $collaborator->update([
+                'status_id' => 3, // Assuming 3 is rejected status
+                'notes' => ($collaborator->notes ? $collaborator->notes . "\n\n" : '') . 
+                          "Rechazado el " . now()->format('d/m/Y H:i') . " por " . auth()->user()->name . 
+                          "\nMotivo: " . $validated['rejection_reason']
+            ]);
+
+            // Log the activity
+            activity()
+                ->causedBy(auth()->user())
+                ->performedOn($collaborator)
+                ->withProperties([
+                    'action' => 'rejected',
+                    'reason' => $validated['rejection_reason'],
+                    'rejected_by' => auth()->user()->name,
+                ])
+                ->log('Colaborador rechazado');
+
+            return redirect()->route('collaborator-list')
+                ->with('success', 'Colaborador rechazado correctamente.');
+        }
+
+        // Handle acceptance - create user and link
+        try {
+            // Generate a random password
+            $password = \Str::random(12);
+
+            // Create the user
+            $user = \App\Models\User::create([
+                'name' => $collaborator->name . ' ' . $collaborator->surname,
+                'email' => $collaborator->email,
+                'password' => \Hash::make($password),
+                'email_verified_at' => now(),
+            ]);
+
+            // Assign collaborator role
+            $user->assignRole('collaborator');
+
+            // Add user to the current team
+            $team = auth()->user()->currentTeam;
+            $team->users()->attach($user->id, ['role' => 'collaborator']);
+
+            // Link the user to the collaborator
+            $collaborator->update([
+                'user_id' => $user->id,
+                'status_id' => 1, // Assuming 1 is active status
+            ]);
+
+            // Log the activity
+            activity()
+                ->causedBy(auth()->user())
+                ->performedOn($collaborator)
+                ->withProperties([
+                    'action' => 'accepted',
+                    'user_created' => $user->id,
+                    'accepted_by' => auth()->user()->name,
+                ])
+                ->log('Colaborador aceptado y usuario creado');
+
+            // Send welcome email with credentials (optional)
+            // You can implement this later if needed
+            // Mail::to($user->email)->send(new WelcomeCollaboratorMail($user, $password));
+
+            return redirect()->route('collaborator.show', $id)
+                ->with('success', 'Colaborador aceptado correctamente. Usuario creado con email: ' . $user->email);
+
+        } catch (\Exception $e) {
+            \Log::error('Error accepting collaborator: ' . $e->getMessage());
+            
+            return back()
+                ->with('error', 'Error al aceptar el colaborador: ' . $e->getMessage());
+        }
+    }
 }

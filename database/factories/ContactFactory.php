@@ -35,6 +35,7 @@ class ContactFactory extends Factory
         return [
             'team_id' => 1,
             'name' => $this->faker->company,
+            'email' => $this->faker->unique()->safeEmail,
             'language' => $this->faker->randomElement($weightedLanguages),
             'country' => 724, // Spain - matches the default value in migration
             'creator_id' => $this->faker->boolean(70) ? $users->random()->id : $this->faker->randomElement($users)->id,
