@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Log;
 use Spatie\Permission\Models\Role;
@@ -227,8 +228,9 @@ class UserManagement extends Controller
 
                     $user = User::create($data);
 
-                    // Add the user to the current team
-                    $user->teams()->attach(Auth::user()->currentTeam->id);
+                    // Get the current team and add the user to it
+                    $currentTeam = Auth::user()->currentTeam;
+                    $user->teams()->attach($currentTeam->id);
 
                     // Get role ID from request or find guest role by default
                     $roleId = $request->role;
@@ -252,6 +254,15 @@ class UserManagement extends Controller
                         }
                     }
 
+                    // Send welcome email with password setup link
+                    try {
+                        Mail::to($user->email)->send(new \App\Mail\NewUserNotification($user, $currentTeam));
+                        Log::info("Welcome email sent to: {$user->email}");
+                    } catch (\Exception $e) {
+                        Log::error("Failed to send welcome email: " . $e->getMessage());
+                        // Don't fail the user creation if email fails
+                    }
+
                     // Return the created user data
                     $user->fresh();
                     $user->load('roles');
@@ -260,6 +271,8 @@ class UserManagement extends Controller
                     // Log the final user state
                     Log::info('Created user state:', [
                         'user_id' => $user->id,
+                        'team_id' => $currentTeam->id,
+                        'team_name' => $currentTeam->name,
                         'roles' => $user->roles->pluck('name', 'id'),
                         'role_id_sent' => $user->role,
                     ]);
@@ -268,6 +281,7 @@ class UserManagement extends Controller
                     return response()->json([
                         'status' => 'Created',
                         'user' => $user,
+                        'message' => 'Usuario creado exitosamente. Se ha enviado un email con instrucciones para configurar la contraseña.',
                     ]);
                 } else {
                     // user already exist
