@@ -254,13 +254,13 @@ class UserManagement extends Controller
                         }
                     }
 
-                    // Send welcome email with password setup link
+                    // Queue welcome email with password setup link (asynchronous)
                     try {
-                        Mail::to($user->email)->send(new \App\Mail\NewUserNotification($user, $currentTeam));
-                        Log::info("Welcome email sent to: {$user->email}");
+                        \App\Jobs\SendNewUserWelcomeEmail::dispatch($user, $currentTeam);
+                        Log::info("Welcome email job queued for: {$user->email}");
                     } catch (\Exception $e) {
-                        Log::error("Failed to send welcome email: " . $e->getMessage());
-                        // Don't fail the user creation if email fails
+                        Log::error("Failed to queue welcome email: " . $e->getMessage());
+                        // Don't fail the user creation if email queueing fails
                     }
 
                     // Return the created user data
