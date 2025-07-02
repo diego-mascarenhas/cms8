@@ -55,6 +55,11 @@
 @endsection
 
 @section('content')
+@php
+    // Variable para controlar si todos los inputs deben estar activos (true) o usar funcionalidad actual (false)
+    $allInputsActive = true; // Cambiar a false para usar funcionalidad original
+@endphp
+
 <div class="row">
     <!-- Collaborator Sidebar -->
     @include('collaborator.partials.sidebar')
@@ -179,35 +184,38 @@
                                             // Check if this fare is assigned to the collaborator
                                             $isCollaboratorFare = $collaborator->fares->contains('id', $fare->id);
                                             
+                                            // Si $allInputsActive es true, todos los inputs estarán activos independientemente de si está asignado
+                                            $inputEnabled = $allInputsActive || $isCollaboratorFare;
+                                            
                                             // Use specific rates data if available, otherwise default to empty
                                             $currentPrice = $currentRatesData[$fare->id]['price'] ?? 0;
                                             $currentUnitId = $currentRatesData[$fare->id]['unit_id'] ?? ($fare->units->count() > 0 ? $fare->units->first()->id : null);
                                         @endphp
                                         <div class="col-md-6">
-                                            <label class="form-label {{ !$isCollaboratorFare ? 'text-muted' : '' }}">
+                                            <label class="form-label {{ !$inputEnabled ? 'text-muted' : '' }}">
                                                 {{ $fare->name }}
-                                                @if(!$isCollaboratorFare)
+                                                @if(!$inputEnabled)
                                                     <small class="text-muted">(No asignado)</small>
                                                 @endif
                                             </label>
                                             <div class="input-group input-group-sm">
-                                                <span class="input-group-text currency-symbol {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}"></span>
+                                                <span class="input-group-text currency-symbol {{ !$inputEnabled ? 'bg-light text-muted' : '' }}"></span>
                                                 <input type="number" 
-                                                       class="form-control fare-input {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}" 
+                                                       class="form-control fare-input {{ !$inputEnabled ? 'bg-light text-muted' : '' }}" 
                                                        data-fare-id="{{ $fare->id }}"
                                                        name="rates[{{ $fare->id }}]" 
-                                                       value="{{ $isCollaboratorFare ? number_format($currentPrice, 2, '.', '') : '' }}" 
+                                                       value="{{ $inputEnabled ? number_format($currentPrice, 2, '.', '') : '' }}" 
                                                        step="0.01" 
                                                        min="0"
-                                                       placeholder="{{ $isCollaboratorFare ? '0.00' : 'No disponible' }}"
-                                                       {{ !$isCollaboratorFare ? 'disabled readonly' : '' }}>
+                                                       placeholder="{{ $inputEnabled ? '0.00' : 'No disponible' }}"
+                                                       {{ !$inputEnabled ? 'disabled readonly' : '' }}>
                                                 
                                                 @if($fare->units && $fare->units->count() > 1)
-                                                    <select class="form-select unit-select {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}" 
+                                                    <select class="form-select unit-select {{ !$inputEnabled ? 'bg-light text-muted' : '' }}" 
                                                             data-fare-id="{{ $fare->id }}"
                                                             name="units[{{ $fare->id }}]" 
                                                             style="max-width: 120px;" 
-                                                            {{ !$isCollaboratorFare ? 'disabled' : 'required' }}>
+                                                            {{ !$inputEnabled ? 'disabled' : 'required' }}>
                                                         @foreach($fare->units as $unit)
                                                             <option value="{{ $unit->id }}" 
                                                                 {{ $currentUnitId == $unit->id ? 'selected' : '' }}>
@@ -216,12 +224,12 @@
                                                         @endforeach
                                                     </select>
                                                 @elseif($fare->units && $fare->units->count() == 1)
-                                                    <span class="input-group-text {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}">/{{ $fare->units->first()->type }}</span>
-                                                    @if($isCollaboratorFare)
+                                                    <span class="input-group-text {{ !$inputEnabled ? 'bg-light text-muted' : '' }}">/{{ $fare->units->first()->type }}</span>
+                                                    @if($inputEnabled)
                                                         <input type="hidden" name="units[{{ $fare->id }}]" value="{{ $fare->units->first()->id }}">
                                                     @endif
                                                 @else
-                                                    <span class="input-group-text {{ !$isCollaboratorFare ? 'bg-light text-muted' : '' }}">/unidad</span>
+                                                    <span class="input-group-text {{ !$inputEnabled ? 'bg-light text-muted' : '' }}">/unidad</span>
                                                 @endif
                                             </div>
                                         </div>
