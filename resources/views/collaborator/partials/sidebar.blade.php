@@ -121,7 +121,7 @@
                                     </div>
                                     @can('collaborator.edit')
                                         <a href="{{ route('user-unlink.show', ['collaborator', $collaborator->id]) }}"
-                                            class="btn btn-sm btn-icon btn-outline-secondary">
+                                            class="btn btn-sm btn-icon btn-outline-secondary d-none">
                                             <i class="ti ti-unlink ti-xs"></i>
                                         </a>
                                     @endcan
