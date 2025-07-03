@@ -7,6 +7,8 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class bboSeeder extends Seeder
 {
@@ -26,6 +28,113 @@ class bboSeeder extends Seeder
             return;
         }
 
+        // Create BBO team users with specific roles
+        $this->createBboUsers($team);
+
+        // Create contacts
+        $this->createContacts($team, $user);
+
+        Log::info("bboSeeder completed successfully");
+    }
+
+    /**
+     * Create BBO team users with their specific roles
+     */
+    private function createBboUsers($team)
+    {
+        $bboUsers = [
+            [
+                'name' => 'Begoña Ballester-Olmos',
+                'email' => 'bego@bbosubtitulado.com',
+                'role' => 'admin'
+            ],
+            [
+                'name' => 'Claudia Caballero',
+                'email' => 'claudia@bbosubtitulado.com',
+                'role' => 'admin'
+            ],
+            [
+                'name' => 'Rocío Broseta',
+                'email' => 'rocio@bbosubtitulado.com',
+                'role' => 'admin'
+            ],
+            [
+                'name' => 'Marta Navas',
+                'email' => 'marta@bbosubtitulado.com',
+                'role' => 'admin'
+            ],
+            [
+                'name' => 'Tom Jackson',
+                'email' => 'tom@bbosubtitulado.com',
+                'role' => 'admin'
+            ],
+            [
+                'name' => 'Jesús Buendía',
+                'email' => 'jesus@bbosubtitulado.com',
+                'role' => 'admin'
+            ],
+            [
+                'name' => 'Vendors',
+                'email' => 'vendors@bbosubtitulado.com',
+                'role' => 'admin'
+            ],
+            [
+                'name' => 'Amy Martínez',
+                'email' => 'amy@bbosubtitulado.com',
+                'role' => 'admin'
+            ]
+        ];
+
+        foreach ($bboUsers as $userData) {
+            try {
+                // Check if user already exists
+                $existingUser = User::where('email', $userData['email'])->first();
+                if ($existingUser) {
+                    Log::info("User already exists: {$userData['email']}");
+                    
+                    // Make sure user is in the team
+                    if (!$existingUser->teams()->where('team_id', $team->id)->exists()) {
+                        $existingUser->teams()->attach($team->id);
+                        Log::info("Added existing user to team: {$userData['email']}");
+                    }
+                    
+                    // Assign role if not already assigned
+                    if (!$existingUser->hasRole($userData['role'])) {
+                        $existingUser->assignRole($userData['role']);
+                        Log::info("Assigned role '{$userData['role']}' to existing user: {$userData['email']}");
+                    }
+                    
+                    continue;
+                }
+
+                // Create new user
+                $user = User::create([
+                    'name' => $userData['name'],
+                    'email' => $userData['email'],
+                    'password' => Hash::make('bbounicornio123'), // BBO admin password
+                    'current_team_id' => $team->id,
+                    'email_verified_at' => now(), // Mark as verified
+                ]);
+
+                // Add user to team
+                $user->teams()->attach($team->id);
+
+                // Assign role
+                $user->assignRole($userData['role']);
+
+                Log::info("Created user: {$userData['name']} ({$userData['email']}) with role: {$userData['role']}");
+
+            } catch (\Exception $e) {
+                Log::error("Error creating user {$userData['email']}: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Create contacts from contact data
+     */
+    private function createContacts($team, $user)
+    {
         $contactsData = [
             [
                 "name" => "Amy Sue Bennett",
@@ -182,7 +291,5 @@ class bboSeeder extends Seeder
                 Log::error("Contact data: " . json_encode($contactData));
             }
         }
-
-        Log::info("bboSeeder completed successfully");
     }
 } 
