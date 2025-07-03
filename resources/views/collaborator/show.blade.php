@@ -25,6 +25,15 @@
             <!-- Tabs -->
             @include('collaborator.partials.tabs')
 
+            <!-- Quick Actions -->
+            <div class="d-flex justify-content-end mb-3">
+                @can('notification.create')
+                <a href="{{ route('notification.create') }}?contact_id={{ $collaborator->id }}" class="btn btn-warning btn-sm waves-effect waves-light">
+                    <i class="ti ti-bell me-1"></i>Enviar notificación
+                </a>
+                @endcan
+            </div>
+
             <!-- Projects with bbo -->
             <div class="card mb-4">
                 <div class="card-header border-bottom">

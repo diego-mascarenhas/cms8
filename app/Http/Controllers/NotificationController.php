@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\NotificationDataTable;
+use App\Jobs\SendNotificationJob;
 use App\Mail\NotificationMail;
 use App\Models\Contact;
 use App\Models\Notification;
@@ -300,7 +301,7 @@ class NotificationController extends Controller
     }
 
     /**
-     * Send notification via email
+     * Send notification via email using queue
      */
     private function sendNotification(Notification $notification, bool $isResend = false)
     {
@@ -311,19 +312,14 @@ class NotificationController extends Controller
         }
 
         try {
-            Mail::to($notification->contact->email)
-                ->send(new NotificationMail($notification));
-
-            $sentData = [
-                'email' => $notification->contact->email,
-                'sent_at' => now()->toISOString(),
-                'is_resend' => $isResend,
-            ];
-
-            $notification->markAsSent($sentData);
-
+            // Dispatch the job to the notifications queue
+            SendNotificationJob::dispatch($notification, $isResend);
+            
+            // For immediate feedback, we can still mark as "queued" or keep the original behavior
+            // The actual sent status will be updated when the job processes
+            
         } catch (\Exception $e) {
-            throw new \Exception('Error al enviar el email: ' . $e->getMessage());
+            throw new \Exception('Error al encolar la notificación: ' . $e->getMessage());
         }
     }
 } 
