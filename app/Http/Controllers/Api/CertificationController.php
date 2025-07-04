@@ -158,4 +158,59 @@ class CertificationController extends Controller
             'message' => 'Certifications filtered by language retrieved successfully'
         ]);
     }
+
+    /**
+     * Get certification types grouped by categories.
+     */
+    public function types(): JsonResponse
+    {
+        $this->authorize('viewAny', Certification::class);
+
+        $certifications = Certification::select('certification')
+            ->distinct()
+            ->get();
+
+        $types = [
+            'translation' => [],
+            'language_proficiency' => [],
+            'audiovisual' => [],
+            'professional' => [],
+            'other' => []
+        ];
+
+        foreach ($certifications as $cert) {
+            $name = strtolower($cert->certification);
+            
+            if (str_contains($name, 'ata') || str_contains($name, 'iso') || str_contains($name, 'proz') || str_contains($name, 'trados')) {
+                $types['translation'][] = $cert->certification;
+            } elseif (str_contains($name, 'dele') || str_contains($name, 'toefl') || str_contains($name, 'ielts') || 
+                      str_contains($name, 'cambridge') || str_contains($name, 'delf') || str_contains($name, 'dalf') || 
+                      str_contains($name, 'goethe') || str_contains($name, 'jlpt') || str_contains($name, 'hsk') || 
+                      str_contains($name, 'topik') || str_contains($name, 'tcf') || str_contains($name, 'testdaf') || 
+                      str_contains($name, 'siele') || str_contains($name, 'toeic')) {
+                $types['language_proficiency'][] = $cert->certification;
+            } elseif (str_contains($name, 'atrae') || str_contains($name, 'subtitling') || str_contains($name, 'eztitles')) {
+                $types['audiovisual'][] = $cert->certification;
+            } elseif (str_contains($name, 'ciol') || str_contains($name, 'traductor público') || str_contains($name, 'certified pro')) {
+                $types['professional'][] = $cert->certification;
+            } else {
+                $types['other'][] = $cert->certification;
+            }
+        }
+
+        // Remove empty categories and sort
+        $types = array_filter($types, function($category) {
+            return !empty($category);
+        });
+
+        foreach ($types as $key => $category) {
+            sort($types[$key]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $types,
+            'message' => 'Certification types retrieved successfully'
+        ]);
+    }
 }

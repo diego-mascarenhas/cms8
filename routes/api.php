@@ -82,14 +82,30 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('language-variants/base/{baseLanguage}', [LanguageVariantController::class, 'getVariantsFor']);
     
     // Software - for user-based authentication (Sanctum tokens)
-    Route::apiResource('software', SoftwareController::class);
-    Route::get('software/types', [SoftwareController::class, 'types']);
-    Route::get('software/type/{type}', [SoftwareController::class, 'byType']);
+    // Define specific routes BEFORE resource routes to avoid conflicts
+    Route::get('software/types', [SoftwareController::class, 'types'])->name('api.software.types');
+    Route::get('software/categories', [SoftwareController::class, 'softwareTypes'])->name('api.software.categories');
+    Route::get('software/type/{type}', [SoftwareController::class, 'byType'])->name('api.software.byType');
+    Route::apiResource('software', SoftwareController::class)->names([
+        'index' => 'api.software.index',
+        'store' => 'api.software.store',
+        'show' => 'api.software.show',
+        'update' => 'api.software.update',
+        'destroy' => 'api.software.destroy',
+    ]);
     
     // Certifications - for user-based authentication (Sanctum tokens)
-    Route::apiResource('certifications', CertificationController::class);
-    Route::get('certifications/languages', [CertificationController::class, 'languages']);
-    Route::get('certifications/language/{language}', [CertificationController::class, 'byLanguage']);
+    // Define specific routes BEFORE resource routes to avoid conflicts
+    Route::get('certifications/types', [CertificationController::class, 'types'])->name('api.certifications.types');
+    Route::get('certifications/languages', [CertificationController::class, 'languages'])->name('api.certifications.languages');
+    Route::get('certifications/language/{language}', [CertificationController::class, 'byLanguage'])->name('api.certifications.byLanguage');
+    Route::apiResource('certifications', CertificationController::class)->names([
+        'index' => 'api.certifications.index',
+        'store' => 'api.certifications.store',
+        'show' => 'api.certifications.show',
+        'update' => 'api.certifications.update',
+        'destroy' => 'api.certifications.destroy',
+    ]);
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);
