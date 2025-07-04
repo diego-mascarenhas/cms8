@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificationController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\FareController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
@@ -105,6 +106,18 @@ Route::middleware('auth:sanctum')->group(function () {
         'show' => 'api.certifications.show',
         'update' => 'api.certifications.update',
         'destroy' => 'api.certifications.destroy',
+    ]);
+    
+    // Fares - for user-based authentication (Sanctum tokens)
+    // Define specific routes BEFORE resource routes to avoid conflicts
+    Route::get('fares/types', [FareController::class, 'types'])->name('api.fares.types');
+    Route::get('fares/type/{type}', [FareController::class, 'byType'])->name('api.fares.byType');
+    Route::apiResource('fares', FareController::class)->names([
+        'index' => 'api.fares.index',
+        'store' => 'api.fares.store',
+        'show' => 'api.fares.show',
+        'update' => 'api.fares.update',
+        'destroy' => 'api.fares.destroy',
     ]);
 });
 
