@@ -32,10 +32,22 @@ class ContactController extends Controller
         }
 
         try {
-            // Get contacts for the user's current team
-            $contacts = Contact::where('team_id', $user->currentTeam->id)
-                ->with(['status', 'country', 'language', 'creator', 'responsible'])
-                ->paginate($request->get('per_page', 20));
+            // Check if user can view any contacts
+            if (!$user->can('viewAny', Contact::class)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No tienes permisos para ver contactos'
+                ], 403);
+            }
+
+            // Build base query with policy-based filtering
+            $query = Contact::with(['status', 'country', 'language', 'creator', 'responsible', 'user.roles']);
+            
+            // Apply role-based filtering using Policy
+            $filterCallback = \App\Policies\ContactPolicy::getQueryFilter($user);
+            $query = $filterCallback($query);
+
+            $contacts = $query->paginate($request->get('per_page', 20));
 
             return response()->json([
                 'success' => true,
@@ -48,7 +60,9 @@ class ContactController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'role' => $user->roles->first()->name ?? 'user',
                 ],
+                'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
             ]);
             
         } catch (\Exception $e) {
@@ -81,14 +95,23 @@ class ContactController extends Controller
         }
 
         try {
-            $contact = Contact::where('team_id', $user->currentTeam->id)
-                ->where('id', $id)
-                ->with(['status', 'country', 'language', 'creator', 'responsible', 'enterprise'])
+            // Find the contact first
+            $contact = Contact::where('id', $id)
+                ->with(['status', 'country', 'language', 'creator', 'responsible', 'enterprise', 'user.roles'])
                 ->firstOrFail();
+
+            // Check if user can view this specific contact
+            if (!$user->can('view', $contact)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No tienes permisos para ver este contacto'
+                ], 403);
+            }
 
             return response()->json([
                 'success' => true,
                 'data' => $contact,
+                'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
             ]);
             
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

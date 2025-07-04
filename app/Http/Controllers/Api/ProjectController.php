@@ -32,10 +32,22 @@ class ProjectController extends Controller
         }
 
         try {
-            // Get projects for the user's current team
-            $projects = Project::where('team_id', $user->currentTeam->id)
-                ->with(['client', 'creator', 'responsible'])
-                ->paginate($request->get('per_page', 20));
+            // Check if user can view any projects
+            if (!$user->can('viewAny', Project::class)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No tienes permisos para ver proyectos'
+                ], 403);
+            }
+
+            // Build base query with policy-based filtering
+            $query = Project::with(['client', 'responsible']);
+            
+            // Apply role-based filtering using Policy
+            $filterCallback = \App\Policies\ProjectPolicy::getQueryFilter($user);
+            $query = $filterCallback($query);
+
+            $projects = $query->paginate($request->get('per_page', 20));
 
             return response()->json([
                 'success' => true,
@@ -48,7 +60,9 @@ class ProjectController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'role' => $user->roles->first()->name ?? 'user',
                 ],
+                'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
             ]);
             
         } catch (\Exception $e) {
@@ -81,14 +95,23 @@ class ProjectController extends Controller
         }
 
         try {
-            $project = Project::where('team_id', $user->currentTeam->id)
-                ->where('id', $id)
-                ->with(['client', 'creator', 'responsible', 'categories'])
+            // Find the project first
+            $project = Project::where('id', $id)
+                ->with(['client', 'responsible', 'categories'])
                 ->firstOrFail();
+
+            // Check if user can view this specific project
+            if (!$user->can('view', $project)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No tienes permisos para ver este proyecto'
+                ], 403);
+            }
 
             return response()->json([
                 'success' => true,
                 'data' => $project,
+                'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
             ]);
             
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
