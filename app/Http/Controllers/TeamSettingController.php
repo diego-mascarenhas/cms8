@@ -40,7 +40,7 @@ class TeamSettingController extends Controller
                 if (! empty($value) || $value === '0') {
                     $team->setSetting($key, $value, [
                         'group' => $group,
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook']),
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash']),
                     ]);
                 }
             }
@@ -151,6 +151,30 @@ class TeamSettingController extends Controller
                     ],
                 ],
             ],
+            'api' => [
+                'title' => 'API Access Token',
+                'icon' => 'ti ti-key',
+                'settings' => [
+                    'api_token_name' => [
+                        'label' => 'Token Name',
+                        'type' => 'text',
+                        'value' => $team->getSetting('api_token_name', 'API Access Token'),
+                        'is_encrypted' => false,
+                    ],
+                    'api_token_abilities' => [
+                        'label' => 'Token Abilities',
+                        'type' => 'select',
+                        'options' => [
+                            '*' => 'All Abilities',
+                            'read' => 'Read Only',
+                            'write' => 'Write Only',
+                            'read,write' => 'Read & Write',
+                        ],
+                        'value' => $team->getSetting('api_token_abilities', '*'),
+                        'is_encrypted' => false,
+                    ],
+                ],
+            ],
         ];
 
         return isset($config[$group]) ? [$group => $config[$group]] : [];
@@ -246,5 +270,77 @@ class TeamSettingController extends Controller
         $valoration->delete();
 
         return redirect()->back()->with('success', 'Valoración eliminada exitosamente');
+    }
+
+    /**
+     * Show API tokens management page
+     */
+    public function apiTokens(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        // Get current API token (if exists)
+        $currentToken = $team->getSetting('api_token_hash');
+        $tokenName = $team->getSetting('api_token_name', 'API Access Token');
+        $tokenAbilities = $team->getSetting('api_token_abilities', '*');
+        $tokenCreated = $team->getSetting('api_token_created_at');
+
+        return view('team-settings.api-tokens', compact('team', 'currentToken', 'tokenName', 'tokenAbilities', 'tokenCreated'));
+    }
+
+    /**
+     * Generate a new API token
+     */
+    public function generateApiToken(Request $request, Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'abilities' => 'required|string',
+        ]);
+
+        // Generate a new token
+        $tokenValue = bin2hex(random_bytes(32));
+        $tokenHash = hash('sha256', $tokenValue);
+
+        // Store token settings
+        $team->setSetting('api_token_hash', $tokenHash, [
+            'group' => 'api',
+            'is_encrypted' => true,
+        ]);
+
+        $team->setSetting('api_token_name', $request->name, [
+            'group' => 'api',
+            'is_encrypted' => false,
+        ]);
+
+        $team->setSetting('api_token_abilities', $request->abilities, [
+            'group' => 'api',
+            'is_encrypted' => false,
+        ]);
+
+        $team->setSetting('api_token_created_at', now()->toDateTimeString(), [
+            'group' => 'api',
+            'is_encrypted' => false,
+        ]);
+
+        return redirect()->back()->with([
+            'success' => 'API token generated successfully',
+            'new_token' => $tokenValue,
+        ]);
+    }
+
+    /**
+     * Revoke the current API token
+     */
+    public function revokeApiToken(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        // Remove token settings
+        $team->settings()->where('group', 'api')->delete();
+
+        return redirect()->back()->with('success', 'API token revoked successfully');
     }
 }

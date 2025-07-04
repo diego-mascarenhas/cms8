@@ -65,6 +65,17 @@
                         </div>
                     </div>
                 </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-key mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">API Access Token</h5>
+                            <p class="card-text">Generate and manage team API tokens for external access</p>
+                            <a href="{{ route('team-settings.api-tokens', $team) }}" class="btn btn-primary">Manage</a>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             @if($groupedSettings->count() > 0)
