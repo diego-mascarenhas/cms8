@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamContactController;
@@ -43,6 +45,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Message
     Route::get('message', [MessageController::class, 'index']);
     Route::get('message/{id}', [MessageController::class, 'show']);
+    
+    // Contacts - for user-based authentication (Sanctum tokens)
+    Route::get('contacts', [ContactController::class, 'index']);
+    Route::get('contacts/{id}', [ContactController::class, 'show']);
+    
+    // Projects - for user-based authentication (Sanctum tokens)
+    Route::get('projects', [ProjectController::class, 'index']);
+    Route::get('projects/{id}', [ProjectController::class, 'show']);
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);
