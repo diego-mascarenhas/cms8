@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ProjectController;
@@ -69,6 +70,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('invoices', [InvoiceController::class, 'store']);
     Route::put('invoices/{id}', [InvoiceController::class, 'update']);
     Route::delete('invoices/{id}', [InvoiceController::class, 'destroy']);
+    
+    // Language Variants - for user-based authentication (Sanctum tokens)
+    Route::get('language-variants', [LanguageVariantController::class, 'index']);
+    Route::get('language-variants/{languageVariant}', [LanguageVariantController::class, 'show']);
+    Route::post('language-variants', [LanguageVariantController::class, 'store']);
+    Route::put('language-variants/{languageVariant}', [LanguageVariantController::class, 'update']);
+    Route::delete('language-variants/{languageVariant}', [LanguageVariantController::class, 'destroy']);
+    Route::get('language-variants/base/{baseLanguage}', [LanguageVariantController::class, 'getVariantsFor']);
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);

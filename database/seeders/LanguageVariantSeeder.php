@@ -9,120 +9,176 @@ class LanguageVariantSeeder extends Seeder
 {
     /**
      * Run the database seeds.
-     *
-     * @return void
      */
-    public function run()
+    public function run(): void
     {
-        // Spanish variants
-        LanguageVariant::firstOrCreate([
-            'code' => 'es-ES',
-        ], [
-            'name' => 'Español (España)',
-            'base_language' => 'es',
-            'country_code' => 'ES',
-        ]);
+        $languageVariants = [
+            // English variants (en)
+            [
+                'code' => 'en-US',
+                'name' => 'English (United States)',
+                'base_language' => 'en',
+                'country_code' => 'US',
+            ],
+            [
+                'code' => 'en-GB',
+                'name' => 'English (United Kingdom)',
+                'base_language' => 'en',
+                'country_code' => 'GB',
+            ],
+            [
+                'code' => 'en-CA',
+                'name' => 'English (Canada)',
+                'base_language' => 'en',
+                'country_code' => 'CA',
+            ],
+            [
+                'code' => 'en-AU',
+                'name' => 'English (Australia)',
+                'base_language' => 'en',
+                'country_code' => 'AU',
+            ],
+            
+            // Spanish variants (es)
+            [
+                'code' => 'es-ES',
+                'name' => 'Spanish (Spain)',
+                'base_language' => 'es',
+                'country_code' => 'ES',
+            ],
+            [
+                'code' => 'es-MX',
+                'name' => 'Spanish (Mexico)',
+                'base_language' => 'es',
+                'country_code' => 'MX',
+            ],
+            [
+                'code' => 'es-AR',
+                'name' => 'Spanish (Argentina)',
+                'base_language' => 'es',
+                'country_code' => 'AR',
+            ],
+            [
+                'code' => 'es-CO',
+                'name' => 'Spanish (Colombia)',
+                'base_language' => 'es',
+                'country_code' => 'CO',
+            ],
+            [
+                'code' => 'es-CL',
+                'name' => 'Spanish (Chile)',
+                'base_language' => 'es',
+                'country_code' => 'CL',
+            ],
+            [
+                'code' => 'es-PE',
+                'name' => 'Spanish (Peru)',
+                'base_language' => 'es',
+                'country_code' => 'PE',
+            ],
+            [
+                'code' => 'es-VE',
+                'name' => 'Spanish (Venezuela)',
+                'base_language' => 'es',
+                'country_code' => 'VE',
+            ],
+            
+            // French variants (fr)
+            [
+                'code' => 'fr-FR',
+                'name' => 'French (France)',
+                'base_language' => 'fr',
+                'country_code' => 'FR',
+            ],
+            [
+                'code' => 'fr-CA',
+                'name' => 'French (Canada)',
+                'base_language' => 'fr',
+                'country_code' => 'CA',
+            ],
+            [
+                'code' => 'fr-BE',
+                'name' => 'French (Belgium)',
+                'base_language' => 'fr',
+                'country_code' => 'BE',
+            ],
+            [
+                'code' => 'fr-CH',
+                'name' => 'French (Switzerland)',
+                'base_language' => 'fr',
+                'country_code' => 'CH',
+            ],
+            
+            // German variants (de)
+            [
+                'code' => 'de-DE',
+                'name' => 'German (Germany)',
+                'base_language' => 'de',
+                'country_code' => 'DE',
+            ],
+            [
+                'code' => 'de-AT',
+                'name' => 'German (Austria)',
+                'base_language' => 'de',
+                'country_code' => 'AT',
+            ],
+            [
+                'code' => 'de-CH',
+                'name' => 'German (Switzerland)',
+                'base_language' => 'de',
+                'country_code' => 'CH',
+            ],
+            
+            // Italian variants (it)
+            [
+                'code' => 'it-IT',
+                'name' => 'Italian (Italy)',
+                'base_language' => 'it',
+                'country_code' => 'IT',
+            ],
+            [
+                'code' => 'it-CH',
+                'name' => 'Italian (Switzerland)',
+                'base_language' => 'it',
+                'country_code' => 'CH',
+            ],
+            
+            // Portuguese variants (pt)
+            [
+                'code' => 'pt-PT',
+                'name' => 'Portuguese (Portugal)',
+                'base_language' => 'pt',
+                'country_code' => 'PT',
+            ],
+            [
+                'code' => 'pt-BR',
+                'name' => 'Portuguese (Brazil)',
+                'base_language' => 'pt',
+                'country_code' => 'BR',
+            ],
+            
+            // Catalan variants (ca)
+            [
+                'code' => 'ca-ES',
+                'name' => 'Catalan (Spain)',
+                'base_language' => 'ca',
+                'country_code' => 'ES',
+            ],
+            [
+                'code' => 'ca-AD',
+                'name' => 'Catalan (Andorra)',
+                'base_language' => 'ca',
+                'country_code' => 'AD',
+            ],
+        ];
 
-        LanguageVariant::firstOrCreate([
-            'code' => 'es-MX',
-        ], [
-            'name' => 'Español (México)',
-            'base_language' => 'es',
-            'country_code' => 'MX',
-        ]);
+        foreach ($languageVariants as $variant) {
+            LanguageVariant::firstOrCreate(
+                ['code' => $variant['code']],
+                $variant
+            );
+        }
 
-        LanguageVariant::firstOrCreate([
-            'code' => 'es-AR',
-        ], [
-            'name' => 'Español (Argentina)',
-            'base_language' => 'es',
-            'country_code' => 'AR',
-        ]);
-
-        // English variants
-        LanguageVariant::firstOrCreate([
-            'code' => 'en-US',
-        ], [
-            'name' => 'English (United States)',
-            'base_language' => 'en',
-            'country_code' => 'US',
-        ]);
-
-        LanguageVariant::firstOrCreate([
-            'code' => 'en-GB',
-        ], [
-            'name' => 'English (United Kingdom)',
-            'base_language' => 'en',
-            'country_code' => 'GB',
-        ]);
-
-        // French variants
-        LanguageVariant::firstOrCreate([
-            'code' => 'fr-FR',
-        ], [
-            'name' => 'Français (France)',
-            'base_language' => 'fr',
-            'country_code' => 'FR',
-        ]);
-
-        LanguageVariant::firstOrCreate([
-            'code' => 'fr-CA',
-        ], [
-            'name' => 'Français (Canada)',
-            'base_language' => 'fr',
-            'country_code' => 'CA',
-        ]);
-
-        // German variants
-        LanguageVariant::firstOrCreate([
-            'code' => 'de-DE',
-        ], [
-            'name' => 'Deutsch (Deutschland)',
-            'base_language' => 'de',
-            'country_code' => 'DE',
-        ]);
-
-        LanguageVariant::firstOrCreate([
-            'code' => 'de-AT',
-        ], [
-            'name' => 'Deutsch (Österreich)',
-            'base_language' => 'de',
-            'country_code' => 'AT',
-        ]);
-
-        // Portuguese variants
-        LanguageVariant::firstOrCreate([
-            'code' => 'pt-PT',
-        ], [
-            'name' => 'Português (Portugal)',
-            'base_language' => 'pt',
-            'country_code' => 'PT',
-        ]);
-
-        LanguageVariant::firstOrCreate([
-            'code' => 'pt-BR',
-        ], [
-            'name' => 'Português (Brasil)',
-            'base_language' => 'pt',
-            'country_code' => 'BR',
-        ]);
-
-        // Italian
-        LanguageVariant::firstOrCreate([
-            'code' => 'it-IT',
-        ], [
-            'name' => 'Italiano (Italia)',
-            'base_language' => 'it',
-            'country_code' => 'IT',
-        ]);
-
-        // Catalan
-        LanguageVariant::firstOrCreate([
-            'code' => 'ca-ES',
-        ], [
-            'name' => 'Català (Espanya)',
-            'base_language' => 'ca',
-            'country_code' => 'ES',
-        ]);
+        $this->command->info('Language variants seeded successfully.');
     }
 }
