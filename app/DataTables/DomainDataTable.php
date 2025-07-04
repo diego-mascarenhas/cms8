@@ -26,7 +26,7 @@ class DomainDataTable extends DataTable
                 $statusClass = $domain->suspended ? 'danger' : 'success';
                 $statusText = $domain->suspended ? 'Suspended' : 'Active';
 
-                return '<span class="badge bg-label-' . $statusClass . '">' . $statusText . '</span>';
+                return '<span class="badge bg-label-'.$statusClass.'">'.$statusText.'</span>';
             })
             ->editColumn('site_type', function ($domain) {
                 return $domain->site_type ?? 'N/A';
@@ -57,7 +57,7 @@ class DomainDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->language([
-                'url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json',
+                'url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json',
             ]);
     }
 
@@ -81,6 +81,6 @@ class DomainDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Domain_' . date('YmdHis');
+        return 'Domain_'.date('YmdHis');
     }
 }

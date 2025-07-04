@@ -39,7 +39,6 @@ use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserFareController;
-use App\Models\Contact;
 use Illuminate\Support\Facades\Route;
 
 // auth
@@ -242,13 +241,13 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
     Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
-Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
-Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
-Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
-Route::get('/project/service-template', [ProjectController::class, 'getServiceTemplate'])->name('project.get-service-template');
-Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])->name('project.get-fare-units');
-Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
-Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
+    Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
+    Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
+    Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
+    Route::get('/project/service-template', [ProjectController::class, 'getServiceTemplate'])->name('project.get-service-template');
+    Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])->name('project.get-fare-units');
+    Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
+    Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
 
     // Task Routes
     Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');

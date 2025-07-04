@@ -65,7 +65,7 @@ class UpdateDomainSiteType extends Command
 
             // Test if domain is WordPress
             $isWordPress = $domain->isWordPress();
-            $this->info('WordPress detection result: ' . ($isWordPress ? 'YES' : 'NO'));
+            $this->info('WordPress detection result: '.($isWordPress ? 'YES' : 'NO'));
 
             // Update WordPress status
             $wasWp = $domain->site_type === 'WordPress';

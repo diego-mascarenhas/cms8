@@ -9,8 +9,11 @@ use Illuminate\Support\Facades\Storage;
 class OvhApiController extends Controller
 {
     private $apiEndpoint;
+
     private $appKey;
+
     private $appSecret;
+
     private $consumerKey;
 
     public function __construct()
@@ -26,9 +29,9 @@ class OvhApiController extends Controller
      */
     private function generateSignature($method, $url, $body, $timestamp)
     {
-        $toSign = $this->appSecret . '+' . $this->consumerKey . '+' . $method . '+' . $url . '+' . $body . '+' . $timestamp;
+        $toSign = $this->appSecret.'+'.$this->consumerKey.'+'.$method.'+'.$url.'+'.$body.'+'.$timestamp;
 
-        return '$1$' . sha1($toSign);
+        return '$1$'.sha1($toSign);
     }
 
     /**
@@ -36,7 +39,7 @@ class OvhApiController extends Controller
      */
     private function makeRequest($method, $path, $body = '')
     {
-        $url = $this->apiEndpoint . $path;
+        $url = $this->apiEndpoint.$path;
         $timestamp = time();
 
         $headers = [
@@ -79,7 +82,7 @@ class OvhApiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to fetch invoices: ' . $e->getMessage(),
+                'message' => 'Failed to fetch invoices: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -111,7 +114,7 @@ class OvhApiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to fetch services: ' . $e->getMessage(),
+                'message' => 'Failed to fetch services: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -148,7 +151,7 @@ class OvhApiController extends Controller
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
-                'message' => 'Failed to fetch services: ' . $e->getMessage(),
+                'message' => 'Failed to fetch services: '.$e->getMessage(),
             ];
         }
     }

@@ -8,9 +8,13 @@ use GuzzleHttp\Exception\RequestException;
 class VCenterService
 {
     protected $client;
+
     protected $host;
+
     protected $username;
+
     protected $password;
+
     protected $token;
 
     public function __construct()
@@ -27,7 +31,7 @@ class VCenterService
     public function authenticate()
     {
         try {
-            $response = $this->client->post($this->host . '/rest/com/vmware/cis/session', [
+            $response = $this->client->post($this->host.'/rest/com/vmware/cis/session', [
                 'auth' => [$this->username, $this->password],
             ]);
 
@@ -38,7 +42,7 @@ class VCenterService
 
             $this->token = $body['value'];
         } catch (RequestException $e) {
-            throw new \Exception('Authentication error: ' . $e->getMessage());
+            throw new \Exception('Authentication error: '.$e->getMessage());
         }
     }
 
@@ -49,7 +53,7 @@ class VCenterService
         }
 
         try {
-            $response = $this->client->get($this->host . '/rest/vcenter/host', [
+            $response = $this->client->get($this->host.'/rest/vcenter/host', [
                 'headers' => [
                     'vmware-api-session-id' => $this->token,
                 ],
@@ -57,7 +61,7 @@ class VCenterService
 
             return json_decode($response->getBody()->getContents(), true);
         } catch (RequestException $e) {
-            throw new \Exception('Error retrieving hosts: ' . $e->getMessage());
+            throw new \Exception('Error retrieving hosts: '.$e->getMessage());
         }
     }
 
@@ -68,7 +72,7 @@ class VCenterService
         }
 
         try {
-            $response = $this->client->get($this->host . '/rest/vcenter/vm', [
+            $response = $this->client->get($this->host.'/rest/vcenter/vm', [
                 'headers' => [
                     'vmware-api-session-id' => $this->token,
                 ],
@@ -76,7 +80,7 @@ class VCenterService
 
             return json_decode($response->getBody()->getContents(), true);
         } catch (RequestException $e) {
-            throw new \Exception('Error retrieving VMs: ' . $e->getMessage());
+            throw new \Exception('Error retrieving VMs: '.$e->getMessage());
         }
     }
 }

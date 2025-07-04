@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Log;
 use Spatie\Permission\Models\Role;
@@ -259,7 +258,7 @@ class UserManagement extends Controller
                         \App\Jobs\SendNewUserWelcomeEmail::dispatch($user, $currentTeam);
                         Log::info("Welcome email job queued for: {$user->email}");
                     } catch (\Exception $e) {
-                        Log::error("Failed to queue welcome email: " . $e->getMessage());
+                        Log::error('Failed to queue welcome email: '.$e->getMessage());
                         // Don't fail the user creation if email queueing fails
                     }
 
@@ -289,17 +288,16 @@ class UserManagement extends Controller
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Error saving user data: ' . $e->getMessage());
+            Log::error('Error saving user data: '.$e->getMessage());
 
-            return response()->json(['message' => 'Error processing request: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Error processing request: '.$e->getMessage()], 500);
         }
     }
 
     /**
      * Display the specified resource.
      *
-     * @param int $id
-     *
+     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function show($id)
@@ -310,8 +308,7 @@ class UserManagement extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param int $id
-     *
+     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function edit($id)
@@ -321,7 +318,7 @@ class UserManagement extends Controller
 
             // Get all roles for debugging
             $allRoles = \Spatie\Permission\Models\Role::all();
-            Log::info('All available roles: ' . $allRoles->pluck('name', 'id'));
+            Log::info('All available roles: '.$allRoles->pluck('name', 'id'));
 
             // Get the user's first role (ID)
             $userRole = $user->roles->first();
@@ -341,7 +338,7 @@ class UserManagement extends Controller
 
             return response()->json($user);
         } catch (\Exception $e) {
-            Log::error('Error fetching user data: ' . $e->getMessage());
+            Log::error('Error fetching user data: '.$e->getMessage());
 
             return response()->json(['error' => 'User not found'], 404);
         }
@@ -350,8 +347,7 @@ class UserManagement extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param int $id
-     *
+     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id) {}
@@ -359,8 +355,7 @@ class UserManagement extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param int $id
-     *
+     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)

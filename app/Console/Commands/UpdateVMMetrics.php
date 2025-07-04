@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\Log;
 class UpdateVMMetrics extends Command
 {
     protected $signature = 'update:vm-metrics';
+
     protected $description = 'Updates VM metrics from vCenter';
 
     protected $vCenterService;
+
     protected $showConsoleOutput;
 
     public function __construct(VCenterService $vCenterService)
@@ -52,10 +54,10 @@ class UpdateVMMetrics extends Command
                 $this->info('VM metrics updated successfully.');
             }
         } catch (\Exception $e) {
-            Log::error('Error updating VM metrics: ' . $e->getMessage());
+            Log::error('Error updating VM metrics: '.$e->getMessage());
 
             if ($this->showConsoleOutput) {
-                $this->error('Error updating VM metrics: ' . $e->getMessage());
+                $this->error('Error updating VM metrics: '.$e->getMessage());
             }
         }
     }

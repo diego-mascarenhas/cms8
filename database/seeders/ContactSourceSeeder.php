@@ -45,13 +45,13 @@ class ContactSourceSeeder extends Seeder
     {
         switch ($sourceName) {
             case 'Phone':
-                return rand(1, 99) . rand(100000000, 999999999);
+                return rand(1, 99).rand(100000000, 999999999);
             case 'Email':
-                return 'usuario' . rand(1, 1000) . '@example.com';
+                return 'usuario'.rand(1, 1000).'@example.com';
             case 'WhatsApp':
-                return '+' . rand(1, 99) . rand(1000000000, 9999999999);
+                return '+'.rand(1, 99).rand(1000000000, 9999999999);
             default:
-                return 'usuario' . rand(1, 1000);
+                return 'usuario'.rand(1, 1000);
         }
     }
 }

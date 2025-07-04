@@ -14,7 +14,7 @@ class ContactDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -27,13 +27,13 @@ class ContactDataTable extends DataTable
                 $companyName = $row->enterprise ? e($row->enterprise->name) : '';
 
                 return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">' . e($row->name) . '</span>
-                            <small class="text-muted">' . ($companyName ?: '&nbsp;') . '</small>
+                            <span class="fw-medium text-body text-truncate">'.e($row->name).'</span>
+                            <small class="text-muted">'.($companyName ?: '&nbsp;').'</small>
                         </div>';
             })
             ->addColumn('current_sentiment', function ($row) {
                 if ($row->currentSentiment) {
-                    return '<span style="font-size: 1.5em;">' . $row->currentSentiment->sentiment->emoji . '</span>';
+                    return '<span style="font-size: 1.5em;">'.$row->currentSentiment->sentiment->emoji.'</span>';
                 }
 
                 return '<span style="font-size: 1.5em;">🤔</span>';
@@ -58,7 +58,7 @@ class ContactDataTable extends DataTable
             })
             ->addColumn('categories', function ($row) {
                 return $row->categories->map(function ($category) {
-                    return '<span class="badge bg-label-primary me-1">' . e($category->name) . '</span>';
+                    return '<span class="badge bg-label-primary me-1">'.e($category->name).'</span>';
                 })->join(' ');
             })
             ->filterColumn('categories', function ($query, $keyword) {
@@ -97,7 +97,7 @@ class ContactDataTable extends DataTable
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(false)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'initComplete' => "function() {
                     var api = this.api();
@@ -177,6 +177,6 @@ class ContactDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Contact_' . date('YmdHis');
+        return 'Contact_'.date('YmdHis');
     }
 }

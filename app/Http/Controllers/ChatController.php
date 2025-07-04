@@ -178,7 +178,7 @@ class ChatController extends Controller
                 }
 
                 // If Claude failed, continue with original message
-                Log::warning('Claude AI failed, sending original message: ' . $claudeResponse['message']);
+                Log::warning('Claude AI failed, sending original message: '.$claudeResponse['message']);
             }
 
             // Send original message
@@ -198,9 +198,8 @@ class ChatController extends Controller
     /**
      * Process a message with Claude to get AI assistance
      *
-     * @param string $message The user message
-     * @param array  $history Previous conversation history
-     *
+     * @param  string  $message  The user message
+     * @param  array  $history  Previous conversation history
      * @return array Response from Claude
      */
     private function processWithClaude($message, $history = [])
@@ -213,9 +212,8 @@ class ChatController extends Controller
     /**
      * Get recent chat history to provide context for the AI
      *
-     * @param string $phone The phone number
-     * @param int    $limit Number of messages to retrieve
-     *
+     * @param  string  $phone  The phone number
+     * @param  int  $limit  Number of messages to retrieve
      * @return array Conversation history
      */
     private function getChatHistory($phone, $limit = 10)
@@ -236,9 +234,8 @@ class ChatController extends Controller
     /**
      * Check if the phone has a registration in progress and process accordingly
      *
-     * @param string $phone   The phone number
-     * @param string $message The user message
-     *
+     * @param  string  $phone  The phone number
+     * @param  string  $message  The user message
      * @return array|null Response to send or null if no registration in progress
      */
     public function processRegistration($phone, $message)
@@ -334,7 +331,7 @@ class ChatController extends Controller
 
                 return ['success' => true, 'message' => 'User registered', 'user_id' => $user->id];
             } catch (\Exception $e) {
-                Log::error('User registration error: ' . $e->getMessage());
+                Log::error('User registration error: '.$e->getMessage());
                 $response = "Lo sentimos, ha ocurrido un error al crear tu cuenta.\nPor favor escríbenos a administracion@revisionalpha.com para que podamos ayudarte.";
                 $twilioService->sendWhatsApp($phone, $response);
 

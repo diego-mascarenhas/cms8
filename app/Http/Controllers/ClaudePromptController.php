@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
 class ClaudePromptController extends Controller
 {
     protected $promptsDir;
+
     protected $claudeService;
 
     public function __construct(ClaudeService $claudeService)
@@ -53,8 +54,8 @@ class ClaudePromptController extends Controller
             'content' => 'required|string',
         ]);
 
-        $fileName = $this->sanitizeFileName($request->name) . '.txt';
-        $filePath = $this->promptsDir . '/' . $fileName;
+        $fileName = $this->sanitizeFileName($request->name).'.txt';
+        $filePath = $this->promptsDir.'/'.$fileName;
 
         // Save the prompt
         File::put($filePath, $request->content);
@@ -68,8 +69,8 @@ class ClaudePromptController extends Controller
      */
     public function edit($promptName)
     {
-        $fileName = $promptName . '.txt';
-        $filePath = $this->promptsDir . '/' . $fileName;
+        $fileName = $promptName.'.txt';
+        $filePath = $this->promptsDir.'/'.$fileName;
 
         if (! File::exists($filePath)) {
             return redirect()->route('claude.prompts.index')
@@ -93,8 +94,8 @@ class ClaudePromptController extends Controller
             'content' => 'required|string',
         ]);
 
-        $fileName = $promptName . '.txt';
-        $filePath = $this->promptsDir . '/' . $fileName;
+        $fileName = $promptName.'.txt';
+        $filePath = $this->promptsDir.'/'.$fileName;
 
         if (! File::exists($filePath)) {
             return redirect()->route('claude.prompts.index')
@@ -113,8 +114,8 @@ class ClaudePromptController extends Controller
      */
     public function destroy($promptName)
     {
-        $fileName = $promptName . '.txt';
-        $filePath = $this->promptsDir . '/' . $fileName;
+        $fileName = $promptName.'.txt';
+        $filePath = $this->promptsDir.'/'.$fileName;
 
         if (File::exists($filePath)) {
             File::delete($filePath);
@@ -146,8 +147,8 @@ class ClaudePromptController extends Controller
                 ->with('success', 'Default prompt activated.');
         }
 
-        $fileName = $promptName . '.txt';
-        $filePath = $this->promptsDir . '/' . $fileName;
+        $fileName = $promptName.'.txt';
+        $filePath = $this->promptsDir.'/'.$fileName;
 
         if (! File::exists($filePath)) {
             return redirect()->route('claude.prompts.index')
@@ -179,8 +180,8 @@ class ClaudePromptController extends Controller
             // Use default prompt
             $promptContent = null;
         } else {
-            $fileName = $promptName . '.txt';
-            $filePath = $this->promptsDir . '/' . $fileName;
+            $fileName = $promptName.'.txt';
+            $filePath = $this->promptsDir.'/'.$fileName;
 
             if (! File::exists($filePath)) {
                 return response()->json([
@@ -197,7 +198,7 @@ class ClaudePromptController extends Controller
             $response = $this->claudeService->chat($testMessage, [], $promptContent);
 
             if (! $response['success']) {
-                \Log::error('Claude API Error in preview: ' . json_encode($response));
+                \Log::error('Claude API Error in preview: '.json_encode($response));
 
                 return response()->json([
                     'success' => false,
@@ -211,11 +212,11 @@ class ClaudePromptController extends Controller
                 'response' => $response['text'],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Exception in Claude preview: ' . $e->getMessage());
+            \Log::error('Exception in Claude preview: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Exception: ' . $e->getMessage(),
+                'message' => 'Exception: '.$e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
         }

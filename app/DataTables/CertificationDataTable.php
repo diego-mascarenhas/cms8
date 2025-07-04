@@ -24,9 +24,9 @@ class CertificationDataTable extends DataTable
                 // Use helper to map language code to appropriate country code for flags
                 $countryCode = Helpers::getLanguageFlag($row->language);
 
-                $flag = '<span class="fi fi-' . strtolower($countryCode) . ' me-2"></span>';
+                $flag = '<span class="fi fi-'.strtolower($countryCode).' me-2"></span>';
 
-                return $flag . e($languageName);
+                return $flag.e($languageName);
             })
             ->orderColumn('certification', function ($query, $order) {
                 $query->orderBy('certification', $order);
@@ -56,7 +56,7 @@ class CertificationDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->pageLength(25)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'select' => false,
                 'lengthChange' => false,
@@ -78,6 +78,6 @@ class CertificationDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Certification_' . date('YmdHis');
+        return 'Certification_'.date('YmdHis');
     }
 }

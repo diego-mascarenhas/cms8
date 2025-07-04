@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class TestTeamAssetPath extends Command
 {
     protected $signature = 'test:team-asset-path {user_id? : The ID of the user to impersonate} {--test-filename=}';
+
     protected $description = 'Test the team asset path functionality and filename normalization';
 
     public function handle()

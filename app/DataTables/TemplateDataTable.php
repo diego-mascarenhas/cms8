@@ -14,7 +14,7 @@ class TemplateDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -48,7 +48,7 @@ class TemplateDataTable extends DataTable
             ->minifiedAjax()
             ->dom('frtip')
             ->orderBy(1)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json']);
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json']);
     }
 
     public function getColumns(): array
@@ -75,6 +75,6 @@ class TemplateDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Template_' . date('YmdHis');
+        return 'Template_'.date('YmdHis');
     }
 }

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class PromptType extends Model
 {
     public $timestamps = false;
+
     protected $fillable = ['name'];
 
     public function prompts()

@@ -50,11 +50,11 @@ class DomainInfoUpdater extends Command
 
         foreach ($domains as $domain) {
             $this->info("Processing domain: {$domain->domain} (ID: {$domain->id})");
-            $this->info('Current settings: site_type = ' . ($domain->site_type ?: 'NULL') . ', php_version = ' . ($domain->php_version ?: 'NULL'));
+            $this->info('Current settings: site_type = '.($domain->site_type ?: 'NULL').', php_version = '.($domain->php_version ?: 'NULL'));
 
             // Test if domain is WordPress
             $isWordPress = $domain->isWordPress();
-            $this->info('WordPress detection result: ' . ($isWordPress ? 'YES' : 'NO'));
+            $this->info('WordPress detection result: '.($isWordPress ? 'YES' : 'NO'));
 
             // Update WordPress status
             $wasWp = $domain->site_type === 'WordPress';
@@ -76,7 +76,7 @@ class DomainInfoUpdater extends Command
             } else {
                 $this->info('Fetching real PHP version from server...');
                 $phpFromServer = $domain->getPhpVersionFromServer();
-                $this->info('Server reported PHP version: ' . ($phpFromServer ?: 'NOT DETECTED'));
+                $this->info('Server reported PHP version: '.($phpFromServer ?: 'NOT DETECTED'));
                 $domain->updatePhpVersion();
             }
 

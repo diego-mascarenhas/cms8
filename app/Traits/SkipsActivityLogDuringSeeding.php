@@ -17,12 +17,12 @@ trait SkipsActivityLogDuringSeeding
         // Skip logging if we're running in console and it's a seeding operation
         if (app()->runningInConsole()) {
             $command = $_SERVER['argv'][1] ?? '';
-            
+
             // Skip for db:seed and db:seed --class commands
             if (str_contains($command, 'db:seed')) {
                 return true;
             }
-            
+
             // Skip for migrate:fresh --seed
             if (str_contains($command, 'migrate:fresh') && in_array('--seed', $_SERVER['argv'])) {
                 return true;
@@ -36,4 +36,4 @@ trait SkipsActivityLogDuringSeeding
 
         return false;
     }
-} 
+}

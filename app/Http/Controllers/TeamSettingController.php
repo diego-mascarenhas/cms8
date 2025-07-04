@@ -47,7 +47,7 @@ class TeamSettingController extends Controller
         }
 
         $group = array_key_first($request->validated());
-        $message = ucfirst($group) . ' settings updated successfully';
+        $message = ucfirst($group).' settings updated successfully';
 
         return redirect()
             ->back()

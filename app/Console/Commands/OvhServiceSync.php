@@ -30,7 +30,7 @@ class OvhServiceSync extends Command
         $debug = $this->option('debug');
         $now = $this->option('now');
 
-        $this->info('Executing synchronization' . ($debug ? ' in debug mode' : '') . ($now ? ' immediately' : ' via queue') . '...');
+        $this->info('Executing synchronization'.($debug ? ' in debug mode' : '').($now ? ' immediately' : ' via queue').'...');
 
         $job = new \App\Jobs\OvhServiceSync($debug);
 
@@ -42,6 +42,6 @@ class OvhServiceSync extends Command
             dispatch($job);
         }
 
-        $this->info('OVH domain sync ' . ($now ? 'completed!' : 'queued!'));
+        $this->info('OVH domain sync '.($now ? 'completed!' : 'queued!'));
     }
 }

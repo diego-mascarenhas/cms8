@@ -149,7 +149,7 @@ class ContactController extends Controller
                     Stripe::setApiKey($team->getSetting('stripe_secret'));
                     // ... rest of the Stripe code ...
                 } catch (\Exception $e) {
-                    \Log::error('Error fetching Stripe data: ' . $e->getMessage());
+                    \Log::error('Error fetching Stripe data: '.$e->getMessage());
                 }
             }
         }
@@ -302,7 +302,7 @@ class ContactController extends Controller
                 }
 
             } catch (\Exception $e) {
-                \Log::error('Error fetching Stripe data: ' . $e->getMessage());
+                \Log::error('Error fetching Stripe data: '.$e->getMessage());
             }
         }
 
@@ -435,15 +435,15 @@ class ContactController extends Controller
         $file = $request->file('file');
         $fileName = $file->getClientOriginalName();
         $extension = $file->getClientOriginalExtension();
-        $teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
+        $teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
 
         $file->storeAs('contact/import', $teamUserId);
     }
 
     public function showImportForm()
     {
-        $fileName = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
-        $filePath = storage_path('app/contact/import/' . $fileName);
+        $fileName = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
+        $filePath = storage_path('app/contact/import/'.$fileName);
 
         if (! file_exists($filePath)) {
             return view('contact.import');
@@ -477,7 +477,7 @@ class ContactController extends Controller
             }
         }
 
-        $message = $totalImported . ' contactos importados con éxito.';
+        $message = $totalImported.' contactos importados con éxito.';
 
         return redirect()
             ->route('contact-list')
@@ -562,6 +562,7 @@ class ContactController extends Controller
             if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
                 $contact['email'] = $value;
                 unset($values[$index]);
+
                 continue;
             }
         }
@@ -570,6 +571,7 @@ class ContactController extends Controller
             if (preg_match('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/', $value)) {
                 $contact['phone'] = $value;
                 unset($values[$index]);
+
                 continue;
             }
         }
@@ -635,7 +637,7 @@ class ContactController extends Controller
             ->map(function ($contact) {
                 return [
                     'name' => $contact->name,
-                    'subtitle' => 'Creado el ' . $contact->created_at->format('d-m-Y H:i:s') . ' hs',
+                    'subtitle' => 'Creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs',
                     'src' => 'img/avatars/guru-meditating.jpg',
                     'url' => route('contact.show', $contact->id),
                 ];
@@ -647,7 +649,7 @@ class ContactController extends Controller
             ->map(function ($enterprise) {
                 return [
                     'name' => $enterprise->name,
-                    'subtitle' => 'Empresa creada el ' . $enterprise->created_at->format('d-m-Y H:i:s') . ' hs',
+                    'subtitle' => 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs',
                     'src' => 'img/icons/brands/enterprise.png',
                     'url' => $enterprise->responsible_id ? route('contact.show', $enterprise->responsible_id) : '#',
                 ];
@@ -669,7 +671,7 @@ class ContactController extends Controller
 
                 return [
                     'name' => $domain,
-                    'subtitle' => ! empty($user) ? "Usuario: {$user}" : 'Servicio creado el ' . $service->created_at->format('d-m-Y'),
+                    'subtitle' => ! empty($user) ? "Usuario: {$user}" : 'Servicio creado el '.$service->created_at->format('d-m-Y'),
                     'src' => 'img/icons/brands/web.png',
                     'url' => route('service.show', $service->id),
                 ];
@@ -678,7 +680,7 @@ class ContactController extends Controller
         $data = [
             'pages' => [
                 [
-                    'name' => config('variables.templateName') . ' CRM',
+                    'name' => config('variables.templateName').' CRM',
                     'icon' => 'ti-layout-grid',
                     'url' => 'dashboard/',
                 ],
@@ -764,11 +766,11 @@ class ContactController extends Controller
         ]);
 
         $file = $request->file('file');
-        $teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
+        $teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
 
         $file->storeAs('contact/import', $teamUserId);
 
-        $filePath = storage_path('app/contact/import/' . $teamUserId);
+        $filePath = storage_path('app/contact/import/'.$teamUserId);
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getActiveSheet();
 
@@ -795,8 +797,8 @@ class ContactController extends Controller
 
     public function processMapping(Request $request)
     {
-        $teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
-        $filePath = storage_path('app/contact/import/' . $teamUserId);
+        $teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
+        $filePath = storage_path('app/contact/import/'.$teamUserId);
 
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getActiveSheet();
@@ -865,7 +867,7 @@ class ContactController extends Controller
         }
 
         return redirect()->route('contact-list')
-            ->with('success', $contactsCreated . ' contactos importados correctamente.');
+            ->with('success', $contactsCreated.' contactos importados correctamente.');
     }
 
     /**
@@ -974,7 +976,7 @@ class ContactController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al crear el usuario: ' . $e->getMessage(),
+                'message' => 'Error al crear el usuario: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1072,7 +1074,7 @@ class ContactController extends Controller
             return redirect()->route($redirectRoute, $id)->with('success', 'Usuario creado y vinculado correctamente');
 
         } catch (\Exception $e) {
-            return back()->withErrors(['general' => 'Error al crear el usuario: ' . $e->getMessage()]);
+            return back()->withErrors(['general' => 'Error al crear el usuario: '.$e->getMessage()]);
         }
     }
 
@@ -1092,7 +1094,7 @@ class ContactController extends Controller
         if (! $contact->user_id) {
             $redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';
 
-            return redirect()->route($redirectRoute, $id)->with('warning', 'Este ' . $type . ' no tiene un usuario vinculado');
+            return redirect()->route($redirectRoute, $id)->with('warning', 'Este '.$type.' no tiene un usuario vinculado');
         }
 
         $linkedUser = \App\Models\User::find($contact->user_id);

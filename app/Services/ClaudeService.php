@@ -8,9 +8,13 @@ use Illuminate\Support\Facades\Log;
 class ClaudeService
 {
     protected $apiKey;
+
     protected $model;
+
     protected $baseUrl;
+
     protected $maxTokens;
+
     protected $systemPrompt;
 
     public function __construct()
@@ -25,10 +29,9 @@ class ClaudeService
     /**
      * Send a message to Claude and get a response
      *
-     * @param string      $message            The user's message
-     * @param array       $history            Previous conversation history (optional)
-     * @param string|null $customSystemPrompt Optional custom system prompt for this specific request
-     *
+     * @param  string  $message  The user's message
+     * @param  array  $history  Previous conversation history (optional)
+     * @param  string|null  $customSystemPrompt  Optional custom system prompt for this specific request
      * @return array Response with text and metadata
      */
     public function chat($message, $history = [], $customSystemPrompt = null)
@@ -60,7 +63,7 @@ class ClaudeService
                 'max_tokens' => $maxTokens,
                 'message_count' => count($messages),
                 'system_prompt_length' => strlen($systemPrompt),
-                'system_prompt_preview' => substr($systemPrompt, 0, 100) . '...',
+                'system_prompt_preview' => substr($systemPrompt, 0, 100).'...',
                 'has_user_info' => strpos($systemPrompt, '===== IMPORTANT USER INFORMATION =====') !== false,
             ]);
 
@@ -83,17 +86,17 @@ class ClaudeService
             ])->post("{$this->baseUrl}/messages", $payload);
 
             if (! $response->successful()) {
-                Log::error('Claude API Error: ' . $response->body());
+                Log::error('Claude API Error: '.$response->body());
 
                 return [
                     'success' => false,
-                    'message' => 'Error communicating with Claude API: ' . $response->status(),
+                    'message' => 'Error communicating with Claude API: '.$response->status(),
                     'error' => $response->json(),
                 ];
             }
 
             $data = $response->json();
-            Log::info('Claude API Response: ' . json_encode($data));
+            Log::info('Claude API Response: '.json_encode($data));
 
             // Adapt to the response structure in the current Claude API
             $responseText = '';
@@ -113,11 +116,11 @@ class ClaudeService
                 'raw_response' => $data,
             ];
         } catch (\Exception $e) {
-            Log::error('Claude Service Error: ' . $e->getMessage());
+            Log::error('Claude Service Error: '.$e->getMessage());
 
             return [
                 'success' => false,
-                'message' => 'Error processing Claude request: ' . $e->getMessage(),
+                'message' => 'Error processing Claude request: '.$e->getMessage(),
             ];
         }
     }
@@ -125,9 +128,8 @@ class ClaudeService
     /**
      * Format conversation history for Claude's API
      *
-     * @param string $currentMessage The current user message
-     * @param array  $history        Previous messages
-     *
+     * @param  string  $currentMessage  The current user message
+     * @param  array  $history  Previous messages
      * @return array Formatted messages for Claude API
      */
     private function formatConversationHistory($currentMessage, $history = [])
@@ -176,8 +178,7 @@ EOT;
     /**
      * Set a custom system prompt
      *
-     * @param string $prompt The new system prompt
-     *
+     * @param  string  $prompt  The new system prompt
      * @return void
      */
     public function setSystemPrompt($prompt)
@@ -198,8 +199,7 @@ EOT;
     /**
      * Extract phone number from conversation history
      *
-     * @param array $history Conversation history
-     *
+     * @param  array  $history  Conversation history
      * @return string|null The phone number or null
      */
     private function extractPhoneNumberFromHistory($history = [])
@@ -261,7 +261,7 @@ EOT;
                 }
 
                 // Try fuzzy search
-                $user = \App\Models\User::where('phone', 'like', '%' . $cleanNumber . '%')->first();
+                $user = \App\Models\User::where('phone', 'like', '%'.$cleanNumber.'%')->first();
                 if ($user) {
                     \Log::info('Found user with fuzzy phone match', ['phone' => $cleanNumber, 'user_id' => $user->id]);
 
@@ -270,7 +270,7 @@ EOT;
 
                 // Try looking in contacts directly
                 $contact = \App\Models\Contact::whereHas('sources', function ($query) use ($cleanNumber) {
-                    $query->where('source_id', 2)->where('value', 'like', '%' . $cleanNumber . '%');
+                    $query->where('source_id', 2)->where('value', 'like', '%'.$cleanNumber.'%');
                 })->first();
 
                 if ($contact) {
@@ -289,9 +289,8 @@ EOT;
     /**
      * Enrich the system prompt with user data if available
      *
-     * @param string $systemPrompt The original system prompt
-     * @param array  $history      Conversation history
-     *
+     * @param  string  $systemPrompt  The original system prompt
+     * @param  array  $history  Conversation history
      * @return string The enriched system prompt
      */
     private function enrichSystemPromptWithUserData($systemPrompt, $history = [])
@@ -327,7 +326,7 @@ EOT;
 
             // If not found, try with the string version (this handles any formatting issues)
             if (! $user) {
-                $user = \App\Models\User::where('phone', 'like', '%' . $phoneNumber . '%')->first();
+                $user = \App\Models\User::where('phone', 'like', '%'.$phoneNumber.'%')->first();
                 \Log::info('User lookup result by like', ['found' => (bool) $user, 'phone_str' => $phoneNumber]);
             }
 
@@ -339,7 +338,7 @@ EOT;
                 if (! $contact) {
                     // Try a different approach - maybe the phone number is stored directly on the contact
                     $contact = \App\Models\Contact::whereHas('sources', function ($query) use ($phoneNumber) {
-                        $query->where('source_id', 2)->where('value', 'like', '%' . $phoneNumber . '%');
+                        $query->where('source_id', 2)->where('value', 'like', '%'.$phoneNumber.'%');
                     })->first();
 
                     \Log::info('Alternative contact lookup result', ['found' => (bool) $contact]);
@@ -364,7 +363,7 @@ EOT;
             // If still no contact, try the phone number in the contacts' sources
             if (! $contact) {
                 $contact = \App\Models\Contact::whereHas('sources', function ($query) use ($knownClientPhone) {
-                    $query->where('source_id', 2)->where('value', 'like', '%' . $knownClientPhone . '%');
+                    $query->where('source_id', 2)->where('value', 'like', '%'.$knownClientPhone.'%');
                 })->first();
                 \Log::info('Contact lookup by known phone in sources', ['found' => (bool) $contact]);
             }
@@ -402,23 +401,23 @@ EOT;
         $userContext .= "The following is personal information about the user you are talking to.\n";
         $userContext .= "You MUST use this information to respond to any questions about the user's personal data.\n\n";
 
-        $userContext .= 'USER NAME: ' . ($contact->name ?? $user->name) . "\n";
+        $userContext .= 'USER NAME: '.($contact->name ?? $user->name)."\n";
 
         if ($contact->birthday) {
-            $userContext .= 'USER BIRTHDAY: ' . $contact->birthday->format('Y-m-d') . "\n";
+            $userContext .= 'USER BIRTHDAY: '.$contact->birthday->format('Y-m-d')."\n";
         }
 
         // Add user identifiers for clarity
-        $userContext .= 'USER ID: ' . $user->id . "\n";
-        $userContext .= 'CONTACT ID: ' . $contact->id . "\n";
+        $userContext .= 'USER ID: '.$user->id."\n";
+        $userContext .= 'CONTACT ID: '.$contact->id."\n";
 
         // Add more user data as needed
         if ($contact->email) {
-            $userContext .= 'USER EMAIL: ' . $contact->email . "\n";
+            $userContext .= 'USER EMAIL: '.$contact->email."\n";
         }
 
         if ($contact->phone) {
-            $userContext .= 'USER PHONE: ' . $contact->phone . "\n";
+            $userContext .= 'USER PHONE: '.$contact->phone."\n";
         }
 
         // Get enterprises from contact_enterprise table
@@ -514,11 +513,11 @@ EOT;
             $userContext .= "IMPORTANTE: El usuario está asociado con las siguientes empresas:\n\n";
 
             foreach ($enterprises as $index => $enterprise) {
-                $userContext .= 'EMPRESA #' . ($index + 1) . ":\n";
-                $userContext .= '- NOMBRE: ' . $enterprise['name'] . "\n";
-                $userContext .= '- ID: ' . $enterprise['id'] . "\n";
+                $userContext .= 'EMPRESA #'.($index + 1).":\n";
+                $userContext .= '- NOMBRE: '.$enterprise['name']."\n";
+                $userContext .= '- ID: '.$enterprise['id']."\n";
                 if (! empty($enterprise['position'])) {
-                    $userContext .= '- POSICIÓN: ' . $enterprise['position'] . "\n";
+                    $userContext .= '- POSICIÓN: '.$enterprise['position']."\n";
                 }
 
                 // Obtener facturas asociadas a esta empresa
@@ -532,16 +531,16 @@ EOT;
                         });
 
                         if ($unpaidInvoices->count() > 0) {
-                            $userContext .= '- FACTURAS PENDIENTES DE PAGO (' . $unpaidInvoices->count() . "):\n";
+                            $userContext .= '- FACTURAS PENDIENTES DE PAGO ('.$unpaidInvoices->count()."):\n";
                             // Show ALL unpaid invoices
                             foreach ($unpaidInvoices as $i => $invoice) {
                                 $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
 
-                                $userContext .= '  * Factura #' . $invoice->number .
-                                               ' - Fecha: ' . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A') .
-                                               ' - Importe Total: $' . number_format($invoice->total_amount, 2) .
-                                               ' - Pendiente: $' . number_format($invoice->balance, 2) .
-                                               ' - Descargar: ' . $downloadLink . "\n";
+                                $userContext .= '  * Factura #'.$invoice->number.
+                                               ' - Fecha: '.($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A').
+                                               ' - Importe Total: $'.number_format($invoice->total_amount, 2).
+                                               ' - Pendiente: $'.number_format($invoice->balance, 2).
+                                               ' - Descargar: '.$downloadLink."\n";
                             }
 
                             // Also show the 3 most recent invoices if different from the unpaid ones
@@ -550,25 +549,25 @@ EOT;
                             })->take(3);
 
                             if ($paidInvoices->count() > 0) {
-                                $userContext .= '- ÚLTIMAS FACTURAS PAGADAS (' . $paidInvoices->count() . "):\n";
+                                $userContext .= '- ÚLTIMAS FACTURAS PAGADAS ('.$paidInvoices->count()."):\n";
                                 foreach ($paidInvoices as $i => $invoice) {
                                     $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
 
-                                    $userContext .= '  * Factura #' . $invoice->number .
-                                                   ' - Fecha: ' . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A') .
-                                                   ' - Importe: $' . number_format($invoice->total_amount, 2) .
-                                                   ' - Descargar: ' . $downloadLink . "\n";
+                                    $userContext .= '  * Factura #'.$invoice->number.
+                                                   ' - Fecha: '.($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A').
+                                                   ' - Importe: $'.number_format($invoice->total_amount, 2).
+                                                   ' - Descargar: '.$downloadLink."\n";
                                 }
                             }
                         } else {
-                            $userContext .= '- ÚLTIMAS FACTURAS (Todas pagadas) (' . $invoices->count() . "):\n";
+                            $userContext .= '- ÚLTIMAS FACTURAS (Todas pagadas) ('.$invoices->count()."):\n";
                             foreach ($invoices as $i => $invoice) {
                                 $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
 
-                                $userContext .= '  * Factura #' . $invoice->number .
-                                               ' - Fecha: ' . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A') .
-                                               ' - Importe: $' . number_format($invoice->total_amount, 2) .
-                                               ' - Descargar: ' . $downloadLink . "\n";
+                                $userContext .= '  * Factura #'.$invoice->number.
+                                               ' - Fecha: '.($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A').
+                                               ' - Importe: $'.number_format($invoice->total_amount, 2).
+                                               ' - Descargar: '.$downloadLink."\n";
                             }
                         }
                     } else {
@@ -614,12 +613,12 @@ EOT;
         $userContext .= "\nEXAMPLE RESPONSES:\n";
         $userContext .= "User: '¿Con qué empresa estoy registrado?'\n";
         if (! empty($enterprises)) {
-            $userContext .= "Correct response: 'Estás asociado con " . count($enterprises) . ' empresa(s): ';
+            $userContext .= "Correct response: 'Estás asociado con ".count($enterprises).' empresa(s): ';
             $companyNames = [];
             foreach ($enterprises as $e) {
                 $companyNames[] = $e['name'];
             }
-            $userContext .= implode(', ', $companyNames) . ".'\n";
+            $userContext .= implode(', ', $companyNames).".'\n";
         } else {
             $userContext .= "Correct response: 'No tengo registros de que estés asociado con alguna empresa en este momento.'\n";
         }
@@ -633,7 +632,7 @@ EOT;
         if (! empty($enterprises)) {
             $hasUnpaidInvoices = false;
             foreach ($enterprises as $e) {
-                $userContext .= 'Para ' . $e['name'] . ': ';
+                $userContext .= 'Para '.$e['name'].': ';
                 // Add example invoice response
                 $invoices = $enterpriseInvoices[$e['id']] ?? collect();
 
@@ -644,20 +643,20 @@ EOT;
 
                 if ($unpaidInvoices && $unpaidInvoices->count() > 0) {
                     $hasUnpaidInvoices = true;
-                    $userContext .= 'Tienes ' . $unpaidInvoices->count() . ' facturas pendientes. ';
+                    $userContext .= 'Tienes '.$unpaidInvoices->count().' facturas pendientes. ';
 
                     // If there's just one unpaid invoice
                     if ($unpaidInvoices->count() == 1) {
-                        $userContext .= 'La factura pendiente es #' . $unpaidInvoices->first()->number .
-                                      ' por un importe pendiente de $' . number_format($unpaidInvoices->first()->balance, 2) . ".\n";
+                        $userContext .= 'La factura pendiente es #'.$unpaidInvoices->first()->number.
+                                      ' por un importe pendiente de $'.number_format($unpaidInvoices->first()->balance, 2).".\n";
                     } else {
                         // List a couple of examples if there are multiple
-                        $userContext .= 'Por ejemplo, la factura #' . $unpaidInvoices->first()->number .
-                                      ' por $' . number_format($unpaidInvoices->first()->balance, 2);
+                        $userContext .= 'Por ejemplo, la factura #'.$unpaidInvoices->first()->number.
+                                      ' por $'.number_format($unpaidInvoices->first()->balance, 2);
 
                         if ($unpaidInvoices->count() > 1) {
-                            $userContext .= ' y la factura #' . $unpaidInvoices[1]->number .
-                                          ' por $' . number_format($unpaidInvoices[1]->balance, 2);
+                            $userContext .= ' y la factura #'.$unpaidInvoices[1]->number.
+                                          ' por $'.number_format($unpaidInvoices[1]->balance, 2);
                         }
 
                         $userContext .= ".\n";
@@ -670,7 +669,7 @@ EOT;
                             if ($index > 0) {
                                 $userContext .= ', ';
                             }
-                            $userContext .= '#' . $invoice->number . ' ($' . number_format($invoice->total_amount, 2) . ')';
+                            $userContext .= '#'.$invoice->number.' ($'.number_format($invoice->total_amount, 2).')';
                         }
                         $userContext .= ".\n";
                     } else {
@@ -698,13 +697,13 @@ EOT;
                 $invoices = $enterpriseInvoices[$e['id']] ?? collect();
 
                 if ($invoices && $invoices->count() > 0) {
-                    $userContext .= 'Para ' . $e['name'] . ":\n";
+                    $userContext .= 'Para '.$e['name'].":\n";
 
                     foreach ($invoices->take(2) as $invoice) {
                         $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
-                        $userContext .= '- Factura #' . $invoice->number .
-                                      ' ($' . number_format($invoice->total_amount, 2) . '): ' .
-                                      $downloadLink . "\n";
+                        $userContext .= '- Factura #'.$invoice->number.
+                                      ' ($'.number_format($invoice->total_amount, 2).'): '.
+                                      $downloadLink."\n";
                     }
                 }
             }
@@ -728,14 +727,13 @@ EOT;
         ]);
 
         // Append this context to the system prompt
-        return $systemPrompt . $userContext;
+        return $systemPrompt.$userContext;
     }
 
     /**
      * Generate a download link for an invoice
      *
-     * @param int $invoiceId The invoice ID
-     *
+     * @param  int  $invoiceId  The invoice ID
      * @return string The download URL
      */
     private function generateInvoiceDownloadLink($invoiceId)
@@ -744,7 +742,7 @@ EOT;
         $group = 502;
 
         // Generate MD5 of "502{invoice_id}"
-        $md5Hash = md5($group . $invoiceId);
+        $md5Hash = md5($group.$invoiceId);
 
         // Return the download URL
         return "https://wsaa.revisionalpha.com/{$md5Hash}.pdf";

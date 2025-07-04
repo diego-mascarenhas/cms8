@@ -8,6 +8,7 @@ use Webklex\PHPIMAP\ClientManager;
 class TestImapConnection extends Command
 {
     protected $signature = 'mail:test-imap';
+
     protected $description = 'Test IMAP connection and fetch emails';
 
     public function handle()
@@ -37,18 +38,18 @@ class TestImapConnection extends Command
                 ->all()
                 ->get();
 
-            $this->info('Found ' . $messages->count() . ' messages');
+            $this->info('Found '.$messages->count().' messages');
 
             // Display message details
             foreach ($messages as $message) {
                 $this->line('-------------------');
-                $this->info('Subject: ' . $message->getSubject()->first());
-                $this->info('From: ' . $message->getFrom()->first()->mail);
-                $this->info('Date: ' . $message->getDate()->first());
+                $this->info('Subject: '.$message->getSubject()->first());
+                $this->info('From: '.$message->getFrom()->first()->mail);
+                $this->info('Date: '.$message->getDate()->first());
             }
 
         } catch (\Exception $e) {
-            $this->error('Error: ' . $e->getMessage());
+            $this->error('Error: '.$e->getMessage());
         }
     }
 }

@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\Log;
 class UpdateWHMServiceStatus extends Command
 {
     protected $signature = 'update:whm-service-status';
+
     protected $description = 'Updates WHM service statuses from multiple servers';
 
     protected $whmService;
+
     protected $showConsoleOutput;
 
     public function __construct(WHMService $whmService)
@@ -68,7 +70,7 @@ class UpdateWHMServiceStatus extends Command
                         }
                     } else {
                         if ($this->showConsoleOutput) {
-                            $this->warn('Invalid status data: ' . print_r($status, true));
+                            $this->warn('Invalid status data: '.print_r($status, true));
                         }
                     }
                 }
@@ -78,10 +80,10 @@ class UpdateWHMServiceStatus extends Command
                 $this->info('WHM service statuses updated successfully.');
             }
         } catch (\Exception $e) {
-            Log::error('Error updating WHM service statuses: ' . $e->getMessage());
+            Log::error('Error updating WHM service statuses: '.$e->getMessage());
 
             if ($this->showConsoleOutput) {
-                $this->error('Error updating WHM service statuses: ' . $e->getMessage());
+                $this->error('Error updating WHM service statuses: '.$e->getMessage());
             }
         }
     }

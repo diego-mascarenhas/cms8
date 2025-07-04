@@ -26,7 +26,7 @@ class EmailController extends Controller
         try {
             $client->connect();
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Error connecting to the email server: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Error connecting to the email server: '.$e->getMessage()], 500);
         }
 
         $folders = $client->getFolders();

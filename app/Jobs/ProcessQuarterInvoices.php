@@ -20,9 +20,13 @@ class ProcessQuarterInvoices implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $quarter;
+
     protected $year;
+
     protected $team;
+
     protected $user;
+
     public $timeout = 300; // 5 minutes
 
     /**
@@ -42,7 +46,7 @@ class ProcessQuarterInvoices implements ShouldQueue
     public function handle(): void
     {
         if (! $this->team->getSetting('stripe_secret')) {
-            Log::error('Stripe secret not found for team ' . $this->team->id);
+            Log::error('Stripe secret not found for team '.$this->team->id);
 
             return;
         }
@@ -103,7 +107,7 @@ class ProcessQuarterInvoices implements ShouldQueue
                                 Log::info("Generated PDF for invoice {$invoice->number}");
                             }
                         } catch (\Exception $pdfEx) {
-                            Log::warning("Could not generate PDF for invoice {$invoice->number}: " . $pdfEx->getMessage());
+                            Log::warning("Could not generate PDF for invoice {$invoice->number}: ".$pdfEx->getMessage());
                         }
                     }
 
@@ -117,7 +121,7 @@ class ProcessQuarterInvoices implements ShouldQueue
 
                             // Store the PDF
                             $stored = Storage::disk('public')->put($path, $pdfContent);
-                            Log::info('PDF stored: ' . ($stored ? 'success' : 'failed') . " - Path: {$path}");
+                            Log::info('PDF stored: '.($stored ? 'success' : 'failed')." - Path: {$path}");
 
                             if ($stored) {
                                 $pdfCount++;
@@ -129,7 +133,7 @@ class ProcessQuarterInvoices implements ShouldQueue
                         Log::warning("Invoice {$invoice->number} doesn't have a PDF URL");
                     }
                 } catch (\Exception $e) {
-                    Log::warning("Error processing PDF for invoice {$invoice->number}: " . $e->getMessage());
+                    Log::warning("Error processing PDF for invoice {$invoice->number}: ".$e->getMessage());
                     // Continue with the next invoice
                 }
             }
@@ -154,15 +158,15 @@ class ProcessQuarterInvoices implements ShouldQueue
                 $openResult = $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
 
                 if ($openResult !== true) {
-                    throw new \Exception('Cannot create ZIP file: ' . $zipPath . ', error code: ' . $openResult);
+                    throw new \Exception('Cannot create ZIP file: '.$zipPath.', error code: '.$openResult);
                 }
 
                 // Get all PDF files from the temporary directory
                 $files = Storage::disk('public')->files("downloads/{$userDirName}/{$tempDirName}");
-                Log::info('Found ' . count($files) . ' PDFs to add to ZIP');
+                Log::info('Found '.count($files).' PDFs to add to ZIP');
 
                 foreach ($files as $file) {
-                    $fullPath = storage_path('app/public/' . $file);
+                    $fullPath = storage_path('app/public/'.$file);
                     $relativePath = basename($fullPath);
 
                     $zip->addFile($fullPath, $relativePath);
@@ -174,20 +178,20 @@ class ProcessQuarterInvoices implements ShouldQueue
                 Storage::disk('public')->deleteDirectory("downloads/{$userDirName}/{$tempDirName}");
 
                 // Store download path in database or notify user
-                Log::info("ZIP created successfully for user {$this->user->id}: " . $zipFilename);
+                Log::info("ZIP created successfully for user {$this->user->id}: ".$zipFilename);
 
                 // Update user notification or database record to indicate completion
                 // You will need to have a way to notify users that their ZIP file is ready
                 // This could be via notifications, email, or a database record
 
             } catch (\Exception $zipEx) {
-                Log::error('Error creating ZIP file: ' . $zipEx->getMessage());
+                Log::error('Error creating ZIP file: '.$zipEx->getMessage());
                 // Clean up the temp directory
                 Storage::disk('public')->deleteDirectory("downloads/{$userDirName}/{$tempDirName}");
             }
 
         } catch (\Exception $e) {
-            Log::error('Error in ProcessQuarterInvoices job: ' . $e->getMessage());
+            Log::error('Error in ProcessQuarterInvoices job: '.$e->getMessage());
         }
     }
 }

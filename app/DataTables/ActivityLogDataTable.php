@@ -15,8 +15,7 @@ class ActivityLogDataTable extends DataTable
     /**
      * Build DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
-     * @return \Yajra\DataTables\EloquentDataTable
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -26,37 +25,42 @@ class ActivityLogDataTable extends DataTable
                 if ($activity->causer) {
                     return $activity->causer->name;
                 }
+
                 return '<span class="text-muted">Sistema</span>';
             })
             ->addColumn('subject', function (Activity $activity) {
                 if ($activity->subject) {
                     $modelName = class_basename($activity->subject_type);
-                    return $modelName . ' #' . $activity->subject_id;
+
+                    return $modelName.' #'.$activity->subject_id;
                 }
+
                 return '<span class="text-muted">-</span>';
             })
             ->addColumn('description', function (Activity $activity) {
-                return '<span class="badge bg-label-primary">' . $activity->description . '</span>';
+                return '<span class="badge bg-label-primary">'.$activity->description.'</span>';
             })
             ->addColumn('properties', function (Activity $activity) {
                 if ($activity->properties && $activity->properties->count() > 0) {
                     $html = '<button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" 
-                               data-bs-target="#collapse-' . $activity->id . '" aria-expanded="false">
+                               data-bs-target="#collapse-'.$activity->id.'" aria-expanded="false">
                                <i class="ti ti-eye ti-sm"></i>
                            </button>';
-                    $html .= '<div class="collapse mt-2" id="collapse-' . $activity->id . '">';
+                    $html .= '<div class="collapse mt-2" id="collapse-'.$activity->id.'">';
                     $html .= '<div class="card card-body p-2" style="font-size: 11px;">';
-                    
+
                     foreach ($activity->properties as $key => $value) {
                         if (is_array($value) || is_object($value)) {
                             $value = json_encode($value, JSON_PRETTY_PRINT);
                         }
-                        $html .= '<strong>' . ucfirst($key) . ':</strong> ' . $value . '<br>';
+                        $html .= '<strong>'.ucfirst($key).':</strong> '.$value.'<br>';
                     }
-                    
+
                     $html .= '</div></div>';
+
                     return $html;
                 }
+
                 return '<span class="text-muted">-</span>';
             })
             ->addColumn('created_at', function (Activity $activity) {
@@ -68,9 +72,6 @@ class ActivityLogDataTable extends DataTable
 
     /**
      * Get query source of dataTable.
-     *
-     * @param Activity $model
-     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function query(Activity $model): QueryBuilder
     {
@@ -89,8 +90,6 @@ class ActivityLogDataTable extends DataTable
 
     /**
      * Optional method if you want to use html builder.
-     *
-     * @return \Yajra\DataTables\Html\Builder
      */
     public function html(): HtmlBuilder
     {
@@ -104,7 +103,7 @@ class ActivityLogDataTable extends DataTable
             ->buttons([
                 Button::make('export'),
                 Button::make('print'),
-                Button::make('reload')
+                Button::make('reload'),
             ])
             ->parameters([
                 'language' => [
@@ -125,8 +124,6 @@ class ActivityLogDataTable extends DataTable
 
     /**
      * Get the dataTable columns definition.
-     *
-     * @return array
      */
     public function getColumns(): array
     {
@@ -136,27 +133,27 @@ class ActivityLogDataTable extends DataTable
                 ->searchable(false)
                 ->orderable(false)
                 ->width(50),
-            
+
             Column::make('user')
                 ->title(__('User'))
                 ->searchable(true)
                 ->orderable(true),
-            
+
             Column::make('description')
                 ->title(__('Activity'))
                 ->searchable(true)
                 ->orderable(true),
-            
+
             Column::make('subject')
                 ->title(__('Subject'))
                 ->searchable(true)
                 ->orderable(true),
-            
+
             Column::make('properties')
                 ->title(__('Details'))
                 ->searchable(false)
                 ->orderable(false),
-            
+
             Column::make('created_at')
                 ->title(__('Date'))
                 ->searchable(true)
@@ -166,11 +163,9 @@ class ActivityLogDataTable extends DataTable
 
     /**
      * Get filename for export.
-     *
-     * @return string
      */
     protected function filename(): string
     {
-        return 'ActivityLog_' . date('YmdHis');
+        return 'ActivityLog_'.date('YmdHis');
     }
-} 
+}

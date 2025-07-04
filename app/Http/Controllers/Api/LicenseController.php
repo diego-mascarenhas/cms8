@@ -38,7 +38,7 @@ class LicenseController extends Controller
                 return response()->json(['message' => 'Application registered successfully'], 201);
             }
         } catch (\Exception $e) {
-            Log::error('Error creating or updating license: ' . $e->getMessage());
+            Log::error('Error creating or updating license: '.$e->getMessage());
 
             return response()->json(['error' => 'Failed to register application'], 500);
         }

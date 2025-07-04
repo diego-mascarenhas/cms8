@@ -116,7 +116,7 @@ class TwilioWebhookController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error processing fallback message: ' . $e->getMessage());
+            Log::error('Error processing fallback message: '.$e->getMessage());
 
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }

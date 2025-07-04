@@ -38,7 +38,7 @@ class Rate extends Model
      */
     public function getFormattedPriceAttribute()
     {
-        return number_format($this->base_price, 2) . ' ' . $this->currency;
+        return number_format($this->base_price, 2).' '.$this->currency;
     }
 
     /**

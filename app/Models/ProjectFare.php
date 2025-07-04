@@ -60,7 +60,7 @@ class ProjectFare extends Model
      */
     public function getLanguageCombinationAttribute()
     {
-        return $this->sourceLanguage->name . ' → ' . $this->targetLanguage->name;
+        return $this->sourceLanguage->name.' → '.$this->targetLanguage->name;
     }
 
     /**
@@ -68,6 +68,6 @@ class ProjectFare extends Model
      */
     public function getFormattedQuantityAttribute()
     {
-        return $this->quantity . ($this->unit ? ' ' . $this->unit : '');
+        return $this->quantity.($this->unit ? ' '.$this->unit : '');
     }
-} 
+}

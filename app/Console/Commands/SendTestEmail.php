@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Mail;
 class SendTestEmail extends Command
 {
     protected $signature = 'email:send-test';
+
     protected $description = 'Send a test balance email';
 
     public function handle()

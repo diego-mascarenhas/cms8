@@ -45,8 +45,7 @@ class Service extends Model
     /**
      * Set the data attribute.
      *
-     * @param mixed $value
-     *
+     * @param  mixed  $value
      * @return void
      */
     public function setDataAttribute($value)
@@ -61,8 +60,7 @@ class Service extends Model
     /**
      * Get the data attribute.
      *
-     * @param string $value
-     *
+     * @param  string  $value
      * @return array
      */
     public function getDataAttribute($value)

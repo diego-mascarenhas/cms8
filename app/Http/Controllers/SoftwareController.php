@@ -106,7 +106,7 @@ class SoftwareController extends Controller
             ->map(function ($software) {
                 return [
                     'id' => $software->id,
-                    'text' => $software->name . ($software->type ? ' (' . $software->type->name . ')' : ''),
+                    'text' => $software->name.($software->type ? ' ('.$software->type->name.')' : ''),
                     'name' => $software->name,
                     'type' => $software->type ? $software->type->name : '',
                 ];

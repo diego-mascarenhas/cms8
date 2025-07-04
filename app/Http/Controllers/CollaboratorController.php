@@ -74,7 +74,7 @@ class CollaboratorController extends Controller
                 [$sourceLanguage, $targetLanguage] = explode('|', $pair);
 
                 // Evitar duplicados en la misma solicitud
-                $pairKey = $sourceLanguage . '-' . $targetLanguage;
+                $pairKey = $sourceLanguage.'-'.$targetLanguage;
                 if (in_array($pairKey, $processedPairs)) {
                     continue;
                 }
@@ -214,7 +214,7 @@ class CollaboratorController extends Controller
                 [$sourceLanguage, $targetLanguage] = explode('|', $pair);
 
                 // Evitar duplicados en la misma solicitud
-                $pairKey = $sourceLanguage . '-' . $targetLanguage;
+                $pairKey = $sourceLanguage.'-'.$targetLanguage;
                 if (in_array($pairKey, $processedPairs)) {
                     continue;
                 }
@@ -663,7 +663,7 @@ class CollaboratorController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al crear el usuario: ' . $e->getMessage(),
+                'message' => 'Error al crear el usuario: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -680,7 +680,7 @@ class CollaboratorController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'year' => 'nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'year' => 'nullable|integer|min:1900|max:'.(date('Y') + 10),
             'notes' => 'nullable|string',
             'position' => 'nullable|string',
             'languages' => 'nullable|array',
@@ -723,7 +723,7 @@ class CollaboratorController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'year' => 'nullable|integer|min:1900|max:' . (date('Y') + 10),
+            'year' => 'nullable|integer|min:1900|max:'.(date('Y') + 10),
             'notes' => 'nullable|string',
             'position' => 'nullable|string',
             'languages' => 'nullable|array',
@@ -781,7 +781,7 @@ class CollaboratorController extends Controller
     public function notifications($id)
     {
         $collaborator = Contact::findOrFail($id);
-        
+
         // Get notifications for this collaborator (contact)
         $notifications = \App\Models\Notification::with(['type', 'user'])
             ->where('contact_id', $id)
@@ -799,30 +799,30 @@ class CollaboratorController extends Controller
     public function activity($id)
     {
         $collaborator = Contact::with(['user'])->findOrFail($id);
-        
+
         // Get activities for this collaborator's user
         $activities = collect();
-        
+
         if ($collaborator->user_id) {
             // Get activities where this user was the causer (performer)
             $userActivities = Activity::with(['subject'])
                 ->where('causer_id', $collaborator->user_id)
                 ->latest()
                 ->paginate(20);
-            
+
             // Also get activities where this contact was the subject
             $contactActivities = Activity::with(['causer'])
                 ->where('subject_type', Contact::class)
                 ->where('subject_id', $collaborator->id)
                 ->latest()
                 ->paginate(20);
-            
+
             // Merge and sort activities
             $allActivities = $userActivities->items();
             foreach ($contactActivities->items() as $activity) {
                 $allActivities[] = $activity;
             }
-            
+
             // Sort by created_at descending
             $activities = collect($allActivities)->sortByDesc('created_at')->take(50);
         } else {
@@ -832,14 +832,14 @@ class CollaboratorController extends Controller
                 ->where('subject_id', $collaborator->id)
                 ->latest()
                 ->paginate(20);
-                
+
             $activities = collect($contactActivities->items());
         }
 
         // Format activities for display
         $formattedActivities = $activities->map(function ($activity) use ($collaborator) {
             $isOwnActivity = $activity->causer_id == $collaborator->user_id;
-            
+
             return [
                 'id' => $activity->id,
                 'user_name' => $activity->causer ? $activity->causer->name : 'Sistema',
@@ -851,7 +851,7 @@ class CollaboratorController extends Controller
                 'time_ago' => $activity->created_at->diffForHumans(),
                 'created_at' => $activity->created_at,
                 'properties' => $activity->properties,
-                'raw_activity' => $activity
+                'raw_activity' => $activity,
             ];
         });
 
@@ -865,54 +865,54 @@ class CollaboratorController extends Controller
     {
         // Get total count of active collaborators
         $totalCollaborators = Contact::getTotalCollaborators();
-        
+
         // Get new collaborators this month
         $newCollaboratorsThisMonth = Contact::getNewCollaboratorsThisMonth();
-        
+
         // Get count of active projects
         $activeProjects = Project::getActiveProjectsCount();
-        
+
         // Get count of active languages (languages with at least 1 collaborator)
         $activeLanguages = Language::getActiveLanguagesCount();
-        
+
         // Get language combinations with less than 10 collaborators using the model method
         $languageCombinations = ContactLanguageVariant::getCombinationsWithFewCollaborators();
-        
+
         // Get top languages by collaborator count
         $topLanguages = Language::getTopLanguages(5);
-        
+
         // Get collaborators with incomplete data
         $incompleteCollaborators = Contact::getIncompleteCollaborators(20);
 
         // Get recent team activities (simplified approach)
         $teamId = auth()->user()->currentTeam->id;
-        
+
         // Get all team users IDs
-        $teamUserIds = \App\Models\User::whereHas('teams', function($query) use ($teamId) {
+        $teamUserIds = \App\Models\User::whereHas('teams', function ($query) use ($teamId) {
             $query->where('teams.id', $teamId);
         })->pluck('id');
-        
+
         // Get team contact IDs
         $teamContactIds = Contact::where('team_id', $teamId)->pluck('id');
-        
-        // Get team project IDs  
+
+        // Get team project IDs
         $teamProjectIds = Project::where('team_id', $teamId)->pluck('id');
-        
+
         // Get recent activities from team members or on team subjects (limited to last 10)
         $recentActivities = Activity::with(['causer', 'subject'])
-            ->where(function($query) use ($teamUserIds, $teamContactIds, $teamProjectIds) {
+            ->where(function ($query) use ($teamUserIds, $teamContactIds, $teamProjectIds) {
                 // Activities by team members
                 $query->whereIn('causer_id', $teamUserIds)
                       // Or activities on team contacts
-                      ->orWhere(function($subQuery) use ($teamContactIds) {
-                          $subQuery->where('subject_type', Contact::class)
-                                   ->whereIn('subject_id', $teamContactIds);
-                      })
+                    ->orWhere(function ($subQuery) use ($teamContactIds) {
+                        $subQuery->where('subject_type', Contact::class)
+                            ->whereIn('subject_id', $teamContactIds);
+                    })
                       // Or activities on team projects
-                      ->orWhere(function($subQuery) use ($teamProjectIds) {
-                          $subQuery->where('subject_type', Project::class)
-                                   ->whereIn('subject_id', $teamProjectIds);
-                      });
+                    ->orWhere(function ($subQuery) use ($teamProjectIds) {
+                        $subQuery->where('subject_type', Project::class)
+                            ->whereIn('subject_id', $teamProjectIds);
+                    });
             })
             ->latest()
             ->limit(10)
@@ -924,7 +924,7 @@ class CollaboratorController extends Controller
                 'id' => $activity->id,
                 'user_name' => $activity->causer ? $activity->causer->name : 'Sistema',
                 'user_photo' => $activity->causer ? $activity->causer->profile_photo_url : null,
-                'is_system_activity' => !$activity->causer,
+                'is_system_activity' => ! $activity->causer,
                 'description' => $activity->description,
                 'subject_type' => $activity->subject ? class_basename($activity->subject_type) : null,
                 'subject_id' => $activity->subject_id,
@@ -943,7 +943,7 @@ class CollaboratorController extends Controller
      */
     public function showAcceptForm($id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             abort(403, 'No tienes permisos para esta acción.');
         }
 
@@ -963,7 +963,7 @@ class CollaboratorController extends Controller
      */
     public function processAccept(Request $request, $id)
     {
-        if (!auth()->user()->can('collaborator.edit')) {
+        if (! auth()->user()->can('collaborator.edit')) {
             return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
         }
 
@@ -984,9 +984,9 @@ class CollaboratorController extends Controller
             // Handle rejection
             $collaborator->update([
                 'status_id' => 3, // Assuming 3 is rejected status
-                'notes' => ($collaborator->notes ? $collaborator->notes . "\n\n" : '') . 
-                          "Rechazado el " . now()->format('d/m/Y H:i') . " por " . auth()->user()->name . 
-                          "\nMotivo: " . $validated['rejection_reason']
+                'notes' => ($collaborator->notes ? $collaborator->notes."\n\n" : '').
+                          'Rechazado el '.now()->format('d/m/Y H:i').' por '.auth()->user()->name.
+                          "\nMotivo: ".$validated['rejection_reason'],
             ]);
 
             // Log the activity
@@ -1011,7 +1011,7 @@ class CollaboratorController extends Controller
 
             // Create the user
             $user = \App\Models\User::create([
-                'name' => $collaborator->name . ' ' . $collaborator->surname,
+                'name' => $collaborator->name.' '.$collaborator->surname,
                 'email' => $collaborator->email,
                 'password' => \Hash::make($password),
                 'email_verified_at' => now(),
@@ -1046,13 +1046,13 @@ class CollaboratorController extends Controller
             // Mail::to($user->email)->send(new WelcomeCollaboratorMail($user, $password));
 
             return redirect()->route('collaborator.show', $id)
-                ->with('success', 'Colaborador aceptado correctamente. Usuario creado con email: ' . $user->email);
+                ->with('success', 'Colaborador aceptado correctamente. Usuario creado con email: '.$user->email);
 
         } catch (\Exception $e) {
-            \Log::error('Error accepting collaborator: ' . $e->getMessage());
-            
+            \Log::error('Error accepting collaborator: '.$e->getMessage());
+
             return back()
-                ->with('error', 'Error al aceptar el colaborador: ' . $e->getMessage());
+                ->with('error', 'Error al aceptar el colaborador: '.$e->getMessage());
         }
     }
 }

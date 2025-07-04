@@ -52,8 +52,8 @@ class NotificationType extends Model
     public function replacePlaceholders(array $data, string $field = 'template_body')
     {
         $template = $this->$field;
-        
-        if (!$template) {
+
+        if (! $template) {
             return '';
         }
 
@@ -63,4 +63,4 @@ class NotificationType extends Model
 
         return $template;
     }
-} 
+}

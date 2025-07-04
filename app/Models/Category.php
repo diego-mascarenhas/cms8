@@ -123,7 +123,7 @@ class Category extends Model
 
         while ($category->parent) {
             $category = $category->parent;
-            $path = $category->name . ' > ' . $path;
+            $path = $category->name.' > '.$path;
         }
 
         return $path;

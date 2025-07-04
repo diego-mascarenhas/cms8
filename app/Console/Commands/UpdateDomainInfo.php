@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class UpdateDomainInfo extends Command
 {
     protected $signature = 'whm:update-domain-info';
+
     protected $description = 'Update domain information for all domains';
 
     public function handle()

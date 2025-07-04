@@ -11,6 +11,7 @@ use Stripe\Stripe;
 class ShowStripeCustomer extends Command
 {
     protected $signature = 'stripe:customer {customerId}';
+
     protected $description = 'Displays the details of a specific Stripe customer';
 
     public function handle()
@@ -70,7 +71,7 @@ class ShowStripeCustomer extends Command
                         $subscription->items->data[0]->price->product,
                         $subscription->status,
                         date('Y-m-d', $subscription->current_period_end),
-                        $subscription->items->data[0]->price->unit_amount / 100 . ' ' .
+                        $subscription->items->data[0]->price->unit_amount / 100 .' '.
                             strtoupper($subscription->items->data[0]->price->currency),
                     ];
                 }
@@ -94,7 +95,7 @@ class ShowStripeCustomer extends Command
                     $rows[] = [
                         $invoice->number,
                         date('Y-m-d', $invoice->created),
-                        $invoice->amount_paid / 100 . ' ' . strtoupper($invoice->currency),
+                        $invoice->amount_paid / 100 .' '.strtoupper($invoice->currency),
                         $invoice->status,
                         $invoice->payment_intent ? $invoice->payment_intent->status : 'N/A',
                     ];
@@ -108,7 +109,7 @@ class ShowStripeCustomer extends Command
             }
 
         } catch (\Exception $e) {
-            $this->error('Stripe Error: ' . $e->getMessage());
+            $this->error('Stripe Error: '.$e->getMessage());
         }
     }
 }

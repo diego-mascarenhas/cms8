@@ -37,6 +37,6 @@ class Currency extends Model
 
     public function getFormattedAttribute()
     {
-        return $this->symbol . ' - ' . $this->name;
+        return $this->symbol.' - '.$this->name;
     }
 }

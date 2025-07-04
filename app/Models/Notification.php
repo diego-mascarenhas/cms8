@@ -148,7 +148,7 @@ class Notification extends Model
         if ($this->is_sent) {
             return '<span class="badge bg-success">Enviado</span>';
         }
-        
+
         return '<span class="badge bg-warning">Pendiente</span>';
     }
 
@@ -160,7 +160,7 @@ class Notification extends Model
         if ($this->is_read) {
             return '<span class="badge bg-info">Leído</span>';
         }
-        
+
         return '<span class="badge bg-secondary">No leído</span>';
     }
 
@@ -187,10 +187,10 @@ class Notification extends Model
                 'Task Assignment' => 'success',
                 'Welcome Message' => 'primary',
             ];
-            
+
             return $colorMap[$this->type->name] ?? 'secondary';
         }
-        
+
         return 'secondary';
     }
 
@@ -202,19 +202,21 @@ class Notification extends Model
         if ($this->user) {
             $names = explode(' ', $this->user->name);
             $initials = '';
-            
+
             foreach ($names as $name) {
                 $initials .= strtoupper(substr($name, 0, 1));
-                if (strlen($initials) >= 2) break;
+                if (strlen($initials) >= 2) {
+                    break;
+                }
             }
-            
+
             return $initials ?: 'UN';
         }
-        
+
         if ($this->type) {
             return strtoupper(substr($this->type->name, 0, 2));
         }
-        
+
         return 'NO';
     }
-} 
+}

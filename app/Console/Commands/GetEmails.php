@@ -66,9 +66,9 @@ class GetEmails extends Command
 
                 if ($debug) {
                     $this->line("\nDEBUG INFO:");
-                    $this->line('Complete Message-ID: ' . $messageId);
-                    $this->line('From: ' . $message->getFrom()[0]->mail);
-                    $this->line('Subject: ' . $message->getSubject());
+                    $this->line('Complete Message-ID: '.$messageId);
+                    $this->line('From: '.$message->getFrom()[0]->mail);
+                    $this->line('Subject: '.$message->getSubject());
                 }
 
                 // Check if email already exists
@@ -76,9 +76,10 @@ class GetEmails extends Command
 
                 if ($exists) {
                     if ($debug) {
-                        $this->line('<fg=yellow>Skipping duplicate email with Message-ID: ' . $messageId . '</>');
+                        $this->line('<fg=yellow>Skipping duplicate email with Message-ID: '.$messageId.'</>');
                     }
                     $skippedCount++;
+
                     continue;
                 }
 
@@ -103,19 +104,19 @@ class GetEmails extends Command
 
                     $inboundEmail->forceFill([
                         'message_id' => $messageId,
-                        'message' => $messageId . "\r\n" . $message->getRawBody(),
+                        'message' => $messageId."\r\n".$message->getRawBody(),
                     ]);
 
                     $inboundEmail->save();
 
                     if ($debug) {
-                        $this->line('Saved with message_id: ' . $inboundEmail->message_id);
-                        $this->info('Email saved with ID: ' . $inboundEmail->id);
+                        $this->line('Saved with message_id: '.$inboundEmail->message_id);
+                        $this->info('Email saved with ID: '.$inboundEmail->id);
 
                         $processedCount++;
                     }
                 } catch (\Exception $e) {
-                    $this->error('Error saving email: ' . $e->getMessage());
+                    $this->error('Error saving email: '.$e->getMessage());
 
                     Log::error('Error saving email', [
                         'error' => $e->getMessage(),
@@ -129,13 +130,13 @@ class GetEmails extends Command
             if ($debug) {
                 $this->line("\n=====================================");
                 $this->info('Process completed:');
-                $this->line('- New emails processed: ' . $processedCount);
-                $this->line('- Duplicate emails skipped: ' . $skippedCount);
+                $this->line('- New emails processed: '.$processedCount);
+                $this->line('- Duplicate emails skipped: '.$skippedCount);
                 $this->line('=====================================');
             }
 
         } catch (\Exception $e) {
-            $this->error('Error: ' . $e->getMessage());
+            $this->error('Error: '.$e->getMessage());
             Log::error('Error in emails:get command', [
                 'error' => $e->getMessage(),
             ]);

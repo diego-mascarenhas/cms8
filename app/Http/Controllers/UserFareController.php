@@ -172,7 +172,7 @@ class UserFareController extends Controller
         } elseif ($collaborator->languageVariants->count() > 0) {
             // Si no hay language_pair específico, usar la primera combinación
             $firstVariant = $collaborator->languageVariants->first();
-            $currentLanguagePair = $firstVariant->source_language_code . '|' . $firstVariant->target_language_code;
+            $currentLanguagePair = $firstVariant->source_language_code.'|'.$firstVariant->target_language_code;
 
             // Cargar las tarifas para la primera combinación
             $specificRates = $collaborator->fares()
@@ -269,7 +269,7 @@ class UserFareController extends Controller
 
             $redirectUrl = route('collaborator.rates', $id);
             if (! empty($queryParams)) {
-                $redirectUrl .= '?' . http_build_query($queryParams);
+                $redirectUrl .= '?'.http_build_query($queryParams);
             }
 
             return redirect($redirectUrl)->with('success', 'Tarifas actualizadas exitosamente.');
@@ -280,11 +280,11 @@ class UserFareController extends Controller
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al actualizar las tarifas: ' . $e->getMessage(),
+                    'message' => 'Error al actualizar las tarifas: '.$e->getMessage(),
                 ], 500);
             }
 
-            return redirect()->back()->with('error', 'Error al actualizar las tarifas: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al actualizar las tarifas: '.$e->getMessage());
         }
     }
 

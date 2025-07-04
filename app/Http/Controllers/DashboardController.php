@@ -184,7 +184,7 @@ class DashboardController extends Controller
                     $lastMonthRevenue = $lastMonthInvoices->sum('total') / 100;
                 }
             } catch (\Exception $e) {
-                \Log::error('Error fetching Stripe data: ' . $e->getMessage());
+                \Log::error('Error fetching Stripe data: '.$e->getMessage());
             }
         }
 

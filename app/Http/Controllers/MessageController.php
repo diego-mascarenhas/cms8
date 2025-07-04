@@ -109,7 +109,7 @@ class MessageController extends Controller
     public function sendSmsMessage(Request $request)
     {
         $receiverNumber = env('TWILIO_PHONE_TO');
-        $message = env('APP_NAME', 'Laravel') . ' SMS Message testing...';
+        $message = env('APP_NAME', 'Laravel').' SMS Message testing...';
 
         $sid = env('TWILIO_SID');
         $token = env('TWILIO_TOKEN');
@@ -124,14 +124,14 @@ class MessageController extends Controller
 
             return response()->json(['status' => 'SMS Message Sent Successfully.']);
         } catch (\Twilio\Exceptions\RestException $e) {
-            return response()->json(['error' => 'Error: ' . $e->getMessage()], 400);
+            return response()->json(['error' => 'Error: '.$e->getMessage()], 400);
         }
     }
 
     public function sendWhatsAppMessage(Request $request)
     {
-        $receiverNumber = 'whatsapp:' . env('TWILIO_WHATSAPP_FROM');
-        $message = env('APP_NAME', 'Laravel') . ' WhatsApp Message testing...';
+        $receiverNumber = 'whatsapp:'.env('TWILIO_WHATSAPP_FROM');
+        $message = env('APP_NAME', 'Laravel').' WhatsApp Message testing...';
 
         $sid = env('TWILIO_SID');
         $token = env('TWILIO_TOKEN');
@@ -146,7 +146,7 @@ class MessageController extends Controller
 
             return response()->json(['status' => 'WhatsApp Message Sent Successfully.']);
         } catch (\Twilio\Exceptions\RestException $e) {
-            return response()->json(['error' => 'Error: ' . $e->getMessage()], 400);
+            return response()->json(['error' => 'Error: '.$e->getMessage()], 400);
         }
     }
 
@@ -156,7 +156,7 @@ class MessageController extends Controller
             'to' => env('MAILBOX_USERNAME'),
             'dynamic_template_data' => [
                 'name' => env('APP_NAME', 'Laravel'),
-                'message' => env('APP_NAME', 'Laravel') . ' SendGrid Message testing...',
+                'message' => env('APP_NAME', 'Laravel').' SendGrid Message testing...',
                 'unsubscribe_url' => route('unsubscribe', ['email' => env('MAILBOX_USERNAME')]),
             ],
         ];

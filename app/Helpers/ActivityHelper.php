@@ -13,8 +13,8 @@ class ActivityHelper
     public static function logFileUpload(UploadedFile $file, $model = null, $description = null)
     {
         $user = Auth::user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return;
         }
 
@@ -33,8 +33,8 @@ class ActivityHelper
             $activity->performedOn($model);
         }
 
-        $logMessage = $description ?? 'File uploaded: ' . $file->getClientOriginalName();
-        
+        $logMessage = $description ?? 'File uploaded: '.$file->getClientOriginalName();
+
         $activity->log($logMessage);
     }
 
@@ -44,8 +44,8 @@ class ActivityHelper
     public static function log($message, $model = null, array $properties = [])
     {
         $user = Auth::user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return;
         }
 
@@ -134,4 +134,4 @@ class ActivityHelper
 
         self::log("API accessed: {$method} {$endpoint}", null, $properties);
     }
-} 
+}

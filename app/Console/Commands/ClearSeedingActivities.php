@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Spatie\Activitylog\Models\Activity;
-use Carbon\Carbon;
 
 class ClearSeedingActivities extends Command
 {
@@ -44,14 +44,16 @@ class ClearSeedingActivities extends Command
     protected function clearAllActivities()
     {
         $count = Activity::count();
-        
+
         if ($count === 0) {
             $this->info('No activities found to delete.');
+
             return;
         }
 
-        if (!$this->option('force') && !$this->confirm("Are you sure you want to delete ALL {$count} activity records?")) {
+        if (! $this->option('force') && ! $this->confirm("Are you sure you want to delete ALL {$count} activity records?")) {
             $this->info('Operation cancelled.');
+
             return;
         }
 
@@ -65,21 +67,23 @@ class ClearSeedingActivities extends Command
     protected function clearRecentActivities($minutes)
     {
         $since = Carbon::now()->subMinutes($minutes);
-        
+
         $query = Activity::where('created_at', '>=', $since);
         $count = $query->count();
 
         if ($count === 0) {
             $this->info("No activities found in the last {$minutes} minutes.");
+
             return;
         }
 
-        if (!$this->option('force') && !$this->confirm("Delete {$count} activity records from the last {$minutes} minutes?")) {
+        if (! $this->option('force') && ! $this->confirm("Delete {$count} activity records from the last {$minutes} minutes?")) {
             $this->info('Operation cancelled.');
+
             return;
         }
 
         $query->delete();
         $this->info("Successfully deleted {$count} activity records from the last {$minutes} minutes.");
     }
-} 
+}

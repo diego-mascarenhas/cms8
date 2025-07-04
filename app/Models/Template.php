@@ -82,8 +82,7 @@ class Template extends Model implements Editable
     /**
      * Find a template by its hashed ID
      *
-     * @param string $hashedId
-     *
+     * @param  string  $hashedId
      * @return Template|null
      */
     public static function findByHash($hashedId)

@@ -76,7 +76,7 @@ class Domain extends Model
     {
         try {
             $client = new Client(['timeout' => 5]);
-            $response = $client->get('https://' . $this->domain . '/wp-json/wp/v2', [
+            $response = $client->get('https://'.$this->domain.'/wp-json/wp/v2', [
                 'http_errors' => false,
             ]);
 
@@ -143,11 +143,11 @@ class Domain extends Model
             ]);
 
             $response = Http::withHeaders([
-                'Authorization' => 'whm ' . $username . ':' . $token,
-            ])->get($url . '?' . $query);
+                'Authorization' => 'whm '.$username.':'.$token,
+            ])->get($url.'?'.$query);
 
             if (! $response->successful()) {
-                \Log::error("WHM API request failed for {$this->domain}: " . $response->body());
+                \Log::error("WHM API request failed for {$this->domain}: ".$response->body());
 
                 return null;
             }
@@ -163,7 +163,7 @@ class Domain extends Model
                     // Convert ea-php82 to 8.2
                     $majorMinor = $matches[1];
 
-                    return substr($majorMinor, 0, 1) . '.' . substr($majorMinor, 1);
+                    return substr($majorMinor, 0, 1).'.'.substr($majorMinor, 1);
                 }
 
                 return $version;
@@ -172,7 +172,7 @@ class Domain extends Model
             return null;
         } catch (\Exception $e) {
             // Log error
-            \Log::error('Error fetching PHP version: ' . $e->getMessage());
+            \Log::error('Error fetching PHP version: '.$e->getMessage());
 
             return null;
         }

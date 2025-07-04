@@ -45,7 +45,7 @@ class WhmServerTest implements ShouldQueue
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Critical error in WHM server test: ' . $e->getMessage(), [
+            Log::error('Critical error in WHM server test: '.$e->getMessage(), [
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),

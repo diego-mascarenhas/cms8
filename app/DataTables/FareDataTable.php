@@ -24,7 +24,7 @@ class FareDataTable extends DataTable
 
                 $badges = '';
                 foreach ($fare->units as $unit) {
-                    $badges .= '<span class="badge bg-label-primary me-1">' . $unit->type . '</span>';
+                    $badges .= '<span class="badge bg-label-primary me-1">'.$unit->type.'</span>';
                 }
 
                 return $badges;
@@ -64,7 +64,7 @@ class FareDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->pageLength(25)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'select' => false,
                 'lengthChange' => false,
@@ -88,6 +88,6 @@ class FareDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Fares_' . date('YmdHis');
+        return 'Fares_'.date('YmdHis');
     }
 }

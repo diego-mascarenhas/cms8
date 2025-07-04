@@ -4,12 +4,10 @@ namespace App\Http\Controllers;
 
 use App\DataTables\NotificationDataTable;
 use App\Jobs\SendNotificationJob;
-use App\Mail\NotificationMail;
 use App\Models\Contact;
 use App\Models\Notification;
 use App\Models\NotificationType;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 
 class NotificationController extends Controller
 {
@@ -28,7 +26,7 @@ class NotificationController extends Controller
     {
         $contacts = Contact::orderBy('name')->get();
         $types = NotificationType::getActiveOptions();
-        
+
         return view('notification.create', compact('contacts', 'types'));
     }
 
@@ -62,7 +60,7 @@ class NotificationController extends Controller
         }
 
         return redirect()->route('notification.index')
-            ->with('success', 'Notificación creada correctamente' . 
+            ->with('success', 'Notificación creada correctamente'.
                    ($request->boolean('send_immediately') ? ' y enviada' : ''));
     }
 
@@ -72,7 +70,7 @@ class NotificationController extends Controller
     public function show(Notification $notification)
     {
         $notification->load(['contact', 'type', 'user', 'team']);
-        
+
         return view('notification.show', compact('notification'));
     }
 
@@ -88,7 +86,7 @@ class NotificationController extends Controller
 
         $contacts = Contact::orderBy('name')->get();
         $types = NotificationType::getActiveOptions();
-        
+
         return view('notification.edit', compact('notification', 'contacts', 'types'));
     }
 
@@ -129,7 +127,7 @@ class NotificationController extends Controller
     public function destroy(Notification $notification)
     {
         $notification->delete();
-        
+
         return redirect()->route('notification.index')
             ->with('success', 'Notificación eliminada correctamente');
     }
@@ -141,7 +139,7 @@ class NotificationController extends Controller
     {
         try {
             $this->sendNotification($notification);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Notificación enviada correctamente',
@@ -149,7 +147,7 @@ class NotificationController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al enviar la notificación: ' . $e->getMessage(),
+                'message' => 'Error al enviar la notificación: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -161,7 +159,7 @@ class NotificationController extends Controller
     {
         try {
             $this->sendNotification($notification, true);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Notificación reenviada correctamente',
@@ -169,7 +167,7 @@ class NotificationController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al reenviar la notificación: ' . $e->getMessage(),
+                'message' => 'Error al reenviar la notificación: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -180,7 +178,7 @@ class NotificationController extends Controller
     public function markAsRead(Notification $notification)
     {
         $notification->markAsRead();
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Notificación marcada como leída',
@@ -200,7 +198,7 @@ class NotificationController extends Controller
 
         $type = NotificationType::findOrFail($request->type_id);
         $contact = $request->contact_id ? Contact::find($request->contact_id) : null;
-        
+
         // Prepare placeholder data
         $placeholders = [
             'contact_name' => $contact ? $contact->name : '{contact_name}',
@@ -243,13 +241,13 @@ class NotificationController extends Controller
                 $this->sendNotification($notification);
                 $sentCount++;
             } catch (\Exception $e) {
-                $errors[] = "Notificación ID {$notification->id}: " . $e->getMessage();
+                $errors[] = "Notificación ID {$notification->id}: ".$e->getMessage();
             }
         }
 
         $message = "{$sentCount} notificaciones enviadas correctamente";
-        if (!empty($errors)) {
-            $message .= ". Errores: " . implode(', ', $errors);
+        if (! empty($errors)) {
+            $message .= '. Errores: '.implode(', ', $errors);
         }
 
         return response()->json([
@@ -272,22 +270,22 @@ class NotificationController extends Controller
         ]);
 
         $contact = Contact::findOrFail($contactId);
-        
+
         // Use General Message type if not specified
         $typeId = $request->type_id ?? NotificationType::where('name', 'General Message')->first()?->id ?? 3;
-        
+
         $notification = Notification::create([
             'team_id' => auth()->user()->currentTeam->id,
             'type_id' => $typeId,
             'contact_id' => $contactId,
             'user_id' => auth()->id(),
-            'subject' => $request->subject ?? 'Mensaje de ' . auth()->user()->currentTeam->name,
+            'subject' => $request->subject ?? 'Mensaje de '.auth()->user()->currentTeam->name,
             'message' => $request->message,
         ]);
 
         try {
             $this->sendNotification($notification);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Notificación enviada correctamente',
@@ -295,7 +293,7 @@ class NotificationController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al enviar la notificación: ' . $e->getMessage(),
+                'message' => 'Error al enviar la notificación: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -306,20 +304,20 @@ class NotificationController extends Controller
     private function sendNotification(Notification $notification, bool $isResend = false)
     {
         $notification->load(['contact', 'user', 'team']);
-        
-        if (!$notification->contact->email) {
+
+        if (! $notification->contact->email) {
             throw new \Exception('El contacto no tiene email configurado');
         }
 
         try {
             // Dispatch the job to the notifications queue
             SendNotificationJob::dispatch($notification, $isResend);
-            
+
             // For immediate feedback, we can still mark as "queued" or keep the original behavior
             // The actual sent status will be updated when the job processes
-            
+
         } catch (\Exception $e) {
-            throw new \Exception('Error al encolar la notificación: ' . $e->getMessage());
+            throw new \Exception('Error al encolar la notificación: '.$e->getMessage());
         }
     }
-} 
+}

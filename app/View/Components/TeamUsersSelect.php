@@ -2,15 +2,18 @@
 
 namespace App\View\Components;
 
-use App\Models\User;
 use Illuminate\View\Component;
 
 class TeamUsersSelect extends Component
 {
     public $options;
+
     public $selected;
+
     public $label;
+
     public $id;
+
     public $role;
 
     public function __construct($selected = null, $label = 'Team Member', $id = 'user_id', $role = null)

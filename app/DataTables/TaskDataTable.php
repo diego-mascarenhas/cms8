@@ -58,7 +58,7 @@ class TaskDataTable extends DataTable
             ->responsive(true)
             ->processing(false)
             ->ordering(false)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'initComplete' => "function() {
                     var api = this.api();
@@ -115,6 +115,6 @@ class TaskDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Task_' . date('YmdHis');
+        return 'Task_'.date('YmdHis');
     }
 }

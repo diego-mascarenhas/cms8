@@ -71,6 +71,6 @@ class UserFare extends Model
     {
         $currencySymbol = $this->currency ? $this->currency->symbol : '€';
 
-        return $currencySymbol . ' ' . number_format($this->amount, 2);
+        return $currencySymbol.' '.number_format($this->amount, 2);
     }
 }

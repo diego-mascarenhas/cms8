@@ -80,7 +80,7 @@ class ClientController extends Controller
             'status',
             'projects.responsible',
             'projects.status',
-            'projects.category'
+            'projects.category',
         ])->findOrFail($id);
 
         // Ensure it's a client (type_id = 1)
@@ -161,6 +161,7 @@ class ClientController extends Controller
                 if ($index === 0) {
                     if ($this->isHeaderRow($row)) {
                         $headers = array_map([$this, 'normalizeHeader'], array_keys($row));
+
                         continue; // Skip header row
                     }
                 }

@@ -80,8 +80,8 @@ class Conversation extends Model
      */
     public function scopeByPhone($query, $phoneNumber)
     {
-        return $query->where('from', 'like', '%' . $phoneNumber . '%')
-            ->orWhere('to', 'like', '%' . $phoneNumber . '%');
+        return $query->where('from', 'like', '%'.$phoneNumber.'%')
+            ->orWhere('to', 'like', '%'.$phoneNumber.'%');
     }
 
     /**

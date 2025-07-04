@@ -71,7 +71,7 @@ class ProjectDataTable extends DataTable
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(false)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'initComplete' => "function() {
                     var api = this.api();
@@ -145,6 +145,6 @@ class ProjectDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Project_' . date('YmdHis');
+        return 'Project_'.date('YmdHis');
     }
 }

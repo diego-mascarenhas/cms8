@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Contact extends Model
 {
@@ -100,12 +100,13 @@ class Contact extends Model
                 return $languageRelation->name;
             }
         }
-        
+
         if (isset($this->attributes['language'])) {
             $language = Language::where('code', $this->attributes['language'])->first();
+
             return $language ? $language->name : $this->attributes['language'];
         }
-        
+
         return null;
     }
 
@@ -120,12 +121,13 @@ class Contact extends Model
                 return $languageRelation->flag;
             }
         }
-        
+
         if (isset($this->attributes['language'])) {
             $language = Language::where('code', $this->attributes['language'])->first();
+
             return $language ? $language->flag : $this->attributes['language'];
         }
-        
+
         return null;
     }
 
@@ -139,17 +141,17 @@ class Contact extends Model
      */
     public function getFormattedLanguagePairsAttribute()
     {
-        \Log::info('Getting formatted language pairs for contact ID: ' . $this->id);
-        \Log::info('Language variants count: ' . $this->languageVariants->count());
+        \Log::info('Getting formatted language pairs for contact ID: '.$this->id);
+        \Log::info('Language variants count: '.$this->languageVariants->count());
 
         $pairs = $this->languageVariants->map(function ($variant) {
-            \Log::info('Processing variant: ' . $variant->id . ' - ' . $variant->source_language_code . ' -> ' . $variant->target_language_code);
+            \Log::info('Processing variant: '.$variant->id.' - '.$variant->source_language_code.' -> '.$variant->target_language_code);
 
             $sourceLanguage = $variant->sourceLanguage;
             $targetLanguage = $variant->targetLanguage;
 
-            \Log::info('Source language: ' . ($sourceLanguage ? $sourceLanguage->name : 'null'));
-            \Log::info('Target language: ' . ($targetLanguage ? $targetLanguage->name : 'null'));
+            \Log::info('Source language: '.($sourceLanguage ? $sourceLanguage->name : 'null'));
+            \Log::info('Target language: '.($targetLanguage ? $targetLanguage->name : 'null'));
 
             return [
                 'source_language' => $variant->source_language_code,
@@ -160,7 +162,7 @@ class Contact extends Model
             ];
         });
 
-        \Log::info('Formatted pairs: ' . json_encode($pairs));
+        \Log::info('Formatted pairs: '.json_encode($pairs));
 
         return $pairs;
     }
@@ -193,7 +195,7 @@ class Contact extends Model
     public function getStatusLabelAttribute()
     {
         if ($this->status) {
-            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
+            return '<span class="badge rounded-pill '.$this->status->label_class.'">'.$this->status->name.'</span>';
         }
 
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
@@ -205,7 +207,7 @@ class Contact extends Model
     public static function getTotalCollaborators($teamId = null)
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
-        
+
         return static::where('team_id', $teamId)
             ->whereHas('user', function ($query) {
                 $query->whereHas('roles', function ($q) {
@@ -221,7 +223,7 @@ class Contact extends Model
     public static function getNewCollaboratorsThisMonth($teamId = null)
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
-        
+
         return static::where('team_id', $teamId)
             ->whereHas('user', function ($query) {
                 $query->whereHas('roles', function ($q) {
@@ -239,7 +241,7 @@ class Contact extends Model
     public static function getPendingAcceptanceCount($teamId = null)
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
-        
+
         return static::where('team_id', $teamId)
             ->whereNull('user_id')
             ->count();
@@ -251,7 +253,7 @@ class Contact extends Model
     public static function getNewCollaboratorsThisWeek($teamId = null)
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
-        
+
         return static::where('team_id', $teamId)
             ->whereNotNull('user_id')
             ->where('created_at', '>=', now()->subWeek())
@@ -264,7 +266,7 @@ class Contact extends Model
     public static function getNotUpdatedInSixMonths($teamId = null)
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
-        
+
         return static::where('team_id', $teamId)
             ->where('updated_at', '<=', now()->subMonths(6))
             ->count();
@@ -276,13 +278,13 @@ class Contact extends Model
     public static function getIncompleteCollaborators($limit = 20, $teamId = null)
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
-        
+
         return static::where('team_id', $teamId)
             ->where(function ($query) {
                 $query->whereNull('email')
-                      ->orWhere('email', '')
-                      ->orWhereNull('phone')
-                      ->orWhere('phone', '');
+                    ->orWhere('email', '')
+                    ->orWhereNull('phone')
+                    ->orWhere('phone', '');
             })
             ->with(['language', 'fares', 'softwares'])
             ->limit($limit)
@@ -290,56 +292,57 @@ class Contact extends Model
             ->map(function ($contact) {
                 $missingFields = [];
                 $missingCount = 0;
-                
+
                 // Check required fields
                 if (empty($contact->email)) {
                     $missingFields[] = 'email';
                     $missingCount++;
                 }
-                
+
                 if (empty($contact->phone)) {
                     $missingFields[] = 'teléfono';
                     $missingCount++;
                 }
-                
+
                 // Check optional but important fields
                 if (empty($contact->language)) {
                     $missingFields[] = 'idioma';
                     $missingCount++;
                 }
-                
+
                 if (empty($contact->profile)) {
                     $missingFields[] = 'perfil';
                     $missingCount++;
                 }
-                
+
                 if (empty($contact->birthday)) {
                     $missingFields[] = 'cumpleaños';
                     $missingCount++;
                 }
-                
+
                 // Check related data
                 if ($contact->fares->count() === 0) {
                     $missingFields[] = 'servicios';
                     $missingCount++;
                 }
-                
+
                 if ($contact->softwares->count() === 0) {
                     $missingFields[] = 'software';
                     $missingCount++;
                 }
-                
+
                 return [
                     'id' => $contact->id,
                     'name' => $contact->name,
-                    'avatar' => "https://ui-avatars.com/api/?format=svg&name=" . urlencode($contact->name),
+                    'avatar' => 'https://ui-avatars.com/api/?format=svg&name='.urlencode($contact->name),
                     'missing_count' => $missingCount,
                     'missing_fields' => $missingFields,
-                    'missing_text' => $missingCount > 0 ? 
-                        ($missingCount === 1 ? 
-                            "Falta: " . implode(', ', $missingFields) : 
+                    'missing_text' => $missingCount > 0 ?
+                        (
+                            $missingCount === 1 ?
+                            'Falta: '.implode(', ', $missingFields) :
                             "{$missingCount} campos por completar"
-                        ) : 'Datos completos'
+                        ) : 'Datos completos',
                 ];
             })
             ->sortByDesc('missing_count')
@@ -370,7 +373,7 @@ class Contact extends Model
             $count = $contactStats[$statusId] ?? 0;
             $percentage = $totalContacts > 0 ? round(($count / $totalContacts) * 100, 2) : 0;
             $data["total$label"] = $count;
-            $data[lcfirst($label) . 'Percentage'] = $percentage;
+            $data[lcfirst($label).'Percentage'] = $percentage;
         }
 
         $defaultData = [
@@ -542,7 +545,7 @@ class Contact extends Model
         if ($this->phone) {
             $cleanNumber = preg_replace('/[^0-9]/', '', (string) $this->phone);
 
-            return 'whatsapp:+' . $cleanNumber;
+            return 'whatsapp:+'.$cleanNumber;
         }
 
         // If no direct phone, try to get from related user
@@ -551,7 +554,7 @@ class Contact extends Model
         if ($relatedUser && $relatedUser->phone) {
             $cleanNumber = preg_replace('/[^0-9]/', '', (string) $relatedUser->phone);
 
-            return 'whatsapp:+' . $cleanNumber;
+            return 'whatsapp:+'.$cleanNumber;
         }
 
         return null;

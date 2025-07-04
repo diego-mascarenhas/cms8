@@ -254,12 +254,14 @@ class ServiceController extends Controller
             // Asegurarse de que la frecuencia sea un valor válido
             if (is_null($frequency) || $frequency <= 0) {
                 Log::error('Frecuencia inválida', ['service_id' => $service->id, 'frequency' => $frequency]);
+
                 continue;
             }
 
             // Asegurarse de que la fecha de próxima facturación es válida
             if (is_null($nextBillingDate) || $nextBillingDate->lessThan($currentDate)) {
                 Log::error('Fecha de próxima facturación inválida', ['service_id' => $service->id, 'next_billing' => $service->next_billing]);
+
                 continue;
             }
 
@@ -269,6 +271,7 @@ class ServiceController extends Controller
                 // Omitir el mes en curso
                 if ($month === $currentDate->format('F Y')) {
                     $nextBillingDate->addMonths($frequency);
+
                     continue;
                 }
 

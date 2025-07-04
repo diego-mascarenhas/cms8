@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class WhmDomainSync extends Command
 {
     protected $signature = 'whm:sync-domains';
+
     protected $description = 'Sync domains from all WHM servers';
 
     public function handle()

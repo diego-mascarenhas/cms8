@@ -73,7 +73,7 @@ class OvhServiceSync implements ShouldQueue
             }
 
             $services = $response['data'];
-            Log::info('Retrieved services count: ' . count($services));
+            Log::info('Retrieved services count: '.count($services));
 
             $importCount = 0;
             $updateCount = 0;
@@ -177,10 +177,10 @@ class OvhServiceSync implements ShouldQueue
                     }
                 }
 
-                echo "\nTotal services: " . count($services) . "\n";
+                echo "\nTotal services: ".count($services)."\n";
             }
         } catch (\Exception $e) {
-            Log::error('Error in OVH domain sync: ' . $e->getMessage(), [
+            Log::error('Error in OVH domain sync: '.$e->getMessage(), [
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -247,7 +247,7 @@ class OvhServiceSync implements ShouldQueue
         $serverUrl = $this->determineServerUrl($service, $domainName);
 
         // 6. Generate a unique key to search for existing services
-        $uniqueKey = md5($domainName . ($service['id'] ?? '') . ($service['serviceName'] ?? ''));
+        $uniqueKey = md5($domainName.($service['id'] ?? '').($service['serviceName'] ?? ''));
 
         try {
             // 7. Check if service already exists in services table
@@ -417,12 +417,12 @@ class OvhServiceSync implements ShouldQueue
 
                     return [
                         'status' => 'error',
-                        'reason' => 'Database error: ' . $e->getMessage(),
+                        'reason' => 'Database error: '.$e->getMessage(),
                     ];
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Error saving service: ' . $e->getMessage(), [
+            Log::error('Error saving service: '.$e->getMessage(), [
                 'service_id' => $serviceId,
                 'domain' => $domainName,
                 'file' => $e->getFile(),
@@ -431,7 +431,7 @@ class OvhServiceSync implements ShouldQueue
 
             return [
                 'status' => 'error',
-                'reason' => 'Database error: ' . $e->getMessage(),
+                'reason' => 'Database error: '.$e->getMessage(),
             ];
         }
     }

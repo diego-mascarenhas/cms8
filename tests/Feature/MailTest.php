@@ -21,10 +21,10 @@ class MailTest extends TestCase
             foreach ($recipients as $email) {
                 Mail::to($email)->send(new TestMail);
                 $this->assertTrue(true);
-                echo "\nEmail enviado correctamente a: " . $email;
+                echo "\nEmail enviado correctamente a: ".$email;
             }
         } catch (\Exception $e) {
-            $this->fail('Error al enviar el email: ' . $e->getMessage());
+            $this->fail('Error al enviar el email: '.$e->getMessage());
         }
     }
 
@@ -32,11 +32,11 @@ class MailTest extends TestCase
     {
         // Verificar la configuración SMTP
         echo "\nConfiguracion actual:";
-        echo "\nMAIL_HOST: " . config('mail.mailers.smtp.host');
-        echo "\nMAIL_PORT: " . config('mail.mailers.smtp.port');
-        echo "\nMAIL_USERNAME: " . config('mail.mailers.smtp.username');
-        echo "\nMAIL_FROM_ADDRESS: " . config('mail.from.address');
-        echo "\nMAIL_ENCRYPTION: " . config('mail.mailers.smtp.encryption');
+        echo "\nMAIL_HOST: ".config('mail.mailers.smtp.host');
+        echo "\nMAIL_PORT: ".config('mail.mailers.smtp.port');
+        echo "\nMAIL_USERNAME: ".config('mail.mailers.smtp.username');
+        echo "\nMAIL_FROM_ADDRESS: ".config('mail.from.address');
+        echo "\nMAIL_ENCRYPTION: ".config('mail.mailers.smtp.encryption');
 
         $this->assertTrue(true);
     }

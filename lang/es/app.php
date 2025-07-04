@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'welcome' => 'Bienvenido a ' . config('variables.templateName') . '!',
+    'welcome' => 'Bienvenido a '.config('variables.templateName').'!',
     'dashboard' => 'Cuadro de mando',
     'search' => 'Buscar',
     'search_with_shortcut' => 'Buscar (Ctrl+/)',

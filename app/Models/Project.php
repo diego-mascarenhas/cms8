@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Project extends Model
 {
@@ -102,7 +102,7 @@ class Project extends Model
     public function getStatusLabelAttribute()
     {
         if ($this->status) {
-            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->translated_name . '</span>';
+            return '<span class="badge rounded-pill '.$this->status->label_class.'">'.$this->status->translated_name.'</span>';
         }
 
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
@@ -114,10 +114,10 @@ class Project extends Model
     public static function getActiveProjectsCount($teamId = null)
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
-        
+
         // Active project statuses: AUTHORIZED, APPROVED, WAITING_FOR_RESPONSE, IN_PROGRESS
         $activeStatuses = [3, 7, 8, 9];
-        
+
         return static::where('team_id', $teamId)
             ->whereIn('status_id', $activeStatuses)
             ->count();

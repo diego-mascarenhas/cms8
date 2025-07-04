@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Log;
 class RegisterApplication extends Command
 {
     protected $signature = 'app:register-application';
+
     protected $description = 'Register the application with the central server';
+
     protected $showConsoleOutput;
 
     public function __construct()

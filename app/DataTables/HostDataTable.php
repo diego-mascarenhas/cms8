@@ -14,7 +14,7 @@ class HostDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -68,6 +68,6 @@ class HostDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Host_' . date('YmdHis');
+        return 'Host_'.date('YmdHis');
     }
 }

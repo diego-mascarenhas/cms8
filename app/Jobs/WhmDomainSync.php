@@ -28,7 +28,7 @@ class WhmDomainSync implements ShouldQueue
                 Log::error('Critical error in WHM domain sync: No servers were processed successfully', $result);
             }
         } catch (\Exception $e) {
-            Log::error('Critical error in WHM domain sync: ' . $e->getMessage(), [
+            Log::error('Critical error in WHM domain sync: '.$e->getMessage(), [
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),

@@ -28,14 +28,14 @@ class ActivityLogController extends Controller
         // Check if user can view this activity (same team)
         if (auth()->user()->currentTeam) {
             $teamUserIds = auth()->user()->currentTeam->users->pluck('id');
-            if (!$teamUserIds->contains($activity->causer_id)) {
+            if (! $teamUserIds->contains($activity->causer_id)) {
                 abort(403, 'Unauthorized to view this activity.');
             }
         }
 
         return response()->json([
             'activity' => $activity->load(['causer', 'subject']),
-            'properties' => $activity->properties
+            'properties' => $activity->properties,
         ]);
     }
 
@@ -47,7 +47,7 @@ class ActivityLogController extends Controller
         // Check if user can view activities for this user
         if (auth()->user()->currentTeam) {
             $teamUserIds = auth()->user()->currentTeam->users->pluck('id');
-            if (!$teamUserIds->contains($userId)) {
+            if (! $teamUserIds->contains($userId)) {
                 abort(403, 'Unauthorized to view this user activities.');
             }
         }
@@ -66,7 +66,7 @@ class ActivityLogController extends Controller
     public function recent(Request $request)
     {
         $limit = $request->get('limit', 10);
-        
+
         $query = Activity::with(['causer', 'subject'])
             ->latest();
 
@@ -87,7 +87,7 @@ class ActivityLogController extends Controller
     public function statistics(Request $request)
     {
         $teamUserIds = collect();
-        
+
         if (auth()->check() && auth()->user()->currentTeam) {
             $teamUserIds = auth()->user()->currentTeam->users->pluck('id');
         }
@@ -97,7 +97,7 @@ class ActivityLogController extends Controller
             ->whereDate('created_at', today())
             ->count();
 
-        // This week's activities  
+        // This week's activities
         $weekActivities = Activity::whereIn('causer_id', $teamUserIds)
             ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
             ->count();
@@ -135,4 +135,4 @@ class ActivityLogController extends Controller
             'activity_types' => $activityTypes,
         ]);
     }
-} 
+}

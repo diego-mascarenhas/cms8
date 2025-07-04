@@ -7,7 +7,6 @@ use App\Models\Notification;
 use App\Models\NotificationType;
 use App\Models\Team;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class NotificationSeeder extends Seeder
@@ -25,12 +24,13 @@ class NotificationSeeder extends Seeder
 
         if ($teams->isEmpty() || $users->isEmpty() || $contacts->isEmpty() || $notificationTypes->isEmpty()) {
             $this->command->info('Make sure you have teams, users, contacts, and notification types before running this seeder.');
+
             return;
         }
 
         // Create various types of notifications
         $this->command->info('Creating general notifications...');
-        
+
         // Create 15 random notifications with mixed states
         Notification::factory()
             ->count(15)
@@ -45,7 +45,7 @@ class NotificationSeeder extends Seeder
             ->create();
 
         $this->command->info('Creating project-related notifications...');
-        
+
         // Create 8 project-related notifications
         Notification::factory()
             ->count(8)
@@ -61,7 +61,7 @@ class NotificationSeeder extends Seeder
             ->create();
 
         $this->command->info('Creating payment-related notifications...');
-        
+
         // Create 5 payment-related notifications
         Notification::factory()
             ->count(5)
@@ -77,7 +77,7 @@ class NotificationSeeder extends Seeder
             ->create();
 
         $this->command->info('Creating urgent notifications...');
-        
+
         // Create 3 urgent notifications
         Notification::factory()
             ->count(3)
@@ -94,7 +94,7 @@ class NotificationSeeder extends Seeder
             ->create();
 
         $this->command->info('Creating unsent notifications...');
-        
+
         // Create 5 unsent notifications
         Notification::factory()
             ->count(5)
@@ -110,7 +110,7 @@ class NotificationSeeder extends Seeder
             ->create();
 
         $this->command->info('Creating sent and read notifications...');
-        
+
         // Create 7 sent and read notifications
         Notification::factory()
             ->count(7)
@@ -129,7 +129,7 @@ class NotificationSeeder extends Seeder
         if ($contacts->count() > 0) {
             $firstContact = $contacts->first();
             $this->command->info("Creating specific notifications for contact: {$firstContact->name}...");
-            
+
             // Welcome notification
             Notification::factory()
                 ->sentRead()
@@ -138,7 +138,7 @@ class NotificationSeeder extends Seeder
                     'user_id' => $users->random()->id,
                     'contact_id' => $firstContact->id,
                     'type_id' => $notificationTypes->where('name', 'Welcome Message')->first()?->id ?? $notificationTypes->random()->id,
-                    'subject' => '¡Bienvenido al equipo, ' . $firstContact->name . '!',
+                    'subject' => '¡Bienvenido al equipo, '.$firstContact->name.'!',
                     'message' => 'Nos complace darte la bienvenida a nuestro equipo de traductores profesionales. Esperamos trabajar contigo en proyectos emocionantes.',
                 ])
                 ->create();
@@ -164,12 +164,12 @@ class NotificationSeeder extends Seeder
                     'contact_id' => $firstContact->id,
                     'type_id' => $notificationTypes->where('name', 'General Message')->first()?->id ?? $notificationTypes->random()->id,
                     'subject' => 'Actualización importante de perfil',
-                    'message' => 'Hola ' . $firstContact->name . ', necesitamos que actualices tu información de perfil para mejorar nuestro servicio.',
+                    'message' => 'Hola '.$firstContact->name.', necesitamos que actualices tu información de perfil para mejorar nuestro servicio.',
                 ])
                 ->create();
         }
 
         $this->command->info('Notification seeding completed successfully!');
-        $this->command->info('Total notifications created: ' . Notification::count());
+        $this->command->info('Total notifications created: '.Notification::count());
     }
 }

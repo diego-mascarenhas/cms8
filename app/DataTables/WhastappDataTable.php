@@ -15,7 +15,7 @@ class WhastappDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -59,7 +59,7 @@ class WhastappDataTable extends DataTable
             ->minifiedAjax()
             ->dom('frtip')
             ->orderBy(1, 'desc')
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json']);
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json']);
     }
 
     /**
@@ -81,6 +81,6 @@ class WhastappDataTable extends DataTable
      */
     protected function filename(): string
     {
-        return 'Whastapp_' . date('YmdHis');
+        return 'Whastapp_'.date('YmdHis');
     }
 }

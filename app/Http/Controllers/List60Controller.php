@@ -76,10 +76,10 @@ class List60Controller extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Error al agregar contacto a Lista60: ' . $e->getMessage());
+            \Log::error('Error al agregar contacto a Lista60: '.$e->getMessage());
 
             return response()->json([
-                'error' => 'No se pudo agregar el contacto a la Lista de 60: ' . $e->getMessage(),
+                'error' => 'No se pudo agregar el contacto a la Lista de 60: '.$e->getMessage(),
             ], 500);
         }
     }

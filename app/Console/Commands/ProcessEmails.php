@@ -48,13 +48,13 @@ class ProcessEmails extends Command
             $messages = $folder->messages()->all()->get();
 
             foreach ($messages as $message) {
-                $this->info($message->getFrom() . ': ' . $message->getSubject());
+                $this->info($message->getFrom().': '.$message->getSubject());
             }
 
             $this->info('Emails processed successfully.');
 
         } catch (\Exception $e) {
-            $this->error('Error: ' . $e->getMessage());
+            $this->error('Error: '.$e->getMessage());
         }
     }
 }

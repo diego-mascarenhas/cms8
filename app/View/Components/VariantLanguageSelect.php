@@ -10,10 +10,15 @@ use Illuminate\View\Component;
 class VariantLanguageSelect extends Component
 {
     public $name;
+
     public $id;
+
     public $value;
+
     public $label;
+
     public $baseLanguage;
+
     public $required;
 
     public function __construct($name = 'language_variant', $id = null, $value = null, $label = 'Variante de idioma', $baseLanguage = null, $required = false)
@@ -34,7 +39,7 @@ class VariantLanguageSelect extends Component
         $variants = LanguageVariant::orderBy('name')->get();
 
         // Log for debugging
-        Log::info('VariantLanguageSelect: Found ' . $variants->count() . ' language variants');
+        Log::info('VariantLanguageSelect: Found '.$variants->count().' language variants');
 
         return view('components.variant-language-select', [
             'languages' => $languages,

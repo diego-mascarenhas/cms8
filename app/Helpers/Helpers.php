@@ -192,7 +192,7 @@ class Helpers
         if (isset($pageConfigs)) {
             if (count($pageConfigs) > 0) {
                 foreach ($pageConfigs as $config => $val) {
-                    Config::set('custom.' . $demo . '.' . $config, $val);
+                    Config::set('custom.'.$demo.'.'.$config, $val);
                 }
             }
         }
@@ -202,8 +202,7 @@ class Helpers
      * Map language codes to country codes for flag display
      * This resolves issues with languages like Japanese (ja) that use different country codes (jp) for flags
      *
-     * @param string $languageCode ISO language code
-     *
+     * @param  string  $languageCode  ISO language code
      * @return string Country code to use for flag display
      */
     public static function getLanguageFlag($languageCode)

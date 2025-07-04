@@ -29,14 +29,15 @@ class WHMService
 
             if (count($server) < 3) {
                 $errors[] = 'Configuración de servidor incorrecta. Formato requerido: hostname:usuario:token';
+
                 continue;
             }
 
             try {
                 $url = "https://{$server[0]}:2087";
                 $response = Http::withHeaders([
-                    'Authorization' => 'whm ' . $server[1] . ':' . $server[2],
-                ])->get($url . '/json-api/listaccts');
+                    'Authorization' => 'whm '.$server[1].':'.$server[2],
+                ])->get($url.'/json-api/listaccts');
 
                 if ($response->successful()) {
                     $data = $response->json();
@@ -70,12 +71,12 @@ class WHMService
                         $successCount++;
                     }
                 } else {
-                    $error = "Error en servidor {$server[0]}: " . $response->body();
+                    $error = "Error en servidor {$server[0]}: ".$response->body();
                     $errors[] = $error;
                     Log::error($error);
                 }
             } catch (\Exception $e) {
-                $error = "Error en servidor {$server[0]}: " . $e->getMessage();
+                $error = "Error en servidor {$server[0]}: ".$e->getMessage();
                 $errors[] = $error;
                 Log::error($error, [
                     'exception' => get_class($e),
@@ -143,10 +144,10 @@ class WHMService
             // Probar la conexión
             $url = "https://{$server[0]}:2087";
             $response = Http::withHeaders([
-                'Authorization' => 'whm ' . $server[1] . ':' . $server[2],
+                'Authorization' => 'whm '.$server[1].':'.$server[2],
             ])
                 ->timeout(10)
-                ->get($url . '/json-api/version');
+                ->get($url.'/json-api/version');
 
             return [
                 'success' => $response->successful(),

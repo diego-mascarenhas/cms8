@@ -28,17 +28,17 @@ class NotificationFactory extends Factory
 
         // Get a random existing contact from team_id 1
         $contact = Contact::where('team_id', 1)->inRandomOrder()->first();
-        
+
         // If no contact exists with team_id 1, throw an exception
-        if (!$contact) {
+        if (! $contact) {
             throw new \Exception('No contacts found with team_id = 1. Please run ContactSeeder first.');
         }
 
         // Get a random existing user
         $user = User::inRandomOrder()->first();
-        
+
         // If no user exists, throw an exception
-        if (!$user) {
+        if (! $user) {
             throw new \Exception('No users found. Please run UserSeeder first.');
         }
 
@@ -48,9 +48,9 @@ class NotificationFactory extends Factory
             'contact_id' => $contact->id,
             'type_id' => NotificationType::inRandomOrder()->first()?->id ?? NotificationType::factory(),
             'reference' => $this->faker->optional(0.3)->randomElement([
-                'project_' . $this->faker->numberBetween(1, 100),
-                'task_' . $this->faker->numberBetween(1, 200),
-                'payment_' . $this->faker->numberBetween(1, 50),
+                'project_'.$this->faker->numberBetween(1, 100),
+                'task_'.$this->faker->numberBetween(1, 200),
+                'payment_'.$this->faker->numberBetween(1, 50),
             ]),
             'subject' => $notificationContent['subject'],
             'message' => $notificationContent['message'],
@@ -79,8 +79,8 @@ class NotificationFactory extends Factory
     {
         $contents = [
             [
-                'subject' => 'Nuevo proyecto asignado: ' . $this->faker->catchPhrase(),
-                'message' => 'Hola, te hemos asignado un nuevo proyecto de traducción. El proyecto "' . $this->faker->catchPhrase() . '" requiere traducción de ' . $this->faker->randomElement(['inglés', 'francés', 'alemán', 'italiano']) . ' a español. Por favor, revisa los detalles y confirma tu disponibilidad.',
+                'subject' => 'Nuevo proyecto asignado: '.$this->faker->catchPhrase(),
+                'message' => 'Hola, te hemos asignado un nuevo proyecto de traducción. El proyecto "'.$this->faker->catchPhrase().'" requiere traducción de '.$this->faker->randomElement(['inglés', 'francés', 'alemán', 'italiano']).' a español. Por favor, revisa los detalles y confirma tu disponibilidad.',
             ],
             [
                 'subject' => 'Actualización importante del proyecto',
@@ -88,7 +88,7 @@ class NotificationFactory extends Factory
             ],
             [
                 'subject' => 'Recordatorio de pago pendiente',
-                'message' => 'Te recordamos que tienes un pago pendiente por el proyecto completado el mes pasado. El monto es de €' . $this->faker->numberBetween(500, 5000) . '. Por favor, revisa tu factura y procede con el pago a la brevedad posible.',
+                'message' => 'Te recordamos que tienes un pago pendiente por el proyecto completado el mes pasado. El monto es de €'.$this->faker->numberBetween(500, 5000).'. Por favor, revisa tu factura y procede con el pago a la brevedad posible.',
             ],
             [
                 'subject' => '¡Bienvenido al equipo!',
@@ -96,7 +96,7 @@ class NotificationFactory extends Factory
             ],
             [
                 'subject' => 'Nueva tarea asignada - Urgente',
-                'message' => 'Se te ha asignado una nueva tarea con prioridad alta. La tarea "' . $this->faker->sentence(3) . '" debe completarse antes del ' . $this->faker->dateTimeBetween('now', '+7 days')->format('d/m/Y') . '. Por favor, confirma que puedes hacerte cargo de esta tarea.',
+                'message' => 'Se te ha asignado una nueva tarea con prioridad alta. La tarea "'.$this->faker->sentence(3).'" debe completarse antes del '.$this->faker->dateTimeBetween('now', '+7 days')->format('d/m/Y').'. Por favor, confirma que puedes hacerte cargo de esta tarea.',
             ],
             [
                 'subject' => 'Feedback del cliente disponible',
@@ -112,7 +112,7 @@ class NotificationFactory extends Factory
             ],
             [
                 'subject' => 'Evaluación de calidad completada',
-                'message' => 'Hemos completado la evaluación de calidad de tu último proyecto. Tu puntuación fue de ' . $this->faker->numberBetween(85, 100) . '/100. ¡Felicitaciones por mantener altos estándares de calidad!',
+                'message' => 'Hemos completado la evaluación de calidad de tu último proyecto. Tu puntuación fue de '.$this->faker->numberBetween(85, 100).'/100. ¡Felicitaciones por mantener altos estándares de calidad!',
             ],
             [
                 'subject' => 'Oportunidad de colaboración especial',
@@ -161,7 +161,7 @@ class NotificationFactory extends Factory
     public function sentRead(): static
     {
         $sentAt = $this->faker->dateTimeBetween('-30 days', 'now');
-        
+
         return $this->state(fn (array $attributes) => [
             'is_sent' => true,
             'sent_at' => $sentAt,
@@ -181,7 +181,7 @@ class NotificationFactory extends Factory
     public function urgent(): static
     {
         return $this->state(fn (array $attributes) => [
-            'subject' => '🚨 URGENTE: ' . $attributes['subject'],
+            'subject' => '🚨 URGENTE: '.$attributes['subject'],
             'metadata' => array_merge($attributes['metadata'] ?? [], [
                 'priority' => 'urgent',
                 'requires_immediate_attention' => true,
@@ -195,12 +195,12 @@ class NotificationFactory extends Factory
     public function projectRelated(): static
     {
         return $this->state(fn (array $attributes) => [
-            'reference' => 'project_' . $this->faker->numberBetween(1, 100),
+            'reference' => 'project_'.$this->faker->numberBetween(1, 100),
             'subject' => $this->faker->randomElement([
-                'Nuevo proyecto asignado: ' . $this->faker->catchPhrase(),
-                'Actualización del proyecto: ' . $this->faker->catchPhrase(),
-                'Proyecto completado: ' . $this->faker->catchPhrase(),
-                'Comentarios del proyecto: ' . $this->faker->catchPhrase(),
+                'Nuevo proyecto asignado: '.$this->faker->catchPhrase(),
+                'Actualización del proyecto: '.$this->faker->catchPhrase(),
+                'Proyecto completado: '.$this->faker->catchPhrase(),
+                'Comentarios del proyecto: '.$this->faker->catchPhrase(),
             ]),
             'metadata' => [
                 'project_type' => $this->faker->randomElement(['translation', 'interpretation', 'review']),
@@ -216,7 +216,7 @@ class NotificationFactory extends Factory
     public function paymentRelated(): static
     {
         return $this->state(fn (array $attributes) => [
-            'reference' => 'payment_' . $this->faker->numberBetween(1, 50),
+            'reference' => 'payment_'.$this->faker->numberBetween(1, 50),
             'subject' => $this->faker->randomElement([
                 'Pago procesado correctamente',
                 'Recordatorio de pago pendiente',
@@ -227,7 +227,7 @@ class NotificationFactory extends Factory
                 'amount' => $this->faker->numberBetween(100, 5000),
                 'currency' => 'EUR',
                 'payment_method' => $this->faker->randomElement(['bank_transfer', 'paypal', 'stripe']),
-                'invoice_number' => 'INV-' . $this->faker->numberBetween(1000, 9999),
+                'invoice_number' => 'INV-'.$this->faker->numberBetween(1000, 9999),
             ],
         ]);
     }

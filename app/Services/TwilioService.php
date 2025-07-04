@@ -11,7 +11,9 @@ use Twilio\Rest\Client;
 class TwilioService
 {
     protected $client;
+
     protected $smsFromNumber;
+
     protected $whatsappFromNumber;
 
     public function __construct()
@@ -19,7 +21,7 @@ class TwilioService
         $sid = config('services.twilio.sid');
         $token = config('services.twilio.token');
         $this->smsFromNumber = config('services.twilio.from');
-        $this->whatsappFromNumber = 'whatsapp:' . config('services.twilio.whatsapp_from', '+14155238886');
+        $this->whatsappFromNumber = 'whatsapp:'.config('services.twilio.whatsapp_from', '+14155238886');
 
         $this->client = new Client($sid, $token);
     }
@@ -60,7 +62,7 @@ class TwilioService
 
             return $twilioMessage;
         } catch (\Exception $e) {
-            Log::error('Twilio SMS Error: ' . $e->getMessage());
+            Log::error('Twilio SMS Error: '.$e->getMessage());
             throw $e;
         }
     }
@@ -69,7 +71,7 @@ class TwilioService
     {
         try {
             // Format the numbers with whatsapp: prefix for Twilio
-            $formattedTo = 'whatsapp:' . $to;
+            $formattedTo = 'whatsapp:'.$to;
 
             // Get the full URL for the status callback
             $statusCallbackUrl = url(route('twilio.status'));
@@ -116,7 +118,7 @@ class TwilioService
 
             return $twilioMessage;
         } catch (\Exception $e) {
-            Log::error('Twilio WhatsApp Error: ' . $e->getMessage());
+            Log::error('Twilio WhatsApp Error: '.$e->getMessage());
             throw $e;
         }
     }
@@ -214,18 +216,18 @@ class TwilioService
                         // Send the AI message
                         $this->sendWhatsApp($cleanFrom, $aiMessage);
 
-                        \Log::info("Auto AI response sent to {$cleanFrom}: " . \Illuminate\Support\Str::limit($aiMessage, 100));
+                        \Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
                     } else {
-                        \Log::warning('Failed to get AI response: ' . ($claudeResponse['message'] ?? 'Unknown error'));
+                        \Log::warning('Failed to get AI response: '.($claudeResponse['message'] ?? 'Unknown error'));
                     }
                 } catch (\Exception $e) {
-                    \Log::error('Error in auto AI response: ' . $e->getMessage());
+                    \Log::error('Error in auto AI response: '.$e->getMessage());
                 }
             }
 
             return response()->json(['status' => 'success', 'conversation_id' => $conversation->id]);
         } catch (\Exception $e) {
-            \Log::error('Error processing incoming message: ' . $e->getMessage());
+            \Log::error('Error processing incoming message: '.$e->getMessage());
 
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
@@ -234,17 +236,16 @@ class TwilioService
     /**
      * Send WhatsApp message using a template
      *
-     * @param string $to           Recipient phone number (without whatsapp: prefix)
-     * @param string $templateName The name of the approved template
-     * @param array  $parameters   Template parameters
-     *
+     * @param  string  $to  Recipient phone number (without whatsapp: prefix)
+     * @param  string  $templateName  The name of the approved template
+     * @param  array  $parameters  Template parameters
      * @return \Twilio\Rest\Api\V2010\Account\MessageInstance
      */
     public function sendWhatsAppTemplate($to, $templateName, $parameters = [])
     {
         try {
             // Format the numbers with whatsapp: prefix
-            $formattedTo = 'whatsapp:' . $to;
+            $formattedTo = 'whatsapp:'.$to;
 
             // Get the full URL for the status callback
             $statusCallbackUrl = url(route('twilio.status'));
@@ -293,7 +294,7 @@ class TwilioService
 
             return $twilioMessage;
         } catch (\Exception $e) {
-            Log::error('Twilio WhatsApp Template Error: ' . $e->getMessage());
+            Log::error('Twilio WhatsApp Template Error: '.$e->getMessage());
             throw $e;
         }
     }

@@ -139,7 +139,7 @@ class ContactSkillsSeeder extends Seeder
             ],
         ];
 
-        $this->command->info('Assigning skills to ' . $contacts->count() . ' contacts...');
+        $this->command->info('Assigning skills to '.$contacts->count().' contacts...');
 
         foreach ($contacts as $contact) {
             // Assign a random profile type
@@ -420,37 +420,39 @@ class ContactSkillsSeeder extends Seeder
         $faker = Faker::create();
         $maxAttempts = 10;
         $attempts = 0;
-        
+
         while ($attempts < $maxAttempts) {
             try {
                 $dateTime = $faker->dateTimeBetween($from, $to);
-                
+
                 // Avoid problematic DST transition hours (2:00-3:00 AM on DST days)
                 $hour = (int) $dateTime->format('H');
                 $month = (int) $dateTime->format('n');
                 $day = (int) $dateTime->format('j');
-                
+
                 // Skip 2 AM hour during likely DST transition dates (late March, late October)
                 if ($hour === 2 && (($month === 3 && $day >= 25) || ($month === 10 && $day >= 25))) {
                     $attempts++;
+
                     continue;
                 }
-                
+
                 return $dateTime;
-                
+
             } catch (\Exception $e) {
                 $attempts++;
                 if ($attempts >= $maxAttempts) {
                     // Fallback: return a safe datetime by adjusting to 3 AM
                     $safeDateTime = $faker->dateTimeBetween($from, $to);
                     $safeDateTime->setTime(3, 0, 0); // Set to 3:00 AM to avoid DST issues
+
                     return $safeDateTime;
                 }
             }
         }
-        
+
         // Final fallback
-        return new \DateTime();
+        return new \DateTime;
     }
 
     /**

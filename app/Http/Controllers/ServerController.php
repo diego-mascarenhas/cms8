@@ -139,7 +139,7 @@ class ServerController extends Controller
                 ->with($type, $message);
 
         } catch (\Exception $e) {
-            Log::error('Error testing server connection: ' . $e->getMessage());
+            Log::error('Error testing server connection: '.$e->getMessage());
 
             $server->update([
                 'status_id' => ServerStatus::Error->value,
@@ -150,7 +150,7 @@ class ServerController extends Controller
             ]);
 
             return redirect()->route('server.show', $server->id)
-                ->with('error', 'Failed to test connection: ' . $e->getMessage());
+                ->with('error', 'Failed to test connection: '.$e->getMessage());
         }
     }
 }

@@ -105,7 +105,7 @@ class Enterprise extends Model
     public function getStatusLabelAttribute()
     {
         if ($this->status) {
-            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->name . '</span>';
+            return '<span class="badge rounded-pill '.$this->status->label_class.'">'.$this->status->name.'</span>';
         }
 
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
@@ -135,7 +135,7 @@ class Enterprise extends Model
             $count = $contactStats[$statusId] ?? 0;
             $percentage = $totalContacts > 0 ? round(($count / $totalContacts) * 100, 2) : 0;
             $data["total$label"] = $count;
-            $data[lcfirst($label) . 'Percentage'] = $percentage;
+            $data[lcfirst($label).'Percentage'] = $percentage;
         }
 
         $defaultData = [

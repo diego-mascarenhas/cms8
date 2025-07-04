@@ -50,10 +50,10 @@ class Task extends Model
     public function getStatusLabelAttribute()
     {
         if ($this->status) {
-            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->translated_name . '</span>';
+            return '<span class="badge rounded-pill '.$this->status->label_class.'">'.$this->status->translated_name.'</span>';
         }
 
-        return '<span class="badge rounded-pill bg-label-secondary">' . __('task_status.UNKNOWN') . '</span>';
+        return '<span class="badge rounded-pill bg-label-secondary">'.__('task_status.UNKNOWN').'</span>';
     }
 
     public function getTranslatedStatusAttribute()
@@ -73,8 +73,7 @@ class Task extends Model
     /**
      * Default ordering for tasks
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeDefaultOrder($query)

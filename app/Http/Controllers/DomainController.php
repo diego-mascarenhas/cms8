@@ -142,10 +142,10 @@ class DomainController extends Controller
             return redirect()->route('domain.show', $domain->id)
                 ->with('success', 'Domain data refreshed successfully.');
         } catch (\Exception $e) {
-            Log::error('Error refreshing domain data: ' . $e->getMessage());
+            Log::error('Error refreshing domain data: '.$e->getMessage());
 
             return redirect()->route('domain.show', $domain->id)
-                ->with('error', 'Failed to refresh domain data: ' . $e->getMessage());
+                ->with('error', 'Failed to refresh domain data: '.$e->getMessage());
         }
     }
 

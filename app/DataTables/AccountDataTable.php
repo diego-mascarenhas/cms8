@@ -14,7 +14,7 @@ class AccountDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -49,7 +49,7 @@ class AccountDataTable extends DataTable
             })
             ->addColumn('action', function ($account) {
                 return '<div class="d-flex justify-content-center align-items-center">
-                    <a href="' . route('account.edit', $account->id) . '" class="text-body">
+                    <a href="'.route('account.edit', $account->id).'" class="text-body">
                         <i class="ti ti-edit ti-sm me-2"></i>
                     </a>
                 </div>';
@@ -73,7 +73,7 @@ class AccountDataTable extends DataTable
             ->dom('frtip')
             ->orderBy(1, direction: 'asc')
             ->responsive(true)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'pageLength' => 60,
                 'paging' => false,
@@ -126,6 +126,6 @@ class AccountDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Account_' . date('YmdHis');
+        return 'Account_'.date('YmdHis');
     }
 }

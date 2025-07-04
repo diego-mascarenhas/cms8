@@ -15,7 +15,7 @@ class InvoiceDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -71,6 +71,6 @@ class InvoiceDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Invoice_' . date('YmdHis');
+        return 'Invoice_'.date('YmdHis');
     }
 }

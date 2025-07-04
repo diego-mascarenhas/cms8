@@ -14,9 +14,9 @@ class TextHelper
         $text = preg_replace_callback($pattern, function ($matches) {
             $url = $matches[1];
             $safeUrl = str_replace([' ', '"', "'"], ['%20', '%22', '%27'], $url);
-            $display = strlen($url) > 80 ? substr($url, 0, 80) . '...' : $url;
+            $display = strlen($url) > 80 ? substr($url, 0, 80).'...' : $url;
 
-            return '<a href="' . $safeUrl . '" target="_blank" rel="noopener noreferrer" class="chat-link">' . $display . '</a>';
+            return '<a href="'.$safeUrl.'" target="_blank" rel="noopener noreferrer" class="chat-link">'.$display.'</a>';
         }, $text);
 
         // Escape everything except <a> tags

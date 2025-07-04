@@ -63,7 +63,7 @@ class UpdateDomainPhpVersion extends Command
 
         foreach ($domains as $domain) {
             $this->info("Processing domain: {$domain->domain} (ID: {$domain->id})");
-            $this->info('Current PHP version: ' . ($domain->php_version ?: 'NULL'));
+            $this->info('Current PHP version: '.($domain->php_version ?: 'NULL'));
 
             $oldVersion = $domain->php_version;
 
@@ -73,7 +73,7 @@ class UpdateDomainPhpVersion extends Command
             } else {
                 $this->info('Fetching PHP version from server...');
                 $phpFromServer = $domain->getPhpVersionFromServer();
-                $this->info('Detected PHP version: ' . ($phpFromServer ?: 'NOT DETECTED'));
+                $this->info('Detected PHP version: '.($phpFromServer ?: 'NOT DETECTED'));
                 $domain->updatePhpVersion();
             }
 

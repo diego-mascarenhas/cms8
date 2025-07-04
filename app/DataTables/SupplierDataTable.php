@@ -14,7 +14,7 @@ class SupplierDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -77,6 +77,6 @@ class SupplierDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Supplier_' . date('YmdHis');
+        return 'Supplier_'.date('YmdHis');
     }
 }

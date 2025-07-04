@@ -14,7 +14,7 @@ class ClientDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -23,13 +23,13 @@ class ClientDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('name', function ($row) {
                 return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">' . e($row->name) . '</span>
-                            <small class="text-muted">' . e($row->responsible->name ?? 'Sin asignar') . '</small>
+                            <span class="fw-medium text-body text-truncate">'.e($row->name).'</span>
+                            <small class="text-muted">'.e($row->responsible->name ?? 'Sin asignar').'</small>
                         </div>';
             })
             ->addColumn('current_sentiment', function ($row) {
                 if ($row->responsible && $row->responsible->currentSentiment) {
-                    return '<span style="font-size: 1.5em;">' . $row->responsible->currentSentiment->sentiment->emoji . '</span>';
+                    return '<span style="font-size: 1.5em;">'.$row->responsible->currentSentiment->sentiment->emoji.'</span>';
                 }
 
                 return '<span style="font-size: 1.5em;">🤔</span>';
@@ -73,7 +73,7 @@ class ClientDataTable extends DataTable
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(false)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'initComplete' => "function() {
                     var api = this.api();
@@ -143,13 +143,13 @@ class ClientDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Client_' . date('YmdHis');
+        return 'Client_'.date('YmdHis');
     }
 
     private function ensureProtocol($url)
     {
         if (! preg_match('~^(?:f|ht)tps?://~i', $url)) {
-            $url = 'https://' . $url;
+            $url = 'https://'.$url;
         }
 
         return $url;

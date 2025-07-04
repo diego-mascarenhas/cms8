@@ -71,7 +71,7 @@ class UpdateDomainPhpVersion implements ShouldQueue
             }
 
             $oldVersion = $domain->php_version;
-            Log::info("Current PHP version for {$domain->domain}: " . ($oldVersion ?: 'NULL'));
+            Log::info("Current PHP version for {$domain->domain}: ".($oldVersion ?: 'NULL'));
 
             if ($this->mockVersion) {
                 Log::info("Using mock PHP version: {$this->mockVersion}");
@@ -79,7 +79,7 @@ class UpdateDomainPhpVersion implements ShouldQueue
             } else {
                 Log::info("Fetching PHP version from WHM for {$domain->domain}...");
                 $phpFromServer = $domain->getPhpVersionFromServer();
-                Log::info('WHM reported PHP version: ' . ($phpFromServer ?: 'NOT DETECTED'));
+                Log::info('WHM reported PHP version: '.($phpFromServer ?: 'NOT DETECTED'));
                 $domain->updatePhpVersion();
             }
 
@@ -89,7 +89,7 @@ class UpdateDomainPhpVersion implements ShouldQueue
                 Log::info("PHP version for {$domain->domain} remains unchanged: {$domain->php_version}");
             }
         } catch (\Exception $e) {
-            Log::error("Error updating PHP version for domain ID {$this->domainId}: " . $e->getMessage(), [
+            Log::error("Error updating PHP version for domain ID {$this->domainId}: ".$e->getMessage(), [
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),

@@ -36,6 +36,6 @@ class LegalDocumentsController extends Controller
     {
         $configData = config('variables');
 
-        return view('legal.' . $document, compact('configData'));
+        return view('legal.'.$document, compact('configData'));
     }
 }

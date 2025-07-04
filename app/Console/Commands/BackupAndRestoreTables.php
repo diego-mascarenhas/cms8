@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 class BackupAndRestoreTables extends Command
 {
     protected $signature = 'db:backup-restore {operation} {--tables=*}';
+
     protected $description = 'Backup and restore specific tables';
 
     public function handle()
@@ -43,7 +44,7 @@ class BackupAndRestoreTables extends Command
         $dbConfig = config('database.connections.mysql');
 
         foreach ($tables as $table) {
-            $backupFile = $backupPath . "backup_{$table}.sql";
+            $backupFile = $backupPath."backup_{$table}.sql";
             $command = sprintf(
                 'mysqldump -h %s -P %d -u %s -p%s %s %s > %s',
                 $dbConfig['host'],
@@ -70,9 +71,10 @@ class BackupAndRestoreTables extends Command
         $dbConfig = config('database.connections.mysql');
 
         foreach ($tables as $table) {
-            $backupFile = $backupPath . "backup_{$table}.sql";
+            $backupFile = $backupPath."backup_{$table}.sql";
             if (! file_exists($backupFile)) {
                 $this->error("Backup file not found for table $table: $backupFile");
+
                 continue;
             }
 

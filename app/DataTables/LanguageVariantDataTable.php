@@ -15,7 +15,7 @@ class LanguageVariantDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -35,9 +35,9 @@ class LanguageVariantDataTable extends DataTable
                     $flagCode = Helpers::getLanguageFlag($langCode);
                 }
 
-                $flag = $flagCode ? '<span class="fi fi-' . $flagCode . ' me-2"></span>' : '';
+                $flag = $flagCode ? '<span class="fi fi-'.$flagCode.' me-2"></span>' : '';
 
-                return $flag . e($row->name);
+                return $flag.e($row->name);
             })
             ->editColumn('base_language', function ($row) {
                 return $row->baseLanguage ? e($row->baseLanguage->name) : e($row->base_language);
@@ -65,7 +65,7 @@ class LanguageVariantDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->pageLength(25)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'drawCallback' => 'function() {
                     // Add any specific callback functionality here
@@ -102,6 +102,6 @@ class LanguageVariantDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'LanguageVariant_' . date('YmdHis');
+        return 'LanguageVariant_'.date('YmdHis');
     }
 }

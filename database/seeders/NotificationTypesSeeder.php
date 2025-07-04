@@ -118,8 +118,8 @@ Saludos,
         foreach ($types as $type) {
             NotificationType::updateOrCreate(
                 ['name' => $type['name']],
-                $type
+                $type,
             );
         }
     }
-} 
+}

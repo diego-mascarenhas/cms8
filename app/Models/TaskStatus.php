@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class TaskStatus extends Model
 {
     protected $fillable = ['name', 'color', 'order'];
+
     public $timestamps = false;
 
     public static function getOptions()

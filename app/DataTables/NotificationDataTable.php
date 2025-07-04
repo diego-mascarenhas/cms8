@@ -6,7 +6,6 @@ use App\Models\Notification;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
-use Yajra\DataTables\Html\Button;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
@@ -22,7 +21,7 @@ class NotificationDataTable extends DataTable
                 return view('notification.action', compact('notification'));
             })
             ->addColumn('contact_name', function ($notification) {
-                return $notification->contact ? $notification->contact->name . ' ' . $notification->contact->surname : 'N/A';
+                return $notification->contact ? $notification->contact->name.' '.$notification->contact->surname : 'N/A';
             })
             ->addColumn('type_name', function ($notification) {
                 return $notification->type ? $notification->type->name : 'N/A';
@@ -40,8 +39,8 @@ class NotificationDataTable extends DataTable
                 return $notification->created_at->format('d/m/Y H:i');
             })
             ->editColumn('subject', function ($notification) {
-                return '<span title="' . e($notification->subject) . '">' . 
-                       e(\Str::limit($notification->subject, 50)) . '</span>';
+                return '<span title="'.e($notification->subject).'">'.
+                       e(\Str::limit($notification->subject, 50)).'</span>';
             })
             ->rawColumns(['action', 'status', 'read_status', 'subject'])
             ->setRowId('id');
@@ -95,7 +94,7 @@ class NotificationDataTable extends DataTable
             ->selectStyleSingle()
             ->responsive(true)
             ->processing(false)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'columnDefs' => [
                     [
@@ -148,6 +147,6 @@ class NotificationDataTable extends DataTable
      */
     protected function filename(): string
     {
-        return 'Notifications_' . date('YmdHis');
+        return 'Notifications_'.date('YmdHis');
     }
-} 
+}

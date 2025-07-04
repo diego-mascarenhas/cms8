@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ContactSentiment extends Model
 {
     public $timestamps = false;
+
     protected $fillable = ['name'];
 
     public function getEmojiAttribute()
@@ -31,7 +32,7 @@ class ContactSentiment extends Model
         return self::all()->map(function ($sentiment) {
             return [
                 'id' => $sentiment->id,
-                'name' => $sentiment->name . ' ' . $sentiment->emoji,
+                'name' => $sentiment->name.' '.$sentiment->emoji,
             ];
         });
     }

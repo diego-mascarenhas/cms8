@@ -14,7 +14,7 @@ class PromptDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -70,6 +70,6 @@ class PromptDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Prompt_' . date('YmdHis');
+        return 'Prompt_'.date('YmdHis');
     }
 }

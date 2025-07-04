@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 class ImportDataCommand extends Command
 {
     protected $signature = 'import:interactive';
+
     protected $description = 'Interactive menu for importing data from old database';
 
     protected function testDatabaseConnection()
@@ -19,17 +20,17 @@ class ImportDataCommand extends Command
         try {
             // Test local database connection
             DB::connection()->getPdo();
-            $this->info('✓ Local database connection successful: ' . DB::connection()->getDatabaseName());
+            $this->info('✓ Local database connection successful: '.DB::connection()->getDatabaseName());
 
             // Test remote database connection
             DB::connection('mysql_tmp')->getPdo();
-            $this->info('✓ Remote database connection successful: ' . DB::connection('mysql_tmp')->getDatabaseName());
+            $this->info('✓ Remote database connection successful: '.DB::connection('mysql_tmp')->getDatabaseName());
 
             return true;
 
         } catch (Exception $e) {
             $this->error('Database connection failed!');
-            $this->error('Error: ' . $e->getMessage());
+            $this->error('Error: '.$e->getMessage());
 
             // Show connection details (without sensitive data)
             $this->warn('Remote Database Configuration:');
@@ -126,10 +127,10 @@ class ImportDataCommand extends Command
 
             $this->table($headers, $rows);
 
-            $this->info('Total records: ' . $data->count());
+            $this->info('Total records: '.$data->count());
 
         } catch (\Exception $e) {
-            $this->error('Error previewing data: ' . $e->getMessage());
+            $this->error('Error previewing data: '.$e->getMessage());
         }
     }
 
@@ -244,6 +245,7 @@ class ImportDataCommand extends Command
                 if ($this->confirm('Are you sure you want to import ALL data?')) {
                     $this->importAll();
                 }
+
                 continue;
             }
 
@@ -280,7 +282,7 @@ class ImportDataCommand extends Command
                 }
             }
         } catch (\Exception $e) {
-            $this->error('Error during import: ' . $e->getMessage());
+            $this->error('Error during import: '.$e->getMessage());
         }
     }
 
@@ -325,14 +327,14 @@ class ImportDataCommand extends Command
                 $phone = $data->celular ?? $data->telefono ?? null;
                 $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
                 if (! empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0) {
-                    $cleaned_phone = '54' . $cleaned_phone;
+                    $cleaned_phone = '54'.$cleaned_phone;
                 }
 
                 $contactData = [
                     'id' => $data->id,
                     'team_id' => env('CMS_TEAM_ID'),
                     'user_id' => null,
-                    'name' => $data->nombre . ' ' . $data->apellido,
+                    'name' => $data->nombre.' '.$data->apellido,
                     'source_id' => null,
                     'birthday' => null,
                     'profile' => null,
@@ -426,7 +428,7 @@ class ImportDataCommand extends Command
 
         } catch (\Exception $e) {
             $this->newLine();
-            throw new \Exception('Error importing contacts: ' . $e->getMessage());
+            throw new \Exception('Error importing contacts: '.$e->getMessage());
         }
 
         return $stats;
@@ -492,14 +494,14 @@ class ImportDataCommand extends Command
                                 $phone = $contactData->celular ?? $contactData->telefono ?? null;
                                 $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
                                 if (! empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0) {
-                                    $cleaned_phone = '54' . $cleaned_phone;
+                                    $cleaned_phone = '54'.$cleaned_phone;
                                 }
 
                                 $newContactData = [
                                     'id' => $contactData->id,
                                     'team_id' => env('CMS_TEAM_ID'),
                                     'user_id' => null,
-                                    'name' => $contactData->nombre . ' ' . $contactData->apellido,
+                                    'name' => $contactData->nombre.' '.$contactData->apellido,
                                     'source_id' => null,
                                     'birthday' => null,
                                     'profile' => null,
@@ -568,7 +570,7 @@ class ImportDataCommand extends Command
             $this->newLine();
         } catch (\Exception $e) {
             $this->newLine();
-            throw new \Exception('Error importing enterprises: ' . $e->getMessage());
+            throw new \Exception('Error importing enterprises: '.$e->getMessage());
         }
 
         return $stats;
@@ -617,8 +619,8 @@ class ImportDataCommand extends Command
             $enterpriseIds = $services->pluck('id_empresa')->unique()->toArray();
             $existingEnterprises = DB::table('enterprises')->whereIn('id', $enterpriseIds)->pluck('id')->toArray();
 
-            $this->info('Verificando ' . count($enterpriseIds) . ' empresas...');
-            $this->info('Encontradas ' . count($existingEnterprises) . ' empresas existentes');
+            $this->info('Verificando '.count($enterpriseIds).' empresas...');
+            $this->info('Encontradas '.count($existingEnterprises).' empresas existentes');
 
             foreach ($services as $data) {
                 $existingService = DB::table('services')->where('id', $data->id)->first();
@@ -628,6 +630,7 @@ class ImportDataCommand extends Command
                 if (! $enterpriseExists) {
                     $this->warn("Enterprise with ID {$data->id_empresa} not found, skipping service {$data->id}");
                     $bar->advance();
+
                     continue;
                 }
 
@@ -718,7 +721,7 @@ class ImportDataCommand extends Command
                         $this->info("Service with ID {$data->id} updated");
                     }
                 } catch (\Exception $e) {
-                    $this->error("Error al importar servicio {$data->id}: " . $e->getMessage());
+                    $this->error("Error al importar servicio {$data->id}: ".$e->getMessage());
                 }
 
                 $bar->advance();
@@ -728,7 +731,7 @@ class ImportDataCommand extends Command
             $this->newLine();
         } catch (\Exception $e) {
             $this->newLine();
-            throw new \Exception('Error importing services: ' . $e->getMessage());
+            throw new \Exception('Error importing services: '.$e->getMessage());
         }
 
         return $stats;
@@ -811,7 +814,7 @@ class ImportDataCommand extends Command
             $this->newLine();
         } catch (\Exception $e) {
             $this->newLine();
-            throw new \Exception('Error importando categorías: ' . $e->getMessage());
+            throw new \Exception('Error importando categorías: '.$e->getMessage());
         }
 
         return $stats;
@@ -900,7 +903,7 @@ class ImportDataCommand extends Command
                     // For sales invoices, format as 0000-00000000
                     $talonario = str_pad($data->numero_talonario ?? 0, 4, '0', STR_PAD_LEFT);
                     $numero = str_pad($data->numero_factura ?? 0, 8, '0', STR_PAD_LEFT);
-                    $invoiceNumber = $talonario . '-' . $numero;
+                    $invoiceNumber = $talonario.'-'.$numero;
                 } else {
                     // For purchase invoices, use number_factura as is
                     $invoiceNumber = $data->numero_factura ?? '1';
@@ -952,7 +955,7 @@ class ImportDataCommand extends Command
             $this->newLine();
         } catch (\Exception $e) {
             $this->newLine();
-            throw new \Exception('Error importing invoices: ' . $e->getMessage());
+            throw new \Exception('Error importing invoices: '.$e->getMessage());
         }
 
         return $stats;

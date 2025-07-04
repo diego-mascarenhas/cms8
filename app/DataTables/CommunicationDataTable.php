@@ -15,7 +15,7 @@ class CommunicationDataTable extends DataTable
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -75,6 +75,6 @@ class CommunicationDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Communication_' . date('YmdHis');
+        return 'Communication_'.date('YmdHis');
     }
 }

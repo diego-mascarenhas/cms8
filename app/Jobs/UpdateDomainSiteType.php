@@ -74,7 +74,7 @@ class UpdateDomainSiteType implements ShouldQueue
                 Log::info("Domain {$domain->domain} is not a WordPress site");
             }
         } catch (\Exception $e) {
-            Log::error("Error processing WordPress detection for domain ID {$this->domainId}: " . $e->getMessage());
+            Log::error("Error processing WordPress detection for domain ID {$this->domainId}: ".$e->getMessage());
             throw $e;
         }
     }

@@ -139,8 +139,8 @@ class AccountingController extends Controller
             ];
 
         } catch (\Exception $e) {
-            \Log::error('Error fetching Stripe invoices: ' . $e->getMessage());
-            session()->flash('error', 'Error al cargar datos de Stripe: ' . $e->getMessage());
+            \Log::error('Error fetching Stripe invoices: '.$e->getMessage());
+            session()->flash('error', 'Error al cargar datos de Stripe: '.$e->getMessage());
         }
 
         return view('accounting.index', compact('stripeData'));
@@ -202,10 +202,10 @@ class AccountingController extends Controller
             $enterprise = Enterprise::where('code', $invoice->customer->id)->first();
 
         } catch (\Exception $e) {
-            \Log::error('Error fetching Stripe invoice details: ' . $e->getMessage());
+            \Log::error('Error fetching Stripe invoice details: '.$e->getMessage());
 
             return redirect()->route('accounting.index')
-                ->with('error', 'Error al cargar detalles de la factura: ' . $e->getMessage());
+                ->with('error', 'Error al cargar detalles de la factura: '.$e->getMessage());
         }
 
         return view('accounting.invoice', compact('invoiceData', 'enterprise'));
@@ -257,10 +257,10 @@ class AccountingController extends Controller
             return redirect($invoice->invoice_pdf);
 
         } catch (\Exception $e) {
-            \Log::error('Error downloading invoice PDF: ' . $e->getMessage());
+            \Log::error('Error downloading invoice PDF: '.$e->getMessage());
 
             return redirect()->route('accounting.invoice', $id)
-                ->with('error', 'Error al descargar PDF: ' . $e->getMessage());
+                ->with('error', 'Error al descargar PDF: '.$e->getMessage());
         }
     }
 
@@ -345,8 +345,8 @@ class AccountingController extends Controller
             ];
 
         } catch (\Exception $e) {
-            \Log::error('Error fetching customer invoices: ' . $e->getMessage());
-            session()->flash('error', 'Error al cargar facturas del cliente: ' . $e->getMessage());
+            \Log::error('Error fetching customer invoices: '.$e->getMessage());
+            session()->flash('error', 'Error al cargar facturas del cliente: '.$e->getMessage());
         }
 
         return view('accounting.customer', compact('stripeData', 'enterprise'));
@@ -530,10 +530,10 @@ class AccountingController extends Controller
             return response()->stream($callback, 200, $headers);
 
         } catch (\Exception $e) {
-            \Log::error('Error generating CSV file: ' . $e->getMessage());
+            \Log::error('Error generating CSV file: '.$e->getMessage());
 
             return redirect()->route('accounting.index')
-                ->with('error', 'Error generating CSV: ' . $e->getMessage());
+                ->with('error', 'Error generating CSV: '.$e->getMessage());
         }
     }
 }

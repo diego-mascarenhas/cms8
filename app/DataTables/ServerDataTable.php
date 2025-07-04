@@ -22,7 +22,7 @@ class ServerDataTable extends DataTable
                 $statusClass = $server->status_id->color();
                 $statusText = $server->status_id->name();
 
-                return '<span class="badge bg-label-' . $statusClass . '">' . $statusText . '</span>';
+                return '<span class="badge bg-label-'.$statusClass.'">'.$statusText.'</span>';
             })
             ->rawColumns(['status_id', 'action']);
     }
@@ -44,7 +44,7 @@ class ServerDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->language([
-                'url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json',
+                'url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json',
             ]);
     }
 
@@ -67,6 +67,6 @@ class ServerDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Server_' . date('YmdHis');
+        return 'Server_'.date('YmdHis');
     }
 }

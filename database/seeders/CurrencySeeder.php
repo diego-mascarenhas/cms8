@@ -30,8 +30,6 @@ class CurrencySeeder extends Seeder
             'status' => true,
         ]);
 
-
-
         Currency::create([
             'id' => 826,
             'code' => 'GBP',

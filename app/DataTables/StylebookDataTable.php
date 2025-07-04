@@ -24,9 +24,9 @@ class StylebookDataTable extends DataTable
                 // Use helper to map language code to appropriate country code for flags
                 $countryCode = Helpers::getLanguageFlag($row->language);
 
-                $flag = '<span class="fi fi-' . strtolower($countryCode) . ' me-2"></span>';
+                $flag = '<span class="fi fi-'.strtolower($countryCode).' me-2"></span>';
 
-                return $flag . e($languageName);
+                return $flag.e($languageName);
             })
             ->editColumn('date', function ($row) {
                 return $row->date ? $row->date->format('d/m/Y') : '';
@@ -62,7 +62,7 @@ class StylebookDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->pageLength(25)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'select' => false,
                 'lengthChange' => false,
@@ -86,6 +86,6 @@ class StylebookDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Stylebook_' . date('YmdHis');
+        return 'Stylebook_'.date('YmdHis');
     }
 }

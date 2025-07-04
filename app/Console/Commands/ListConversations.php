@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class ListConversations extends Command
 {
     protected $signature = 'conversations:list {--channel=} {--phone=} {--limit=10}';
+
     protected $description = 'List recent conversations';
 
     public function handle()
@@ -44,7 +45,7 @@ class ListConversations extends Command
                 $conversation->channel,
                 $conversation->from,
                 $conversation->to,
-                substr($conversation->body, 0, 30) . (strlen($conversation->body) > 30 ? '...' : ''),
+                substr($conversation->body, 0, 30).(strlen($conversation->body) > 30 ? '...' : ''),
                 $conversation->direction,
                 $conversation->status,
                 $conversation->created_at->format('Y-m-d H:i:s'),

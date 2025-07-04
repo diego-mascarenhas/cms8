@@ -8,8 +8,11 @@ use Illuminate\View\Component;
 class LanguageSelect extends Component
 {
     public $name;
+
     public $id;
+
     public $value;
+
     public $label;
 
     public function __construct($name = 'language', $id = null, $value = null, $label = 'Idioma')

@@ -8,8 +8,11 @@ use Illuminate\View\Component;
 class EnterpriseStatusSelect extends Component
 {
     public $id;
+
     public $label;
+
     public $value;
+
     public $enterpriseTypeId;
 
     public function __construct($id = 'status_id', $label = 'Estado', $value = null, $enterpriseTypeId = 1)

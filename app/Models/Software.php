@@ -64,7 +64,7 @@ class Software extends Model
                 'id' => $data->id,
                 'name' => $data->name,
                 'type' => $data->type ? $data->type->name : '',
-                'text' => $data->name . ($data->type ? ' (' . $data->type->name . ')' : ''),
+                'text' => $data->name.($data->type ? ' ('.$data->type->name.')' : ''),
             ];
         });
     }

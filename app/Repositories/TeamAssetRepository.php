@@ -16,14 +16,13 @@ class TeamAssetRepository extends AssetRepository
     {
         // Using md5 truncated to 12 characters for a good balance
         // between brevity and security
-        return substr(md5('team_salt_' . $teamId . '_' . config('app.key')), 0, 12);
+        return substr(md5('team_salt_'.$teamId.'_'.config('app.key')), 0, 12);
     }
 
     /**
      * Normalize filename for URL safety
      *
-     * @param string $filename
-     *
+     * @param  string  $filename
      * @return string
      */
     protected function normalizeFilename($filename)
@@ -43,11 +42,11 @@ class TeamAssetRepository extends AssetRepository
 
         // Ensure name is not empty
         if (empty($name)) {
-            $name = 'file_' . substr(md5(time() . rand()), 0, 8);
+            $name = 'file_'.substr(md5(time().rand()), 0, 8);
         }
 
         // Combine with extension
-        return $name . '.' . strtolower($extension);
+        return $name.'.'.strtolower($extension);
     }
 
     public function __construct()

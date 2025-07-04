@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Mail\NewUserNotification;
-use App\Models\User;
 use App\Models\Team;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,6 +18,7 @@ class SendNewUserWelcomeEmail implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $user;
+
     public $team;
 
     /**
@@ -37,7 +38,7 @@ class SendNewUserWelcomeEmail implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(User $user, Team $team = null)
+    public function __construct(User $user, ?Team $team = null)
     {
         $this->user = $user;
         $this->team = $team;
@@ -50,21 +51,24 @@ class SendNewUserWelcomeEmail implements ShouldQueue
     {
         try {
             // Verify user still exists
-            if (!$this->user) {
-                Log::warning("User not found when trying to send welcome email");
+            if (! $this->user) {
+                Log::warning('User not found when trying to send welcome email');
+
                 return;
             }
 
             // Verify email is valid
-            if (!filter_var($this->user->email, FILTER_VALIDATE_EMAIL)) {
+            if (! filter_var($this->user->email, FILTER_VALIDATE_EMAIL)) {
                 Log::error("Invalid email address for user {$this->user->id}: {$this->user->email}");
+
                 return;
             }
 
             // Refresh user from database to ensure it still exists
             $user = \App\Models\User::find($this->user->id);
-            if (!$user) {
+            if (! $user) {
                 Log::warning("User {$this->user->id} no longer exists in database");
+
                 return;
             }
 
@@ -72,7 +76,7 @@ class SendNewUserWelcomeEmail implements ShouldQueue
             $team = null;
             if ($this->team) {
                 $team = \App\Models\Team::find($this->team->id);
-                if (!$team) {
+                if (! $team) {
                     Log::warning("Team {$this->team->id} no longer exists, sending email without team info");
                 }
             }
@@ -84,9 +88,9 @@ class SendNewUserWelcomeEmail implements ShouldQueue
             Log::info("Welcome email sent successfully to: {$user->email}");
 
         } catch (\Exception $e) {
-            Log::error("Failed to send welcome email to user {$this->user->id}: " . $e->getMessage());
-            Log::error("Exception details: " . $e->getTraceAsString());
-            
+            Log::error("Failed to send welcome email to user {$this->user->id}: ".$e->getMessage());
+            Log::error('Exception details: '.$e->getTraceAsString());
+
             // Re-throw the exception to trigger retry mechanism
             throw $e;
         }
@@ -97,9 +101,9 @@ class SendNewUserWelcomeEmail implements ShouldQueue
      */
     public function failed(\Throwable $exception)
     {
-        Log::error("Welcome email job failed permanently for user {$this->user->email}: " . $exception->getMessage());
-        
+        Log::error("Welcome email job failed permanently for user {$this->user->email}: ".$exception->getMessage());
+
         // Optionally, you could notify administrators about the failure
         // or store the failure in a dedicated table for manual retry
     }
-} 
+}

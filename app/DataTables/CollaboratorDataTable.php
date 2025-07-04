@@ -49,7 +49,7 @@ class CollaboratorDataTable extends DataTable
                         $sourceName = $sourceLanguage ? $sourceLanguage->name : $variant->source_language_code;
                         $targetName = $targetLanguage ? $targetLanguage->name : $variant->target_language_code;
 
-                        $combinations[] = $sourceName . ' > ' . $targetName;
+                        $combinations[] = $sourceName.' > '.$targetName;
                     }
                 }
 
@@ -64,7 +64,7 @@ class CollaboratorDataTable extends DataTable
                     foreach ($uniqueFares as $fare) {
                         $serviceName = $fare->name;
                         if ($fare->type) {
-                            $serviceName .= ' (' . $fare->type->name . ')';
+                            $serviceName .= ' ('.$fare->type->name.')';
                         }
                         $services[] = $serviceName;
                     }
@@ -78,7 +78,7 @@ class CollaboratorDataTable extends DataTable
                 $servicesList = implode(', ', $services);
                 $label = $count === 1 ? 'servicio' : 'servicios';
 
-                return '<span class="badge bg-label-info rounded-pill" title="' . htmlspecialchars($servicesList) . '" data-bs-toggle="tooltip" data-bs-placement="auto">' . $count . ' ' . $label . '</span>';
+                return '<span class="badge bg-label-info rounded-pill" title="'.htmlspecialchars($servicesList).'" data-bs-toggle="tooltip" data-bs-placement="auto">'.$count.' '.$label.'</span>';
             })
             ->orderColumn('services', function ($query, $order) {
                 // Count unique fares (services) for proper ordering
@@ -90,7 +90,7 @@ class CollaboratorDataTable extends DataTable
                 // Get the actual count of projects for this collaborator
                 $projectCount = $contact->projects_count ?? $contact->projects->count();
 
-                return '<span class="badge bg-label-primary rounded-pill">' . $projectCount . '</span>';
+                return '<span class="badge bg-label-primary rounded-pill">'.$projectCount.'</span>';
             })
             ->orderColumn('projects', function ($query, $order) {
                 $query->orderBy('projects_count', $order);
@@ -121,10 +121,10 @@ class CollaboratorDataTable extends DataTable
         $query = $model->newQuery()
             ->with(['valoration', 'languageVariants.sourceLanguage', 'languageVariants.targetLanguage', 'fares.type', 'weeklyAvailability'])
             ->withCount([
-                'projects', 
+                'projects',
                 'fares as unique_fares_count' => function ($q) {
                     $q->selectRaw('COUNT(DISTINCT fare_id)');
-                }
+                },
             ]);
 
         // Handle custom filters from request
@@ -172,7 +172,7 @@ class CollaboratorDataTable extends DataTable
     {
         $days = $request->days ? (int) $request->days : null;
         $deliveryDate = null;
-        
+
         // Parse delivery date filter
         if ($request->delivery_date) {
             switch ($request->delivery_date) {
@@ -198,29 +198,29 @@ class CollaboratorDataTable extends DataTable
         if ($days && $deliveryDate) {
             $startDate = now()->format('Y-m-d');
             $endDate = $deliveryDate;
-            
+
             // Debug: Log the parameters
             \Log::info('Availability Filter Debug', [
                 'days' => $days,
                 'startDate' => $startDate,
                 'endDate' => $endDate,
-                'deliveryDate' => $deliveryDate
+                'deliveryDate' => $deliveryDate,
             ]);
 
             // Apply a more precise filter using a subquery
             $availableCollaboratorIds = $this->getAvailableCollaboratorIds($startDate, $endDate, $days);
-            
+
             // Debug: Log available IDs (only if very few results)
             if (count($availableCollaboratorIds) < 10) {
                 \Log::info('Available Collaborator IDs', [
                     'count' => count($availableCollaboratorIds),
                     'ids' => $availableCollaboratorIds,
                     'requiredDays' => $days,
-                    'period' => $startDate . ' to ' . $endDate
+                    'period' => $startDate.' to '.$endDate,
                 ]);
             }
-            
-            if (!empty($availableCollaboratorIds)) {
+
+            if (! empty($availableCollaboratorIds)) {
                 $query->whereIn('id', $availableCollaboratorIds);
             } else {
                 // If no collaborators are available, return empty result
@@ -241,7 +241,7 @@ class CollaboratorDataTable extends DataTable
                 // Contacts without a linked user
                 $query->whereNull('user_id');
                 break;
-                
+
             case 'collaborators':
                 // Contacts with a user that has the 'collaborator' role
                 $query->whereHas('user', function ($q) {
@@ -250,18 +250,18 @@ class CollaboratorDataTable extends DataTable
                     });
                 });
                 break;
-                
+
             case 'new-this-week':
                 // Contacts created in the last week and linked to a user
                 $query->whereNotNull('user_id')
-                      ->where('created_at', '>=', now()->subWeek());
+                    ->where('created_at', '>=', now()->subWeek());
                 break;
-                
+
             case 'not-updated-six-months':
                 // Contacts not updated in the last 6 months
                 $query->where('updated_at', '<=', now()->subMonths(6));
                 break;
-                
+
             default:
                 // No filter applied
                 break;
@@ -276,7 +276,7 @@ class CollaboratorDataTable extends DataTable
     private function getAvailableCollaboratorIds($startDate, $endDate, $requiredDays)
     {
         $availableIds = [];
-        
+
         // Get all collaborators with their weekly availability and absences
         // Note: Global scope 'team' is already applied automatically
         $collaborators = Contact::with(['weeklyAvailability', 'absences' => function ($q) use ($startDate, $endDate) {
@@ -288,11 +288,11 @@ class CollaboratorDataTable extends DataTable
         //         $roleQuery->where('name', 'collaborator');
         //     });
         // })
-        ->get();
+            ->get();
 
         foreach ($collaborators as $collaborator) {
             $availableDays = $this->calculateAvailableDays($collaborator, $startDate, $endDate);
-            
+
             if ($availableDays >= $requiredDays) {
                 $availableIds[] = $collaborator->id;
             }
@@ -307,9 +307,9 @@ class CollaboratorDataTable extends DataTable
     private function calculateAvailableDays($collaborator, $startDate, $endDate)
     {
         $weeklyAvailability = $collaborator->weeklyAvailability;
-        
+
         // If no weekly availability is set, assume all days are available (many work weekends)
-        if (!$weeklyAvailability) {
+        if (! $weeklyAvailability) {
             $weeklyPattern = [
                 'monday' => true,
                 'tuesday' => true,
@@ -346,9 +346,9 @@ class CollaboratorDataTable extends DataTable
 
             // Check if this day is available according to weekly pattern
             $isWeeklyAvailable = $weeklyPattern[$dayOfWeek] ?? false;
-            
+
             // Check if this specific date is not in absences
-            $isNotAbsent = !in_array($dateString, $absenceDates);
+            $isNotAbsent = ! in_array($dateString, $absenceDates);
 
             // Day is available if both conditions are met
             if ($isWeeklyAvailable && $isNotAbsent) {
@@ -368,7 +368,7 @@ class CollaboratorDataTable extends DataTable
                 'startDate' => $startDate,
                 'endDate' => $endDate,
                 'calculatedDays' => $availableDays,
-                'totalPeriodDays' => Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) + 1
+                'totalPeriodDays' => Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) + 1,
             ]);
         }
 
@@ -387,14 +387,14 @@ class CollaboratorDataTable extends DataTable
             ->processing(false)
             ->serverSide(true)
             ->pageLength(25)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->buttons([
                 [
                     'extend' => 'csv',
                     'text' => '<i class="ti ti-file-text me-1"></i> CSV',
                     'className' => 'btn btn-outline-info',
                     'title' => 'Collaborators',
-                    'filename' => 'collaborators_' . date('Y-m-d_H-i-s'),
+                    'filename' => 'collaborators_'.date('Y-m-d_H-i-s'),
                     'exportOptions' => [
                         'columns' => [1, 2, 3, 4, 5], // Export only important visible columns
                     ],
@@ -404,7 +404,7 @@ class CollaboratorDataTable extends DataTable
                     'text' => '<i class="ti ti-file-text me-1"></i> PDF',
                     'className' => 'btn btn-outline-danger',
                     'title' => 'Collaborators',
-                    'filename' => 'collaborators_' . date('Y-m-d_H-i-s'),
+                    'filename' => 'collaborators_'.date('Y-m-d_H-i-s'),
                     'exportOptions' => [
                         'columns' => [1, 2, 3, 4, 5], // Export only important visible columns
                     ],
@@ -474,6 +474,6 @@ class CollaboratorDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Collaborator_' . date('YmdHis');
+        return 'Collaborator_'.date('YmdHis');
     }
 }

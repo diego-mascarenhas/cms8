@@ -9,18 +9,23 @@ use Illuminate\View\Component;
 class FareSelect extends Component
 {
     public $id;
+
     public $name;
+
     public $label;
+
     public $required;
+
     public $placeholder;
+
     public $selected;
+
     public $fares;
 
     /**
      * Create a new component instance.
      *
-     * @param array $selected
-     *
+     * @param  array  $selected
      * @return void
      */
     public function __construct(

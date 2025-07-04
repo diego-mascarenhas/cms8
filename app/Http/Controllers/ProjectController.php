@@ -246,24 +246,24 @@ class ProjectController extends Controller
 
                 // Verify the relationship was created
                 $relationshipExists = $project->collaborators()->where('contact_id', $collaboratorId)->exists();
-                \Log::info('Relationship exists check: ' . ($relationshipExists ? 'YES' : 'NO'));
+                \Log::info('Relationship exists check: '.($relationshipExists ? 'YES' : 'NO'));
 
                 $sentCount++;
             } catch (\Exception $e) {
-                \Log::error("Error processing collaborator {$collaboratorId}: " . $e->getMessage());
-                $errors[] = "Error sending to collaborator {$collaboratorId}: " . $e->getMessage();
+                \Log::error("Error processing collaborator {$collaboratorId}: ".$e->getMessage());
+                $errors[] = "Error sending to collaborator {$collaboratorId}: ".$e->getMessage();
             }
         }
 
         if ($sentCount > 0) {
             $message = "Messages sent successfully to {$sentCount} collaborator(s).";
             if (! empty($errors)) {
-                $message .= ' However, there were some errors: ' . implode(', ', $errors);
+                $message .= ' However, there were some errors: '.implode(', ', $errors);
             }
 
             return redirect()->route('project.show', $projectId)->with('success', $message);
         } else {
-            return redirect()->back()->with('error', 'Failed to send messages: ' . implode(', ', $errors));
+            return redirect()->back()->with('error', 'Failed to send messages: '.implode(', ', $errors));
         }
     }
 
@@ -344,7 +344,7 @@ class ProjectController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Error removing collaborator from project: ' . $e->getMessage());
+            \Log::error('Error removing collaborator from project: '.$e->getMessage());
 
             return response()->json([
                 'message' => 'Ha ocurrido un error al eliminar el colaborador.',
@@ -358,10 +358,10 @@ class ProjectController extends Controller
     public function getServiceTemplate(Request $request)
     {
         $index = $request->get('index', 0);
-        
+
         return view('project.partials.service-row', [
             'index' => $index,
-            'projectFare' => null
+            'projectFare' => null,
         ])->render();
     }
 
@@ -371,22 +371,22 @@ class ProjectController extends Controller
     public function getFareUnits(Request $request)
     {
         $fareId = $request->get('fare_id');
-        
-        if (!$fareId) {
+
+        if (! $fareId) {
             return response()->json(['units' => []]);
         }
 
         $fare = \App\Models\Fare::with('units')->find($fareId);
-        
-        if (!$fare) {
+
+        if (! $fare) {
             return response()->json(['units' => []]);
         }
 
-        $units = $fare->units->map(function($unit) {
+        $units = $fare->units->map(function ($unit) {
             return [
                 'id' => $unit->id,
                 'type' => $unit->type,
-                'label' => $unit->type
+                'label' => $unit->type,
             ];
         });
 

@@ -12,6 +12,7 @@ class ContactValoration extends Model
     use HasFactory;
 
     public $incrementing = false;
+
     protected $keyType = 'int';
 
     protected $fillable = [

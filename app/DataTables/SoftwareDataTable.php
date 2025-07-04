@@ -49,7 +49,7 @@ class SoftwareDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->pageLength(25)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'select' => false,
                 'lengthChange' => false,
@@ -71,6 +71,6 @@ class SoftwareDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Software_' . date('YmdHis');
+        return 'Software_'.date('YmdHis');
     }
 }

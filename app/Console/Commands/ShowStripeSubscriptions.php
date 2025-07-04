@@ -9,12 +9,13 @@ use Stripe\Subscription;
 class ShowStripeSubscriptions extends Command
 {
     protected $signature = 'stripe:subscriptions';
+
     protected $description = 'Muestra todas las suscripciones activas de Stripe';
 
     public function handle()
     {
         $stripeKey = env('STRIPE_SECRET');
-        $this->info('Using key: ' . substr($stripeKey, 0, 12) . '...');
+        $this->info('Using key: '.substr($stripeKey, 0, 12).'...');
 
         Stripe::setApiKey($stripeKey);
 
@@ -31,7 +32,7 @@ class ShowStripeSubscriptions extends Command
                 return;
             }
 
-            $this->info('Found ' . $subscriptions->count() . ' subscriptions');
+            $this->info('Found '.$subscriptions->count().' subscriptions');
 
             $headers = ['ID', 'Customer', 'Plan', 'Status', 'Next Payment'];
             $rows = [];
@@ -49,8 +50,8 @@ class ShowStripeSubscriptions extends Command
             $this->table($headers, $rows);
 
         } catch (\Exception $e) {
-            $this->error('Stripe Error: ' . $e->getMessage());
-            $this->error('Error Type: ' . get_class($e));
+            $this->error('Stripe Error: '.$e->getMessage());
+            $this->error('Error Type: '.get_class($e));
         }
     }
 }

@@ -61,15 +61,15 @@ class SendNotificationJob implements ShouldQueue
     {
         try {
             $this->notification->load(['contact', 'user', 'team']);
-            
-            if (!$this->notification->contact->email) {
+
+            if (! $this->notification->contact->email) {
                 throw new \Exception('El contacto no tiene email configurado');
             }
 
             Log::info('Sending notification email', [
                 'notification_id' => $this->notification->id,
                 'contact_email' => $this->notification->contact->email,
-                'is_resend' => $this->isResend
+                'is_resend' => $this->isResend,
             ]);
 
             Mail::to($this->notification->contact->email)
@@ -86,14 +86,14 @@ class SendNotificationJob implements ShouldQueue
 
             Log::info('Notification email sent successfully', [
                 'notification_id' => $this->notification->id,
-                'contact_email' => $this->notification->contact->email
+                'contact_email' => $this->notification->contact->email,
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to send notification email', [
                 'notification_id' => $this->notification->id,
                 'error' => $e->getMessage(),
-                'contact_email' => $this->notification->contact->email ?? 'N/A'
+                'contact_email' => $this->notification->contact->email ?? 'N/A',
             ]);
 
             throw $e;
@@ -108,10 +108,10 @@ class SendNotificationJob implements ShouldQueue
         Log::error('Notification job failed permanently', [
             'notification_id' => $this->notification->id,
             'error' => $exception->getMessage(),
-            'contact_email' => $this->notification->contact->email ?? 'N/A'
+            'contact_email' => $this->notification->contact->email ?? 'N/A',
         ]);
 
         // Optionally, you could mark the notification as failed
         // or take other actions like notifying admins
     }
-} 
+}

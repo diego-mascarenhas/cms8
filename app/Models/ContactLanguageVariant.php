@@ -56,11 +56,11 @@ class ContactLanguageVariant extends Model
     public static function getCombinationsWithFewCollaborators($maxCount = 10, $limit = 15, $teamId = null)
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
-        
+
         return static::select([
-                'source_language_code', 
-                'target_language_code'
-            ])
+            'source_language_code',
+            'target_language_code',
+        ])
             ->selectRaw('COUNT(DISTINCT contact_id) as collaborator_count')
             ->with(['sourceLanguage', 'targetLanguage'])
             ->whereHas('contact', function ($query) use ($teamId) {
@@ -76,7 +76,7 @@ class ContactLanguageVariant extends Model
                 // Get language variant instances for this combination
                 $sourceVariant = LanguageVariant::where('code', $combination->source_language_code)->first();
                 $targetVariant = LanguageVariant::where('code', $combination->target_language_code)->first();
-                
+
                 return [
                     'source_code' => $combination->source_language_code,
                     'target_code' => $combination->target_language_code,
@@ -84,7 +84,7 @@ class ContactLanguageVariant extends Model
                     'target_name' => $targetVariant ? $targetVariant->name : $combination->target_language_code,
                     'source_flag' => $sourceVariant ? strtolower($sourceVariant->country_code) : strtolower(explode('-', $combination->source_language_code)[1] ?? 'us'),
                     'target_flag' => $targetVariant ? strtolower($targetVariant->country_code) : strtolower(explode('-', $combination->target_language_code)[1] ?? 'us'),
-                    'count' => $combination->collaborator_count
+                    'count' => $combination->collaborator_count,
                 ];
             });
     }

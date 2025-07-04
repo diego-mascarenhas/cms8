@@ -8,8 +8,11 @@ use Illuminate\View\Component;
 class CountrySelect extends Component
 {
     public $name;
+
     public $id;
+
     public $value;
+
     public $label;
 
     public function __construct($name = 'country', $id = null, $value = null, $label = 'País')

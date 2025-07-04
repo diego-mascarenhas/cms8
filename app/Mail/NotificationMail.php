@@ -35,4 +35,4 @@ class NotificationMail extends Mailable
                 'team' => $this->notification->team,
             ]);
     }
-} 
+}

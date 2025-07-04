@@ -51,7 +51,7 @@ class MailController extends Controller
                         'body' => $message->getRawBody(),
                     ]);
                 } catch (\Exception $e) {
-                    Log::error('Error processing email: ' . $e->getMessage());
+                    Log::error('Error processing email: '.$e->getMessage());
                 }
             }
 
@@ -77,11 +77,11 @@ class MailController extends Controller
             $inboundEmail = InboundEmail::fromMessage($email->message);
             $inboundEmail->save();
 
-            Log::info('Email guardado correctamente en la base de datos con ID: ' . $inboundEmail->id);
+            Log::info('Email guardado correctamente en la base de datos con ID: '.$inboundEmail->id);
 
             return true;
         } catch (\Exception $e) {
-            Log::error('Error al procesar el email: ' . $e->getMessage());
+            Log::error('Error al procesar el email: '.$e->getMessage());
 
             return false;
         }

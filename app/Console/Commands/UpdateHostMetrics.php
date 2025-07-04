@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\Log;
 class UpdateHostMetrics extends Command
 {
     protected $signature = 'update:host-metrics';
+
     protected $description = 'Updates host metrics from vCenter';
 
     protected $vCenterService;
+
     protected $showConsoleOutput;
 
     public function __construct(VCenterService $vCenterService)
@@ -57,10 +59,10 @@ class UpdateHostMetrics extends Command
                 $this->info('Host metrics updated successfully.');
             }
         } catch (\Exception $e) {
-            Log::error('Error updating host metrics: ' . $e->getMessage());
+            Log::error('Error updating host metrics: '.$e->getMessage());
 
             if ($this->showConsoleOutput) {
-                $this->error('Error updating host metrics: ' . $e->getMessage());
+                $this->error('Error updating host metrics: '.$e->getMessage());
             }
         }
     }
