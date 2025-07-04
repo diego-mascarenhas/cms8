@@ -4,6 +4,9 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\RolePermissionController;
+use App\Http\Controllers\Api\TeamController;
+use App\Http\Controllers\Api\TeamContactController;
+use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -45,3 +48,16 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/register-application', [LicenseController::class, 'register']);
 
 Route::get('/roles-permissions', [RolePermissionController::class, 'index']);
+
+// Team API routes protected by team token
+Route::middleware('team.token')->prefix('team')->group(function () {
+    // Team information
+    Route::get('/', [TeamController::class, 'index']);
+    Route::get('/settings', [TeamController::class, 'settings']);
+    
+    // Team contacts
+    Route::resource('contacts', TeamContactController::class);
+    
+    // Team projects
+    Route::resource('projects', TeamProjectController::class);
+});
