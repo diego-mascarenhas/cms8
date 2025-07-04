@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RolePermissionController;
+use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamContactController;
 use App\Http\Controllers\Api\TeamProjectController;
@@ -53,6 +55,20 @@ Route::middleware('auth:sanctum')->group(function () {
     // Projects - for user-based authentication (Sanctum tokens)
     Route::get('projects', [ProjectController::class, 'index']);
     Route::get('projects/{id}', [ProjectController::class, 'show']);
+    
+    // Services - for user-based authentication (Sanctum tokens)
+    Route::get('services', [ServiceController::class, 'index']);
+    Route::get('services/{id}', [ServiceController::class, 'show']);
+    Route::post('services', [ServiceController::class, 'store']);
+    Route::put('services/{id}', [ServiceController::class, 'update']);
+    Route::delete('services/{id}', [ServiceController::class, 'destroy']);
+    
+    // Invoices - for user-based authentication (Sanctum tokens)
+    Route::get('invoices', [InvoiceController::class, 'index']);
+    Route::get('invoices/{id}', [InvoiceController::class, 'show']);
+    Route::post('invoices', [InvoiceController::class, 'store']);
+    Route::put('invoices/{id}', [InvoiceController::class, 'update']);
+    Route::delete('invoices/{id}', [InvoiceController::class, 'destroy']);
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);

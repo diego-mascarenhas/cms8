@@ -196,6 +196,15 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'integration.update']);
         Permission::create(['name' => 'integration.destroy']);
 
+        Permission::create(['name' => 'invoice.index']);
+        Permission::create(['name' => 'invoice.list']);
+        Permission::create(['name' => 'invoice.create']);
+        Permission::create(['name' => 'invoice.show']);
+        Permission::create(['name' => 'invoice.edit']);
+        Permission::create(['name' => 'invoice.store']);
+        Permission::create(['name' => 'invoice.update']);
+        Permission::create(['name' => 'invoice.destroy']);
+
         Permission::create(['name' => 'campaign.index']);
         Permission::create(['name' => 'campaign.list']);
         Permission::create(['name' => 'campaign.create']);
@@ -275,6 +284,15 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'stylebook.store']);
         Permission::create(['name' => 'stylebook.update']);
         Permission::create(['name' => 'stylebook.destroy']);
+
+        Permission::create(['name' => 'invoice.index']);
+        Permission::create(['name' => 'invoice.list']);
+        Permission::create(['name' => 'invoice.create']);
+        Permission::create(['name' => 'invoice.show']);
+        Permission::create(['name' => 'invoice.edit']);
+        Permission::create(['name' => 'invoice.store']);
+        Permission::create(['name' => 'invoice.update']);
+        Permission::create(['name' => 'invoice.destroy']);
 
         $rootRole = Role::create(['name' => 'root']);
         $rootRole->syncPermissions([
@@ -448,6 +466,15 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.edit',
             'profile.update',
             'password.update',
+            'service.index',
+            'service.list',
+            'service.show',
+            'invoice.index', 
+            'invoice.list',
+            'invoice.show',
+            'project.index',
+            'project.list',
+            'project.show',
         ]);
 
         $userRole = Role::create(['name' => 'user']);
