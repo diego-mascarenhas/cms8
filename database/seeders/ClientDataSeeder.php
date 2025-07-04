@@ -65,6 +65,7 @@ class ClientDataSeeder extends Seeder
                 'phone' => 600123456, // Store as bigInteger
                 'country' => 724, // Spain
                 'language' => 'es',
+                'user_id' => $user->id, // Link contact to user
                 'creator_id' => $user->id,
                 'responsible_id' => $user->id,
                 'status_id' => 5, // Active status
@@ -75,10 +76,12 @@ class ClientDataSeeder extends Seeder
 
         $this->command->info("✅ Created contact: {$contact->name} {$contact->surname}");
 
-        // 3. Create/Update enterprise for this contact
+        // 3. Create/Update enterprise for this contact (specifically ID 29)
         $enterprise = Enterprise::updateOrCreate(
-            ['name' => 'Demo Client Company', 'team_id' => $team->id],
+            ['id' => 29],
             [
+                'name' => 'Demo Client Company',
+                'team_id' => $team->id,
                 'code' => 'DEMO-CLIENT-' . rand(1000, 9999),
                 'type_id' => 1, // Client type
                 'address' => 'Calle Principal 123',

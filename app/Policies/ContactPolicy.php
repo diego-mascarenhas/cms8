@@ -25,6 +25,11 @@ class ContactPolicy
             return true;
         }
 
+        // Clients can see their own contact information
+        if ($user->hasRole('client')) {
+            return true;
+        }
+
         // Regular users need specific permission
         return $user->can('contact.index');
     }
@@ -42,6 +47,24 @@ class ContactPolicy
         // Collaborators can only see their own contact
         if ($user->hasRole('collaborator')) {
             return $contact->user_id === $user->id && $contact->team_id === $user->currentTeam->id;
+        }
+
+        // Clients can see their own contact or contacts from their enterprises
+        if ($user->hasRole('client')) {
+            // Can see their own contact
+            if ($contact->user_id === $user->id && $contact->team_id === $user->currentTeam->id) {
+                return true;
+            }
+            
+            // Can see contacts from enterprises they belong to
+            $userContact = $user->contact;
+            if ($userContact) {
+                $enterpriseIds = $userContact->enterprises()->pluck('enterprises.id')->toArray();
+                $contactEnterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();
+                return !empty(array_intersect($enterpriseIds, $contactEnterpriseIds));
+            }
+            
+            return false;
         }
 
         // Regular users need specific permission and team membership
@@ -108,6 +131,25 @@ class ContactPolicy
             if ($user->hasRole('collaborator')) {
                 return $query->where('team_id', $user->currentTeam->id)
                             ->where('user_id', $user->id);
+            }
+
+            // Clients can see their own contact and contacts from their enterprises
+            if ($user->hasRole('client')) {
+                $userContact = $user->contact;
+                if (!$userContact) {
+                    return $query->where('team_id', $user->currentTeam->id)
+                                ->where('user_id', $user->id);
+                }
+
+                $enterpriseIds = $userContact->enterprises()->pluck('enterprises.id')->toArray();
+                
+                return $query->where('team_id', $user->currentTeam->id)
+                            ->where(function ($q) use ($user, $enterpriseIds) {
+                                $q->where('user_id', $user->id)
+                                  ->orWhereHas('enterprises', function ($enterpriseQuery) use ($enterpriseIds) {
+                                      $enterpriseQuery->whereIn('enterprises.id', $enterpriseIds);
+                                  });
+                            });
             }
 
             // Regular users can see all contacts if they have permission

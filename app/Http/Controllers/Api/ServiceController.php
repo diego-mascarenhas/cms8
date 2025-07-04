@@ -30,7 +30,7 @@ class ServiceController extends Controller
         $filter = ServicePolicy::getQueryFilter($user);
         $filter($query);
 
-        $services = $query->with(['enterprise:id,name', 'responsible:id,name'])
+        $services = $query->with(['client:id,name', 'responsible:id,name'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -91,7 +91,7 @@ class ServiceController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Service created successfully',
-                'data' => $service->load(['enterprise:id,name', 'responsible:id,name']),
+                'data' => $service->load(['client:id,name', 'responsible:id,name']),
                 'user_info' => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -113,7 +113,7 @@ class ServiceController extends Controller
     public function show(string $id)
     {
         $user = auth()->user();
-        $service = Service::with(['enterprise:id,name', 'responsible:id,name'])->find($id);
+        $service = Service::with(['client:id,name', 'responsible:id,name'])->find($id);
 
         if (!$service) {
             return response()->json([
@@ -188,7 +188,7 @@ class ServiceController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Service updated successfully',
-                'data' => $service->load(['enterprise:id,name', 'responsible:id,name']),
+                'data' => $service->load(['client:id,name', 'responsible:id,name']),
                 'user_info' => [
                     'id' => $user->id,
                     'name' => $user->name,

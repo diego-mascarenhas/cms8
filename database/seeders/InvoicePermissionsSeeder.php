@@ -55,6 +55,9 @@ class InvoicePermissionsSeeder extends Seeder
                 'project.index',
                 'project.list',
                 'project.show',
+                'contact.index',
+                'contact.list',
+                'contact.show',
             ]);
         }
 

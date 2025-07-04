@@ -25,6 +25,11 @@ class ProjectPolicy
             return true;
         }
 
+        // Clients can see projects of their enterprises
+        if ($user->hasRole('client')) {
+            return true;
+        }
+
         // Regular users need specific permission
         return $user->can('project.index');
     }
@@ -121,6 +126,19 @@ class ProjectPolicy
                                       $collaboratorQuery->where('user_id', $user->id);
                                   });
                             });
+            }
+
+            // Clients can see projects of their enterprises
+            if ($user->hasRole('client')) {
+                // Get user's contact
+                $contact = $user->contact;
+                if (!$contact) {
+                    return $query->whereRaw('1 = 0'); // Return no results
+                }
+
+                // Check if project belongs to any of the contact's enterprises
+                $enterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();
+                return $query->whereIn('enterprise_id', $enterpriseIds);
             }
 
             // Regular users can see all projects if they have permission

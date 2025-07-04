@@ -80,6 +80,11 @@ class Service extends Model
         return $this->belongsTo(Enterprise::class, 'enterprise_id');
     }
 
+    public function enterprise()
+    {
+        return $this->belongsTo(Enterprise::class, 'enterprise_id');
+    }
+
     public function responsible()
     {
         return $this->belongsTo(User::class, 'responsible_id');
