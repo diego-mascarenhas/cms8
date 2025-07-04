@@ -44,6 +44,14 @@ class Language extends Model
     }
 
     /**
+     * Get certifications that belong to this language
+     */
+    public function certifications()
+    {
+        return $this->hasMany(Certification::class, 'language', 'code');
+    }
+
+    /**
      * Get top languages by collaborator count
      */
     public static function getTopLanguages($limit = 5, $teamId = null)

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CertificationController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LanguageVariantController;
@@ -84,6 +85,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('software', SoftwareController::class);
     Route::get('software/types', [SoftwareController::class, 'types']);
     Route::get('software/type/{type}', [SoftwareController::class, 'byType']);
+    
+    // Certifications - for user-based authentication (Sanctum tokens)
+    Route::apiResource('certifications', CertificationController::class);
+    Route::get('certifications/languages', [CertificationController::class, 'languages']);
+    Route::get('certifications/language/{language}', [CertificationController::class, 'byLanguage']);
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);
