@@ -8,12 +8,14 @@ use App\Models\Invoice;
 use App\Models\LanguageVariant;
 use App\Models\Project;
 use App\Models\Service;
+use App\Models\Software;
 use App\Policies\ClientPolicy;
 use App\Policies\ContactPolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\LanguageVariantPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\ServicePolicy;
+use App\Policies\SoftwarePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider

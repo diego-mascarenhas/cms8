@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamContactController;
 use App\Http\Controllers\Api\TeamProjectController;
@@ -78,6 +79,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('language-variants/{languageVariant}', [LanguageVariantController::class, 'update']);
     Route::delete('language-variants/{languageVariant}', [LanguageVariantController::class, 'destroy']);
     Route::get('language-variants/base/{baseLanguage}', [LanguageVariantController::class, 'getVariantsFor']);
+    
+    // Software - for user-based authentication (Sanctum tokens)
+    Route::apiResource('software', SoftwareController::class);
+    Route::get('software/types', [SoftwareController::class, 'types']);
+    Route::get('software/type/{type}', [SoftwareController::class, 'byType']);
 });
 
 Route::post('/register-application', [LicenseController::class, 'register']);
