@@ -43,7 +43,12 @@
 		    <!-- Filters Section -->
     <div class="card mb-4">
         <div class="card-body">
-            <h5 class="mb-3">{{ __('Filters') }}</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">{{ __('Filters') }}</h5>
+                <button class="btn btn-outline-secondary" id="clear-filters" title="{{ __('Limpiar filtros') }}">
+                    <i class="ti ti-refresh me-1"></i>{{ __('Limpiar filtros') }}
+                </button>
+            </div>
             <div class="row g-3">
                 <div class="col">
                     <x-variant-language-select name="idioma-origen" id="idioma-origen" label="" :required="false"
@@ -136,29 +141,40 @@
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
-			// Los componentes x-variant-language-select ya inicializan Select2 para idioma-origen e idioma-destino
-			// No necesitamos inicializarlos aquí
-
-			$('#servicio').select2({
-				allowClear: true,
-				placeholder: $('#servicio').find('option[value=""]').text() || 'Seleccionar...',
-				width: '100%'
-			});
-
-			// Initialize days and delivery-date selects (copied from collaborator index)
+			// Initialize Select2 for days and delivery-date selectors
 			$('#days').select2({
 				allowClear: true,
-				placeholder: 'Seleccionar...',
+				placeholder: 'Días',
 				width: '100%'
 			});
 
 			$('#delivery-date').select2({
 				allowClear: true,
-				placeholder: 'Seleccionar...',
+				placeholder: 'Fecha entrega',
 				width: '100%'
 			});
 
-			// La función formatLanguage ya está definida globalmente por el componente x-variant-language-select
+			// Note: #servicio is initialized by the x-fare-select component with allowClear already enabled
+
+			// Enhance existing language selectors with allowClear functionality
+			setTimeout(function() {
+				// Get existing Select2 instances and enhance them
+				$('#idioma-origen').select2('destroy').select2({
+					allowClear: true,
+					placeholder: 'Idioma origen',
+					width: '100%',
+					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
+					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
+				});
+
+				$('#idioma-destino').select2('destroy').select2({
+					allowClear: true,
+					placeholder: 'Idioma destino',
+					width: '100%',
+					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
+					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
+				});
+			}, 200);
 
 			// Validation function for days vs delivery date (copied exactly from collaborator index)
 			function validateDeliveryOptions() {
@@ -256,6 +272,22 @@
 
 			// Initialize validation on page load
 			validateDeliveryOptions();
+
+			// Clear filters functionality
+			$('#clear-filters').on('click', function(e) {
+				e.preventDefault();
+				
+				// Clear all filter values
+				$('#idioma-origen, #idioma-destino, #servicio, #days, #delivery-date').val('').trigger('change');
+				
+				// Reset collaborators view to show initial state
+				$('#collaborators-container').html('<div class="col-12"><div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>Selecciona una combinación de idiomas o un servicio para ver colaboradores disponibles.</div></div>');
+				
+				// Update selected count
+				updateSelectedCount();
+				
+				console.log('Filters cleared');
+			});
 
 			// Update selected count
 			function updateSelectedCount() {
