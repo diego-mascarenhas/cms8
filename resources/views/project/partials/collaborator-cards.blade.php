@@ -56,8 +56,7 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center">
                         <div class="avatar avatar-md me-3">
-                            <img src="{{asset('assets/img/avatars/' . (($index % 16) + 1) . '.png')}}" 
-                                 alt="{{ $collaborator->name }}" class="rounded-circle">
+                            <span class="avatar-initial rounded-circle bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][($index % 5)] }}">{{ strtoupper(substr($collaborator->name, 0, 2)) }}</span>
                         </div>
                         <div>
                             <h6 class="mb-0">{{ $collaborator->name }}</h6>

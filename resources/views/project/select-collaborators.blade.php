@@ -64,12 +64,21 @@
                 </div>
                 <div class="col">
                     <select class="form-select" id="days">
-                        <!-- Options will be populated by JavaScript -->
+                        <option value="" selected>{{ __('Días') }}</option>
+                        <option value="5">5 días</option>
+                        <option value="10">10 días</option>
+                        <option value="15">15 días</option>
+                        <option value="30">30 días</option>
                     </select>
                 </div>
                 <div class="col">
                     <select class="form-select" id="delivery-date">
-                        <!-- Options will be populated by JavaScript -->
+                        <option value="" selected>{{ __('Fecha entrega') }}</option>
+                        <option value="today" data-days="1">Hoy</option>
+                        <option value="1_week" data-days="7">En 1 semana</option>
+                        <option value="15_days" data-days="15">En 15 días</option>
+                        <option value="1_month" data-days="30">En 1 mes</option>
+                        <option value="3_months" data-days="90">En 3 meses</option>
                     </select>
                 </div>
             </div>
@@ -132,43 +141,8 @@
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
-			// Wait for DOM to fully load before initializing Select2
-			setTimeout(function() {
-				// First, populate the options in the HTML
-				$('#days').html(
-					'<option value="">{{ __('Días') }}</option>' +
-					'<option value="5">5 días</option>' +
-					'<option value="10">10 días</option>' +
-					'<option value="15">15 días</option>' +
-					'<option value="30">30 días</option>'
-				);
-
-				$('#delivery-date').html(
-					'<option value="">{{ __('Fecha entrega') }}</option>' +
-					'<option value="today" data-days="1">Hoy</option>' +
-					'<option value="1_week" data-days="7">En 1 semana</option>' +
-					'<option value="15_days" data-days="15">En 15 días</option>' +
-					'<option value="1_month" data-days="30">En 1 mes</option>' +
-					'<option value="3_months" data-days="90">En 3 meses</option>'
-				);
-
-				// Then initialize Select2
-				$('#days').select2({
-					allowClear: true,
-					placeholder: '{{ __('Días') }}',
-					width: '100%'
-				});
-
-				$('#delivery-date').select2({
-					allowClear: true,
-					placeholder: '{{ __('Fecha entrega') }}',
-					width: '100%'
-				});
-
-				// Debug: Check if selectors are initialized properly
-				console.log('Days selector options:', $('#days option').length);
-				console.log('Delivery date selector options:', $('#delivery-date option').length);
-			}, 100);
+			// DON'T use Select2 for days and delivery-date - keep them as native selectors
+			// This matches the collaborator index implementation
 
 			// Note: #service is initialized by the x-fare-select component with allowClear already enabled
 
@@ -229,6 +203,14 @@
 				const days = $('#days').val();
 				const deliveryDate = $('#delivery-date').val();
 
+				// Debug days value specifically
+				console.log('Days value in applyFilters:', {
+					raw: days,
+					type: typeof days,
+					length: days ? days.length : 'null/undefined',
+					boolean: !!days
+				});
+
 				// Check if any filter is applied
 				const hasLanguageFilter = sourceLanguage || targetLanguage;
 				const hasServiceFilter = service;
@@ -251,7 +233,18 @@
 						days: days,
 						deliveryDate: deliveryDate,
 						daysText: days ? $('#days option:selected').text() : 'none',
-						deliveryDateText: deliveryDate ? $('#delivery-date option:selected').text() : 'none'
+						deliveryDateText: deliveryDate ? $('#delivery-date option:selected').text() : 'none',
+						hasTimeFilter: hasTimeFilter,
+						daysOnly: !!days && !deliveryDate,
+						deliveryOnly: !!deliveryDate && !days
+					});
+				}
+
+				// Special test for days only filter
+				if (days && !deliveryDate && !hasLanguageFilter && !hasServiceFilter) {
+					console.log('DAYS ONLY FILTER DETECTED:', {
+						daysValue: days,
+						willProceed: true
 					});
 				}
 
@@ -299,6 +292,7 @@
 				// Validate delivery options when days change
 				if (this.id === 'days') {
 					validateDeliveryOptions();
+					console.log('Days filter triggered! Value:', $(this).val());
 				}
 				
 				console.log('Filter changed:', this.id, 'Value:', $(this).val());
@@ -308,7 +302,8 @@
 					console.log('Time filter changed:', {
 						id: this.id,
 						value: $(this).val(),
-						text: $(this).find('option:selected').text()
+						text: $(this).find('option:selected').text(),
+						element: this
 					});
 				}
 				

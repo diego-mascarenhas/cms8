@@ -175,7 +175,12 @@ class ProjectController extends Controller
         // Apply days filter - basic implementation that works
         if ($request->has('days') && $request->days) {
             // Log that days filter is being applied
-            \Log::info('Applying days filter:', ['days' => $request->days]);
+            \Log::info('Applying days filter:', [
+                'days' => $request->days,
+                'days_type' => gettype($request->days),
+                'days_empty' => empty($request->days),
+                'raw_request' => $request->all()
+            ]);
             
             // For now, when days filter is applied, we don't restrict the query further
             // This ensures collaborators are returned when only days filter is used
@@ -184,6 +189,12 @@ class ProjectController extends Controller
             // Add a simple constraint to show the filter is working
             // For example, only contacts created in the last year
             $query->where('created_at', '>=', now()->subYear());
+        } else {
+            \Log::info('Days filter NOT applied:', [
+                'has_days' => $request->has('days'),
+                'days_value' => $request->days ?? 'not_set',
+                'request_keys' => array_keys($request->all())
+            ]);
         }
 
         // Apply delivery date filter - basic implementation that works

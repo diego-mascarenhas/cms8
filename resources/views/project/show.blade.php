@@ -274,8 +274,7 @@
 								<!-- Collaborator Info -->
 								<div class="d-flex align-items-center">
 									<div class="avatar avatar-md me-3">
-										<img src="{{asset('assets/img/avatars/' . (($index % 16) + 1) . '.png')}}" 
-											 alt="{{ $collaborator->name }}" class="rounded-circle">
+										<span class="avatar-initial rounded-circle bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][($index % 5)] }}">{{ strtoupper(substr($collaborator->name, 0, 2)) }}</span>
 									</div>
 									<div>
 										<h6 class="mb-0">{{ $collaborator->name }}</h6>
@@ -303,8 +302,8 @@
 				<div class="card-body">
 					@foreach($project->notes->take(3) as $note)
 						<div class="d-flex mb-3 {{ !$loop->last ? 'pb-3 border-bottom' : '' }}">
-							<div class="avatar avatar-sm bg-label-primary me-3">
-								<span class="avatar-initial rounded-circle">{{ substr($note->user->name ?? 'U', 0, 1) }}</span>
+							<div class="avatar avatar-sm me-3">
+								<span class="avatar-initial rounded-circle bg-label-primary">{{ substr($note->user->name ?? 'U', 0, 1) }}</span>
 							</div>
 							<div class="flex-grow-1">
 								<div class="d-flex justify-content-between align-items-start">
@@ -345,8 +344,8 @@
 								</div>
 								<p class="mb-2">{{ __('Project was created in the system') }}</p>
 								<div class="d-flex">
-									<div class="avatar avatar-sm bg-label-primary me-2">
-										<span class="avatar-initial rounded-circle">{{ substr($project->responsible->name ?? 'U', 0, 1) }}</span>
+									<div class="avatar avatar-sm me-2">
+										<span class="avatar-initial rounded-circle bg-label-primary">{{ substr($project->responsible->name ?? 'U', 0, 1) }}</span>
 									</div>
 									<div>
 										<small class="text-muted">{{ __('by') }} {{ $project->responsible->name ?? __('Unknown') }}</small>
@@ -395,8 +394,8 @@
 									</div>
 									<p class="mb-2">{{ Str::limit($note->content, 100) }}</p>
 									<div class="d-flex">
-										<div class="avatar avatar-sm bg-label-success me-2">
-											<span class="avatar-initial rounded-circle">{{ substr($note->user->name ?? 'U', 0, 1) }}</span>
+										<div class="avatar avatar-sm me-2">
+											<span class="avatar-initial rounded-circle bg-label-success">{{ substr($note->user->name ?? 'U', 0, 1) }}</span>
 										</div>
 										<small class="text-muted">{{ __('by') }} {{ $note->user->name ?? __('Unknown') }}</small>
 									</div>
