@@ -51,34 +51,25 @@
             </div>
             <div class="row g-3">
                 <div class="col">
-                    <x-variant-language-select name="idioma-origen" id="idioma-origen" label="" :required="false"
-                        placeholder="{{ __('Source language') }}" />
+                    <x-variant-language-select name="source-language" id="source-language" label="" :required="false"
+                        placeholder="{{ __('Idioma origen') }}" />
                 </div>
                 <div class="col">
-                    <x-variant-language-select name="idioma-destino" id="idioma-destino" label="" :required="false"
-                        placeholder="{{ __('Target language') }}" />
+                    <x-variant-language-select name="target-language" id="target-language" label="" :required="false"
+                        placeholder="{{ __('Idioma destino') }}" />
                 </div>
                 <div class="col">
-                    <x-fare-select name="servicio" id="servicio" label="" :required="false"
-                        placeholder="{{ __('Service') }}" />
+                    <x-fare-select name="service" id="service" label="" :required="false"
+                        placeholder="{{ __('Servicio') }}" />
                 </div>
                 <div class="col">
                     <select class="form-select" id="days">
-                        <option value="" selected>{{ __('Days') }}</option>
-                        <option value="5">5 días</option>
-                        <option value="10">10 días</option>
-                        <option value="15">15 días</option>
-                        <option value="30">30 días</option>
+                        <!-- Options will be populated by JavaScript -->
                     </select>
                 </div>
                 <div class="col">
                     <select class="form-select" id="delivery-date">
-                        <option value="" selected>{{ __('Fecha entrega') }}</option>
-                        <option value="today" data-days="1">Hoy</option>
-                        <option value="1_week" data-days="7">En 1 semana</option>
-                        <option value="15_days" data-days="15">En 15 días</option>
-                        <option value="1_month" data-days="30">En 1 mes</option>
-                        <option value="3_months" data-days="90">En 3 meses</option>
+                        <!-- Options will be populated by JavaScript -->
                     </select>
                 </div>
             </div>
@@ -141,35 +132,60 @@
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
-			// Initialize Select2 for days and delivery-date selectors
-			$('#days').select2({
-				allowClear: true,
-				placeholder: 'Días',
-				width: '100%'
-			});
+			// Wait for DOM to fully load before initializing Select2
+			setTimeout(function() {
+				// First, populate the options in the HTML
+				$('#days').html(
+					'<option value="">{{ __('Días') }}</option>' +
+					'<option value="5">5 días</option>' +
+					'<option value="10">10 días</option>' +
+					'<option value="15">15 días</option>' +
+					'<option value="30">30 días</option>'
+				);
 
-			$('#delivery-date').select2({
-				allowClear: true,
-				placeholder: 'Fecha entrega',
-				width: '100%'
-			});
+				$('#delivery-date').html(
+					'<option value="">{{ __('Fecha entrega') }}</option>' +
+					'<option value="today" data-days="1">Hoy</option>' +
+					'<option value="1_week" data-days="7">En 1 semana</option>' +
+					'<option value="15_days" data-days="15">En 15 días</option>' +
+					'<option value="1_month" data-days="30">En 1 mes</option>' +
+					'<option value="3_months" data-days="90">En 3 meses</option>'
+				);
 
-			// Note: #servicio is initialized by the x-fare-select component with allowClear already enabled
+				// Then initialize Select2
+				$('#days').select2({
+					allowClear: true,
+					placeholder: '{{ __('Días') }}',
+					width: '100%'
+				});
+
+				$('#delivery-date').select2({
+					allowClear: true,
+					placeholder: '{{ __('Fecha entrega') }}',
+					width: '100%'
+				});
+
+				// Debug: Check if selectors are initialized properly
+				console.log('Days selector options:', $('#days option').length);
+				console.log('Delivery date selector options:', $('#delivery-date option').length);
+			}, 100);
+
+			// Note: #service is initialized by the x-fare-select component with allowClear already enabled
 
 			// Enhance existing language selectors with allowClear functionality
 			setTimeout(function() {
 				// Get existing Select2 instances and enhance them
-				$('#idioma-origen').select2('destroy').select2({
+				$('#source-language').select2('destroy').select2({
 					allowClear: true,
-					placeholder: 'Idioma origen',
+					placeholder: '{{ __('Idioma origen') }}',
 					width: '100%',
 					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
 					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
 				});
 
-				$('#idioma-destino').select2('destroy').select2({
+				$('#target-language').select2('destroy').select2({
 					allowClear: true,
-					placeholder: 'Idioma destino',
+					placeholder: '{{ __('Idioma destino') }}',
 					width: '100%',
 					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
 					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
@@ -207,27 +223,41 @@
 
 			// Filter functionality via AJAX (same approach as collaborator index)
 			function applyFilters() {
-				const sourceLanguage = $('#idioma-origen').val();
-				const targetLanguage = $('#idioma-destino').val();
-				const servicio = $('#servicio').val();
+				const sourceLanguage = $('#source-language').val();
+				const targetLanguage = $('#target-language').val();
+				const service = $('#service').val();
 				const days = $('#days').val();
 				const deliveryDate = $('#delivery-date').val();
+
+				// Check if any filter is applied
+				const hasLanguageFilter = sourceLanguage || targetLanguage;
+				const hasServiceFilter = service;
+				const hasTimeFilter = days || deliveryDate;
 
 				console.log('Applying filters via AJAX:', {
 					sourceLanguage,
 					targetLanguage,
-					servicio,
+					service,
 					days,
-					deliveryDate
+					deliveryDate,
+					hasLanguageFilter,
+					hasServiceFilter,
+					hasTimeFilter
 				});
 
-				// Check if any language or service filter is applied
-				const hasLanguageFilter = sourceLanguage || targetLanguage;
-				const hasServiceFilter = servicio;
+				// Special logging for time filters
+				if (hasTimeFilter) {
+					console.log('Time filter details:', {
+						days: days,
+						deliveryDate: deliveryDate,
+						daysText: days ? $('#days option:selected').text() : 'none',
+						deliveryDateText: deliveryDate ? $('#delivery-date option:selected').text() : 'none'
+					});
+				}
 
 				// If no filters applied, show empty state immediately
-				if (!hasLanguageFilter && !hasServiceFilter) {
-					$('#collaborators-container').html('<div class="col-12"><div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>Selecciona una combinación de idiomas o un servicio para ver colaboradores disponibles.</div></div>');
+				if (!hasLanguageFilter && !hasServiceFilter && !hasTimeFilter) {
+					$('#collaborators-container').html('<div class="col-12"><div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>Selecciona una combinación de idiomas, un servicio, o criterios de tiempo para ver colaboradores disponibles.</div></div>');
 					updateSelectedCount();
 					return;
 				}
@@ -235,18 +265,23 @@
 				// Show loading state
 				$('#collaborators-container').html('<div class="col-12 text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>');
 
+				// Prepare AJAX data
+				const ajaxData = {
+					_token: '{{ csrf_token() }}',
+					source_language: sourceLanguage,
+					target_language: targetLanguage,
+					service: service,
+					days: days,
+					delivery_date: deliveryDate
+				};
+
+				console.log('AJAX data being sent:', ajaxData);
+
 				// Make AJAX request to filter collaborators
 				$.ajax({
 					url: '{{ route("project.filter-collaborators", $project->id) }}',
 					type: 'POST',
-					data: {
-						_token: '{{ csrf_token() }}',
-						source_language: sourceLanguage,
-						target_language: targetLanguage,
-						servicio: servicio,
-						days: days,
-						delivery_date: deliveryDate
-					},
+					data: ajaxData,
 					success: function(response) {
 						$('#collaborators-container').html(response.html);
 						updateSelectedCount();
@@ -260,13 +295,23 @@
 			}
 
 			// Table filters (copied from collaborator index)
-			$('#idioma-origen, #idioma-destino, #servicio, #days, #delivery-date').on('change', function () {
+			$('#source-language, #target-language, #service, #days, #delivery-date').on('change', function () {
 				// Validate delivery options when days change
 				if (this.id === 'days') {
 					validateDeliveryOptions();
 				}
 				
 				console.log('Filter changed:', this.id, 'Value:', $(this).val());
+				
+				// Special logging for time filters
+				if (this.id === 'days' || this.id === 'delivery-date') {
+					console.log('Time filter changed:', {
+						id: this.id,
+						value: $(this).val(),
+						text: $(this).find('option:selected').text()
+					});
+				}
+				
 				applyFilters();
 			});
 
@@ -278,10 +323,10 @@
 				e.preventDefault();
 				
 				// Clear all filter values
-				$('#idioma-origen, #idioma-destino, #servicio, #days, #delivery-date').val('').trigger('change');
+				$('#source-language, #target-language, #service, #days, #delivery-date').val('').trigger('change');
 				
 				// Reset collaborators view to show initial state
-				$('#collaborators-container').html('<div class="col-12"><div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>Selecciona una combinación de idiomas o un servicio para ver colaboradores disponibles.</div></div>');
+				$('#collaborators-container').html('<div class="col-12"><div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>Selecciona una combinación de idiomas, un servicio, o criterios de tiempo para ver colaboradores disponibles.</div></div>');
 				
 				// Update selected count
 				updateSelectedCount();
