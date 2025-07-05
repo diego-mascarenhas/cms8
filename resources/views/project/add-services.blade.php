@@ -31,45 +31,41 @@
 
 		unitSelect.innerHTML = '<option value="">Cargando unidades...</option>';
 
-		fetch('/debug-units/' + fareId)
+		fetch('{{ route("project.get-fare-units") }}?fare_id=' + fareId, {
+			method: 'GET',
+			headers: {
+				'X-Requested-With': 'XMLHttpRequest',
+				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+				'Accept': 'application/json'
+			},
+			credentials: 'same-origin'
+		})
 			.then(response => {
-				console.log('🔍 Response status:', response.status);
-				console.log('🔍 Response URL:', response.url);
-				return response.text(); // Cambiar a text() primero para ver qué recibimos
-			})
-			.then(text => {
-				console.log('🔍 Raw response:', text);
-				
-				let data;
-				try {
-					data = JSON.parse(text);
-					console.log('✅ Parsed data:', data);
-				} catch (e) {
-					console.error('❌ Not valid JSON:', e);
-					unitSelect.innerHTML = '<option value="">Respuesta no es JSON válido</option>';
-					return;
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
 				}
-				
+				return response.json();
+			})
+			.then(data => {
 				let options = '<option value="">Seleccionar unidad</option>';
 				
 				if (data.error) {
-					console.warn('❌ Error en respuesta:', data.error);
 					options += '<option value="">Error: ' + data.error + '</option>';
 				} else if (data.units && Array.isArray(data.units) && data.units.length > 0) {
-					console.log('✅ Unidades encontradas:', data.units.length);
-					data.units.forEach(function(unit) {
-						options += `<option value="${unit.type}">${unit.label}</option>`;
+					data.units.forEach(function(unit, index) {
+						// Seleccionar automáticamente la primera unidad
+						const selected = index === 0 ? 'selected' : '';
+						options += `<option value="${unit.type}" ${selected}>${unit.label}</option>`;
 					});
 				} else {
-					console.log('⚠️ No hay unidades disponibles');
 					options += '<option value="">No hay unidades disponibles</option>';
 				}
 				
 				unitSelect.innerHTML = options;
 			})
 			.catch(error => {
-				console.error('💥 Error cargando unidades:', error);
-				unitSelect.innerHTML = '<option value="">Error: ' + error.message + '</option>';
+				console.error('Error cargando unidades:', error);
+				unitSelect.innerHTML = '<option value="">Error cargando unidades</option>';
 			});
 	}
 

@@ -27,8 +27,11 @@
                 @php
                     $faresByType = \App\Models\Fare::with('type')
                         ->where(function($query) {
-                            $query->whereNull('team_id')
-                                ->orWhere('team_id', auth()->user()->currentTeam->id);
+                            $query->whereNull('team_id');
+                            // If user is authenticated, also include team-specific fares
+                            if (auth()->check() && auth()->user()->currentTeam) {
+                                $query->orWhere('team_id', auth()->user()->currentTeam->id);
+                            }
                         })
                         ->orderBy('name')
                         ->get()

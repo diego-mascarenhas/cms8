@@ -95,6 +95,10 @@ Route::get('/legal/{document}', [LegalDocumentsController::class, 'show'])->name
 
 Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 
+// Public project routes (no auth required)
+Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])->name('project.get-fare-units');
+Route::get('/project/service-template', [ProjectController::class, 'getServiceTemplate'])->name('project.get-service-template');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return redirect()->route('dashboard');
@@ -237,49 +241,18 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update')->middleware('role:admin');
     Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy')->middleware('role:admin');
 
-    // Projects
+    // Projects - IMPORTANT: Specific routes MUST be before parameterized routes
     Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');
     Route::get('/project/create', [ProjectController::class, 'create'])->name('project.create');
+    Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
     Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
-    Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
     Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
     Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
     Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
     Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
-    Route::get('/project/service-template', [ProjectController::class, 'getServiceTemplate'])->name('project.get-service-template');
-    Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])->name('project.get-fare-units');
-    Route::get('/project/test-units', [ProjectController::class, 'testUnits'])->name('project.test-units');
-    
-// Endpoint público para debugging - REMOVER DESPUÉS
-Route::get('/debug-units/{fareId}', function($fareId) {
-    try {
-        $fare = \App\Models\Fare::withoutGlobalScopes()->with('units')->find($fareId);
-        
-        if (!$fare) {
-            return response()->json(['error' => 'Fare not found', 'fare_id' => $fareId]);
-        }
-        
-        $units = $fare->units->map(function ($unit) {
-            return [
-                'id' => $unit->id,
-                'type' => $unit->type,
-                'label' => $unit->type,
-            ];
-        });
-        
-        return response()->json([
-            'success' => true,
-            'fare_id' => $fareId,
-            'fare_name' => $fare->name,
-            'units' => $units
-        ]);
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage(), 'line' => $e->getLine(), 'file' => $e->getFile()]);
-    }
-})->name('debug.units');
     Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
     Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
 

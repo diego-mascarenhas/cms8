@@ -429,29 +429,7 @@ class ProjectController extends Controller
         ])->render();
     }
 
-    /**
-     * Test endpoint to verify JSON response
-     */
-    public function testUnits(Request $request)
-    {
-        // Limpiar cualquier output buffer
-        if (ob_get_contents()) {
-            ob_clean();
-        }
-        
-        return response()->json([
-            'units' => [
-                ['id' => 1, 'type' => 'palabras', 'label' => 'palabras'],
-                ['id' => 2, 'type' => 'páginas', 'label' => 'páginas'],
-                ['id' => 3, 'type' => 'minutos', 'label' => 'minutos']
-            ],
-            'success' => true,
-            'message' => 'Test successful'
-        ], 200, [
-            'Content-Type' => 'application/json',
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-        ]);
-    }
+
 
     /**
      * Get units for a specific fare
@@ -459,26 +437,13 @@ class ProjectController extends Controller
     public function getFareUnits(Request $request)
     {
         try {
-            // Limpiar cualquier output buffer
-            if (ob_get_contents()) {
-                ob_clean();
-            }
-            
-            // Verificar autenticación
-            if (!auth()->check()) {
-                return response()->json([
-                    'units' => [],
-                    'error' => 'No autenticado',
-                    'success' => false
-                ], 200, [
-                    'Content-Type' => 'application/json'
-                ]);
-            }
-            
             $fareId = $request->get('fare_id');
 
             if (! $fareId) {
-                return response()->json(['units' => []], 200, [
+                return response()->json([
+                    'units' => [],
+                    'success' => true
+                ], 200, [
                     'Content-Type' => 'application/json'
                 ]);
             }
@@ -487,7 +452,10 @@ class ProjectController extends Controller
             $fare = \App\Models\Fare::withoutGlobalScopes()->with('units')->find($fareId);
 
             if (! $fare) {
-                return response()->json(['units' => []], 200, [
+                return response()->json([
+                    'units' => [],
+                    'success' => true
+                ], 200, [
                     'Content-Type' => 'application/json'
                 ]);
             }
@@ -509,7 +477,6 @@ class ProjectController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // Log solo al archivo, no al output
             \Log::error('Error in getFareUnits: ' . $e->getMessage());
             
             return response()->json([
