@@ -89,7 +89,7 @@
     <div class="card mb-4">
         <div class="card-body">
             <div class="row" id="collaborators-container">
-                @include('project.partials.collaborator-cards', ['collaborators' => $collaborators])
+                @include('project.partials.collaborator-cards', ['collaborators' => $collaborators, 'selectedService' => $selectedService])
             </div>
         </div>
     </div>
@@ -345,19 +345,25 @@
 					card.addClass('selected');
 					cardElement.addClass('border-primary');
 					
-					// Show collaborator fares
-					$('#fares-' + collaboratorId).collapse('show');
-					
-					// Filter fares based on current filters after the collapse animation completes
-					setTimeout(function() {
-						filterCollaboratorFares(collaboratorId);
-					}, 350); // Bootstrap collapse animation duration
+					// Only show collapse if no service is selected (fares are shown inline when service is selected)
+					const faresCollapse = $('#fares-' + collaboratorId);
+					if (faresCollapse.length > 0) {
+						faresCollapse.collapse('show');
+						
+						// Filter fares based on current filters after the collapse animation completes
+						setTimeout(function() {
+							filterCollaboratorFares(collaboratorId);
+						}, 350); // Bootstrap collapse animation duration
+					}
 				} else {
 					card.removeClass('selected');
 					cardElement.removeClass('border-primary');
 					
-					// Hide collaborator fares
-					$('#fares-' + collaboratorId).collapse('hide');
+					// Hide collaborator fares collapse if it exists
+					const faresCollapse = $('#fares-' + collaboratorId);
+					if (faresCollapse.length > 0) {
+						faresCollapse.collapse('hide');
+					}
 				}
 
 				updateSelectedCount();
