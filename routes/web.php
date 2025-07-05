@@ -253,6 +253,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])->name('project.get-fare-units');
     Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
     Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
+Route::any('/project/{project}/debug-services', [ProjectController::class, 'debugServices'])->name('project.debug-services');
+Route::get('/debug/fare-units', [ProjectController::class, 'debugFareUnits'])->name('debug.fare-units');
+Route::get('/debug/test-fare/{fareId}', [ProjectController::class, 'testFareUnits'])->name('debug.test-fare');
+Route::get('/debug/test-ajax', [ProjectController::class, 'testAjax'])->name('debug.test-ajax');
 
     // Task Routes
     Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');

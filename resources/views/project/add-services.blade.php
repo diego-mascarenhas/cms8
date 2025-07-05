@@ -125,23 +125,35 @@
 				return;
 			}
 
-			// Hacer llamada AJAX para obtener unidades
-			$.get('{{ route("project.get-fare-units") }}', { fare_id: fareId })
-				.done(function(response) {
-					console.log('Respuesta de unidades:', response);
+			// Mostrar loading state
+			unitSelect.html('<option value="">Cargando unidades...</option>');
+
+			// TEST: Usar fetch API nativo como alternativa
+			fetch('{{ route("debug.test-ajax") }}?fare_id=' + fareId)
+				.then(response => {
+					console.log('Fetch response status:', response.status);
+					if (!response.ok) {
+						throw new Error(`HTTP error! status: ${response.status}`);
+					}
+					return response.json();
+				})
+				.then(data => {
+					console.log('✅ FETCH TEST SUCCESSFUL:', data);
 					let options = '<option value="">Seleccionar unidad</option>';
 					
-					if (response.units && response.units.length > 0) {
-						response.units.forEach(function(unit) {
+					if (data.test_units && data.test_units.length > 0) {
+						data.test_units.forEach(function(unit) {
 							options += `<option value="${unit.type}">${unit.label}</option>`;
 						});
+					} else {
+						options += '<option value="">No hay unidades de test</option>';
 					}
 					
 					unitSelect.html(options);
 				})
-				.fail(function(xhr, status, error) {
-					console.error('Error cargando unidades para tarifa:', fareId, error);
-					unitSelect.html('<option value="">Error cargando unidades</option>');
+				.catch(error => {
+					console.error('❌ FETCH TEST FAILED:', error);
+					unitSelect.html('<option value="">Error en fetch</option>');
 				});
 		});
 	});

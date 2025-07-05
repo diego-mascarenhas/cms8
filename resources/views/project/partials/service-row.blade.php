@@ -51,7 +51,7 @@
         <div class="col-md-2">
             <label class="form-label">Cantidad</label>
             <input type="number" name="services[{{ $index }}][quantity]" class="form-control" 
-                   value="{{ $projectFare->quantity ?? '' }}" required>
+                   value="{{ $projectFare->quantity ?? '1' }}" min="1" step="1" required>
         </div>
         <div class="col-md-2">
             <label class="form-label">Unidad</label>
