@@ -19,142 +19,131 @@
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
 
 <script>
-	$(function() {
-		// Servicios vinculados - Funcionalidad
-		let serviceIndex = 1;
+	// Servicios vinculados - Funcionalidad
+	let serviceIndex = 1;
 
-		// Inicializar Select2 en filas existentes al cargar la página
-		$('.service-row').each(function() {
-			const index = $(this).data('index');
-			initializeExistingServiceRow(index);
-		});
-
-		// Agregar nuevo servicio
-		$('#add-service').on('click', function() {
-			$.get('{{ route("project.get-service-template") }}', { index: serviceIndex })
-				.done(function(template) {
-					$('#services-container').append(template);
-					
-					// Inicializar Select2 en los nuevos elementos
-					initializeNewServiceRow(serviceIndex);
-					
-					serviceIndex++;
-				})
-				.fail(function() {
-					alert('Error agregando servicio. Por favor intente de nuevo.');
-				});
-		});
-
-		// Función para inicializar Select2 en filas existentes
-		function initializeExistingServiceRow(index) {
-			// Los componentes x-variant-language-select ya se inicializan solos
-			// Solo necesitamos inicializar el select de tarifas si no está inicializado
-			const fareSelect = $(`#fare_${index}`);
-			
-			if (fareSelect.length && !fareSelect.hasClass('select2-hidden-accessible')) {
-				fareSelect.select2({
-					dropdownParent: fareSelect.parent(),
-					width: '100%'
-				});
-			}
+	// Funciones auxiliares
+	function loadUnits(fareId, unitSelect) {
+		if (!fareId) {
+			unitSelect.innerHTML = '<option value="">Seleccionar unidad</option>';
+			return;
 		}
 
-		// Función para inicializar Select2 en una nueva fila de servicio
-		function initializeNewServiceRow(index) {
-			// Inicializar selects de idiomas con banderas
+		unitSelect.innerHTML = '<option value="">Cargando unidades...</option>';
+
+		fetch('/debug-units/' + fareId)
+			.then(response => {
+				console.log('🔍 Response status:', response.status);
+				console.log('🔍 Response URL:', response.url);
+				return response.text(); // Cambiar a text() primero para ver qué recibimos
+			})
+			.then(text => {
+				console.log('🔍 Raw response:', text);
+				
+				let data;
+				try {
+					data = JSON.parse(text);
+					console.log('✅ Parsed data:', data);
+				} catch (e) {
+					console.error('❌ Not valid JSON:', e);
+					unitSelect.innerHTML = '<option value="">Respuesta no es JSON válido</option>';
+					return;
+				}
+				
+				let options = '<option value="">Seleccionar unidad</option>';
+				
+				if (data.error) {
+					console.warn('❌ Error en respuesta:', data.error);
+					options += '<option value="">Error: ' + data.error + '</option>';
+				} else if (data.units && Array.isArray(data.units) && data.units.length > 0) {
+					console.log('✅ Unidades encontradas:', data.units.length);
+					data.units.forEach(function(unit) {
+						options += `<option value="${unit.type}">${unit.label}</option>`;
+					});
+				} else {
+					console.log('⚠️ No hay unidades disponibles');
+					options += '<option value="">No hay unidades disponibles</option>';
+				}
+				
+				unitSelect.innerHTML = options;
+			})
+			.catch(error => {
+				console.error('💥 Error cargando unidades:', error);
+				unitSelect.innerHTML = '<option value="">Error: ' + error.message + '</option>';
+			});
+	}
+
+	function initializeSelect2(index) {
+		if (typeof $ === 'undefined') return;
+		
+		// Inicializar Select2 en los elementos recién agregados
+		setTimeout(() => {
+			const fareSelect = $(`#fare_${index}`);
 			const sourceSelect = $(`#source_language_${index}`);
 			const targetSelect = $(`#target_language_${index}`);
-			const fareSelect = $(`#fare_${index}`);
+			
+			if (fareSelect.length && !fareSelect.hasClass('select2-hidden-accessible')) {
+				fareSelect.select2({ width: '100%' });
+			}
 			
 			if (sourceSelect.length && !sourceSelect.hasClass('select2-hidden-accessible')) {
-				sourceSelect.select2({
-					dropdownParent: sourceSelect.parent(),
-					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
-					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; },
-					width: '100%'
-				});
+				sourceSelect.select2({ width: '100%' });
 			}
 			
 			if (targetSelect.length && !targetSelect.hasClass('select2-hidden-accessible')) {
-				targetSelect.select2({
-					dropdownParent: targetSelect.parent(),
-					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
-					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; },
-					width: '100%'
-				});
+				targetSelect.select2({ width: '100%' });
 			}
-			
-			if (fareSelect.length && !fareSelect.hasClass('select2-hidden-accessible')) {
-				fareSelect.select2({
-					dropdownParent: fareSelect.parent(),
-					width: '100%'
-				});
-			}
+		}, 100);
+	}
+
+	// Inicializar cuando el DOM esté listo
+	document.addEventListener('DOMContentLoaded', function() {
+		// Agregar nuevo servicio
+		const addServiceBtn = document.getElementById('add-service');
+		if (addServiceBtn) {
+			addServiceBtn.addEventListener('click', function() {
+				fetch('{{ route("project.get-service-template") }}?index=' + serviceIndex)
+					.then(response => response.text())
+					.then(template => {
+						const container = document.getElementById('services-container');
+						if (container) {
+							container.insertAdjacentHTML('beforeend', template);
+							initializeSelect2(serviceIndex);
+							serviceIndex++;
+						}
+					})
+					.catch(error => {
+						console.error('Error agregando servicio:', error);
+						alert('Error agregando servicio. Por favor intente de nuevo.');
+					});
+			});
 		}
 
 		// Eliminar servicio
-		$(document).on('click', '.remove-service', function() {
-			if ($('.service-row').length > 1) {
-				const serviceRow = $(this).closest('.service-row');
-				
-				// Limpiar Select2 antes de eliminar
-				serviceRow.find('.select2-hidden-accessible').each(function() {
-					$(this).select2('destroy');
-				});
-				
-				serviceRow.remove();
-			} else {
-				alert('Al menos un servicio es requerido');
+		document.addEventListener('click', function(e) {
+			if (e.target.closest('.remove-service')) {
+				const serviceRows = document.querySelectorAll('.service-row');
+				if (serviceRows.length > 1) {
+					const serviceRow = e.target.closest('.service-row');
+					serviceRow.remove();
+				} else {
+					alert('Al menos un servicio es requerido');
+				}
 			}
 		});
 
 		// Manejar cambio de tarifa para actualizar unidades
-		$(document).on('change', 'select[id^="fare_"]', function() {
-			const fareId = $(this).val();
-			const serviceRow = $(this).closest('.service-row');
-			const index = serviceRow.data('index');
-			const unitSelect = serviceRow.find(`select[id="unit_${index}"]`);
-			
-			console.log('Tarifa seleccionada:', fareId);
-			console.log('Índice de fila:', index);
-			console.log('Selector de unidad encontrado:', unitSelect.length);
-			
-			if (!fareId) {
-				// Si no hay tarifa seleccionada, limpiar unidades
-				unitSelect.html('<option value="">Seleccionar unidad</option>');
-				return;
+		document.addEventListener('change', function(e) {
+			if (e.target.id && e.target.id.startsWith('fare_')) {
+				const fareId = e.target.value;
+				const serviceRow = e.target.closest('.service-row');
+				const index = serviceRow.dataset.index;
+				const unitSelect = serviceRow.querySelector(`select[id="unit_${index}"]`);
+				
+				if (unitSelect) {
+					loadUnits(fareId, unitSelect);
+				}
 			}
-
-			// Mostrar loading state
-			unitSelect.html('<option value="">Cargando unidades...</option>');
-
-			// TEST: Usar fetch API nativo como alternativa
-			fetch('{{ route("debug.test-ajax") }}?fare_id=' + fareId)
-				.then(response => {
-					console.log('Fetch response status:', response.status);
-					if (!response.ok) {
-						throw new Error(`HTTP error! status: ${response.status}`);
-					}
-					return response.json();
-				})
-				.then(data => {
-					console.log('✅ FETCH TEST SUCCESSFUL:', data);
-					let options = '<option value="">Seleccionar unidad</option>';
-					
-					if (data.test_units && data.test_units.length > 0) {
-						data.test_units.forEach(function(unit) {
-							options += `<option value="${unit.type}">${unit.label}</option>`;
-						});
-					} else {
-						options += '<option value="">No hay unidades de test</option>';
-					}
-					
-					unitSelect.html(options);
-				})
-				.catch(error => {
-					console.error('❌ FETCH TEST FAILED:', error);
-					unitSelect.html('<option value="">Error en fetch</option>');
-				});
 		});
 	});
 </script>

@@ -251,12 +251,38 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
     Route::get('/project/service-template', [ProjectController::class, 'getServiceTemplate'])->name('project.get-service-template');
     Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])->name('project.get-fare-units');
+    Route::get('/project/test-units', [ProjectController::class, 'testUnits'])->name('project.test-units');
+    
+// Endpoint público para debugging - REMOVER DESPUÉS
+Route::get('/debug-units/{fareId}', function($fareId) {
+    try {
+        $fare = \App\Models\Fare::withoutGlobalScopes()->with('units')->find($fareId);
+        
+        if (!$fare) {
+            return response()->json(['error' => 'Fare not found', 'fare_id' => $fareId]);
+        }
+        
+        $units = $fare->units->map(function ($unit) {
+            return [
+                'id' => $unit->id,
+                'type' => $unit->type,
+                'label' => $unit->type,
+            ];
+        });
+        
+        return response()->json([
+            'success' => true,
+            'fare_id' => $fareId,
+            'fare_name' => $fare->name,
+            'units' => $units
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage(), 'line' => $e->getLine(), 'file' => $e->getFile()]);
+    }
+})->name('debug.units');
     Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
     Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
-Route::any('/project/{project}/debug-services', [ProjectController::class, 'debugServices'])->name('project.debug-services');
-Route::get('/debug/fare-units', [ProjectController::class, 'debugFareUnits'])->name('debug.fare-units');
-Route::get('/debug/test-fare/{fareId}', [ProjectController::class, 'testFareUnits'])->name('debug.test-fare');
-Route::get('/debug/test-ajax', [ProjectController::class, 'testAjax'])->name('debug.test-ajax');
+
 
     // Task Routes
     Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');

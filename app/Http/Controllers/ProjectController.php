@@ -430,57 +430,96 @@ class ProjectController extends Controller
     }
 
     /**
+     * Test endpoint to verify JSON response
+     */
+    public function testUnits(Request $request)
+    {
+        // Limpiar cualquier output buffer
+        if (ob_get_contents()) {
+            ob_clean();
+        }
+        
+        return response()->json([
+            'units' => [
+                ['id' => 1, 'type' => 'palabras', 'label' => 'palabras'],
+                ['id' => 2, 'type' => 'páginas', 'label' => 'páginas'],
+                ['id' => 3, 'type' => 'minutos', 'label' => 'minutos']
+            ],
+            'success' => true,
+            'message' => 'Test successful'
+        ], 200, [
+            'Content-Type' => 'application/json',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
+    }
+
+    /**
      * Get units for a specific fare
      */
     public function getFareUnits(Request $request)
     {
-        $fareId = $request->get('fare_id');
+        try {
+            // Limpiar cualquier output buffer
+            if (ob_get_contents()) {
+                ob_clean();
+            }
+            
+            // Verificar autenticación
+            if (!auth()->check()) {
+                return response()->json([
+                    'units' => [],
+                    'error' => 'No autenticado',
+                    'success' => false
+                ], 200, [
+                    'Content-Type' => 'application/json'
+                ]);
+            }
+            
+            $fareId = $request->get('fare_id');
 
-        \Log::info('getFareUnits called:', [
-            'fare_id' => $fareId,
-            'request_data' => $request->all(),
-            'current_team_id' => auth()->user()->currentTeam->id
-        ]);
+            if (! $fareId) {
+                return response()->json(['units' => []], 200, [
+                    'Content-Type' => 'application/json'
+                ]);
+            }
 
-        if (! $fareId) {
-            return response()->json(['units' => [], 'error' => 'No fare ID provided']);
+            // Use withoutGlobalScopes to avoid team_id restriction
+            $fare = \App\Models\Fare::withoutGlobalScopes()->with('units')->find($fareId);
+
+            if (! $fare) {
+                return response()->json(['units' => []], 200, [
+                    'Content-Type' => 'application/json'
+                ]);
+            }
+
+            $units = $fare->units->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'type' => $unit->type,
+                    'label' => $unit->type,
+                ];
+            });
+
+            return response()->json([
+                'units' => $units,
+                'success' => true
+            ], 200, [
+                'Content-Type' => 'application/json',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            ]);
+
+        } catch (\Exception $e) {
+            // Log solo al archivo, no al output
+            \Log::error('Error in getFareUnits: ' . $e->getMessage());
+            
+            return response()->json([
+                'units' => [],
+                'error' => 'Error loading units: ' . $e->getMessage(),
+                'success' => false
+            ], 200, [
+                'Content-Type' => 'application/json'
+            ]);
         }
-
-        // Use withoutGlobalScopes to avoid team_id restriction
-        $fare = \App\Models\Fare::withoutGlobalScopes()->with('units')->find($fareId);
-
-        if (! $fare) {
-            \Log::warning('Fare not found:', ['fare_id' => $fareId]);
-            return response()->json(['units' => [], 'error' => 'Fare not found']);
-        }
-
-        \Log::info('Fare found:', [
-            'fare_id' => $fareId,
-            'fare_name' => $fare->name,
-            'fare_team_id' => $fare->team_id,
-            'current_team_id' => auth()->user()->currentTeam->id,
-            'units_count' => $fare->units->count(),
-            'units' => $fare->units->toArray()
-        ]);
-
-        $units = $fare->units->map(function ($unit) {
-            return [
-                'id' => $unit->id,
-                'type' => $unit->type,
-                'label' => $unit->type,
-            ];
-        });
-
-        return response()->json([
-            'units' => $units,
-            'fare_name' => $fare->name,
-            'debug' => [
-                'fare_id' => $fareId,
-                'fare_team_id' => $fare->team_id,
-                'current_team_id' => auth()->user()->currentTeam->id,
-                'units_count' => $fare->units->count()
-            ]
-        ]);
     }
 
     /**
@@ -494,123 +533,7 @@ class ProjectController extends Controller
         return view('project.add-services', compact('project'));
     }
 
-    /**
-     * Debug endpoint to check form data
-     */
-    public function debugServices(Request $request, string $projectId)
-    {
-        dd([
-            'project_id' => $projectId,
-            'request_method' => $request->method(),
-            'all_data' => $request->all(),
-            'services' => $request->services,
-            'files' => $request->files->all(),
-            'headers' => $request->headers->all(),
-        ]);
-    }
 
-    /**
-     * Debug endpoint to check fares and units
-     */
-    public function debugFareUnits()
-    {
-        $fares = \App\Models\Fare::with(['units', 'type'])
-            ->where('team_id', auth()->user()->currentTeam->id)
-            ->orWhereNull('team_id')
-            ->get();
-
-        $allUnits = \App\Models\Unit::all();
-        
-        $fareUnitPivot = \DB::table('fare_unit')->get();
-
-        dd([
-            'total_fares' => $fares->count(),
-            'fares_with_units' => $fares->filter(function($fare) { return $fare->units->count() > 0; })->count(),
-            'total_units' => $allUnits->count(),
-            'pivot_records' => $fareUnitPivot->count(),
-            'fares' => $fares->map(function($fare) {
-                return [
-                    'id' => $fare->id,
-                    'name' => $fare->name,
-                    'type' => $fare->type ? $fare->type->name : 'No type',
-                    'units_count' => $fare->units->count(),
-                    'units' => $fare->units->map(function($unit) {
-                        return [
-                            'id' => $unit->id,
-                            'type' => $unit->type
-                        ];
-                    })
-                ];
-            }),
-            'all_units' => $allUnits->map(function($unit) {
-                return [
-                    'id' => $unit->id,
-                    'type' => $unit->type
-                ];
-            }),
-            'pivot_data' => $fareUnitPivot
-        ]);
-    }
-
-    /**
-     * Test endpoint - get units for a specific fare ID
-     */
-    public function testFareUnits($fareId)
-    {
-        // Test without scope
-        $fareWithoutScope = \App\Models\Fare::withoutGlobalScopes()->with('units')->find($fareId);
-        
-        // Test with scope  
-        $fareWithScope = \App\Models\Fare::with('units')->find($fareId);
-        
-        // Direct query
-        $directQuery = \DB::table('fare_unit')->where('fare_id', $fareId)->get();
-        
-        dd([
-            'fare_id_requested' => $fareId,
-            'current_team_id' => auth()->user()->currentTeam->id,
-            'fare_without_scope' => $fareWithoutScope ? [
-                'id' => $fareWithoutScope->id,
-                'name' => $fareWithoutScope->name,
-                'team_id' => $fareWithoutScope->team_id,
-                'units_count' => $fareWithoutScope->units->count(),
-                'units' => $fareWithoutScope->units->toArray()
-            ] : 'Not found',
-            'fare_with_scope' => $fareWithScope ? [
-                'id' => $fareWithScope->id,
-                'name' => $fareWithScope->name,
-                'team_id' => $fareWithScope->team_id,
-                'units_count' => $fareWithScope->units->count(),
-                'units' => $fareWithScope->units->toArray()
-            ] : 'Not found',
-            'direct_pivot_query' => $directQuery,
-            'units_from_direct' => \DB::table('units')
-                ->join('fare_unit', 'units.id', '=', 'fare_unit.unit_id')
-                ->where('fare_unit.fare_id', $fareId)
-                ->select('units.*')
-                ->get()
-        ]);
-    }
-
-    /**
-     * Simple test endpoint to verify AJAX is working
-     */
-    public function testAjax(Request $request)
-    {
-        $fareId = $request->get('fare_id');
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'AJAX is working!',
-            'fare_id' => $fareId,
-            'timestamp' => now()->toDateTimeString(),
-            'test_units' => [
-                ['id' => 1, 'type' => 'palabras', 'label' => 'palabras'],
-                ['id' => 2, 'type' => 'páginas', 'label' => 'páginas'],
-                ['id' => 3, 'type' => 'minutos', 'label' => 'minutos']
-            ]
-        ]);
-    }
 
     /**
      * Store services for a project
