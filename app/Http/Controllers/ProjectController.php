@@ -139,6 +139,9 @@ class ProjectController extends Controller
             'languageVariants.sourceLanguage',
             'languageVariants.targetLanguage',
             'fares.type',
+            'fares' => function($query) {
+                $query->withPivot('price', 'unit_id', 'currency_code', 'source_language_code', 'target_language_code');
+            }
         ]);
 
         // Basic requirements for collaborators

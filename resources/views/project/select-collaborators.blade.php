@@ -339,16 +339,140 @@
 			$(document).on('change', '.collaborator-checkbox', function () {
 				const card = $(this).closest('.collaborator-card');
 				const cardElement = card.find('.card');
+				const collaboratorId = $(this).data('collaborator-id');
 
 				if ($(this).is(':checked')) {
 					card.addClass('selected');
 					cardElement.addClass('border-primary');
+					
+					// Show collaborator fares
+					$('#fares-' + collaboratorId).collapse('show');
+					
+					// Filter fares based on current filters after the collapse animation completes
+					setTimeout(function() {
+						filterCollaboratorFares(collaboratorId);
+					}, 350); // Bootstrap collapse animation duration
 				} else {
 					card.removeClass('selected');
 					cardElement.removeClass('border-primary');
+					
+					// Hide collaborator fares
+					$('#fares-' + collaboratorId).collapse('hide');
 				}
 
 				updateSelectedCount();
+			});
+
+			// Function to filter collaborator fares based on current filter selections
+			function filterCollaboratorFares(collaboratorId) {
+				const currentService = $('#service').val();
+				const currentSourceLang = $('#source-language').val();
+				const currentTargetLang = $('#target-language').val();
+				
+				// Get the fares container for this collaborator
+				const faresContainer = $('#fares-' + collaboratorId);
+				const fareRows = faresContainer.find('.fare-row');
+				
+				console.log('Filtering fares for collaborator', collaboratorId, {
+					service: currentService,
+					sourceLang: currentSourceLang,
+					targetLang: currentTargetLang,
+					totalFareRows: fareRows.length
+				});
+				
+				let visibleCount = 0;
+				
+				fareRows.each(function() {
+					const row = $(this);
+					const fareServiceId = String(row.data('service-id'));
+					const fareSourceLang = row.data('source-lang');
+					const fareTargetLang = row.data('target-lang');
+					
+					console.log('Checking fare row:', {
+						fareServiceId: fareServiceId,
+						currentService: currentService,
+						fareSourceLang: fareSourceLang,
+						fareTargetLang: fareTargetLang,
+						serviceMatch: !currentService || fareServiceId === currentService
+					});
+					
+					let shouldShow = true;
+					
+					// Filter by service if selected (this is the most important filter)
+					if (currentService && fareServiceId !== String(currentService)) {
+						shouldShow = false;
+						console.log('Hidden due to service mismatch:', fareServiceId, '!==', currentService);
+					}
+					
+					// Filter by source language if selected
+					if (shouldShow && currentSourceLang && fareSourceLang !== 'N/A' && fareSourceLang !== currentSourceLang) {
+						shouldShow = false;
+						console.log('Hidden due to source language mismatch:', fareSourceLang, '!==', currentSourceLang);
+					}
+					
+					// Filter by target language if selected
+					if (shouldShow && currentTargetLang && fareTargetLang !== 'N/A' && fareTargetLang !== currentTargetLang) {
+						shouldShow = false;
+						console.log('Hidden due to target language mismatch:', fareTargetLang, '!==', currentTargetLang);
+					}
+					
+					if (shouldShow) {
+						row.show();
+						visibleCount++;
+						console.log('Showing fare row for service:', fareServiceId);
+					} else {
+						row.hide();
+					}
+				});
+				
+				console.log('Visible fares count:', visibleCount, 'out of', fareRows.length);
+				
+				// Show/hide the "no matching fares" message
+				const noFaresMessage = faresContainer.find('.no-matching-fares');
+				if (visibleCount === 0 && fareRows.length > 0) {
+					if (noFaresMessage.length === 0) {
+						faresContainer.find('.card-body').append(
+							'<p class="text-muted mb-0 no-matching-fares" style="font-size: 0.8rem;">' +
+							'<i class="ti ti-info-circle me-1"></i>No hay tarifas para el servicio seleccionado' +
+							'</p>'
+						);
+					} else {
+						noFaresMessage.show();
+					}
+				} else {
+					noFaresMessage.remove();
+				}
+				
+				// Hide the entire fares section if no fares match and a service is selected
+				if (visibleCount === 0 && currentService && fareRows.length > 0) {
+					// Could optionally hide the entire fares section, but showing the message is better UX
+				}
+			}
+
+			// Update fare filtering when filters change
+			$(document).on('change', '#source-language, #target-language, #service', function() {
+				console.log('Filter changed, re-filtering fares for all selected collaborators');
+				// Re-filter fares for all selected collaborators
+				$('.collaborator-checkbox:checked').each(function() {
+					const collaboratorId = $(this).data('collaborator-id');
+					console.log('Re-filtering fares for collaborator:', collaboratorId);
+					filterCollaboratorFares(collaboratorId);
+				});
+			});
+
+			// Also filter fares when new collaborators are loaded via AJAX
+			$(document).ajaxComplete(function(event, xhr, settings) {
+				// Check if this was a collaborator filter request
+				if (settings.url && settings.url.includes('/filter-collaborators')) {
+					console.log('Collaborators loaded via AJAX, applying fare filters to any selected collaborators');
+					// Small delay to ensure DOM is updated
+					setTimeout(function() {
+						$('.collaborator-checkbox:checked').each(function() {
+							const collaboratorId = $(this).data('collaborator-id');
+							filterCollaboratorFares(collaboratorId);
+						});
+					}, 100);
+				}
 			});
 
 			// Form submission handler
