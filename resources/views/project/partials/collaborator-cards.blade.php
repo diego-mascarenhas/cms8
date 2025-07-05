@@ -51,7 +51,7 @@
     <div class="col-md-4 mb-3 collaborator-card" 
          data-languages="{{ $languageString }}" 
          data-services="{{ $servicesString }}">
-        <div class="card border">
+        <div class="card">
             <div class="card-body p-3">
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center">
@@ -65,49 +65,9 @@
                                 <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
                                 <small class="text-muted">{{ $valorationText }}</small>
                             </div>
-                            
-                            {{-- Show fare info when service is selected --}}
-                            @if(isset($selectedService) && $selectedService)
-                                @php
-                                    $selectedFare = $collaborator->fares->where('id', $selectedService)->first();
-                                @endphp
-                                @if($selectedFare)
-                                    @php
-                                        $price = $selectedFare->pivot->price ?? 'N/A';
-                                        $currency = $selectedFare->pivot->currency_code ?? 'EUR';
-                                        $sourceLanguage = $selectedFare->pivot->source_language_code ?? 'N/A';
-                                        $targetLanguage = $selectedFare->pivot->target_language_code ?? 'N/A';
-                                        $unit = $selectedFare->pivot->unit_id ?? '';
-                                        
-                                        // Get unit name if available
-                                        $unitName = '';
-                                        if($unit) {
-                                            $unitModel = \App\Models\Unit::find($unit);
-                                            $unitName = $unitModel ? '/' . $unitModel->name : '';
-                                        }
-                                    @endphp
-                                    <div class="mt-2 p-2 bg-light rounded">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                @if($sourceLanguage !== 'N/A' && $targetLanguage !== 'N/A')
-                                                    <span class="badge bg-label-info">{{ $sourceLanguage }} → {{ $targetLanguage }}</span>
-                                                @else
-                                                    <span class="text-muted" style="font-size: 0.7rem;">{{ __('Cualquier idioma') }}</span>
-                                                @endif
-                                            </div>
-                                            <div>
-                                                @if($price !== 'N/A')
-                                                    <strong class="text-success">{{ number_format($price, 2) }} {{ $currency }}{{ $unitName }}</strong>
-                                                @else
-                                                    <span class="text-muted">{{ __('Por consultar') }}</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
-                            @endif
                         </div>
                     </div>
+                    
                     <div class="form-check">
                         <input class="form-check-input collaborator-checkbox" type="checkbox"
                                name="collaborator_ids[]" value="{{ $collaborator->id }}"
@@ -115,8 +75,54 @@
                     </div>
                 </div>
                 
-                {{-- Show detailed fares only when no service is selected --}}
-                @if(!isset($selectedService) || !$selectedService)
+                {{-- Show fare info only when service AND both languages are selected --}}
+                @if(isset($selectedService) && $selectedService && 
+                    isset($selectedSourceLanguage) && $selectedSourceLanguage && 
+                    isset($selectedTargetLanguage) && $selectedTargetLanguage)
+                    @php
+                        // Find the specific fare that matches the selected service and language combination
+                        $selectedFare = null;
+                        foreach($collaborator->fares->where('id', $selectedService) as $fare) {
+                            if (($fare->pivot->source_language_code == $selectedSourceLanguage || $fare->pivot->source_language_code == 'N/A') &&
+                                ($fare->pivot->target_language_code == $selectedTargetLanguage || $fare->pivot->target_language_code == 'N/A')) {
+                                $selectedFare = $fare;
+                                break;
+                            }
+                        }
+                    @endphp
+                    @if($selectedFare)
+                        @php
+                            $price = $selectedFare->pivot->price ?? 'N/A';
+                            $currency = $selectedFare->pivot->currency_code ?? 'EUR';
+                            $sourceLanguage = $selectedFare->pivot->source_language_code ?? 'N/A';
+                            $targetLanguage = $selectedFare->pivot->target_language_code ?? 'N/A';
+                            $unit = $selectedFare->pivot->unit_id ?? '';
+                            
+                            // Get unit name if available
+                            $unitName = '';
+                            if($unit) {
+                                $unitModel = \App\Models\Unit::find($unit);
+                                if($unitModel) {
+                                    $unitTypes = \App\Models\Unit::getTypes();
+                                    $unitDisplay = $unitTypes[$unitModel->type] ?? $unitModel->type;
+                                    $unitName = ' por ' . strtolower($unitDisplay);
+                                }
+                            }
+                        @endphp
+                        <div class="mt-2 px-3 py-2" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
+                            @if($price !== 'N/A')
+                                <strong class="text-success">{{ number_format($price, 2) }} {{ $currency }}{{ $unitName }}</strong>
+                            @else
+                                <span class="text-muted">{{ __('Por consultar') }}</span>
+                            @endif
+                        </div>
+                    @endif
+                @endif
+                
+                {{-- Show detailed fares only when service OR languages are not selected --}}
+                @if(!isset($selectedService) || !$selectedService || 
+                    !isset($selectedSourceLanguage) || !$selectedSourceLanguage || 
+                    !isset($selectedTargetLanguage) || !$selectedTargetLanguage)
                     <!-- Tarifas del colaborador (inicialmente ocultas) -->
                     <div class="collapse mt-3" id="fares-{{ $collaborator->id }}">
                         <div class="card bg-light">
@@ -149,7 +155,7 @@
                                                         $unitName = '';
                                                         if($unit) {
                                                             $unitModel = \App\Models\Unit::find($unit);
-                                                            $unitName = $unitModel ? '/' . $unitModel->name : '';
+                                                            $unitName = $unitModel ? ' por ' . strtolower($unitModel->name) : '';
                                                         }
                                                     @endphp
                                                     <tr style="font-size: 0.8rem;" class="fare-row" 

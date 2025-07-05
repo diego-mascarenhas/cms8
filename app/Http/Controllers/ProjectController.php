@@ -93,8 +93,10 @@ class ProjectController extends Controller
         // Don't load any collaborators by default - they will be loaded via AJAX when filters are applied
         $collaborators = collect();
         $selectedService = null;
+        $selectedSourceLanguage = null;
+        $selectedTargetLanguage = null;
 
-        return view('project.select-collaborators', compact('project', 'languages', 'fares', 'collaborators', 'selectedService'));
+        return view('project.select-collaborators', compact('project', 'languages', 'fares', 'collaborators', 'selectedService', 'selectedSourceLanguage', 'selectedTargetLanguage'));
     }
 
     /**
@@ -132,6 +134,8 @@ class ProjectController extends Controller
                 'html' => view('project.partials.collaborator-cards', [
                     'collaborators' => collect(),
                     'selectedService' => null,
+                    'selectedSourceLanguage' => null,
+                    'selectedTargetLanguage' => null,
                 ])->render(),
                 'count' => 0,
             ]);
@@ -231,6 +235,8 @@ class ProjectController extends Controller
             'html' => view('project.partials.collaborator-cards', [
                 'collaborators' => $collaborators,
                 'selectedService' => $request->service ?? null,
+                'selectedSourceLanguage' => $request->source_language ?? null,
+                'selectedTargetLanguage' => $request->target_language ?? null,
             ])->render(),
             'count' => $collaborators->count(),
         ]);
