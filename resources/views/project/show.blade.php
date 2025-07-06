@@ -371,12 +371,13 @@
 				<table class="table table-hover">
 					<thead>
 						<tr>
-							<th width="10%"></th>
-							<th width="25%">{{ __('Service') }}</th>
-							<th width="30%" class="text-center">{{ __('Languages') }}</th>
-							<th width="15%" class="text-center">{{ __('Quantity') }}</th>
-							<th width="10%">{{ __('Unit') }}</th>
-							<th width="10%" class="text-center">{{ __('Actions') }}</th>
+							<th class="col-1"></th>
+							<th class="col-3">{{ __('Service') }}</th>
+							<th class="col-3 text-center">{{ __('Languages') }}</th>
+							<th class="col-1 text-center">{{ __('Quantity') }}</th>
+							<th class="col-1">{{ __('Unit') }}</th>
+							<th class="col-2 text-center">{{ __('Collaborators') }}</th>
+							<th class="col-1 text-center">{{ __('Actions') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -405,7 +406,7 @@
 							}
 						@endphp
 						<tr class="{{ $loop->last ? 'border-bottom-0' : '' }}">
-							<td class="text-center">
+							<td class="col-1 text-center">
 								@if($hasMatchingCollaborator)
 									<i class="ti ti-check text-success ti-lg" 
 									   data-bs-toggle="tooltip" 
@@ -418,7 +419,7 @@
 									   title="No hay colaboradores asignados que cumplan con esta combinación de idioma y servicio"></i>
 								@endif
 							</td>
-							<td>
+							<td class="col-3">
 								<div class="mb-1">
 									<strong>{{ $projectFare->fare->name ?? 'N/A' }}</strong>
 									@if($projectFare->fare && $projectFare->fare->type)
@@ -426,7 +427,7 @@
 									@endif
 								</div>
 							</td>
-							<td class="text-center">
+							<td class="col-3 text-center">
 								<x-language-combination-badge 
 									:sourceLanguage="$projectFare->sourceLanguage"
 									:targetLanguage="$projectFare->targetLanguage"
@@ -434,13 +435,19 @@
 									:targetLanguageCode="$projectFare->target_language_code"
 								/>
 							</td>
-							<td class="text-center">
+							<td class="col-1 text-center">
 								<span class="badge bg-light text-dark">{{ $projectFare->quantity }}</span>
 							</td>
-							<td>
+							<td class="col-1">
 								{{ $projectFare->unit }}
 							</td>
-							<td class="text-center">
+							<td class="col-2 text-center">
+								<a href="{{ route('project.select-collaborators', $project->id) }}?source_language={{ $projectFare->source_language_code }}&target_language={{ $projectFare->target_language_code }}&service={{ $projectFare->fare_id }}" 
+								   class="btn btn-sm btn-outline-success">
+									<i class="ti ti-users ti-xs me-1"></i>Asociar
+								</a>
+							</td>
+							<td class="col-1 text-center">
 								<div class="d-flex justify-content-center align-items-center">
 									<a href="javascript:;" class="text-body me-2" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="{{ $projectFare->id }}">
 										<i class="ti ti-edit ti-sm"></i>

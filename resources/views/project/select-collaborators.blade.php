@@ -52,15 +52,15 @@
             <div class="row g-3">
                 <div class="col">
                     <x-variant-language-select name="source-language" id="source-language" label="" :required="false"
-                        placeholder="{{ __('Idioma origen') }}" />
+                        placeholder="{{ __('Idioma origen') }}" value="{{ $selectedSourceLanguage }}" />
                 </div>
                 <div class="col">
                     <x-variant-language-select name="target-language" id="target-language" label="" :required="false"
-                        placeholder="{{ __('Idioma destino') }}" />
+                        placeholder="{{ __('Idioma destino') }}" value="{{ $selectedTargetLanguage }}" />
                 </div>
                 <div class="col">
                     <x-fare-select name="service" id="service" label="" :required="false"
-                        placeholder="{{ __('Servicio') }}" />
+                        placeholder="{{ __('Servicio') }}" :selected="$selectedService ? [$selectedService] : []" />
                 </div>
                 <div class="col">
                     <select class="form-select" id="days">
@@ -505,6 +505,20 @@
 				// Submit the form
 				this.submit();
 			});
+
+			// Auto-apply filters if URL parameters are present
+			@if($selectedSourceLanguage || $selectedTargetLanguage || $selectedService)
+			setTimeout(function() {
+				console.log('Auto-applying filters from URL parameters:', {
+					sourceLanguage: '{{ $selectedSourceLanguage }}',
+					targetLanguage: '{{ $selectedTargetLanguage }}',
+					service: '{{ $selectedService }}'
+				});
+				
+				// Trigger filter application
+				applyFilters();
+			}, 500); // Small delay to ensure Select2 components are fully initialized
+			@endif
 
 			// Initialize count
 			updateSelectedCount();

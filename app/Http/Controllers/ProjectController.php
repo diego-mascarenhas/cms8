@@ -81,7 +81,7 @@ class ProjectController extends Controller
     /**
      * Show collaborator selection screen for a project
      */
-    public function selectCollaborators($projectId)
+    public function selectCollaborators($projectId, Request $request)
     {
         $project = Project::with(['client', 'responsible', 'status', 'category'])
             ->findOrFail($projectId);
@@ -90,11 +90,42 @@ class ProjectController extends Controller
         $languages = Language::orderBy('name')->get();
         $fares = Fare::with('type')->orderBy('name')->get();
 
-        // Don't load any collaborators by default - they will be loaded via AJAX when filters are applied
+        // Check if we have URL parameters for pre-filtering
+        $selectedSourceLanguage = $request->get('source_language');
+        $selectedTargetLanguage = $request->get('target_language');
+        $selectedService = $request->get('service');
+
+        // If we have filter parameters, load collaborators automatically
         $collaborators = collect();
-        $selectedService = null;
-        $selectedSourceLanguage = null;
-        $selectedTargetLanguage = null;
+        if ($selectedSourceLanguage && $selectedTargetLanguage && $selectedService) {
+            // Build the query for contacts with language variants and fares
+            $query = \App\Models\Contact::with([
+                'valoration',
+                'languageVariants.sourceLanguage',
+                'languageVariants.targetLanguage',
+                'fares.type',
+                'fares' => function($query) {
+                    $query->withPivot('price', 'unit_id', 'currency_code', 'source_language_code', 'target_language_code');
+                }
+            ]);
+
+            // Basic requirements for collaborators
+            $query->whereHas('languageVariants') // Only contacts with language variants
+                ->whereHas('fares'); // Only contacts with services/fares
+
+            // Apply language filters - exact language combination
+            $query->whereHas('languageVariants', function ($q) use ($selectedSourceLanguage, $selectedTargetLanguage) {
+                $q->where('source_language_code', $selectedSourceLanguage)
+                    ->where('target_language_code', $selectedTargetLanguage);
+            });
+
+            // Apply service filter
+            $query->whereHas('fares', function ($q) use ($selectedService) {
+                $q->where('fares.id', $selectedService);
+            });
+
+            $collaborators = $query->get();
+        }
 
         return view('project.select-collaborators', compact('project', 'languages', 'fares', 'collaborators', 'selectedService', 'selectedSourceLanguage', 'selectedTargetLanguage'));
     }
