@@ -126,6 +126,8 @@ mixAssetsDir('vendor/libs/**/!(_)*.scss', (src, dest) =>
   })
 );
 mixAssetsDir('vendor/libs/**/*.{png,jpg,jpeg,gif}', (src, dest) => mix.copy(src, dest));
+// Copy source maps for debugging
+mixAssetsDir('vendor/libs/**/*.map', (src, dest) => mix.copy(src, dest));
 // Copy task for form validation plugin as premium plugin don't have npm package
 mixAssetsDir('vendor/libs/@form-validation/umd', (src, dest) => mix.copyDirectory(src, dest));
 
@@ -155,6 +157,10 @@ mix.copy('node_modules/flag-icons/flags/1x1/*', 'public/assets/vendor/fonts/flag
 mix.copy('node_modules/flag-icons/flags/4x3/*', 'public/assets/vendor/fonts/flags/4x3');
 mix.copy('node_modules/@fortawesome/fontawesome-free/webfonts/*', 'public/assets/vendor/fonts/fontawesome');
 mix.copy('node_modules/katex/dist/fonts/*', 'public/assets/vendor/libs/quill/fonts');
+
+// Copy source maps for debugging
+mix.copy('node_modules/perfect-scrollbar/dist/perfect-scrollbar.js.map', 'public/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js.map');
+mix.copy('node_modules/@popperjs/core/dist/umd/popper.min.js.map', 'public/assets/vendor/libs/popper/popper.min.js.map');
 
 mix.version();
 

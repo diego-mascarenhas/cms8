@@ -472,9 +472,9 @@
     "/assets/vendor/libs/tagify/tagify.js": "/assets/vendor/libs/tagify/tagify.js?id=dc4a88cf06c41078e70e372f03b95d5f",
     "/assets/vendor/libs/toastr/toastr.js": "/assets/vendor/libs/toastr/toastr.js?id=fd0f19d2fb49f298e5231bef29c6357f",
     "/assets/vendor/libs/typeahead-js/typeahead.js": "/assets/vendor/libs/typeahead-js/typeahead.js?id=618565b3259f17abaa27a55fbad11fe8",
-    "/js/laravel-user-management.js": "/js/laravel-user-management.js?id=bf979bd93f47bf7e511a2d7ee07cb288",
-    "/js/openai.js": "/js/openai.js?id=ad07655a1918154f0cb615bfd8d659b4",
-    "/js/helpdesk-chat.js": "/js/helpdesk-chat.js?id=0a4a6ac01588d245ea96d9cce3609957",
+    "/js/laravel-user-management.js": "/js/laravel-user-management.js?id=3a073bd54109119d7079a2b4c0dcd417",
+    "/js/openai.js": "/js/openai.js?id=a1043a541b86250c0a21066df1621e6f",
+    "/js/helpdesk-chat.js": "/js/helpdesk-chat.js?id=36232e4a7f4355e42a58f50f41ae0698",
     "/assets/vendor/libs/highlight/highlight-github.css": "/assets/vendor/libs/highlight/highlight-github.css?id=81011629d1a93e0b36eee52bb03d903b",
     "/assets/vendor/css/pages/app-academy.css": "/assets/vendor/css/pages/app-academy.css?id=e49b599216875d8af789b442229c396d",
     "/assets/vendor/fonts/tabler-icons.css": "/assets/vendor/fonts/tabler-icons.css?id=262180b7e20030fbfb8089e0e3c6d94e",
@@ -1309,5 +1309,7 @@
     "/assets/vendor/libs/quill/fonts/KaTeX_Size4-Regular.woff2": "/assets/vendor/libs/quill/fonts/KaTeX_Size4-Regular.woff2?id=a5c875c62873c76ffe2e760d6d36810f",
     "/assets/vendor/libs/quill/fonts/KaTeX_Typewriter-Regular.ttf": "/assets/vendor/libs/quill/fonts/KaTeX_Typewriter-Regular.ttf?id=b104da15bfa7190d15a7df74e305ff6e",
     "/assets/vendor/libs/quill/fonts/KaTeX_Typewriter-Regular.woff": "/assets/vendor/libs/quill/fonts/KaTeX_Typewriter-Regular.woff?id=e6e7b24f8a7ce049084fe00fb6e95040",
-    "/assets/vendor/libs/quill/fonts/KaTeX_Typewriter-Regular.woff2": "/assets/vendor/libs/quill/fonts/KaTeX_Typewriter-Regular.woff2?id=a995a48d9cc14c7fe1447f1839986ac4"
+    "/assets/vendor/libs/quill/fonts/KaTeX_Typewriter-Regular.woff2": "/assets/vendor/libs/quill/fonts/KaTeX_Typewriter-Regular.woff2?id=a995a48d9cc14c7fe1447f1839986ac4",
+    "/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js.map": "/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js.map?id=eb1a5b9fd5becebb8fb5edd1df3855ac",
+    "/assets/vendor/libs/popper/popper.min.js.map": "/assets/vendor/libs/popper/popper.min.js.map?id=4ec7c6b8f8fa45603cb7594b11e7d45d"
 }
