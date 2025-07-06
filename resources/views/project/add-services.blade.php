@@ -439,32 +439,58 @@ document.addEventListener('DOMContentLoaded', function() {
 		
 		noServicesMessage.classList.add('d-none');
 		
+		// Function to get flag for country code
+		function getCountryFlag(countryCode) {
+			// If no country code, return empty string
+			if (!countryCode) return '';
+			
+			// Return lowercase country code for flag-icons
+			return countryCode.toLowerCase();
+		}
+		
 		let html = '<div class="table-responsive">';
 		html += '<table class="table table-hover">';
 		html += '<thead>';
 		html += '<tr>';
 		html += '<th>Servicio</th>';
-		html += '<th>Idiomas</th>';
-		html += '<th>Cantidad</th>';
+		html += '<th class="text-center">Idiomas</th>';
+		html += '<th class="text-center">Cantidad</th>';
 		html += '<th>Unidad</th>';
-		html += '<th>Acciones</th>';
+		html += '<th class="text-center">Acciones</th>';
 		html += '</tr>';
 		html += '</thead>';
 		html += '<tbody>';
 		
 		currentServices.forEach(service => {
+			const sourceFlag = getCountryFlag(service.source_country_code);
+			const targetFlag = getCountryFlag(service.target_country_code);
+			
 			html += '<tr>';
 			html += `<td><strong>${service.fare_name}</strong></td>`;
-			html += `<td><span class="badge bg-primary me-1">${service.source_language_name}</span> → <span class="badge bg-success">${service.target_language_name}</span></td>`;
-			html += `<td>${service.quantity}</td>`;
+			html += '<td class="text-center">';
+			html += '<span class="badge bg-primary me-1">';
+			if (sourceFlag) {
+				html += `<span class="fi fi-${sourceFlag} me-1"></span>`;
+			}
+			html += `${service.source_language_name}</span>`;
+			html += ' → ';
+			html += '<span class="badge bg-success">';
+			if (targetFlag) {
+				html += `<span class="fi fi-${targetFlag} me-1"></span>`;
+			}
+			html += `${service.target_language_name}</span>`;
+			html += '</td>';
+			html += `<td class="text-center">${service.quantity}</td>`;
 			html += `<td>${service.unit}</td>`;
-			html += '<td>';
-			html += `<button type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="${service.id}">`;
-			html += '<i class="ti ti-edit"></i>';
-			html += '</button>';
-			html += `<button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteService(${service.id})">`;
-			html += '<i class="ti ti-trash"></i>';
-			html += '</button>';
+			html += '<td class="text-center">';
+			html += '<div class="d-flex justify-content-center align-items-center">';
+			html += `<a href="javascript:;" class="text-body me-2" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="${service.id}">`;
+			html += '<i class="ti ti-edit ti-sm"></i>';
+			html += '</a>';
+			html += `<a href="javascript:;" class="text-danger" onclick="deleteService(${service.id})">`;
+			html += '<i class="ti ti-trash ti-sm"></i>';
+			html += '</a>';
+			html += '</div>';
 			html += '</td>';
 			html += '</tr>';
 		});
@@ -523,37 +549,20 @@ document.addEventListener('DOMContentLoaded', function() {
 @endsection
 
 @section('content')
+<!-- Header usando el patrón estándar -->
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-	<div class="d-flex flex-column justify-content-center">
-		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">Proyectos / {{ $project->name }} /</span> Agregar servicios</h4>
-		<p class="text-muted">Agrega los servicios vinculados al proyecto</p>
-	</div>
-	<div class="d-flex align-content-center flex-wrap gap-3">
+    <div class="d-flex flex-column justify-content-center">
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Proyectos/ {{ $project->name }}/</span> Servicios</h4>
+        <p class="text-muted">Gestiona los servicios vinculados al proyecto</p>
+    </div>
+    <div class="d-flex align-content-center flex-wrap gap-3">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
+            <i class="ti ti-plus me-1"></i>Agregar servicio
+        </button>
 		<a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary waves-effect waves-light">
-			<i class="ti ti-arrow-left me-1"></i>Volver al proyecto
-		</a>
-	</div>
-</div>
-
-<!-- Información del proyecto -->
-<div class="card mb-4">
-	<div class="card-body">
-		<div class="row">
-			<div class="col-md-6">
-				<h6 class="text-muted">Proyecto</h6>
-				<p class="mb-2"><strong>{{ $project->name }}</strong></p>
-				@if($project->real_name)
-					<p class="mb-2"><small class="text-muted">Nombre real: {{ $project->real_name }}</small></p>
-				@endif
-			</div>
-			<div class="col-md-6">
-				<h6 class="text-muted">Cliente</h6>
-				<p class="mb-2">{{ $project->client->name ?? 'N/A' }}</p>
-				<h6 class="text-muted">Responsable</h6>
-				<p class="mb-2">{{ $project->responsible->name ?? 'N/A' }}</p>
-			</div>
-		</div>
-	</div>
+            <i class="ti ti-arrow-left me-1"></i>Volver al proyecto
+        </a>
+    </div>
 </div>
 
 <!-- Formulario de servicios - VERSIÓN ORIGINAL (COMENTADA) -->
@@ -587,12 +596,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Formulario de servicios - VERSIÓN CON MODAL -->
 <div class="card mb-4">
-	<div class="card-header d-flex justify-content-between align-items-center">
-		<h5 class="mb-0">Servicios vinculados</h5>
-		<button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#serviceModal">
-			<i class="ti ti-plus me-1"></i>Agregar servicio
-		</button>
-	</div>
+	<h5 class="card-header">Servicios vinculados</h5>
 	<div class="card-body">
 		<!-- Lista de servicios agregados -->
 		<div id="services-list">
@@ -600,14 +604,6 @@ document.addEventListener('DOMContentLoaded', function() {
 				<i class="ti ti-folder-open ti-lg mb-2"></i>
 				<p class="mb-0">No hay servicios agregados</p>
 				<small>Haz clic en "Agregar servicio" para comenzar</small>
-			</div>
-		</div>
-		
-		<div class="pt-4">
-			<div class="d-flex gap-3">
-				<a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary">
-					<i class="ti ti-arrow-left me-1"></i>Volver al proyecto
-				</a>
 			</div>
 		</div>
 	</div>
