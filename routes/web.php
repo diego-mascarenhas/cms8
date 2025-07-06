@@ -254,7 +254,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
     Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
     Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
-    Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
+Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
+
+// Project services modal routes
+Route::get('/project/{project}/services', [ProjectController::class, 'getServices'])->name('project.get-services');
+Route::post('/project/{project}/service', [ProjectController::class, 'storeService'])->name('project.store-service');
+Route::put('/project/{project}/service/{serviceId}', [ProjectController::class, 'updateService'])->name('project.update-service');
+Route::delete('/project/{project}/service/{serviceId}', [ProjectController::class, 'deleteService'])->name('project.delete-service');
 
 
     // Task Routes

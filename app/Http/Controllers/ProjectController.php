@@ -566,6 +566,213 @@ class ProjectController extends Controller
     }
 
     /**
+     * Get services for a project (modal)
+     */
+    public function getServices(string $projectId)
+    {
+        $project = Project::findOrFail($projectId);
+        
+        $services = $project->projectFares()->with([
+            'fare',
+            'sourceLanguage',
+            'targetLanguage'
+        ])->get()->map(function ($projectFare) {
+            return [
+                'id' => $projectFare->id,
+                'fare_id' => $projectFare->fare_id,
+                'fare_name' => $projectFare->fare->name,
+                'source_language_code' => $projectFare->source_language_code,
+                'source_language_name' => $projectFare->sourceLanguage->name,
+                'target_language_code' => $projectFare->target_language_code,
+                'target_language_name' => $projectFare->targetLanguage->name,
+                'quantity' => $projectFare->quantity,
+                'unit' => $projectFare->unit,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'services' => $services
+        ]);
+    }
+
+    /**
+     * Store a single service for a project (modal)
+     */
+    public function storeService(Request $request, string $projectId)
+    {
+        $project = Project::findOrFail($projectId);
+
+        $request->validate([
+            'fare_id' => 'required|exists:fares,id',
+            'source_language_code' => 'required|exists:language_variants,code',
+            'target_language_code' => 'required|exists:language_variants,code',
+            'quantity' => 'required|numeric|min:1',
+            'unit' => 'required|string',
+        ]);
+
+        try {
+            // Check for duplicates
+            $existingService = $project->projectFares()
+                ->where('fare_id', $request->fare_id)
+                ->where('source_language_code', $request->source_language_code)
+                ->where('target_language_code', $request->target_language_code)
+                ->exists();
+
+            if ($existingService) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este servicio ya está agregado con la misma combinación de idiomas.'
+                ], 400);
+            }
+
+            $projectFare = $project->projectFares()->create([
+                'fare_id' => $request->fare_id,
+                'source_language_code' => $request->source_language_code,
+                'target_language_code' => $request->target_language_code,
+                'quantity' => $request->quantity,
+                'unit' => $request->unit,
+            ]);
+
+            // Load relationships for response
+            $projectFare->load(['fare', 'sourceLanguage', 'targetLanguage']);
+
+            return response()->json([
+                'success' => true,
+                'service' => [
+                    'id' => $projectFare->id,
+                    'fare_id' => $projectFare->fare_id,
+                    'fare_name' => $projectFare->fare->name,
+                    'source_language_code' => $projectFare->source_language_code,
+                    'source_language_name' => $projectFare->sourceLanguage->name,
+                    'target_language_code' => $projectFare->target_language_code,
+                    'target_language_name' => $projectFare->targetLanguage->name,
+                    'quantity' => $projectFare->quantity,
+                    'unit' => $projectFare->unit,
+                ],
+                'message' => 'Servicio agregado exitosamente.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error storing service:', [
+                'project_id' => $projectId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar el servicio: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a single service for a project (modal)
+     */
+    public function updateService(Request $request, string $projectId, string $serviceId)
+    {
+        $project = Project::findOrFail($projectId);
+        $projectFare = $project->projectFares()->findOrFail($serviceId);
+
+        $request->validate([
+            'fare_id' => 'required|exists:fares,id',
+            'source_language_code' => 'required|exists:language_variants,code',
+            'target_language_code' => 'required|exists:language_variants,code',
+            'quantity' => 'required|numeric|min:1',
+            'unit' => 'required|string',
+        ]);
+
+        try {
+            // Check for duplicates (excluding current service)
+            $existingService = $project->projectFares()
+                ->where('fare_id', $request->fare_id)
+                ->where('source_language_code', $request->source_language_code)
+                ->where('target_language_code', $request->target_language_code)
+                ->where('id', '!=', $serviceId)
+                ->exists();
+
+            if ($existingService) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Este servicio ya está agregado con la misma combinación de idiomas.'
+                ], 400);
+            }
+
+            $projectFare->update([
+                'fare_id' => $request->fare_id,
+                'source_language_code' => $request->source_language_code,
+                'target_language_code' => $request->target_language_code,
+                'quantity' => $request->quantity,
+                'unit' => $request->unit,
+            ]);
+
+            // Load relationships for response
+            $projectFare->load(['fare', 'sourceLanguage', 'targetLanguage']);
+
+            return response()->json([
+                'success' => true,
+                'service' => [
+                    'id' => $projectFare->id,
+                    'fare_id' => $projectFare->fare_id,
+                    'fare_name' => $projectFare->fare->name,
+                    'source_language_code' => $projectFare->source_language_code,
+                    'source_language_name' => $projectFare->sourceLanguage->name,
+                    'target_language_code' => $projectFare->target_language_code,
+                    'target_language_name' => $projectFare->targetLanguage->name,
+                    'quantity' => $projectFare->quantity,
+                    'unit' => $projectFare->unit,
+                ],
+                'message' => 'Servicio actualizado exitosamente.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error updating service:', [
+                'project_id' => $projectId,
+                'service_id' => $serviceId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el servicio: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a single service for a project (modal)
+     */
+    public function deleteService(string $projectId, string $serviceId)
+    {
+        $project = Project::findOrFail($projectId);
+        $projectFare = $project->projectFares()->findOrFail($serviceId);
+
+        try {
+            $projectFare->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Servicio eliminado exitosamente.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error deleting service:', [
+                'project_id' => $projectId,
+                'service_id' => $serviceId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar el servicio: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Format date for message templates
      */
     private function formatDate($date)
