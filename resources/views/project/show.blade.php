@@ -136,57 +136,69 @@
 					</a>
 				</div>
 				<div class="card-body">
-					<div class="table-responsive">
-						<table class="table table-sm">
-							<thead>
-								<tr>
-									<th>{{ __('Source language') }}</th>
-									<th>{{ __('Target language') }}</th>
-									<th>{{ __('Service') }}</th>
-									<th>{{ __('Quantity') }}</th>
-									<th>{{ __('Unit') }}</th>
-								</tr>
-							</thead>
-							<tbody>
-								@foreach($project->projectFares as $projectFare)
-								<tr>
-									<td>
-										@if($projectFare->sourceLanguage)
-											<span class="d-flex align-items-center">
-												@if($projectFare->sourceLanguage->country_code)
-													<i class="fi fi-{{ strtolower($projectFare->sourceLanguage->country_code) }} me-2"></i>
-												@endif
-												{{ $projectFare->sourceLanguage->name }}
-											</span>
-										@else
-											{{ $projectFare->source_language_code }}
-										@endif
-									</td>
-									<td>
-										@if($projectFare->targetLanguage)
-											<span class="d-flex align-items-center">
-												@if($projectFare->targetLanguage->country_code)
-													<i class="fi fi-{{ strtolower($projectFare->targetLanguage->country_code) }} me-2"></i>
-												@endif
-												{{ $projectFare->targetLanguage->name }}
-											</span>
-										@else
-											{{ $projectFare->target_language_code }}
-										@endif
-									</td>
-									<td>
-										{{ $projectFare->fare->name ?? 'N/A' }}
+					@foreach($project->projectFares as $projectFare)
+					@php
+						// Check if there are collaborators that match this service requirements
+						$hasMatchingCollaborator = false;
+						
+						if ($project->collaborators && $project->collaborators->count() > 0) {
+							foreach ($project->collaborators as $collaborator) {
+								// Check if collaborator has the required language combination
+								$hasLanguageCombination = $collaborator->languageVariants->contains(function($variant) use ($projectFare) {
+									return $variant->source_language_code === $projectFare->source_language_code 
+										&& $variant->target_language_code === $projectFare->target_language_code;
+								});
+								
+								// Check if collaborator has the required fare/service
+								$hasFare = $collaborator->fares->contains('id', $projectFare->fare_id);
+								
+								// If collaborator has both requirements, mark as matching
+								if ($hasLanguageCombination && $hasFare) {
+									$hasMatchingCollaborator = true;
+									break;
+								}
+							}
+						}
+					@endphp
+					<div class="row align-items-center py-3 {{ !$loop->last ? 'border-bottom' : '' }}">
+						<div class="col-auto">
+							@if($hasMatchingCollaborator)
+								<i class="ti ti-check text-success ti-lg" 
+								   data-bs-toggle="tooltip" 
+								   data-bs-placement="top" 
+								   title="Hay colaboradores asignados que cumplen con los requisitos"></i>
+							@else
+								<i class="ti ti-alert-triangle text-warning ti-lg" 
+								   data-bs-toggle="tooltip" 
+								   data-bs-placement="top" 
+								   title="No hay colaboradores asignados que cumplan con esta combinación de idioma y servicio"></i>
+							@endif
+						</div>
+						<div class="col">
+							<div class="row">
+								<div class="col-md-4">
+									<div class="mb-1">
+										<strong>{{ $projectFare->fare->name ?? 'N/A' }}</strong>
 										@if($projectFare->fare && $projectFare->fare->type)
 											<br><small class="text-muted">{{ $projectFare->fare->type->name }}</small>
 										@endif
-									</td>
-									<td>{{ $projectFare->quantity }}</td>
-									<td>{{ $projectFare->unit }}</td>
-								</tr>
-								@endforeach
-							</tbody>
-						</table>
+									</div>
+								</div>
+								<div class="col-md-5">
+									<x-language-combination-badge 
+										:sourceLanguage="$projectFare->sourceLanguage"
+										:targetLanguage="$projectFare->targetLanguage"
+										:sourceLanguageCode="$projectFare->source_language_code"
+										:targetLanguageCode="$projectFare->target_language_code"
+									/>
+								</div>
+								<div class="col-md-3 text-end">
+									<span class="badge bg-light text-dark">{{ $projectFare->quantity }} {{ $projectFare->unit }}</span>
+								</div>
+							</div>
+						</div>
 					</div>
+					@endforeach
 				</div>
 			</div>
 			@else
@@ -439,6 +451,14 @@
 
 @push('scripts')
 <script>
+	// Initialize tooltips
+	document.addEventListener('DOMContentLoaded', function() {
+		var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+		var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+			return new bootstrap.Tooltip(tooltipTriggerEl);
+		});
+	});
+
 	// Function to remove collaborator from project
 	function removeCollaboratorFromProject(projectId, collaboratorId, collaboratorName) {
 		Swal.fire({
