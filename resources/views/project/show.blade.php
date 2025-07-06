@@ -62,9 +62,6 @@
 			<a href="{{ route('project.select-collaborators', $project->id) }}" class="btn btn-success waves-effect waves-light">
 				<i class="ti ti-users me-1"></i>{{ __('Manage Collaborators') }}
 			</a>
-			<a href="{{ route('project.add-services', $project->id) }}" class="btn btn-info waves-effect waves-light">
-				<i class="ti ti-settings me-1"></i>{{ __('Link services') }}
-			</a>
 			@can('project.index')
 				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Projects') }}</a>
 			@endcan
@@ -126,93 +123,7 @@
 				</div>
 			</div>
 
-			<!-- Linked Services Section -->
-			@if($project->projectFares && $project->projectFares->count() > 0)
-			<div class="card mb-4">
-				<div class="card-header d-flex justify-content-between align-items-center">
-					<h5 class="mb-0">{{ __('Linked services') }}</h5>
-					<a href="{{ route('project.add-services', $project->id) }}" class="btn btn-sm btn-outline-primary">
-						<i class="ti ti-edit ti-xs me-1"></i>{{ __('Edit services') }}
-					</a>
-				</div>
-				<div class="card-body">
-					@foreach($project->projectFares as $projectFare)
-					@php
-						// Check if there are collaborators that match this service requirements
-						$hasMatchingCollaborator = false;
-						
-						if ($project->collaborators && $project->collaborators->count() > 0) {
-							foreach ($project->collaborators as $collaborator) {
-								// Check if collaborator has the required language combination
-								$hasLanguageCombination = $collaborator->languageVariants->contains(function($variant) use ($projectFare) {
-									return $variant->source_language_code === $projectFare->source_language_code 
-										&& $variant->target_language_code === $projectFare->target_language_code;
-								});
-								
-								// Check if collaborator has the required fare/service
-								$hasFare = $collaborator->fares->contains('id', $projectFare->fare_id);
-								
-								// If collaborator has both requirements, mark as matching
-								if ($hasLanguageCombination && $hasFare) {
-									$hasMatchingCollaborator = true;
-									break;
-								}
-							}
-						}
-					@endphp
-					<div class="row align-items-center py-3 {{ !$loop->last ? 'border-bottom' : '' }}">
-						<div class="col-auto">
-							@if($hasMatchingCollaborator)
-								<i class="ti ti-check text-success ti-lg" 
-								   data-bs-toggle="tooltip" 
-								   data-bs-placement="top" 
-								   title="Hay colaboradores asignados que cumplen con los requisitos"></i>
-							@else
-								<i class="ti ti-alert-triangle text-warning ti-lg" 
-								   data-bs-toggle="tooltip" 
-								   data-bs-placement="top" 
-								   title="No hay colaboradores asignados que cumplan con esta combinación de idioma y servicio"></i>
-							@endif
-						</div>
-						<div class="col">
-							<div class="row">
-								<div class="col-md-4">
-									<div class="mb-1">
-										<strong>{{ $projectFare->fare->name ?? 'N/A' }}</strong>
-										@if($projectFare->fare && $projectFare->fare->type)
-											<br><small class="text-muted">{{ $projectFare->fare->type->name }}</small>
-										@endif
-									</div>
-								</div>
-								<div class="col-md-5">
-									<x-language-combination-badge 
-										:sourceLanguage="$projectFare->sourceLanguage"
-										:targetLanguage="$projectFare->targetLanguage"
-										:sourceLanguageCode="$projectFare->source_language_code"
-										:targetLanguageCode="$projectFare->target_language_code"
-									/>
-								</div>
-								<div class="col-md-3 text-end">
-									<span class="badge bg-light text-dark">{{ $projectFare->quantity }} {{ $projectFare->unit }}</span>
-								</div>
-							</div>
-						</div>
-					</div>
-					@endforeach
-				</div>
-			</div>
-			@else
-			<div class="card mb-4">
-				<div class="card-body text-center py-4">
-					<i class="ti ti-settings ti-xl text-muted mb-3"></i>
-					<h6 class="mb-2">{{ __('No linked services') }}</h6>
-					<p class="text-muted mb-3">{{ __('This project has no linked services yet') }}</p>
-					<a href="{{ route('project.add-services', $project->id) }}" class="btn btn-primary">
-						<i class="ti ti-plus me-1"></i>{{ __('Link services') }}
-					</a>
-				</div>
-			</div>
-			@endif
+
 
 			<!-- Collaborators Section (Floating Cards) -->
 			@if($project->collaborators && $project->collaborators->count() > 0)
@@ -446,6 +357,210 @@
 		</div>
 	</div>
 
+	<!-- Linked Services Section - Full Width -->
+	@if($project->projectFares && $project->projectFares->count() > 0)
+	<div class="card mb-4">
+		<div class="card-header d-flex justify-content-between align-items-center">
+			<h5 class="mb-0">{{ __('Linked services') }}</h5>
+			<button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
+				<i class="ti ti-plus ti-xs me-1"></i>{{ __('Vincular servicio') }}
+			</button>
+		</div>
+		<div class="card-body">
+			<div class="table-responsive">
+				<table class="table table-hover">
+					<thead>
+						<tr>
+							<th width="10%"></th>
+							<th width="25%">{{ __('Service') }}</th>
+							<th width="30%" class="text-center">{{ __('Languages') }}</th>
+							<th width="15%" class="text-center">{{ __('Quantity') }}</th>
+							<th width="10%">{{ __('Unit') }}</th>
+							<th width="10%" class="text-center">{{ __('Actions') }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach($project->projectFares as $projectFare)
+						@php
+							// Check if there are collaborators that match this service requirements
+							$hasMatchingCollaborator = false;
+							
+							if ($project->collaborators && $project->collaborators->count() > 0) {
+								foreach ($project->collaborators as $collaborator) {
+									// Check if collaborator has the required language combination
+									$hasLanguageCombination = $collaborator->languageVariants->contains(function($variant) use ($projectFare) {
+										return $variant->source_language_code === $projectFare->source_language_code 
+											&& $variant->target_language_code === $projectFare->target_language_code;
+									});
+									
+									// Check if collaborator has the required fare/service
+									$hasFare = $collaborator->fares->contains('id', $projectFare->fare_id);
+									
+									// If collaborator has both requirements, mark as matching
+									if ($hasLanguageCombination && $hasFare) {
+										$hasMatchingCollaborator = true;
+										break;
+									}
+								}
+							}
+						@endphp
+						<tr class="{{ $loop->last ? 'border-bottom-0' : '' }}">
+							<td class="text-center">
+								@if($hasMatchingCollaborator)
+									<i class="ti ti-check text-success ti-lg" 
+									   data-bs-toggle="tooltip" 
+									   data-bs-placement="top" 
+									   title="Hay colaboradores asignados que cumplen con los requisitos"></i>
+								@else
+									<i class="ti ti-alert-triangle text-warning ti-lg" 
+									   data-bs-toggle="tooltip" 
+									   data-bs-placement="top" 
+									   title="No hay colaboradores asignados que cumplan con esta combinación de idioma y servicio"></i>
+								@endif
+							</td>
+							<td>
+								<div class="mb-1">
+									<strong>{{ $projectFare->fare->name ?? 'N/A' }}</strong>
+									@if($projectFare->fare && $projectFare->fare->type)
+										<br><small class="text-muted">{{ $projectFare->fare->type->name }}</small>
+									@endif
+								</div>
+							</td>
+							<td class="text-center">
+								<x-language-combination-badge 
+									:sourceLanguage="$projectFare->sourceLanguage"
+									:targetLanguage="$projectFare->targetLanguage"
+									:sourceLanguageCode="$projectFare->source_language_code"
+									:targetLanguageCode="$projectFare->target_language_code"
+								/>
+							</td>
+							<td class="text-center">
+								<span class="badge bg-light text-dark">{{ $projectFare->quantity }}</span>
+							</td>
+							<td>
+								{{ $projectFare->unit }}
+							</td>
+							<td class="text-center">
+								<div class="d-flex justify-content-center align-items-center">
+									<a href="javascript:;" class="text-body me-2" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="{{ $projectFare->id }}">
+										<i class="ti ti-edit ti-sm"></i>
+									</a>
+									<a href="javascript:;" class="text-danger" onclick="deleteProjectService({{ $projectFare->id }})">
+										<i class="ti ti-trash ti-sm"></i>
+									</a>
+								</div>
+							</td>
+						</tr>
+						@endforeach
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+	@else
+	<div class="card mb-4">
+		<div class="card-body text-center py-4">
+			<i class="ti ti-settings ti-xl text-muted mb-3"></i>
+			<h6 class="mb-2">{{ __('No linked services') }}</h6>
+			<p class="text-muted mb-3">{{ __('This project has no linked services yet') }}</p>
+			<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
+				<i class="ti ti-plus me-1"></i>{{ __('Vincular servicio') }}
+			</button>
+		</div>
+	</div>
+	@endif
+
+<!-- Modal para agregar/editar servicio -->
+<div class="modal fade" id="serviceModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="serviceModalTitle">Agregar servicio</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form id="serviceForm">
+				<div class="modal-body">
+					<input type="hidden" id="service-id" name="service_id">
+					<input type="hidden" id="project-id" name="project_id" value="{{ $project->id }}">
+					
+					<div class="row g-3">
+						<div class="col-md-6">
+							<x-variant-language-select 
+								name="source_language_code" 
+								id="source_language" 
+								label="Idioma origen (*)" 
+								:required="true"
+								placeholder="Seleccionar idioma origen"
+							/>
+						</div>
+						<div class="col-md-6">
+							<x-variant-language-select 
+								name="target_language_code" 
+								id="target_language" 
+								label="Idioma destino (*)" 
+								:required="true"
+								placeholder="Seleccionar idioma destino"
+							/>
+						</div>
+						<div class="col-md-8">
+							<label class="form-label">Tipo de servicio (*)</label>
+							<select name="fare_id" id="fare_select" class="form-select" required>
+								<option value="">Seleccionar servicio</option>
+								@php
+									$faresByType = \App\Models\Fare::with('type')
+										->where(function($query) {
+											$query->whereNull('team_id');
+											if (auth()->check() && auth()->user()->currentTeam) {
+												$query->orWhere('team_id', auth()->user()->currentTeam->id);
+											}
+										})
+										->orderBy('name')
+										->get()
+										->groupBy(function($fare) {
+											return $fare->type ? $fare->type->name : 'Sin categoría';
+										});
+								@endphp
+								
+								@foreach($faresByType as $typeName => $fareList)
+									<optgroup label="{{ $typeName }}">
+										@foreach($fareList as $fare)
+											<option value="{{ $fare->id }}">{{ $fare->name }}</option>
+										@endforeach
+									</optgroup>
+								@endforeach
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label class="form-label">Cantidad (*)</label>
+							<input type="number" name="quantity" id="quantity" class="form-control" 
+								   value="1" min="1" step="1" required>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Unidad (*)</label>
+							<select name="unit" id="unit_select" class="form-select" required>
+								<option value="">Primero selecciona un servicio</option>
+							</select>
+						</div>
+					</div>
+					
+					<div class="mt-3">
+						<div class="alert alert-warning d-none" id="duplicate-warning">
+							<i class="ti ti-alert-triangle me-2"></i>
+							Este servicio ya está agregado con la misma combinación de idiomas.
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
+					<button type="submit" class="btn btn-primary" id="saveServiceBtn">
+						<i class="ti ti-check me-1"></i>
+						<span id="saveServiceText">Agregar servicio</span>
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
 
 @endsection
 
@@ -457,6 +572,9 @@
 		var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 			return new bootstrap.Tooltip(tooltipTriggerEl);
 		});
+		
+		// Service modal functionality
+		initializeServiceModal();
 	});
 
 	// Function to remove collaborator from project
@@ -502,6 +620,267 @@
 				});
 			}
 		});
+	}
+	
+	// Function to delete project service
+	function deleteProjectService(serviceId) {
+		if (!confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
+			return;
+		}
+		
+		const projectId = document.getElementById('project-id').value;
+		
+		fetch(`/project/${projectId}/service/${serviceId}`, {
+			method: 'DELETE',
+			headers: {
+				'Accept': 'application/json',
+				'X-Requested-With': 'XMLHttpRequest',
+				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+			}
+		})
+		.then(response => response.json())
+		.then(data => {
+			if (data.success) {
+				location.reload();
+			} else {
+				alert(data.message || 'Error al eliminar servicio');
+			}
+		})
+		.catch(error => {
+			console.error('Error deleting service:', error);
+			alert('Error al eliminar servicio');
+		});
+	}
+	
+	// Service modal initialization
+	function initializeServiceModal() {
+		const serviceModal = document.getElementById('serviceModal');
+		const serviceForm = document.getElementById('serviceForm');
+		const duplicateWarning = document.getElementById('duplicate-warning');
+		
+		let editingServiceId = null;
+		
+		// Handle fare selection change for units
+		document.getElementById('fare_select').addEventListener('change', function() {
+			const fareId = this.value;
+			const unitSelect = document.getElementById('unit_select');
+			
+			if (!fareId) {
+				unitSelect.innerHTML = '<option value="">Primero selecciona un servicio</option>';
+				return;
+			}
+			
+			// Show loading state
+			unitSelect.innerHTML = '<option value="">Cargando unidades...</option>';
+			unitSelect.disabled = true;
+			
+			// Fetch units for the selected fare
+			fetch(`/project/fare-units?fare_id=${fareId}`, {
+				method: 'GET',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json',
+					'X-Requested-With': 'XMLHttpRequest'
+				}
+			})
+			.then(response => response.json())
+			.then(data => {
+				unitSelect.innerHTML = '<option value="">Seleccionar unidad</option>';
+				
+				if (data.units && data.units.length > 0) {
+					data.units.forEach(unit => {
+						const option = document.createElement('option');
+						option.value = unit.type;
+						option.textContent = unit.label;
+						unitSelect.appendChild(option);
+					});
+				} else {
+					unitSelect.innerHTML = '<option value="">No hay unidades disponibles</option>';
+				}
+			})
+			.catch(error => {
+				console.error('Error loading units:', error);
+				unitSelect.innerHTML = '<option value="">Error al cargar unidades</option>';
+			})
+			.finally(() => {
+				unitSelect.disabled = false;
+			});
+		});
+		
+		// Handle form submission
+		serviceForm.addEventListener('submit', function(e) {
+			e.preventDefault();
+			
+			const formData = new FormData(serviceForm);
+			const serviceData = {
+				service_id: formData.get('service_id'),
+				project_id: formData.get('project_id'),
+				fare_id: formData.get('fare_id'),
+				source_language_code: formData.get('source_language_code'),
+				target_language_code: formData.get('target_language_code'),
+				quantity: formData.get('quantity'),
+				unit: formData.get('unit')
+			};
+			
+			duplicateWarning.classList.add('d-none');
+			
+			// Determine if we're editing or adding
+			if (editingServiceId) {
+				updateService(serviceData);
+			} else {
+				addService(serviceData);
+			}
+		});
+		
+		// Handle modal show event
+		serviceModal.addEventListener('show.bs.modal', function(event) {
+			const button = event.relatedTarget;
+			const action = button?.getAttribute('data-action');
+			
+			if (action === 'edit') {
+				const serviceId = button.getAttribute('data-service-id');
+				editService(serviceId);
+			} else {
+				// Reset form for new service
+				resetForm();
+			}
+		});
+		
+		// Handle modal hide event
+		serviceModal.addEventListener('hide.bs.modal', function() {
+			resetForm();
+		});
+		
+		function addService(serviceData) {
+			const button = document.getElementById('saveServiceBtn');
+			const originalText = button.innerHTML;
+			
+			button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Guardando...';
+			button.disabled = true;
+			
+			fetch(`/project/${serviceData.project_id}/service`, {
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json',
+					'X-Requested-With': 'XMLHttpRequest',
+					'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+				},
+				body: JSON.stringify(serviceData)
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					// Close modal and reload page
+					const modal = bootstrap.Modal.getInstance(serviceModal);
+					modal.hide();
+					location.reload();
+				} else {
+					alert(data.message || 'Error al agregar servicio');
+				}
+			})
+			.catch(error => {
+				console.error('Error adding service:', error);
+				alert('Error al agregar servicio');
+			})
+			.finally(() => {
+				button.innerHTML = originalText;
+				button.disabled = false;
+			});
+		}
+		
+		function updateService(serviceData) {
+			const button = document.getElementById('saveServiceBtn');
+			const originalText = button.innerHTML;
+			
+			button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Actualizando...';
+			button.disabled = true;
+			
+			fetch(`/project/${serviceData.project_id}/service/${serviceData.service_id}`, {
+				method: 'PUT',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json',
+					'X-Requested-With': 'XMLHttpRequest',
+					'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+				},
+				body: JSON.stringify(serviceData)
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					// Close modal and reload page
+					const modal = bootstrap.Modal.getInstance(serviceModal);
+					modal.hide();
+					location.reload();
+				} else {
+					alert(data.message || 'Error al actualizar servicio');
+				}
+			})
+			.catch(error => {
+				console.error('Error updating service:', error);
+				alert('Error al actualizar servicio');
+			})
+			.finally(() => {
+				button.innerHTML = originalText;
+				button.disabled = false;
+			});
+		}
+		
+		function editService(serviceId) {
+			const projectId = document.getElementById('project-id').value;
+			
+			// Get service details from server
+			fetch(`/project/${projectId}/services`, {
+				method: 'GET',
+				headers: {
+					'Accept': 'application/json',
+					'X-Requested-With': 'XMLHttpRequest'
+				}
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					const service = data.services.find(s => s.id == serviceId);
+					if (service) {
+						editingServiceId = serviceId;
+						
+						// Update modal title
+						document.getElementById('serviceModalTitle').textContent = 'Editar servicio';
+						document.getElementById('saveServiceText').textContent = 'Actualizar servicio';
+						
+						// Fill form with service data
+						document.getElementById('service-id').value = service.id;
+						document.getElementById('source_language').value = service.source_language_code;
+						document.getElementById('target_language').value = service.target_language_code;
+						document.getElementById('fare_select').value = service.fare_id;
+						document.getElementById('quantity').value = service.quantity;
+						
+						// Load units for the selected fare
+						const fareSelect = document.getElementById('fare_select');
+						fareSelect.dispatchEvent(new Event('change'));
+						
+						// Set unit after units are loaded
+						setTimeout(() => {
+							document.getElementById('unit_select').value = service.unit;
+						}, 500);
+					}
+				}
+			})
+			.catch(error => {
+				console.error('Error loading service:', error);
+			});
+		}
+		
+		function resetForm() {
+			serviceForm.reset();
+			editingServiceId = null;
+			document.getElementById('service-id').value = '';
+			document.getElementById('serviceModalTitle').textContent = 'Agregar servicio';
+			document.getElementById('saveServiceText').textContent = 'Agregar servicio';
+			document.getElementById('unit_select').innerHTML = '<option value="">Primero selecciona un servicio</option>';
+			duplicateWarning.classList.add('d-none');
+		}
 	}
 </script>
 @endpush
