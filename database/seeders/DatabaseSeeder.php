@@ -53,6 +53,7 @@ class DatabaseSeeder extends Seeder
             StylebooksSeeder::class,
             NotificationTypesSeeder::class,
             NotificationSeeder::class,
+            CollaboratorsSeeder::class,
         ]);
 
         // Clear activity log entries generated during seeding

@@ -231,29 +231,29 @@ class ContactSeeder extends Seeder
             }
         }
 
-        // Create additional random contacts
-        Contact::factory()
-            ->count(147)
-            ->create()
-            ->each(function ($contact) use ($faker) {
-                ContactSentimentHistory::create([
-                    'contact_id' => $contact->id,
-                    'sentiment_id' => (function () {
-                        $rand = rand(1, 100);
-                        if ($rand <= 80) {
-                            return ContactSentiment::whereIn('id', [3, 4, 5])
-                                ->inRandomOrder()
-                                ->first()
-                                ->id;
-                        } else {
-                            return ContactSentiment::whereIn('id', [1, 2])
-                                ->inRandomOrder()
-                                ->first()
-                                ->id;
-                        }
-                    })(),
-                    'notes' => $faker->sentence,
-                ]);
-            });
+        // Create additional random contacts - DISABLED to use real collaborators from CollaboratorsSeeder
+        // Contact::factory()
+        //     ->count(147)
+        //     ->create()
+        //     ->each(function ($contact) use ($faker) {
+        //         ContactSentimentHistory::create([
+        //             'contact_id' => $contact->id,
+        //             'sentiment_id' => (function () {
+        //                 $rand = rand(1, 100);
+        //                 if ($rand <= 80) {
+        //                     return ContactSentiment::whereIn('id', [3, 4, 5])
+        //                         ->inRandomOrder()
+        //                         ->first()
+        //                         ->id;
+        //                 } else {
+        //                     return ContactSentiment::whereIn('id', [1, 2])
+        //                         ->inRandomOrder()
+        //                         ->first()
+        //                         ->id;
+        //                 }
+        //             })(),
+        //             'notes' => $faker->sentence,
+        //         ]);
+        //     });
     }
 }

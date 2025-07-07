@@ -51,7 +51,7 @@ class SendNotificationJob implements ShouldQueue
     {
         $this->notification = $notification;
         $this->isResend = $isResend;
-        $this->onQueue('default');
+        $this->onQueue('notifications');
     }
 
     /**
