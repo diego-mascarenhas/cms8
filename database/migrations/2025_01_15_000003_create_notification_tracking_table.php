@@ -22,7 +22,6 @@ return new class extends Migration
 
             // Indexes for better performance
             $table->index(['notification_id', 'event_type']);
-            $table->index(['tracking_token']);
             $table->index(['tracked_at']);
         });
     }

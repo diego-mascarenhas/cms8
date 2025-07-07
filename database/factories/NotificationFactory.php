@@ -47,11 +47,7 @@ class NotificationFactory extends Factory
             'user_id' => $user->id,
             'contact_id' => $contact->id,
             'type_id' => NotificationType::inRandomOrder()->first()?->id ?? NotificationType::factory(),
-            'reference' => $this->faker->optional(0.3)->randomElement([
-                'project_'.$this->faker->numberBetween(1, 100),
-                'task_'.$this->faker->numberBetween(1, 200),
-                'payment_'.$this->faker->numberBetween(1, 50),
-            ]),
+            'reference' => $this->faker->optional(0.3)->numberBetween(1, 1000),
             'subject' => $notificationContent['subject'],
             'message' => $notificationContent['message'],
             'is_sent' => $isSent,
@@ -195,7 +191,7 @@ class NotificationFactory extends Factory
     public function projectRelated(): static
     {
         return $this->state(fn (array $attributes) => [
-            'reference' => 'project_'.$this->faker->numberBetween(1, 100),
+            'reference' => $this->faker->numberBetween(1, 100),
             'subject' => $this->faker->randomElement([
                 'Nuevo proyecto asignado: '.$this->faker->catchPhrase(),
                 'Actualización del proyecto: '.$this->faker->catchPhrase(),
@@ -216,7 +212,7 @@ class NotificationFactory extends Factory
     public function paymentRelated(): static
     {
         return $this->state(fn (array $attributes) => [
-            'reference' => 'payment_'.$this->faker->numberBetween(1, 50),
+            'reference' => $this->faker->numberBetween(1, 50),
             'subject' => $this->faker->randomElement([
                 'Pago procesado correctamente',
                 'Recordatorio de pago pendiente',
