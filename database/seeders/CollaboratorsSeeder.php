@@ -19,7 +19,7 @@ class CollaboratorsSeeder extends Seeder
     {
         // Get the SQL file path
         $sqlFilePath = '/Users/magoo/Downloads/inserts_colaboradoras.sql';
-        
+
         if (!file_exists($sqlFilePath)) {
             Log::error("SQL file not found: {$sqlFilePath}");
             $this->command->error("SQL file not found: {$sqlFilePath}");
@@ -27,7 +27,7 @@ class CollaboratorsSeeder extends Seeder
         }
 
         $sqlContent = file_get_contents($sqlFilePath);
-        
+
         // Parse INSERT statements
         preg_match_all(
             '/INSERT INTO colaboradoras \([^)]+\) VALUES \(([^;]+)\);/',
@@ -53,7 +53,7 @@ class CollaboratorsSeeder extends Seeder
             try {
                 // Parse values from SQL string
                 $values = $this->parseValues($valueString);
-                
+
                 if (count($values) < 13) {
                     Log::warning("Skipping incomplete record: " . substr($valueString, 0, 100));
                     continue;
@@ -144,10 +144,69 @@ class CollaboratorsSeeder extends Seeder
                     $this->processLanguageCombinations($contact, $combinacion);
                 }
 
+                // --- Asociar tarifas y programas solo si existen, guardar los no importados ---
+                $tarifasNoImportadas = [];
+                $softwaresNoImportados = [];
+
+                // Tarifas
+                if (!empty($tarifas) && $tarifas !== 'NULL') {
+                    $tarifasArray = $this->parseJsonField($tarifas);
+                    if (is_array($tarifasArray)) {
+                        foreach ($tarifasArray as $tarifa) {
+                            $tarifaName = is_array($tarifa) ? ($tarifa[0] ?? null) : $tarifa;
+                            if ($tarifaName) {
+                                $fare = \App\Models\Fare::where('name', $tarifaName)
+                                    ->where('team_id', $teamId)
+                                    ->first();
+                                if ($fare) {
+                                    $contact->fares()->syncWithoutDetaching([
+                                        $fare->id => []
+                                    ]);
+                                } else {
+                                    $tarifasNoImportadas[] = $tarifaName;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Programas (Software)
+                if (!empty($programas) && $programas !== 'NULL') {
+                    $programasArray = $this->parseJsonField($programas);
+                    if (is_array($programasArray)) {
+                        foreach ($programasArray as $programa) {
+                            $programaName = is_array($programa) ? ($programa[0] ?? null) : $programa;
+                            if ($programaName) {
+                                $software = \App\Models\Software::where('name', $programaName)
+                                    ->where('team_id', $teamId)
+                                    ->first();
+                                if ($software) {
+                                    $contact->softwares()->syncWithoutDetaching([$software->id]);
+                                } else {
+                                    $softwaresNoImportados[] = $programaName;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Guardar en data los que no se importaron
+                $updateData = is_object($contact->data) ? (array)$contact->data : ($contact->data ?? []);
+                if (!empty($tarifasNoImportadas)) {
+                    $updateData['unimported_fares'] = $tarifasNoImportadas;
+                }
+                if (!empty($softwaresNoImportados)) {
+                    $updateData['unimported_software'] = $softwaresNoImportados;
+                }
+                if (!empty($tarifasNoImportadas) || !empty($softwaresNoImportados)) {
+                    $contact->data = $updateData;
+                    $contact->save();
+                }
+
                 // Create associated user if email is provided
                 if (!empty($email)) {
                     $existingUser = User::where('email', $email)->first();
-                    
+
                     if (!$existingUser) {
                         $user = User::create([
                             'name' => $name,
@@ -170,7 +229,7 @@ class CollaboratorsSeeder extends Seeder
                     } else {
                         // Link existing user to contact
                         $contact->update(['user_id' => $existingUser->id]);
-                        
+
                         // Ensure user has collaborator role
                         if (!$existingUser->hasRole('collaborator')) {
                             $existingUser->assignRole('collaborator');
@@ -190,7 +249,7 @@ class CollaboratorsSeeder extends Seeder
         }
 
         $this->command->info("Collaborators import completed!");
-        
+
         // Process language combinations for existing contacts that already have combination data
         $this->command->info("Processing language combinations for existing contacts...");
         $this->processExistingContactCombinations($teamId);
@@ -206,10 +265,10 @@ class CollaboratorsSeeder extends Seeder
         $inQuotes = false;
         $quoteChar = null;
         $i = 0;
-        
+
         while ($i < strlen($valueString)) {
             $char = $valueString[$i];
-            
+
             if ($char === "'" || $char === '"') {
                 if (!$inQuotes) {
                     $inQuotes = true;
@@ -234,15 +293,15 @@ class CollaboratorsSeeder extends Seeder
                     $current .= $char;
                 }
             }
-            
+
             $i++;
         }
-        
+
         // Add the last value
         if ($current !== '') {
             $values[] = trim($current);
         }
-        
+
         return $values;
     }
 
@@ -252,21 +311,21 @@ class CollaboratorsSeeder extends Seeder
     private function cleanValue(string $value): ?string
     {
         $value = trim($value);
-        
+
         // Remove quotes
         if ((str_starts_with($value, "'") && str_ends_with($value, "'")) ||
             (str_starts_with($value, '"') && str_ends_with($value, '"'))) {
             $value = substr($value, 1, -1);
         }
-        
+
         // Handle NULL values
         if (strtoupper($value) === 'NULL' || $value === '') {
             return null;
         }
-        
+
         // Unescape quotes
         $value = str_replace(["''", '""'], ["'", '"'], $value);
-        
+
         return trim($value);
     }
 
@@ -317,7 +376,7 @@ class CollaboratorsSeeder extends Seeder
         ];
 
         $normalizedCountry = trim($country);
-        
+
         // Return mapped country ID or default to Spain if not found
         return $countryMappings[$normalizedCountry] ?? 724;
     }
@@ -332,10 +391,10 @@ class CollaboratorsSeeder extends Seeder
             ->get();
 
         $processedCount = 0;
-        
+
         foreach ($contacts as $contact) {
             $data = is_object($contact->data) ? (array)$contact->data : $contact->data;
-            
+
             if (isset($data['combinaciones']) && !empty($data['combinaciones'])) {
                 try {
                     // Check if it's raw_data format
@@ -352,7 +411,7 @@ class CollaboratorsSeeder extends Seeder
                 }
             }
         }
-        
+
         $this->command->info("Processed language combinations for {$processedCount} existing contacts.");
     }
 
@@ -364,19 +423,19 @@ class CollaboratorsSeeder extends Seeder
         try {
             // Clean up escaped characters - multiple approaches
             $cleanData = $rawData;
-            
+
             // Remove backslashes before quotes
             $cleanData = str_replace('\\"', '"', $cleanData);
-            
+
             // Additional cleaning for multiple escaping levels
             $cleanData = str_replace('\\\\', '\\', $cleanData);
-            
+
             // Use stripslashes for additional cleanup
             $cleanData = stripslashes($cleanData);
-            
+
             // Parse JSON
             $combinations = json_decode($cleanData, true);
-            
+
             if (!is_array($combinations)) {
                 Log::warning("Could not parse raw data combinations for contact: {$contact->name}");
                 return;
@@ -409,7 +468,7 @@ class CollaboratorsSeeder extends Seeder
         try {
             // Parse the combinations data
             $combinations = $this->parseJsonField($combinacionData);
-            
+
             if (!$combinations || !is_array($combinations)) {
                 Log::warning("Could not parse language combinations for contact: {$contact->name}");
                 return;
@@ -524,7 +583,7 @@ class CollaboratorsSeeder extends Seeder
                 return $languageName;
             }
         }
-        
+
         // If not ISO format or not found, try to map from name
         $languageMapping = [
             // Spanish variants
@@ -671,7 +730,7 @@ class CollaboratorsSeeder extends Seeder
         ];
 
         $normalizedName = strtolower(trim($languageName));
-        
+
         return $languageMapping[$normalizedName] ?? null;
     }
 
@@ -686,7 +745,7 @@ class CollaboratorsSeeder extends Seeder
 
         // Try to decode as JSON
         $decoded = json_decode($jsonString, true);
-        
+
         if (json_last_error() === JSON_ERROR_NONE) {
             return $decoded;
         }
@@ -694,4 +753,4 @@ class CollaboratorsSeeder extends Seeder
         // If JSON decode fails, return as string
         return ['raw_data' => $jsonString];
     }
-} 
+}
