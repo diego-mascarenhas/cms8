@@ -26,6 +26,7 @@ use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationTrackingController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
@@ -378,6 +379,11 @@ Route::delete('/project/{project}/service/{serviceId}', [ProjectController::clas
 
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
+
+// Notification tracking routes (no auth required)
+Route::get('/track/{token}', [NotificationTrackingController::class, 'track'])->name('notification.track');
+Route::get('/track/{token}/click', [NotificationTrackingController::class, 'trackClick'])->name('notification.track.click');
+Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
 Route::view('/strategy', 'strategy.index')->name('strategy.index');
 Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');

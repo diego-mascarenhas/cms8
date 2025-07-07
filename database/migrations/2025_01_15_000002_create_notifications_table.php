@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('type_id')->constrained('notification_types')->onDelete('cascade');
             $table->foreignId('contact_id')->constrained('contacts')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); // Who sent the notification
-            $table->string('reference')->nullable()->index(); // Project ID, Task ID, etc.
+            $table->unsignedBigInteger('reference')->nullable()->index(); // Project ID, Task ID, etc.
             $table->string('subject');
             $table->text('message');
             $table->boolean('is_sent')->default(false);

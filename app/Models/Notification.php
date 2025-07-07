@@ -219,4 +219,48 @@ class Notification extends Model
 
         return 'NO';
     }
+
+    /**
+     * Generate a tracking token based on the notification ID
+     */
+    public function getTrackingToken()
+    {
+        return hash('sha256', config('app.key') . $this->id);
+    }
+
+    /**
+     * Get the tracking URL for this notification
+     */
+    public function getTrackingUrl()
+    {
+        return route('notification.track', ['token' => $this->getTrackingToken()]);
+    }
+
+    /**
+     * Generate a tracked URL for click tracking
+     */
+    public function getTrackedUrl($originalUrl)
+    {
+        return route('notification.track.click', ['token' => $this->getTrackingToken()]) . '?url=' . urlencode($originalUrl);
+    }
+
+    /**
+     * Find notification by tracking token
+     */
+    public static function findByTrackingToken($token)
+    {
+        // We need to find the notification by checking all notifications
+        // This is not the most efficient for large datasets, but it's secure
+        return self::get()->first(function ($notification) use ($token) {
+            return hash_equals($notification->getTrackingToken(), $token);
+        });
+    }
+
+    /**
+     * Get tracking events for this notification
+     */
+    public function trackingEvents()
+    {
+        return $this->hasMany(NotificationTracking::class);
+    }
 }

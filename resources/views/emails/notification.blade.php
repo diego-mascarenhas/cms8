@@ -116,5 +116,10 @@
             </p>
         </div>
     </div>
+    
+    {{-- Tracking pixel --}}
+    @if($notification->id)
+        <img src="{{ $notification->getTrackingUrl() }}" width="1" height="1" style="display: none;" alt="" />
+    @endif
 </body>
 </html> 

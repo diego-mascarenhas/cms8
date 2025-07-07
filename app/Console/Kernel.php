@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\UpdateHostMetrics;
+use App\Console\Commands\SendPendingNotifications;
 use App\Models\Domain;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -12,6 +13,7 @@ class Kernel extends ConsoleKernel
 {
     protected $commands = [
         UpdateHostMetrics::class,
+        SendPendingNotifications::class,
     ];
 
     /**
@@ -106,6 +108,13 @@ class Kernel extends ConsoleKernel
         })->dailyAt('04:30')->withoutOverlapping();
 
         $schedule->command('ovh:sync')->daily();
+
+        // Send pending notifications every 5 minutes
+        $schedule->command('notifications:send-pending')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
     }
 
     /**
