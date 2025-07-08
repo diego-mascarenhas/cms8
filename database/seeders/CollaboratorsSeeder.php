@@ -18,7 +18,7 @@ class CollaboratorsSeeder extends Seeder
     public function run(): void
     {
         // Get the SQL file path
-        $sqlFilePath = '/Users/magoo/Downloads/inserts_colaboradoras.sql';
+        $sqlFilePath = base_path('../db/bbo.sql');
 
         if (!file_exists($sqlFilePath)) {
             Log::error("SQL file not found: {$sqlFilePath}");
