@@ -22,6 +22,8 @@ class CountrySeeder extends Seeder
             ['id' => 222, 'name' => 'El Salvador', 'code' => 'SV'],
             ['id' => 724, 'name' => 'España', 'code' => 'ES'],
             ['id' => 840, 'name' => 'Estados Unidos', 'code' => 'US'],
+            ['id' => 250, 'name' => 'Francia', 'code' => 'FR'],
+            ['id' => 276, 'name' => 'Alemania', 'code' => 'DE'],
             ['id' => 320, 'name' => 'Guatemala', 'code' => 'GT'],
             ['id' => 340, 'name' => 'Honduras', 'code' => 'HN'],
             ['id' => 484, 'name' => 'México', 'code' => 'MX'],

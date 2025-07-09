@@ -2,297 +2,242 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use App\Models\Contact;
+use App\Models\Enterprise;
+use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 
-class bboSeeder extends Seeder
+class BboSeeder extends Seeder
 {
+    private $teamId = 2; // BBO Team ID
+    
     public function run()
     {
-        // Get the first team available or create a default one
-        $team = Team::first();
-        if (! $team) {
-            Log::warning('No team found for bboSeeder. Skipping seeder.');
-
-            return;
-        }
-
-        // Get the first user for creator_id and responsible_id
-        $user = User::first();
-        if (! $user) {
-            Log::warning('No user found for bboSeeder. Skipping seeder.');
-
-            return;
-        }
-
-        // Create BBO team users with specific roles
+        $this->command->info('🚀 Setting up BBO Client Data...');
+        
+        // 1. Create BBO Team
+        $team = $this->createBboTeam();
+        
+        // 2. Create BBO users
         $this->createBboUsers($team);
-
-        // Create contacts
-        $this->createContacts($team, $user);
-
-        Log::info('bboSeeder completed successfully');
+        
+        // 3. Create BBO enterprise
+        $this->createBboEnterprise($team);
+        
+        // 4. Create BBO contacts
+        $this->createBboContacts($team);
+        
+        // 5. Create BBO categories
+        $this->createBboCategories();
+        
+        $this->command->info('✅ BBO Client setup completed successfully');
     }
-
+    
     /**
-     * Create BBO team users with their specific roles
+     * Create BBO Team
+     */
+    private function createBboTeam()
+    {
+        $bboOwner = User::where('email', 'victor@machbel.com')->first();
+        
+        if (!$bboOwner) {
+            $this->command->error('BBO owner user not found. Please run UserSeeder first.');
+            return null;
+        }
+        
+        $team = Team::updateOrCreate(
+            ['name' => "BBO's Team"],
+            [
+                'user_id' => $bboOwner->id,
+                'name' => "BBO's Team",
+                'personal_team' => false,
+            ]
+        );
+        
+        // Ensure the user is in the team
+        if (!$team->users()->where('user_id', $bboOwner->id)->exists()) {
+            $team->users()->attach($bboOwner->id, ['role' => 'admin']);
+        }
+        
+        $this->command->info("✅ Created BBO Team (ID: {$team->id})");
+        
+        return $team;
+    }
+    
+    /**
+     * Create BBO users
      */
     private function createBboUsers($team)
     {
+        $this->command->info('👥 Creating BBO users...');
+        
         $bboUsers = [
             [
-                'name' => 'Begoña Ballester-Olmos',
-                'email' => 'bego@bbosubtitulado.com',
-                'role' => 'admin',
+                'name' => 'Begoña Martínez',
+                'email' => 'begona@bbosubtitulado.com',
+                'phone' => 611234567,
+                'role' => 2, // Admin role
             ],
             [
-                'name' => 'Claudia Caballero',
+                'name' => 'Claudia López',
                 'email' => 'claudia@bbosubtitulado.com',
-                'role' => 'admin',
+                'phone' => 622345678,
+                'role' => 2, // Admin role
             ],
             [
-                'name' => 'Rocío Broseta',
+                'name' => 'Rocío García',
                 'email' => 'rocio@bbosubtitulado.com',
-                'role' => 'admin',
+                'phone' => 633456789,
+                'role' => 2, // Admin role
             ],
             [
-                'name' => 'Marta Navas',
-                'email' => 'marta@bbosubtitulado.com',
-                'role' => 'admin',
-            ],
-            [
-                'name' => 'Tom Jackson',
-                'email' => 'tom@bbosubtitulado.com',
-                'role' => 'admin',
-            ],
-            [
-                'name' => 'Jesús Buendía',
-                'email' => 'jesus@bbosubtitulado.com',
-                'role' => 'admin',
-            ],
-            [
-                'name' => 'Vendors',
-                'email' => 'vendors@bbosubtitulado.com',
-                'role' => 'admin',
-            ],
-            [
-                'name' => 'Amy Martínez',
-                'email' => 'amy@bbosubtitulado.com',
-                'role' => 'admin',
+                'name' => 'Ana Fernández',
+                'email' => 'ana@bbosubtitulado.com',
+                'phone' => 644567890,
+                'role' => 2, // Admin role
             ],
         ];
-
+        
         foreach ($bboUsers as $userData) {
-            try {
-                // Check if user already exists
-                $existingUser = User::where('email', $userData['email'])->first();
-                if ($existingUser) {
-                    Log::info("User already exists: {$userData['email']}");
-
-                    // Make sure user is in the team
-                    if (! $existingUser->teams()->where('team_id', $team->id)->exists()) {
-                        $existingUser->teams()->attach($team->id);
-                        Log::info("Added existing user to team: {$userData['email']}");
-                    }
-
-                    // Assign role if not already assigned
-                    if (! $existingUser->hasRole($userData['role'])) {
-                        $existingUser->assignRole($userData['role']);
-                        Log::info("Assigned role '{$userData['role']}' to existing user: {$userData['email']}");
-                    }
-
-                    continue;
-                }
-
-                // Create new user
-                $user = User::create([
+            $user = User::updateOrCreate(
+                ['email' => $userData['email']],
+                [
                     'name' => $userData['name'],
                     'email' => $userData['email'],
-                    'password' => Hash::make('bbounicornio123'), // BBO admin password
+                    'phone' => $userData['phone'],
+                    'password' => Hash::make('BBO2024!'),
+                    'email_verified_at' => now(),
                     'current_team_id' => $team->id,
-                    'email_verified_at' => now(), // Mark as verified
-                ]);
-
-                // Add user to team
+                ]
+            );
+            
+            $user->assignRole($userData['role']);
+            
+            // Add to team if not already there
+            if (!$user->teams()->where('team_id', $team->id)->exists()) {
                 $user->teams()->attach($team->id);
-
-                // Assign role
-                $user->assignRole($userData['role']);
-
-                Log::info("Created user: {$userData['name']} ({$userData['email']}) with role: {$userData['role']}");
-
-            } catch (\Exception $e) {
-                Log::error("Error creating user {$userData['email']}: ".$e->getMessage());
             }
+            
+            $this->command->info("✅ Created/Updated BBO user: {$userData['name']}");
         }
     }
-
+    
     /**
-     * Create contacts from contact data
+     * Create BBO enterprise
      */
-    private function createContacts($team, $user)
+    private function createBboEnterprise($team)
     {
-        $contactsData = [
+        $this->command->info('🏢 Creating BBO enterprise...');
+        
+        $enterprise = Enterprise::updateOrCreate(
+            ['name' => 'BBO Translation Agency', 'team_id' => $team->id],
             [
-                'name' => 'Amy Sue Bennett',
-                'email' => 'amysuebennett@gmail.com',
-                'nif_cif_vat' => 'X6518552F',
-                'address' => 'Carrer Gregal 17',
-                'postal_code' => '8757',
-                'city' => 'Corbera De Llobregat',
-                'country' => 'Reino Unido',
-                'phone' => '695583557',
-                'language_combinations' => [
-                    ['es-ES', 'en-US'],
-                    ['ca-ES', 'en-US'],
-                    ['fr-FR', 'en-US'],
-                ],
-                'valoration' => 'Top',
-                'software' => 'EZTitles',
-                'previous_collaborations' => ['PPEs', 'Películas'],
-                'rates' => [
-                    ['Traducción + subtitulado sin guion', '3,5€'],
-                    ['Traducción + subtitulado con guion', '3€'],
-                    ['Traducción general', '0,06€'],
-                    ['Traducción general con urgencia', '0,08 €/palabra'],
-                ],
-            ],
-            // Add more contacts here...
-            [
-                'name' => 'John Smith',
-                'email' => 'johnsmith@example.com',
-                'nif_cif_vat' => '12345678A',
-                'address' => 'Calle Mayor 123',
+                'name' => 'BBO Translation Agency',
+                'team_id' => $team->id,
+                'type_id' => 1, // Client type
+                'status_id' => 1, // Active status
+                'creator_id' => 1,
+                'email' => 'info@bbosubtitulado.com',
+                'phone' => '912345678',
+                'website' => 'https://bbo.com',
+                'address' => 'Calle Principal 123',
+                'locality' => 'Madrid',
                 'postal_code' => '28001',
-                'city' => 'Madrid',
                 'country' => 'España',
-                'phone' => '612345678',
-                'language_combinations' => [
-                    ['en-US', 'es-ES'],
-                    ['en-US', 'fr-FR'],
-                ],
-                'valoration' => 'Premium',
-                'software' => 'Trados Studio',
-                'previous_collaborations' => ['Documentales', 'Series'],
-                'rates' => [
-                    ['Traducción técnica', '0,12€'],
-                    ['Revisión', '0,04€'],
-                    ['Localización', '0,15€'],
-                ],
+            ]
+        );
+        
+        $this->command->info("✅ Created BBO enterprise (ID: {$enterprise->id})");
+    }
+    
+    /**
+     * Create BBO contacts
+     */
+    private function createBboContacts($team)
+    {
+        $this->command->info('📞 Creating BBO contacts...');
+        
+        $bboContacts = [
+            [
+                'name' => 'Begoña Martínez',
+                'email' => 'begona@bbosubtitulado.com',
+                'phone' => 611234567,
+                'profile' => 'Senior project manager with 10+ years experience',
+                'creator_id' => 1,
+                'status_id' => 5, // Active status
             ],
             [
-                'name' => 'Maria García',
-                'email' => 'maria.garcia@correo.es',
-                'nif_cif_vat' => '87654321B',
-                'address' => 'Passeig de Gràcia 45',
-                'postal_code' => '08007',
-                'city' => 'Barcelona',
-                'country' => 'España',
-                'phone' => '934567890',
-                'language_combinations' => [
-                    ['es-ES', 'ca-ES'],
-                    ['ca-ES', 'fr-FR'],
-                    ['es-ES', 'en-US'],
-                ],
-                'valoration' => 'Estándar',
-                'software' => 'Subtitle Workshop',
-                'previous_collaborations' => ['Corporativos', 'Educativos'],
-                'rates' => [
-                    ['Subtitulado', '2,8€'],
-                    ['Transcripción', '1,2€'],
-                    ['Sincronización', '1,8€'],
-                ],
+                'name' => 'Claudia López',
+                'email' => 'claudia@bbosubtitulado.com',
+                'phone' => 622345678,
+                'profile' => 'Quality assurance specialist',
+                'creator_id' => 1,
+                'status_id' => 5,
             ],
         ];
-
-        foreach ($contactsData as $contactData) {
-            try {
-                // Extract specific fields
-                $name = $contactData['name'] ?? null;
-                $email = $contactData['email'] ?? null;
-                $phone = $contactData['phone'] ?? null;
-
-                // Skip if essential data is missing
-                if (empty($name) || empty($email)) {
-                    Log::warning('Skipping contact with missing essential data: '.json_encode($contactData));
-
-                    continue;
-                }
-
-                // Check if contact already exists
-                $existingContact = Contact::where('email', $email)
-                    ->where('team_id', $team->id)
-                    ->first();
-
-                if ($existingContact) {
-                    Log::info("Contact already exists: {$email}");
-
-                    continue;
-                }
-
-                // Prepare extras section with specific mappings
-                $extras = [];
-
-                // Map specific fields to their target names
-                if (isset($contactData['language_combinations'])) {
-                    $extras['contact_language_variants'] = $contactData['language_combinations'];
-                }
-
-                if (isset($contactData['valoration'])) {
-                    $extras['contact_valorations'] = $contactData['valoration'];
-                }
-
-                if (isset($contactData['software'])) {
-                    $extras['software'] = $contactData['software'];
-                }
-
-                if (isset($contactData['previous_collaborations'])) {
-                    $extras['contact_portfolios'] = $contactData['previous_collaborations'];
-                }
-
-                if (isset($contactData['rates'])) {
-                    $extras['contact_fare'] = $contactData['rates'];
-                }
-
-                // Prepare general data field (everything except mapped fields)
-                $generalData = $contactData;
-                unset($generalData['name']);
-                unset($generalData['email']);
-                unset($generalData['phone']);
-                unset($generalData['language_combinations']);
-                unset($generalData['valoration']);
-                unset($generalData['software']);
-                unset($generalData['previous_collaborations']);
-                unset($generalData['rates']);
-
-                // Create final data structure
-                $dataField = [
-                    'extras' => $extras,
-                    'general' => $generalData,
-                ];
-
-                // Create the contact
-                $contact = Contact::create([
-                    'team_id' => $team->id,
-                    'name' => $name,
-                    'email' => $email,
-                    'phone' => $phone,
-                    'status_id' => 2, // Estado de contacto = 2
-                    'creator_id' => $user->id,
-                    'responsible_id' => $user->id,
-                    'data' => $dataField, // Store structured data as JSON
-                ]);
-
-                Log::info("Created contact: {$name} ({$email})");
-
-            } catch (\Exception $e) {
-                Log::error('Error creating contact: '.$e->getMessage());
-                Log::error('Contact data: '.json_encode($contactData));
+        
+        foreach ($bboContacts as $contactData) {
+            $contact = Contact::updateOrCreate(
+                ['email' => $contactData['email'], 'team_id' => $team->id],
+                array_merge($contactData, ['team_id' => $team->id])
+            );
+            
+            // Relate contact to BBO enterprise
+            $enterprise = Enterprise::where('name', 'BBO Translation Agency')->where('team_id', $team->id)->first();
+            if ($enterprise && !$contact->enterprises()->where('enterprise_id', $enterprise->id)->exists()) {
             }
+            
+            $this->command->info("✅ Created/Updated BBO contact: {$contactData['name']}");
+        }
+    }
+    
+    /**
+     * Create BBO categories
+     */
+    private function createBboCategories()
+    {
+        $this->command->info('📂 Creating BBO categories...');
+        
+        // Get the projects module
+        $projectsModule = Module::where('key', 'projects')->first();
+        
+        if (!$projectsModule) {
+            $this->command->warn('Projects module not found, skipping category creation');
+            return;
+        }
+        
+        $bboCategories = [
+            [
+                'name' => 'BBO - Legal Translation',
+                'description' => 'Legal translation projects for BBO',
+                'module_id' => $projectsModule->id,
+                'team_id' => $this->teamId,
+                'status' => 1,
+            ],
+            [
+                'name' => 'BBO - Technical Translation',
+                'description' => 'Technical translation projects for BBO',
+                'module_id' => $projectsModule->id,
+                'team_id' => $this->teamId,
+                'status' => 1,
+            ],
+        ];
+        
+        foreach ($bboCategories as $categoryData) {
+            $category = Category::updateOrCreate(
+                [
+                    'name' => $categoryData['name'],
+                    'module_id' => $categoryData['module_id'],
+                    'team_id' => $categoryData['team_id'],
+                ],
+                $categoryData
+            );
+            
+            $this->command->info("✅ Created/Updated BBO category: {$categoryData['name']}");
         }
     }
 }

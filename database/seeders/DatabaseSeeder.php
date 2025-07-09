@@ -53,7 +53,11 @@ class DatabaseSeeder extends Seeder
             StylebooksSeeder::class,
             NotificationTypesSeeder::class,
             NotificationSeeder::class,
-            CollaboratorsSeeder::class,
+            
+            // Client-specific seeders
+            CollaboratorsSeeder::class,  // Demo collaborators for Team 1
+            BboSeeder::class,           // BBO client data for Team 2
+            RevisionAlphaSeeder::class, // Revision Alpha client data
         ]);
 
         // Clear activity log entries generated during seeding

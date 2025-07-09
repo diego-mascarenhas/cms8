@@ -12,33 +12,6 @@ class EnterpriseSeeder extends Seeder
         // Crear empresas básicas del sistema (necesarias para funcionamiento básico)
         $basicEnterprises = [
             [
-                'team_id' => 2,
-                'name' => 'Revision Alpha',
-                'type_id' => 1,
-                'referred_by' => null,
-                'address' => 'González Besada 39',
-                'postal_code' => '33007',
-                'locality' => 'Oviedo',
-                'province' => 'Asturias',
-                'country' => 'es',
-                'phone' => '+34 772 372 858',
-                'whatsapp' => '+34 772 372 858',
-                'email' => 'info@revisionalpha.es',
-                'website' => 'https://revisionalpha.es',
-                'data' => json_encode([
-                    'description' => 'Agencia de marketing digital especializada en SEO, SEM y desarrollo web',
-                    'services' => [
-                        'SEO',
-                        'SEM',
-                        'Desarrollo web',
-                        'Diseño web',
-                        'Marketing de contenidos',
-                        'Analítica web',
-                    ],
-                ]),
-                'status_id' => 2,
-            ],
-            [
                 'team_id' => 1,
                 'name' => 'Brandty',
                 'type_id' => 1,
@@ -99,7 +72,7 @@ class EnterpriseSeeder extends Seeder
         $this->command->info('  ✓ Creating 5 marketing/advertising enterprises...');
         Enterprise::factory()->marketing()->count(5)->create();
 
-        $this->command->info('EnterpriseSeeder completed! Created 28 enterprises total (3 basic + 25 from Factory).');
+        $this->command->info('EnterpriseSeeder completed! Created 27 enterprises total (2 basic + 25 from Factory).');
 
         // Crear proyectos usando el ProjectFactory
         $this->command->info('Creating projects using ProjectFactory...');
