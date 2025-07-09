@@ -46,6 +46,14 @@ class DatabaseSeeder extends Seeder
             UnitsSeeder::class,
             FareUnitSeeder::class,
             ContactSkillsSeeder::class,
+            
+            // Client-specific seeders (must run first to create teams)
+            RevisionAlphaSeeder::class, // Revision Alpha client data for Team 2
+            HumanoSeeder::class,        // Humano client data for Team 3
+            BboSeeder::class,           // BBO client data for Team 4
+            CollaboratorsSeeder::class, // Demo collaborators for Team 1
+            
+            // Module and category seeders (run after teams are created)
             ModuleSeeder::class,
             CategorySeeder::class,
             ModuleCategorySeeder::class,
@@ -53,11 +61,6 @@ class DatabaseSeeder extends Seeder
             StylebooksSeeder::class,
             NotificationTypesSeeder::class,
             NotificationSeeder::class,
-            
-            // Client-specific seeders
-            CollaboratorsSeeder::class,  // Demo collaborators for Team 1
-            BboSeeder::class,           // BBO client data for Team 2
-            RevisionAlphaSeeder::class, // Revision Alpha client data
         ]);
 
         // Clear activity log entries generated during seeding

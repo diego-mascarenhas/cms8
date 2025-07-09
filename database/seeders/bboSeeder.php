@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Hash;
 
 class BboSeeder extends Seeder
 {
-    private $teamId = 2; // BBO Team ID
+    private $teamId = 4; // BBO Team ID
     
     public function run()
     {
@@ -109,7 +109,7 @@ class BboSeeder extends Seeder
                     'name' => $userData['name'],
                     'email' => $userData['email'],
                     'phone' => $userData['phone'],
-                    'password' => Hash::make('BBO2024!'),
+                    'password' => Hash::make('bbounicornio123'),
                     'email_verified_at' => now(),
                     'current_team_id' => $team->id,
                 ]

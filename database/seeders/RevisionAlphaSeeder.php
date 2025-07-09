@@ -153,26 +153,29 @@ class RevisionAlphaSeeder extends Seeder
         $revisionContacts = [
             [
                 'name' => 'Diego Mascarenhas',
-                'email' => 'diego@revisionalpha.com',
-                'phone' => 34722372858,
-                'profile' => 'CEO and Founder',
-                'creator_id' => 1,
+                'email' => 'diego.mascarenhas@revisionalpha.com',
+                'phone' => 618123456,
+                'profile' => 'Software Artisan & Freaky ;-)',
+                'creator_id' => 2,
+                'responsible_id' => 2,
                 'status_id' => 5,
             ],
             [
-                'name' => 'Lucas Luna',
-                'email' => 'lucas@revisionalpha.com',
-                'phone' => 612345678,
-                'profile' => 'CTO and Technical Lead',
+                'name' => 'Carla de Loureiro',
+                'email' => 'carla.loureiro@revisionalpha.com',
+                'phone' => 618234567,
+                'profile' => 'Senior Developer',
                 'creator_id' => 1,
+                'responsible_id' => 2,
                 'status_id' => 5,
             ],
             [
-                'name' => 'Jesica Lorente',
-                'email' => 'jesica@revisionalpha.com',
-                'phone' => 623456789,
-                'profile' => 'COO and Operations Manager',
+                'name' => 'Fernando Barneto',
+                'email' => 'fernando@revisionalpha.com',
+                'phone' => 618345678,
+                'profile' => 'Technical Support Specialist',
                 'creator_id' => 1,
+                'responsible_id' => 2,
                 'status_id' => 5,
             ],
             [
@@ -181,6 +184,25 @@ class RevisionAlphaSeeder extends Seeder
                 'phone' => 618456789,
                 'profile' => 'Project Manager',
                 'creator_id' => 1,
+                'responsible_id' => 2,
+                'status_id' => 5,
+            ],
+            [
+                'name' => 'Lucas Luna',
+                'email' => 'lucas@revisionalpha.com',
+                'phone' => 612345678,
+                'profile' => 'CTO and Technical Lead',
+                'creator_id' => 1,
+                'responsible_id' => 2,
+                'status_id' => 5,
+            ],
+            [
+                'name' => 'Jesica Lorente',
+                'email' => 'jesica@revisionalpha.com',
+                'phone' => 623456789,
+                'profile' => 'COO and Operations Manager',
+                'creator_id' => 1,
+                'responsible_id' => 2,
                 'status_id' => 5,
             ],
         ];
@@ -194,6 +216,7 @@ class RevisionAlphaSeeder extends Seeder
             // Relate contact to revision alpha enterprise
             $enterprise = Enterprise::where('name', 'Revision Alpha')->where('team_id', $team->id)->first();
             if ($enterprise && !$contact->enterprises()->where('enterprise_id', $enterprise->id)->exists()) {
+                $contact->enterprises()->attach($enterprise->id);
             }
             
             $this->command->info("✅ Created/Updated contact: {$contactData['name']}");
