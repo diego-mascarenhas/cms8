@@ -17,44 +17,44 @@ use Illuminate\Support\Str;
 class BboSeeder extends Seeder
 {
     private $teamId = 4; // BBO Team ID
-    
+
     public function run()
     {
         $this->command->info('🚀 Setting up BBO Client Data...');
-        
+
         // 1. Create BBO Team
         $team = $this->createBboTeam();
-        
+
         // 2. Create BBO users
         $this->createBboUsers($team);
-        
+
         // 3. Create BBO enterprise
         $this->createBboEnterprise($team);
-        
+
         // 4. Create BBO contacts
         $this->createBboContacts($team);
-        
+
         // 5. Create BBO categories
         $this->createBboCategories();
-        
+
         // 6. Import BBO collaborators from SQL
         $this->importBboCollaborators($team);
-        
+
         $this->command->info('✅ BBO Client setup completed successfully');
     }
-    
+
     /**
      * Create BBO Team
      */
     private function createBboTeam()
     {
         $bboOwner = User::where('email', 'victor@machbel.com')->first();
-        
+
         if (!$bboOwner) {
             $this->command->error('BBO owner user not found. Please run UserSeeder first.');
             return null;
         }
-        
+
         $team = Team::updateOrCreate(
             ['name' => "BBO's Team"],
             [
@@ -63,24 +63,24 @@ class BboSeeder extends Seeder
                 'personal_team' => false,
             ]
         );
-        
+
         // Ensure the user is in the team
         if (!$team->users()->where('user_id', $bboOwner->id)->exists()) {
             $team->users()->attach($bboOwner->id, ['role' => 'admin']);
         }
-        
+
         $this->command->info("✅ Created BBO Team (ID: {$team->id})");
-        
+
         return $team;
     }
-    
+
     /**
      * Create BBO users
      */
     private function createBboUsers($team)
     {
         $this->command->info('👥 Creating BBO users...');
-        
+
         $bboUsers = [
             [
                 'name' => 'Begoña Martínez',
@@ -107,7 +107,7 @@ class BboSeeder extends Seeder
                 'role' => 2, // Admin role
             ],
         ];
-        
+
         foreach ($bboUsers as $userData) {
             $user = User::updateOrCreate(
                 ['email' => $userData['email']],
@@ -120,25 +120,25 @@ class BboSeeder extends Seeder
                     'current_team_id' => $team->id,
                 ]
             );
-            
+
             $user->assignRole($userData['role']);
-            
+
             // Add to team if not already there
             if (!$user->teams()->where('team_id', $team->id)->exists()) {
                 $user->teams()->attach($team->id);
             }
-            
+
             $this->command->info("✅ Created/Updated BBO user: {$userData['name']}");
         }
     }
-    
+
     /**
      * Create BBO enterprise
      */
     private function createBboEnterprise($team)
     {
         $this->command->info('🏢 Creating BBO enterprise...');
-        
+
         $enterprise = Enterprise::updateOrCreate(
             ['name' => 'BBO Translation Agency', 'team_id' => $team->id],
             [
@@ -156,35 +156,35 @@ class BboSeeder extends Seeder
                 'country' => 'España',
             ]
         );
-        
+
         $this->command->info("✅ Created BBO enterprise (ID: {$enterprise->id})");
     }
-    
+
     /**
      * Create BBO contacts
      */
     private function createBboContacts($team)
     {
         $this->command->info('📞 Creating BBO contacts...');
-        
-        
+
+
     }
-    
+
     /**
      * Create BBO categories
      */
     private function createBboCategories()
     {
         $this->command->info('📂 Creating BBO categories...');
-        
+
         // Get the projects module
         $projectsModule = Module::where('key', 'projects')->first();
-        
+
         if (!$projectsModule) {
             $this->command->warn('Projects module not found, skipping category creation');
             return;
         }
-        
+
         $bboCategories = [
             [
                 'name' => 'BBO - Legal Translation',
@@ -201,7 +201,7 @@ class BboSeeder extends Seeder
                 'status' => 1,
             ],
         ];
-        
+
         foreach ($bboCategories as $categoryData) {
             $category = Category::updateOrCreate(
                 [
@@ -211,10 +211,11 @@ class BboSeeder extends Seeder
                 ],
                 $categoryData
             );
-            
+
             $this->command->info("✅ Created/Updated BBO category: {$categoryData['name']}");
         }
     }
+
 
     /**
      * Import BBO collaborators from SQL file
@@ -222,7 +223,7 @@ class BboSeeder extends Seeder
     private function importBboCollaborators($team)
     {
         $this->command->info('📄 Importing BBO collaborators from SQL...');
-        
+
         // Get the SQL file path
         $sqlFilePath = base_path('../db/bbo.sql');
 
@@ -598,7 +599,7 @@ class BboSeeder extends Seeder
         $processedCount = 0;
 
         foreach ($contacts as $contact) {
-            $data = is_object($contact->data) ? (array)$contact->data : $contact->data;
+            $data = json_decode(json_encode($contact->data), true);
 
             if (isset($data['combinaciones']) && !empty($data['combinaciones'])) {
                 try {
@@ -719,15 +720,19 @@ class BboSeeder extends Seeder
     private function processArrayCombination(Contact $contact, array $combination): void
     {
         if (isset($combination['source']) && isset($combination['target'])) {
+            // Formato con claves
             $sourceLanguage = $this->mapLanguageNameToCode($combination['source']);
             $targetLanguage = $this->mapLanguageNameToCode($combination['target']);
-
+            $proficiencyLevel = $combination['level'] ?? 4;
+            $isCertified = $combination['certified'] ?? true;
+            $notes = $combination['notes'] ?? null;
+            $this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage, $proficiencyLevel, $isCertified, $notes);
+        } elseif (count($combination) === 2) {
+            // Formato array simple
+            $sourceLanguage = $this->mapLanguageNameToCode($combination[0]);
+            $targetLanguage = $this->mapLanguageNameToCode($combination[1]);
             if ($sourceLanguage && $targetLanguage && $sourceLanguage !== $targetLanguage) {
-                $proficiencyLevel = $combination['level'] ?? 4;
-                $isCertified = $combination['certified'] ?? true;
-                $notes = $combination['notes'] ?? null;
-
-                $this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage, $proficiencyLevel, $isCertified, $notes);
+                $this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage);
             }
         }
     }
@@ -831,6 +836,14 @@ class BboSeeder extends Seeder
             'catalán españa' => 'ca-ES',
             'catalán andorra' => 'ca-AD',
 
+            // Galician variants
+            'gallego' => 'gl-ES',
+            'galician' => 'gl-ES',
+            'galego' => 'gl-ES',
+            'GL' => 'gl-ES',
+            'gl' => 'gl-ES',
+            'gl-ES' => 'gl-ES',
+
             // Language codes used in the SQL data
             'es-ES' => 'es-ES',
             'es-MX' => 'es-MX',
@@ -856,6 +869,7 @@ class BboSeeder extends Seeder
             'pt-BR' => 'pt-BR',
             'ca-ES' => 'ca-ES',
             'ca-AD' => 'ca-AD',
+            'gl-ES' => 'gl-ES',
         ];
 
         $normalizedName = strtolower(trim($languageName));

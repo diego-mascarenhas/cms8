@@ -76,6 +76,7 @@ class LanguageSeeder extends Seeder
             ['code' => 'pt-PT', 'name' => 'Português-Portugal', 'base_language' => 'pt', 'country_code' => 'PT'],
             ['code' => 'pt-BR', 'name' => 'Português-Brasil', 'base_language' => 'pt', 'country_code' => 'BR'],
             ['code' => 'ca-ES', 'name' => 'Català-España', 'base_language' => 'ca', 'country_code' => 'ES'],
+            ['code' => 'gl-ES', 'name' => 'Galego-España', 'base_language' => 'gl', 'country_code' => 'ES'],
         ];
 
         foreach ($variants as $variant) {
