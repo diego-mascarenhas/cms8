@@ -83,27 +83,43 @@ class BboSeeder extends Seeder
 
         $bboUsers = [
             [
-                'name' => 'Begoña Martínez',
+                'name' => 'Begoña Ballester Olmos',
                 'email' => 'bego@bbosubtitulado.com',
-                'phone' => 611234567,
                 'role' => 2, // Admin role
             ],
             [
-                'name' => 'Claudia López',
+                'name' => 'Claudia Caballero',
                 'email' => 'claudia@bbosubtitulado.com',
-                'phone' => 622345678,
-                'role' => 2, // Admin role
+                'role' => 4, // PM role
             ],
             [
-                'name' => 'Rocío García',
+                'name' => 'Rocío Broseta',
                 'email' => 'rocio@bbosubtitulado.com',
-                'phone' => 633456789,
-                'role' => 2, // Admin role
+                'role' => 4, // PM role
             ],
             [
-                'name' => 'Ana Fernández',
-                'email' => 'ana@bbosubtitulado.com',
-                'phone' => 644567890,
+                'name' => 'Marta Navas',
+                'email' => 'marta@bbosubtitulado.com',
+                'role' => 4, // PM role
+            ],
+            [
+                'name' => 'Tom Jackson',
+                'email' => 'tom@bbosubtitulado.com',
+                'role' => 4, // PM role
+            ],
+            [
+                'name' => 'Jesús Buendía',
+                'email' => 'jesus@bbosubtitulado.com',
+                'role' => 4, // PM role
+            ],
+            [
+                'name' => 'Vendors',
+                'email' => 'vendors@bbosubtitulado.com',
+                'role' => 5, // Vendor Manager role
+            ],
+            [
+                'name' => 'Amy Martínez',
+                'email' => 'amy@bbosubtitulado.com',
                 'role' => 2, // Admin role
             ],
         ];
@@ -114,7 +130,6 @@ class BboSeeder extends Seeder
                 [
                     'name' => $userData['name'],
                     'email' => $userData['email'],
-                    'phone' => $userData['phone'],
                     'password' => Hash::make('bbounicornio123'),
                     'email_verified_at' => now(),
                     'current_team_id' => $team->id,
