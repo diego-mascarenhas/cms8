@@ -323,29 +323,35 @@ class BboSeeder extends Seeder
                 // Map country names to IDs that exist in the database
                 $countryCode = $this->mapCountryToCode($country);
 
-                // Create additional data array
+                // Clean the additional data array
                 $additionalData = [
                     'city' => $city,
-                    'postal_code' => $postalCode,
-                    'nif_cif' => $nifCif,
                     'address' => $address,
-                    'valoracion' => $valoracion,
+                    'nif_cif' => $nifCif,
+                    'fares' => !empty($tarifas) ? $this->parseJsonField($tarifas) : null,
+                    'services' => !empty($servicios) ? $this->parseJsonField($servicios) : null,
+                    'language_variants' => !empty($combinacion) ? $this->parseJsonField($combinacion) : null,
                     'original_country' => $country,
                     'imported_from_bbo' => true,
+                    'valoracion' => $valoracion,
+                    'postal_code' => $postalCode,
                 ];
 
-                // Add parsed JSON data if available
+                // Save additional data in the data field as JSON
                 if (!empty($tarifas) && $tarifas !== 'NULL') {
-                    $additionalData['tarifas'] = $this->parseJsonField($tarifas);
-                }
-                if (!empty($combinacion) && $combinacion !== 'NULL') {
-                    $additionalData['combinaciones'] = $this->parseJsonField($combinacion);
+                    $additionalData['fares'] = $this->parseJsonField($tarifas);
                 }
                 if (!empty($servicios) && $servicios !== 'NULL') {
-                    $additionalData['servicios'] = $this->parseJsonField($servicios);
+                    $additionalData['services'] = $this->parseJsonField($servicios);
+                }
+                if (!empty($combinacion) && $combinacion !== 'NULL') {
+                    // Process language combinations as before
+                    $this->processLanguageCombinations($contact, $combinacion);
+                    // Save the combinations in the additional data
+                    $additionalData['language_variants'] = $this->parseJsonField($combinacion);
                 }
                 if (!empty($programas) && $programas !== 'NULL') {
-                    $additionalData['programas'] = $this->parseJsonField($programas);
+                    $additionalData['softwares'] = $this->parseJsonField($programas);
                 }
 
                 // Create contact
@@ -365,7 +371,10 @@ class BboSeeder extends Seeder
 
                 // Process language combinations if available
                 if (!empty($combinacion) && $combinacion !== 'NULL') {
+                    // Process language combinations as before
                     $this->processLanguageCombinations($contact, $combinacion);
+                    // Save the combinations in the additional data
+                    $additionalData['language_variants'] = $this->parseJsonField($combinacion);
                 }
 
                 // Process rates and software
