@@ -20,7 +20,8 @@ class BboSeeder extends Seeder
 
     public function run()
     {
-        $this->command->info('🚀 Setting up BBO Client Data...');
+        $this->command->info('🚀 MODIFIED: Setting up BBO Client Data from JSON...');
+        $this->command->info('🔧 DEBUG: BboSeeder run() method started');
 
         // 1. Create BBO Team
         $team = $this->createBboTeam();
@@ -31,14 +32,38 @@ class BboSeeder extends Seeder
         // 3. Create BBO enterprise
         $this->createBboEnterprise($team);
 
-        // 4. Create BBO contacts
-        $this->createBboContacts($team);
-
-        // 5. Create BBO categories
+        // 4. Create BBO categories
         $this->createBboCategories();
 
-        // 6. Import BBO collaborators from SQL
-        $this->importBboCollaborators($team);
+        // 4.5. Create BBO fare types
+        $this->createBboFareTypes();
+
+        // 4.6. Create BBO fares
+        $this->createBboFares();
+
+        // 5. Import BBO collaborators from JSON
+        try {
+            $this->command->info('🔧 DEBUG: Starting step 5 - importBboCollaboratorsFromJson');
+            $this->importBboCollaboratorsFromJson($team);
+            $this->command->info('🔧 DEBUG: Completed step 5 successfully');
+        } catch (\Exception $e) {
+            $this->command->error("Error in step 5: " . $e->getMessage());
+            Log::error("BBO Seeder Step 5 Error: " . $e->getMessage());
+            $this->command->error("Stack trace: " . $e->getTraceAsString());
+        } catch (\Throwable $e) {
+            $this->command->error("Fatal error in step 5: " . $e->getMessage());
+            Log::error("BBO Seeder Step 5 Fatal Error: " . $e->getMessage());
+            $this->command->error("Stack trace: " . $e->getTraceAsString());
+        }
+
+        // 6. Create users for contacts without users
+        $this->command->info('🔧 DEBUG: About to execute step 6 - createUsersForContacts');
+        try {
+            $this->createUsersForContacts($team);
+        } catch (\Exception $e) {
+            $this->command->error("Error in step 6: " . $e->getMessage());
+            Log::error("BBO Seeder Step 6 Error: " . $e->getMessage());
+        }
 
         $this->command->info('✅ BBO Client setup completed successfully');
     }
@@ -176,16 +201,6 @@ class BboSeeder extends Seeder
     }
 
     /**
-     * Create BBO contacts
-     */
-    private function createBboContacts($team)
-    {
-        $this->command->info('📞 Creating BBO contacts...');
-
-
-    }
-
-    /**
      * Create BBO categories
      */
     private function createBboCategories()
@@ -231,39 +246,32 @@ class BboSeeder extends Seeder
         }
     }
 
-
     /**
-     * Import BBO collaborators from SQL file
+     * Import BBO collaborators from JSON file
      */
-    private function importBboCollaborators($team)
+    private function importBboCollaboratorsFromJson($team)
     {
-        $this->command->info('📄 Importing BBO collaborators from SQL...');
+        $this->command->info('📄 Importing BBO collaborators from JSON...');
 
-        // Get the SQL file path
-        $sqlFilePath = base_path('../db/bbo.sql');
+        // Get the JSON file path
+        $jsonFilePath = base_path('../db/bbo.json');
 
-        if (!file_exists($sqlFilePath)) {
-            Log::error("SQL file not found: {$sqlFilePath}");
-            $this->command->error("SQL file not found: {$sqlFilePath}");
+        if (!file_exists($jsonFilePath)) {
+            Log::error("JSON file not found: {$jsonFilePath}");
+            $this->command->error("JSON file not found: {$jsonFilePath}");
             return;
         }
 
-        $sqlContent = file_get_contents($sqlFilePath);
+        $jsonContent = file_get_contents($jsonFilePath);
+        $colaboradores = json_decode($jsonContent, true);
 
-        // Parse INSERT statements
-        preg_match_all(
-            '/INSERT INTO colaboradoras \([^)]+\) VALUES \(([^;]+)\);/',
-            $sqlContent,
-            $matches
-        );
-
-        if (empty($matches[1])) {
-            Log::error("No INSERT statements found in SQL file");
-            $this->command->error("No INSERT statements found in SQL file");
+        if (!is_array($colaboradores)) {
+            Log::error("Invalid JSON format in file: {$jsonFilePath}");
+            $this->command->error("Invalid JSON format in file: {$jsonFilePath}");
             return;
         }
 
-        $this->command->info("Found " . count($matches[1]) . " BBO collaborators to import");
+        $this->command->info("Found " . count($colaboradores) . " BBO collaborators to import");
 
         $teamId = $team->id;
         $defaultCountry = 724; // Spain
@@ -271,32 +279,24 @@ class BboSeeder extends Seeder
         $defaultStatusId = 1;
         $collaboratorRoleId = 3; // collaborator role ID
 
-        foreach ($matches[1] as $valueString) {
+        foreach ($colaboradores as $colaborador) {
             try {
-                // Parse values from SQL string
-                $values = $this->parseValues($valueString);
-
-                if (count($values) < 13) {
-                    Log::warning("Skipping incomplete record: " . substr($valueString, 0, 100));
-                    continue;
-                }
-
-                $name = $this->cleanValue($values[0]);
-                $email = $this->cleanValue($values[1]);
-                $phone = $this->cleanValue($values[2]);
-                $country = $this->cleanValue($values[3]);
-                $city = $this->cleanValue($values[4]);
-                $postalCode = $this->cleanValue($values[5]);
-                $nifCif = $this->cleanValue($values[6]);
-                $address = $this->cleanValue($values[7]);
-                $valoracion = $this->cleanValue($values[8]);
-                $tarifas = $this->cleanValue($values[9]);
-                $combinacion = $this->cleanValue($values[10]);
-                $servicios = $this->cleanValue($values[11]);
-                $programas = $this->cleanValue($values[12]);
+                $nombre = $colaborador['nombre'] ?? null;
+                $email = $colaborador['email'] ?? null;
+                $telefono = $colaborador['telefono'] ?? null;
+                $pais = $colaborador['pais'] ?? null;
+                $poblacion = $colaborador['poblacion'] ?? null;
+                $codigoPostal = $colaborador['codigo_postal'] ?? null;
+                $nifCif = $colaborador['nif_cif'] ?? null;
+                $domicilio = $colaborador['domicilio'] ?? null;
+                $valoracion = $colaborador['valoracion'] ?? null;
+                $fares = $colaborador['fares'] ?? [];
+                $languageVariants = $colaborador['language_variants'] ?? [];
+                $services = $colaborador['services'] ?? [];
+                $softwares = $colaborador['softwares'] ?? [];
 
                 // Skip if name is empty
-                if (empty($name)) {
+                if (empty($nombre)) {
                     Log::warning("Skipping record with empty name");
                     continue;
                 }
@@ -310,54 +310,38 @@ class BboSeeder extends Seeder
                 }
 
                 if ($existingContact) {
-                    $this->command->warn("Contact already exists: {$name} ({$email})");
+                    $this->command->warn("Contact already exists: {$nombre} ({$email})");
                     continue;
                 }
 
                 // Clean phone number (extract only digits)
-                $cleanPhone = !empty($phone) ? preg_replace('/[^0-9]/', '', $phone) : null;
+                $cleanPhone = !empty($telefono) ? preg_replace('/[^0-9]/', '', $telefono) : null;
                 if ($cleanPhone && strlen($cleanPhone) > 15) {
                     $cleanPhone = substr($cleanPhone, -15); // Keep last 15 digits
                 }
 
                 // Map country names to IDs that exist in the database
-                $countryCode = $this->mapCountryToCode($country);
+                $countryCode = $this->mapCountryToCode($pais);
 
-                // Clean the additional data array
+                // Prepare additional data
                 $additionalData = [
-                    'city' => $city,
-                    'address' => $address,
+                    'city' => $poblacion,
+                    'address' => $domicilio,
                     'nif_cif' => $nifCif,
-                    'fares' => !empty($tarifas) ? $this->parseJsonField($tarifas) : null,
-                    'services' => !empty($servicios) ? $this->parseJsonField($servicios) : null,
-                    'language_variants' => !empty($combinacion) ? $this->parseJsonField($combinacion) : null,
-                    'original_country' => $country,
+                    'fares' => $fares,
+                    'services' => $services,
+                    'softwares' => $softwares,
+                    'language_variants' => $languageVariants,
+                    'original_country' => $pais,
                     'imported_from_bbo' => true,
                     'valoracion' => $valoracion,
-                    'postal_code' => $postalCode,
+                    'postal_code' => $codigoPostal,
                 ];
-
-                // Save additional data in the data field as JSON
-                if (!empty($tarifas) && $tarifas !== 'NULL') {
-                    $additionalData['fares'] = $this->parseJsonField($tarifas);
-                }
-                if (!empty($servicios) && $servicios !== 'NULL') {
-                    $additionalData['services'] = $this->parseJsonField($servicios);
-                }
-                if (!empty($combinacion) && $combinacion !== 'NULL') {
-                    // Process language combinations as before
-                    $this->processLanguageCombinations($contact, $combinacion);
-                    // Save the combinations in the additional data
-                    $additionalData['language_variants'] = $this->parseJsonField($combinacion);
-                }
-                if (!empty($programas) && $programas !== 'NULL') {
-                    $additionalData['softwares'] = $this->parseJsonField($programas);
-                }
 
                 // Create contact
                 $contact = Contact::create([
                     'team_id' => $teamId,
-                    'name' => $name,
+                    'name' => $nombre,
                     'email' => $email ?: null,
                     'phone' => $cleanPhone ? (int)$cleanPhone : null,
                     'country' => $countryCode,
@@ -369,69 +353,100 @@ class BboSeeder extends Seeder
                     'profile' => 'BBO Collaborator imported from legacy system',
                 ]);
 
-                // Process language combinations if available
-                if (!empty($combinacion) && $combinacion !== 'NULL') {
-                    // Process language combinations as before
-                    $this->processLanguageCombinations($contact, $combinacion);
-                    // Save the combinations in the additional data
-                    $additionalData['language_variants'] = $this->parseJsonField($combinacion);
+                // Process language combinations
+                if (!empty($languageVariants) && is_array($languageVariants)) {
+                    foreach ($languageVariants as $combination) {
+                        if (is_array($combination) && count($combination) === 2) {
+                            $sourceLanguage = $this->mapLanguageNameToCode($combination[0]);
+                            $targetLanguage = $this->mapLanguageNameToCode($combination[1]);
+
+                            if ($sourceLanguage && $targetLanguage && $sourceLanguage !== $targetLanguage) {
+                                $this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage);
+                            }
+                        }
+                    }
                 }
 
-                // Process rates and software
+                // Process fares and software
                 $tarifasNoImportadas = [];
                 $softwaresNoImportados = [];
 
-                // Tarifas
-                if (!empty($tarifas) && $tarifas !== 'NULL') {
-                    $tarifasArray = $this->parseJsonField($tarifas);
-                    if (is_array($tarifasArray)) {
-                        foreach ($tarifasArray as $tarifa) {
-                            $tarifaName = is_array($tarifa) ? ($tarifa[0] ?? null) : $tarifa;
-                            if ($tarifaName) {
-                                $fare = \App\Models\Fare::where('name', $tarifaName)
-                                    ->where('team_id', $teamId)
-                                    ->first();
-                                if ($fare) {
-                                    $contact->fares()->syncWithoutDetaching([
-                                        $fare->id => []
-                                    ]);
-                                } else {
-                                    $tarifasNoImportadas[] = $tarifaName;
-                                }
+                // Fares
+                if (!empty($fares) && is_array($fares)) {
+                    foreach ($fares as $fare) {
+                        $fareName = is_array($fare) ? ($fare[0] ?? null) : $fare;
+                        if ($fareName) {
+                            $fareModel = \App\Models\Fare::where('name', $fareName)
+                                ->where('team_id', $teamId)
+                                ->first();
+                            if ($fareModel) {
+                                $contact->fares()->syncWithoutDetaching([
+                                    $fareModel->id => []
+                                ]);
+                            } else {
+                                $tarifasNoImportadas[] = $fareName;
                             }
                         }
                     }
                 }
 
-                // Programas (Software)
-                if (!empty($programas) && $programas !== 'NULL') {
-                    $programasArray = $this->parseJsonField($programas);
-                    if (is_array($programasArray)) {
-                        foreach ($programasArray as $programa) {
-                            $programaName = is_array($programa) ? ($programa[0] ?? null) : $programa;
-                            if ($programaName) {
-                                $software = \App\Models\Software::where('name', $programaName)
-                                    ->where('team_id', $teamId)
-                                    ->first();
-                                if ($software) {
-                                    $contact->softwares()->syncWithoutDetaching([$software->id]);
-                                } else {
-                                    $softwaresNoImportados[] = $programaName;
-                                }
+                // Software
+                if (!empty($softwares) && is_array($softwares)) {
+                    foreach ($softwares as $software) {
+                        $softwareName = is_array($software) ? ($software[0] ?? null) : $software;
+                        if ($softwareName) {
+                            $softwareModel = \App\Models\Software::where('name', $softwareName)
+                                ->where('team_id', $teamId)
+                                ->first();
+                            if ($softwareModel) {
+                                $contact->softwares()->syncWithoutDetaching([$softwareModel->id]);
+                            } else {
+                                $softwaresNoImportados[] = $softwareName;
                             }
                         }
                     }
                 }
 
-                // Save unimported data
+                // Clean successfully imported sections from data field
                 $updateData = is_object($contact->data) ? (array)$contact->data : ($contact->data ?? []);
-                if (!empty($tarifasNoImportadas)) {
+                $needsUpdate = false;
+
+                // Remove successfully imported fares from data field
+                if (!empty($fares) && empty($tarifasNoImportadas)) {
+                    unset($updateData['fares']);
+                    $needsUpdate = true;
+                    $this->command->info("✅ Cleaned fares from data field for: {$nombre}");
+                } elseif (!empty($tarifasNoImportadas)) {
                     $updateData['unimported_fares'] = $tarifasNoImportadas;
+                    $needsUpdate = true;
                 }
-                if (!empty($softwaresNoImportados)) {
+
+                // Remove successfully imported software from data field
+                if (!empty($softwares) && empty($softwaresNoImportados)) {
+                    unset($updateData['softwares']);
+                    $needsUpdate = true;
+                    $this->command->info("✅ Cleaned softwares from data field for: {$nombre}");
+                } elseif (!empty($softwaresNoImportados)) {
                     $updateData['unimported_software'] = $softwaresNoImportados;
+                    $needsUpdate = true;
                 }
-                if (!empty($tarifasNoImportadas) || !empty($softwaresNoImportados)) {
+
+                // Remove successfully imported language variants from data field
+                if (!empty($languageVariants)) {
+                    unset($updateData['language_variants']);
+                    $needsUpdate = true;
+                    $this->command->info("✅ Cleaned language_variants from data field for: {$nombre}");
+                }
+
+                // Remove successfully imported services from data field (always clean as they're stored as JSON)
+                if (!empty($services)) {
+                    unset($updateData['services']);
+                    $needsUpdate = true;
+                    $this->command->info("✅ Cleaned services from data field for: {$nombre}");
+                }
+
+                // Update contact data if changes were made
+                if ($needsUpdate) {
                     $contact->data = $updateData;
                     $contact->save();
                 }
@@ -442,7 +457,7 @@ class BboSeeder extends Seeder
 
                     if (!$existingUser) {
                         $user = User::create([
-                            'name' => $name,
+                            'name' => $nombre,
                             'email' => $email,
                             'password' => Hash::make('bbounicornio123'),
                             'current_team_id' => $teamId,
@@ -459,7 +474,7 @@ class BboSeeder extends Seeder
                         // Link contact to user
                         $contact->update(['user_id' => $user->id]);
 
-                        $this->command->info("✅ Created BBO user and contact: {$name} ({$email})");
+                        $this->command->info("✅ Created BBO user and contact: {$nombre} ({$email})");
                     } else {
                         // Link existing user to contact
                         $contact->update(['user_id' => $existingUser->id]);
@@ -469,296 +484,20 @@ class BboSeeder extends Seeder
                             $existingUser->assignRole('collaborator');
                         }
 
-                        $this->command->info("✅ Linked existing user to BBO contact: {$name} ({$email})");
+                        $this->command->info("✅ Linked existing user to BBO contact: {$nombre} ({$email})");
                     }
                 } else {
-                    $this->command->info("✅ Created BBO contact without user: {$name} (no email)");
+                    $this->command->info("✅ Created BBO contact without user: {$nombre} (no email)");
                 }
 
             } catch (\Exception $e) {
                 Log::error("Error importing BBO collaborator: " . $e->getMessage());
-                Log::error("Value string: " . substr($valueString, 0, 200));
-                $this->command->error("Error importing BBO collaborator: " . $e->getMessage());
+                Log::error("Collaborator data: " . json_encode($colaborador));
+                $this->command->error("Error importing BBO collaborator {$nombre}: " . $e->getMessage());
             }
         }
 
         $this->command->info("✅ BBO collaborators import completed!");
-
-        // Process language combinations for existing contacts
-        $this->command->info("Processing language combinations for existing BBO contacts...");
-        $this->processExistingContactCombinations($teamId);
-    }
-
-    /**
-     * Parse SQL VALUES string into array
-     */
-    private function parseValues(string $valueString): array
-    {
-        $values = [];
-        $current = '';
-        $inQuotes = false;
-        $quoteChar = null;
-        $i = 0;
-
-        while ($i < strlen($valueString)) {
-            $char = $valueString[$i];
-
-            if ($char === "'" || $char === '"') {
-                if (!$inQuotes) {
-                    $inQuotes = true;
-                    $quoteChar = $char;
-                } elseif ($char === $quoteChar) {
-                    // Check for escaped quote
-                    if ($i + 1 < strlen($valueString) && $valueString[$i + 1] === $quoteChar) {
-                        $current .= $char;
-                        $i++; // Skip next quote
-                    } else {
-                        $inQuotes = false;
-                        $quoteChar = null;
-                    }
-                } else {
-                    $current .= $char;
-                }
-            } elseif ($char === ',' && !$inQuotes) {
-                $values[] = trim($current);
-                $current = '';
-            } else {
-                if ($inQuotes || trim($char) !== '') {
-                    $current .= $char;
-                }
-            }
-
-            $i++;
-        }
-
-        // Add the last value
-        if ($current !== '') {
-            $values[] = trim($current);
-        }
-
-        return $values;
-    }
-
-    /**
-     * Clean and normalize values
-     */
-    private function cleanValue(string $value): ?string
-    {
-        $value = trim($value);
-
-        // Remove quotes
-        if ((str_starts_with($value, "'") && str_ends_with($value, "'")) ||
-            (str_starts_with($value, '"') && str_ends_with($value, '"'))) {
-            $value = substr($value, 1, -1);
-        }
-
-        // Handle NULL values
-        if (strtoupper($value) === 'NULL' || $value === '') {
-            return null;
-        }
-
-        // Unescape quotes
-        $value = str_replace(["''", '""'], ["'", '"'], $value);
-
-        return trim($value);
-    }
-
-    /**
-     * Map country names to country codes
-     */
-    private function mapCountryToCode(?string $country): int
-    {
-        if (empty($country)) {
-            return 724; // Default to Spain
-        }
-
-        $countryMappings = [
-            'España' => 724,
-            'Spain' => 724,
-            'Argentina' => 32,
-            'Bolivia' => 68,
-            'Brasil' => 76,
-            'Brazil' => 76,
-            'Chile' => 152,
-            'Colombia' => 170,
-            'Costa Rica' => 188,
-            'Cuba' => 192,
-            'República Dominicana' => 214,
-            'Dominican Republic' => 214,
-            'Ecuador' => 218,
-            'El Salvador' => 222,
-            'Estados Unidos' => 840,
-            'United States' => 840,
-            'EEUU' => 840,
-            'USA' => 840,
-            'US' => 840,
-            'Guatemala' => 320,
-            'Honduras' => 340,
-            'México' => 484,
-            'Mexico' => 484,
-            'Nicaragua' => 558,
-            'Panamá' => 591,
-            'Panama' => 591,
-            'Paraguay' => 600,
-            'Perú' => 604,
-            'Peru' => 604,
-            'Uruguay' => 858,
-            'Venezuela' => 862,
-            'France' => 250,
-            'Germany' => 276,
-        ];
-
-        return $countryMappings[$country] ?? 724;
-    }
-
-    /**
-     * Process language combinations for existing contacts
-     */
-    private function processExistingContactCombinations(int $teamId): void
-    {
-        $contacts = Contact::where('team_id', $teamId)
-            ->whereNotNull('data')
-            ->get();
-
-        $processedCount = 0;
-
-        foreach ($contacts as $contact) {
-            $data = json_decode(json_encode($contact->data), true);
-
-            if (isset($data['combinaciones']) && !empty($data['combinaciones'])) {
-                try {
-                    // Check if it's raw_data format
-                    if (is_array($data['combinaciones']) && isset($data['combinaciones']['raw_data'])) {
-                        $this->processRawDataCombinations($contact, $data['combinaciones']['raw_data']);
-                    } else {
-                        // Convert back to JSON string for processing
-                        $combinacionData = json_encode($data['combinaciones']);
-                        $this->processLanguageCombinations($contact, $combinacionData);
-                    }
-                    $processedCount++;
-                } catch (\Exception $e) {
-                    Log::error("Error processing existing combinations for {$contact->name}: " . $e->getMessage());
-                }
-            }
-        }
-
-        $this->command->info("Processed language combinations for {$processedCount} existing BBO contacts.");
-    }
-
-    /**
-     * Process raw data combinations from escaped JSON
-     */
-    private function processRawDataCombinations(Contact $contact, string $rawData): void
-    {
-        try {
-            // Clean up escaped characters
-            $cleanData = $rawData;
-            $cleanData = str_replace('\\"', '"', $cleanData);
-            $cleanData = str_replace('\\\\', '\\', $cleanData);
-            $cleanData = stripslashes($cleanData);
-
-            // Parse JSON
-            $combinations = json_decode($cleanData, true);
-
-            if (!is_array($combinations)) {
-                Log::warning("Could not parse raw data combinations for contact: {$contact->name}");
-                return;
-            }
-
-            // Process each combination
-            foreach ($combinations as $combination) {
-                if (is_array($combination) && count($combination) === 2) {
-                    $sourceLanguage = $this->mapLanguageNameToCode($combination[0]);
-                    $targetLanguage = $this->mapLanguageNameToCode($combination[1]);
-
-                    if ($sourceLanguage && $targetLanguage && $sourceLanguage !== $targetLanguage) {
-                        $this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage);
-                    }
-                }
-            }
-
-        } catch (\Exception $e) {
-            Log::error("Error processing raw data combinations for contact {$contact->name}: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Process language combinations for a contact
-     */
-    private function processLanguageCombinations(Contact $contact, string $combinacionData): void
-    {
-        try {
-            // Parse the combinations data
-            $combinations = $this->parseJsonField($combinacionData);
-
-            if (!$combinations || !is_array($combinations)) {
-                Log::warning("Could not parse language combinations for contact: {$contact->name}");
-                return;
-            }
-
-            // Process each combination
-            foreach ($combinations as $combination) {
-                if (is_string($combination)) {
-                    $this->processSingleCombination($contact, $combination);
-                } elseif (is_array($combination)) {
-                    $this->processArrayCombination($contact, $combination);
-                }
-            }
-
-        } catch (\Exception $e) {
-            Log::error("Error processing language combinations for contact {$contact->name}: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Process single language combination string
-     */
-    private function processSingleCombination(Contact $contact, string $combination): void
-    {
-        $separators = ['->', '>', '←', '<', '-', '/', '|'];
-        $languages = null;
-
-        foreach ($separators as $separator) {
-            if (strpos($combination, $separator) !== false) {
-                $languages = array_map('trim', explode($separator, $combination, 2));
-                break;
-            }
-        }
-
-        if (!$languages || count($languages) !== 2) {
-            Log::warning("Could not parse combination: {$combination}");
-            return;
-        }
-
-        $sourceLanguage = $this->mapLanguageNameToCode($languages[0]);
-        $targetLanguage = $this->mapLanguageNameToCode($languages[1]);
-
-        if ($sourceLanguage && $targetLanguage && $sourceLanguage !== $targetLanguage) {
-            $this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage);
-        }
-    }
-
-    /**
-     * Process array format language combination
-     */
-    private function processArrayCombination(Contact $contact, array $combination): void
-    {
-        if (isset($combination['source']) && isset($combination['target'])) {
-            // Formato con claves
-            $sourceLanguage = $this->mapLanguageNameToCode($combination['source']);
-            $targetLanguage = $this->mapLanguageNameToCode($combination['target']);
-            $proficiencyLevel = $combination['level'] ?? 4;
-            $isCertified = $combination['certified'] ?? true;
-            $notes = $combination['notes'] ?? null;
-            $this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage, $proficiencyLevel, $isCertified, $notes);
-        } elseif (count($combination) === 2) {
-            // Formato array simple
-            $sourceLanguage = $this->mapLanguageNameToCode($combination[0]);
-            $targetLanguage = $this->mapLanguageNameToCode($combination[1]);
-            if ($sourceLanguage && $targetLanguage && $sourceLanguage !== $targetLanguage) {
-                $this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage);
-            }
-        }
     }
 
     /**
@@ -866,9 +605,8 @@ class BboSeeder extends Seeder
             'galego' => 'gl-ES',
             'GL' => 'gl-ES',
             'gl' => 'gl-ES',
-            'gl-ES' => 'gl-ES',
 
-            // Language codes used in the SQL data
+            // Language codes used in the data
             'es-ES' => 'es-ES',
             'es-MX' => 'es-MX',
             'es-AR' => 'es-AR',
@@ -894,6 +632,11 @@ class BboSeeder extends Seeder
             'ca-ES' => 'ca-ES',
             'ca-AD' => 'ca-AD',
             'gl-ES' => 'gl-ES',
+            'zh-CN' => 'zh-CN',
+            'ru-RU' => 'ru-RU',
+            'ja-JP' => 'ja-JP',
+            'ko-KR' => 'ko-KR',
+            'th-TH' => 'th-TH',
         ];
 
         $normalizedName = strtolower(trim($languageName));
@@ -901,22 +644,232 @@ class BboSeeder extends Seeder
     }
 
     /**
-     * Parse JSON field from SQL
+     * Map country names to country codes
      */
-    private function parseJsonField(string $jsonString): ?array
+    private function mapCountryToCode(?string $country): int
     {
-        if (empty($jsonString) || $jsonString === 'NULL') {
-            return null;
+        if (empty($country) || !is_numeric($country)) {
+            return 724; // Default to Spain
         }
 
-        // Try to decode as JSON
-        $decoded = json_decode($jsonString, true);
+        $countryMappings = [
+            'España' => 724,
+            'Spain' => 724,
+            'Argentina' => 32,
+            'Bolivia' => 68,
+            'Brasil' => 76,
+            'Brazil' => 76,
+            'Chile' => 152,
+            'Colombia' => 170,
+            'Costa Rica' => 188,
+            'Cuba' => 192,
+            'República Dominicana' => 214,
+            'Dominican Republic' => 214,
+            'Ecuador' => 218,
+            'El Salvador' => 222,
+            'Estados Unidos' => 840,
+            'United States' => 840,
+            'EEUU' => 840,
+            'USA' => 840,
+            'US' => 840,
+            'Guatemala' => 320,
+            'Honduras' => 340,
+            'México' => 484,
+            'Mexico' => 484,
+            'Nicaragua' => 558,
+            'Panamá' => 591,
+            'Panama' => 591,
+            'Paraguay' => 600,
+            'Perú' => 604,
+            'Peru' => 604,
+            'Uruguay' => 858,
+            'Venezuela' => 862,
+            'France' => 250,
+            'Francia' => 250,
+            'Germany' => 276,
+            'Alemania' => 276,
+            'Italy' => 380,
+            'Italia' => 380,
+            'Portugal' => 620,
+            'China' => 156,
+            'Japan' => 392,
+            'Japón' => 392,
+            'Korea' => 410,
+            'Corea' => 410,
+            'Thailand' => 764,
+            'Tailandia' => 764,
+            'Russia' => 643,
+            'Rusia' => 643,
+        ];
 
-        if (json_last_error() === JSON_ERROR_NONE) {
-            return $decoded;
+        return $countryMappings[$country] ?? 724;
+    }
+
+    /**
+     * Create BBO fare types
+     */
+    private function createBboFareTypes()
+    {
+        $this->command->info('🏷️ Creating BBO fare types...');
+
+        $types = [
+            ['id' => 10, 'name' => 'Traducción audiovisual'],
+            ['id' => 11, 'name' => 'Traducción general (texto)'],
+            ['id' => 12, 'name' => 'Accesibilidad audiovisual'],
+        ];
+
+        foreach ($types as $type) {
+            \App\Models\FareType::updateOrCreate(
+                ['id' => $type['id']],
+                $type
+            );
         }
 
-        // If JSON decode fails, return as string
-        return ['raw_data' => $jsonString];
+        $this->command->info("✅ Created/Updated " . count($types) . " BBO fare types");
+    }
+
+    /**
+     * Create BBO fares
+     */
+    private function createBboFares()
+    {
+        $this->command->info('💰 Creating BBO fares...');
+
+        $fares = [
+            // Traducción audiovisual (type_id = 10)
+            ['name' => 'Traducción de plantilla', 'type_id' => 10],
+            ['name' => 'Traducción + subtitulado sin guion (creación de subtítulos)', 'type_id' => 10],
+            ['name' => 'Traducción + subtitulado con guion (creación de subtítulos)', 'type_id' => 10],
+            ['name' => 'Traducción sin guion', 'type_id' => 10],
+            ['name' => 'Traducción con guion', 'type_id' => 10],
+            ['name' => 'Traducción para locución, doblaje, voice over', 'type_id' => 10],
+            ['name' => 'Traducción de guion literario', 'type_id' => 10],
+            ['name' => 'Transcreación', 'type_id' => 10],
+            ['name' => 'Transcripción', 'type_id' => 10],
+            ['name' => 'Transcripción + subtitulado (creación de subtítulos)', 'type_id' => 10],
+            ['name' => 'Adaptación + subtitulado (creación de subtítulos)', 'type_id' => 10],
+            ['name' => 'Revisión audiovisual', 'type_id' => 10],
+            ['name' => 'Ajuste de traducción para doblaje', 'type_id' => 10],
+            ['name' => 'Posedición de traducción audiovisual', 'type_id' => 10],
+            ['name' => 'Posedición de transcripción', 'type_id' => 10],
+
+            // Traducción general (texto) (type_id = 11)
+            ['name' => 'Traducción general', 'type_id' => 11],
+            ['name' => 'Revisión general', 'type_id' => 11],
+            ['name' => 'Traducción jurídica', 'type_id' => 11],
+            ['name' => 'Traducción médica', 'type_id' => 11],
+            ['name' => 'Traducción técnica', 'type_id' => 11],
+            ['name' => 'Traducción científica', 'type_id' => 11],
+
+            // Accesibilidad audiovisual (type_id = 12)
+            ['name' => 'Posedición de traducción', 'type_id' => 12],
+            ['name' => 'Subtítulos para sordos con guion', 'type_id' => 12],
+            ['name' => 'Subtítulos para sordos sin guion', 'type_id' => 12],
+            ['name' => 'Adaptación a subtítulos para sordos', 'type_id' => 12],
+            ['name' => 'Revisión de subtítulos para sordos', 'type_id' => 12],
+            ['name' => 'Creación guion de audiodescripción', 'type_id' => 12],
+            ['name' => 'Locución de audiodescripción', 'type_id' => 12],
+            ['name' => 'Lengua de signos', 'type_id' => 12],
+        ];
+
+        foreach ($fares as $fare) {
+            \App\Models\Fare::updateOrCreate(
+                [
+                    'name' => $fare['name'],
+                    'team_id' => $this->teamId,
+                ],
+                array_merge($fare, ['team_id' => $this->teamId])
+            );
+        }
+
+        $this->command->info("✅ Created/Updated " . count($fares) . " BBO fares");
+    }
+
+    /**
+     * Create users for BBO contacts that have email but no associated user
+     */
+    private function createUsersForContacts($team)
+    {
+        $this->command->info('👥 Creating users for BBO contacts without users...');
+        $this->command->info("🔧 DEBUG: Team ID is: {$team->id}");
+
+        // Find BBO contacts with email but no user
+        $this->command->info('🔧 DEBUG: Searching for contacts...');
+        $contacts = Contact::where('team_id', $team->id)
+            ->whereNotNull('email')
+            ->whereNull('user_id')
+            ->orderBy('name')
+            ->get();
+
+        $this->command->info("🔧 DEBUG: Found {$contacts->count()} contacts");
+
+        if ($contacts->isEmpty()) {
+            $this->command->info('✅ All BBO contacts with email already have users');
+            return;
+        }
+
+        $this->command->info("Found {$contacts->count()} contacts that need users");
+
+        $created = 0;
+        $linked = 0;
+        $errors = 0;
+
+        foreach ($contacts as $contact) {
+            try {
+                // Check if user already exists with this email
+                $existingUser = User::where('email', $contact->email)->first();
+
+                if ($existingUser) {
+                    // Link existing user to contact
+                    $contact->update(['user_id' => $existingUser->id]);
+
+                    // Ensure user has collaborator role
+                    if (!$existingUser->hasRole('collaborator')) {
+                        $existingUser->assignRole('collaborator');
+                    }
+
+                    // Ensure user is in BBO team
+                    if (!$existingUser->teams()->where('team_id', $team->id)->exists()) {
+                        $existingUser->teams()->attach($team->id);
+                    }
+
+                    $linked++;
+                    $this->command->info("✅ Linked existing user: {$contact->name} ({$contact->email})");
+                } else {
+                    // Create new user
+                    $user = User::create([
+                        'name' => $contact->name,
+                        'email' => $contact->email,
+                        'password' => Hash::make('bbounicornio123'),
+                        'current_team_id' => $team->id,
+                        'phone' => $contact->phone,
+                        'email_verified_at' => now(),
+                    ]);
+
+                    // Add user to team
+                    $user->teams()->attach($team->id);
+
+                    // Assign collaborator role
+                    $user->assignRole('collaborator');
+
+                    // Link contact to user
+                    $contact->update(['user_id' => $user->id]);
+
+                    $created++;
+                    $this->command->info("✅ Created user: {$contact->name} ({$contact->email})");
+                }
+
+            } catch (\Exception $e) {
+                $errors++;
+                Log::error("Error creating BBO user for contact {$contact->id}: " . $e->getMessage());
+                $this->command->error("❌ Error creating user for {$contact->name} ({$contact->email}): {$e->getMessage()}");
+            }
+        }
+
+        $this->command->info("📊 User creation summary:");
+        $this->command->info("   - New users created: {$created}");
+        $this->command->info("   - Existing users linked: {$linked}");
+        $this->command->info("   - Errors: {$errors}");
+        $this->command->info("✅ User creation for BBO contacts completed!");
     }
 }

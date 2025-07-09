@@ -33,6 +33,12 @@ class CountrySeeder extends Seeder
             ['id' => 604, 'name' => 'Perú', 'code' => 'PE'],
             ['id' => 858, 'name' => 'Uruguay', 'code' => 'UY'],
             ['id' => 862, 'name' => 'Venezuela', 'code' => 'VE'],
+            ['id' => 156, 'name' => 'China', 'code' => 'CN'],
+            ['id' => 380, 'name' => 'Italia', 'code' => 'IT'],
+            ['id' => 392, 'name' => 'Japón', 'code' => 'JP'],
+            ['id' => 620, 'name' => 'Portugal', 'code' => 'PT'],
+            ['id' => 643, 'name' => 'Rusia', 'code' => 'RU'],
+            ['id' => 764, 'name' => 'Tailandia', 'code' => 'TH'],
         ];
 
         foreach ($countries as $country) {
