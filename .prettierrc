@@ -16,7 +16,8 @@
         "parser": "php",
         "printWidth": 120,
         "tabWidth": 4,
-        "useTabs": false
+        "useTabs": true,
+        "bracketSameLine": false
       }
     },
     {
@@ -25,21 +26,23 @@
         "semi": true,
         "singleQuote": true,
         "tabWidth": 4,
-        "useTabs": true
+        "useTabs": true,
+        "bracketSameLine": false
       }
     },
     {
       "files": ["*.css", "*.scss", "*.less"],
       "options": {
         "tabWidth": 4,
-        "useTabs": true
+        "useTabs": true,
+        "bracketSameLine": false
       }
     },
     {
       "files": ["*.json"],
       "options": {
-        "tabWidth": 2,
-        "useTabs": false
+        "tabWidth": 4,
+        "useTabs": true
       }
     },
     {
@@ -48,7 +51,8 @@
         "parser": "php",
         "printWidth": 120,
         "tabWidth": 4,
-        "useTabs": true
+        "useTabs": true,
+        "bracketSameLine": false
       }
     }
   ]
