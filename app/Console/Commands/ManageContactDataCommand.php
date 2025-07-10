@@ -30,7 +30,8 @@ class ManageContactDataCommand extends Command
                             {--import-fares : Import fares data and remove from contact data}
                             {--report : Generate comprehensive import report}
                             {--all : Report for all contacts in a team}
-                            {--team-id= : Team ID for all-contacts report}';
+                            {--team-id= : Team ID for all-contacts report}
+                            {--show-contacts : Show contact names in the report}';
 
     protected $description = 'Manage contact data from JSON fields - view, validate, and import to different sections';
 
@@ -105,7 +106,8 @@ class ManageContactDataCommand extends Command
                 if (!$teamId) {
                     $teamId = $this->ask('Enter team ID to report for');
                 }
-                $this->generateTeamImportReport($teamId);
+                $showContacts = $this->option('show-contacts');
+                $this->generateTeamImportReport($teamId, $showContacts);
             } else {
                 $this->generateImportReport();
             }
@@ -160,7 +162,8 @@ class ManageContactDataCommand extends Command
                 break;
             case 'Reporte de faltantes por equipo':
                 $teamId = $this->ask('Enter team ID to report for');
-                $this->generateTeamImportReport($teamId);
+                $showContacts = $this->confirm('Show contact names in the report?', false);
+                $this->generateTeamImportReport($teamId, $showContacts);
                 break;
             case 'Exit':
                 $this->info('Goodbye!');
@@ -1229,7 +1232,7 @@ class ManageContactDataCommand extends Command
         }
     }
 
-    protected function generateTeamImportReport($teamId)
+    protected function generateTeamImportReport($teamId, $showContacts = false)
     {
         $contacts = \App\Models\Contact::where('team_id', $teamId)->get();
         $team = \App\Models\Team::find($teamId);
@@ -1382,6 +1385,11 @@ class ManageContactDataCommand extends Command
             $this->info("🔧 MISSING SOFTWARE:");
             foreach ($globalMissing['software'] as $softwareName => $contactsList) {
                 $this->line("  - {$softwareName} (missing in " . count($contactsList) . " contacts)");
+                if ($showContacts) {
+                    foreach ($contactsList as $contactInfo) {
+                        $this->line("    • {$contactInfo}");
+                    }
+                }
                 $totalMissingItems += count($contactsList);
             }
             $this->line('');
@@ -1393,6 +1401,11 @@ class ManageContactDataCommand extends Command
             $this->info("💰 MISSING FARES/RATES:");
             foreach ($globalMissing['fares'] as $fareName => $contactsList) {
                 $this->line("  - {$fareName} (missing in " . count($contactsList) . " contacts)");
+                if ($showContacts) {
+                    foreach ($contactsList as $contactInfo) {
+                        $this->line("    • {$contactInfo}");
+                    }
+                }
                 $totalMissingItems += count($contactsList);
             }
             $this->line('');
@@ -1404,6 +1417,11 @@ class ManageContactDataCommand extends Command
             $this->info("🌍 MISSING LANGUAGES:");
             foreach ($globalMissing['languages'] as $languageName => $contactsList) {
                 $this->line("  - {$languageName} (missing in " . count($contactsList) . " contacts)");
+                if ($showContacts) {
+                    foreach ($contactsList as $contactInfo) {
+                        $this->line("    • {$contactInfo}");
+                    }
+                }
                 $totalMissingItems += count($contactsList);
             }
             $this->line('');
@@ -1415,6 +1433,11 @@ class ManageContactDataCommand extends Command
             $this->info("🔄 MISSING LANGUAGE VARIANTS:");
             foreach ($globalMissing['language_variants'] as $variantName => $contactsList) {
                 $this->line("  - {$variantName} (missing in " . count($contactsList) . " contacts)");
+                if ($showContacts) {
+                    foreach ($contactsList as $contactInfo) {
+                        $this->line("    • {$contactInfo}");
+                    }
+                }
                 $totalMissingItems += count($contactsList);
             }
             $this->line('');
@@ -1426,6 +1449,11 @@ class ManageContactDataCommand extends Command
             $this->info("🔧 MISSING SERVICES:");
             foreach ($globalMissing['services'] as $serviceName => $contactsList) {
                 $this->line("  - {$serviceName} (missing in " . count($contactsList) . " contacts)");
+                if ($showContacts) {
+                    foreach ($contactsList as $contactInfo) {
+                        $this->line("    • {$contactInfo}");
+                    }
+                }
                 $totalMissingItems += count($contactsList);
             }
             $this->line('');
@@ -1437,6 +1465,11 @@ class ManageContactDataCommand extends Command
             $this->info("🌍 MISSING COUNTRIES:");
             foreach ($globalMissing['countries'] as $countryName => $contactsList) {
                 $this->line("  - {$countryName} (missing in " . count($contactsList) . " contacts)");
+                if ($showContacts) {
+                    foreach ($contactsList as $contactInfo) {
+                        $this->line("    • {$contactInfo}");
+                    }
+                }
                 $totalMissingItems += count($contactsList);
             }
             $this->line('');
@@ -1867,19 +1900,7 @@ class ManageContactDataCommand extends Command
         return array_keys($data);
     }
 
-    protected function getOptions()
-    {
-        return array_merge(parent::getOptions(), [
-            ['list-sections', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'List top-level sections of the data field'],
-            ['validate-software', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Validate and display software data from contact'],
-            ['import-software', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Import software data and remove from contact data'],
-            ['validate-fares', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Validate and display fares data from contact'],
-            ['import-fares', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Import fares data and remove from contact data'],
-            ['report', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Generate comprehensive import report'],
-            ['all', null, \Symfony\Component\Console\Input\InputOption::VALUE_NONE, 'Report for all contacts in a team'],
-            ['team-id', null, \Symfony\Component\Console\Input\InputOption::VALUE_OPTIONAL, 'Team ID for all-contacts report'],
-        ]);
-    }
+
 
     protected function getMissingSoftware($contact, $softwareArray)
     {
