@@ -23,6 +23,9 @@ class BboSeeder extends Seeder
         $this->command->info('🚀 MODIFIED: Setting up BBO Client Data from JSON...');
         $this->command->info('🔧 DEBUG: BboSeeder run() method started');
 
+        // 0. Ensure languages and language variants are available
+        $this->ensureLanguagesAvailable();
+
         // 1. Create BBO Team
         $team = $this->createBboTeam();
 
@@ -335,19 +338,23 @@ class BboSeeder extends Seeder
                 // Map country names to IDs that exist in the database
                 $countryCode = $this->mapCountryToCode($pais);
 
-                // Prepare additional data
+                // Prepare additional data with extras structure
                 $additionalData = [
-                    'city' => $poblacion,
-                    'address' => $domicilio,
-                    'nif_cif' => $nifCif,
+                    'extras' => [
+                        'phone' => $telefono,
+                        'pais' => $pais,
+                        'poblacion' => $poblacion,
+                        'codigo_postal' => $codigoPostal,
+                        'nif_cif' => $nifCif,
+                        'domicilio' => $domicilio,
+                        'valoracion' => $valoracion,
+                    ],
+                    'country' => $pais,
+                    'imported_from_bbo' => true,
                     'fares' => $fares,
                     'services' => $services,
                     'softwares' => $softwares,
                     'language_variants' => $languageVariants,
-                    'original_country' => $pais,
-                    'imported_from_bbo' => true,
-                    'valoracion' => $valoracion,
-                    'postal_code' => $codigoPostal,
                 ];
 
                 // Create contact
@@ -536,6 +543,14 @@ class BboSeeder extends Seeder
     }
 
     /**
+     * Normalize spaces in a string (trim and reduce multiple spaces to single space)
+     */
+    private function normalizeSpaces(string $text): string
+    {
+        return preg_replace('/\s+/', ' ', trim($text));
+    }
+
+    /**
      * Map language names to language variant codes
      */
     private function mapLanguageNameToCode(string $languageName): ?string
@@ -547,6 +562,9 @@ class BboSeeder extends Seeder
                 return $languageName;
             }
         }
+
+        // Normalize the language name to handle multiple spaces
+        $normalizedName = strtolower($this->normalizeSpaces($languageName));
 
         $languageMapping = [
             // Spanish variants
@@ -567,6 +585,7 @@ class BboSeeder extends Seeder
             'inglés' => 'en-US',
             'english' => 'en-US',
             'inglés americano' => 'en-US',
+            'inglés estados unidos' => 'en-US',
             'inglés británico' => 'en-GB',
             'inglés reino unido' => 'en-GB',
             'inglés canadiense' => 'en-CA',
@@ -651,7 +670,6 @@ class BboSeeder extends Seeder
             'th-TH' => 'th-TH',
         ];
 
-        $normalizedName = strtolower(trim($languageName));
         return $languageMapping[$normalizedName] ?? null;
     }
 
@@ -1308,4 +1326,46 @@ class BboSeeder extends Seeder
             $this->command->info("🔄 Updated {$updated} existing BBO stylebook entries");
         }
     }
+
+    /**
+     * Ensure languages and language variants are available before processing contacts
+     */
+    private function ensureLanguagesAvailable()
+    {
+        $this->command->info('🌐 Ensuring languages and language variants are available...');
+
+        // Check if we need to run the language seeders
+        $languageCount = \App\Models\Language::count();
+        $variantCount = \App\Models\LanguageVariant::count();
+
+        if ($languageCount === 0) {
+            $this->command->info('📝 Running LanguageSeeder...');
+            $this->call('db:seed', ['--class' => \Database\Seeders\LanguageSeeder::class]);
+        }
+
+        if ($variantCount === 0) {
+            $this->command->info('🌐 Running LanguageVariantSeeder...');
+            $this->call('db:seed', ['--class' => \Database\Seeders\LanguageVariantSeeder::class]);
+        }
+
+        // Verify that the specific language variants we need are available
+        $requiredVariants = ['es-ES', 'en-US', 'fr-FR', 'de-DE'];
+        $missingVariants = [];
+
+        foreach ($requiredVariants as $variantCode) {
+            $variant = \App\Models\LanguageVariant::where('code', $variantCode)->first();
+            if (!$variant) {
+                $missingVariants[] = $variantCode;
+            }
+        }
+
+        if (!empty($missingVariants)) {
+            $this->command->warn("⚠️ Missing language variants: " . implode(', ', $missingVariants));
+            $this->command->info('🌐 Running LanguageVariantSeeder to ensure all variants are available...');
+            $this->call('db:seed', ['--class' => \Database\Seeders\LanguageVariantSeeder::class]);
+        }
+
+        $this->command->info("✅ Languages and variants verified. Found {$languageCount} languages and {$variantCount} variants.");
+    }
+
 }
