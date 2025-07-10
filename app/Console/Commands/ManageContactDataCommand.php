@@ -384,10 +384,10 @@ class ManageContactDataCommand extends Command
             
             // Handle both string format and object format
             if (is_string($software)) {
-                $softwareName = $software;
-                $softwareObj = ['name' => $software];
+                $softwareName = $this->normalizeSpaces($software);
+                $softwareObj = ['name' => $softwareName];
             } else {
-                $softwareName = $softwareObj['name'] ?? $softwareObj['software_name'] ?? 'Unknown';
+                $softwareName = $this->normalizeSpaces($softwareObj['name'] ?? $softwareObj['software_name'] ?? 'Unknown');
             }
             
             // Check if software exists in team
@@ -473,10 +473,10 @@ class ManageContactDataCommand extends Command
             
             // Handle both string format and object format
             if (is_string($fare)) {
-                $fareName = $fare;
-                $fareObj = ['name' => $fare];
+                $fareName = $this->normalizeSpaces($fare);
+                $fareObj = ['name' => $fareName];
             } else {
-                $fareName = $fareObj['name'] ?? $fareObj['fare_name'] ?? $fareObj['title'] ?? 'Unknown';
+                $fareName = $this->normalizeSpaces($fareObj['name'] ?? $fareObj['fare_name'] ?? $fareObj['title'] ?? 'Unknown');
             }
             
             // Check if fare exists in team
@@ -1497,9 +1497,9 @@ class ManageContactDataCommand extends Command
             $softwareObj = is_object($software) ? (array) $software : $software;
             
             if (is_string($software)) {
-                $softwareName = $software;
+                $softwareName = $this->normalizeSpaces($software);
             } else {
-                $softwareName = $softwareObj['name'] ?? $softwareObj['software_name'] ?? 'Unknown';
+                $softwareName = $this->normalizeSpaces($softwareObj['name'] ?? $softwareObj['software_name'] ?? 'Unknown');
             }
             
             $stats['total']++;
@@ -1548,9 +1548,9 @@ class ManageContactDataCommand extends Command
             $fareObj = is_object($fare) ? (array) $fare : $fare;
             
             if (is_string($fare)) {
-                $fareName = $fare;
+                $fareName = $this->normalizeSpaces($fare);
             } else {
-                $fareName = $fareObj['name'] ?? $fareObj['fare_name'] ?? $fareObj['title'] ?? 'Unknown';
+                $fareName = $this->normalizeSpaces($fareObj['name'] ?? $fareObj['fare_name'] ?? $fareObj['title'] ?? 'Unknown');
             }
             
             $stats['total']++;
@@ -1679,10 +1679,10 @@ class ManageContactDataCommand extends Command
             
             // Handle both string format and object format
             if (is_string($software)) {
-                $softwareName = $software;
-                $softwareObj = ['name' => $software];
+                $softwareName = $this->normalizeSpaces($software);
+                $softwareObj = ['name' => $softwareName];
             } else {
-                $softwareName = $softwareObj['name'] ?? $softwareObj['software_name'] ?? 'Unknown';
+                $softwareName = $this->normalizeSpaces($softwareObj['name'] ?? $softwareObj['software_name'] ?? 'Unknown');
             }
             
             $this->line("Processing: {$softwareName}");
@@ -1818,10 +1818,10 @@ class ManageContactDataCommand extends Command
             
             // Handle both string format and object format
             if (is_string($fare)) {
-                $fareName = $fare;
-                $fareObj = ['name' => $fare];
+                $fareName = $this->normalizeSpaces($fare);
+                $fareObj = ['name' => $fareName];
             } else {
-                $fareName = $fareObj['name'] ?? $fareObj['fare_name'] ?? $fareObj['title'] ?? 'Unknown';
+                $fareName = $this->normalizeSpaces($fareObj['name'] ?? $fareObj['fare_name'] ?? $fareObj['title'] ?? 'Unknown');
             }
             
             $this->line("Processing: {$fareName}");
@@ -1902,6 +1902,12 @@ class ManageContactDataCommand extends Command
 
 
 
+    protected function normalizeSpaces($text)
+    {
+        // Remove multiple spaces and trim
+        return preg_replace('/\s+/', ' ', trim($text));
+    }
+
     protected function getMissingSoftware($contact, $softwareArray)
     {
         $missing = [];
@@ -1910,9 +1916,9 @@ class ManageContactDataCommand extends Command
             $softwareObj = is_object($software) ? (array) $software : $software;
             
             if (is_string($software)) {
-                $softwareName = $software;
+                $softwareName = $this->normalizeSpaces($software);
             } else {
-                $softwareName = $softwareObj['name'] ?? $softwareObj['software_name'] ?? 'Unknown';
+                $softwareName = $this->normalizeSpaces($softwareObj['name'] ?? $softwareObj['software_name'] ?? 'Unknown');
             }
             
             $exists = \App\Models\Software::where('team_id', $contact->team_id)
@@ -1935,9 +1941,9 @@ class ManageContactDataCommand extends Command
             $fareObj = is_object($fare) ? (array) $fare : $fare;
             
             if (is_string($fare)) {
-                $fareName = $fare;
+                $fareName = $this->normalizeSpaces($fare);
             } else {
-                $fareName = $fareObj['name'] ?? $fareObj['fare_name'] ?? $fareObj['title'] ?? 'Unknown';
+                $fareName = $this->normalizeSpaces($fareObj['name'] ?? $fareObj['fare_name'] ?? $fareObj['title'] ?? 'Unknown');
             }
             
             $exists = \App\Models\Fare::where('team_id', $contact->team_id)
@@ -1960,10 +1966,10 @@ class ManageContactDataCommand extends Command
             $languageObj = is_object($language) ? (array) $language : $language;
             
             if (is_string($language)) {
-                $languageName = $language;
-                $languageCode = strtolower(substr($language, 0, 2));
+                $languageName = $this->normalizeSpaces($language);
+                $languageCode = strtolower(substr($languageName, 0, 2));
             } else {
-                $languageName = $languageObj['name'] ?? $languageObj['language_name'] ?? 'Unknown';
+                $languageName = $this->normalizeSpaces($languageObj['name'] ?? $languageObj['language_name'] ?? 'Unknown');
                 $languageCode = $languageObj['code'] ?? strtolower(substr($languageName, 0, 2));
             }
             
@@ -1987,10 +1993,10 @@ class ManageContactDataCommand extends Command
             $variantObj = is_object($variant) ? (array) $variant : $variant;
             
             if (is_string($variant)) {
-                $variantName = $variant;
+                $variantName = $this->normalizeSpaces($variant);
             } else {
-                $sourceLang = $variantObj['source_language'] ?? $variantObj['source'] ?? 'Unknown';
-                $targetLang = $variantObj['target_language'] ?? $variantObj['target'] ?? 'Unknown';
+                $sourceLang = $this->normalizeSpaces($variantObj['source_language'] ?? $variantObj['source'] ?? 'Unknown');
+                $targetLang = $this->normalizeSpaces($variantObj['target_language'] ?? $variantObj['target'] ?? 'Unknown');
                 $variantName = "{$sourceLang} → {$targetLang}";
             }
             
@@ -2008,9 +2014,9 @@ class ManageContactDataCommand extends Command
             $serviceObj = is_object($service) ? (array) $service : $service;
             
             if (is_string($service)) {
-                $serviceName = $service;
+                $serviceName = $this->normalizeSpaces($service);
             } else {
-                $serviceName = $serviceObj['name'] ?? $serviceObj['service_name'] ?? 'Unknown';
+                $serviceName = $this->normalizeSpaces($serviceObj['name'] ?? $serviceObj['service_name'] ?? 'Unknown');
             }
             
             // Services don't have team_id, so we check by name globally
@@ -2034,9 +2040,9 @@ class ManageContactDataCommand extends Command
             $countryObj = is_object($country) ? (array) $country : $country;
             
             if (is_string($country)) {
-                $countryName = $country;
+                $countryName = $this->normalizeSpaces($country);
             } else {
-                $countryName = $countryObj['name'] ?? $countryObj['country_name'] ?? 'Unknown';
+                $countryName = $this->normalizeSpaces($countryObj['name'] ?? $countryObj['country_name'] ?? 'Unknown');
             }
             
             $exists = \App\Models\Country::where('name', $countryName)

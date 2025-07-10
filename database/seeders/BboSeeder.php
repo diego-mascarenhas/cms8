@@ -1006,6 +1006,8 @@ class BboSeeder extends Seeder
         $subtitleType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Subtitulación']);
         $dubbingType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Doblaje']);
         $videoEditingType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Edición de video']);
+        $catToolsType = \App\Models\SoftwareType::firstOrCreate(['name' => 'CAT Tools']);
+        $developmentType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Desarrollo']);
 
         // Create BBO-specific software
         $bboSoftware = [
@@ -1018,6 +1020,10 @@ class BboSeeder extends Seeder
             ['name' => 'Ooona', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
             ['name' => 'Amara', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
             ['name' => 'Kapwing', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'FAB Subtitler', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'VisualSubSync', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Media Subtitler', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Caption Hub', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
 
             // Doblaje
             ['name' => 'Pro Tools', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
@@ -1037,6 +1043,34 @@ class BboSeeder extends Seeder
             ['name' => 'iMovie', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
             ['name' => 'OpenShot', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
             ['name' => 'Shotcut', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+
+            // CAT Tools y Software de Traducción
+            ['name' => 'SDL Trados', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+            ['name' => 'MemoQ', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+            ['name' => 'Wordfast', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+            ['name' => 'Memsource', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+            ['name' => 'Xbench', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+            ['name' => 'OmegaT', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+            ['name' => 'Smartcat', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+            ['name' => 'Phrase TMS', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+            ['name' => 'Crowdin', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+            ['name' => 'Multiterm', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+
+            // Software de Desarrollo y Edición
+            ['name' => 'Visual Studio Code', 'team_id' => $this->teamId, 'type_id' => $developmentType->id],
+            ['name' => 'Notepad++', 'team_id' => $this->teamId, 'type_id' => $developmentType->id],
+            ['name' => 'Adobe Photoshop', 'team_id' => $this->teamId, 'type_id' => $developmentType->id],
+            ['name' => 'Swift', 'team_id' => $this->teamId, 'type_id' => $developmentType->id],
+
+            // Software Especializado
+            ['name' => 'Wincap', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'SWXE', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Annotation edit (Mac)', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Spot', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'SSTG1', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'GTS', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Maestra Suite', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Ayato', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
         ];
 
         $created = 0;
