@@ -44,6 +44,15 @@ class BboSeeder extends Seeder
         // 4.7. Create BBO fare units relationships
         $this->createBboFareUnits();
 
+        // 4.8. Create BBO software
+        $this->createBboSoftware();
+
+        // 4.9. Create BBO certifications
+        $this->createBboCertifications();
+
+        // 4.10. Create BBO stylebooks
+        $this->createBboStylebooks();
+
         // 5. Import BBO collaborators from JSON
         try {
             $this->command->info('🔧 DEBUG: Starting step 5 - importBboCollaboratorsFromJson');
@@ -984,5 +993,285 @@ class BboSeeder extends Seeder
         $this->command->info("   - Existing users linked: {$linked}");
         $this->command->info("   - Errors: {$errors}");
         $this->command->info("✅ User creation for BBO contacts completed!");
+    }
+
+    /**
+     * Create BBO software
+     */
+    private function createBboSoftware()
+    {
+        $this->command->info('💻 Creating BBO software...');
+
+        // Get or create software types
+        $subtitleType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Subtitulación']);
+        $dubbingType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Doblaje']);
+        $videoEditingType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Edición de video']);
+
+        // Create BBO-specific software
+        $bboSoftware = [
+            // Subtitulación
+            ['name' => 'Aegisub', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Subtitle Edit', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Subtitle Workshop', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'EZTitles', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'SubtitleNEXT', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Ooona', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Amara', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+            ['name' => 'Kapwing', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+
+            // Doblaje
+            ['name' => 'Pro Tools', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
+            ['name' => 'Adobe Audition', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
+            ['name' => 'Logic Pro X', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
+            ['name' => 'Cubase', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
+            ['name' => 'REAPER', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
+            ['name' => 'Audacity', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
+            ['name' => 'GarageBand', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
+
+            // Edición de video
+            ['name' => 'Adobe Premiere Pro', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+            ['name' => 'Final Cut Pro', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+            ['name' => 'DaVinci Resolve', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+            ['name' => 'Avid Media Composer', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+            ['name' => 'Vegas Pro', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+            ['name' => 'iMovie', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+            ['name' => 'OpenShot', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+            ['name' => 'Shotcut', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+        ];
+
+        $created = 0;
+        $updated = 0;
+
+        foreach ($bboSoftware as $software) {
+            $existing = \App\Models\Software::where('name', $software['name'])
+                ->where('team_id', $software['team_id'])
+                ->first();
+
+            if ($existing) {
+                $existing->update($software);
+                $updated++;
+            } else {
+                \App\Models\Software::create($software);
+                $created++;
+            }
+        }
+
+        $this->command->info("✅ Created {$created} new BBO software entries");
+        if ($updated > 0) {
+            $this->command->info("🔄 Updated {$updated} existing BBO software entries");
+        }
+    }
+
+    /**
+     * Create BBO certifications
+     */
+    private function createBboCertifications()
+    {
+        $this->command->info('🏆 Creating BBO certifications...');
+
+        $certifications = [
+            // Translation certifications
+            ['certification' => 'ATA Certification', 'language' => 'en', 'team_id' => $this->teamId],
+            ['certification' => 'CIOL Diploma in Translation', 'language' => 'en', 'team_id' => $this->teamId],
+            ['certification' => 'ISO 17100:2015', 'language' => 'en', 'team_id' => $this->teamId],
+            ['certification' => 'ProZ Certified PRO', 'language' => 'en', 'team_id' => $this->teamId],
+            ['certification' => 'SDL Trados Certification', 'language' => 'en', 'team_id' => $this->teamId],
+
+            // Spanish certifications
+            ['certification' => 'DELE C2', 'language' => 'es', 'team_id' => $this->teamId],
+            ['certification' => 'SIELE Global', 'language' => 'es', 'team_id' => $this->teamId],
+
+            // English certifications
+            ['certification' => 'TOEFL iBT', 'language' => 'en', 'team_id' => $this->teamId],
+            ['certification' => 'IELTS Academic', 'language' => 'en', 'team_id' => $this->teamId],
+            ['certification' => 'Cambridge C2 Proficiency', 'language' => 'en', 'team_id' => $this->teamId],
+            ['certification' => 'TOEIC', 'language' => 'en', 'team_id' => $this->teamId],
+
+            // French certifications
+            ['certification' => 'DELF B2', 'language' => 'fr', 'team_id' => $this->teamId],
+            ['certification' => 'DALF C1', 'language' => 'fr', 'team_id' => $this->teamId],
+            ['certification' => 'TCF', 'language' => 'fr', 'team_id' => $this->teamId],
+
+            // German certifications
+            ['certification' => 'Goethe-Zertifikat C1', 'language' => 'de', 'team_id' => $this->teamId],
+            ['certification' => 'TestDaF', 'language' => 'de', 'team_id' => $this->teamId],
+
+            // Other language certifications
+            ['certification' => 'JLPT N1', 'language' => 'ja', 'team_id' => $this->teamId],
+            ['certification' => 'HSK Level 6', 'language' => 'zh', 'team_id' => $this->teamId],
+            ['certification' => 'TOPIK Level 6', 'language' => 'ko', 'team_id' => $this->teamId],
+
+            // Audiovisual translation certifications
+            ['certification' => 'ATRAE Professional Certification', 'language' => 'es', 'team_id' => $this->teamId],
+            ['certification' => 'Subtitling Diploma ESIT', 'language' => 'fr', 'team_id' => $this->teamId],
+            ['certification' => 'EZTitles Certification', 'language' => 'en', 'team_id' => $this->teamId],
+
+            // BBO-specific certifications
+            ['certification' => 'BBO Internal Quality Certification', 'language' => 'es', 'team_id' => $this->teamId],
+            ['certification' => 'BBO Subtitling Specialist', 'language' => 'es', 'team_id' => $this->teamId],
+            ['certification' => 'BBO Dubbing Specialist', 'language' => 'es', 'team_id' => $this->teamId],
+            ['certification' => 'BBO Audio Description Specialist', 'language' => 'es', 'team_id' => $this->teamId],
+            ['certification' => 'BBO Accessibility Expert', 'language' => 'es', 'team_id' => $this->teamId],
+        ];
+
+        $created = 0;
+        $updated = 0;
+
+        foreach ($certifications as $certification) {
+            $existing = \App\Models\Certification::where('certification', $certification['certification'])
+                ->where('team_id', $certification['team_id'])
+                ->first();
+
+            if ($existing) {
+                $existing->update($certification);
+                $updated++;
+            } else {
+                \App\Models\Certification::create($certification);
+                $created++;
+            }
+        }
+
+        $this->command->info("✅ Created {$created} new BBO certification entries");
+        if ($updated > 0) {
+            $this->command->info("🔄 Updated {$updated} existing BBO certification entries");
+        }
+    }
+
+    /**
+     * Create BBO stylebooks
+     */
+    private function createBboStylebooks()
+    {
+        $this->command->info('📚 Creating BBO stylebooks...');
+
+        // Create the storage directory if it doesn't exist
+        if (! \Illuminate\Support\Facades\Storage::disk('public')->exists('stylebooks')) {
+            \Illuminate\Support\Facades\Storage::disk('public')->makeDirectory('stylebooks');
+        }
+
+        // Create a placeholder PDF file if it doesn't exist
+        $placeholderPath = 'stylebooks/placeholder.pdf';
+        if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($placeholderPath)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->put($placeholderPath, 'Placeholder file for seeding purposes');
+        }
+
+        $stylebooks = [
+            // General style guides
+            [
+                'name' => 'APA Style Guide',
+                'language' => 'en',
+                'date' => \Carbon\Carbon::now()->subMonths(3),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'Chicago Manual of Style',
+                'language' => 'en',
+                'date' => \Carbon\Carbon::now()->subMonths(6),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'MLA Style Guide',
+                'language' => 'en',
+                'date' => \Carbon\Carbon::now()->subMonths(9),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'Manual de Estilo El País',
+                'language' => 'es',
+                'date' => \Carbon\Carbon::now()->subMonths(1),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'Guía de Estilo - RAE',
+                'language' => 'es',
+                'date' => \Carbon\Carbon::now()->subMonths(5),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'Le Petit Robert Style Guide',
+                'language' => 'fr',
+                'date' => \Carbon\Carbon::now()->subMonths(2),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'Duden Style Guide',
+                'language' => 'de',
+                'date' => \Carbon\Carbon::now()->subMonths(4),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+
+            // BBO-specific stylebooks
+            [
+                'name' => 'BBO Subtitling Style Guide',
+                'language' => 'es',
+                'date' => \Carbon\Carbon::now()->subMonths(2),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'BBO Dubbing Style Guide',
+                'language' => 'es',
+                'date' => \Carbon\Carbon::now()->subMonths(3),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'BBO Audio Description Guidelines',
+                'language' => 'es',
+                'date' => \Carbon\Carbon::now()->subMonths(1),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'BBO Quality Standards Manual',
+                'language' => 'es',
+                'date' => \Carbon\Carbon::now()->subMonths(4),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'BBO Technical Translation Guidelines',
+                'language' => 'en',
+                'date' => \Carbon\Carbon::now()->subMonths(2),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'name' => 'BBO Legal Translation Style Guide',
+                'language' => 'es',
+                'date' => \Carbon\Carbon::now()->subMonths(6),
+                'file' => 'stylebooks/placeholder.pdf',
+                'team_id' => $this->teamId,
+            ],
+        ];
+
+        $created = 0;
+        $updated = 0;
+
+        foreach ($stylebooks as $stylebook) {
+            $existing = \App\Models\Stylebook::where('name', $stylebook['name'])
+                ->where('team_id', $stylebook['team_id'])
+                ->first();
+
+            if ($existing) {
+                $existing->update($stylebook);
+                $updated++;
+            } else {
+                \App\Models\Stylebook::create($stylebook);
+                $created++;
+            }
+        }
+
+        $this->command->info("✅ Created {$created} new BBO stylebook entries");
+        if ($updated > 0) {
+            $this->command->info("🔄 Updated {$updated} existing BBO stylebook entries");
+        }
     }
 }
