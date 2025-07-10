@@ -41,6 +41,9 @@ class BboSeeder extends Seeder
         // 4.6. Create BBO fares
         $this->createBboFares();
 
+        // 4.7. Create BBO fare units relationships
+        $this->createBboFareUnits();
+
         // 5. Import BBO collaborators from JSON
         try {
             $this->command->info('🔧 DEBUG: Starting step 5 - importBboCollaboratorsFromJson');
@@ -783,6 +786,116 @@ class BboSeeder extends Seeder
         }
 
         $this->command->info("✅ Created/Updated " . count($fares) . " BBO fares");
+    }
+
+    /**
+     * Create BBO fare units relationships
+     */
+    private function createBboFareUnits()
+    {
+        $this->command->info('🔗 Creating BBO fare units relationships...');
+
+        // First, get all the unit IDs - using Spanish names as defined in UnitsSeeder
+        $minuteUnit = \App\Models\Unit::where('type', 'Minutos')->first();
+        $tenMinutesUnit = \App\Models\Unit::where('type', '10 Minutos')->first();
+        $hourUnit = \App\Models\Unit::where('type', 'Horas')->first();
+        $wordUnit = \App\Models\Unit::where('type', 'Palabras')->first();
+        $pageUnit = \App\Models\Unit::where('type', 'Páginas')->first();
+        $rollUnit = \App\Models\Unit::where('type', 'Rollos')->first();
+
+        // Check if units exist before proceeding
+        if (!$minuteUnit || !$tenMinutesUnit || !$hourUnit || !$wordUnit || !$pageUnit || !$rollUnit) {
+            $this->command->warn("Warning: Some units not found. Skipping BBO fare units creation.");
+            return;
+        }
+
+        $minuteId = $minuteUnit->id;
+        $tenMinutesId = $tenMinutesUnit->id;
+        $hourId = $hourUnit->id;
+        $wordId = $wordUnit->id;
+        $pageId = $pageUnit->id;
+        $rollId = $rollUnit->id;
+
+        // Define the relationships for BBO team
+        $relationships = [
+            // Traducción audiovisual (type_id = 10)
+            ['fare_name' => 'Traducción de plantilla', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Traducción + subtitulado sin guion (creación de subtítulos)', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Traducción + subtitulado con guion (creación de subtítulos)', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Traducción sin guion', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Traducción con guion', 'unit_ids' => [$pageId]],
+            ['fare_name' => 'Traducción para locución, doblaje, voice over', 'unit_ids' => [$minuteId, $rollId]],
+            ['fare_name' => 'Traducción de guion literario', 'unit_ids' => [$pageId]],
+            ['fare_name' => 'Transcreación', 'unit_ids' => [$hourId]],
+            ['fare_name' => 'Transcripción', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Transcripción + subtitulado (creación de subtítulos)', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Adaptación + subtitulado (creación de subtítulos)', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Revisión audiovisual', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Ajuste de traducción para doblaje', 'unit_ids' => [$minuteId, $rollId]],
+            ['fare_name' => 'Posedición de traducción audiovisual', 'unit_ids' => [$hourId, $minuteId]],
+            ['fare_name' => 'Posedición de transcripción', 'unit_ids' => [$hourId, $minuteId]],
+
+            // Traducción general (texto) (type_id = 11)
+            ['fare_name' => 'Traducción general', 'unit_ids' => [$wordId]],
+            ['fare_name' => 'Revisión general', 'unit_ids' => [$wordId]],
+            ['fare_name' => 'Traducción jurídica', 'unit_ids' => [$wordId]],
+            ['fare_name' => 'Traducción médica', 'unit_ids' => [$wordId]],
+            ['fare_name' => 'Traducción técnica', 'unit_ids' => [$wordId]],
+            ['fare_name' => 'Traducción científica', 'unit_ids' => [$wordId]],
+
+            // Accesibilidad audiovisual (type_id = 12)
+            ['fare_name' => 'Posedición de traducción', 'unit_ids' => [$hourId, $wordId]],
+            ['fare_name' => 'Subtítulos para sordos con guion', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Subtítulos para sordos sin guion', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Adaptación a subtítulos para sordos', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Revisión de subtítulos para sordos', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Creación guion de audiodescripción', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Locución de audiodescripción', 'unit_ids' => [$minuteId]],
+            ['fare_name' => 'Lengua de signos', 'unit_ids' => [$minuteId]],
+        ];
+
+        $created = 0;
+        $skipped = 0;
+
+        // Get all BBO fares and create a mapping by name
+        $bboFares = \App\Models\Fare::where('team_id', $this->teamId)->get();
+        $fareMapping = $bboFares->keyBy('name');
+
+        // Create the relationships for BBO team only
+        foreach ($relationships as $relationship) {
+            $fareName = $relationship['fare_name'];
+
+            if ($fareMapping->has($fareName)) {
+                $fare = $fareMapping->get($fareName);
+
+                foreach ($relationship['unit_ids'] as $unitId) {
+                    // Check if relationship already exists
+                    $existingRelationship = \Illuminate\Support\Facades\DB::table('fare_unit')
+                        ->where('fare_id', $fare->id)
+                        ->where('unit_id', $unitId)
+                        ->first();
+
+                    if (!$existingRelationship) {
+                        \Illuminate\Support\Facades\DB::table('fare_unit')->insert([
+                            'fare_id' => $fare->id,
+                            'unit_id' => $unitId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        $created++;
+                    } else {
+                        $skipped++;
+                    }
+                }
+            } else {
+                $this->command->warn("Fare not found: {$fareName} for team {$this->teamId}");
+            }
+        }
+
+        $this->command->info("✅ Created {$created} new fare-unit relationships");
+        if ($skipped > 0) {
+            $this->command->info("⏭️ Skipped {$skipped} existing relationships");
+        }
     }
 
     /**
