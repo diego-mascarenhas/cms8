@@ -94,6 +94,22 @@ class BboSeeder extends Seeder
 		}
 
 		$this->command->info('✅ BBO Client setup completed successfully');
+
+		// Habilitar módulos adicionales para el equipo BBO
+		$bboModules = [
+			'languages',
+			'language-variants',
+			'fares',
+			'softwares',
+			'certifications',
+			'stylebooks',
+			'notifications',
+			'collaborators',
+		];
+		foreach ($bboModules as $moduleKey) {
+			$team->enableModule($moduleKey);
+			$this->command->info("✅ Módulo '{$moduleKey}' habilitado para el equipo BBO");
+		}
 	}
 
 	/**

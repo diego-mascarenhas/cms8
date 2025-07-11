@@ -34,7 +34,7 @@ class ClientDataTable extends DataTable
                 if ($contact->responsible) {
                     return e($contact->responsible->name);
                 }
-                return '<span class="text-muted">No responsible</span>';
+                return '<span class="text-muted">-</span>';
             })
             ->filterColumn('responsible_name', function ($query, $keyword) {
                 $query->whereHas('responsible', function ($q) use ($keyword) {
@@ -44,7 +44,7 @@ class ClientDataTable extends DataTable
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
-            ->rawColumns(['name', 'action', 'sources', 'status_id', 'website', 'phone']);
+            ->rawColumns(['name', 'action', 'sources', 'responsible_name', 'status_id', 'website', 'phone']);
     }
 
     public function query(Enterprise $model): QueryBuilder

@@ -187,6 +187,46 @@ class ModuleSeeder extends Seeder
             'icon' => 'template',
             'description' => 'Templates management module',
         ],
+        'languages' => [
+            'name' => 'Languages',
+            'icon' => 'language',
+            'description' => 'Languages management module',
+        ],
+        'language-variants' => [
+            'name' => 'Language Variants',
+            'icon' => 'language',
+            'description' => 'Language variants management module',
+        ],
+        'fares' => [
+            'name' => 'Fares',
+            'icon' => 'currency-dollar',
+            'description' => 'Fares and pricing management module',
+        ],
+        'softwares' => [
+            'name' => 'Softwares',
+            'icon' => 'cpu',
+            'description' => 'Software management module',
+        ],
+        'certifications' => [
+            'name' => 'Certifications',
+            'icon' => 'award',
+            'description' => 'Certifications management module',
+        ],
+        'stylebooks' => [
+            'name' => 'Stylebooks',
+            'icon' => 'book',
+            'description' => 'Stylebooks and guidelines module',
+        ],
+        'notifications' => [
+            'name' => 'Notifications',
+            'icon' => 'bell',
+            'description' => 'Notifications and alerts module',
+        ],
+        'collaborators' => [
+            'name' => 'Collaborators',
+            'icon' => 'user-group',
+            'description' => 'Collaborators management module',
+        ],
     ];
 
     protected $teamModules = [
