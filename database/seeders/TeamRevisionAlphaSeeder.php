@@ -9,8 +9,9 @@ use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
-class RevisionAlphaSeeder extends Seeder
+class TeamRevisionAlphaSeeder extends Seeder
 {
     private $teamId;
 

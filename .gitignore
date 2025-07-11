@@ -420,7 +420,7 @@ yarn-error.log
 *.homestead.php
 Homestea
 package-lock.json
-# composer.lock
+composer.lock
 # yarn.lock
 
 # NPM Compiled

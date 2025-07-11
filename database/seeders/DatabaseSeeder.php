@@ -48,9 +48,9 @@ class DatabaseSeeder extends Seeder
 			// Client-specific seeders (must run first to create teams)
 			//EnterpriseSeeder::class,
 			//ContactSeeder::class,
-			RevisionAlphaSeeder::class, // Revision Alpha client data for Team 2
-			HumanoSeeder::class,        // Humano client data for Team 3
-			//BboSeeder::class,           // BBO client data for Team 4
+			//TeamRevisionAlphaSeeder::class, // Revision Alpha client data for Team 2
+			//TeamHumanoSeeder::class,        // Humano client data for Team 3
+			//TeamBboSeeder::class,           // BBO client data for Team 4
 			CollaboratorsSeeder::class, // Demo collaborators for Team 1
 
 			// Module and category seeders (run after teams are created)
