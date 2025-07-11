@@ -143,27 +143,27 @@ class BboSeeder extends Seeder
             [
                 'name' => 'Claudia Caballero',
                 'email' => 'claudia@bbosubtitulado.com',
-                'role' => 4, // PM role
+                'role' => 2, // PM role
             ],
             [
                 'name' => 'Rocío Broseta',
                 'email' => 'rocio@bbosubtitulado.com',
-                'role' => 4, // PM role
+                'role' => 2, // PM role
             ],
             [
                 'name' => 'Marta Navas',
                 'email' => 'marta@bbosubtitulado.com',
-                'role' => 4, // PM role
+                'role' => 2, // PM role
             ],
             [
                 'name' => 'Tom Jackson',
                 'email' => 'tom@bbosubtitulado.com',
-                'role' => 4, // PM role
+                'role' => 2, // PM role
             ],
             [
                 'name' => 'Jesús Buendía',
                 'email' => 'jesus@bbosubtitulado.com',
-                'role' => 4, // PM role
+                'role' => 2, // PM role
             ],
             [
                 'name' => 'Vendors',
@@ -213,7 +213,7 @@ class BboSeeder extends Seeder
                 'name' => 'BBO Translation Agency',
                 'team_id' => $team->id,
                 'type_id' => 1, // Client type
-                'status_id' => 1, // Active status
+                'status_id' => 2, // Active status
                 'creator_id' => 1,
                 'email' => 'info@bbosubtitulado.com',
                 'phone' => '912345678',
@@ -1512,7 +1512,7 @@ class BboSeeder extends Seeder
                     'team_id' => $teamId,
                     'name' => $nombre,
                     'type_id' => $clientTypeId,
-                    'status_id' => $defaultStatusId,
+                    'status_id' => 2, // status_id 2 (Activo)
                     'creator_id' => $bboAdmin->id,
                     'responsible_id' => $responsibleId,
                     'data' => $additionalData,

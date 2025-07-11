@@ -6,13 +6,6 @@
         </a>
     @endif
 
-    {{-- View responsible contact if available --}}
-    @if (auth()->user()->can('contact.show') && isset($responsible_id) && $responsible_id)
-        <a href="{{ route('contact.show', $responsible_id) }}" class="text-body">
-            <i class="ti ti-user ti-sm me-2"></i>
-        </a>
-    @endif
-
     {{-- Edit client --}}
     @if (auth()->user()->can('client.edit'))
         <a href="{{ route('client.edit', $id) }}" class="text-body">

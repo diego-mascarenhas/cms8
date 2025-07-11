@@ -42,7 +42,7 @@ return new class extends Migration
             $table->foreign('payment_type_id')->references('id')->on('payment_types')->onDelete('cascade');
             $table->foreign('invoice_type_id')->references('id')->on('invoice_types')->onDelete('cascade');
             $table->foreign('status_id')->references('id')->on('enterprise_statuses')->onDelete('restrict');
-            $table->foreign('responsible_id')->references('id')->on('contacts')->onDelete('cascade');
+            $table->foreign('responsible_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

@@ -27,18 +27,14 @@ class ClientDataTable extends DataTable
                             <small class="text-muted">'.e($row->responsible->name ?? 'Sin asignar').'</small>
                         </div>';
             })
-            ->addColumn('current_sentiment', function ($row) {
-                if ($row->responsible && $row->responsible->currentSentiment) {
-                    return '<span style="font-size: 1.5em;">'.$row->responsible->currentSentiment->sentiment->emoji.'</span>';
-                }
-
-                return '<span style="font-size: 1.5em;">🤔</span>';
-            })
             ->addColumn('sources', function ($row) {
-                return $row->responsible ? $row->responsible->sources_icons_html : '';
+                return $row->sources_icons_html;
             })
             ->addColumn('responsible_name', function ($contact) {
-                return $contact->responsible->name ?? 'Sin asignar';
+                if ($contact->responsible) {
+                    return e($contact->responsible->name);
+                }
+                return '<span class="text-muted">No responsible</span>';
             })
             ->filterColumn('responsible_name', function ($query, $keyword) {
                 $query->whereHas('responsible', function ($q) use ($keyword) {
@@ -48,7 +44,7 @@ class ClientDataTable extends DataTable
             ->editColumn('status_id', function ($row) {
                 return $row->status_label;
             })
-            ->rawColumns(['name', 'action', 'current_sentiment', 'sources', 'status_id', 'website', 'phone']);
+            ->rawColumns(['name', 'action', 'sources', 'status_id', 'website', 'phone']);
     }
 
     public function query(Enterprise $model): QueryBuilder
@@ -57,8 +53,6 @@ class ClientDataTable extends DataTable
             ->activeClients()
             ->with([
                 'responsible:id,name',
-                'responsible.currentSentiment.sentiment',
-                'responsible.sources',
                 'status',
             ]);
     }
@@ -106,13 +100,6 @@ class ClientDataTable extends DataTable
             Column::make('name')
                 ->title(__('Client'))
                 ->addClass('all'),
-            Column::make('current_sentiment')
-                ->title(__('Sentiment'))
-                ->className('text-center')
-                ->addClass('select-filter min-tablet')
-                ->searchable(true)
-                ->orderable(false)
-                ->width(150),
             Column::make('sources')
                 ->title(__('Networks'))
                 ->className('text-center')

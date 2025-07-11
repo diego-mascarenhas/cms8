@@ -51,7 +51,7 @@
             <i class="ti ti-edit me-1"></i>Edit Service
         </a>
         @if($service->client && $service->client->responsible_id)
-        <a href="{{ route('contact.show', $service->client->responsible_id) }}" class="btn btn-outline-primary waves-effect waves-light">
+        <a href="#" class="btn btn-outline-primary waves-effect waves-light">
             <i class="ti ti-user me-1"></i>View Responsible
         </a>
         @endif
@@ -109,7 +109,7 @@
                         @if($service->client && $service->client->responsible_id)
                         <li class="mb-2 pt-1">
                             <span class="fw-medium me-1">Responsible:</span>
-                            <span><a href="{{ route('contact.show', $service->client->responsible_id) }}">{{ $service->client->responsible ? $service->client->responsible->name : 'Contact #' . $service->client->responsible_id }}</a></span>
+                            <span>{{ $service->client->responsible ? $service->client->responsible->name : 'User #' . $service->client->responsible_id }}</span>
                         </li>
                         @endif
                         <li class="mb-2 pt-1">
