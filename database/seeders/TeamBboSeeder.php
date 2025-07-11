@@ -6,6 +6,8 @@ use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactLanguageVariant;
 use App\Models\Enterprise;
+use App\Models\Language;
+use App\Models\LanguageVariant;
 use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
@@ -124,14 +126,27 @@ class TeamBboSeeder extends Seeder
 			return null;
 		}
 
-		$team = Team::updateOrCreate(
-			['name' => "BBO's Team"],
-			[
-				'user_id' => $bboOwner->id,
-				'name' => "BBO's Team",
-				'personal_team' => false,
-			]
-		);
+		// Verificar si ya existe un equipo con ID 4
+		$existingTeam = Team::find($this->teamId);
+
+		if ($existingTeam) {
+			$this->command->info("✅ Equipo BBO ya existe con ID: {$this->teamId}");
+
+			// Asegurar que el usuario esté en el equipo
+			if (!$existingTeam->users()->where('user_id', $bboOwner->id)->exists()) {
+				$existingTeam->users()->attach($bboOwner->id, ['role' => 'admin']);
+			}
+
+			return $existingTeam;
+		}
+
+		// Si no existe, crear el equipo con ID específico 4
+		$team = new Team();
+		$team->id = $this->teamId;
+		$team->user_id = $bboOwner->id;
+		$team->name = "BBO's Team";
+		$team->personal_team = false;
+		$team->save();
 
 		// Ensure the user is in the team
 		if (!$team->users()->where('user_id', $bboOwner->id)->exists()) {
@@ -693,7 +708,7 @@ class TeamBboSeeder extends Seeder
 	{
 		// First, check if it's already a valid language code
 		if (preg_match('/^[a-z]{2}-[A-Z]{2}$/', $languageName)) {
-			$variant = \App\Models\LanguageVariant::where('code', $languageName)->first();
+			$variant = LanguageVariant::where('code', $languageName)->first();
 			if ($variant) {
 				return $languageName;
 			}
@@ -1444,38 +1459,61 @@ class TeamBboSeeder extends Seeder
 	{
 		$this->command->info('🌐 Ensuring languages and language variants are available...');
 
-		// Check if we need to run the language seeders
-		$languageCount = \App\Models\Language::count();
-		$variantCount = \App\Models\LanguageVariant::count();
+		try {
+			// Check if we need to run the language seeders
+			$languageCount = 0;
+			$variantCount = 0;
 
-		if ($languageCount === 0) {
-			$this->command->info('📝 Running LanguageSeeder...');
-			$this->call('db:seed', ['--class' => \Database\Seeders\LanguageSeeder::class]);
-		}
-
-		if ($variantCount === 0) {
-			$this->command->info('🌐 Running LanguageVariantSeeder...');
-			$this->call('db:seed', ['--class' => \Database\Seeders\LanguageVariantSeeder::class]);
-		}
-
-		// Verify that the specific language variants we need are available
-		$requiredVariants = ['es-ES', 'en-US', 'fr-FR', 'de-DE'];
-		$missingVariants = [];
-
-		foreach ($requiredVariants as $variantCode) {
-			$variant = \App\Models\LanguageVariant::where('code', $variantCode)->first();
-			if (!$variant) {
-				$missingVariants[] = $variantCode;
+			try {
+				$languageCount = Language::count();
+			} catch (\Exception $e) {
+				$this->command->error('Error counting languages: ' . $e->getMessage());
 			}
-		}
 
-		if (!empty($missingVariants)) {
-			$this->command->warn('⚠️ Missing language variants: ' . implode(', ', $missingVariants));
-			$this->command->info('🌐 Running LanguageVariantSeeder to ensure all variants are available...');
-			$this->call('db:seed', ['--class' => \Database\Seeders\LanguageVariantSeeder::class]);
-		}
+			try {
+				$variantCount = LanguageVariant::count();
+			} catch (\Exception $e) {
+				$this->command->error('Error counting language variants: ' . $e->getMessage());
+			}
 
-		$this->command->info("✅ Languages and variants verified. Found {$languageCount} languages and {$variantCount} variants.");
+			if ($languageCount === 0) {
+				$this->command->info('📝 Running LanguageSeeder...');
+				$this->call('db:seed', ['--class' => \Database\Seeders\LanguageSeeder::class]);
+			}
+
+			if ($variantCount === 0) {
+				$this->command->info('🌐 Running LanguageVariantSeeder...');
+				$this->call('db:seed', ['--class' => \Database\Seeders\LanguageVariantSeeder::class]);
+			}
+
+			// Verify that the specific language variants we need are available
+			$requiredVariants = ['es-ES', 'en-US', 'fr-FR', 'de-DE'];
+			$missingVariants = [];
+
+			try {
+				foreach ($requiredVariants as $variantCode) {
+					$variant = LanguageVariant::where('code', $variantCode)->first();
+					if (!$variant) {
+						$missingVariants[] = $variantCode;
+					}
+				}
+
+				if (!empty($missingVariants)) {
+					$this->command->warn('⚠️ Missing language variants: ' . implode(', ', $missingVariants));
+					$this->command->info('🌐 Running LanguageVariantSeeder to ensure all variants are available...');
+					$this->call('db:seed', ['--class' => \Database\Seeders\LanguageVariantSeeder::class]);
+				}
+			} catch (\Exception $e) {
+				$this->command->error('Error checking required variants: ' . $e->getMessage());
+				$this->command->info('🌐 Running LanguageVariantSeeder anyway...');
+				$this->call('db:seed', ['--class' => \Database\Seeders\LanguageVariantSeeder::class]);
+			}
+
+			$this->command->info("✅ Languages and variants verified. Found {$languageCount} languages and {$variantCount} variants.");
+		} catch (\Exception $e) {
+			$this->command->error('Error in ensureLanguagesAvailable: ' . $e->getMessage());
+			$this->command->info('Continuing with seeding anyway...');
+		}
 	}
 
 	/**
