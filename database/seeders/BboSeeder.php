@@ -243,34 +243,142 @@ class BboSeeder extends Seeder
 			return;
 		}
 
-		$bboCategories = [
+		// Create parent categories for different project types
+		$parentCategories = [
 			[
-				'name' => 'BBO - Legal Translation',
-				'description' => 'Legal translation projects for BBO',
+				'name' => 'Translation Projects',
+				'description' => 'Translation and localization projects for BBO',
 				'module_id' => $projectsModule->id,
 				'team_id' => $this->teamId,
 				'status' => 1,
 			],
 			[
-				'name' => 'BBO - Technical Translation',
-				'description' => 'Technical translation projects for BBO',
+				'name' => 'Film Style Categories',
+				'description' => 'Film and audiovisual style categories for BBO projects',
+				'module_id' => $projectsModule->id,
+				'team_id' => $this->teamId,
+				'status' => 1,
+			],
+			[
+				'name' => 'Content Types',
+				'description' => 'Different types of content for BBO projects',
 				'module_id' => $projectsModule->id,
 				'team_id' => $this->teamId,
 				'status' => 1,
 			],
 		];
 
-		foreach ($bboCategories as $categoryData) {
+		// Create parent categories first
+		$createdParents = [];
+		foreach ($parentCategories as $parentData) {
+			$parent = Category::updateOrCreate(
+				[
+					'name' => $parentData['name'],
+					'module_id' => $parentData['module_id'],
+					'team_id' => $parentData['team_id'],
+				],
+				$parentData
+			);
+			$createdParents[$parentData['name']] = $parent;
+			$this->command->info("✅ Created/Updated parent category: {$parentData['name']}");
+		}
+
+		// Create subcategories for Translation Projects
+		$translationSubcategories = [
+			'Legal Translation' => 'Legal translation projects for BBO',
+			'Technical Translation' => 'Technical translation projects for BBO',
+			'Medical Translation' => 'Medical and healthcare translation projects',
+			'Marketing Translation' => 'Marketing and advertising translation projects',
+			'Financial Translation' => 'Financial and banking translation projects',
+			'Literary Translation' => 'Literary and creative translation projects',
+		];
+
+		foreach ($translationSubcategories as $name => $description) {
 			$category = Category::updateOrCreate(
 				[
-					'name' => $categoryData['name'],
-					'module_id' => $categoryData['module_id'],
-					'team_id' => $categoryData['team_id'],
+					'name' => $name,
+					'module_id' => $projectsModule->id,
+					'team_id' => $this->teamId,
 				],
-				$categoryData
+				[
+					'name' => $name,
+					'description' => $description,
+					'module_id' => $projectsModule->id,
+					'team_id' => $this->teamId,
+					'parent_id' => $createdParents['Translation Projects']->id,
+					'status' => 1,
+				]
 			);
+			$this->command->info("✅ Created/Updated translation subcategory: {$name}");
+		}
 
-			$this->command->info("✅ Created/Updated BBO category: {$categoryData['name']}");
+		// Create subcategories for Film Style Categories
+		$filmStyleSubcategories = [
+			'Drama' => 'Drama and theatrical content',
+			'Comedy' => 'Comedy and humorous content',
+			'Documentary' => 'Documentary and educational content',
+			'Action' => 'Action and adventure content',
+			'Horror' => 'Horror and thriller content',
+			'Romance' => 'Romance and romantic content',
+			'Sci-Fi' => 'Science fiction and fantasy content',
+			'Animation' => 'Animated content and cartoons',
+			'Reality TV' => 'Reality television content',
+			'News' => 'News and current affairs content',
+			'Sports' => 'Sports and athletic content',
+			'Children' => 'Children and family content',
+			'Corporate' => 'Corporate and business content',
+			'Educational' => 'Educational and training content',
+			'Commercial' => 'Commercial and advertising content',
+		];
+
+		foreach ($filmStyleSubcategories as $name => $description) {
+			$category = Category::updateOrCreate(
+				[
+					'name' => $name,
+					'module_id' => $projectsModule->id,
+					'team_id' => $this->teamId,
+				],
+				[
+					'name' => $name,
+					'description' => $description,
+					'module_id' => $projectsModule->id,
+					'team_id' => $this->teamId,
+					'parent_id' => $createdParents['Film Style Categories']->id,
+					'status' => 1,
+				]
+			);
+			$this->command->info("✅ Created/Updated film style subcategory: {$name}");
+		}
+
+		// Create subcategories for Content Types
+		$contentTypeSubcategories = [
+			'Subtitling' => 'Subtitling and captioning projects',
+			'Dubbing' => 'Dubbing and voice-over projects',
+			'Audio Description' => 'Audio description for accessibility',
+			'Voice Over' => 'Voice over and narration projects',
+			'Transcription' => 'Transcription and closed captioning',
+			'Localization' => 'Content localization and adaptation',
+			'Quality Control' => 'Quality control and review projects',
+			'Post-Production' => 'Post-production and editing projects',
+		];
+
+		foreach ($contentTypeSubcategories as $name => $description) {
+			$category = Category::updateOrCreate(
+				[
+					'name' => $name,
+					'module_id' => $projectsModule->id,
+					'team_id' => $this->teamId,
+				],
+				[
+					'name' => $name,
+					'description' => $description,
+					'module_id' => $projectsModule->id,
+					'team_id' => $this->teamId,
+					'parent_id' => $createdParents['Content Types']->id,
+					'status' => 1,
+				]
+			);
+			$this->command->info("✅ Created/Updated content type subcategory: {$name}");
 		}
 	}
 
