@@ -71,13 +71,26 @@ class BboSeeder extends Seeder
             $this->command->error("Stack trace: " . $e->getTraceAsString());
         }
 
-        // 6. Create users for contacts without users
-        $this->command->info('🔧 DEBUG: About to execute step 6 - createUsersForContacts');
+        // 6. Import BBO clients from CSV
         try {
-            $this->createUsersForContacts($team);
+            $this->command->info('🔧 DEBUG: Starting step 6 - importBboClientsFromCsv');
+            $this->importBboClientsFromCsv($team);
+            $this->command->info('🔧 DEBUG: Completed step 6 successfully');
         } catch (\Exception $e) {
             $this->command->error("Error in step 6: " . $e->getMessage());
             Log::error("BBO Seeder Step 6 Error: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->command->error("Fatal error in step 6: " . $e->getMessage());
+            Log::error("BBO Seeder Step 6 Fatal Error: " . $e->getMessage());
+        }
+
+        // 7. Create users for contacts without users
+        $this->command->info('🔧 DEBUG: About to execute step 7 - createUsersForContacts');
+        try {
+            $this->createUsersForContacts($team);
+        } catch (\Exception $e) {
+            $this->command->error("Error in step 7: " . $e->getMessage());
+            Log::error("BBO Seeder Step 7 Error: " . $e->getMessage());
         }
 
         $this->command->info('✅ BBO Client setup completed successfully');
@@ -1366,6 +1379,161 @@ class BboSeeder extends Seeder
         }
 
         $this->command->info("✅ Languages and variants verified. Found {$languageCount} languages and {$variantCount} variants.");
+    }
+
+    /**
+     * Import BBO clients from CSV file
+     */
+    private function importBboClientsFromCsv($team)
+    {
+        $this->command->info('📄 Importing BBO clients from CSV...');
+
+        // Get the CSV file path
+        $csvFilePath = base_path('../db/bbo_clientes.csv');
+
+        if (!file_exists($csvFilePath)) {
+            Log::error("CSV file not found: {$csvFilePath}");
+            $this->command->error("CSV file not found: {$csvFilePath}");
+            return;
+        }
+
+        // Read CSV file
+        $csvContent = file_get_contents($csvFilePath);
+        $lines = explode("\n", $csvContent);
+        
+        // Remove header row
+        $header = array_shift($lines);
+        
+        // Parse header to get column positions
+        $headers = str_getcsv($header);
+        $columnMap = array_flip($headers);
+        
+        // Define expected columns
+        $expectedColumns = [
+            'Nombre' => 'name',
+            'Logo (url)' => 'logo_url',
+            'Libro de estilo (url)' => 'stylebook_url',
+            'Gestor BBO' => 'manager',
+        ];
+        
+        // Verify all expected columns exist
+        foreach ($expectedColumns as $spanishName => $englishName) {
+            if (!isset($columnMap[$spanishName])) {
+                $this->command->error("Missing required column: {$spanishName}");
+                return;
+            }
+        }
+
+        $this->command->info("Found " . count($lines) . " BBO clients to import");
+
+        $teamId = $team->id;
+        $defaultCountry = 724; // Spain
+        $defaultLanguage = 'es';
+        $defaultStatusId = 1;
+        $clientTypeId = 1; // Client type
+
+        // Get BBO admin as fallback
+        $bboAdmin = User::where('email', 'bego@bbosubtitulado.com')->first();
+        if (!$bboAdmin) {
+            $this->command->error('BBO admin user not found. Please ensure BBO users are created first.');
+            return;
+        }
+
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
+        $errors = 0;
+
+        foreach ($lines as $lineNumber => $line) {
+            try {
+                // Skip empty lines
+                if (empty(trim($line))) {
+                    continue;
+                }
+
+                $row = str_getcsv($line);
+                
+                // Skip if row doesn't have enough columns
+                if (count($row) < count($expectedColumns)) {
+                    $skipped++;
+                    continue;
+                }
+
+                $nombre = trim($row[$columnMap['Nombre']] ?? '');
+                $logoUrl = trim($row[$columnMap['Logo (url)']] ?? '');
+                $stylebookUrl = trim($row[$columnMap['Libro de estilo (url)']] ?? '');
+                $gestor = trim($row[$columnMap['Gestor BBO']] ?? '');
+
+                // Skip if name is empty
+                if (empty($nombre)) {
+                    $skipped++;
+                    continue;
+                }
+
+                // Check if enterprise already exists
+                $existingEnterprise = \App\Models\Enterprise::where('name', $nombre)
+                    ->where('team_id', $teamId)
+                    ->first();
+
+                if ($existingEnterprise) {
+                    $this->command->warn("Enterprise already exists: {$nombre}");
+                    $skipped++;
+                    continue;
+                }
+
+                // Determine responsible_id based on gestor
+                $responsibleId = $bboAdmin->id; // Default to admin
+                if (!empty($gestor)) {
+                    $this->command->info("🔍 Looking for user with email: {$gestor}");
+                    $responsibleUser = User::where('email', $gestor)->first();
+                    if ($responsibleUser) {
+                        $responsibleId = $responsibleUser->id;
+                        $this->command->info("✅ Assigned {$gestor} (ID: {$responsibleUser->id}) as responsible for: {$nombre}");
+                    } else {
+                        $this->command->warn("⚠️ User with email '{$gestor}' not found, using admin as responsible for: {$nombre}");
+                    }
+                } else {
+                    $this->command->info("ℹ️ No gestor specified for: {$nombre}, using admin as responsible");
+                }
+
+                // Prepare additional data with extras structure
+                $additionalData = [
+                    'extras' => [
+                        'logo_url' => $logoUrl,
+                        'stylebook_url' => $stylebookUrl,
+                        'gestor_bbo' => $gestor,
+                    ],
+                    'imported_from_bbo' => true,
+                    'import_source' => 'bbo_clientes.csv',
+                ];
+
+                // Create enterprise
+                $enterprise = \App\Models\Enterprise::create([
+                    'team_id' => $teamId,
+                    'name' => $nombre,
+                    'type_id' => $clientTypeId,
+                    'status_id' => $defaultStatusId,
+                    'creator_id' => $bboAdmin->id,
+                    'responsible_id' => $responsibleId,
+                    'data' => $additionalData,
+                ]);
+
+                $created++;
+                $this->command->info("✅ Created BBO client: {$nombre} (Responsible: " . ($gestor ?: 'Admin') . ")");
+
+            } catch (\Exception $e) {
+                $errors++;
+                Log::error("Error importing BBO client at line " . ($lineNumber + 2) . ": " . $e->getMessage());
+                Log::error("Client data: " . json_encode($row ?? []));
+                $this->command->error("Error importing BBO client {$nombre}: " . $e->getMessage());
+            }
+        }
+
+        $this->command->info("📊 BBO clients import summary:");
+        $this->command->info("   - New clients created: {$created}");
+        $this->command->info("   - Existing clients skipped: {$skipped}");
+        $this->command->info("   - Errors: {$errors}");
+        $this->command->info("✅ BBO clients import completed!");
     }
 
 }
