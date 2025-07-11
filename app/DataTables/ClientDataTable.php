@@ -108,7 +108,7 @@ class ClientDataTable extends DataTable
                 ->orderable(false)
                 ->width(150),
             Column::make('responsible_name')
-                ->title(__('Administrator'))
+                ->title(__('Responsable'))
                 ->className('text-center')
                 ->addClass('min-tablet')
                 ->searchable(false)
