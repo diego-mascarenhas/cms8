@@ -18,4 +18,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('contact_category');
     }
-}; 
+};

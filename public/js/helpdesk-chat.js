@@ -69,18 +69,18 @@ $(document).ready(function () {
             return response.blob();
           }).then(function (blob) {
             var audioUrl = URL.createObjectURL(blob);
-            var audioElement = document.createElement("audio");
+            var audioElement = document.createElement('audio');
             audioElement.src = audioUrl;
             audioElement.autoplay = true;
             botMessageElement.find('.chat-message-text').append(audioElement);
           })["catch"](function (error) {
-            console.error("Error getting audio file: ", error);
+            console.error('Error getting audio file: ', error);
           });
         }
       },
       error: function error(xhr, status, _error) {
         botMessageElement.find('.chat-message-text img').remove();
-        botMessageElement.find('.chat-message-text p').html("Error: Either you have not entered your API key or GPT is not working at this time.");
+        botMessageElement.find('.chat-message-text p').html('Error: Either you have not entered your API key or GPT is not working at this time.');
       },
       complete: function complete() {
         scrollToBottom();

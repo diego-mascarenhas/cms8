@@ -3,20 +3,19 @@
 namespace App\DataTables;
 
 use App\Models\Service;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-use Carbon\Carbon;
-
 class ServiceDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -24,37 +23,27 @@ class ServiceDataTable extends DataTable
             ->addColumn('action', 'service.action')
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status', 'operation_type'])
-            ->addColumn('operation_type', function ($data)
-            {
-                if ($data->operation == 'buy')
-                {
+            ->addColumn('operation_type', function ($data) {
+                if ($data->operation == 'buy') {
                     return '<span class="badge rounded-circle bg-danger" style="width:12px;height:12px;padding:0;display:inline-block;margin:0 auto;"></span>';
-                }
-                else
-                {
+                } else {
                     return '<span class="badge rounded-circle bg-success" style="width:12px;height:12px;padding:0;display:inline-block;margin:0 auto;"></span>';
                 }
             })
-            ->editColumn('enterprise_id', function ($data)
-            {
+            ->editColumn('enterprise_id', function ($data) {
                 return $data->client ? $data->client->name : 'N/A';
             })
-            ->filterColumn('enterprise_id', function ($query, $keyword)
-            {
-                $query->whereHas('client', function ($q) use ($keyword)
-                {
-                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+            ->filterColumn('enterprise_id', function ($query, $keyword) {
+                $query->whereHas('client', function ($q) use ($keyword) {
+                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
-            ->editColumn('category_id', function ($data)
-            {
+            ->editColumn('category_id', function ($data) {
                 return $data->category->name;
             })
-            ->filterColumn('category_id', function ($query, $keyword)
-            {
-                $query->whereHas('category', function ($q) use ($keyword)
-                {
-                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+            ->filterColumn('category_id', function ($query, $keyword) {
+                $query->whereHas('category', function ($q) use ($keyword) {
+                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
             ->addColumn('domain', function ($data) {
@@ -72,7 +61,7 @@ class ServiceDataTable extends DataTable
                 $serverIds = \App\Models\Server::where('name', 'LIKE', "%{$keyword}%")
                     ->pluck('id')
                     ->toArray();
-                
+
                 if (!empty($serverIds)) {
                     $conditions = [];
                     foreach ($serverIds as $serverId) {
@@ -93,30 +82,19 @@ class ServiceDataTable extends DataTable
             ->addColumn('calculated_price', function ($data)
             {
                 $currencyCode = 'USD';
-                
-                // Si el precio del servicio es nulo o cero, usar datos de la categoría
-                if ($data->price === null || $data->price == 0) {
-                    // Intentar obtener moneda de la categoría
-                    if (isset($data->category->data['currency_id'])) {
-                        $categoryCurrency = \App\Models\Currency::find($data->category->data['currency_id']);
-                        if ($categoryCurrency) {
-                            $currencyCode = $categoryCurrency->code ?? 'USD';
-                        }
-                    }
-                } else if ($data->currency) {
-                    // Si el servicio tiene precio, usar su moneda si está especificada
+
+                if ($data->currency) {
                     $currencyCode = $data->currency->code ?? 'USD';
                 }
-                
+
                 return $currencyCode . ' ' . number_format($data->calculated_price, 2, ',', '.');
             })
-            ->editColumn('status', function ($data)
-            {
+            ->editColumn('status', function ($data) {
                 return $data->status_label;
             })
             ->orderColumn('status', function ($query, $direction) {
                 // Custom ordering: 7, 5, 3, 2, 6, 8, 4, 1
-                $orderMap = "CASE 
+                $orderMap = "CASE
                     WHEN status = 7 THEN 1
                     WHEN status = 5 THEN 2
                     WHEN status = 3 THEN 3
@@ -126,7 +104,7 @@ class ServiceDataTable extends DataTable
                     WHEN status = 4 THEN 7
                     WHEN status = 1 THEN 8
                     ELSE 999 END";
-                
+
                 $query->orderByRaw("$orderMap $direction");
             });
     }
@@ -175,6 +153,6 @@ class ServiceDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Service_' . date('YmdHis');
+        return 'Service_'.date('YmdHis');
     }
 }

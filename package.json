@@ -8,7 +8,13 @@
     "watch-poll": "mix watch -- --watch-options-poll=1000",
     "hot": "mix watch --hot",
     "build": "mix --production",
-    "prod": "mix --production"
+    "prod": "mix --production",
+    "format": "npm run format:php && npm run format:js",
+    "format:php": "./vendor/bin/pint",
+    "format:js": "prettier --write 'resources/js/**/*.{js,ts}' 'resources/css/**/*.{css,scss}' 'resources/views/**/*.blade.php'",
+    "format:check": "npm run format:check:php && npm run format:check:js",
+    "format:check:php": "./vendor/bin/pint --test",
+    "format:check:js": "prettier --check 'resources/js/**/*.{js,ts}' 'resources/css/**/*.{css,scss}' 'resources/views/**/*.blade.php'"
   },
   "devDependencies": {
     "@babel/core": "7.22.5",

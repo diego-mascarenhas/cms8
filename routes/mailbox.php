@@ -1,9 +1,9 @@
 <?php
 
-use BeyondCode\Mailbox\Facades\Mailbox;
 use App\Http\Controllers\MailController;
+use BeyondCode\Mailbox\Facades\Mailbox;
 
-Mailbox::from('*', [MailController::class, 'handleIncomingEmail']); 
+Mailbox::from('*', [MailController::class, 'handleIncomingEmail']);
 
 // Mailbox::from('*@empresa.com', [ChatController::class, 'handleIncomingEmail']);
 
@@ -14,4 +14,4 @@ Mailbox::from('*', [MailController::class, 'handleIncomingEmail']);
 // Mailbox::from('soporte@empresa.com')
 //     ->subject('Urgente: *')
 //     ->to('info@miempresa.com')
-//     ->call([UrgentController::class, 'handle']); 
+//     ->call([UrgentController::class, 'handle']);

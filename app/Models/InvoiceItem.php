@@ -30,7 +30,7 @@ class InvoiceItem extends Model
     {
         return $this->belongsTo(Invoice::class);
     }
-    
+
     public function category()
     {
         return $this->belongsTo(Category::class);

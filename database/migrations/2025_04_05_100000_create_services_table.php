@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('enterprise_id');
             $table->enum('operation', ['buy', 'sell'])->default('sell');
             $table->text('description')->nullable();
-			$table->json('data')->nullable();
+            $table->json('data')->nullable();
             $table->unsignedSmallInteger('currency_id')->nullable();
             $table->decimal('price', 8, 2)->nullable();
             $table->decimal('discount', 5, 2)->nullable();
@@ -26,14 +26,14 @@ return new class extends Migration
             $table->date('next_billing')->nullable()->default(null);
             $table->date('expires_at')->nullable()->default(null);
             $table->foreignId('responsible_id')->nullable()->constrained('users');
-			$table->tinyInteger('status')->default(1);
-			$table->timestamps();
+            $table->tinyInteger('status')->default(1);
+            $table->timestamps();
             $table->softDeletes();
 
             $table->foreign('category_id')->references('id')->on('categories')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
-            
+
             $table->foreign('enterprise_id')->references('id')->on('enterprises')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');

@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'welcome' => 'Bienvenue chez ' . config('variables.templateName') . '!',
+    'welcome' => 'Bienvenue chez '.config('variables.templateName').'!',
     'dashboard' => 'Tableau de bord',
     'today' => 'Aujourd\'hui',
     'chat' => 'Chat',

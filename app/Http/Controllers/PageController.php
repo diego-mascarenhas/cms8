@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Page;
-use Illuminate\Http\Request;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
+use Illuminate\Http\Request;
 
 class PageController extends Controller
 {
@@ -22,7 +22,7 @@ class PageController extends Controller
     {
         $page = Page::find($id);
 
-        if (!$page) {
+        if (! $page) {
             return redirect()->route('page.index')->with('error', 'Page not found.');
         }
 

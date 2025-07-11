@@ -5,9 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Server;
 use App\Services\WhmService;
 use App\Enums\ServerStatus;
-use Illuminate\Http\Request;
 use App\DataTables\ServerDataTable;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Http;
@@ -27,33 +26,20 @@ class ServerController extends Controller
      */
     public function create()
     {
-        $statuses = collect(ServerStatus::cases())->map(function($status) {
-            return [
-                'id' => $status->value,
-                'name' => $status->name()
-            ];
-        })->toArray();
+        $statuses = ServerStatus::cases();
         $teams = \App\Models\Team::all();
-        $data = null; // For unified form
-        return view('server.form', compact('statuses', 'teams', 'data'));
+        return view('server.create', compact('statuses', 'teams'));
     }
 
     /**
-     * Store a newly created server or update existing
+     * Store a newly created server
      */
     public function store(Request $request)
     {
-        $isEdit = !empty($request->input('id'));
-        $server = $isEdit ? Server::findOrFail($request->input('id')) : null;
-
         $validated = $request->validate([
             'name' => 'required|string',
             'ip' => 'nullable|string|ip',
-            'server_url' => [
-                'required',
-                'string',
-                $isEdit ? Rule::unique('servers')->ignore($server->id) : 'unique:servers,server_url'
-            ],
+            'server_url' => 'required|string|unique:servers,server_url',
             'username' => 'required|string',
             'operating_system' => 'nullable|string|max:255',
             'control_panel' => 'required|in:none,cpanel,plesk',
@@ -62,19 +48,14 @@ class ServerController extends Controller
             'status_id' => 'required|integer',
         ]);
 
-        if ($isEdit) {
-            $server->update($validated);
-            $message = 'Server updated successfully.';
-        } else {
-            // Set default values for new servers
-            $validated['success'] = true;
-            $validated['data'] = [];
-            $server = Server::create($validated);
-            $message = 'Server created successfully.';
-        }
+        // Set default values
+        $validated['success'] = true;
+        $validated['data'] = [];
+
+        $server = Server::create($validated);
 
         return redirect()->route('server.show', $server->id)
-            ->with('success', $message);
+            ->with('success', 'Server created successfully.');
     }
 
     /**
@@ -84,19 +65,19 @@ class ServerController extends Controller
     {
         $cPanelDomains = null;
         $cPanelError = null;
-        
+
         // If it's a cPanel server, try to get domains from WHM API
         if ($server->control_panel === 'cpanel' && $server->hasToken()) {
             $whmService = new WhmService();
             $result = $whmService->getDomainsFromServer($server);
-            
+
             if ($result['success']) {
                 $cPanelDomains = $result['domains'];
             } else {
                 $cPanelError = $result['error'];
             }
         }
-        
+
         return view('server.show', compact('server', 'cPanelDomains', 'cPanelError'));
     }
 
@@ -105,15 +86,36 @@ class ServerController extends Controller
      */
     public function edit(Server $server)
     {
-        $statuses = collect(ServerStatus::cases())->map(function($status) {
-            return [
-                'id' => $status->value,
-                'name' => $status->name()
-            ];
-        })->toArray();
+        $statuses = ServerStatus::cases();
         $teams = \App\Models\Team::all();
-        $data = $server; // For unified form
-        return view('server.form', compact('statuses', 'teams', 'data'));
+        return view('server.edit', compact('server', 'statuses', 'teams'));
+    }
+
+    /**
+     * Update the specified server
+     */
+    public function update(Request $request, Server $server)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'ip' => 'nullable|string|ip',
+            'server_url' => [
+                'required',
+                'string',
+                Rule::unique('servers')->ignore($server->id),
+            ],
+            'username' => 'required|string',
+            'operating_system' => 'nullable|string|max:255',
+            'control_panel' => 'required|in:none,cpanel,plesk',
+            'encrypted_token' => 'nullable|string',
+            'team_id' => 'nullable|exists:teams,id',
+            'status_id' => 'required|integer',
+        ]);
+
+        $server->update($validated);
+
+        return redirect()->route('server.show', $server->id)
+            ->with('success', 'Server updated successfully.');
     }
 
     /**
@@ -123,13 +125,14 @@ class ServerController extends Controller
     {
         // Check if there are any domains using this server
         $domainCount = $server->domains()->count();
-        
+
         if ($domainCount > 0) {
             return redirect()->route('server.show', $server->id)
                 ->with('error', "Cannot delete server: {$domainCount} domains are using this server.");
         }
-        
+
         $server->delete();
+
         return redirect()->route('server.index')
             ->with('success', 'Server deleted successfully.');
     }
@@ -142,22 +145,18 @@ class ServerController extends Controller
         try {
             // Check if server has required configuration
             if ($server->control_panel !== 'cpanel') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Connection test is only available for cPanel servers.'
-                ], 400);
+                return redirect()->route('server.show', $server->id)
+                    ->with('warning', 'Connection test is only available for cPanel servers.');
             }
 
             if (!$server->hasToken()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot test connection: Server token is not configured.'
-                ], 400);
+                return redirect()->route('server.show', $server->id)
+                    ->with('error', 'Cannot test connection: Server token is not configured.');
             }
 
             // Test actual API connection using WHM service
             $whmService = new WhmService();
-            
+
             // Try to get server version first (lightweight test)
             $url = "https://{$server->server_url}:2087";
             $response = Http::withHeaders([
@@ -168,8 +167,8 @@ class ServerController extends Controller
 
             if ($response->successful()) {
                 $versionData = $response->json();
-                
-                // Update server status to success - clear any previous error data
+
+                // Update server status to success
                 $server->update([
                     'success' => true,
                     'status_id' => ServerStatus::Active->value,
@@ -179,17 +178,11 @@ class ServerController extends Controller
                         'api_version' => $versionData['version'] ?? null,
                         'build' => $versionData['build'] ?? null,
                         'server_hostname' => $versionData['hostname'] ?? null,
-                        'test_response_time' => $response->transferStats ? 
-                            round($response->transferStats->getTransferTime() * 1000, 2) . 'ms' : null,
-                        // Clear previous error data
-                        'error_code' => null,
-                        'error_response' => null,
-                        'connection_error' => null,
-                        'error_message' => null,
-                        'error_type' => null
+                        'test_response_time' => $response->transferStats ?
+                            round($response->transferStats->getTransferTime() * 1000, 2) . 'ms' : null
                     ])
                 ]);
-                
+
                 $message = 'Connection successful! ';
                 if (isset($versionData['version'])) {
                     $message .= "WHM Version: {$versionData['version']}";
@@ -197,18 +190,15 @@ class ServerController extends Controller
                 if (isset($versionData['hostname'])) {
                     $message .= ", Hostname: {$versionData['hostname']}";
                 }
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => $message,
-                    'data' => $versionData
-                ]);
-                    
+
+                return redirect()->route('server.show', $server->id)
+                    ->with('success', $message);
+
             } else {
                 // API request failed
                 $errorBody = $response->body();
                 $statusCode = $response->status();
-                
+
                 $server->update([
                     'success' => false,
                     'status_id' => ServerStatus::Error->value,
@@ -219,7 +209,7 @@ class ServerController extends Controller
                         'error_response' => $errorBody
                     ])
                 ]);
-                
+
                 $errorMessage = "Connection failed (HTTP {$statusCode})";
                 if (str_contains($errorBody, 'authentication failed') || $statusCode === 401) {
                     $errorMessage .= ": Invalid credentials or token";
@@ -228,14 +218,11 @@ class ServerController extends Controller
                 } elseif ($statusCode >= 500) {
                     $errorMessage .= ": Server error";
                 }
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => $errorMessage,
-                    'error_code' => $statusCode
-                ], 400);
+
+                return redirect()->route('server.show', $server->id)
+                    ->with('error', $errorMessage);
             }
-            
+
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             // Network/connection errors
             $server->update([
@@ -247,7 +234,7 @@ class ServerController extends Controller
                     'connection_error' => $e->getMessage()
                 ])
             ]);
-            
+
             $errorMessage = 'Connection failed: ';
             if (str_contains($e->getMessage(), 'timeout')) {
                 $errorMessage .= 'Connection timeout - server may be unreachable';
@@ -256,12 +243,10 @@ class ServerController extends Controller
             } else {
                 $errorMessage .= 'Network error';
             }
-            
-            return response()->json([
-                'success' => false,
-                'message' => $errorMessage
-            ], 500);
-                
+
+            return redirect()->route('server.show', $server->id)
+                ->with('error', $errorMessage);
+
         } catch (\Exception $e) {
             // Other errors
             Log::error('Error testing server connection: ' . $e->getMessage(), [
@@ -272,7 +257,7 @@ class ServerController extends Controller
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             $server->update([
                 'success' => false,
                 'status_id' => ServerStatus::Error->value,
@@ -283,11 +268,9 @@ class ServerController extends Controller
                     'error_message' => $e->getMessage()
                 ])
             ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Unexpected error during connection test: ' . $e->getMessage()
-            ], 500);
+
+            return redirect()->route('server.show', $server->id)
+                ->with('error', 'Unexpected error during connection test: ' . $e->getMessage());
         }
     }
 
@@ -335,4 +318,4 @@ class ServerController extends Controller
             ], 500);
         }
     }
-} 
+}

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('user_agent')->nullable();
             $table->timestamp('downloaded_at');
             $table->timestamps();
-            
+
             $table->index(['user_id', 'invoice_id']);
         });
     }

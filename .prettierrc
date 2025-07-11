@@ -1,0 +1,59 @@
+{
+  "semi": true,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "printWidth": 120,
+  "tabWidth": 4,
+  "useTabs": true,
+  "bracketSpacing": true,
+  "bracketSameLine": false,
+  "arrowParens": "avoid",
+  "endOfLine": "lf",
+  "overrides": [
+    {
+      "files": "*.php",
+      "options": {
+        "parser": "php",
+        "printWidth": 120,
+        "tabWidth": 4,
+        "useTabs": true,
+        "bracketSameLine": false
+      }
+    },
+    {
+      "files": ["*.js", "*.ts", "*.jsx", "*.tsx"],
+      "options": {
+        "semi": true,
+        "singleQuote": true,
+        "tabWidth": 4,
+        "useTabs": true,
+        "bracketSameLine": false
+      }
+    },
+    {
+      "files": ["*.css", "*.scss", "*.less"],
+      "options": {
+        "tabWidth": 4,
+        "useTabs": true,
+        "bracketSameLine": false
+      }
+    },
+    {
+      "files": ["*.json"],
+      "options": {
+        "tabWidth": 4,
+        "useTabs": true
+      }
+    },
+    {
+      "files": ["*.blade.php"],
+      "options": {
+        "parser": "php",
+        "printWidth": 120,
+        "tabWidth": 4,
+        "useTabs": true,
+        "bracketSameLine": false
+      }
+    }
+  ]
+} 

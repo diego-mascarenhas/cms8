@@ -20,13 +20,13 @@ class Server extends Model
         'team_id',
         'success',
         'status_id',
-        'data'
+        'data',
     ];
 
     protected $casts = [
         'success' => 'boolean',
         'status_id' => ServerStatus::class,
-        'data' => 'array'
+        'data' => 'array',
     ];
 
     // Encrypt token when saving
@@ -139,4 +139,4 @@ class Server extends Model
         }
         return null;
     }
-} 
+}

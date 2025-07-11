@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Log;
 class RegisterApplication extends Command
 {
     protected $signature = 'app:register-application';
+
     protected $description = 'Register the application with the central server';
+
     protected $showConsoleOutput;
 
     public function __construct()
@@ -27,8 +29,7 @@ class RegisterApplication extends Command
         $appUrl = env('APP_URL');
         $appCommit = env('APP_VERSION');
 
-        if ($this->showConsoleOutput)
-        {
+        if ($this->showConsoleOutput) {
             $this->info("Registering application {$appName}...");
         }
 
@@ -41,8 +42,7 @@ class RegisterApplication extends Command
             'commit' => $appCommit,
         ]);
 
-        if ($response->failed())
-        {
+        if ($response->failed()) {
             $errorMessage = 'Application registration failed.';
             $errorData = [
                 'status' => $response->status(),
@@ -51,18 +51,14 @@ class RegisterApplication extends Command
 
             Log::error($errorMessage, $errorData);
 
-            if ($this->showConsoleOutput)
-            {
+            if ($this->showConsoleOutput) {
                 $this->error($errorMessage);
                 $this->error(print_r($errorData, true));
             }
-        }
-        else
-        {
+        } else {
             $successMessage = 'Application registered successfully.';
 
-            if ($this->showConsoleOutput)
-            {
+            if ($this->showConsoleOutput) {
                 $this->info($successMessage);
             }
         }

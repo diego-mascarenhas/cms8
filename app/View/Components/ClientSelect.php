@@ -2,15 +2,19 @@
 
 namespace App\View\Components;
 
-use Illuminate\View\Component;
 use App\Models\Enterprise;
+use Illuminate\View\Component;
 
 class ClientSelect extends Component
 {
     public $options;
+
     public $selected;
+
     public $label;
+
     public $id;
+
     public $allowNull;
 
     public function __construct($selected = null, $label = 'Cliente', $id = 'enterprise_id', $allowNull = true)
@@ -35,4 +39,4 @@ class ClientSelect extends Component
     {
         return view('components.client-select');
     }
-} 
+}

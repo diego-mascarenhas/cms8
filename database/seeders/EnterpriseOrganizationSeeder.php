@@ -2,11 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\EnterpriseOrganization;
-use App\Models\EnterpriseDepartment;
-use App\Models\Team;
-use App\Models\User;
+use Illuminate\Database\Seeder;
 
 class EnterpriseOrganizationSeeder extends Seeder
 {
@@ -374,7 +371,7 @@ class EnterpriseOrganizationSeeder extends Seeder
         $departmentCounters = [];
 
         foreach ($organizations as $item) {
-            if (!isset($departmentCounters[$item['department_id']])) {
+            if (! isset($departmentCounters[$item['department_id']])) {
                 $departmentCounters[$item['department_id']] = 1;
             }
 
@@ -386,7 +383,7 @@ class EnterpriseOrganizationSeeder extends Seeder
                 'responsible_id' => $item['responsible_id'],
                 'time_allocation' => $item['time_allocation'],
                 'availability' => $item['availability'] ?? null,
-                'order' => $departmentCounters[$item['department_id']]++
+                'order' => $departmentCounters[$item['department_id']]++,
             ]);
         }
     }

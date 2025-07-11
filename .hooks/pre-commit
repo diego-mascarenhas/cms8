@@ -1,0 +1,41 @@
+#!/bin/sh
+
+# Laravel Pint Pre-commit Hook
+# Automatically formats PHP files before committing
+
+echo "🎨 Checking code formatting with Laravel Pint..."
+
+# Buscar archivos PHP en el área de staging
+staged_files=$(git diff --cached --name-only --diff-filter=ACM -- '*.php')
+
+# Si no hay archivos PHP staged, salir
+if [ -z "$staged_files" ]; then
+    echo "✅ No PHP files to format"
+    exit 0
+fi
+
+echo "📝 Found PHP files to format:"
+echo "$staged_files"
+
+# Verificar que Pint esté instalado
+if [ ! -f "./vendor/bin/pint" ]; then
+    echo "❌ Laravel Pint not found. Please install it with: composer require laravel/pint --dev"
+    exit 1
+fi
+
+# Ejecutar Pint en los archivos staged
+echo "🔧 Formatting files with Laravel Pint..."
+if ./vendor/bin/pint $staged_files --test > /dev/null 2>&1; then
+    echo "✅ All files are already properly formatted"
+else
+    echo "🚀 Formatting files..."
+    ./vendor/bin/pint $staged_files
+    
+    # Volver a agregar los archivos formateados al staging area
+    git add $staged_files
+    
+    echo "✅ Files formatted and added to staging area"
+fi
+
+echo "🎉 Pre-commit formatting complete!"
+exit 0 

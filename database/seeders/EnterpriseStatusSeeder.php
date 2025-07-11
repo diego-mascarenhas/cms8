@@ -16,7 +16,7 @@ class EnterpriseStatusSeeder extends Seeder
             ['id' => 1, 'name' => 'Inactiva', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-danger'],
             ['id' => 2, 'name' => 'Activa', 'enterprise_type_id' => 1, 'label_class' => 'bg-label-success'],
         ];
-        
+
         foreach ($statuses as $status) {
             EnterpriseStatus::create($status);
         }

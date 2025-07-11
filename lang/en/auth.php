@@ -30,7 +30,7 @@ return [
         'title' => 'Confirm Password',
         'description' => 'Please confirm your password before continuing.',
         'enter_password' => 'Enter Password',
-        'confirm_button' => 'Confirm Password'
+        'confirm_button' => 'Confirm Password',
     ],
     'register' => [
         'title' => 'Register Page',
@@ -47,7 +47,7 @@ return [
         'terms' => 'terms',
         'sign_up' => 'Sign up',
         'already_account' => 'Already have an account?',
-        'sign_in' => 'Sign in instead'
+        'sign_in' => 'Sign in instead',
     ],
     'forgot_password' => [
         'title' => 'Forgot Password',
@@ -56,7 +56,7 @@ return [
         'email' => 'Email',
         'email_placeholder' => 'john@example.com',
         'send_reset_link' => 'Send Reset Link',
-        'back_to_login' => 'Back to login'
+        'back_to_login' => 'Back to login',
     ],
     'reset_password' => [
         'title' => 'Reset Password',
@@ -65,7 +65,7 @@ return [
         'new_password' => 'New Password',
         'confirm_password' => 'Confirm Password',
         'set_password' => 'Set new password',
-        'back_to_login' => 'Back to login'
+        'back_to_login' => 'Back to login',
     ],
     'two_factor' => [
         'title' => 'Two Step Verification',
@@ -76,7 +76,7 @@ return [
         'recovery_code_label' => 'Recovery Code',
         'use_recovery' => 'Use a recovery code',
         'use_authentication' => 'Use an authentication code',
-        'login_button' => 'Log in'
+        'login_button' => 'Log in',
     ],
 
 ];

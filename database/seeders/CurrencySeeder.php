@@ -31,10 +31,10 @@ class CurrencySeeder extends Seeder
         ]);
 
         Currency::create([
-            'id' => 32,
-            'code' => 'ARS',
-            'name' => 'Argentine Peso',
-            'symbol' => '$',
+            'id' => 826,
+            'code' => 'GBP',
+            'name' => 'British Pound Sterling',
+            'symbol' => '£',
             'status' => true,
         ]);
     }

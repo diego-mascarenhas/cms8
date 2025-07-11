@@ -6,25 +6,23 @@ use App\DataTables\ClientDataTable;
 use App\Models\Enterprise;
 use App\Models\EnterpriseStatus;
 use Illuminate\Http\Request;
-use Spatie\SimpleExcel\SimpleExcelReader;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Spatie\SimpleExcel\SimpleExcelReader;
 
 class ClientController extends Controller
 {
     public function index(ClientDataTable $dataTable)
     {
-        if (!auth()->user()->currentTeam)
-        {
+        if (! auth()->user()->currentTeam) {
             return redirect()->route('error-without-team');
         }
-        
+
         $teamId = auth()->user()->current_team_id;
-        
+
         $data = Enterprise::getContactStats($teamId);
         $data['enterpriseStatuses'] = EnterpriseStatus::getOptions(1);
-
 
         return $dataTable->render('client.index', $data);
     }
@@ -56,7 +54,7 @@ class ClientController extends Controller
             'postal_code' => 'nullable|string|max:20',
             'locality' => 'nullable|string|max:50',
             'province' => 'nullable|string|max:50',
-            'data' => 'nullable|array', 
+            'data' => 'nullable|array',
         ]);
 
         $data['team_id'] = auth()->user()->currentTeam->id;
@@ -66,7 +64,7 @@ class ClientController extends Controller
 
         Enterprise::updateOrCreate(
             ['id' => $request->id],
-            $data
+            $data,
         );
 
         return redirect()->route('client-list')->with('success', 'Record saved successfully.');
@@ -77,7 +75,20 @@ class ClientController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $client = Enterprise::with([
+            'responsible',
+            'status',
+            'projects.responsible',
+            'projects.status',
+            'projects.category',
+        ])->findOrFail($id);
+
+        // Ensure it's a client (type_id = 1)
+        if ($client->type_id != 1) {
+            return redirect()->route('client-list')->with('error', 'Record not found.');
+        }
+
+        return view('client.show', compact('client'));
     }
 
     /**
@@ -87,12 +98,11 @@ class ClientController extends Controller
     {
         $row = Enterprise::find($id);
 
-        if (!$row)
-        {
+        if (! $row) {
             return redirect()->route('client-list')->with('error', 'Client not found.');
         }
 
-        $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass()));
+        $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass));
         $data->id = $id;
 
         $enterpriseStatuses = EnterpriseStatus::getOptions(1);
@@ -123,7 +133,7 @@ class ClientController extends Controller
     public function importExcel(Request $request)
     {
         $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,xls,csv'
+            'excel_file' => 'required|file|mimes:xlsx,xls,csv',
         ]);
 
         $file = $request->file('excel_file');
@@ -131,7 +141,7 @@ class ClientController extends Controller
         $fullPath = Storage::path($path);
 
         $extension = $file->getClientOriginalExtension();
-        
+
         try {
             if ($extension == 'csv') {
                 $excel = SimpleExcelReader::create($fullPath, 'csv');
@@ -151,6 +161,7 @@ class ClientController extends Controller
                 if ($index === 0) {
                     if ($this->isHeaderRow($row)) {
                         $headers = array_map([$this, 'normalizeHeader'], array_keys($row));
+
                         continue; // Skip header row
                     }
                 }
@@ -172,10 +183,10 @@ class ClientController extends Controller
                             }
                         }
 
-                        $client['data'] = !empty($additionalDataAssoc) ? $additionalDataAssoc : null;
+                        $client['data'] = ! empty($additionalDataAssoc) ? $additionalDataAssoc : null;
                     } else {
                         $additionalData = array_slice($values, 3);
-                        $client['data'] = !empty($additionalData) ? $additionalData : null;
+                        $client['data'] = ! empty($additionalData) ? $additionalData : null;
                     }
 
                     $validator = Validator::make($client, [
@@ -189,8 +200,8 @@ class ClientController extends Controller
                     }
 
                     $existingClient = Enterprise::where('email', $client['email'])
-                                                ->where('team_id', $client['team_id'])
-                                                ->first();
+                        ->where('team_id', $client['team_id'])
+                        ->first();
 
                     if ($existingClient) {
                         $existingClient->update($client);
@@ -214,6 +225,7 @@ class ClientController extends Controller
             ]);
         } catch (\Exception $e) {
             Storage::delete($path);
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -246,10 +258,11 @@ class ClientController extends Controller
     private function isHeaderRow($row)
     {
         foreach ($row as $value) {
-            if (!is_string($value)) {
+            if (! is_string($value)) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -258,6 +271,7 @@ class ClientController extends Controller
         $header = strtolower($header);
         $header = iconv('UTF-8', 'ASCII//TRANSLIT', $header);
         $header = preg_replace('/[^a-z0-9_]/', '_', $header);
+
         return $header;
     }
 

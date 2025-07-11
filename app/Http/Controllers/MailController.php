@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Source;
 use BeyondCode\Mailbox\InboundEmail;
-use Webklex\PHPIMAP\ClientManager;
 use Illuminate\Support\Facades\Log;
+use Webklex\PHPIMAP\ClientManager;
 
 class MailController extends Controller
 {
@@ -20,8 +19,7 @@ class MailController extends Controller
 
     public function mailbox()
     {
-        try
-        {
+        try {
             // IMAP configuration
             $config = [
                 'host' => env('MAILBOX_HOST'),
@@ -30,10 +28,10 @@ class MailController extends Controller
                 'validate_cert' => env('MAILBOX_VALIDATE_CERT', true),
                 'username' => env('MAILBOX_USERNAME'),
                 'password' => env('MAILBOX_PASSWORD'),
-                'protocol' => 'imap'
+                'protocol' => 'imap',
             ];
 
-            $cm = new ClientManager();
+            $cm = new ClientManager;
             $client = $cm->make($config);
 
             $client->connect();
@@ -43,31 +41,26 @@ class MailController extends Controller
 
             $emailCollection = collect();
 
-            foreach ($messages as $message)
-            {
-                try
-                {
+            foreach ($messages as $message) {
+                try {
                     $emailCollection->push([
                         'message_id' => $message->getMessageId(),
                         'subject' => $message->getSubject(),
                         'from' => $message->getFrom(),
                         'date' => $message->getDate(),
-                        'body' => $message->getRawBody()
+                        'body' => $message->getRawBody(),
                     ]);
-                }
-                catch (\Exception $e)
-                {
-                    Log::error("Error processing email: " . $e->getMessage());
+                } catch (\Exception $e) {
+                    Log::error('Error processing email: '.$e->getMessage());
                 }
             }
 
             return $emailCollection;
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             Log::error('Error in mailbox method', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return collect();
         }
     }
@@ -78,17 +71,18 @@ class MailController extends Controller
             Log::info('Correo recibido:', [
                 'asunto' => $email->subject(),
                 'de' => $email->from(),
-                'contenido' => $email->text()
+                'contenido' => $email->text(),
             ]);
 
             $inboundEmail = InboundEmail::fromMessage($email->message);
             $inboundEmail->save();
 
-            Log::info('Email guardado correctamente en la base de datos con ID: ' . $inboundEmail->id);
+            Log::info('Email guardado correctamente en la base de datos con ID: '.$inboundEmail->id);
 
             return true;
         } catch (\Exception $e) {
-            Log::error('Error al procesar el email: ' . $e->getMessage());
+            Log::error('Error al procesar el email: '.$e->getMessage());
+
             return false;
         }
     }

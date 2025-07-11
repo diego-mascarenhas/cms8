@@ -3,20 +3,19 @@
 namespace App\DataTables;
 
 use App\Models\List60;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-use Carbon\Carbon;
-
 class List60DataTable extends DataTable
 {
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -27,8 +26,8 @@ class List60DataTable extends DataTable
                 $companyName = $row->contact->enterprise ? e($row->contact->enterprise->name) : '';
 
                 return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">' . e($row->contact->name) . '</span>
-                            <small class="text-muted">' . ($companyName ?: '&nbsp;') . '</small>
+                            <span class="fw-medium text-body text-truncate">'.e($row->contact->name).'</span>
+                            <small class="text-muted">'.($companyName ?: '&nbsp;').'</small>
                         </div>';
             })
             ->editColumn('status_id', function ($row) {
@@ -43,7 +42,7 @@ class List60DataTable extends DataTable
             ->editColumn('type_id', function ($row) {
                 return $row->type->name ?? __('Undefined');
             })
-            ->filterColumn('contact_id', function($query, $keyword) {
+            ->filterColumn('contact_id', function ($query, $keyword) {
                 $query->whereHas('contact', function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });
@@ -60,7 +59,7 @@ class List60DataTable extends DataTable
                 'contact.sources',
                 'contact.status',
                 'status',
-                'type'
+                'type',
             ]);
     }
 
@@ -74,10 +73,10 @@ class List60DataTable extends DataTable
             ->orderBy(4, direction: 'asc')
             ->responsive(true)
             ->processing(false)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'pageLength' => 60,
-                'paging' => false
+                'paging' => false,
             ]);
     }
 
@@ -121,6 +120,6 @@ class List60DataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'List60_' . date('YmdHis');
+        return 'List60_'.date('YmdHis');
     }
 }

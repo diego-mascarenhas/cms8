@@ -19,14 +19,14 @@ class Conversation extends Model
         'direction',
         'media',
         'metadata',
-        'user_id'
+        'user_id',
     ];
 
     protected $casts = [
         'media' => 'array',
         'metadata' => 'array',
     ];
-    
+
     /**
      * Check if a message has been delivered
      */
@@ -34,7 +34,7 @@ class Conversation extends Model
     {
         return in_array($this->status, ['delivered', 'read']);
     }
-    
+
     /**
      * Check if a message has been read
      */
@@ -42,7 +42,7 @@ class Conversation extends Model
     {
         return $this->status === 'read';
     }
-    
+
     /**
      * Check if a message has failed
      */
@@ -50,7 +50,7 @@ class Conversation extends Model
     {
         return in_array($this->status, ['failed', 'undelivered']);
     }
-    
+
     /**
      * Scope a query to only include WhatsApp conversations.
      */
@@ -58,7 +58,7 @@ class Conversation extends Model
     {
         return $query->where('channel', 'whatsapp');
     }
-    
+
     /**
      * Scope a query to only include SMS conversations.
      */
@@ -66,7 +66,7 @@ class Conversation extends Model
     {
         return $query->where('channel', 'sms');
     }
-    
+
     /**
      * Scope a query to only include Email conversations.
      */
@@ -74,16 +74,16 @@ class Conversation extends Model
     {
         return $query->where('channel', 'email');
     }
-    
+
     /**
      * Get conversations by phone number (from or to)
      */
     public function scopeByPhone($query, $phoneNumber)
     {
-        return $query->where('from', 'like', '%' . $phoneNumber . '%')
-                     ->orWhere('to', 'like', '%' . $phoneNumber . '%');
+        return $query->where('from', 'like', '%'.$phoneNumber.'%')
+            ->orWhere('to', 'like', '%'.$phoneNumber.'%');
     }
-    
+
     /**
      * Get inbound conversations
      */
@@ -91,7 +91,7 @@ class Conversation extends Model
     {
         return $query->where('direction', 'inbound');
     }
-    
+
     /**
      * Get outbound conversations
      */

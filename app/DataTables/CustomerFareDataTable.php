@@ -22,9 +22,10 @@ class CustomerFareDataTable extends DataTable
             })
             ->addColumn('fare_info', function ($customerFare) {
                 $fareBlock = $customerFare->fare->block ? $customerFare->fare->block->name : 'N/A';
+
                 return '<div>
-                    <strong>' . $customerFare->fare->name . '</strong><br>
-                    <small class="text-muted">' . $fareBlock . '</small>
+                    <strong>'.$customerFare->fare->name.'</strong><br>
+                    <small class="text-muted">'.$fareBlock.'</small>
                 </div>';
             })
             ->addColumn('unit_type', function ($customerFare) {
@@ -33,12 +34,14 @@ class CustomerFareDataTable extends DataTable
             ->addColumn('languages', function ($customerFare) {
                 $origin = $customerFare->languageOrigin ? $customerFare->languageOrigin->name : 'N/A';
                 $destination = $customerFare->languageDestination ? $customerFare->languageDestination->name : 'N/A';
-                return $origin . ' → ' . $destination;
+
+                return $origin.' → '.$destination;
             })
             ->addColumn('amount_formatted', function ($customerFare) {
-                $negotiableBadge = $customerFare->negotiable ? 
+                $negotiableBadge = $customerFare->negotiable ?
                     '<span class="badge bg-label-warning ms-1">Negotiable</span>' : '';
-                return $customerFare->formatted_amount . $negotiableBadge;
+
+                return $customerFare->formatted_amount.$negotiableBadge;
             })
             ->setRowId('id')
             ->rawColumns(['action', 'fare_info', 'amount_formatted']);
@@ -113,6 +116,6 @@ class CustomerFareDataTable extends DataTable
      */
     protected function filename(): string
     {
-        return 'CustomerFare_' . date('YmdHis');
+        return 'CustomerFare_'.date('YmdHis');
     }
-} 
+}

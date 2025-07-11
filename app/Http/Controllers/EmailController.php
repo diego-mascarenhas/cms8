@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Webklex\PHPIMAP\ClientManager;
 
 class EmailController extends Controller
 {
     public function fetchEmails()
     {
-        $cm = new ClientManager();
-        //$client = $cm->account('default');
+        $cm = new ClientManager;
+        // $client = $cm->account('default');
 
         $client = $cm->make([
             'host' => env('IMAP_HOST'),
@@ -24,25 +23,20 @@ class EmailController extends Controller
         ]);
 
         // $client->connect();
-        try
-        {
+        try {
             $client->connect();
-        }
-        catch (\Exception $e)
-        {
-            return response()->json(['error' => 'Error connecting to the email server: ' . $e->getMessage()], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error connecting to the email server: '.$e->getMessage()], 500);
         }
 
         $folders = $client->getFolders();
 
         $emailData = [];
 
-        foreach ($folders as $folder)
-        {
+        foreach ($folders as $folder) {
             $messages = $folder->messages()->all()->get();
 
-            foreach ($messages as $message)
-            {
+            foreach ($messages as $message) {
                 $emailData[] = [
                     'subject' => $message->getSubject(),
                     'attachments' => $message->getAttachments()->count(),

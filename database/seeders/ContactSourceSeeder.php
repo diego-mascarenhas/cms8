@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Contact;
-use App\Models\Source;
 use App\Models\ContactSource;
+use App\Models\Source;
+use Illuminate\Database\Seeder;
 
 class ContactSourceSeeder extends Seeder
 {
@@ -21,6 +21,7 @@ class ContactSourceSeeder extends Seeder
 
         if ($contacts->isEmpty() || $sources->isEmpty()) {
             $this->command->info('Make sure there are contacts and sources in the database before running this seeder.');
+
             return;
         }
 
@@ -44,13 +45,13 @@ class ContactSourceSeeder extends Seeder
     {
         switch ($sourceName) {
             case 'Phone':
-                return rand(1, 99) . rand(100000000, 999999999);
+                return rand(1, 99).rand(100000000, 999999999);
             case 'Email':
-                return 'usuario' . rand(1, 1000) . '@example.com';
+                return 'usuario'.rand(1, 1000).'@example.com';
             case 'WhatsApp':
-                return '+' . rand(1, 99) . rand(1000000000, 9999999999);
+                return '+'.rand(1, 99).rand(1000000000, 9999999999);
             default:
-                return 'usuario' . rand(1, 1000);
+                return 'usuario'.rand(1, 1000);
         }
     }
 }

@@ -26,4 +26,4 @@ class SoftwareTypesSeeder extends Seeder
             SoftwareType::create($type);
         }
     }
-} 
+}

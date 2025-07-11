@@ -2,41 +2,43 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Project extends Model
 {
     use HasFactory;
+    use LogsActivity;
     use SoftDeletes;
 
     protected $fillable = [
+        'team_id',
         'enterprise_id',
         'category_id',
         'name',
+        'real_name',
         'description',
         'price',
         'discount',
         'cost',
-        'start_date',
-        'end_date',
+        'date_material',
+        'date_start',
+        'date_end',
         'responsible_id',
         'status_id',
         'created_at',
-        'updated_at'
+        'updated_at',
     ];
 
     protected static function booted()
     {
-        static::addGlobalScope('team', function (Builder $builder)
-        {
-            if (auth()->check() && auth()->user()->currentTeam)
-            {
-                $builder->whereHas('client', function($query) {
-                    $query->where('team_id', auth()->user()->currentTeam->id);
-                });
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (auth()->check()) {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
     }
@@ -51,23 +53,84 @@ class Project extends Model
         return $this->belongsTo(Enterprise::class, 'enterprise_id');
     }
 
+    public function enterprise()
+    {
+        return $this->belongsTo(Enterprise::class, 'enterprise_id');
+    }
+
     public function responsible()
-	{
-		return $this->belongsTo(User::class, 'responsible_id');
-	}
+    {
+        return $this->belongsTo(User::class, 'responsible_id');
+    }
 
     public function status()
-	{
-		return $this->belongsTo(ProjectStatus::class);
-	}
+    {
+        return $this->belongsTo(ProjectStatus::class);
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(Note::class, 'reference')->where('module_id', 1); // Assuming module_id 1 is for projects
+    }
+
+    public function collaborators()
+    {
+        return $this->belongsToMany(Contact::class, 'contact_project')
+            ->using(ContactProject::class)
+            ->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message', 'deleted_at')
+            ->withTimestamps()
+            ->wherePivotNull('deleted_at'); // Only get non-deleted relationships
+    }
+
+    public function projectFares()
+    {
+        return $this->hasMany(ProjectFare::class);
+    }
+
+    public function fares()
+    {
+        return $this->belongsToMany(Fare::class, 'project_fares')
+            ->withPivot('source_language_code', 'target_language_code', 'quantity', 'unit', 'id')
+            ->withTimestamps();
+    }
 
     public function getStatusLabelAttribute()
     {
-        if ($this->status)
-        {
-            return '<span class="badge rounded-pill ' . $this->status->label_class . '">' . $this->status->translated_name . '</span>';
+        if ($this->status) {
+            return '<span class="badge rounded-pill '.$this->status->label_class.'">'.$this->status->translated_name.'</span>';
         }
+
         return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
     }
 
+    /**
+     * Get count of active projects (projects in progress states)
+     */
+    public static function getActiveProjectsCount($teamId = null)
+    {
+        $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
+
+        // Active project statuses: AUTHORIZED, APPROVED, WAITING_FOR_RESPONSE, IN_PROGRESS
+        $activeStatuses = [3, 7, 8, 9];
+
+        return static::where('team_id', $teamId)
+            ->whereIn('status_id', $activeStatuses)
+            ->count();
+    }
+
+    /**
+     * Configure activity log options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'real_name', 'description', 'price', 'discount', 'cost', 'date_start', 'date_end', 'responsible_id', 'status_id'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 }

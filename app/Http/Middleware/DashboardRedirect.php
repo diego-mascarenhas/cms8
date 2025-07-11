@@ -10,8 +10,6 @@ class DashboardRedirect
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
      * @return mixed
      */
     public function handle(Request $request, Closure $next)
@@ -20,7 +18,7 @@ class DashboardRedirect
         if ($request->is('dashboard') || $request->is('dashboard/analytics')) {
             // Check if a specific dashboard type is defined in the .env
             $dashboardType = env('APP_DASHBOARD_TYPE');
-            
+
             if ($dashboardType) {
                 // Redirect to the appropriate dashboard based on the type
                 switch ($dashboardType) {
@@ -30,11 +28,11 @@ class DashboardRedirect
                         return redirect()->route('dashboard.client');
                     case 'project':
                         return redirect()->route('dashboard.project');
-                    // Default case: proceed with the request
+                        // Default case: proceed with the request
                 }
             }
         }
 
         return $next($request);
     }
-} 
+}

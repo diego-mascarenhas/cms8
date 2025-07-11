@@ -20,14 +20,14 @@ class UpdateDomainSiteType implements ShouldQueue
      * @var int
      */
     public $tries = 2;
-    
+
     /**
      * The number of seconds the job can run before timing out.
      *
      * @var int
      */
     public $timeout = 60;
-    
+
     /**
      * The domain ID to process.
      *
@@ -50,31 +50,32 @@ class UpdateDomainSiteType implements ShouldQueue
     public function handle()
     {
         Log::info("Processing WordPress detection for domain ID: {$this->domainId}");
-        
+
         try {
             $domain = Domain::find($this->domainId);
-            
-            if (!$domain) {
+
+            if (! $domain) {
                 Log::warning("Domain with ID {$this->domainId} not found");
+
                 return;
             }
-            
+
             Log::info("Checking if {$domain->domain} is a WordPress site...");
-            
+
             $wasWp = $domain->site_type === 'WordPress';
             $domain->updateSiteType();
             $isWp = $domain->site_type === 'WordPress';
-            
-            if (!$wasWp && $isWp) {
+
+            if (! $wasWp && $isWp) {
                 Log::info("Domain {$domain->domain} was detected as WordPress and updated");
-            } else if ($wasWp && $isWp) {
+            } elseif ($wasWp && $isWp) {
                 Log::info("Domain {$domain->domain} was already marked as WordPress");
             } else {
                 Log::info("Domain {$domain->domain} is not a WordPress site");
             }
         } catch (\Exception $e) {
-            Log::error("Error processing WordPress detection for domain ID {$this->domainId}: " . $e->getMessage());
+            Log::error("Error processing WordPress detection for domain ID {$this->domainId}: ".$e->getMessage());
             throw $e;
         }
     }
-} 
+}

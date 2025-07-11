@@ -2,18 +2,20 @@
 
 namespace App\Console;
 
+use App\Console\Commands\UpdateHostMetrics;
+use App\Console\Commands\SendPendingNotifications;
+use App\Models\Domain;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use App\Console\Commands\UpdateHostMetrics;
-use App\Models\Domain;
-
 use Log;
 
 class Kernel extends ConsoleKernel
 {
     protected $commands = [
         UpdateHostMetrics::class,
+        SendPendingNotifications::class,
     ];
+
     /**
      * Define the application's command schedule.
      */
@@ -80,25 +82,25 @@ class Kernel extends ConsoleKernel
         // $schedule->job(new \App\Jobs\SendBalanceEmail())->monthlyOn(1, '00:00');
 
         $schedule->command('stripe:suspend-overdue')
-                ->daily()
-                ->at('03:00');
+            ->daily()
+            ->at('03:00');
 
-        $schedule->job(new \App\Jobs\WhmServerTest())->everyFiveMinutes();
-        
-        $schedule->job(new \App\Jobs\WhmDomainSync())->twiceDaily(6, 18);
+        $schedule->job(new \App\Jobs\WhmServerTest)->everyFiveMinutes();
 
-        $schedule->job(new \App\Jobs\UpdateDomainInfo())->daily();
-        
-        $schedule->job(function() {
-            Domain::select('id')->orderBy('id')->chunk(50, function($domains) {
+        $schedule->job(new \App\Jobs\WhmDomainSync)->twiceDaily(6, 18);
+
+        $schedule->job(new \App\Jobs\UpdateDomainInfo)->daily();
+
+        $schedule->job(function () {
+            Domain::select('id')->orderBy('id')->chunk(50, function ($domains) {
                 foreach ($domains as $domain) {
                     \App\Jobs\UpdateDomainSiteType::dispatch($domain->id);
                 }
             });
         })->dailyAt('04:00')->withoutOverlapping();
-                
-        $schedule->job(function() {
-            Domain::select('id')->orderBy('id')->chunk(50, function($domains) {
+
+        $schedule->job(function () {
+            Domain::select('id')->orderBy('id')->chunk(50, function ($domains) {
                 foreach ($domains as $domain) {
                     \App\Jobs\UpdateDomainPhpVersion::dispatch($domain->id);
                 }
@@ -106,6 +108,13 @@ class Kernel extends ConsoleKernel
         })->dailyAt('04:30')->withoutOverlapping();
 
         $schedule->command('ovh:sync')->daily();
+
+        // Send pending notifications every 5 minutes
+        $schedule->command('notifications:send-pending')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
     }
 
     /**
@@ -113,7 +122,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__ . '/Commands');
+        $this->load(__DIR__.'/Commands');
 
         require base_path('routes/console.php');
     }

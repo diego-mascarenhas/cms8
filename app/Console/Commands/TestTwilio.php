@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class TestTwilio extends Command
 {
     protected $signature = 'twilio:test {--type=sms} {--to=} {--message=}';
+
     protected $description = 'Test Twilio messaging functionality';
 
     public function handle(TwilioService $twilioService)
@@ -16,8 +17,9 @@ class TestTwilio extends Command
         $to = $this->option('to');
         $message = $this->option('message') ?? 'Test message from Laravel';
 
-        if (!$to) {
+        if (! $to) {
             $this->error('Please provide a phone number with --to option');
+
             return 1;
         }
 
@@ -29,11 +31,13 @@ class TestTwilio extends Command
             }
 
             $this->info('Message sent successfully!');
-            $this->info('Message SID: ' . $result->sid);
+            $this->info('Message SID: '.$result->sid);
+
             return 0;
         } catch (\Exception $e) {
-            $this->error('Error sending message: ' . $e->getMessage());
+            $this->error('Error sending message: '.$e->getMessage());
+
             return 1;
         }
     }
-} 
+}

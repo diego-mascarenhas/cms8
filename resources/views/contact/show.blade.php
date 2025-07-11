@@ -130,19 +130,6 @@
                                 <span class="fw-medium me-1">Estado:</span>
                                 <span class="badge {{ $data->status->label_class }}">{{ $data->status->name }}</span>
                             </li>
-                            @if ($data->user_id)
-                                <li class="mb-2 pt-1">
-                                    <span class="fw-medium me-1">Usuario:</span>
-                                    <span>
-                                        @php $linkedUser = \App\Models\User::find($data->user_id); @endphp
-                                        @if ($linkedUser)
-                                            <span>{{ $linkedUser->name }}</span>
-                                        @else
-                                            <span class="badge bg-label-danger">Usuario no encontrado</span>
-                                        @endif
-                                    </span>
-                                </li>
-                            @endif
                             @if ($data->enterprise)
                                 <li class="mb-2 pt-1">
                                     <span class="fw-medium me-1">Empresa:</span>
@@ -215,6 +202,37 @@
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Superior:</span>
                                 <span>{{ $data->creator->name ?? 'No asignado' }}</span>
+                            </li>
+                            <li class="mb-2 pt-3">
+                                @if ($data->user_id)
+                                    @php $linkedUser = \App\Models\User::find($data->user_id); @endphp
+                                    @if ($linkedUser)
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <span class="badge bg-label-primary me-2">{{ $linkedUser->roles->first()->name ?? 'Sin rol' }}</span>
+                                                <span>{{ $linkedUser->name }} ({{ $linkedUser->email }})</span>
+                                            </div>
+                                            @can('contact.edit')
+                                                <a href="{{ route('user-unlink.show', ['contact', $data->id]) }}" class="btn btn-sm btn-icon btn-outline-secondary">
+                                                    <i class="ti ti-unlink ti-xs"></i>
+                                                </a>
+                                            @endcan
+                                        </div>
+                                    @else
+                                        <span class="badge bg-label-danger">Usuario no encontrado</span>
+                                        @can('contact.edit')
+                                            <a href="{{ route('user-link.show', ['contact', $data->id]) }}" class="btn btn-sm btn-outline-primary ms-2">
+                                                <i class="ti ti-link ti-xs me-1"></i>Vincular usuario
+                                            </a>
+                                        @endcan
+                                    @endif
+                                @else
+                                    @can('contact.edit')
+                                        <a href="{{ route('user-link.show', ['contact', $data->id]) }}" class="btn btn-sm btn-outline-primary ms-2">
+                                            <i class="ti ti-link ti-xs me-1"></i>Vincular usuario
+                                        </a>
+                                    @endcan
+                                @endif
                             </li>
                         </ul>
                         <div class="d-flex justify-content-center">
@@ -377,6 +395,8 @@
             </div>
         </div>
     </div>
+
+
 @endpush
 
 @push('scripts')
@@ -496,5 +516,7 @@
 
             document.getElementById('totalTime').textContent = formattedTime;
         }, 1000);
+
+
     </script>
 @endpush

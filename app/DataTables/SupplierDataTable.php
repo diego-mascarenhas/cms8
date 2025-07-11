@@ -9,14 +9,12 @@ use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-use Carbon\Carbon;
-
 class SupplierDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -25,6 +23,7 @@ class SupplierDataTable extends DataTable
             ->setRowId('id')
             ->addColumn('billing_address', function ($row) {
                 $billingAddress = $row->enterpriseBillingAddress();
+
                 return $billingAddress ? $billingAddress->name : null;
             })
             ->filterColumn('billing_address', function ($query, $keyword) {
@@ -37,16 +36,12 @@ class SupplierDataTable extends DataTable
                                       '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
             })
             ->rawColumns(['name', 'action', 'status'])
-            ->editColumn('status', function ($data)
-            {
-                if ($data->status)
-                {
+            ->editColumn('status', function ($data) {
+                if ($data->status) {
                     return '<span class="badge rounded-pill bg-label-success">Active</span>';
-                }
-                else
-                {
+                } else {
                     return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
-                };
+                }
             });
     }
 
@@ -82,6 +77,6 @@ class SupplierDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Supplier_' . date('YmdHis');
+        return 'Supplier_'.date('YmdHis');
     }
 }

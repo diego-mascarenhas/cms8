@@ -3,12 +3,12 @@
 namespace App\DataTables;
 
 use App\Models\Task;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
-use Carbon\Carbon;
 
 class TaskDataTable extends DataTable
 {
@@ -20,7 +20,7 @@ class TaskDataTable extends DataTable
             ->editColumn('responsible_id', function ($data) {
                 return $data->responsible->name ?? __('Unassigned');
             })
-            ->filterColumn('responsible_id', function($query, $keyword) {
+            ->filterColumn('responsible_id', function ($query, $keyword) {
                 $query->whereHas('responsible', function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });
@@ -42,7 +42,7 @@ class TaskDataTable extends DataTable
         return $model->newQuery()
             ->with([
                 'responsible:id,name',
-                'status'
+                'status',
             ])
             ->defaultOrder();
     }
@@ -58,7 +58,7 @@ class TaskDataTable extends DataTable
             ->responsive(true)
             ->processing(false)
             ->ordering(false)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'initComplete' => "function() {
                     var api = this.api();
@@ -115,6 +115,6 @@ class TaskDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Task_' . date('YmdHis');
+        return 'Task_'.date('YmdHis');
     }
-} 
+}

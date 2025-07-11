@@ -2,13 +2,13 @@
 
 namespace App\View\Components;
 
-use Illuminate\View\Component;
 use App\Models\Task;
+use Illuminate\View\Component;
 
 class TaskNotifications extends Component
 {
     public $pendingTasks;
-    
+
     public function __construct()
     {
         $this->pendingTasks = Task::pendingForUser(auth()->id())
@@ -20,4 +20,4 @@ class TaskNotifications extends Component
     {
         return view('components.task-notifications');
     }
-} 
+}

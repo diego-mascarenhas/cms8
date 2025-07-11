@@ -3,12 +3,12 @@
 namespace App\DataTables;
 
 use App\Models\Project;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
-use Carbon\Carbon;
 
 class ProjectDataTable extends DataTable
 {
@@ -22,7 +22,7 @@ class ProjectDataTable extends DataTable
             })
             ->filterColumn('enterprise_id', function ($query, $keyword) {
                 $query->whereHas('client', function ($q) use ($keyword) {
-                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
             ->editColumn('category_id', function ($data) {
@@ -30,19 +30,19 @@ class ProjectDataTable extends DataTable
             })
             ->filterColumn('category_id', function ($query, $keyword) {
                 $query->whereHas('category', function ($q) use ($keyword) {
-                    $q->whereRaw("name LIKE ?", ["%{$keyword}%"]);
+                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
-            ->editColumn('start_date', function ($data) {
-                return Carbon::parse($data->start_date)->format('d-m-Y');
+            ->editColumn('date_start', function ($data) {
+                return $data->date_start ? Carbon::parse($data->date_start)->format('d-m-Y') : '-';
             })
-            ->editColumn('end_date', function ($data) {
-                return Carbon::parse($data->end_date)->format('d-m-Y');
+            ->editColumn('date_end', function ($data) {
+                return $data->date_end ? Carbon::parse($data->date_end)->format('d-m-Y') : '-';
             })
             ->addColumn('responsible_name', function ($contact) {
                 return $contact->responsible->name ?? 'Sin asignar';
             })
-            ->filterColumn('responsible_name', function($query, $keyword) {
+            ->filterColumn('responsible_name', function ($query, $keyword) {
                 $query->whereHas('responsible', function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });
@@ -71,7 +71,7 @@ class ProjectDataTable extends DataTable
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(false)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'initComplete' => "function() {
                     var api = this.api();
@@ -102,38 +102,38 @@ class ProjectDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('name')
-                ->title('Nombre')
+                ->title(__('Name'))
                 ->addClass('all'),
             Column::make('enterprise_id')
-                ->title('Client')
+                ->title(__('Client'))
                 ->addClass('min-tablet')
                 ->searchable(true)
                 ->orderable(false),
             Column::make('category_id')
-                ->title('Category')
+                ->title(__('Category'))
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->searchable(true)
                 ->orderable(false)
                 ->width(150),
             Column::make('responsible_name')
-                ->title('Responsable')
+                ->title(__('Responsible'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false),
-            Column::make('end_date')
-                ->title('Entrega')
+            Column::make('date_end')
+                ->title(__('Delivery'))
                 ->className('text-center')
                 ->addClass('min-desktop')
                 ->searchable(false)
                 ->orderable(false),
             Column::make('status_id')
-                ->title('Estado')
+                ->title(__('Status'))
                 ->className('text-center')
                 ->addClass('min-tablet'),
             Column::computed('action')
-                ->title('Acciones')
+                ->title(__('Actions'))
                 ->width(20)
                 ->className('text-center')
                 ->addClass('min-desktop')
@@ -145,6 +145,6 @@ class ProjectDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Project_' . date('YmdHis');
+        return 'Project_'.date('YmdHis');
     }
 }

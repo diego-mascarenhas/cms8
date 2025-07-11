@@ -9,14 +9,12 @@ use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-use Carbon\Carbon;
-
 class AccountDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -24,8 +22,8 @@ class AccountDataTable extends DataTable
             ->addColumn('owner_name', function ($account) {
                 return $account->owner->name;
             })
-            ->filterColumn('owner_name', function($query, $keyword) {
-                $query->whereHas('owner', function($q) use ($keyword) {
+            ->filterColumn('owner_name', function ($query, $keyword) {
+                $query->whereHas('owner', function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%");
                 });
             })
@@ -39,18 +37,19 @@ class AccountDataTable extends DataTable
                 $seconds = $account->total_time;
                 $hours = floor($seconds / 3600);
                 $minutes = floor(($seconds % 3600) / 60);
-                
+
                 if ($hours > 0) {
-                    return sprintf("%dh %dm", $hours, $minutes);
+                    return sprintf('%dh %dm', $hours, $minutes);
                 }
-                return sprintf("%dm", $minutes);
+
+                return sprintf('%dm', $minutes);
             })
-            ->editColumn('created_at', function($account) {
+            ->editColumn('created_at', function ($account) {
                 return $account->created_at->format('d/m/Y');
             })
             ->addColumn('action', function ($account) {
                 return '<div class="d-flex justify-content-center align-items-center">
-                    <a href="' . route('account.edit', $account->id) . '" class="text-body">
+                    <a href="'.route('account.edit', $account->id).'" class="text-body">
                         <i class="ti ti-edit ti-sm me-2"></i>
                     </a>
                 </div>';
@@ -74,10 +73,10 @@ class AccountDataTable extends DataTable
             ->dom('frtip')
             ->orderBy(1, direction: 'asc')
             ->responsive(true)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'pageLength' => 60,
-                'paging' => false
+                'paging' => false,
             ]);
     }
 
@@ -127,6 +126,6 @@ class AccountDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Account_' . date('YmdHis');
+        return 'Account_'.date('YmdHis');
     }
 }

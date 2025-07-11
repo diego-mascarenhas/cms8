@@ -56,15 +56,45 @@
                                     <thead>
                                         <tr>
                                             @foreach($headers as $header)
-                                                <th>{{ $header }}</th>
+                                                <th>
+                                                    @php
+                                                        $isPhoneHeader = strpos(strtolower($header), 'phone') !== false || 
+                                                                        strpos(strtolower($header), 'tel') !== false ||
+                                                                        strpos(strtolower($header), 'móvil') !== false ||
+                                                                        strpos(strtolower($header), 'celular') !== false;
+                                                    @endphp
+                                                    
+                                                    @if($isPhoneHeader)
+                                                        <i class="ti ti-phone text-primary me-1"></i>
+                                                    @endif
+                                                    {{ $header }}
+                                                </th>
                                             @endforeach
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach(array_slice($rows, 0, 5) as $row)
                                             <tr>
-                                                @foreach($row as $cell)
-                                                    <td>{{ $cell }}</td>
+                                                @foreach($row as $index => $cell)
+                                                    <td>
+                                                        @php
+                                                            $header = $headers[$index] ?? '';
+                                                            $isPhone = strpos(strtolower($header), 'phone') !== false || 
+                                                                      strpos(strtolower($header), 'tel') !== false ||
+                                                                      strpos(strtolower($header), 'móvil') !== false ||
+                                                                      strpos(strtolower($header), 'celular') !== false ||
+                                                                      (is_numeric($cell) && strlen($cell) >= 9 && strlen($cell) <= 15);
+                                                        @endphp
+                                                        
+                                                        @if($isPhone && !empty($cell))
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="ti ti-phone text-primary me-2"></i>
+                                                                <span class="badge bg-label-primary">{{ $cell }}</span>
+                                                            </div>
+                                                        @else
+                                                            {{ $cell }}
+                                                        @endif
+                                                    </td>
                                                 @endforeach
                                             </tr>
                                         @endforeach
@@ -74,6 +104,53 @@
                             @if(count($rows) > 5)
                                 <div class="text-muted mt-2">
                                     Mostrando 5 de {{ count($rows) }} filas
+                                </div>
+                            @endif
+                            
+                            @php
+                                $phoneCount = 0;
+                                $emailCount = 0;
+                                foreach(array_slice($rows, 0, 20) as $row) {
+                                    foreach($row as $index => $cell) {
+                                        $header = $headers[$index] ?? '';
+                                        if (!empty($cell)) {
+                                            // Count phones
+                                            if (strpos(strtolower($header), 'phone') !== false || 
+                                                strpos(strtolower($header), 'tel') !== false ||
+                                                (is_numeric($cell) && strlen($cell) >= 9 && strlen($cell) <= 15)) {
+                                                $phoneCount++;
+                                            }
+                                            // Count emails
+                                            if (strpos(strtolower($header), 'email') !== false || 
+                                                strpos(strtolower($header), 'mail') !== false ||
+                                                filter_var($cell, FILTER_VALIDATE_EMAIL)) {
+                                                $emailCount++;
+                                            }
+                                        }
+                                    }
+                                }
+                            @endphp
+                            
+                            @if($phoneCount > 0 || $emailCount > 0)
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="alert alert-info d-flex align-items-center">
+                                            <i class="ti ti-info-circle me-2"></i>
+                                            <div>
+                                                <strong>Datos detectados:</strong>
+                                                @if($phoneCount > 0)
+                                                    <span class="badge bg-primary ms-2">
+                                                        <i class="ti ti-phone me-1"></i>{{ $phoneCount }} teléfonos
+                                                    </span>
+                                                @endif
+                                                @if($emailCount > 0)
+                                                    <span class="badge bg-success ms-2">
+                                                        <i class="ti ti-mail me-1"></i>{{ $emailCount }} emails
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             @endif
                         </div>

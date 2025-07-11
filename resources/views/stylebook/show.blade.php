@@ -2,9 +2,7 @@
 
 @section('title', __('Style Book Details'))
 
-@section('vendor-style')
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/flag-icons/flag-icons.css')}}">
-@endsection
+
 
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">

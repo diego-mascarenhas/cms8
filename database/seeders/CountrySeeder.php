@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Country;
+use Illuminate\Database\Seeder;
 
 class CountrySeeder extends Seeder
 {
@@ -22,6 +22,8 @@ class CountrySeeder extends Seeder
             ['id' => 222, 'name' => 'El Salvador', 'code' => 'SV'],
             ['id' => 724, 'name' => 'España', 'code' => 'ES'],
             ['id' => 840, 'name' => 'Estados Unidos', 'code' => 'US'],
+            ['id' => 250, 'name' => 'Francia', 'code' => 'FR'],
+            ['id' => 276, 'name' => 'Alemania', 'code' => 'DE'],
             ['id' => 320, 'name' => 'Guatemala', 'code' => 'GT'],
             ['id' => 340, 'name' => 'Honduras', 'code' => 'HN'],
             ['id' => 484, 'name' => 'México', 'code' => 'MX'],
@@ -31,6 +33,12 @@ class CountrySeeder extends Seeder
             ['id' => 604, 'name' => 'Perú', 'code' => 'PE'],
             ['id' => 858, 'name' => 'Uruguay', 'code' => 'UY'],
             ['id' => 862, 'name' => 'Venezuela', 'code' => 'VE'],
+            ['id' => 156, 'name' => 'China', 'code' => 'CN'],
+            ['id' => 380, 'name' => 'Italia', 'code' => 'IT'],
+            ['id' => 392, 'name' => 'Japón', 'code' => 'JP'],
+            ['id' => 620, 'name' => 'Portugal', 'code' => 'PT'],
+            ['id' => 643, 'name' => 'Rusia', 'code' => 'RU'],
+            ['id' => 764, 'name' => 'Tailandia', 'code' => 'TH'],
         ];
 
         foreach ($countries as $country) {

@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Dotlogics\Grapesjs\App\Repositories\AssetRepository;
 use App\Repositories\TeamAssetRepository;
+use Dotlogics\Grapesjs\App\Repositories\AssetRepository;
+use Illuminate\Support\ServiceProvider;
 
 class GrapesJsServiceProvider extends ServiceProvider
 {
@@ -24,4 +24,4 @@ class GrapesJsServiceProvider extends ServiceProvider
     {
         //
     }
-} 
+}

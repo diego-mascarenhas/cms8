@@ -18,7 +18,7 @@ class Payment extends Model
         'type_id',
         'amount',
         'remarks',
-        'status'
+        'status',
     ];
 
     protected $appends = ['transaction_type_label'];
@@ -57,8 +57,7 @@ class Payment extends Model
 
     public function getTransactionTypeLabelAttribute()
     {
-        switch ($this->transaction_type)
-        {
+        switch ($this->transaction_type) {
             case 'I':
                 return 'Income';
             case 'E':
@@ -70,8 +69,7 @@ class Payment extends Model
 
     public function getStatusLabelAttribute()
     {
-        switch ($this->status)
-        {
+        switch ($this->status) {
             case 0:
                 return '<span class="badge rounded-pill bg-label-secondary">Deleted</span>';
             case 1:
@@ -110,5 +108,4 @@ class Payment extends Model
                 return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
         }
     }
-
 }

@@ -8,16 +8,13 @@ use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
-use App\Enums\TemplateStatus;
-
-use Carbon\Carbon;
 
 class TemplateDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -27,18 +24,14 @@ class TemplateDataTable extends DataTable
             })
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status_id'])
-            ->editColumn('status_id', function ($data)
-            {
+            ->editColumn('status_id', function ($data) {
                 $statusValue = is_object($data->status_id) ? $data->status_id->value : $data->status_id;
-                
-                if ($statusValue == 2)
-                {
+
+                if ($statusValue == 2) {
                     return '<span class="badge rounded-pill bg-label-success">Active</span>';
-                }
-                else
-                {
+                } else {
                     return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
-                };
+                }
             });
     }
 
@@ -50,12 +43,12 @@ class TemplateDataTable extends DataTable
     public function html(): HtmlBuilder
     {
         return $this->builder()
-                    ->setTableId('template-table')
-                    ->columns($this->getColumns())
-                    ->minifiedAjax()
-                    ->dom('frtip')
-                    ->orderBy(1)
-                    ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json']);
+            ->setTableId('template-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(1)
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json']);
     }
 
     public function getColumns(): array
@@ -82,6 +75,6 @@ class TemplateDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Template_' . date('YmdHis');
+        return 'Template_'.date('YmdHis');
     }
 }

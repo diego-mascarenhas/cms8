@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
@@ -33,7 +33,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'today.store']);
         Permission::create(['name' => 'today.update']);
         Permission::create(['name' => 'today.destroy']);
-        
+
         Permission::create(['name' => 'chat.index']);
         Permission::create(['name' => 'chat.list']);
         Permission::create(['name' => 'chat.create']);
@@ -69,7 +69,16 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'contact.store']);
         Permission::create(['name' => 'contact.update']);
         Permission::create(['name' => 'contact.destroy']);
-        
+
+        Permission::create(['name' => 'collaborator.index']);
+        Permission::create(['name' => 'collaborator.list']);
+        Permission::create(['name' => 'collaborator.create']);
+        Permission::create(['name' => 'collaborator.show']);
+        Permission::create(['name' => 'collaborator.edit']);
+        Permission::create(['name' => 'collaborator.store']);
+        Permission::create(['name' => 'collaborator.update']);
+        Permission::create(['name' => 'collaborator.destroy']);
+
         Permission::create(['name' => 'client.index']);
         Permission::create(['name' => 'client.list']);
         Permission::create(['name' => 'client.create']);
@@ -187,6 +196,15 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::create(['name' => 'integration.update']);
         Permission::create(['name' => 'integration.destroy']);
 
+        Permission::create(['name' => 'invoice.index']);
+        Permission::create(['name' => 'invoice.list']);
+        Permission::create(['name' => 'invoice.create']);
+        Permission::create(['name' => 'invoice.show']);
+        Permission::create(['name' => 'invoice.edit']);
+        Permission::create(['name' => 'invoice.store']);
+        Permission::create(['name' => 'invoice.update']);
+        Permission::create(['name' => 'invoice.destroy']);
+
         Permission::create(['name' => 'campaign.index']);
         Permission::create(['name' => 'campaign.list']);
         Permission::create(['name' => 'campaign.create']);
@@ -271,10 +289,17 @@ class RolesAndPermissionsSeeder extends Seeder
         $rootRole->syncPermissions([
             'user.management',
         ]);
-        
+
         $administratorRole = Role::create(['name' => 'admin']);
         $administratorRole->syncPermissions([
             'client.index',
+            'client.list',
+            'client.create',
+            'client.show',
+            'client.edit',
+            'client.store',
+            'client.update',
+            'client.destroy',
             'contact.index',
             'contact.list',
             'contact.create',
@@ -283,13 +308,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'contact.store',
             'contact.update',
             'contact.destroy',
-            'client.list',
-            'client.create',
-            'client.show',
-            'client.edit',
-            'client.store',
-            'client.update',
-            'client.destroy',
+            'collaborator.index',
+            'collaborator.list',
+            'collaborator.create',
+            'collaborator.show',
+            'collaborator.edit',
+            'collaborator.store',
+            'collaborator.update',
+            'collaborator.destroy',
             'list60.list',
             'project.index',
             'project.list',
@@ -416,7 +442,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.update',
             'password.update',
         ]);
-        
+
         $technicalRole = Role::create(['name' => 'technical']);
         $technicalRole->syncPermissions([
             'profile.show',
@@ -424,13 +450,22 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.update',
             'password.update',
         ]);
-        
+
         $clientRole = Role::create(['name' => 'client']);
         $clientRole->syncPermissions([
             'profile.show',
             'profile.edit',
             'profile.update',
             'password.update',
+            'service.index',
+            'service.list',
+            'service.show',
+            'invoice.index', 
+            'invoice.list',
+            'invoice.show',
+            'project.index',
+            'project.list',
+            'project.show',
         ]);
 
         $userRole = Role::create(['name' => 'user']);
@@ -440,7 +475,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'profile.update',
             'password.update',
         ]);
-        
+
         $userRole = Role::create(['name' => 'guest']);
         $userRole->syncPermissions([
             'profile.show',

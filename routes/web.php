@@ -1,55 +1,54 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\language\LanguageController;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\LegalDocumentsController;
-use App\Http\Controllers\pages\AccountSettingsAccount;
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
-use App\Http\Controllers\PageController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\MessageController;
-use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ClientController;
-use App\Http\Controllers\List60Controller;
+use App\Http\Controllers\CollaboratorController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DomainController;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\EnterpriseOrganizationController;
-use App\Http\Controllers\MailController;
-use App\Http\Controllers\LeadController;
-use App\Http\Controllers\TeamSettingController;
-use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\ProjectController;
-use App\Http\Controllers\KanbanController;
-use App\Http\Controllers\TaskController;
-use App\Http\Controllers\TwilioWebhookController;
-use App\Http\Controllers\HostingController;
-use App\Http\Controllers\DomainController;
-use App\Http\Controllers\AccountingController;
-use App\Http\Controllers\OvhApiController;
-use App\Http\Controllers\TemplateController;
-use App\Http\Controllers\ServerController;
-use App\Http\Controllers\CollaboratorController;
-use App\Http\Controllers\CustomerFareController;
-use App\Http\Controllers\UserFareController;
 use App\Http\Controllers\FareController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HostingController;
+use App\Http\Controllers\KanbanController;
+use App\Http\Controllers\language\LanguageController;
+use App\Http\Controllers\laravel_example\UserManagement;
+use App\Http\Controllers\LeadController;
+use App\Http\Controllers\LegalDocumentsController;
+use App\Http\Controllers\List60Controller;
+use App\Http\Controllers\MailController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationTrackingController;
+use App\Http\Controllers\OvhApiController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\pages\AccountSettingsAccount;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ServerController;
+use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SoftwareController;
-use App\Models\Contact;
-use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\StylebookController;
+use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TeamSettingController;
+use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\TwilioWebhookController;
+use App\Http\Controllers\UserFareController;
+use Illuminate\Support\Facades\Route;
 
 // auth
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
-    ])->group(function ()
-    {
-    Route::get('/dashboard', function ()
-    {
+])->group(function () {
+    Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
 });
@@ -61,17 +60,15 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
-Route::get('/dashboard/collaborator', function() {
-    return view('collaborator.dashboard');
-})->name('dashboard.collaborator')->middleware('auth');
+Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
 
 // Adding routes for other dashboard types
-Route::get('/dashboard/client', function() {
+Route::get('/dashboard/client', function () {
     // This view doesn't exist yet, so we'll redirect to collaborator for now
     return view('collaborator.dashboard');
 })->name('dashboard.client')->middleware('auth');
 
-Route::get('/dashboard/project', function() {
+Route::get('/dashboard/project', function () {
     // This view doesn't exist yet, so we'll redirect to collaborator for now
     return view('collaborator.dashboard');
 })->name('dashboard.project')->middleware('auth');
@@ -99,18 +96,31 @@ Route::get('/legal/{document}', [LegalDocumentsController::class, 'show'])->name
 
 Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 
-Route::middleware(['auth'])->group(function ()
-{
-   Route::get('/dashboard', function ()
-    {
+// Public project routes (no auth required)
+Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])->name('project.get-fare-units');
+Route::get('/project/service-template', [ProjectController::class, 'getServiceTemplate'])->name('project.get-service-template');
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', function () {
         return redirect()->route('dashboard');
     });
-    
+
     // Team Settings
     Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
-    
+
+    // Team Valorations
+    Route::get('/team/{team}/valorations', [TeamSettingController::class, 'valorations'])->name('team-settings.valorations');
+    Route::post('/team/{team}/valorations', [TeamSettingController::class, 'storeValoration'])->name('team-settings.valorations.store');
+    Route::put('/team/{team}/valorations/{valoration}', [TeamSettingController::class, 'updateValoration'])->name('team-settings.valorations.update');
+    Route::delete('/team/{team}/valorations/{valoration}', [TeamSettingController::class, 'destroyValoration'])->name('team-settings.valorations.destroy');
+
+    // Team API Tokens
+    Route::get('/team/{team}/api-tokens', [TeamSettingController::class, 'apiTokens'])->name('team-settings.api-tokens');
+    Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
+    Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
+
     // Categories Management
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
@@ -121,10 +131,17 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
     Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
     Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
-    
+
     // User Management
     Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
     Route::resource('/user-list', UserManagement::class);
+
+    // Activity Log
+    Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-log.index');
+    Route::get('/activity-log/statistics', [App\Http\Controllers\ActivityLogController::class, 'statistics'])->name('activity-log.statistics');
+    Route::get('/activity-log/recent', [App\Http\Controllers\ActivityLogController::class, 'recent'])->name('activity-log.recent');
+    Route::get('/activity-log/{activity}', [App\Http\Controllers\ActivityLogController::class, 'show'])->name('activity-log.show');
+    Route::get('/activity-log/user/{userId}', [App\Http\Controllers\ActivityLogController::class, 'userActivities'])->name('activity-log.user');
 
     Route::get('/account-management', [AccountController::class, 'index'])->name('account-management');
     Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
@@ -148,11 +165,11 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
     Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
     Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
+    Route::post('/contact/{id}/link-user', [ContactController::class, 'linkUser'])->name('contact.link-user');
+    Route::post('/contact/{id}/unlink-user', [ContactController::class, 'unlinkUser'])->name('contact.unlink-user');
+    Route::post('/contact/{id}/create-and-link-user', [ContactController::class, 'createAndLinkUser'])->name('contact.create-and-link-user');
 
     // Collaborators
-    Route::get('/collaborator/dashboard', function () {
-        return view('collaborator.dashboard');
-    })->name('collaborator.dashboard');
     Route::get('/collaborator/list', [CollaboratorController::class, 'index'])->name('collaborator-list');
     Route::get('/collaborator/create', [CollaboratorController::class, 'create'])->name('collaborator.create');
     Route::post('/collaborator', [CollaboratorController::class, 'store'])->name('collaborator.store');
@@ -160,23 +177,36 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit');
     Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
     Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
+    Route::post('/collaborator/{id}/mark-as-watch', [CollaboratorController::class, 'markAsWatch'])->name('collaborator.markAsWatch');
+    Route::post('/collaborator/{id}/send-to-blacklist', [CollaboratorController::class, 'sendToBlacklist'])->name('collaborator.sendToBlacklist');
+    Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
+    Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware');
+    Route::post('/collaborator/{id}/update-services', [CollaboratorController::class, 'updateServices'])->name('collaborator.updateServices');
+    Route::post('/collaborator/{id}/update-topics', [CollaboratorController::class, 'updateTopics'])->name('collaborator.updateTopics');
+    Route::post('/collaborator/{id}/update-valoration', [CollaboratorController::class, 'updateValoration'])->name('collaborator.updateValoration');
+    Route::post('/collaborator/{id}/link-user', [CollaboratorController::class, 'linkUser'])->name('collaborator.link-user');
+    Route::post('/collaborator/{id}/unlink-user', [CollaboratorController::class, 'unlinkUser'])->name('collaborator.unlink-user');
+    Route::post('/collaborator/{id}/create-and-link-user', [CollaboratorController::class, 'createAndLinkUser'])->name('collaborator.create-and-link-user');
+    Route::post('/collaborator/{id}/portfolio', [CollaboratorController::class, 'storePortfolio'])->name('collaborator.portfolio.store');
+    Route::put('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'updatePortfolio'])->name('collaborator.portfolio.update');
+    Route::delete('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'destroyPortfolio'])->name('collaborator.portfolio.destroy');
     Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
     Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
-    Route::get('/collaborator/{id}/absences', function ($id) {
-        $collaborator = Contact::findOrFail($id);
-        return view('collaborator.absences', compact('collaborator'));
-    })->name('collaborator.absences');
-    
-    Route::get('/collaborator/{id}/notifications', function ($id) {
-        $collaborator = Contact::findOrFail($id);
-        return view('collaborator.notifications', compact('collaborator'));
-    })->name('collaborator.notifications');
+    Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getCollaboratorRates'])->name('collaborator.rates.get');
+    Route::get('/collaborator/{id}/absences', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'index'])->name('collaborator.absences');
+    Route::post('/collaborator/{id}/absences/toggle-date', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'toggleDate'])->name('collaborator.absences.toggle-date');
+    Route::post('/collaborator/{id}/absences/update-weekly', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'updateWeekly'])->name('collaborator.absences.update-weekly');
+
+    Route::get('/collaborator/{id}/notifications', [CollaboratorController::class, 'notifications'])->name('collaborator.notifications');
+    Route::get('/collaborator/{id}/activity', [CollaboratorController::class, 'activity'])->name('collaborator.activity');
+    Route::get('/collaborator/{id}/accept', [CollaboratorController::class, 'showAcceptForm'])->name('collaborator.accept');
+    Route::post('/collaborator/{id}/accept', [CollaboratorController::class, 'processAccept'])->name('collaborator.process-accept');
 
     // Clients
     Route::get('/client/list', [ClientController::class, 'index'])
         ->middleware('role:admin,collaborator')
         ->name('client-list');
-        
+
     Route::post('/client/end-action/{id}', [ClientController::class, 'endAction'])->name('client.end-action');
     Route::get('/client/import', [ClientController::class, 'showImportForm'])->name('client.import');
     Route::post('/client/import-excel', [ClientController::class, 'importExcel'])->name('client.import-excel');
@@ -212,14 +242,27 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update')->middleware('role:admin');
     Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy')->middleware('role:admin');
 
-    // Projects
+    // Projects - IMPORTANT: Specific routes MUST be before parameterized routes
     Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');
     Route::get('/project/create', [ProjectController::class, 'create'])->name('project.create');
+    Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
     Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
-    Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
+    Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
+    Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
+    Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
+    Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
+    Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
+Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
+
+// Project services modal routes
+Route::get('/project/{project}/services', [ProjectController::class, 'getServices'])->name('project.get-services');
+Route::post('/project/{project}/service', [ProjectController::class, 'storeService'])->name('project.store-service');
+Route::put('/project/{project}/service/{serviceId}', [ProjectController::class, 'updateService'])->name('project.update-service');
+Route::delete('/project/{project}/service/{serviceId}', [ProjectController::class, 'deleteService'])->name('project.delete-service');
+
 
     // Task Routes
     Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');
@@ -233,17 +276,17 @@ Route::middleware(['auth'])->group(function ()
     // Hosting
     Route::resource('hosting', HostingController::class);
     Route::get('/hosting/data', [HostingController::class, 'data'])->name('hosting.data');
-    
+
     // Domains
     Route::resource('domain', DomainController::class);
     Route::post('/domain/{domain}/refresh', [DomainController::class, 'refresh'])->name('domain.refresh');
     Route::post('/domain/{domain}/toggle-suspension', [DomainController::class, 'toggleSuspension'])->name('domain.toggle-suspension');
-    
+
     // Servers
     Route::resource('server', ServerController::class);
     Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
     Route::post('/server/{server}/sync-domains', [ServerController::class, 'syncDomains'])->name('server.syncDomains');
-    
+
     // Accounting
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
     Route::get('/accounting/invoice/{id}', [AccountingController::class, 'showInvoice'])->name('accounting.invoice');
@@ -292,6 +335,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit')->middleware('auth');
     Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update')->middleware('auth');
     Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy')->middleware('auth');
+    Route::get('/software/autocomplete', [SoftwareController::class, 'autocomplete'])->name('software.autocomplete')->middleware('auth');
 
     // Certification Management
     Route::get('/certification', [CertificationController::class, 'index'])->name('certification.index')->middleware('auth');
@@ -310,6 +354,20 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/stylebook/{stylebook}', [StylebookController::class, 'update'])->name('stylebook.update')->middleware('auth');
     Route::delete('/stylebook/{stylebook}', [StylebookController::class, 'destroy'])->name('stylebook.destroy')->middleware('auth');
 
+    // Notification Management
+    Route::get('/notification/list', [NotificationController::class, 'index'])->name('notification-list')->middleware('auth');
+    Route::get('/notification/create', [NotificationController::class, 'create'])->name('notification.create')->middleware('auth');
+    Route::post('/notification', [NotificationController::class, 'store'])->name('notification.store')->middleware('auth');
+    Route::get('/notification/{notification}', [NotificationController::class, 'show'])->name('notification.show')->middleware('auth');
+    Route::get('/notification/{notification}/edit', [NotificationController::class, 'edit'])->name('notification.edit')->middleware('auth');
+    Route::put('/notification/{notification}', [NotificationController::class, 'update'])->name('notification.update')->middleware('auth');
+    Route::delete('/notification/{notification}', [NotificationController::class, 'destroy'])->name('notification.destroy')->middleware('auth');
+    Route::post('/notification/{notification}/send', [NotificationController::class, 'send'])->name('notification.send')->middleware('auth');
+    Route::post('/notification/{notification}/resend', [NotificationController::class, 'resend'])->name('notification.resend')->middleware('auth');
+    Route::post('/notification/get-template', [NotificationController::class, 'getTemplate'])->name('notification.get-template')->middleware('auth');
+    Route::post('/notification/bulk-send', [NotificationController::class, 'bulkSend'])->name('notification.bulk-send')->middleware('auth');
+    Route::post('/notification/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notification.bulk-delete')->middleware('auth');
+
     // Tarifas Personalizadas de Usuario
     Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
     Route::get('/user-fare/create', [UserFareController::class, 'create'])->name('user-fare.create');
@@ -322,6 +380,11 @@ Route::middleware(['auth'])->group(function ()
 
 // Testing
 Route::get('/emails/fetch', [EmailController::class, 'fetchEmails']);
+
+// Notification tracking routes (no auth required)
+Route::get('/track/{token}', [NotificationTrackingController::class, 'track'])->name('notification.track');
+Route::get('/track/{token}/click', [NotificationTrackingController::class, 'trackClick'])->name('notification.track.click');
+Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
 Route::view('/strategy', 'strategy.index')->name('strategy.index');
 Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');
@@ -372,7 +435,7 @@ Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function (
 });
 
 // Language Variants
-Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function() {
+Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function () {
     Route::get('/', [App\Http\Controllers\LanguageVariantController::class, 'index'])->name('index');
     Route::get('/create', [App\Http\Controllers\LanguageVariantController::class, 'create'])->name('create');
     Route::post('/', [App\Http\Controllers\LanguageVariantController::class, 'store'])->name('store');
@@ -388,3 +451,10 @@ Route::middleware(['auth'])->prefix('language/variants')->name('language-variant
 Route::get('/cms7/empresa/{id}', [App\Http\Controllers\Cms7Controller::class, 'enterpriseDetails'])
     ->name('cms7.empresa')
     ->middleware(['auth', 'verified']);
+
+// User linking routes - unified page
+Route::get('/user-link/{type}/{id}', [ContactController::class, 'showUserLinkPage'])->name('user-link.show');
+Route::post('/user-link/{type}/{id}/link', [ContactController::class, 'processUserLink'])->name('user-link.process');
+Route::post('/user-link/{type}/{id}/create', [ContactController::class, 'processUserCreate'])->name('user-link.create');
+Route::get('/user-unlink/{type}/{id}', [ContactController::class, 'showUserUnlinkPage'])->name('user-unlink.show');
+Route::post('/user-unlink/{type}/{id}/confirm', [ContactController::class, 'processUserUnlink'])->name('user-unlink.process');

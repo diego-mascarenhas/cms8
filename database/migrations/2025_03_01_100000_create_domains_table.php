@@ -23,7 +23,7 @@ return new class extends Migration
             $table->json('data')->nullable();
             $table->timestamps();
             $table->softDeletes();
-            
+
             $table->foreign('server_id')
                 ->references('id')
                 ->on('servers')

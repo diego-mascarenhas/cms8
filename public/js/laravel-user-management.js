@@ -404,7 +404,7 @@ $(function () {
 
     // get data
     $.get(baseUrl + 'user-list/' + user_id + '/edit', function (data) {
-      console.log("Edit data received:", data);
+      console.log('Edit data received:', data);
       $('#user_id').val(data.id);
       $('#add-user-fullname').val(data.name);
       $('#add-user-email').val(data.email);
@@ -517,22 +517,22 @@ $(function () {
 
         // Check if response is the new format or old format
         var status = _typeof(response) === 'object' && response.status ? response.status : response;
-        console.log("Success response:", response);
+        console.log('Success response:', response);
 
         // sweetalert
         Swal.fire({
           icon: 'success',
-          title: "Successfully " + status + "!",
-          text: "User " + status + " Successfully.",
+          title: 'Successfully ' + status + '!',
+          text: 'User ' + status + ' Successfully.',
           customClass: {
             confirmButton: 'btn btn-success'
           }
         });
       },
       error: function error(err) {
-        console.error("Error response:", err);
+        console.error('Error response:', err);
         offCanvasForm.offcanvas('hide');
-        if (err.responseJSON && err.responseJSON.message === "already exits") {
+        if (err.responseJSON && err.responseJSON.message === 'already exits') {
           Swal.fire({
             title: 'Duplicate Entry!',
             text: 'Your email should be unique.',

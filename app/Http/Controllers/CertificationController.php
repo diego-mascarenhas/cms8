@@ -43,7 +43,7 @@ class CertificationController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Certificación creada exitosamente'
+                'message' => 'Certificación creada exitosamente',
             ]);
         }
 
@@ -85,7 +85,7 @@ class CertificationController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Certificación actualizada exitosamente'
+                'message' => 'Certificación actualizada exitosamente',
             ]);
         }
 
@@ -102,7 +102,7 @@ class CertificationController extends Controller
         if (request()->ajax()) {
             return response()->json(['success' => true]);
         }
-        
+
         return redirect()->route('certification.index')->with('success', 'Certificación eliminada exitosamente');
     }
 }

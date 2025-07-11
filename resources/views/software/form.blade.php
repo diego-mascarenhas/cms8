@@ -70,8 +70,8 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Software') }}/</span> {{ isset($software) ? __('Editar') : __('Crear') }}</h4>
-        <p class="text-muted">{{ __('Gestión de programas de software') }}</p>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Softwares') }}/</span> {{ isset($software) ? __('Edit') : __('Create') }}</h4>
+        <p class="text-muted">{{ __('Software Management') }}</p>
     </div>
     @if(isset($software))
     <div class="d-flex align-content-center flex-wrap gap-3">
@@ -87,7 +87,7 @@
 </div>
 
 <div class="card mb-4">
-    <h5 class="card-header">Software</h5>
+    <h5 class="card-header">{{ __('Software') }}</h5>
     <form class="card-body" action="{{ isset($software) ? route('software.update', $software->id) : route('software.store') }}" method="POST">
         @csrf
         @if(isset($software))
@@ -100,9 +100,9 @@
             </div>
             
             <div class="col-md-6">
-                <label class="form-label" for="type_id">Tipo</label>
+                <label class="form-label" for="type_id">Categoría</label>
                 <select name="type_id" id="type_id" class="form-select @error('type_id') is-invalid @enderror">
-                    <option value="">Seleccione tipo (opcional)</option>
+                    <option value="">Seleccione categoría (opcional)</option>
                     @foreach($types as $type)
                         <option value="{{ $type->id }}" {{ isset($software) && $software->type_id == $type->id ? 'selected' : '' }}>
                             {{ $type->name }}

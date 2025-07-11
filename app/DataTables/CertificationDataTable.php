@@ -2,8 +2,8 @@
 
 namespace App\DataTables;
 
-use App\Models\Certification;
 use App\Helpers\Helpers;
+use App\Models\Certification;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -20,12 +20,13 @@ class CertificationDataTable extends DataTable
             })
             ->editColumn('language', function ($row) {
                 $languageName = $row->languageRelation ? $row->languageRelation->name : strtoupper($row->language);
-                
+
                 // Use helper to map language code to appropriate country code for flags
                 $countryCode = Helpers::getLanguageFlag($row->language);
-                
-                $flag = '<span class="fi fi-' . strtolower($countryCode) . ' me-2"></span>';
-                return $flag . e($languageName);
+
+                $flag = '<span class="fi fi-'.strtolower($countryCode).' me-2"></span>';
+
+                return $flag.e($languageName);
             })
             ->orderColumn('certification', function ($query, $order) {
                 $query->orderBy('certification', $order);
@@ -54,7 +55,8 @@ class CertificationDataTable extends DataTable
             ->responsive(true)
             ->processing(true)
             ->serverSide(true)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->pageLength(25)
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'select' => false,
                 'lengthChange' => false,
@@ -78,4 +80,4 @@ class CertificationDataTable extends DataTable
     {
         return 'Certification_'.date('YmdHis');
     }
-} 
+}

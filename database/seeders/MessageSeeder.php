@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Message;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class MessageSeeder extends Seeder
@@ -18,7 +17,7 @@ class MessageSeeder extends Seeder
             'name' => 'Test',
             'text' => 'Test Message',
             'type_id' => 2,
-            'status_id' => 1
+            'status_id' => 1,
         ]);
 
         Message::create([
@@ -27,7 +26,7 @@ class MessageSeeder extends Seeder
             'text' => 'Test Message Two',
             'type_id' => 1,
             'template_id' => 1,
-            'status_id' => 2
+            'status_id' => 2,
         ]);
     }
 }

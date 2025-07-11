@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
-
 class DomainInfoService
 {
     public function getDomainInfo(string $domain)
@@ -18,40 +16,35 @@ class DomainInfoService
 
     private function getWebIP(string $domain)
     {
-        try
-        {
+        try {
             $ips = dns_get_record($domain, DNS_A);
+
             return $ips[0]['ip'] ?? null;
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             return null;
         }
     }
 
     private function getMailIP(string $domain)
     {
-        try
-        {
+        try {
             $mxRecords = dns_get_record($domain, DNS_MX);
-            if (!empty($mxRecords))
-            {
+            if (! empty($mxRecords)) {
                 $mailServer = $mxRecords[0]['target'];
                 $mailIps = dns_get_record($mailServer, DNS_A);
+
                 return $mailIps[0]['ip'] ?? null;
             }
+
             return null;
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             return null;
         }
     }
 
     private function getDNSRecords(string $domain)
     {
-        try
-        {
+        try {
             return [
                 'a' => dns_get_record($domain, DNS_A),
                 'mx' => dns_get_record($domain, DNS_MX),
@@ -59,17 +52,14 @@ class DomainInfoService
                 'ns' => dns_get_record($domain, DNS_NS),
                 'cname' => dns_get_record($domain, DNS_CNAME),
             ];
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             return [];
         }
     }
 
     private function checkSSL(string $domain)
     {
-        try
-        {
+        try {
             $context = stream_context_create([
                 'ssl' => [
                     'verify_peer' => false,
@@ -84,11 +74,10 @@ class DomainInfoService
                 $errstr,
                 30,
                 STREAM_CLIENT_CONNECT,
-                $context
+                $context,
             );
 
-            if ($client)
-            {
+            if ($client) {
                 $params = stream_context_get_params($client);
                 $cert = openssl_x509_parse($params['options']['ssl']['peer_certificate']);
 
@@ -100,9 +89,7 @@ class DomainInfoService
             }
 
             return ['valid' => false];
-        }
-        catch (\Exception $e)
-        {
+        } catch (\Exception $e) {
             return ['valid' => false];
         }
     }

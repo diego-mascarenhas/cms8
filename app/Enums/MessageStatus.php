@@ -9,9 +9,9 @@ enum MessageStatus: int
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::INACTIVE => 'Inactive',
             self::ACTIVE => 'Active',
         };
     }
-} 
+}

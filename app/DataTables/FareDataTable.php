@@ -21,11 +21,12 @@ class FareDataTable extends DataTable
                 if ($fare->units->isEmpty()) {
                     return '<span class="text-muted">N/A</span>';
                 }
-                
+
                 $badges = '';
                 foreach ($fare->units as $unit) {
-                    $badges .= '<span class="badge bg-label-primary me-1">' . $unit->type . '</span>';
+                    $badges .= '<span class="badge bg-label-primary me-1">'.$unit->type.'</span>';
                 }
+
                 return $badges;
             })
             ->addColumn('type', function ($fare) {
@@ -36,7 +37,7 @@ class FareDataTable extends DataTable
             })
             ->orderColumn('type', function ($query, $order) {
                 $query->leftJoin('fare_types', 'fares.type_id', '=', 'fare_types.id')
-                      ->orderBy('fare_types.name', $order);
+                    ->orderBy('fare_types.name', $order);
             })
             ->orderColumn('units', function ($query, $order) {
                 // This is a simplified approach as units is a many-to-many relationship
@@ -63,7 +64,7 @@ class FareDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->pageLength(25)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'select' => false,
                 'lengthChange' => false,
@@ -75,7 +76,7 @@ class FareDataTable extends DataTable
         return [
             Column::make('name')->title('TARIFA')->searchable(true)->orderable(true),
             Column::computed('units')->title('UNIDADES')->searchable(false)->orderable(false),
-            Column::computed('type')->title('TIPO')->searchable(true)->orderable(true),
+            Column::computed('type')->title('GRUPO')->searchable(true)->orderable(true),
             Column::computed('glosary')->title('GLOSARIO')->searchable(false)->orderable(false),
             Column::computed('action')
                 ->exportable(false)
@@ -89,4 +90,4 @@ class FareDataTable extends DataTable
     {
         return 'Fares_'.date('YmdHis');
     }
-} 
+}

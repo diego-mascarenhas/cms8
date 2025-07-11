@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Domain;
 use App\Jobs\UpdateDomainPhpVersion as UpdateDomainPhpVersionJob;
+use App\Models\Domain;
 use Illuminate\Console\Command;
 
 class UpdateDomainPhpVersion extends Command
@@ -30,21 +30,21 @@ class UpdateDomainPhpVersion extends Command
         $domainId = $this->option('domain');
         $useQueue = $this->option('queue');
         $mockVersion = $this->option('mock');
-        
+
         if ($useQueue) {
             $this->processViaQueue($domainId, $mockVersion);
         } else {
             $this->processDirectly($domainId, $mockVersion);
         }
     }
-    
+
     /**
      * Process domains directly without using a queue
      */
     protected function processDirectly($domainId, $mockVersion)
     {
         $query = Domain::query();
-        
+
         if ($domainId) {
             // Check if domain is numeric (ID) or string (domain name)
             if (is_numeric($domainId)) {
@@ -53,30 +53,30 @@ class UpdateDomainPhpVersion extends Command
                 $query->where('domain', $domainId);
             }
         }
-        
+
         $domains = $query->get();
-        
+
         $count = $domains->count();
         $this->info("Processing {$count} domains directly...");
-        
+
         $phpUpdated = 0;
-        
+
         foreach ($domains as $domain) {
             $this->info("Processing domain: {$domain->domain} (ID: {$domain->id})");
-            $this->info("Current PHP version: " . ($domain->php_version ?: 'NULL'));
-            
+            $this->info('Current PHP version: '.($domain->php_version ?: 'NULL'));
+
             $oldVersion = $domain->php_version;
-            
+
             if ($mockVersion) {
                 $this->info("Mocking PHP version to: {$mockVersion}");
                 $domain->testUpdatePhpVersion($mockVersion);
             } else {
-                $this->info("Fetching PHP version from server...");
+                $this->info('Fetching PHP version from server...');
                 $phpFromServer = $domain->getPhpVersionFromServer();
-                $this->info("Detected PHP version: " . ($phpFromServer ?: 'NOT DETECTED'));
+                $this->info('Detected PHP version: '.($phpFromServer ?: 'NOT DETECTED'));
                 $domain->updatePhpVersion();
             }
-            
+
             if ($oldVersion !== $domain->php_version) {
                 $phpUpdated++;
                 $this->info("Updated PHP version from {$oldVersion} to {$domain->php_version}");
@@ -84,11 +84,11 @@ class UpdateDomainPhpVersion extends Command
                 $this->info("PHP version unchanged: {$domain->php_version}");
             }
         }
-        
-        $this->info("Task completed!");
+
+        $this->info('Task completed!');
         $this->info("PHP versions updated: {$phpUpdated} domains");
     }
-    
+
     /**
      * Process domains using a queue job
      */
@@ -114,14 +114,14 @@ class UpdateDomainPhpVersion extends Command
                     $this->error("Domain {$domainId} not found");
                 }
             }
-            
-            $this->info("Job dispatched successfully!");
+
+            $this->info('Job dispatched successfully!');
         } else {
             // Process all domains in chunks
-            $this->info("Dispatching jobs for all domains...");
+            $this->info('Dispatching jobs for all domains...');
             $count = Domain::count();
             $this->info("Total domains: {$count}");
-            
+
             Domain::select('id', 'domain')
                 ->orderBy('id')
                 ->chunk(50, function ($domains) use ($mockVersion) {
@@ -130,8 +130,8 @@ class UpdateDomainPhpVersion extends Command
                         UpdateDomainPhpVersionJob::dispatch($domain->id, $mockVersion);
                     }
                 });
-                
-            $this->info("All jobs dispatched successfully!");
+
+            $this->info('All jobs dispatched successfully!');
         }
     }
-} 
+}

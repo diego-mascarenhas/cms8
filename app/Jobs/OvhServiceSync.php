@@ -2,11 +2,11 @@
 
 namespace App\Jobs;
 
-use App\Models\Domain;
-use App\Models\Service;
-use App\Models\Category;
-use App\Models\Enterprise;
 use App\Http\Controllers\OvhApiController;
+use App\Models\Category;
+use App\Models\Domain;
+use App\Models\Enterprise;
+use App\Models\Service;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -50,41 +50,42 @@ class OvhServiceSync implements ShouldQueue
     {
         try {
             Log::info('Starting OVH domain sync job', ['verbose' => $this->verbose]);
-            
+
             // Create instance of OvhApiController to use its methods
             $ovhController = app(OvhApiController::class);
-            
+
             // Get services from OVH API
             $response = $ovhController->getServicesRaw();
-            
+
             // Log the response for debugging
             if ($this->verbose) {
                 Log::debug('OVH API response', [
                     'status' => $response['status'] ?? 'unknown',
                     'count' => count($response['data'] ?? []),
-                    'sample' => isset($response['data']) ? json_encode(array_slice($response['data'], 0, 2)) : 'no data'
+                    'sample' => isset($response['data']) ? json_encode(array_slice($response['data'], 0, 2)) : 'no data',
                 ]);
             }
-            
-            if (!isset($response['status']) || $response['status'] !== 'success') {
+
+            if (! isset($response['status']) || $response['status'] !== 'success') {
                 Log::error('Failed to fetch OVH services', ['response' => $response]);
+
                 return;
             }
-            
+
             $services = $response['data'];
-            Log::info('Retrieved services count: ' . count($services));
-            
+            Log::info('Retrieved services count: '.count($services));
+
             $importCount = 0;
             $updateCount = 0;
             $skippedCount = 0;
             $errorCount = 0;
             $skippedReasons = [];
             $errorReasons = [];
-            
+
             foreach ($services as $index => $service) {
                 // Generate a simple service ID for logging
                 $serviceId = $service['id'] ?? $service['serviceName'] ?? "index-{$index}";
-                
+
                 // Log service details in verbose mode
                 if ($this->verbose) {
                     Log::debug('Processing service', [
@@ -94,16 +95,16 @@ class OvhServiceSync implements ShouldQueue
                         'serviceName' => $service['serviceName'] ?? 'no serviceName',
                         'resource_name' => isset($service['resource']) ? ($service['resource']['name'] ?? 'no resource.name') : 'no resource',
                         'category' => $service['category'] ?? 'no category',
-                        'status' => $service['state'] ?? $service['status'] ?? 'no status'
+                        'status' => $service['state'] ?? $service['status'] ?? 'no status',
                     ]);
                 }
-                
+
                 $result = $this->processDomain($service, $index);
-                
+
                 if (is_array($result)) {
                     $status = $result['status'];
                     $reason = $result['reason'] ?? 'No reason provided';
-                    
+
                     if ($status === 'updated') {
                         $updateCount++;
                     } elseif ($status === 'imported') {
@@ -111,20 +112,20 @@ class OvhServiceSync implements ShouldQueue
                     } elseif ($status === 'skipped') {
                         $skippedCount++;
                         $skippedReasons[$reason] = ($skippedReasons[$reason] ?? 0) + 1;
-                        
+
                         // Always log skipped services with their reason
                         Log::info("Skipped service: {$serviceId}", [
                             'reason' => $reason,
-                            'category' => $service['category'] ?? 'unknown'
+                            'category' => $service['category'] ?? 'unknown',
                         ]);
                     } elseif ($status === 'error') {
                         $errorCount++;
                         $errorReasons[$reason] = ($errorReasons[$reason] ?? 0) + 1;
-                        
+
                         // Always log error services with their reason
                         Log::error("Failed to process service: {$serviceId}", [
                             'reason' => $reason,
-                            'category' => $service['category'] ?? 'unknown'
+                            'category' => $service['category'] ?? 'unknown',
                         ]);
                     }
                 } else {
@@ -142,7 +143,7 @@ class OvhServiceSync implements ShouldQueue
                     }
                 }
             }
-            
+
             Log::info('OVH domain sync completed', [
                 'imported' => $importCount,
                 'updated' => $updateCount,
@@ -150,9 +151,9 @@ class OvhServiceSync implements ShouldQueue
                 'error' => $errorCount,
                 'skipped_reasons' => $skippedReasons,
                 'error_reasons' => $errorReasons,
-                'total' => count($services)
+                'total' => count($services),
             ]);
-            
+
             // Output for console when in verbose mode
             if ($this->verbose) {
                 echo "OVH Domain Sync Completed\n";
@@ -161,103 +162,101 @@ class OvhServiceSync implements ShouldQueue
                 echo "Updated: $updateCount\n";
                 echo "Skipped: $skippedCount\n";
                 echo "Errors: $errorCount\n";
-                
-                if (!empty($skippedReasons)) {
+
+                if (! empty($skippedReasons)) {
                     echo "\nSkipped reasons:\n";
                     foreach ($skippedReasons as $reason => $count) {
                         echo "  - $reason: $count\n";
                     }
                 }
-                
-                if (!empty($errorReasons)) {
+
+                if (! empty($errorReasons)) {
                     echo "\nError reasons:\n";
                     foreach ($errorReasons as $reason => $count) {
                         echo "  - $reason: $count\n";
                     }
                 }
-                
-                echo "\nTotal services: " . count($services) . "\n";
+
+                echo "\nTotal services: ".count($services)."\n";
             }
         } catch (\Exception $e) {
-            Log::error('Error in OVH domain sync: ' . $e->getMessage(), [
+            Log::error('Error in OVH domain sync: '.$e->getMessage(), [
                 'exception' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             if ($this->verbose) {
                 echo "ERROR: {$e->getMessage()}\n";
             }
         }
     }
-    
+
     /**
      * Process a single domain/service from OVH
      *
-     * @param array $service
-     * @param int $index
      * @return array|string Result status and reason
      */
     protected function processDomain(array $service, int $index)
     {
         // Generate a service ID for logging
         $serviceId = $service['id'] ?? $service['serviceName'] ?? "index-{$index}";
-        
+
         // 1. Check for required service data
         if (empty($service)) {
             return [
                 'status' => 'skipped',
-                'reason' => 'Empty service data'
+                'reason' => 'Empty service data',
             ];
         }
-        
+
         // 2. Find a suitable domain name
         $domainName = $this->findDomainName($service);
-        
-        if (!$domainName) {
+
+        if (! $domainName) {
             return [
                 'status' => 'skipped',
-                'reason' => 'No valid domain identifier found'
+                'reason' => 'No valid domain identifier found',
             ];
         }
-        
+
         // 3. Determine appropriate category ID based on service type
         $category = $this->determineCategory($service);
         $categoryId = $this->categoryMapping[$category] ?? $this->categoryMapping['default'];
         Log::debug('Category mapping', [
             'category' => $category,
             'mapped_id' => $categoryId,
-            'mapping' => $this->categoryMapping
+            'mapping' => $this->categoryMapping,
         ]);
-        
+
         // 4. Set enterprise ID
         $enterpriseId = config('services.ovh.enterprise_id', env('OVH_ENTERPRISE_ID', 1));
         Log::debug('Initial enterprise ID set', ['enterprise_id' => $enterpriseId]);
-        
+
         if ($this->verbose) {
             Log::debug('Using mapped category', [
                 'original_category' => $category,
                 'category_id' => $categoryId,
                 'enterprise_id' => $enterpriseId,
-                'domain' => $domainName
+                'domain' => $domainName,
             ]);
         }
-        
+
         // 5. Determine the server URL
         $serverUrl = $this->determineServerUrl($service, $domainName);
-        
+
         // 6. Generate a unique key to search for existing services
-        $uniqueKey = md5($domainName . ($service['id'] ?? '') . ($service['serviceName'] ?? ''));
-        
+        $uniqueKey = md5($domainName.($service['id'] ?? '').($service['serviceName'] ?? ''));
+
         try {
             // 7. Check if service already exists in services table
             $existingService = Service::where('data->unique_key', $uniqueKey)->first();
-            
+
             // Extract dates from service if available
             $creationDate = null;
             $expirationDate = null;
-            
+
             if (isset($service['creationDate'])) {
                 try {
                     $creationDate = \Carbon\Carbon::parse($service['creationDate']);
@@ -265,12 +264,12 @@ class OvhServiceSync implements ShouldQueue
                     if ($this->verbose) {
                         Log::debug('Could not parse creation date', [
                             'date' => $service['creationDate'],
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
             }
-            
+
             if (isset($service['expirationDate'])) {
                 try {
                     $expirationDate = \Carbon\Carbon::parse($service['expirationDate']);
@@ -278,20 +277,20 @@ class OvhServiceSync implements ShouldQueue
                     if ($this->verbose) {
                         Log::debug('Could not parse expiration date', [
                             'date' => $service['expirationDate'],
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                     }
                 }
             }
-            
+
             // Calculate frequency in months based on renewal interval
             $frequency = 1; // Default to monthly
             if (isset($service['renew']) && isset($service['renew']['interval'])) {
                 $interval = $service['renew']['interval'];
                 if (preg_match('/P(\d+)([YMD])/', $interval, $matches)) {
-                    $value = (int)$matches[1];
+                    $value = (int) $matches[1];
                     $unit = $matches[2];
-                    
+
                     switch ($unit) {
                         case 'Y': // Years
                             $frequency = $value * 12;
@@ -304,15 +303,15 @@ class OvhServiceSync implements ShouldQueue
                             break;
                     }
                 }
-                
+
                 if ($this->verbose) {
                     Log::debug('Calculated frequency', [
                         'interval' => $interval,
-                        'frequency_months' => $frequency
+                        'frequency_months' => $frequency,
                     ]);
                 }
             }
-            
+
             // Prepare JSON data with necessary conversions for clean storage
             $fullData = [];
             foreach ($service as $key => $value) {
@@ -323,7 +322,7 @@ class OvhServiceSync implements ShouldQueue
                     $fullData[$key] = $value;
                 }
             }
-            
+
             // Prepare data for storage - use JSON_UNESCAPED_SLASHES to keep URLs readable
             $jsonData = [
                 'unique_key' => $uniqueKey,
@@ -334,14 +333,14 @@ class OvhServiceSync implements ShouldQueue
                 'resource_name' => isset($service['resource']) ? ($service['resource']['name'] ?? null) : null,
                 'state' => $service['state'] ?? $service['status'] ?? null,
                 'category_type' => $category,
-                'full_data' => $fullData
+                'full_data' => $fullData,
             ];
-            
+
             $serviceData = [
                 'enterprise_id' => $enterpriseId,
                 'category_id' => $categoryId,
                 'operation' => 'buy',
-                'description' => isset($service['resource']) && isset($service['resource']['displayName']) ? 
+                'description' => isset($service['resource']) && isset($service['resource']['displayName']) ?
                     $service['resource']['displayName'] : $domainName,
                 'data' => $jsonData,
                 'currency_id' => 1, // Default to EUR
@@ -349,12 +348,12 @@ class OvhServiceSync implements ShouldQueue
                 'frequency' => $frequency,
                 'status' => ($service['state'] ?? $service['status'] ?? '') === 'ok' ? 4 : 1, // 4=Active, 1=Suspended
             ];
-            
+
             // Set expiration date if available
             if ($expirationDate) {
                 $serviceData['expires_at'] = $expirationDate;
             }
-            
+
             // Set next billing date if available
             if (isset($service['nextBillingDate'])) {
                 try {
@@ -363,27 +362,28 @@ class OvhServiceSync implements ShouldQueue
                     // Skip if unparseable
                 }
             }
-            
+
             Log::debug('Service data preparation', [
                 'enterprise_id' => $enterpriseId,
-                'category_id' => $categoryId
+                'category_id' => $categoryId,
             ]);
-            
+
             if ($existingService) {
                 Log::debug('Updating existing service', [
                     'service_id' => $existingService->id,
                     'enterprise_id' => $serviceData['enterprise_id'],
-                    'category_id' => $serviceData['category_id']
+                    'category_id' => $serviceData['category_id'],
                 ]);
                 // Update existing service but preserve created_at
                 $existingService->update($serviceData);
                 Log::info("Updated service: {$serviceId}", [
                     'domain' => $domainName,
-                    'category' => $category
+                    'category' => $category,
                 ]);
+
                 return [
                     'status' => 'updated',
-                    'reason' => 'Service already exists'
+                    'reason' => 'Service already exists',
                 ];
             } else {
                 // Create new service with original creation date if available
@@ -391,19 +391,20 @@ class OvhServiceSync implements ShouldQueue
                     $serviceData['created_at'] = $creationDate;
                     $serviceData['updated_at'] = $creationDate;
                 }
-                
+
                 try {
                     $newService = Service::create($serviceData);
                     Log::debug('Service created successfully', [
-                        'id' => $newService->id
+                        'id' => $newService->id,
                     ]);
                     Log::info("Imported service: {$serviceId}", [
                         'domain' => $domainName,
-                        'category' => $category
+                        'category' => $category,
                     ]);
+
                     return [
                         'status' => 'imported',
-                        'reason' => 'New service created'
+                        'reason' => 'New service created',
                     ];
                 } catch (\Exception $e) {
                     Log::error('Error creating service', [
@@ -411,128 +412,128 @@ class OvhServiceSync implements ShouldQueue
                         'enterprise_id' => $serviceData['enterprise_id'],
                         'category_id' => $serviceData['category_id'],
                         'domain' => $domainName,
-                        'trace' => $e->getTraceAsString()
+                        'trace' => $e->getTraceAsString(),
                     ]);
+
                     return [
                         'status' => 'error',
-                        'reason' => 'Database error: ' . $e->getMessage()
+                        'reason' => 'Database error: '.$e->getMessage(),
                     ];
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Error saving service: ' . $e->getMessage(), [
+            Log::error('Error saving service: '.$e->getMessage(), [
                 'service_id' => $serviceId,
                 'domain' => $domainName,
                 'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
             ]);
+
             return [
                 'status' => 'error',
-                'reason' => 'Database error: ' . $e->getMessage()
+                'reason' => 'Database error: '.$e->getMessage(),
             ];
         }
     }
-    
+
     /**
      * Find the best domain name from various service fields
-     * 
-     * @param array $service
-     * @return string|null
      */
     private function findDomainName(array $service): ?string
     {
         // Priority 1: Domain field
-        if (isset($service['domain']) && !empty($service['domain'])) {
+        if (isset($service['domain']) && ! empty($service['domain'])) {
             if ($this->verbose) {
                 Log::debug('Using domain field', ['domain' => $service['domain']]);
             }
+
             return $service['domain'];
         }
-        
+
         // Priority 2: Resource name if it looks like a domain/hostname
-        if (isset($service['resource']) && isset($service['resource']['name']) && !empty($service['resource']['name'])) {
+        if (isset($service['resource']) && isset($service['resource']['name']) && ! empty($service['resource']['name'])) {
             if ($this->verbose) {
                 Log::debug('Using resource.name as domain', ['resource_name' => $service['resource']['name']]);
             }
+
             return $service['resource']['name'];
         }
-        
+
         // Priority 3: ServiceName if it looks like a domain/hostname
-        if (isset($service['serviceName']) && !empty($service['serviceName'])) {
+        if (isset($service['serviceName']) && ! empty($service['serviceName'])) {
             if ($this->verbose) {
                 Log::debug('Using serviceName as domain', ['serviceName' => $service['serviceName']]);
             }
+
             return $service['serviceName'];
         }
-        
+
         // Priority 4: Resource displayName if it exists
-        if (isset($service['resource']) && isset($service['resource']['displayName']) && !empty($service['resource']['displayName'])) {
+        if (isset($service['resource']) && isset($service['resource']['displayName']) && ! empty($service['resource']['displayName'])) {
             if ($this->verbose) {
                 Log::debug('Using resource.displayName as domain', ['displayName' => $service['resource']['displayName']]);
             }
+
             return $service['resource']['displayName'];
         }
-        
+
         return null;
     }
-    
+
     /**
      * Determine the appropriate server URL for a service
-     * 
-     * @param array $service
-     * @param string $domainName
-     * @return string
      */
     private function determineServerUrl(array $service, string $domainName): string
     {
         // Default server URL
         $serverUrl = 'ovh.com';
-        
+
         // Use resource.name if available and valid
         if (isset($service['resource']) && isset($service['resource']['name'])) {
             $resourceName = $service['resource']['name'];
             if (filter_var($resourceName, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
                 $serverUrl = $resourceName;
                 if ($this->verbose) {
-                    Log::debug("Using resource.name as server_url", ['server_url' => $serverUrl]);
+                    Log::debug('Using resource.name as server_url', ['server_url' => $serverUrl]);
                 }
+
                 return $serverUrl;
             }
         }
-        
+
         // Use the domain itself if it's different from the resource name
         if (filter_var($domainName, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
             $serverUrl = $domainName;
             if ($this->verbose) {
-                Log::debug("Using domain as server_url", ['server_url' => $serverUrl]);
+                Log::debug('Using domain as server_url', ['server_url' => $serverUrl]);
             }
+
             return $serverUrl;
         }
-        
+
         if ($this->verbose) {
-            Log::debug("Using default server_url", ['server_url' => $serverUrl]);
+            Log::debug('Using default server_url', ['server_url' => $serverUrl]);
         }
-        
+
         return $serverUrl;
     }
 
     /**
      * Determinar la categoría correcta para un servicio
-     * 
-     * @param array $service
+     *
      * @return string Clave de categoría
      */
     private function determineCategory(array $service): string
     {
         // Verificar categoría explícita
-        if (isset($service['category']) && !empty($service['category'])) {
+        if (isset($service['category']) && ! empty($service['category'])) {
             return $service['category'];
         }
-        
+
         // Detectar por URL o path en la ruta
         if (isset($service['route']) && isset($service['route']['path'])) {
             $path = $service['route']['path'];
-            
+
             if (strpos($path, '/domain/zone') !== false) {
                 return 'domain';
             }
@@ -548,7 +549,7 @@ class OvhServiceSync implements ShouldQueue
             if (strpos($path, '/cloud/project') !== false) {
                 return 'cloudProject';
             }
-            if (strpos($path, '/hosting/privateDatabase') !== false || 
+            if (strpos($path, '/hosting/privateDatabase') !== false ||
                 strpos($path, '/privateDatabase') !== false) {
                 return 'privateDatabase';
             }
@@ -559,39 +560,40 @@ class OvhServiceSync implements ShouldQueue
                 return 'vRack';
             }
         }
-        
+
         // Detectar por nombre del recurso o serviceName
         $resourceName = $service['resource']['name'] ?? '';
         $serviceName = $service['serviceName'] ?? '';
-        
+
         if (strpos($resourceName, 'vps') !== false || strpos($serviceName, 'vps') !== false) {
             return 'vps';
         }
-        
-        if (strpos($resourceName, 'hosting') !== false || 
+
+        if (strpos($resourceName, 'hosting') !== false ||
             strpos($serviceName, 'cluster') !== false ||
             strpos($resourceName, 'cluster') !== false) {
             return 'webHosting';
         }
-        
+
         if (strpos($resourceName, 'cloud') !== false || strpos($serviceName, 'cloud') !== false) {
             return 'cloudProject';
         }
-        
+
         if (strpos($resourceName, 'email') !== false || strpos($serviceName, 'email') !== false) {
             if (strpos($resourceName, 'pro') !== false || strpos($serviceName, 'pro') !== false) {
                 return 'emailpro';
             }
+
             return 'email';
         }
-        
+
         // Si no se pudo determinar, usar default
         Log::debug('Could not determine category, using default', [
             'resource_name' => $resourceName,
             'service_name' => $serviceName,
-            'route' => $service['route'] ?? 'no route'
+            'route' => $service['route'] ?? 'no route',
         ]);
-        
+
         return 'default';
     }
-} 
+}

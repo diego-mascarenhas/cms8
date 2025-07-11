@@ -5,9 +5,6 @@ namespace App\Http\Controllers;
 use App\DataTables\CommunicationDataTable;
 use App\Models\Communication;
 use Illuminate\Http\Request;
-use stdClass;
-use Carbon\Carbon;
-use Log;
 
 class CommunicationController extends Controller
 {

@@ -2,10 +2,9 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\Contact;
 use App\Models\Enterprise;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateContactRequest extends FormRequest
 {
@@ -26,7 +25,7 @@ class UpdateContactRequest extends FormRequest
             'contact.user_id' => 'nullable|exists:users,id',
             'enterprise.name' => 'nullable|string|max:255',
             'enterprise.code' => 'nullable|string|max:255',
-            'enterprise.website' => 'nullable|max:255', //!FIXME: Add url validation
+            'enterprise.website' => 'nullable|max:255', // !FIXME: Add url validation
             'enterprise.phone' => 'nullable|string|max:20',
             'enterprise.email' => 'nullable|email|max:255',
             'enterprise.whatsapp' => 'nullable|string|max:20',
@@ -37,6 +36,8 @@ class UpdateContactRequest extends FormRequest
             'responsible_id' => 'required|exists:users,id',
             'categories' => 'array',
             'categories.*' => 'exists:categories,id',
+            'software_ids' => 'array',
+            'software_ids.*' => 'exists:software,id',
         ];
     }
 
@@ -52,7 +53,7 @@ class UpdateContactRequest extends FormRequest
             'language' => $validated['language'],
             'profile' => $validated['profile'] ?? null,
         ];
-        
+
         // Add user_id if it exists in the contact array
         if (isset($validated['contact']) && isset($validated['contact']['user_id'])) {
             $contactData['user_id'] = $validated['contact']['user_id'];
@@ -60,14 +61,14 @@ class UpdateContactRequest extends FormRequest
 
         $contact = $this->route('id')
             ? Contact::findOrFail($this->route('id'))
-            : new Contact();
+            : new Contact;
 
         $enterpriseData = [];
         $sourcesData = [];
         $categories = $validated['categories'] ?? [];
+        $softwareIds = $validated['software_ids'] ?? [];
 
-        if (isset($validated['enterprise']))
-        {
+        if (isset($validated['enterprise'])) {
             $enterpriseData = [
                 'name' => $validated['enterprise']['name'] ?? $contact->name,
                 'code' => $validated['enterprise']['code'] ?? $contact->code,
@@ -76,27 +77,22 @@ class UpdateContactRequest extends FormRequest
                 'email' => $validated['enterprise']['email'] ?? null,
                 'whatsapp' => $validated['enterprise']['whatsapp'] ?? null,
                 'status_id' => $validated['status_id'] == 5 ? 2 : 1,
-                'responsible_id' => $contact->id
+                'responsible_id' => $contact->id,
             ];
         }
 
-        if ($contact->exists)
-        {
+        if ($contact->exists) {
             $enterprise = Enterprise::withTrashed()
                 ->where('responsible_id', $contact->id)
                 ->where('team_id', $contact->team_id)
                 ->first();
 
-            if ($enterprise)
-            {
-                if ($enterprise->trashed())
-                {
+            if ($enterprise) {
+                if ($enterprise->trashed()) {
                     $enterprise->restore();
                 }
                 $enterprise->update($enterpriseData);
-            }
-            else if (!empty($validated['enterprise']['name']))
-            {
+            } elseif (! empty($validated['enterprise']['name'])) {
                 $enterpriseData['team_id'] = $contact->team_id;
                 $enterprise = Enterprise::create($enterpriseData);
             }
@@ -107,15 +103,12 @@ class UpdateContactRequest extends FormRequest
                 $contactData['enterprise_id'] = null;
             }
 
-            if (isset($validated['source_id']) && isset($validated['source_value']))
-            {
-                foreach ($validated['source_id'] as $key => $sourceId)
-                {
-                    if (isset($validated['source_value'][$key]))
-                    {
+            if (isset($validated['source_id']) && isset($validated['source_value'])) {
+                foreach ($validated['source_id'] as $key => $sourceId) {
+                    if (isset($validated['source_value'][$key])) {
                         $sourcesData[] = [
                             'source_id' => $sourceId,
-                            'value' => $validated['source_value'][$key]
+                            'value' => $validated['source_value'][$key],
                         ];
                     }
                 }
@@ -123,8 +116,7 @@ class UpdateContactRequest extends FormRequest
 
             $contact->sources()->detach();
 
-            foreach ($sourcesData as $source)
-            {
+            foreach ($sourcesData as $source) {
                 $contact->sources()->attach($source['source_id'], ['value' => $source['value']]);
             }
         }
@@ -134,6 +126,7 @@ class UpdateContactRequest extends FormRequest
             'enterprise' => $enterpriseData,
             'sources' => $sourcesData,
             'categories' => $categories,
+            'software_ids' => $softwareIds,
         ];
     }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Domain;
 use App\Jobs\UpdateDomainSiteType as UpdateDomainSiteTypeJob;
+use App\Models\Domain;
 use Illuminate\Console\Command;
 
 class UpdateDomainSiteType extends Command
@@ -29,21 +29,21 @@ class UpdateDomainSiteType extends Command
     {
         $domainId = $this->option('domain');
         $useQueue = $this->option('queue');
-        
+
         if ($useQueue) {
             $this->processViaQueue($domainId);
         } else {
             $this->processDirectly($domainId);
         }
     }
-    
+
     /**
      * Process domains directly without using a queue
      */
     protected function processDirectly($domainId)
     {
         $query = Domain::query();
-        
+
         if ($domainId) {
             // Check if domain is numeric (ID) or string (domain name)
             if (is_numeric($domainId)) {
@@ -52,38 +52,38 @@ class UpdateDomainSiteType extends Command
                 $query->where('domain', $domainId);
             }
         }
-        
+
         $domains = $query->get();
-        
+
         $count = $domains->count();
         $this->info("Processing {$count} domains directly...");
-        
+
         $wpDetected = 0;
-        
+
         foreach ($domains as $domain) {
             $this->info("Processing domain: {$domain->domain} (ID: {$domain->id})");
-            
+
             // Test if domain is WordPress
             $isWordPress = $domain->isWordPress();
-            $this->info("WordPress detection result: " . ($isWordPress ? 'YES' : 'NO'));
-            
+            $this->info('WordPress detection result: '.($isWordPress ? 'YES' : 'NO'));
+
             // Update WordPress status
             $wasWp = $domain->site_type === 'WordPress';
             $domain->updateSiteType();
             $isWp = $domain->site_type === 'WordPress';
-            
-            if (!$wasWp && $isWp) {
+
+            if (! $wasWp && $isWp) {
                 $wpDetected++;
-                $this->info("Updated site_type to WordPress");
+                $this->info('Updated site_type to WordPress');
             }
-            
+
             $this->info("Final site_type: {$domain->site_type}");
         }
-        
-        $this->info("Task completed!");
+
+        $this->info('Task completed!');
         $this->info("WordPress detected: {$wpDetected} domains");
     }
-    
+
     /**
      * Process domains using a queue job
      */
@@ -109,14 +109,14 @@ class UpdateDomainSiteType extends Command
                     $this->error("Domain {$domainId} not found");
                 }
             }
-            
-            $this->info("Job dispatched successfully!");
+
+            $this->info('Job dispatched successfully!');
         } else {
             // Process all domains in chunks
-            $this->info("Dispatching jobs for all domains...");
+            $this->info('Dispatching jobs for all domains...');
             $count = Domain::count();
             $this->info("Total domains: {$count}");
-            
+
             Domain::select('id', 'domain')
                 ->orderBy('id')
                 ->chunk(50, function ($domains) {
@@ -125,8 +125,8 @@ class UpdateDomainSiteType extends Command
                         UpdateDomainSiteTypeJob::dispatch($domain->id);
                     }
                 });
-                
-            $this->info("All jobs dispatched successfully!");
+
+            $this->info('All jobs dispatched successfully!');
         }
     }
-} 
+}

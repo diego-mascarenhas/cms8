@@ -26,8 +26,7 @@ class NetworkDevice extends Model
 
     public static function getOptions()
     {
-        return self::all()->map(function ($data)
-        {
+        return self::all()->map(function ($data) {
             return [
                 'id' => $data->id,
                 'name' => $data->name,

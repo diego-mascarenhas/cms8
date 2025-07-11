@@ -2,21 +2,22 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\BalanceMail;
 use App\Models\PaymentAccount;
 use Illuminate\Console\Command;
-use App\Mail\BalanceMail;
 use Illuminate\Support\Facades\Mail;
 
 class SendTestEmail extends Command
 {
     protected $signature = 'email:send-test';
+
     protected $description = 'Send a test balance email';
 
     public function handle()
     {
         $balances = $this->getBalances(); // Define cómo obtienes los balances
         Mail::to('diego.mascarenhas@icloud.com')->send(new BalanceMail($balances));
-        //Mail::to('pablo@revisionalpha.com')->send(new BalanceMail($balances));
+        // Mail::to('pablo@revisionalpha.com')->send(new BalanceMail($balances));
 
         $this->info('Test email sent!');
     }

@@ -41,9 +41,9 @@ class UpdateServerDomainInfo implements ShouldQueue
     {
         if ($server = Server::find($serverId)) {
             $domainInfo = $domainInfoService->getDomainInfo($server->server_url);
-            
+
             $server->update([
-                'data' => $domainInfo
+                'data' => $domainInfo,
             ]);
         }
     }

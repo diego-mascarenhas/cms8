@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Fare;
-use App\Models\Unit;
 use Illuminate\Database\Seeder;
 
 class FaresSeeder extends Seeder
@@ -30,7 +29,7 @@ class FaresSeeder extends Seeder
             ['name' => 'Ajuste de traducción para doblaje', 'team_id' => 1, 'type_id' => 1],
             ['name' => 'Posedición de traducción audiovisual', 'team_id' => 1, 'type_id' => 1],
             ['name' => 'Posedición de transcripción', 'team_id' => 1, 'type_id' => 1],
-            
+
             // Traducción general (texto) (type_id = 2)
             ['name' => 'Traducción general', 'team_id' => 1, 'type_id' => 2],
             ['name' => 'Revisión general', 'team_id' => 1, 'type_id' => 2],
@@ -38,7 +37,7 @@ class FaresSeeder extends Seeder
             ['name' => 'Traducción médica', 'team_id' => 1, 'type_id' => 2],
             ['name' => 'Traducción técnica', 'team_id' => 1, 'type_id' => 2],
             ['name' => 'Traducción científica', 'team_id' => 1, 'type_id' => 2],
-            
+
             // Accesibilidad audiovisual (type_id = 3)
             ['name' => 'Posedición de traducción', 'team_id' => 1, 'type_id' => 3],
             ['name' => 'Subtítulos para sordos con guion', 'team_id' => 1, 'type_id' => 3],
@@ -47,11 +46,11 @@ class FaresSeeder extends Seeder
             ['name' => 'Revisión de subtítulos para sordos', 'team_id' => 1, 'type_id' => 3],
             ['name' => 'Creación guion de audiodescripción', 'team_id' => 1, 'type_id' => 3],
             ['name' => 'Locución de audiodescripción', 'team_id' => 1, 'type_id' => 3],
-            ['name' => 'Lengua de signos', 'team_id' => 1, 'type_id' => 3]
+            ['name' => 'Lengua de signos', 'team_id' => 1, 'type_id' => 3],
         ];
 
         foreach ($fares as $fare) {
             Fare::create($fare);
         }
     }
-} 
+}

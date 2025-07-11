@@ -10,25 +10,25 @@ use Illuminate\Http\Request;
 class LanguageVariantController extends Controller
 {
     /**
-     * Mostrar la lista de variantes de idioma
+     * Display the list of language variants
      */
     public function index(LanguageVariantDataTable $dataTable)
     {
         return $dataTable->render('language.variants.index');
     }
-    
+
     /**
-     * Mostrar el formulario para crear una variante
+     * Show the form for creating a new language variant
      */
     public function create()
     {
         $languages = Language::orderBy('name')->get();
-        
+
         return view('language.variants.form', compact('languages'));
     }
-    
+
     /**
-     * Almacenar una nueva variante de idioma
+     * Store a new language variant
      */
     public function store(Request $request)
     {
@@ -38,64 +38,64 @@ class LanguageVariantController extends Controller
             'base_language' => 'required|string|exists:languages,code',
             'country_code' => 'required|string|max:2',
         ]);
-        
+
         LanguageVariant::create($validated);
-        
+
         return redirect()->route('language-variants.index')
             ->with('success', 'Variante de idioma creada correctamente');
     }
-    
+
     /**
-     * Mostrar el formulario para editar una variante
+     * Show the form for editing a language variant
      */
     public function edit(LanguageVariant $languageVariant)
     {
         $languages = Language::orderBy('name')->get();
         $variant = $languageVariant;
-        
+
         return view('language.variants.form', compact('variant', 'languages'));
     }
-    
+
     /**
-     * Actualizar la variante de idioma
+     * Update the language variant
      */
     public function update(Request $request, LanguageVariant $languageVariant)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:10|unique:language_variants,code,' . $languageVariant->id,
+            'code' => 'required|string|max:10|unique:language_variants,code,'.$languageVariant->id,
             'name' => 'required|string|max:255',
             'base_language' => 'required|string|exists:languages,code',
             'country_code' => 'required|string|max:2',
         ]);
-        
+
         $languageVariant->update($validated);
-        
+
         return redirect()->route('language-variants.index')
             ->with('success', 'Variante de idioma actualizada correctamente');
     }
-    
+
     /**
-     * Eliminar la variante de idioma
+     * Delete the language variant
      */
     public function destroy(LanguageVariant $languageVariant)
     {
         $languageVariant->delete();
-        
+
         if (request()->ajax()) {
             return response()->json(['success' => true]);
         }
-        
+
         return redirect()->route('language-variants.index')
             ->with('success', 'Variante de idioma eliminada correctamente');
     }
-    
+
     /**
-     * Obtener variantes para un idioma base (AJAX)
+     * Get variants for a base language (AJAX)
      */
     public function getVariants($baseLanguage)
     {
         $variants = LanguageVariant::getVariantsFor($baseLanguage);
-        
+
         return response()->json($variants);
     }
-} 
+}

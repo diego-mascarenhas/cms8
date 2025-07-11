@@ -36,7 +36,7 @@ class PollTwilioMessages extends Command
 
         // Get messages sent to your Twilio number
         $messages = $client->messages->read([
-            'dateSentAfter' => now()->subMinutes($minutes)->format('c')
+            'dateSentAfter' => now()->subMinutes($minutes)->format('c'),
         ]);
 
         $newCount = 0;
@@ -49,9 +49,9 @@ class PollTwilioMessages extends Command
             }
 
             $channel = $isWhatsApp ? 'whatsapp' : 'sms';
-            
+
             // Check if we already have this message
-            if (!Conversation::where('message_sid', $message->sid)->exists()) {
+            if (! Conversation::where('message_sid', $message->sid)->exists()) {
                 // Determine direction
                 $direction = 'inbound';
                 if (strpos($message->from, config('services.twilio.from')) !== false ||
@@ -72,8 +72,8 @@ class PollTwilioMessages extends Command
                             'sid' => $message->sid,
                             'status' => $message->status,
                             'date_created' => $message->dateCreated->format('Y-m-d H:i:s'),
-                        ]
-                    ]
+                        ],
+                    ],
                 ]);
 
                 $newCount++;
@@ -82,7 +82,7 @@ class PollTwilioMessages extends Command
         }
 
         if ($newCount === 0) {
-            $this->info("No new messages found.");
+            $this->info('No new messages found.');
         } else {
             $this->info("Found {$newCount} new messages.");
         }

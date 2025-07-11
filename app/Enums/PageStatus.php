@@ -11,11 +11,11 @@ enum PageStatus: int
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::ACTIVE => 'Active',
             self::INACTIVE => 'Inactive',
             self::MAINTENANCE => 'Maintenance',
             self::ERROR => 'Error',
         };
     }
-} 
+}

@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Task;
-use App\Models\User;
-use App\Models\Team;
 use App\Models\TaskStatus;
+use App\Models\Team;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class TaskSeeder extends Seeder
@@ -42,7 +42,7 @@ class TaskSeeder extends Seeder
             Task::create([
                 'team_id' => fake()->randomElement($teams),
                 'responsible_id' => fake()->randomElement($users),
-                'title' => 'Current Task: ' . fake()->sentence(3),
+                'title' => 'Current Task: '.fake()->sentence(3),
                 'description' => fake()->paragraphs(2, true),
                 'start_date' => $startDate,
                 'due_date' => $dueDate,
@@ -51,4 +51,4 @@ class TaskSeeder extends Seeder
             ]);
         }
     }
-} 
+}

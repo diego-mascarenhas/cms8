@@ -2,16 +2,17 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
-use App\Models\Team;
 use Hash;
+use Illuminate\Database\Seeder;
 
 class UserSeeder extends Seeder
 {
     public function run()
     {
-        // Administrator
+        // Core system users - these will be assigned to teams by their respective seeders
+        
+        // Administrator revision alpha - will be handled by RevisionAlphaSeeder
         $revision = User::factory()->create([
             'name' => 'Diego Mascarenhas',
             'phone' => 34722372858,
@@ -19,8 +20,8 @@ class UserSeeder extends Seeder
             'password' => '$2y$10$9His4IIPh5nFp0TSilz.h.0DLLE4DzhX1Os2y0QHwt.a19s6whxyC',
         ]);
         $revision->assignRole([1, 2, 10]);
-        // $revision->categories()->attach([5001, 5002, 5003, 5004]);
 
+        // Administrator humano - will be handled by HumanoSeeder
         $humano = User::factory()->create([
             'name' => 'Victor Gómez',
             'phone' => 34665086080,
@@ -28,9 +29,8 @@ class UserSeeder extends Seeder
             'password' => '$2y$10$FcK76MqjsbRMzQeDyqSO3ujezrf7NLQWoZlQuxtvlWHogq9ULJKoi',
         ]);
         $humano->assignRole([1, 2]);
-        // $revision->categories()->attach([5001]);
 
-        // Admin
+        // Demo Admin - creates Demo team (Team 1)
         $user = User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',
@@ -38,155 +38,45 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         $user->assignRole([2]);
-        // $user->categories()->attach([5001, 5003, 5004]);
-
-        $user->ownedTeams()->create([
+        
+        // Create Demo Team (Team 1)
+        $demoTeam = $user->ownedTeams()->create([
             'name' => "Demo's Team",
             'personal_team' => false,
         ]);
-        $user->teams()->attach(1, [
+        $user->teams()->attach($demoTeam->id, [
             'role' => 'admin',
-            'created_at' => now()
+            'created_at' => now(),
         ]);
-        $user->update(['current_team_id' => 1]); 
+        $user->update(['current_team_id' => $demoTeam->id]);
 
-        // Collaborator
-        $user = User::factory()->create([
-            'name' => 'Collaborator',
-            'email' => 'collaborator@example.com',
-            'password' => Hash::make('Passw0rd!'),
-            'email_verified_at' => null,
-            'current_team_id' => 1,
-            
-        ]);
-        $user->assignRole(3);
-        // $user->categories()->attach([5001]);
-        $user->teams()->attach(1);
-        
-        // Editor
-        $user = User::factory()->create([
-            'name' => 'Editor',
-            'email' => 'editor@example.com',
-            'password' => Hash::make('Passw0rd!'),
-            'email_verified_at' => null,
-            'current_team_id' => 1,
-        ]);
-        $user->assignRole(4);
-        // $user->categories()->attach([5001]);
-        $user->teams()->attach(1);
+        // Demo team role-based users - these will be assigned to Team 1
+        $demoUsers = [
+            ['name' => 'Collaborator', 'email' => 'collaborator@example.com', 'role' => 3],
+            ['name' => 'Editor', 'email' => 'editor@example.com', 'role' => 4],
+            ['name' => 'Auditor', 'email' => 'auditor@example.com', 'role' => 5],
+            ['name' => 'Technical', 'email' => 'technical@example.com', 'role' => 6],
+            ['name' => 'Client', 'email' => 'client@example.com', 'role' => 7],
+            ['name' => 'User', 'email' => 'user@example.com', 'role' => 8],
+            ['name' => 'Guest', 'email' => 'guest@example.com', 'role' => 9],
+        ];
 
-        // Auditor
-        $user = User::factory()->create([
-            'name' => 'Auditor',
-            'email' => 'auditor@example.com',
-            'password' => Hash::make('Passw0rd!'),
-            'email_verified_at' => null,
-            'current_team_id' => 1,
-        ]);
-        $user->assignRole(5);
-        // $user->categories()->attach([5001]);
-        $user->teams()->attach(1);
+        foreach ($demoUsers as $userData) {
+            $user = User::factory()->create([
+                'name' => $userData['name'],
+                'email' => $userData['email'],
+                'password' => Hash::make('Passw0rd!'),
+                'email_verified_at' => null,
+                'current_team_id' => $demoTeam->id,
+            ]);
+            $user->assignRole($userData['role']);
+            $user->teams()->attach($demoTeam->id);
+        }
 
-        // Technical
-        $user = User::factory()->create([
-            'name' => 'Technical',
-            'email' => 'technical@example.com',
-            'password' => Hash::make('Passw0rd!'),
-            'email_verified_at' => null,
-            'current_team_id' => 1,
-        ]);
-        $user->assignRole(6);
-        // $user->categories()->attach([5001]);
-        $user->teams()->attach(1);
-
-        // Client
-        $user = User::factory()->create([
-            'name' => 'Client',
-            'email' => 'client@example.com',
-            'password' => Hash::make('Passw0rd!'),
-            'email_verified_at' => null,
-            'current_team_id' => 1,
-        ]);
-        $user->assignRole(7);
-        // $user->categories()->attach([5001]);
-        $user->teams()->attach(1);
-
-        // User
-        $user = User::factory()->create([
-            'name' => 'User',
-            'email' => 'user@example.com',
-            'password' => Hash::make('Passw0rd!'),
-            'email_verified_at' => null,
-            'current_team_id' => 1,
-        ]);
-        $user->assignRole(8);
-        // $user->categories()->attach([5001]);
-        $user->teams()->attach(1);
-        
-        // Guest
-        $user = User::factory()->create([
-            'name' => 'Guest',
-            'email' => 'guest@example.com',
-            'password' => Hash::make('Passw0rd!'),
-            'email_verified_at' => null,
-            'current_team_id' => 1,
-        ]);
-        $user->assignRole(9);
-        // $user->categories()->attach([5001]);
-        $user->teams()->attach(1);
-
-        // Team revision alpha
-        $revision->ownedTeams()->create([
-            'name' => "revision alpha's Team",
-            'personal_team' => false,
-        ]);
-
-        $revision->teams()->attach(2, [
-            'role' => 'admin',
-            'created_at' => now()
-        ]);
-        $revision->update(['current_team_id' => 2]);
-
-        // Lucas Luna - revision alpha
-        $lucas = User::factory()->create([
-            'name' => 'Lucas Luna Claraso',
-            'email' => 'lucaslunaclaraso@gmail.com',
-            'password' => Hash::make('Passw0rd!'),
-            'email_verified_at' => now(),
-            'current_team_id' => 2,
-        ]);
-        $lucas->assignRole(2);
-        // $lucas->categories()->attach([5001]);
-        $lucas->teams()->attach(2);
-
-        // Jesica Lorente - revision alpha
-        $jesica = User::factory()->create([
-            'name' => 'Jesica Lorente',
-            'email' => 'jesicalorente@selltion.com',
-            'password' => Hash::make('Passw0rd!'),
-            'email_verified_at' => now(),
-            'current_team_id' => 2,
-        ]);
-        $jesica->assignRole(2);
-        // $jesica->categories()->attach([5001]);
-        $jesica->teams()->attach(2);
-
-        // Team humano
-        $humano->ownedTeams()->create([
-            'name' => "Humano's Team",
-            'personal_team' => false,
-        ]);
-
-        $humano->teams()->attach(3, [
-            'role' => 'admin',
-            'created_at' => now()
-        ]);
-        $humano->update(['current_team_id' => 3]);
-
-        // Asing User to Team
-        $team = Team::find(3);
-        $team->users()->attach($revision->id, [
-            'role' => 'admin'
-        ]);
+        // Note: Teams are created as follows:
+        // - Team 1 (Demo) -> Created above in UserSeeder
+        // - Team 2 (Revision Alpha) -> RevisionAlphaSeeder
+        // - Team 3 (Humano) -> HumanoSeeder
+        // - Team 4 (BBO) -> BboSeeder
     }
 }

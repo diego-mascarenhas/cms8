@@ -6,28 +6,27 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-	/**
-	 * Run the migrations.
-	 */
-	public function up(): void
-	{
-		Schema::create('pages', function (Blueprint $table)
-		{
-			$table->id();
-			$table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
-			$table->string('name');
-			$table->json('gjs_data');
-			$table->tinyInteger('status_id')->default(2);
-			$table->timestamps();
-			$table->softDeletes();
-		});
-	}
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('pages', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->json('gjs_data');
+            $table->tinyInteger('status_id')->default(2);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+    }
 
-	/**
-	 * Reverse the migrations.
-	 */
-	public function down(): void
-	{
-		Schema::dropIfExists('pages');
-	}
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('pages');
+    }
 };

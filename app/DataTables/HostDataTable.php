@@ -9,14 +9,12 @@ use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
 
-use Carbon\Carbon;
-
 class HostDataTable extends DataTable
 {
     /**
      * Build the DataTable class.
      *
-     * @param QueryBuilder $query Results from query() method.
+     * @param  QueryBuilder  $query  Results from query() method.
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
@@ -24,18 +22,13 @@ class HostDataTable extends DataTable
             ->addColumn('action', 'host.action')
             ->setRowId('id')
             ->rawColumns(['name', 'power_state', 'action'])
-            ->editColumn('type_id', function ($data)
-            {
+            ->editColumn('type_id', function ($data) {
                 return $data->type->name;
             })
-            ->editColumn('power_state', function ($data)
-            {
-                if ($data->power_state == 'POWERED_ON')
-                {
+            ->editColumn('power_state', function ($data) {
+                if ($data->power_state == 'POWERED_ON') {
                     return '<div class="ms-3 badge bg-label-success">ON</div>';
-                }
-                else
-                {
+                } else {
                     return '<div class="ms-3 badge bg-label-danger">OFF</div>';
                 }
             });
@@ -66,15 +59,15 @@ class HostDataTable extends DataTable
             Column::make('public_ip')->title('Public IP'),
             Column::make('power_state')->title('State')->className('text-center'),
             Column::computed('action')->title('Actions')->width(20)->className('text-center')
-            ->exportable(false)
-            ->printable(false)
-            ->width(30)
-            ->addClass('text-center'),
-  ];
+                ->exportable(false)
+                ->printable(false)
+                ->width(30)
+                ->addClass('text-center'),
+        ];
     }
 
     protected function filename(): string
     {
-        return 'Host_' . date('YmdHis');
+        return 'Host_'.date('YmdHis');
     }
 }

@@ -13,5 +13,6 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'twilio/webhook',
+        'lead',  // form submissions and external lead sources
     ];
 }

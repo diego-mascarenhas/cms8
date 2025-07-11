@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\TaskStatus;
+use Illuminate\Database\Seeder;
 
 class TaskStatusSeeder extends Seeder
 {
@@ -13,27 +13,27 @@ class TaskStatusSeeder extends Seeder
             [
                 'name' => 'TO_DO',
                 'label_class' => 'bg-label-secondary',
-                'order' => 1
+                'order' => 1,
             ],
             [
                 'name' => 'IN_PROGRESS',
                 'label_class' => 'bg-label-primary',
-                'order' => 2
+                'order' => 2,
             ],
             [
                 'name' => 'REVIEW',
                 'label_class' => 'bg-label-warning',
-                'order' => 3
+                'order' => 3,
             ],
             [
                 'name' => 'DONE',
                 'label_class' => 'bg-label-success',
-                'order' => 4
-            ]
+                'order' => 4,
+            ],
         ];
 
         foreach ($statuses as $status) {
             TaskStatus::create($status);
         }
     }
-} 
+}

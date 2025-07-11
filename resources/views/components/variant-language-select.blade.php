@@ -1,9 +1,11 @@
-@props(['name' => 'language_variant', 'id' => null, 'value' => null, 'label' => 'Variante de idioma'])
+@props(['name' => 'language_variant', 'id' => null, 'value' => null, 'label' => 'Variante de idioma', 'required' => false, 'placeholder' => null])
 
 <div>
+    @if($label)
     <label for="{{ $id ?? $name }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id ?? $name }}" name="{{ $name }}" class="select2 form-select @error($name) is-invalid @enderror" required>
-        <option value="">Seleccione una variante de idioma</option>
+    @endif
+    <select id="{{ $id ?? $name }}" name="{{ $name }}" class="select2 form-select @error($name) is-invalid @enderror" {{ $required ? 'required' : '' }}>
+        <option value="">{{ $placeholder ?? 'Seleccione una variante de idioma' }}</option>
         @foreach($variants as $variant)
             <option value="{{ $variant->code }}" 
                     {{ old($name, $value) == $variant->code ? 'selected' : '' }}
@@ -19,21 +21,12 @@
     @enderror
 </div>
 
+@once
 @push('page-script')
 <script>
-    $(function () {
-        const select = $('#{{ $id ?? $name }}');
-        if (select.length) {
-            select.select2({
-                dropdownParent: select.parent(),
-                templateResult: formatLanguage,
-                templateSelection: formatLanguage,
-                width: '100%'
-            });
-        }
-        
-        // Format language options with flags
-        function formatLanguage(language) {
+    // Función global para formatear idiomas con banderas (solo se define una vez)
+    if (typeof window.formatVariantLanguage === 'undefined') {
+        window.formatVariantLanguage = function(language) {
             if (!language.id) {
                 return language.text;
             }
@@ -63,6 +56,24 @@
             }
             
             return $('<span><i class="fi fi-' + flag + ' me-2"></i>' + language.text + '</span>');
+        };
+    }
+</script>
+@endpush
+@endonce
+
+@push('page-script')
+<script>
+    $(function () {
+        // Inicializar Select2 solo si no está ya inicializado
+        const select = $('#{{ $id ?? $name }}');
+        if (select.length && !select.hasClass('select2-hidden-accessible')) {
+            select.select2({
+                dropdownParent: select.parent(),
+                templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
+                templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; },
+                width: '100%'
+            });
         }
     });
 </script>

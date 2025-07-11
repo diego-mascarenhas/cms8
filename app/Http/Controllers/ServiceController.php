@@ -4,11 +4,10 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ServiceDataTable;
 use App\Models\Service;
-use Illuminate\Http\Request;
-use stdClass;
 use Carbon\Carbon;
-use Log;
 use DB;
+use Illuminate\Http\Request;
+use Log;
 
 class ServiceController extends Controller
 {
@@ -36,8 +35,7 @@ class ServiceController extends Controller
 
         // Get the sum of the gross_amount of last month's invoices for those clients
         $totalbuyLastMonth = DB::table('invoices')
-            ->joinSub($invoicesLastThreeMonths, 'last_invoices', function ($join)
-            {
+            ->joinSub($invoicesLastThreeMonths, 'last_invoices', function ($join) {
                 $join->on('invoices.enterprise_id', '=', 'last_invoices.enterprise_id');
             })
             ->where('invoices.operation', 'buy')
@@ -68,7 +66,14 @@ class ServiceController extends Controller
         $percentage_pending = $total_services > 0 ? ($pending_services / $total_services) * 100 : 0;
 
         return $dataTable->render('service.index', compact(
-            'total_buy', 'total_sell', 'percentage_buy', 'percentage_sell', 'total_profit', 'percentage_profit', 'pending_services', 'percentage_pending'
+            'total_buy',
+            'total_sell',
+            'percentage_buy',
+            'percentage_sell',
+            'total_profit',
+            'percentage_profit',
+            'pending_services',
+            'percentage_pending',
         ));
     }
 
@@ -78,6 +83,7 @@ class ServiceController extends Controller
     public function create(Request $request)
     {
         $enterprise_id = $request->input('enterprise_id');
+
         return view('service.form', compact('enterprise_id'));
     }
 
@@ -94,7 +100,7 @@ class ServiceController extends Controller
                 'description' => 'nullable|string',
                 'currency_id' => 'nullable|exists:currencies,id',
                 'price' => 'nullable|numeric',
-                'discount' => 'nullable|numeric|max:30',
+                'discount' => 'nullable|numeric',
                 'frequency' => 'nullable|integer|min:1',
                 'next_billing' => 'nullable|date',
                 'expires_at' => 'nullable|date',
@@ -108,7 +114,7 @@ class ServiceController extends Controller
                     'errors' => $validator->errors()->toArray(),
                     'input' => $request->all()
                 ]);
-                
+
                 return redirect()->back()
                     ->withErrors($validator)
                     ->withInput()
@@ -116,20 +122,15 @@ class ServiceController extends Controller
             }
 
             $input = $request->all();
-            
-            // Convert price to NULL if empty
-            if ($request->has('price') && $request->price === '') {
-                $input['price'] = null;
-            }
-            
+
             // For debugging
             \Log::info('Service data before creation', ['data' => $input]);
-            
+
             // Format dates
             if (!empty($input['next_billing'])) {
                 $input['next_billing'] = \Carbon\Carbon::parse($input['next_billing']);
             }
-            
+
             if (!empty($input['expires_at'])) {
                 $input['expires_at'] = \Carbon\Carbon::parse($input['expires_at']);
             }
@@ -137,7 +138,7 @@ class ServiceController extends Controller
             // Create the service
             $service = Service::create($input);
             \Log::info('Service created successfully', ['service_id' => $service->id]);
-            
+
             return redirect()->route('service-list')->with('success', 'Service created successfully');
         } catch (\Exception $e) {
             \Log::error('Error creating service', [
@@ -145,7 +146,7 @@ class ServiceController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'input' => $request->all()
             ]);
-            
+
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error creating service: ' . $e->getMessage());
@@ -158,10 +159,10 @@ class ServiceController extends Controller
     public function show(string $id)
     {
         $service = Service::with(['category', 'client'])->findOrFail($id);
-        
+
         // Get service data
-        $serviceData = $service->data ? (array)$service->data : [];
-        
+        $serviceData = $service->data ? (array) $service->data : [];
+
         // Status information
         $statusLabels = [
             1 => ['label' => 'Suspended', 'class' => 'bg-label-danger'],
@@ -169,9 +170,9 @@ class ServiceController extends Controller
             3 => ['label' => 'To activate', 'class' => 'bg-label-success'],
             4 => ['label' => 'Active', 'class' => 'bg-label-info'],
         ];
-        
+
         $status = $statusLabels[$service->status] ?? ['label' => 'Unknown', 'class' => 'bg-label-secondary'];
-        
+
         return view('service.show', compact('service', 'serviceData', 'status'));
     }
 
@@ -182,13 +183,12 @@ class ServiceController extends Controller
     {
         $data = Service::find($id);
 
-        if (!$data)
-        {
+        if (! $data) {
             return redirect()->route('app-service-list')->with('error', 'Service not found.');
         }
 
         $enterprise_id = $data->enterprise_id;
-        
+
         return view('service.form', compact('data', 'enterprise_id'));
     }
 
@@ -198,7 +198,7 @@ class ServiceController extends Controller
     public function update(Request $request, string $id)
     {
         $service = Service::findOrFail($id);
-        
+
         $request->validate([
             'enterprise_id' => 'required|exists:enterprises,id',
             'category_id' => 'required|exists:categories,id',
@@ -206,7 +206,7 @@ class ServiceController extends Controller
             'description' => 'nullable|string',
             'currency_id' => 'nullable|exists:currencies,id',
             'price' => 'nullable|numeric',
-            'discount' => 'nullable|numeric|max:30',
+            'discount' => 'nullable|numeric',
             'frequency' => 'nullable|integer|min:1',
             'next_billing' => 'nullable|date',
             'expires_at' => 'nullable|date',
@@ -216,24 +216,19 @@ class ServiceController extends Controller
         ]);
 
         $input = $request->all();
-        
-        // Convert price to NULL if empty
-        if ($request->has('price') && $request->price === '') {
-            $input['price'] = null;
-        }
-        
+
         // Format dates
-        if (!empty($input['next_billing'])) {
+        if (! empty($input['next_billing'])) {
             $input['next_billing'] = \Carbon\Carbon::parse($input['next_billing']);
         }
-        
-        if (!empty($input['expires_at'])) {
+
+        if (! empty($input['expires_at'])) {
             $input['expires_at'] = \Carbon\Carbon::parse($input['expires_at']);
         }
 
         // Update the service
         $service->update($input);
-        
+
         return redirect()->route('service-list')->with('success', 'Service updated successfully');
     }
 
@@ -261,8 +256,7 @@ class ServiceController extends Controller
         $totalExpenses = 0;
 
         // Inicializar la estructura de datos, omitiendo el mes en curso
-        for ($i = 1; $i <= $projectionMonths; $i++)
-        {
+        for ($i = 1; $i <= $projectionMonths; $i++) {
             $month = $currentDate->copy()->addMonths($i)->format('F Y');
             $projectionData[$month] = [
                 'earnings' => 0,
@@ -271,18 +265,14 @@ class ServiceController extends Controller
         }
 
         // Calcular las fechas de facturación y los montos
-        foreach ($services as $service)
-        {
+        foreach ($services as $service) {
             $nextBillingDate = Carbon::parse($service->next_billing);
 
-            if ($service->price !== null && $service->price != 0)
-            {
+            if ($service->price !== null && $service->price != 0) {
                 $basePrice = $service->price;
                 $discount = $service->discount ?? 0;
                 $frequency = $service->frequency;
-            }
-            else
-            {
+            } else {
                 $basePrice = $service->type->price;
                 $discount = $service->type->discount ?? 0;
                 $frequency = $service->type->frequency;
@@ -292,45 +282,40 @@ class ServiceController extends Controller
             $priceAfterDiscount = $basePrice - ($basePrice * ($discount / 100));
 
             // Asegurarse de que la frecuencia sea un valor válido
-            if (is_null($frequency) || $frequency <= 0)
-            {
+            if (is_null($frequency) || $frequency <= 0) {
                 Log::error('Frecuencia inválida', ['service_id' => $service->id, 'frequency' => $frequency]);
+
                 continue;
             }
 
             // Asegurarse de que la fecha de próxima facturación es válida
-            if (is_null($nextBillingDate) || $nextBillingDate->lessThan($currentDate))
-            {
+            if (is_null($nextBillingDate) || $nextBillingDate->lessThan($currentDate)) {
                 Log::error('Fecha de próxima facturación inválida', ['service_id' => $service->id, 'next_billing' => $service->next_billing]);
+
                 continue;
             }
 
-            while ($nextBillingDate->lessThanOrEqualTo($currentDate->copy()->addMonths($projectionMonths)))
-            {
+            while ($nextBillingDate->lessThanOrEqualTo($currentDate->copy()->addMonths($projectionMonths))) {
                 $month = $nextBillingDate->format('F Y');
 
                 // Omitir el mes en curso
-                if ($month === $currentDate->format('F Y'))
-                {
+                if ($month === $currentDate->format('F Y')) {
                     $nextBillingDate->addMonths($frequency);
+
                     continue;
                 }
 
-                if (!isset($projectionData[$month]))
-                {
+                if (! isset($projectionData[$month])) {
                     $projectionData[$month] = [
                         'earnings' => 0,
                         'expenses' => 0,
                     ];
                 }
 
-                if ($service->operation == 'sell')
-                {
+                if ($service->operation == 'sell') {
                     $projectionData[$month]['earnings'] += $priceAfterDiscount;
                     $totalEarnings += $priceAfterDiscount;
-                }
-                elseif ($service->operation == 'buy')
-                {
+                } elseif ($service->operation == 'buy') {
                     $projectionData[$month]['expenses'] += $priceAfterDiscount;
                     $totalExpenses += $priceAfterDiscount;
                 }

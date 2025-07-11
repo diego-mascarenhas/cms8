@@ -121,7 +121,7 @@
                             <label for="currency_id" class="form-label">Currency (optional)</label>
                             <select id="currency_id" name="currency_id" class="select2 form-select" data-allow-clear="true">
                                 <option value="">Select Currency</option>
-                                <option value="32" {{ isset($data) && $data->currency_id == 32 ? 'selected' : '' }}>ARS - Argentine Peso</option>
+
                                 <option value="840" {{ isset($data) && $data->currency_id == 840 ? 'selected' : '' }}>USD - United States Dollar</option>
                                 <option value="978" {{ isset($data) && $data->currency_id == 978 ? 'selected' : '' }}>EUR - Euro</option>
                             </select>

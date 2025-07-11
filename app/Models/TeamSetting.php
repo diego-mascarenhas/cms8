@@ -14,7 +14,7 @@ class TeamSetting extends Model
         'type',
         'group',
         'is_encrypted',
-        'description'
+        'description',
     ];
 
     protected $casts = [
@@ -56,4 +56,4 @@ class TeamSetting extends Model
 
         $this->attributes['value'] = $value;
     }
-} 
+}

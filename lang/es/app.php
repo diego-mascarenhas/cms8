@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'welcome' => 'Bienvenido a ' . config('variables.templateName') . '!',
+    'welcome' => 'Bienvenido a '.config('variables.templateName').'!',
     'dashboard' => 'Cuadro de mando',
     'search' => 'Buscar',
     'search_with_shortcut' => 'Buscar (Ctrl+/)',
@@ -12,18 +12,26 @@ return [
     'contacts' => 'Contactos',
     'clients' => 'Clientes',
     'list60' => 'Lista de 60',
+
+    // Messages
+    'Are you sure you want to delete this record?' => '¿Estás seguro de que quieres eliminar este registro?',
+    'This action cannot be undone' => 'Esta acción no se puede deshacer',
+    'Yes, delete' => 'Sí, eliminar',
+    'Error' => 'Error',
+    'An error occurred while deleting the record' => 'Ha ocurrido un error al eliminar el registro',
+
     'languages' => [
         'english' => 'Inglés',
         'spanish' => 'Español',
         'french' => 'Francés',
         'german' => 'Alemán',
         'italian' => 'Italiano',
-        'portuguese' => 'Portugués'
+        'portuguese' => 'Portugués',
     ],
     'theme' => [
         'light' => 'Claro',
         'dark' => 'Oscuro',
-        'system' => 'Sistema'
+        'system' => 'Sistema',
     ],
     'shortcuts' => [
         'title' => 'Accesos directos',
@@ -45,9 +53,9 @@ return [
             'manage' => 'Gestionar Equipo',
             'settings' => 'Ajustes del Equipo',
             'create' => 'Crear Nuevo Equipo',
-            'switch' => 'Cambiar de Equipo'
+            'switch' => 'Cambiar de Equipo',
         ],
         'logout' => 'Cerrar sesión',
-        'login' => 'Iniciar sesión'
-    ]
+        'login' => 'Iniciar sesión',
+    ],
 ];

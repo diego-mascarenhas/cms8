@@ -6,16 +6,12 @@ use App\DataTables\PaymentDataTable;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use Illuminate\Http\Request;
-use stdClass;
-use Carbon\Carbon;
-use Log;
 
 class PaymentController extends Controller
 {
     public function index(PaymentDataTable $dataTable)
     {
-        $accounts = PaymentAccount::all()->map(function ($account)
-        {
+        $accounts = PaymentAccount::all()->map(function ($account) {
             $income = $account->payments()
                 ->approvedStatus()
                 ->where('transaction_type', 'I')

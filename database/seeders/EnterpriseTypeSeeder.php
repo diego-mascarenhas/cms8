@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\EnterpriseType;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class EnterpriseTypeSeeder extends Seeder
@@ -15,17 +14,17 @@ class EnterpriseTypeSeeder extends Seeder
     {
         EnterpriseType::create([
             'id' => 1,
-            'name' => 'Cliente'
+            'name' => 'Cliente',
         ]);
-        
+
         EnterpriseType::create([
             'id' => 2,
-            'name' => 'Proveedor'
+            'name' => 'Proveedor',
         ]);
 
         EnterpriseType::create([
             'id' => 3,
-            'name' => 'Alianza'
+            'name' => 'Alianza',
         ]);
     }
 }

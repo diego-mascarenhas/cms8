@@ -33,8 +33,7 @@ class MessageController extends Controller
     {
         $message = Message::with('category.users')->find($id);
 
-        if (!$message)
-        {
+        if (! $message) {
             return response()->json(['message' => 'Message not found'], 404);
         }
 

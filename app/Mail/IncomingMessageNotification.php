@@ -2,10 +2,10 @@
 
 namespace App\Mail;
 
+use App\Models\Conversation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Conversation;
 
 class IncomingMessageNotification extends Mailable
 {
@@ -16,7 +16,6 @@ class IncomingMessageNotification extends Mailable
     /**
      * Create a new message instance.
      *
-     * @param  Conversation  $conversation
      * @return void
      */
     public function __construct(Conversation $conversation)
@@ -32,6 +31,6 @@ class IncomingMessageNotification extends Mailable
     public function build()
     {
         return $this->subject('New Message Received')
-                    ->view('emails.incoming-message-notification');
+            ->view('emails.incoming-message-notification');
     }
-} 
+}

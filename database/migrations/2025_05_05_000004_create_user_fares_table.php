@@ -21,7 +21,7 @@ return new class extends Migration
             $table->decimal('amount', 10, 2);
             $table->boolean('negotiable')->default(false);
             $table->timestamps();
-            
+
             $table->foreign('language_origin_id')->references('code')->on('languages');
             $table->foreign('language_destination_id')->references('code')->on('languages');
             $table->foreign('currency_id')->references('code')->on('currencies');
@@ -35,4 +35,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('customer_fares');
     }
-}; 
+};

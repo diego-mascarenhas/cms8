@@ -9,15 +9,12 @@ class RoleMiddleware
 {
     public function handle($request, Closure $next, ...$roles)
     {
-        if (!Auth::check())
-        {
+        if (! Auth::check()) {
             abort(403, 'Unauthorized action.');
         }
 
-        foreach ($roles as $role)
-        {
-            if (Auth::user()->hasRole($role))
-            {
+        foreach ($roles as $role) {
+            if (Auth::user()->hasRole($role)) {
                 return $next($request);
             }
         }
@@ -25,4 +22,3 @@ class RoleMiddleware
         abort(403, 'Unauthorized action.');
     }
 }
-

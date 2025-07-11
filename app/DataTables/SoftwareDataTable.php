@@ -25,7 +25,7 @@ class SoftwareDataTable extends DataTable
             })
             ->orderColumn('type', function ($query, $order) {
                 $query->leftJoin('software_types', 'software.type_id', '=', 'software_types.id')
-                      ->orderBy('software_types.name', $order);
+                    ->orderBy('software_types.name', $order);
             })
             ->rawColumns(['action'])
             ->setRowId('id');
@@ -48,7 +48,8 @@ class SoftwareDataTable extends DataTable
             ->responsive(true)
             ->processing(true)
             ->serverSide(true)
-            ->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
+            ->pageLength(25)
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
                 'select' => false,
                 'lengthChange' => false,
@@ -59,7 +60,7 @@ class SoftwareDataTable extends DataTable
     {
         return [
             Column::make('name')->title('NOMBRE')->searchable(true)->orderable(true),
-            Column::computed('type')->title('TIPO')->searchable(true)->orderable(true),
+            Column::computed('type')->title('Categoría')->searchable(true)->orderable(true),
             Column::computed('action')
                 ->exportable(false)
                 ->printable(false)
@@ -72,4 +73,4 @@ class SoftwareDataTable extends DataTable
     {
         return 'Software_'.date('YmdHis');
     }
-} 
+}

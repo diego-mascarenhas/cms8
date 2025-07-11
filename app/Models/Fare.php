@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 
 class Fare extends Model
 {
@@ -15,7 +15,7 @@ class Fare extends Model
         'name',
         'team_id',
         'glosary_id',
-        'type_id'
+        'type_id',
     ];
 
     /**
@@ -27,10 +27,8 @@ class Fare extends Model
 
     protected static function booted()
     {
-        static::addGlobalScope('team', function (Builder $builder)
-        {
-            if (auth()->check())
-            {
+        static::addGlobalScope('team', function (Builder $builder) {
+            if (auth()->check()) {
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
@@ -67,4 +65,4 @@ class Fare extends Model
     {
         return $this->hasMany(UserFare::class);
     }
-} 
+}

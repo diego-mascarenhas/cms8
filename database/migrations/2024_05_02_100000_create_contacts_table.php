@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
+            $table->string('surname')->nullable();
+            $table->string('email')->nullable();
+            $table->bigInteger('phone')->nullable();
             $table->unsignedTinyInteger('source_id')->nullable();
             $table->date('birthday')->nullable();
             $table->text('profile')->nullable();
@@ -25,6 +28,7 @@ return new class extends Migration
             $table->foreignId('creator_id')->constrained('users');
             $table->foreignId('responsible_id')->nullable()->constrained('users');
             $table->json('data')->nullable();
+            $table->unsignedSmallInteger('valoration_id')->nullable();
             $table->unsignedTinyInteger('status_id')->default(1);
             $table->timestamps();
             $table->softDeletes();
@@ -33,6 +37,7 @@ return new class extends Migration
             $table->foreign('country')->references('id')->on('countries')->onDelete('restrict');
             $table->foreign('language')->references('code')->on('languages')->onDelete('restrict');
             $table->foreign('status_id')->references('id')->on('contact_statuses')->onDelete('restrict');
+            $table->foreign('valoration_id')->references('id')->on('contact_valorations')->onDelete('set null');
         });
     }
 

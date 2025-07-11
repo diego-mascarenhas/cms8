@@ -23,7 +23,7 @@ return new class extends Migration
             $table->tinyInteger('status')->default(1);
             $table->timestamps();
             $table->softDeletes();
-        
+
             $table->foreign('parent_id')->references('id')->on('categories')->onDelete('cascade');
             $table->foreign('module_id')->references('id')->on('modules')
                 ->onUpdate('cascade')

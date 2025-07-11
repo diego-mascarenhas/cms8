@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Webklex\PHPIMAP\ClientManager;
 use BeyondCode\Mailbox\InboundEmail;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Webklex\PHPIMAP\ClientManager;
 
 class GetEmails extends Command
 {
@@ -30,13 +30,11 @@ class GetEmails extends Command
     {
         $debug = $this->option('debug');
 
-        if ($debug)
-        {
+        if ($debug) {
             $this->info('Getting emails...');
         }
 
-        try
-        {
+        try {
             // IMAP configuration
             $config = [
                 'host' => env('MAILBOX_HOST'),
@@ -45,10 +43,10 @@ class GetEmails extends Command
                 'validate_cert' => env('MAILBOX_VALIDATE_CERT', true),
                 'username' => env('MAILBOX_USERNAME'),
                 'password' => env('MAILBOX_PASSWORD'),
-                'protocol' => 'imap'
+                'protocol' => 'imap',
             ];
 
-            $cm = new ClientManager();
+            $cm = new ClientManager;
             $client = $cm->make($config);
 
             $client->connect();
@@ -61,35 +59,31 @@ class GetEmails extends Command
 
             InboundEmail::unsetEventDispatcher();
 
-            foreach ($messages as $message)
-            {
+            foreach ($messages as $message) {
                 dd($message);
                 // Get the complete Message-ID
                 $messageId = $message->getMessageId();
 
-                if ($debug)
-                {
+                if ($debug) {
                     $this->line("\nDEBUG INFO:");
-                    $this->line("Complete Message-ID: " . $messageId);
-                    $this->line("From: " . $message->getFrom()[0]->mail);
-                    $this->line("Subject: " . $message->getSubject());
+                    $this->line('Complete Message-ID: '.$messageId);
+                    $this->line('From: '.$message->getFrom()[0]->mail);
+                    $this->line('Subject: '.$message->getSubject());
                 }
 
                 // Check if email already exists
                 $exists = InboundEmail::where('message_id', $messageId)->exists();
 
-                if ($exists)
-                {
-                    if ($debug)
-                    {
-                        $this->line("<fg=yellow>Skipping duplicate email with Message-ID: " . $messageId . "</>");
+                if ($exists) {
+                    if ($debug) {
+                        $this->line('<fg=yellow>Skipping duplicate email with Message-ID: '.$messageId.'</>');
                     }
                     $skippedCount++;
+
                     continue;
                 }
 
-                try
-                {
+                try {
                     // // Modify raw message to include complete Message-ID
                     // $rawBody = $message->getRawBody();
                     // $completeMessageId = "Message-ID: " . $messageId . "\r\n";
@@ -106,51 +100,45 @@ class GetEmails extends Command
                     // $inboundEmail = InboundEmail::fromMessage($modifiedRawBody);
                     // $inboundEmail->save();
 
-                    $inboundEmail = new InboundEmail();
+                    $inboundEmail = new InboundEmail;
 
                     $inboundEmail->forceFill([
                         'message_id' => $messageId,
-                        'message' => $messageId . "\r\n" . $message->getRawBody()
+                        'message' => $messageId."\r\n".$message->getRawBody(),
                     ]);
 
                     $inboundEmail->save();
 
-                    if ($debug)
-                    {
-                        $this->line("Saved with message_id: " . $inboundEmail->message_id);
-                        $this->info("Email saved with ID: " . $inboundEmail->id);
+                    if ($debug) {
+                        $this->line('Saved with message_id: '.$inboundEmail->message_id);
+                        $this->info('Email saved with ID: '.$inboundEmail->id);
 
                         $processedCount++;
                     }
-                }
-                catch (\Exception $e)
-                {
-                    $this->error("Error saving email: " . $e->getMessage());
+                } catch (\Exception $e) {
+                    $this->error('Error saving email: '.$e->getMessage());
 
                     Log::error('Error saving email', [
                         'error' => $e->getMessage(),
                         'message_id' => $messageId,
-                        'subject' => $message->getSubject()
+                        'subject' => $message->getSubject(),
                     ]);
                 }
             }
 
             // Show summary
-            if ($debug)
-            {
+            if ($debug) {
                 $this->line("\n=====================================");
-                $this->info("Process completed:");
-                $this->line("- New emails processed: " . $processedCount);
-                $this->line("- Duplicate emails skipped: " . $skippedCount);
-                $this->line("=====================================");
+                $this->info('Process completed:');
+                $this->line('- New emails processed: '.$processedCount);
+                $this->line('- Duplicate emails skipped: '.$skippedCount);
+                $this->line('=====================================');
             }
 
-        }
-        catch (\Exception $e)
-        {
-            $this->error('Error: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            $this->error('Error: '.$e->getMessage());
             Log::error('Error in emails:get command', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }

@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Module;
 use App\Models\Team;
+use Illuminate\Database\Seeder;
 
 class ModuleSeeder extends Seeder
 {
@@ -45,7 +45,7 @@ class ModuleSeeder extends Seeder
             'description' => 'List of 60 management module',
         ],
     ];
-    
+
     protected $additionalModules = [
         'projects' => [
             'name' => 'Projects',
@@ -187,8 +187,48 @@ class ModuleSeeder extends Seeder
             'icon' => 'template',
             'description' => 'Templates management module',
         ],
+        'languages' => [
+            'name' => 'Languages',
+            'icon' => 'language',
+            'description' => 'Languages management module',
+        ],
+        'language-variants' => [
+            'name' => 'Language Variants',
+            'icon' => 'language',
+            'description' => 'Language variants management module',
+        ],
+        'fares' => [
+            'name' => 'Fares',
+            'icon' => 'currency-dollar',
+            'description' => 'Fares and pricing management module',
+        ],
+        'softwares' => [
+            'name' => 'Softwares',
+            'icon' => 'cpu',
+            'description' => 'Software management module',
+        ],
+        'certifications' => [
+            'name' => 'Certifications',
+            'icon' => 'award',
+            'description' => 'Certifications management module',
+        ],
+        'stylebooks' => [
+            'name' => 'Stylebooks',
+            'icon' => 'book',
+            'description' => 'Stylebooks and guidelines module',
+        ],
+        'notifications' => [
+            'name' => 'Notifications',
+            'icon' => 'bell',
+            'description' => 'Notifications and alerts module',
+        ],
+        'collaborators' => [
+            'name' => 'Collaborators',
+            'icon' => 'user-group',
+            'description' => 'Collaborators management module',
+        ],
     ];
-    
+
     protected $teamModules = [
         1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'campaigns'],
         2 => ['invoices', 'payments', 'communications', 'tickets', 'marketing', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel'],
@@ -197,7 +237,7 @@ class ModuleSeeder extends Seeder
     public function run()
     {
         $this->command->info('Creando módulos...');
-        
+
         foreach ($this->coreModules as $key => $moduleData) {
             Module::firstOrCreate(
                 ['key' => $key],
@@ -208,11 +248,11 @@ class ModuleSeeder extends Seeder
                     'description' => $moduleData['description'],
                     'is_core' => true,
                     'status' => 1,
-                ]
+                ],
             );
             $this->command->info("Módulo core '{$moduleData['name']}' creado o actualizado");
         }
-        
+
         foreach ($this->additionalModules as $key => $moduleData) {
             Module::firstOrCreate(
                 ['key' => $key],
@@ -223,31 +263,31 @@ class ModuleSeeder extends Seeder
                     'description' => $moduleData['description'],
                     'is_core' => false,
                     'status' => 1,
-                ]
+                ],
             );
             $this->command->info("Módulo adicional '{$moduleData['name']}' creado o actualizado");
         }
-        
+
         // $teams = Team::all();
         // $coreModuleObjects = Module::where('is_core', true)->get();
-        
+
         // foreach ($teams as $team) {
         //     $this->command->info("Habilitando módulos core para equipo '{$team->name}'");
-            
+
         //     foreach ($coreModuleObjects as $module) {
         //         $team->enableModule($module->key);
         //     }
         // }
-        
+
         foreach ($this->teamModules as $teamId => $moduleKeys) {
             $team = Team::find($teamId);
-            
+
             if ($team) {
                 $this->command->info("Habilitando módulos adicionales para equipo '{$team->name}'");
-                
+
                 foreach ($moduleKeys as $moduleKey) {
                     $module = Module::where('key', $moduleKey)->first();
-                    
+
                     if ($module) {
                         $team->enableModule($moduleKey);
                         $this->command->info("- Módulo '{$module->name}' habilitado");
@@ -255,7 +295,7 @@ class ModuleSeeder extends Seeder
                 }
             }
         }
-        
+
         $this->command->info('Configuración de módulos completada.');
     }
-} 
+}

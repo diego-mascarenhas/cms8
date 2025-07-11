@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\DataTables\TemplateDataTable;
 use App\Models\Template;
-use Illuminate\Http\Request;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
+use Illuminate\Http\Request;
 
 class TemplateController extends Controller
 {
@@ -43,7 +43,7 @@ class TemplateController extends Controller
             [
                 'name' => $data['name'],
                 'status_id' => $status_id,
-            ]
+            ],
         );
 
         return redirect()->route('template-list')->with('success', 'Record saved successfully.');
@@ -56,7 +56,7 @@ class TemplateController extends Controller
     {
         $page = Template::findByHash($hashedId);
 
-        if (!$page) {
+        if (! $page) {
             return redirect()->route('template.index')->with('error', 'Page not found.');
         }
 
@@ -70,8 +70,7 @@ class TemplateController extends Controller
     {
         $data = Template::findByHash($hashedId);
 
-        if (!$data)
-        {
+        if (! $data) {
             return redirect()->route('template-list')->with('error', 'Template not found.');
         }
 
@@ -92,8 +91,8 @@ class TemplateController extends Controller
     public function destroy(string $hashedId)
     {
         $model = Template::findByHash($hashedId);
-        
-        if (!$model) {
+
+        if (! $model) {
             return response()->json(['error' => 'Template not found.'], 404);
         }
 
@@ -105,15 +104,15 @@ class TemplateController extends Controller
     public function editor(Request $request, string $hashedId)
     {
         $page = Template::findByHash($hashedId);
-        
-        if (!$page) {
+
+        if (! $page) {
             return redirect()->route('template-list')->with('error', 'Template not found.');
         }
-        
+
         // Add team ID information to the editor context
         $teamId = auth()->user()->currentTeam->id ?? 'default';
         $request->merge(['team_id' => $teamId]);
-        
+
         return $this->show_gjs_editor($request, $page);
     }
 }

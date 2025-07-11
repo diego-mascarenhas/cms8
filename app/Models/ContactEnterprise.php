@@ -9,11 +9,13 @@ class ContactEnterprise extends Pivot
     protected $table = 'contact_enterprise';
 
     // Si necesitas definir relaciones adicionales, puedes hacerlo aquí
-    public function contact() {
+    public function contact()
+    {
         return $this->belongsTo(Contact::class);
     }
 
-    public function enterprise() {
+    public function enterprise()
+    {
         return $this->belongsTo(Enterprise::class);
     }
 }
