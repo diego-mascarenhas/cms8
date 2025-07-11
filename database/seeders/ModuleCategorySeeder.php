@@ -28,8 +28,7 @@ class ModuleCategorySeeder extends Seeder
         $this->createGlobalCategories($moduleIds);
 
         // Team-specific Categories
-        $this->createTeam1Categories($moduleIds);
-        $this->createTeam2Categories($moduleIds);
+        $this->createTeamCategories($moduleIds);
 
         $this->command->info('Module categories created successfully.');
     }
@@ -155,7 +154,7 @@ class ModuleCategorySeeder extends Seeder
         }
     }
 
-    private function createTeam1Categories($moduleIds)
+    private function createTeamCategories($moduleIds)
     {
         $this->command->info('Creating Team 1 specific categories...');
 
@@ -287,53 +286,6 @@ class ModuleCategorySeeder extends Seeder
                     ]);
                 }
             }
-        }
-    }
-
-    private function createTeam2Categories($moduleIds)
-    {
-        $this->command->info('Creating Team 2 specific categories...');
-
-        // Invoice Categories for Team 2
-        $invoiceParent = Category::create([
-            'name' => 'Retail Invoice Types',
-            'module_id' => $moduleIds['invoices'],
-            'team_id' => 2,
-            'description' => 'Categories for retail invoices',
-            'status' => 1,
-        ]);
-
-        $invoiceCategories = ['Product Sales', 'Services', 'Repairs', 'Subscriptions', 'Custom Work'];
-
-        foreach ($invoiceCategories as $category) {
-            Category::create([
-                'name' => $category,
-                'module_id' => $moduleIds['invoices'],
-                'team_id' => 2,
-                'parent_id' => $invoiceParent->id,
-                'status' => 1,
-            ]);
-        }
-
-        // Support Ticket Types for Team 2
-        $ticketParent = Category::create([
-            'name' => 'Retail Support Issues',
-            'module_id' => $moduleIds['tickets'],
-            'team_id' => 2,
-            'description' => 'Support issues for retail customers',
-            'status' => 1,
-        ]);
-
-        $supportCategories = ['Product Help', 'Returns', 'Warranty Claims', 'Technical Support', 'Feature Requests'];
-
-        foreach ($supportCategories as $category) {
-            Category::create([
-                'name' => $category,
-                'module_id' => $moduleIds['tickets'],
-                'team_id' => 2,
-                'parent_id' => $ticketParent->id,
-                'status' => 1,
-            ]);
         }
     }
 }
