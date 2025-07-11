@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-class BboSeeder extends Seeder
+class TeamBboSeeder extends Seeder
 {
 	private $teamId = 4;  // BBO Team ID
 

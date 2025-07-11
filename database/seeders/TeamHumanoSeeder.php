@@ -11,7 +11,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
-class HumanoSeeder extends Seeder
+class TeamHumanoSeeder extends Seeder
 {
     private $teamId = 3; // Humano Team ID
 
