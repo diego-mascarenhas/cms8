@@ -115,6 +115,21 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->onOneServer()
             ->runInBackground();
+
+        // CMS7 Import: Only if CMS_GROUP is set
+        if (!empty(env('CMS_GROUP'))) {
+            $schedule->command('import:interactive --auto')
+                ->dailyAt('02:00')
+                ->withoutOverlapping()
+                ->onOneServer()
+                ->runInBackground()
+                ->before(function () {
+                    Log::info('Starting CMS7 import (enterprises & contacts)');
+                })
+                ->after(function () {
+                    Log::info('Finished CMS7 import (enterprises & contacts)');
+                });
+        }
     }
 
     /**

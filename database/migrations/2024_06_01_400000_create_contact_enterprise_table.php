@@ -13,6 +13,8 @@ class CreateContactEnterpriseTable extends Migration
             $table->foreignId('contact_id')->constrained()->onDelete('cascade');
             $table->foreignId('enterprise_id')->constrained()->onDelete('cascade');
             $table->string('position')->nullable();
+            $table->unsignedTinyInteger('department_id')->nullable();
+            $table->foreign('department_id')->references('id')->on('enterprise_departments')->onDelete('set null');
             $table->foreignId('superior_id')->nullable()->constrained('contacts')->onDelete('set null');
             $table->timestamps();
         });

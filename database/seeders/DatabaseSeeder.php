@@ -44,6 +44,7 @@ class DatabaseSeeder extends Seeder
 			UnitsSeeder::class,
 			FareUnitSeeder::class,
 			ContactSkillsSeeder::class,
+			List60StatusesSeeder::class,
 
 			// Client-specific seeders (must run first to create teams)
 			//EnterpriseSeeder::class,
