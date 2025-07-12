@@ -76,10 +76,50 @@
 </head>
 
 <body>
+    <div style="margin-bottom:10px;">
+      <input type="text" id="import-url-input" placeholder="Pega la URL para importar HTML" style="width:300px;"/>
+      <button id="import-url-btn">Importar HTML</button>
+    </div>
     <div id="{{ str_replace('#', '', $editorConfig->container ?? 'editor') }}"></div>
-    
+
     @foreach ($editorConfig->getScripts() as $script)
         <script src="{{ $script }}"></script>
     @endforeach
+
+    <script>
+    function getGrapesEditorInstance() {
+        if (window.gjsEditor && typeof window.gjsEditor.setComponents === 'function') return window.gjsEditor;
+        if (window.editor && typeof window.editor.setComponents === 'function') return window.editor;
+        if (window.grapesjs && window.grapesjs.editors && window.grapesjs.editors.length) {
+            for (let ed of window.grapesjs.editors) {
+                if (typeof ed.setComponents === 'function') return ed;
+            }
+        }
+        return null;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            document.getElementById('import-url-btn').addEventListener('click', async function() {
+                const url = document.getElementById('import-url-input').value;
+                if (!url) return alert('Ingresa una URL');
+                try {
+                    const response = await fetch('/api/fetch-html?url=' + encodeURIComponent(url));
+                    const data = await response.json();
+                    const editor = getGrapesEditorInstance();
+                    if (!editor) return alert('No se encontró la instancia de GrapesJS');
+                    if (data.html) {
+                        editor.setComponents(data.html);
+                        alert('HTML importado. Ahora puedes editar y guardar el template.');
+                    } else {
+                        alert('No se pudo importar el HTML: ' + (data.error || 'Error desconocido'));
+                    }
+                } catch (e) {
+                    alert('Error al importar: ' + e.message);
+                }
+            });
+        }, 1500); // Espera 1.5s para asegurar que el editor esté inicializado
+    });
+    </script>
 </body>
 </html>

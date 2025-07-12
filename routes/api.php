@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\TemplateImportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,29 +52,29 @@ Route::middleware('auth:sanctum')->group(function () {
     // Message
     Route::get('message', [MessageController::class, 'index']);
     Route::get('message/{id}', [MessageController::class, 'show']);
-    
+
     // Contacts - for user-based authentication (Sanctum tokens)
     Route::get('contacts', [ContactController::class, 'index']);
     Route::get('contacts/{id}', [ContactController::class, 'show']);
-    
+
     // Projects - for user-based authentication (Sanctum tokens)
     Route::get('projects', [ProjectController::class, 'index']);
     Route::get('projects/{id}', [ProjectController::class, 'show']);
-    
+
     // Services - for user-based authentication (Sanctum tokens)
     Route::get('services', [ServiceController::class, 'index']);
     Route::get('services/{id}', [ServiceController::class, 'show']);
     Route::post('services', [ServiceController::class, 'store']);
     Route::put('services/{id}', [ServiceController::class, 'update']);
     Route::delete('services/{id}', [ServiceController::class, 'destroy']);
-    
+
     // Invoices - for user-based authentication (Sanctum tokens)
     Route::get('invoices', [InvoiceController::class, 'index']);
     Route::get('invoices/{id}', [InvoiceController::class, 'show']);
     Route::post('invoices', [InvoiceController::class, 'store']);
     Route::put('invoices/{id}', [InvoiceController::class, 'update']);
     Route::delete('invoices/{id}', [InvoiceController::class, 'destroy']);
-    
+
     // Language Variants - for user-based authentication (Sanctum tokens)
     Route::get('language-variants', [LanguageVariantController::class, 'index']);
     Route::get('language-variants/{languageVariant}', [LanguageVariantController::class, 'show']);
@@ -81,7 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('language-variants/{languageVariant}', [LanguageVariantController::class, 'update']);
     Route::delete('language-variants/{languageVariant}', [LanguageVariantController::class, 'destroy']);
     Route::get('language-variants/base/{baseLanguage}', [LanguageVariantController::class, 'getVariantsFor']);
-    
+
     // Software - for user-based authentication (Sanctum tokens)
     // Define specific routes BEFORE resource routes to avoid conflicts
     Route::get('software/types', [SoftwareController::class, 'types'])->name('api.software.types');
@@ -94,7 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
         'update' => 'api.software.update',
         'destroy' => 'api.software.destroy',
     ]);
-    
+
     // Certifications - for user-based authentication (Sanctum tokens)
     // Define specific routes BEFORE resource routes to avoid conflicts
     Route::get('certifications/types', [CertificationController::class, 'types'])->name('api.certifications.types');
@@ -107,7 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
         'update' => 'api.certifications.update',
         'destroy' => 'api.certifications.destroy',
     ]);
-    
+
     // Fares - for user-based authentication (Sanctum tokens)
     // Define specific routes BEFORE resource routes to avoid conflicts
     Route::get('fares/types', [FareController::class, 'types'])->name('api.fares.types');
@@ -130,10 +131,12 @@ Route::middleware('team.token')->prefix('team')->group(function () {
     // Team information
     Route::get('/', [TeamController::class, 'index']);
     Route::get('/settings', [TeamController::class, 'settings']);
-    
+
     // Team contacts
     Route::resource('contacts', TeamContactController::class);
-    
+
     // Team projects
     Route::resource('projects', TeamProjectController::class);
 });
+
+Route::get('/fetch-html', [TemplateImportController::class, 'fetchHtml']);
