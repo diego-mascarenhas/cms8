@@ -237,31 +237,52 @@ class TeamRevisionAlphaSeeder extends Seeder
         $enterprisesModuleId = Module::where('key', 'enterprises')->first()?->id;
 
         // Categorías para el módulo de contactos
-        Category::updateOrCreate([
-            'name' => 'Importado de CMS+',
+        // 1. Crear categoría principal
+        $mainContactCategory = Category::updateOrCreate([
+            'name' => 'Contactos',
             'module_id' => $contactsModuleId,
-        ], [
             'team_id' => $this->teamId,
-            'description' => 'Contactos importados de CMS7',
             'parent_id' => null,
+        ], [
+            'description' => 'Categoría principal para contactos',
+            'status' => 1,
+        ]);
+
+        // 2. Crear subcategorías con parent_id apuntando a la principal
+        Category::updateOrCreate([
+            'name' => 'Staff',
+            'module_id' => $contactsModuleId,
+            'team_id' => $this->teamId,
+        ], [
+            'description' => 'Contactos internos del equipo',
+            'parent_id' => $mainContactCategory->id,
+            'status' => 1,
+        ]);
+        Category::updateOrCreate([
+            'name' => 'CMS+',
+            'module_id' => $contactsModuleId,
+            'team_id' => $this->teamId,
+        ], [
+            'description' => 'Contactos importados de CMS+',
+            'parent_id' => $mainContactCategory->id,
             'status' => 1,
         ]);
         Category::updateOrCreate([
             'name' => 'Contacto Potencial',
             'module_id' => $contactsModuleId,
-        ], [
             'team_id' => $this->teamId,
+        ], [
             'description' => 'Contactos interesados en nuestros servicios',
-            'parent_id' => null,
+            'parent_id' => $mainContactCategory->id,
             'status' => 1,
         ]);
         Category::updateOrCreate([
             'name' => 'Referido',
             'module_id' => $contactsModuleId,
-        ], [
             'team_id' => $this->teamId,
+        ], [
             'description' => 'Contactos referidos por clientes',
-            'parent_id' => null,
+            'parent_id' => $mainContactCategory->id,
             'status' => 1,
         ]);
 

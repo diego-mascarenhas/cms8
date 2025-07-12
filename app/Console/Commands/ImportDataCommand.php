@@ -327,6 +327,15 @@ class ImportDataCommand extends Command
             $bar = $this->output->createProgressBar(count($contacts));
             $bar->start();
 
+            // Obtener el ID de la categoría 'Importado de CMS+' para el módulo de contactos y el equipo
+            $contactsModuleId = DB::table('modules')->where('key', 'contacts')->value('id');
+            $importedCategory = DB::table('categories')
+                ->where('name', 'CMS+')
+                ->where('module_id', $contactsModuleId)
+                ->where('team_id', env('CMS_TEAM_ID'))
+                ->first();
+            $importedCategoryId = $importedCategory ? $importedCategory->id : null;
+
             foreach ($contacts as $data) {
                 $existingContact = DB::table('contacts')->where('id', $data->id)->first();
 
@@ -449,6 +458,20 @@ class ImportDataCommand extends Command
                         }
                     } else {
                         $this->warn("Enterprise with ID {$data->id_empresa} not found, skipping relationship for contact {$data->id}");
+                    }
+                }
+
+                // Al final de la importación de cada contacto:
+                if ($importedCategoryId) {
+                    $exists = DB::table('contact_category')
+                        ->where('contact_id', $data->id)
+                        ->where('category_id', $importedCategoryId)
+                        ->exists();
+                    if (! $exists) {
+                        DB::table('contact_category')->insert([
+                            'contact_id' => $data->id,
+                            'category_id' => $importedCategoryId,
+                        ]);
                     }
                 }
 
