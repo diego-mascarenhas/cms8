@@ -74,11 +74,6 @@ class Contact extends Model
         return $this->belongsTo(User::class, 'responsible_id');
     }
 
-    public function enterprise()
-    {
-        return $this->hasOne(Enterprise::class, 'responsible_id');
-    }
-
     public function country()
     {
         return $this->belongsTo(Country::class, 'country', 'id');
@@ -569,5 +564,10 @@ class Contact extends Model
             ->logOnly(['name', 'surname', 'email', 'phone', 'source_id', 'country', 'language', 'responsible_id', 'status_id', 'valoration_id'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
+    }
+
+    public function currentEnterprise()
+    {
+        return $this->belongsTo(\App\Models\Enterprise::class, 'current_enterprise_id');
     }
 }

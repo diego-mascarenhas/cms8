@@ -112,7 +112,7 @@ class ContactController extends Controller
             'country',
             'language',
             'sentimentHistories.sentiment',
-            'enterprise',
+            'enterprises', // relación correcta
             'user.roles',
         ])->find($id);
 
@@ -330,7 +330,7 @@ class ContactController extends Controller
      */
     public function edit($id)
     {
-        $data = Contact::with('enterprise', 'sources', 'softwares', 'categories')->findOrFail($id);
+        $data = Contact::with('enterprises', 'sources', 'softwares', 'categories')->findOrFail($id);
         $data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
         $enterpriseStatuses = ContactStatus::getOptions();
         $socialSources = Source::getOptions();

@@ -376,6 +376,13 @@ class ImportDataCommand extends Command
                     DB::table('contacts')->insert($contactData);
                     $stats['imported']++;
                 } else {
+                    // Merge existing data with new imported_from_cms7 flag
+                    $existingData = json_decode($existingContact->data ?? '{}', true);
+                    if (!is_array($existingData)) {
+                        $existingData = [];
+                    }
+                    $existingData['imported_from_cms7'] = true;
+                    $contactData['data'] = json_encode($existingData);
                     DB::table('contacts')->where('id', $existingContact->id)->update($contactData);
                     $stats['updated']++;
                 }

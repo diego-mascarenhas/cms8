@@ -24,10 +24,14 @@ class ContactDataTable extends DataTable
             })
             ->setRowId('id')
             ->editColumn('name', function ($row) {
-                $companyName = $row->enterprise ? e($row->enterprise->name) : '';
+                $fullName = e($row->name);
+                if (!empty($row->surname)) {
+                    $fullName .= ' ' . e($row->surname);
+                }
+                $companyName = $row->enterprises->first() ? e($row->enterprises->first()->name) : '';
 
                 return '<div class="d-flex flex-column">
-                            <span class="fw-medium text-body text-truncate">'.e($row->name).'</span>
+                            <span class="fw-medium text-body text-truncate">'.$fullName.'</span>
                             <small class="text-muted">'.($companyName ?: '&nbsp;').'</small>
                         </div>';
             })
@@ -78,7 +82,7 @@ class ContactDataTable extends DataTable
     {
         return $model->newQuery()->with([
             'list60:id,contact_id',
-            'enterprise',
+            'enterprises:id,name',
             'currentSentiment.sentiment',
             'status',
             'sources',

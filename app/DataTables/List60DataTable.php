@@ -23,7 +23,8 @@ class List60DataTable extends DataTable
             ->addColumn('action', 'list60.action')
             ->setRowId('id')
             ->editColumn('contact_id', function ($row) {
-                $companyName = $row->contact->enterprise ? e($row->contact->enterprise->name) : '';
+                // Mostrar la primera empresa asociada al contacto (si existe)
+                $companyName = $row->contact->enterprises->first() ? e($row->contact->enterprises->first()->name) : '';
 
                 return '<div class="d-flex flex-column">
                             <span class="fw-medium text-body text-truncate">'.e($row->contact->name).'</span>
@@ -55,7 +56,7 @@ class List60DataTable extends DataTable
         return $model->myResponsibilities()
             ->whereHas('contact')
             ->with([
-                'contact.enterprise',
+                'contact.enterprises',
                 'contact.sources',
                 'contact.status',
                 'status',

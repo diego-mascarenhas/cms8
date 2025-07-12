@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class TeamRevisionAlphaSeeder extends Seeder
 {
@@ -34,6 +35,19 @@ class TeamRevisionAlphaSeeder extends Seeder
 
         // 5. Create Revision Alpha categories
         $this->createRevisionAlphaCategories();
+
+        // Asignar módulos por defecto al equipo Revision Alpha
+        $defaultModules = [34, 9, 15, 20, 21, 22, 35, 42];
+        foreach ($defaultModules as $moduleId) {
+            DB::table('module_team')->updateOrInsert([
+                'module_id' => $moduleId,
+                'team_id' => $team->id,
+            ], [
+                'status' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         $this->command->info('✅ REVISION ALPHA setup completed successfully');
     }
@@ -218,19 +232,58 @@ class TeamRevisionAlphaSeeder extends Seeder
     {
         $this->command->info('📂 Creating Revision Alpha categories...');
 
-        // Find module IDs
-        $moduleIds = [
-            'services' => Module::where('key', 'services')->first()?->id,
-            'communications' => Module::where('key', 'communications')->first()?->id,
-            'projects' => Module::where('key', 'projects')->first()?->id,
-            'tasks' => Module::where('key', 'tasks')->first()?->id,
-            'invoices' => Module::where('key', 'invoices')->first()?->id,
-            'tickets' => Module::where('key', 'tickets')->first()?->id,
-            'mail' => Module::where('key', 'mail')->first()?->id,
-            'chat' => Module::where('key', 'chat')->first()?->id,
-            'campaigns' => Module::where('key', 'campaigns')->first()?->id,
-            'hosting' => Module::where('key', 'hosting')->first()?->id,
-        ];
+        // Obtener los módulos de contactos y empresas
+        $contactsModuleId = Module::where('key', 'contacts')->first()?->id;
+        $enterprisesModuleId = Module::where('key', 'enterprises')->first()?->id;
+
+        // Categorías para el módulo de contactos
+        Category::updateOrCreate([
+            'name' => 'Importado de CMS+',
+            'module_id' => $contactsModuleId,
+        ], [
+            'team_id' => $this->teamId,
+            'description' => 'Contactos importados de CMS7',
+            'parent_id' => null,
+            'status' => 1,
+        ]);
+        Category::updateOrCreate([
+            'name' => 'Contacto Potencial',
+            'module_id' => $contactsModuleId,
+        ], [
+            'team_id' => $this->teamId,
+            'description' => 'Contactos interesados en nuestros servicios',
+            'parent_id' => null,
+            'status' => 1,
+        ]);
+        Category::updateOrCreate([
+            'name' => 'Referido',
+            'module_id' => $contactsModuleId,
+        ], [
+            'team_id' => $this->teamId,
+            'description' => 'Contactos referidos por clientes',
+            'parent_id' => null,
+            'status' => 1,
+        ]);
+
+        // Categorías para el módulo de empresas
+        Category::updateOrCreate([
+            'name' => 'Cliente Premium',
+            'module_id' => $enterprisesModuleId,
+        ], [
+            'team_id' => $this->teamId,
+            'description' => 'Empresas con contrato premium',
+            'parent_id' => null,
+            'status' => 1,
+        ]);
+        Category::updateOrCreate([
+            'name' => 'Proveedor Estratégico',
+            'module_id' => $enterprisesModuleId,
+        ], [
+            'team_id' => $this->teamId,
+            'description' => 'Empresas proveedoras clave',
+            'parent_id' => null,
+            'status' => 1,
+        ]);
 
         $this->command->info("✅ Created Revision Alpha categories");
     }
