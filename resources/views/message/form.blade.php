@@ -32,21 +32,24 @@
 	<form class="card-body" action="{{ route('message.store') }}" method="POST">
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
-		
+
 		<div class="row g-3">
 			<div class="col-md-6">
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-module-categories-select 
-					id="category_id" 
-					label="Categoría" 
+				<x-module-categories-select
+					id="category_id"
+					label="Categoría"
 					moduleKey="contacts"
-					:selected="old('category_id', $data->category_id ?? '')" 
+					:selected="old('category_id', $data->category_id ?? '')"
 				/>
 			</div>
 			<div class="col-md-6">
 				<x-input-select id="type_id" label="Type (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
+			</div>
+			<div class="col-md-6">
+				<x-input-general id="import_url" label="Import from URL (optional)" value="" />
 			</div>
 			<div class="col-md-6">
 				<x-input-select id="template_id" label="Template" :options="$data->templates" value="{{ old('template_id', $data->template_id ?? '') }}" />

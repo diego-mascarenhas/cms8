@@ -32,10 +32,13 @@
 	<form class="card-body" action="{{ route('template.store') }}" method="POST">
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
-		
+
 		<div class="row g-3">
 			<div class="col-md-4">
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
+			</div>
+			<div class="col-md-4">
+				<x-input-general id="import_url" label="Import from URL (optional)" value="" />
 			</div>
 			<div class="col-xl-12 p-4">
 				<div class="text-light small fw-medium">Status</div>

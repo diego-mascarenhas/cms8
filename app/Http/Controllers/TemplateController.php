@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\TemplateDataTable;
 use App\Models\Template;
+use App\Helpers\TemplateImportHelper;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
 use Illuminate\Http\Request;
 
@@ -35,6 +36,23 @@ class TemplateController extends Controller
             'name' => 'required|string|min:3|max:25',
         ]);
 
+        // Import template from URL if provided
+        if (!empty($data['import_url'])) {
+            $importedTemplate = TemplateImportHelper::importTemplateFromUrl($data['import_url'], $data['name'] ?? null);
+            if ($importedTemplate) {
+                // Si es edición, actualiza el template existente
+                if ($request->id) {
+                    $template = Template::find($request->id);
+                    if ($template) {
+                        $template->gjs_data = $importedTemplate->gjs_data;
+                        $template->save();
+                    }
+                }
+                // Si es nuevo, simplemente redirige y no crea otro
+                return redirect()->route('template-list')->with('success', 'Template imported successfully.');
+            }
+        }
+
         // Set status_id based on checkbox presence
         $status_id = $request->has('status_id') ? 2 : 1; // 2 = active, 1 = inactive
 
@@ -43,6 +61,7 @@ class TemplateController extends Controller
             [
                 'name' => $data['name'],
                 'status_id' => $status_id,
+                'gjs_data' => $data['gjs_data'] ?? null,
             ],
         );
 

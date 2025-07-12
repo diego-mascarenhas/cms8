@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use stdClass;
 use Twilio\Rest\Client;
+use App\Helpers\TemplateImportHelper;
 
 class MessageController extends Controller
 {
@@ -44,6 +45,15 @@ class MessageController extends Controller
             'text' => 'required|string|min:3|max:255',
         ]);
 
+        // Import template from URL if provided
+        $templateId = $data['template_id'] ?? null;
+        if (!empty($data['import_url'])) {
+            $importedTemplate = TemplateImportHelper::importTemplateFromUrl($data['import_url']);
+            if ($importedTemplate) {
+                $templateId = $importedTemplate->id;
+            }
+        }
+
         // Set status_id based on checkbox presence
         $status_id = $request->has('status_id') ? 2 : 1; // 2 = active, 1 = inactive
 
@@ -53,7 +63,7 @@ class MessageController extends Controller
                 'name' => $data['name'],
                 'type_id' => $data['type_id'],
                 'category_id' => $data['category_id'],
-                'template_id' => $data['template_id'],
+                'template_id' => $templateId,
                 'text' => $data['text'],
                 'status_id' => $status_id,
             ],
