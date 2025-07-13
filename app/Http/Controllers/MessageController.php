@@ -45,14 +45,7 @@ class MessageController extends Controller
             'text' => 'required|string|min:3|max:255',
         ]);
 
-        // Import template from URL if provided
         $templateId = $data['template_id'] ?? null;
-        if (!empty($data['import_url'])) {
-            $importedTemplate = TemplateImportHelper::importTemplateFromUrl($data['import_url']);
-            if ($importedTemplate) {
-                $templateId = $importedTemplate->id;
-            }
-        }
 
         // Set status_id based on checkbox presence
         $status_id = $request->has('status_id') ? 2 : 1; // 2 = active, 1 = inactive

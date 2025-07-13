@@ -37,9 +37,7 @@
 			<div class="col-md-4">
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
-			<div class="col-md-4">
-				<x-input-general id="import_url" label="Import from URL (optional)" value="" />
-			</div>
+			{{-- Eliminar campo import_url, dejar solo los campos estándar del template --}}
 			<div class="col-xl-12 p-4">
 				<div class="text-light small fw-medium">Status</div>
 				<div class="demo-inline-spacing">

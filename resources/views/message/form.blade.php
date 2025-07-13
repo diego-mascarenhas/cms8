@@ -48,11 +48,13 @@
 			<div class="col-md-6">
 				<x-input-select id="type_id" label="Type (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />
 			</div>
+			{{-- Quitar campo import_url --}}
+			{{-- Dejar solo el selector de template --}}
 			<div class="col-md-6">
-				<x-input-general id="import_url" label="Import from URL (optional)" value="" />
-			</div>
-			<div class="col-md-6">
-				<x-input-select id="template_id" label="Template" :options="$data->templates" value="{{ old('template_id', $data->template_id ?? '') }}" />
+				<x-input-select id="template_id" label="Template" :options="$data->templates ?? []" value="{{ old('template_id', $data->template_id ?? '') }}" />
+				<div class="form-text mt-1">
+					¿No encuentras el template que buscas? <a href="{{ route('template.create') }}">Agregar nuevo template</a>
+				</div>
 			</div>
 			<div class="col-md-12">
 				<x-input-textarea id="text" label="Text (*)" value="{{ old('text', $data->text?? '') }}" />
