@@ -76,9 +76,13 @@
 </head>
 
 <body>
-    <div style="margin-bottom:10px;">
-      <input type="text" id="import-url-input" placeholder="Pega la URL para importar HTML" style="width:300px;"/>
-      <button id="import-url-btn">Importar HTML</button>
+    <div class="d-flex align-items-center gap-2 mb-3" style="padding: 8px 0;">
+      <input type="text" id="import-url-input" placeholder="Pega la URL para importar HTML"
+        style="max-width: 350px; padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+      <button id="import-url-btn"
+        style="padding: 6px 16px; background: #7367f0; color: #fff; border: none; border-radius: 4px; font-size: 14px; cursor: pointer;">
+        Importar HTML
+      </button>
     </div>
     <div id="{{ str_replace('#', '', $editorConfig->container ?? 'editor') }}"></div>
 
