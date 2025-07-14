@@ -42,8 +42,9 @@
                 <div class="card-body">
                     <form action="{{ route('collaborator.documents.upload', $collaborator->id) }}" method="POST" enctype="multipart/form-data" class="mb-3">
                         @csrf
-                        <div class="input-group">
+                        <div class="input-group mb-2">
                             <input type="file" name="document" class="form-control" required>
+                            <input type="text" name="document_name" class="form-control" placeholder="Nombre del documento (opcional)">
                             <button class="btn btn-primary" type="submit">Subir documento</button>
                         </div>
                         @error('document')

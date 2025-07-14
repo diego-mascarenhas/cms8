@@ -1063,10 +1063,16 @@ class CollaboratorController extends Controller
     {
         $request->validate([
             'document' => 'required|file|max:10240', // 10MB max
+            'document_name' => 'nullable|string|max:255',
         ]);
 
         $collaborator = \App\Models\Contact::findOrFail($id);
-        $collaborator->addMedia($request->file('document'))->toMediaCollection('documents');
+
+        $mediaAdder = $collaborator->addMedia($request->file('document'));
+        if ($request->filled('document_name')) {
+            $mediaAdder->usingName($request->input('document_name'));
+        }
+        $mediaAdder->toMediaCollection('documents');
 
         return back()->with('success', 'Documento subido correctamente.');
     }
