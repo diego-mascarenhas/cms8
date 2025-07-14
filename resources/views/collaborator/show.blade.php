@@ -34,37 +34,6 @@
                 @endcan
             </div>
 
-            <!-- Documents Section -->
-            <div class="card mb-4">
-                <div class="card-header border-bottom">
-                    <h5 class="mb-0">Documentos</h5>
-                </div>
-                <div class="card-body">
-                    <form action="{{ route('collaborator.documents.upload', $collaborator->id) }}" method="POST" enctype="multipart/form-data" class="mb-3">
-                        @csrf
-                        <div class="input-group mb-2">
-                            <input type="file" name="document" class="form-control" required>
-                            <input type="text" name="document_name" class="form-control" placeholder="Nombre del documento (opcional)">
-                            <button class="btn btn-primary" type="submit">Subir documento</button>
-                        </div>
-                        @error('document')
-                            <div class="text-danger mt-1">{{ $message }}</div>
-                        @enderror
-                    </form>
-                    <h6>Archivos subidos:</h6>
-                    <ul class="list-group">
-                        @forelse($collaborator->getMedia('documents') as $media)
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <a href="{{ $media->getUrl() }}" target="_blank">{{ $media->name }}</a>
-                                <span class="badge bg-secondary">{{ strtoupper($media->mime_type) }}</span>
-                            </li>
-                        @empty
-                            <li class="list-group-item text-muted">No hay documentos subidos.</li>
-                        @endforelse
-                    </ul>
-                </div>
-            </div>
-
             <!-- Projects with bbo -->
             <div class="card mb-4">
                 <div class="card-header border-bottom">
@@ -147,7 +116,6 @@
                                             <a class="dropdown-item" href="{{ route('project.edit', $project->id) }}">
                                                 <i class="ti ti-edit me-2"></i>Editar
                                             </a>
-                                            @endcan
                                             @if($project->pivot && $project->pivot->status)
                                             <div class="dropdown-divider"></div>
                                             <h6 class="dropdown-header">Estado colaboración:</h6>
@@ -168,6 +136,7 @@
                                                 @endswitch
                                             </span>
                                             @endif
+                                            @endcan
                                         </div>
                                     </div>
                                 </td>
@@ -284,12 +253,12 @@
                                                 <i class="ti ti-eye me-2"></i>Ver
                                             </a>
                                             @can('collaborator.edit')
-                                            <a class="dropdown-item" href="javascript:void(0)" onclick="editPortfolio({{ $portfolio->id }})">
-                                                <i class="ti ti-edit me-2"></i>Editar
-                                            </a>
-                                            <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deletePortfolio({{ $portfolio->id }})">
-                                                <i class="ti ti-trash me-2"></i>Eliminar
-                                            </a>
+                                                <a class="dropdown-item" href="javascript:void(0)" onclick="editPortfolio({{ $portfolio->id }})">
+                                                    <i class="ti ti-edit me-2"></i>Editar
+                                                </a>
+                                                <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deletePortfolio({{ $portfolio->id }})">
+                                                    <i class="ti ti-trash me-2"></i>Eliminar
+                                                </a>
                                             @endcan
                                         </div>
                                     </div>
@@ -452,6 +421,50 @@
             </div>
         </div>
         <!-- /Collaborator Content -->
+    </div>
+
+    <!-- Documents Section (moved to bottom) -->
+    <div class="row mt-4">
+        <div class="col-xl-8 offset-xl-4 col-lg-7 offset-lg-5 col-md-7 offset-md-5">
+            <div class="card mb-4">
+                <div class="card-header border-bottom">
+                    <h5 class="mb-0">Documentos</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ route('collaborator.documents.upload', $collaborator->id) }}" method="POST" enctype="multipart/form-data" class="mb-3">
+                        @csrf
+                        <div class="input-group mb-4 mt-3"> <!-- Increased margin-top and margin-bottom -->
+                            <input type="file" name="document" class="form-control" required>
+                            <input type="text" name="document_name" class="form-control" placeholder="Nombre del documento (opcional)">
+                            <button class="btn btn-primary" type="submit">Subir documento</button>
+                        </div>
+                        @error('document')
+                            <div class="text-danger mt-1">{{ $message }}</div>
+                        @enderror
+                    </form>
+                    <h6>Archivos subidos:</h6>
+                    <ul class="list-group">
+                        @forelse($collaborator->getMedia('documents') as $media)
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <a href="{{ $media->getUrl() }}" target="_blank">{{ $media->name }}</a>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-secondary me-2">{{ strtoupper($media->mime_type) }}</span>
+                                    <form action="{{ route('collaborator.documents.destroy', [$collaborator->id, $media->id]) }}" method="POST" onsubmit="return confirm('¿Eliminar este documento?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar documento"><i class="ti ti-trash"></i></button>
+                                    </form>
+                                </div>
+                            </li>
+                        @empty
+                            <li class="list-group-item text-muted">No hay documentos subidos.</li>
+                        @endforelse
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Include Valoration Modal -->

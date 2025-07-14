@@ -1076,4 +1076,18 @@ class CollaboratorController extends Controller
 
         return back()->with('success', 'Documento subido correctamente.');
     }
+
+    /**
+     * Delete a document for a collaborator
+     */
+    public function destroyDocument($id, $mediaId)
+    {
+        $collaborator = \App\Models\Contact::findOrFail($id);
+        $media = $collaborator->getMedia('documents')->where('id', $mediaId)->first();
+        if ($media) {
+            $media->delete();
+            return back()->with('success', 'Documento eliminado correctamente.');
+        }
+        return back()->with('error', 'No se encontró el documento.');
+    }
 }

@@ -460,3 +460,4 @@ Route::get('/user-unlink/{type}/{id}', [ContactController::class, 'showUserUnlin
 Route::post('/user-unlink/{type}/{id}/confirm', [ContactController::class, 'processUserUnlink'])->name('user-unlink.process');
 
 Route::post('/collaborator/{id}/documents', [CollaboratorController::class, 'uploadDocument'])->name('collaborator.documents.upload');
+Route::delete('/collaborator/{id}/documents/{media}', [CollaboratorController::class, 'destroyDocument'])->name('collaborator.documents.destroy');
