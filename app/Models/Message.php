@@ -52,7 +52,7 @@ class Message extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function templates()
+    public function template()
     {
         return $this->belongsTo(Template::class);
     }

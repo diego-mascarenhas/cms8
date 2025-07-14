@@ -123,4 +123,25 @@ class MessageDelivery extends Model
         }
         return '<span class="badge bg-warning">Pending</span>';
     }
+
+    /**
+     * Genera el HTML personalizado para el contacto usando la plantilla asociada al mensaje
+     */
+    public function getHtmlForContact()
+    {
+        $templateHtml = $this->message && $this->message->template && isset($this->message->template->gjs_data['html'])
+            ? $this->message->template->gjs_data['html']
+            : '';
+        $contactName = $this->contact ? $this->contact->name : '';
+        // Reemplazo simple de variable {{name}}
+        $html = str_replace('{{name}}', $contactName, $templateHtml);
+        // Insertar imagen de tracking de apertura antes de </body> o al final
+        $trackingImg = '<img src="' . $this->getTrackingUrl() . '" width="1" height="1" style="display:none;" alt="" />';
+        if (stripos($html, '</body>') !== false) {
+            $html = str_ireplace('</body>', $trackingImg . '</body>', $html);
+        } else {
+            $html .= $trackingImg;
+        }
+        return $html;
+    }
 }
