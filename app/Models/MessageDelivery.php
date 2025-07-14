@@ -63,7 +63,7 @@ class MessageDelivery extends Model
     }
 
     /**
-     * Get the tracking URL for this delivery (for opens)
+     * Get the tracking URL for open events
      */
     public function getTrackingUrl()
     {
@@ -71,7 +71,7 @@ class MessageDelivery extends Model
     }
 
     /**
-     * Get a tracked URL for click tracking
+     * Get a tracked URL for click events
      */
     public function getTrackedUrl($originalUrl)
     {
@@ -79,35 +79,57 @@ class MessageDelivery extends Model
     }
 
     /**
-     * Mark as sent
+     * Mark as sent (status_id = 1)
      */
     public function markAsSent()
     {
         $this->update([
             'sent_at' => now(),
+            'status_id' => 1, // 1 = sent
         ]);
     }
 
     /**
-     * Mark as opened
+     * Mark as opened (status_id = 2)
      */
     public function markAsOpened()
     {
-        \Log::info('Intentando marcar como abierto', ['id' => $this->id, 'opened_at' => $this->opened_at]);
+        \Log::info('Trying to mark as opened', ['id' => $this->id, 'opened_at' => $this->opened_at]);
         if (!$this->opened_at) {
             $this->update([
                 'opened_at' => now(),
+                'status_id' => 2, // 2 = opened
             ]);
-            \Log::info('Marcado como abierto', ['id' => $this->id, 'opened_at' => $this->opened_at]);
+            \Log::info('Marked as opened', ['id' => $this->id, 'opened_at' => $this->opened_at]);
         } else {
-            \Log::info('Ya estaba abierto', ['id' => $this->id, 'opened_at' => $this->opened_at]);
+            \Log::info('Already opened', ['id' => $this->id, 'opened_at' => $this->opened_at]);
         }
         $this->trackingEvents()->create([
             'event' => 'opened',
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);
-        \Log::info('Evento de tracking creado', ['id' => $this->id]);
+        \Log::info('Tracking event created', ['id' => $this->id]);
+    }
+
+    /**
+     * Mark as clicked (status_id = 3)
+     */
+    public function markAsClicked()
+    {
+        $this->update([
+            'status_id' => 3, // 3 = clicked
+        ]);
+    }
+
+    /**
+     * Mark as error (status_id = 4)
+     */
+    public function markAsError()
+    {
+        $this->sent_at = now();
+        $this->status_id = 4; // 4 = error
+        $this->save();
     }
 
     /**
@@ -125,7 +147,7 @@ class MessageDelivery extends Model
     }
 
     /**
-     * Genera el HTML personalizado para el contacto usando la plantilla asociada al mensaje
+     * Generate personalized HTML for the contact using the associated message template
      */
     public function getHtmlForContact()
     {
@@ -133,9 +155,9 @@ class MessageDelivery extends Model
             ? $this->message->template->gjs_data['html']
             : '';
         $contactName = $this->contact ? $this->contact->name : '';
-        // Reemplazo simple de variable {{name}}
+        // Simple variable replacement for {{name}}
         $html = str_replace('{{name}}', $contactName, $templateHtml);
-        // Insertar imagen de tracking de apertura antes de </body> o al final
+        // Insert open tracking image before </body> or at the end
         $trackingImg = '<img src="' . $this->getTrackingUrl() . '" width="1" height="1" style="display:none;" alt="" />';
         if (stripos($html, '</body>') !== false) {
             $html = str_ireplace('</body>', $trackingImg . '</body>', $html);

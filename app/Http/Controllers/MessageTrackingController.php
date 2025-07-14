@@ -39,6 +39,7 @@ class MessageTrackingController extends Controller
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
+            $delivery->markAsClicked();
         }
         $url = $request->query('url', '/');
         return redirect($url);
