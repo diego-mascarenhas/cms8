@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\MessageStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,7 +19,7 @@ class Message extends Model
     protected $fillable = ['name', 'type_id', 'category_id', 'template_id', 'text', 'status_id', 'team_id'];
 
     protected $casts = [
-        'status_id' => MessageStatus::class,
+        'status_id' => 'boolean',
     ];
 
     protected static function booted()
@@ -53,7 +52,7 @@ class Message extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function templates()
+    public function template()
     {
         return $this->belongsTo(Template::class);
     }

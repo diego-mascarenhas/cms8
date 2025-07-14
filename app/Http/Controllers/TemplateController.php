@@ -37,7 +37,7 @@ class TemplateController extends Controller
         ]);
 
         // Set status_id based on checkbox presence
-        $status_id = $request->has('status_id') ? 2 : 1; // 2 = active, 1 = inactive
+        $status_id = $request->has('status_id') ? 1 : 0; // 1 = active, 0 = inactive
 
         Template::updateOrCreate(
             ['id' => $request->id],

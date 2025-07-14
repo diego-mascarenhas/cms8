@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name');
             $table->json('gjs_data')->nullable();
-            $table->tinyInteger('status_id')->default(2);
+            $table->tinyInteger('status_id')->default(1);
             $table->timestamps();
             $table->softDeletes();
         });

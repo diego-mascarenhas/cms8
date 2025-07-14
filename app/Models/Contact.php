@@ -12,13 +12,16 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Contact extends Model
+class Contact extends Model implements HasMedia
 {
     use HasFactory;
     use HasSourceIcons;
     use LogsActivity;
     use SoftDeletes;
+    use InteractsWithMedia;
 
     protected $fillable = [
         'team_id',

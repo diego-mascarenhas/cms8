@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\TemplateStatus;
 use Dotlogics\Grapesjs\App\Contracts\Editable;
 use Dotlogics\Grapesjs\App\Traits\EditableTrait;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -26,7 +25,7 @@ class Template extends Model implements Editable
 
     protected $casts = [
         'gjs_data' => 'array',
-        'status_id' => TemplateStatus::class,
+        'status_id' => 'boolean',
     ];
 
     protected static function booted()

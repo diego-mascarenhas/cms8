@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignId('category_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('template_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->text('text');
-            $table->tinyInteger('status_id')->default(2);
+            $table->tinyInteger('status_id')->default(1);
             $table->timestamps();
             $table->softDeletes();
 

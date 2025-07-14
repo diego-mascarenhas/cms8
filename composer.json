@@ -27,6 +27,7 @@
     "spatie/laravel-medialibrary": "^11.13",
     "spatie/laravel-permission": "^6.9",
     "spatie/simple-excel": "^3.6",
+    "tijsverkoyen/css-to-inline-styles": "^2.3",
     "twilio/sdk": "^8.2",
     "webklex/php-imap": "*",
     "yajra/laravel-datatables": "^10.1",

@@ -57,29 +57,29 @@
 </div>
 
 <div class="row">
-	<!-- Sent Message Stats -->
-	<div class="col-md-6">
+	<!-- Delivery Stats Only -->
+	<div class="col-md-4">
 		<div class="card mb-4">
-			<div class="card-header">Sent Message Statistics</div>
+			<div class="card-header">Delivery Stats</div>
 			<div class="card-body">
 				<ul class="list-group">
-					<li class="list-group-item">Subscribers: {{ $stats['subscribers'] }}</li>
-					<li class="list-group-item">Remaining: {{ $stats['remaining'] }}</li>
-					<li class="list-group-item">Failed: {{ $stats['failed'] }}</li>
-					<li class="list-group-item">Sent: {{ $stats['sent'] }}</li>
-					<li class="list-group-item">Rejected: {{ $stats['rejected'] }}</li>
-					<li class="list-group-item">Delivered: {{ $stats['delivered'] }}</li>
-					<li class="list-group-item">Opened: {{ $stats['opened'] }}</li>
-					<li class="list-group-item">Unique Opens: {{ $stats['unique_opens'] }}</li>
-					<li class="list-group-item">Unsubscribed: {{ $stats['unsubscribed'] }}</li>
-					<li class="list-group-item">Clicks: {{ $stats['clicks'] }}</li>
-					<li class="list-group-item">Open Ratio: {{ $stats['ratio'] }}%</li>
+					<li class="list-group-item">Subscribers: {{ $stats_db->subscribers }}</li>
+					<li class="list-group-item">Remaining: {{ $stats_db->remaining }}</li>
+					<li class="list-group-item">Failed: {{ $stats_db->failed }}</li>
+					<li class="list-group-item">Sent: {{ $stats_db->sent }}</li>
+					<li class="list-group-item">Rejected: {{ $stats_db->rejected }}</li>
+					<li class="list-group-item">Delivered: {{ $stats_db->delivered }}</li>
+					<li class="list-group-item">Opened: {{ $stats_db->opened }}</li>
+					<li class="list-group-item">Unique Opens: {{ $stats_db->unique_opens }}</li>
+					<li class="list-group-item">Unsubscribed: {{ $stats_db->unsubscribed }}</li>
+					<li class="list-group-item">Clicks: {{ $stats_db->clicks }}</li>
+					<li class="list-group-item">Open Ratio: {{ $stats_db->ratio }}%</li>
 				</ul>
 			</div>
 		</div>
 	</div>
-	<!-- Deliveries Table -->
-	<div class="col-md-6">
+	<!-- Deliveries Table wider -->
+	<div class="col-md-8">
 		<div class="card mb-4">
 			<div class="card-header">Deliveries</div>
 			<div class="card-body table-responsive">
@@ -98,11 +98,23 @@
 						@foreach($deliveries as $delivery)
 							<tr>
 								<td>{{ $delivery->contact ? $delivery->contact->name : '-' }}</td>
-								<td>{{ $delivery->smtp_id }}</td>
-								<td>{{ $delivery->sent_at }}</td>
-								<td>{{ $delivery->delivered_at }}</td>
-								<td>{{ $delivery->removed_at ?? '-' }}</td>
-								<td>{{ $delivery->status }}</td>
+								<td>{{ $delivery->smtp_id ?? '-' }}</td>
+								<td>
+									{{ $delivery->sent_at ? $delivery->sent_at : 'Pending' }}
+								</td>
+								<td>
+									{{ $delivery->delivered_at ?? '-' }}
+								</td>
+								<td>
+									{{ $delivery->removed_at ?? '-' }}
+								</td>
+								<td>
+									@if(is_null($delivery->sent_at))
+										<span class="badge bg-warning">Pending</span>
+									@else
+										<span class="badge bg-success">{{ ucfirst($delivery->status) }}</span>
+									@endif
+								</td>
 							</tr>
 						@endforeach
 					</tbody>

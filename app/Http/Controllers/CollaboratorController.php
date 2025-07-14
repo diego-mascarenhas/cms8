@@ -1055,4 +1055,39 @@ class CollaboratorController extends Controller
                 ->with('error', 'Error al aceptar el colaborador: '.$e->getMessage());
         }
     }
+
+    /**
+     * Upload a document for a collaborator
+     */
+    public function uploadDocument(Request $request, $id)
+    {
+        $request->validate([
+            'document' => 'required|file|max:10240', // 10MB max
+            'document_name' => 'nullable|string|max:255',
+        ]);
+
+        $collaborator = \App\Models\Contact::findOrFail($id);
+
+        $mediaAdder = $collaborator->addMedia($request->file('document'));
+        if ($request->filled('document_name')) {
+            $mediaAdder->usingName($request->input('document_name'));
+        }
+        $mediaAdder->toMediaCollection('documents');
+
+        return back()->with('success', 'Documento subido correctamente.');
+    }
+
+    /**
+     * Delete a document for a collaborator
+     */
+    public function destroyDocument($id, $mediaId)
+    {
+        $collaborator = \App\Models\Contact::findOrFail($id);
+        $media = $collaborator->getMedia('documents')->where('id', $mediaId)->first();
+        if ($media) {
+            $media->delete();
+            return back()->with('success', 'Documento eliminado correctamente.');
+        }
+        return back()->with('error', 'No se encontró el documento.');
+    }
 }

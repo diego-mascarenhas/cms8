@@ -25,6 +25,7 @@ use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
 use App\Http\Controllers\OvhApiController;
@@ -458,3 +459,9 @@ Route::post('/user-link/{type}/{id}/link', [ContactController::class, 'processUs
 Route::post('/user-link/{type}/{id}/create', [ContactController::class, 'processUserCreate'])->name('user-link.create');
 Route::get('/user-unlink/{type}/{id}', [ContactController::class, 'showUserUnlinkPage'])->name('user-unlink.show');
 Route::post('/user-unlink/{type}/{id}/confirm', [ContactController::class, 'processUserUnlink'])->name('user-unlink.process');
+
+Route::post('/collaborator/{id}/documents', [CollaboratorController::class, 'uploadDocument'])->name('collaborator.documents.upload');
+Route::delete('/collaborator/{id}/documents/{media}', [CollaboratorController::class, 'destroyDocument'])->name('collaborator.documents.destroy');
+
+Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
+Route::get('message/track/click/{token}', [MessageTrackingController::class, 'trackClick'])->name('message.track.click');
