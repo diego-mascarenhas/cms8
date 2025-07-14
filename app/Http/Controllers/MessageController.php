@@ -13,169 +13,200 @@ use Illuminate\Support\Facades\Mail;
 use stdClass;
 use Twilio\Rest\Client;
 use App\Helpers\TemplateImportHelper;
+use App\Models\MessageDelivery;
+use App\Models\MessageDeliveryLink;
 
 class MessageController extends Controller
 {
-    public function index(MessageDataTable $dataTable)
-    {
-        return $dataTable->render('message.index');
-    }
+	public function index(MessageDataTable $dataTable)
+	{
+		return $dataTable->render('message.index');
+	}
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        $data = new stdClass;
-        $data->types = MessageType::getOptions();
-        $data->templates = Template::getOptions();
+	/**
+	 * Show the form for creating a new resource.
+	 */
+	public function create()
+	{
+		$data = new stdClass;
+		$data->types = MessageType::getOptions();
+		$data->templates = Template::getOptions();
 
-        return view('message.form', compact('data'));
-    }
+		return view('message.form', compact('data'));
+	}
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        $data = $request->except(['id', '_token']);
+	/**
+	 * Store a newly created resource in storage.
+	 */
+	public function store(Request $request)
+	{
+		$data = $request->except(['id', '_token']);
 
-        $request->validate([
-            'name' => 'required|string|min:3|max:25',
-            'text' => 'required|string|min:3|max:255',
-        ]);
+		$request->validate([
+			'name' => 'required|string|min:3|max:25',
+			'text' => 'required|string|min:3|max:255',
+		]);
 
-        $templateId = $data['template_id'] ?? null;
+		$templateId = $data['template_id'] ?? null;
 
-        // Set status_id based on checkbox presence
-        $status_id = $request->has('status_id') ? 2 : 1; // 2 = active, 1 = inactive
+		// Set status_id based on checkbox presence
+		$status_id = $request->has('status_id') ? 2 : 1; // 2 = active, 1 = inactive
 
-        Message::updateOrCreate(
-            ['id' => $request->id],
-            [
-                'name' => $data['name'],
-                'type_id' => $data['type_id'],
-                'category_id' => $data['category_id'],
-                'template_id' => $templateId,
-                'text' => $data['text'],
-                'status_id' => $status_id,
-            ],
-        );
+		Message::updateOrCreate(
+			['id' => $request->id],
+			[
+				'name' => $data['name'],
+				'type_id' => $data['type_id'],
+				'category_id' => $data['category_id'],
+				'template_id' => $templateId,
+				'text' => $data['text'],
+				'status_id' => $status_id,
+			],
+		);
 
-        return redirect()->route('message-list')->with('success', 'Record saved successfully.');
-    }
+		return redirect()->route('message-list')->with('success', 'Record saved successfully.');
+	}
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+	/**
+	 * Display the specified resource.
+	 */
+	public function show(string $id)
+	{
+		// Obtener el mensaje
+		$message = Message::findOrFail($id);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        $data = Message::find($id);
-        $data->types = MessageType::getOptions();
-        $data->templates = Template::getOptions();
+		// Obtener estadísticas reales (ejemplo: sumarización de deliveries)
+		$stats = [
+			'subscribers' => MessageDelivery::where('message_id', $message->id)->count(),
+			'remaining' => 0, // Puedes calcularlo según tu lógica
+			'failed' => MessageDelivery::where('message_id', $message->id)->where('status', 0)->count(),
+			'sent' => MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count(),
+			'rejected' => 0, // Ajusta según tu lógica
+			'delivered' => MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count(),
+			'opened' => 0, // Si tienes tracking de aperturas
+			'unsubscribed' => 0, // Si tienes tracking de desuscriptos
+			'clicks' => 0, // Si tienes tracking de clicks
+			'unique_opens' => 0, // Si tienes tracking de aperturas únicas
+			'ratio' => 0, // Puedes calcular el ratio real
+		];
 
-        if (! $data) {
-            return redirect()->route('message-list')->with('error', 'Message not found.');
-        }
+		// Obtener entregas reales
+		$deliveries = MessageDelivery::where('message_id', $message->id)->with('contact')->get();
 
-        return view('message.form', compact('data'));
-    }
+		// Obtener links de conversión reales
+		$links = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))->get();
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+		return view('message.show', [
+			'message' => $message,
+			'stats' => $stats,
+			'deliveries' => $deliveries,
+			'links' => $links,
+		]);
+	}
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        $model = Message::findOrFail($id);
+	/**
+	 * Show the form for editing the specified resource.
+	 */
+	public function edit(string $id)
+	{
+		$data = Message::find($id);
+		$data->types = MessageType::getOptions();
+		$data->templates = Template::getOptions();
 
-        $model->delete();
+		if (! $data) {
+			return redirect()->route('message-list')->with('error', 'Message not found.');
+		}
 
-        return response()->json(['success' => 'The record has been deleted.'], 200);
-    }
+		return view('message.form', compact('data'));
+	}
 
-    public function sendSmsMessage(Request $request)
-    {
-        $receiverNumber = env('TWILIO_PHONE_TO');
-        $message = env('APP_NAME', 'Laravel').' SMS Message testing...';
+	/**
+	 * Update the specified resource in storage.
+	 */
+	public function update(Request $request, string $id)
+	{
+		//
+	}
 
-        $sid = env('TWILIO_SID');
-        $token = env('TWILIO_TOKEN');
-        $fromNumber = env('TWILIO_SMS_FROM');
+	/**
+	 * Remove the specified resource from storage.
+	 */
+	public function destroy(string $id)
+	{
+		$model = Message::findOrFail($id);
 
-        try {
-            $client = new Client($sid, $token);
-            $client->messages->create($receiverNumber, [
-                'from' => $fromNumber,
-                'body' => $message,
-            ]);
+		$model->delete();
 
-            return response()->json(['status' => 'SMS Message Sent Successfully.']);
-        } catch (\Twilio\Exceptions\RestException $e) {
-            return response()->json(['error' => 'Error: '.$e->getMessage()], 400);
-        }
-    }
+		return response()->json(['success' => 'The record has been deleted.'], 200);
+	}
 
-    public function sendWhatsAppMessage(Request $request)
-    {
-        $receiverNumber = 'whatsapp:'.env('TWILIO_WHATSAPP_FROM');
-        $message = env('APP_NAME', 'Laravel').' WhatsApp Message testing...';
+	public function sendSmsMessage(Request $request)
+	{
+		$receiverNumber = env('TWILIO_PHONE_TO');
+		$message = env('APP_NAME', 'Laravel').' SMS Message testing...';
 
-        $sid = env('TWILIO_SID');
-        $token = env('TWILIO_TOKEN');
-        $fromNumber = env('TWILIO_WHATSAPP_FROM');
-        try {
-            $client = new Client($sid, $token);
+		$sid = env('TWILIO_SID');
+		$token = env('TWILIO_TOKEN');
+		$fromNumber = env('TWILIO_SMS_FROM');
 
-            $client->messages->create($receiverNumber, [
-                'from' => $fromNumber,
-                'body' => $message,
-            ]);
+		try {
+			$client = new Client($sid, $token);
+			$client->messages->create($receiverNumber, [
+				'from' => $fromNumber,
+				'body' => $message,
+			]);
 
-            return response()->json(['status' => 'WhatsApp Message Sent Successfully.']);
-        } catch (\Twilio\Exceptions\RestException $e) {
-            return response()->json(['error' => 'Error: '.$e->getMessage()], 400);
-        }
-    }
+			return response()->json(['status' => 'SMS Message Sent Successfully.']);
+		} catch (\Twilio\Exceptions\RestException $e) {
+			return response()->json(['error' => 'Error: '.$e->getMessage()], 400);
+		}
+	}
 
-    public function sendSendGridMessage()
-    {
-        $data = [
-            'to' => env('MAILBOX_USERNAME'),
-            'dynamic_template_data' => [
-                'name' => env('APP_NAME', 'Laravel'),
-                'message' => env('APP_NAME', 'Laravel').' SendGrid Message testing...',
-                'unsubscribe_url' => route('unsubscribe', ['email' => env('MAILBOX_USERNAME')]),
-            ],
-        ];
+	public function sendWhatsAppMessage(Request $request)
+	{
+		$receiverNumber = 'whatsapp:'.env('TWILIO_WHATSAPP_FROM');
+		$message = env('APP_NAME', 'Laravel').' WhatsApp Message testing...';
 
-        Mail::send(new MySendGridMail($data));
-    }
+		$sid = env('TWILIO_SID');
+		$token = env('TWILIO_TOKEN');
+		$fromNumber = env('TWILIO_WHATSAPP_FROM');
+		try {
+			$client = new Client($sid, $token);
 
-    public function unsubscribe($email)
-    {
-        $user = User::where('email', $email)->first();
+			$client->messages->create($receiverNumber, [
+				'from' => $fromNumber,
+				'body' => $message,
+			]);
 
-        if ($user) {
-            $user->subscribed = false;
-            $user->save();
-        }
+			return response()->json(['status' => 'WhatsApp Message Sent Successfully.']);
+		} catch (\Twilio\Exceptions\RestException $e) {
+			return response()->json(['error' => 'Error: '.$e->getMessage()], 400);
+		}
+	}
 
-        return view('message.unsubscribe', ['email' => $email]);
-    }
+	public function sendSendGridMessage()
+	{
+		$data = [
+			'to' => env('MAILBOX_USERNAME'),
+			'dynamic_template_data' => [
+				'name' => env('APP_NAME', 'Laravel'),
+				'message' => env('APP_NAME', 'Laravel').' SendGrid Message testing...',
+				'unsubscribe_url' => route('unsubscribe', ['email' => env('MAILBOX_USERNAME')]),
+			],
+		];
+
+		Mail::send(new MySendGridMail($data));
+	}
+
+	public function unsubscribe($email)
+	{
+		$user = User::where('email', $email)->first();
+
+		if ($user) {
+			$user->subscribed = false;
+			$user->save();
+		}
+
+		return view('message.unsubscribe', ['email' => $email]);
+	}
 }

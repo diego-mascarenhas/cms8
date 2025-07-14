@@ -1,0 +1,33 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+	public function up()
+	{
+		Schema::create('message_deliveries', function (Blueprint $table) {
+			$table->id();
+			$table->unsignedBigInteger('team_id')->default(501);
+			$table->unsignedBigInteger('message_id');
+			$table->unsignedBigInteger('contact_id')->nullable();
+			$table->unsignedSmallInteger('smtp_id')->nullable();
+			$table->dateTime('sent_at')->nullable();
+			$table->dateTime('delivered_at')->nullable();
+			$table->dateTime('removed_at')->nullable();
+			$table->tinyInteger('status')->default(1);
+			$table->timestamps();
+
+			$table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
+			$table->foreign('message_id')->references('id')->on('messages')->onDelete('cascade');
+			$table->foreign('contact_id')->references('id')->on('contacts')->onDelete('cascade');
+		});
+	}
+
+	public function down()
+	{
+		Schema::dropIfExists('message_deliveries');
+	}
+};
