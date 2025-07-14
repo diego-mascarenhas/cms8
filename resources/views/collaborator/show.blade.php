@@ -34,6 +34,36 @@
                 @endcan
             </div>
 
+            <!-- Documents Section -->
+            <div class="card mb-4">
+                <div class="card-header border-bottom">
+                    <h5 class="mb-0">Documentos</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ route('collaborator.documents.upload', $collaborator->id) }}" method="POST" enctype="multipart/form-data" class="mb-3">
+                        @csrf
+                        <div class="input-group">
+                            <input type="file" name="document" class="form-control" required>
+                            <button class="btn btn-primary" type="submit">Subir documento</button>
+                        </div>
+                        @error('document')
+                            <div class="text-danger mt-1">{{ $message }}</div>
+                        @enderror
+                    </form>
+                    <h6>Archivos subidos:</h6>
+                    <ul class="list-group">
+                        @forelse($collaborator->getMedia('documents') as $media)
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="{{ $media->getUrl() }}" target="_blank">{{ $media->name }}</a>
+                                <span class="badge bg-secondary">{{ strtoupper($media->mime_type) }}</span>
+                            </li>
+                        @empty
+                            <li class="list-group-item text-muted">No hay documentos subidos.</li>
+                        @endforelse
+                    </ul>
+                </div>
+            </div>
+
             <!-- Projects with bbo -->
             <div class="card mb-4">
                 <div class="card-header border-bottom">
@@ -207,7 +237,7 @@
                         </thead>
                         <tbody>
                             @foreach($collaborator->portfolios as $portfolio)
-                            <tr data-portfolio-id="{{ $portfolio->id }}" 
+                            <tr data-portfolio-id="{{ $portfolio->id }}"
                                 data-title="{{ $portfolio->title }}"
                                 data-description="{{ $portfolio->description }}"
                                 data-position="{{ $portfolio->position }}"
@@ -322,11 +352,11 @@
                             </div>
                         @endif
                     </div>
-                    
+
                     <form id="services-edit-form" class="mt-3 d-none">
                         @csrf
-                        <x-fare-select 
-                            id="collaborator_fare_ids" 
+                        <x-fare-select
+                            id="collaborator_fare_ids"
                             name="fare_ids[]"
                             label="Servicios que ofrece"
                             placeholder="Seleccione servicios"
@@ -365,11 +395,11 @@
                             </div>
                         @endif
                     </div>
-                    
+
                     <form id="software-edit-form" class="mt-3 d-none">
                         @csrf
-                        <x-software-select 
-                            id="collaborator_software_ids" 
+                        <x-software-select
+                            id="collaborator_software_ids"
                             label="Software que domina"
                             :selected="$collaborator->softwares ? $collaborator->softwares->pluck('id')->toArray() : []"
                         />
@@ -404,11 +434,11 @@
                             </div>
                         @endif
                     </div>
-                    
+
                     <form id="topics-edit-form" class="mt-3 d-none">
                         @csrf
-                        <x-topics-select 
-                            id="collaborator_topic_ids" 
+                        <x-topics-select
+                            id="collaborator_topic_ids"
                             label="Temáticas de especialización"
                             :selected="$collaborator->topics ? $collaborator->topics->pluck('id')->toArray() : []"
                         />
@@ -427,14 +457,14 @@
     @include('collaborator.partials.valoration-modal')
 
 
-@endsection 
+@endsection
 
 @push('scripts')
 <script type="text/javascript">
     // Document ready function
     $(document).ready(function() {
         console.log('Document ready, setting up collaborator events...');
-        
+
         // Configure SweetAlert2 defaults to prevent extra buttons
         if (typeof Swal !== 'undefined') {
             Swal.mixin({
@@ -442,7 +472,7 @@
                 denyButtonText: false
             });
         }
-        
+
         // Initialize Select2 for software, services and topics
         try {
             $('#collaborator_software_ids, #collaborator_fare_ids, #collaborator_topic_ids').select2({
@@ -455,7 +485,7 @@
         } catch (e) {
             console.error('Error initializing Select2:', e);
         }
-        
+
         // Toggle between view and edit for software
         $('#toggleSoftwareEdit').on('click', function() {
             console.log('Toggle edit clicked');
@@ -471,7 +501,7 @@
             $('#software-display').removeClass('d-none');
             $('#toggleSoftwareEdit').removeClass('d-none');
         });
-        
+
         // Toggle between view and edit for services
         $('#toggleServicesEdit').on('click', function() {
             console.log('Toggle services edit clicked');
@@ -487,7 +517,7 @@
             $('#services-display').removeClass('d-none');
             $('#toggleServicesEdit').removeClass('d-none');
         });
-        
+
         // Toggle between view and edit for topics
         $('#toggleTopicsEdit').on('click', function() {
             console.log('Toggle topics edit clicked');
@@ -507,14 +537,14 @@
         // Save changes for software
         $('#saveSoftware').on('click', function() {
             console.log('Save software clicked');
-            
+
             const softwareIds = $('#collaborator_software_ids').val() || [];
             const collaboratorId = {{ $collaborator->id }};
             const csrfToken = $('meta[name="csrf-token"]').attr('content');
-            
+
             console.log('Software IDs:', softwareIds);
             console.log('Collaborator ID:', collaboratorId);
-            
+
             fetch(`/collaborator/${collaboratorId}/update-software`, {
                 method: 'POST',
                 headers: {
@@ -539,14 +569,14 @@
                     } else {
                         badgesHtml = '<div class="mt-2"><span class="text-muted">No hay software asignado</span></div>';
                     }
-                    
+
                     $('#software-display').html(badgesHtml);
-                    
+
                     // Return to read-only view
                     $('#software-edit-form').addClass('d-none');
                     $('#software-display').removeClass('d-none');
                     $('#toggleSoftwareEdit').removeClass('d-none');
-                    
+
                     // Show success notification
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
@@ -566,18 +596,18 @@
                 alert('Error al actualizar el software');
             });
         });
-        
+
         // Save changes for services
         $('#saveServices').on('click', function() {
             console.log('Save services clicked');
-            
+
             const fareIds = $('#collaborator_fare_ids').val() || [];
             const collaboratorId = {{ $collaborator->id }};
             const csrfToken = $('meta[name="csrf-token"]').attr('content');
-            
+
             console.log('Service IDs:', fareIds);
             console.log('Collaborator ID:', collaboratorId);
-            
+
             fetch(`/collaborator/${collaboratorId}/update-services`, {
                 method: 'POST',
                 headers: {
@@ -602,14 +632,14 @@
                     } else {
                         badgesHtml = '<div class="mt-2"><span class="text-muted">No hay servicios asignados</span></div>';
                     }
-                    
+
                     $('#services-display').html(badgesHtml);
-                    
+
                     // Return to read-only view
                     $('#services-edit-form').addClass('d-none');
                     $('#services-display').removeClass('d-none');
                     $('#toggleServicesEdit').removeClass('d-none');
-                    
+
                     // Show success notification
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
@@ -629,18 +659,18 @@
                 alert('Error al actualizar los servicios');
             });
         });
-        
+
         // Save changes for topics
         $('#saveTopics').on('click', function() {
             console.log('Save topics clicked');
-            
+
             const topicIds = $('#collaborator_topic_ids').val() || [];
             const collaboratorId = {{ $collaborator->id }};
             const csrfToken = $('meta[name="csrf-token"]').attr('content');
-            
+
             console.log('Topic IDs:', topicIds);
             console.log('Collaborator ID:', collaboratorId);
-            
+
             fetch(`/collaborator/${collaboratorId}/update-topics`, {
                 method: 'POST',
                 headers: {
@@ -664,14 +694,14 @@
                     } else {
                         badgesHtml = '<div class="mt-2"><span class="text-muted">No hay temáticas asignadas</span></div>';
                     }
-                    
+
                     $('#topics-display').html(badgesHtml);
-                    
+
                     // Return to read-only view
                     $('#topics-edit-form').addClass('d-none');
                     $('#topics-display').removeClass('d-none');
                     $('#toggleTopicsEdit').removeClass('d-none');
-                    
+
                     // Show success notification
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
@@ -719,7 +749,7 @@
     function showPortfolioModal(portfolioId = null) {
         const isEdit = portfolioId !== null;
         const title = isEdit ? 'Editar Experiencia' : 'Agregar Experiencia';
-        
+
         let portfolioData = {};
         if (isEdit) {
             // Get portfolio data from the table or make an AJAX call
@@ -819,12 +849,12 @@
             preConfirm: () => {
                 const form = document.getElementById('portfolio-form');
                 const formData = new FormData(form);
-                
+
                 if (!formData.get('title')) {
                     Swal.showValidationMessage('El título del proyecto es requerido');
                     return false;
                 }
-                
+
                 // Collect language pairs
                 const languagePairs = [];
                 document.querySelectorAll('#language-pairs-container-portfolio .language-pair-item').forEach(item => {
@@ -834,7 +864,7 @@
                         languagePairs.push({source: source, target: target});
                     }
                 });
-                
+
                 const data = {
                     title: formData.get('title'),
                     description: formData.get('description'),
@@ -843,13 +873,13 @@
                     languages: languagePairs,
                     notes: formData.get('notes')
                 };
-                
+
                 return data;
             },
             didOpen: () => {
                 // Initialize language pair functionality after modal opens
                 initializeLanguagePairs();
-                
+
                 // Load existing language pairs if editing
                 if (isEdit && portfolioData.languages && Array.isArray(portfolioData.languages)) {
                     portfolioData.languages.forEach(pair => {
@@ -877,7 +907,7 @@
         // Get portfolio data from the table row using data attributes
         const portfolioRow = document.querySelector(`tr[data-portfolio-id="${portfolioId}"]`);
         if (!portfolioRow) return {};
-        
+
         let languages = [];
         try {
             const languagesData = portfolioRow.getAttribute('data-languages');
@@ -888,7 +918,7 @@
             console.error('Error parsing languages data:', e);
             languages = [];
         }
-        
+
         return {
             title: portfolioRow.getAttribute('data-title') || '',
             description: portfolioRow.getAttribute('data-description') || '',
@@ -902,7 +932,7 @@
     function createPortfolio(data) {
         const collaboratorId = {{ $collaborator->id }};
         const csrfToken = $('meta[name="csrf-token"]').attr('content');
-        
+
         fetch(`/collaborator/${collaboratorId}/portfolio`, {
             method: 'POST',
             headers: {
@@ -930,7 +960,7 @@
     function updatePortfolio(portfolioId, data) {
         const collaboratorId = {{ $collaborator->id }};
         const csrfToken = $('meta[name="csrf-token"]').attr('content');
-        
+
         fetch(`/collaborator/${collaboratorId}/portfolio/${portfolioId}`, {
             method: 'PUT',
             headers: {
@@ -962,12 +992,12 @@
     function viewPortfolio(portfolioId) {
         // Get portfolio data
         const portfolioData = getPortfolioData(portfolioId);
-        
+
         if (!portfolioData.title) {
             Swal.fire('Error', 'No se pudo cargar la información del portfolio', 'error');
             return;
         }
-        
+
         // Format languages for display
         let languagesHtml = '-';
         if (portfolioData.languages && Array.isArray(portfolioData.languages) && portfolioData.languages.length > 0) {
@@ -983,7 +1013,7 @@
                 }
             }).join('');
         }
-        
+
         Swal.fire({
             title: portfolioData.title,
             showConfirmButton: true,
@@ -1002,7 +1032,7 @@
                             <p class="text-muted mb-0">${portfolioData.description}</p>
                         </div>
                     ` : ''}
-                    
+
                     <div class="row mb-3">
                         ${portfolioData.position ? `
                             <div class="col-md-6">
@@ -1010,7 +1040,7 @@
                                 <p class="text-muted mb-0">${portfolioData.position}</p>
                             </div>
                         ` : ''}
-                        
+
                         ${portfolioData.year ? `
                             <div class="col-md-6">
                                 <h6 class="fw-semibold mb-1">Año:</h6>
@@ -1018,12 +1048,12 @@
                             </div>
                         ` : ''}
                     </div>
-                    
+
                     <div class="mb-3">
                         <h6 class="fw-semibold mb-2">Variantes de idioma:</h6>
                         <div class="text-muted">${languagesHtml}</div>
                     </div>
-                    
+
                     ${portfolioData.notes ? `
                         <div class="mb-3">
                             <h6 class="fw-semibold mb-2">Notas:</h6>
@@ -1039,7 +1069,7 @@
     function getLanguageName(languageCode) {
         const languageNames = {
             'es-ES': 'Español (España)',
-            'es-MX': 'Español (México)', 
+            'es-MX': 'Español (México)',
             'es-AR': 'Español (Argentina)',
             'en-US': 'English (US)',
             'en-GB': 'English (UK)',
@@ -1052,7 +1082,7 @@
             'ja-JP': '日本語',
             'ko-KR': '한국어'
         };
-        
+
         return languageNames[languageCode] || languageCode;
     }
 
@@ -1077,7 +1107,7 @@
             if (result.isConfirmed) {
                 const collaboratorId = {{ $collaborator->id }};
                 const csrfToken = $('meta[name="csrf-token"]').attr('content');
-                
+
                 fetch(`/collaborator/${collaboratorId}/portfolio/${portfolioId}`, {
                     method: 'DELETE',
                     headers: {
@@ -1108,28 +1138,28 @@
         document.getElementById('add_language_pair_portfolio').addEventListener('click', function() {
             const sourceSelect = document.getElementById('source_language_portfolio');
             const targetSelect = document.getElementById('target_language_portfolio');
-            
+
             const sourceValue = sourceSelect.value;
             const targetValue = targetSelect.value;
             const sourceText = sourceSelect.options[sourceSelect.selectedIndex].text;
             const targetText = targetSelect.options[targetSelect.selectedIndex].text;
-            
+
             // Validate selections
             if (!sourceValue) {
                 Swal.showValidationMessage('Seleccione un idioma origen');
                 return;
             }
-            
+
             if (!targetValue) {
                 Swal.showValidationMessage('Seleccione un idioma destino');
                 return;
             }
-            
+
             if (sourceValue === targetValue) {
                 Swal.showValidationMessage('Los idiomas origen y destino no pueden ser iguales');
                 return;
             }
-            
+
             // Check if pair already exists
             const existingPairs = document.querySelectorAll('#language-pairs-container-portfolio input[name="language_pairs[]"]');
             let pairExists = false;
@@ -1138,15 +1168,15 @@
                     pairExists = true;
                 }
             });
-            
+
             if (pairExists) {
                 Swal.showValidationMessage('Esta combinación de idiomas ya existe');
                 return;
             }
-            
+
             // Add language pair to container
             addLanguagePairToContainer(sourceValue, targetValue, sourceText, targetText);
-            
+
             // Reset selects
             sourceSelect.value = '';
             targetSelect.value = '';
@@ -1155,7 +1185,7 @@
 
     function addLanguagePairToContainer(sourceValue, targetValue, sourceText = null, targetText = null) {
         const container = document.getElementById('language-pairs-container-portfolio');
-        
+
         // Get text if not provided
         if (!sourceText || !targetText) {
             const languageNames = {
@@ -1173,15 +1203,15 @@
                 'ja-JP': '日本語',
                 'ko-KR': '한국어'
             };
-            
+
             sourceText = languageNames[sourceValue] || sourceValue;
             targetText = languageNames[targetValue] || targetValue;
         }
-        
+
         // Get flag codes
         const sourceFlag = getLanguageFlag(sourceValue);
         const targetFlag = getLanguageFlag(targetValue);
-        
+
         const pairHtml = `
             <div class="language-pair-item border rounded p-2 mb-2 d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center">
@@ -1197,9 +1227,9 @@
                 <input type="hidden" name="language_pairs[]" value="${sourceValue}|${targetValue}">
             </div>
         `;
-        
+
         container.insertAdjacentHTML('beforeend', pairHtml);
-        
+
         // Add remove functionality to the new button
         container.lastElementChild.querySelector('.remove-language-pair').addEventListener('click', function() {
             this.closest('.language-pair-item').remove();
@@ -1222,8 +1252,8 @@
             'ja-JP': 'jp',
             'ko-KR': 'kr'
         };
-        
+
         return flagMap[languageCode] || languageCode.split('-')[1]?.toLowerCase() || 'us';
     }
 </script>
-@endpush 
+@endpush

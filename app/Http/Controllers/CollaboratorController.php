@@ -1055,4 +1055,19 @@ class CollaboratorController extends Controller
                 ->with('error', 'Error al aceptar el colaborador: '.$e->getMessage());
         }
     }
+
+    /**
+     * Upload a document for a collaborator
+     */
+    public function uploadDocument(Request $request, $id)
+    {
+        $request->validate([
+            'document' => 'required|file|max:10240', // 10MB max
+        ]);
+
+        $collaborator = \App\Models\Contact::findOrFail($id);
+        $collaborator->addMedia($request->file('document'))->toMediaCollection('documents');
+
+        return back()->with('success', 'Documento subido correctamente.');
+    }
 }
