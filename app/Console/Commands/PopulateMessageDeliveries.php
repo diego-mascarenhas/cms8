@@ -7,6 +7,7 @@ use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\Contact;
 use Illuminate\Support\Facades\DB;
+use App\Models\Category;
 
 class PopulateMessageDeliveries extends Command
 {
@@ -23,10 +24,12 @@ class PopulateMessageDeliveries extends Command
                 $this->warn("Message ID {$message->id} has no category, skipping.");
                 continue;
             }
-            // Obtener contactos de la categoría
-            $contacts = DB::table('category_contact')
-                ->where('category_id', $message->category_id)
-                ->pluck('contact_id');
+            $category = Category::find($message->category_id);
+            if (!$category) {
+                $this->warn("Category ID {$message->category_id} not found, skipping.");
+                continue;
+            }
+            $contacts = $category->contacts()->pluck('id');
             $contactChunks = $contacts->chunk(5);
             foreach ($contactChunks as $chunk) {
                 $toInsert = [];
@@ -40,7 +43,7 @@ class PopulateMessageDeliveries extends Command
                             'team_id' => $message->team_id,
                             'message_id' => $message->id,
                             'contact_id' => $contactId,
-                            'status' => 'pending',
+                            'status_id' => 0, // pendiente
                             'sent_at' => null,
                             'created_at' => now(),
                             'updated_at' => now(),

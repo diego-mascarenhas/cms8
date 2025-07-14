@@ -106,6 +106,14 @@ class Category extends Model
     }
 
     /**
+     * Get contacts associated with this category.
+     */
+    public function contacts()
+    {
+        return $this->belongsToMany(\App\Models\Contact::class, 'contact_category', 'category_id', 'contact_id');
+    }
+
+    /**
      * Get formatted status.
      */
     public function getStatusLabelAttribute()

@@ -80,7 +80,7 @@ class MessageController extends Controller
 		$stats = [
 			'subscribers' => MessageDelivery::where('message_id', $message->id)->count(),
 			'remaining' => 0, // Puedes calcularlo según tu lógica
-			'failed' => MessageDelivery::where('message_id', $message->id)->where('status', 0)->count(),
+			'failed' => MessageDelivery::where('message_id', $message->id)->where('status_id', 0)->count(),
 			'sent' => MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count(),
 			'rejected' => 0, // Ajusta según tu lógica
 			'delivered' => MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count(),
