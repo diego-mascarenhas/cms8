@@ -14,7 +14,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class TeamBboSeeder extends Seeder
 {
@@ -111,6 +111,25 @@ class TeamBboSeeder extends Seeder
 		foreach ($bboModules as $moduleKey) {
 			$team->enableModule($moduleKey);
 			$this->command->info("✅ Módulo '{$moduleKey}' habilitado para el equipo BBO");
+		}
+
+		// Add valorations for team_id 4 (BBO)
+		$valorations = [
+			['id' => 1, 'name' => 'Top', 'icon' => '⭐'],
+			['id' => 2, 'name' => 'Validada', 'icon' => '✅'],
+			['id' => 3, 'name' => 'Interesante', 'icon' => '🕐'],
+			['id' => 4, 'name' => 'Lista negra', 'icon' => '❌'],
+			['id' => 5, 'name' => 'En espera', 'icon' => '👁️'],
+		];
+		foreach ($valorations as $valoration) {
+			\DB::table('contact_valorations')->insertOrIgnore([
+				'id' => ($team->id * 10) + $valoration['id'],
+				'team_id' => $team->id,
+				'name' => $valoration['name'],
+				'icon' => $valoration['icon'],
+				'created_at' => now(),
+				'updated_at' => now(),
+			]);
 		}
 	}
 
