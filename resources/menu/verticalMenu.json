@@ -181,6 +181,12 @@
 			"permission": "integration.list",
 			"module_key": "integrations"
 		},
+        {
+			"url": "notification/list",
+			"name": "Notificaciones",
+			"icon": "menu-icon tf-icons ti ti-bell",
+			"slug": "notification-list"
+		},
 		{
 			"url": "message/list",
 			"name": "Campaigns",
@@ -242,7 +248,7 @@
 			"icon": "menu-icon tf-icons ti ti-template",
 			"slug": "template-list",
 			"permission": "template.list",
-			"module_key": "templates"		
+			"module_key": "templates"
 		},
 		{
 			"url": "server",

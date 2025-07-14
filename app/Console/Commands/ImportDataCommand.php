@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class ImportDataCommand extends Command
 {
-    protected $signature = 'import:interactive';
+    protected $signature = 'import:interactive {--auto : Run automatic import of enterprises and contacts}';
 
     protected $description = 'Interactive menu for importing data from old database';
 
@@ -229,8 +229,15 @@ class ImportDataCommand extends Command
         // Test database connection first
         if (! $this->testDatabaseConnection()) {
             $this->error('Exiting due to database connection failure.');
-
             return 1;
+        }
+
+        if ($this->option('auto')) {
+            $this->info('Running in automatic mode: importing enterprises and contacts...');
+            $this->processImport('5. Enterprises');
+            $this->processImport('1. Users');
+            $this->info('Automatic import completed.');
+            return 0;
         }
 
         while (true) {
@@ -245,7 +252,6 @@ class ImportDataCommand extends Command
                 if ($this->confirm('Are you sure you want to import ALL data?')) {
                     $this->importAll();
                 }
-
                 continue;
             }
 
@@ -321,6 +327,15 @@ class ImportDataCommand extends Command
             $bar = $this->output->createProgressBar(count($contacts));
             $bar->start();
 
+            // Obtener el ID de la categoría 'Importado de CMS+' para el módulo de contactos y el equipo
+            $contactsModuleId = DB::table('modules')->where('key', 'contacts')->value('id');
+            $importedCategory = DB::table('categories')
+                ->where('name', 'CMS+')
+                ->where('module_id', $contactsModuleId)
+                ->where('team_id', env('CMS_TEAM_ID'))
+                ->first();
+            $importedCategoryId = $importedCategory ? $importedCategory->id : null;
+
             foreach ($contacts as $data) {
                 $existingContact = DB::table('contacts')->where('id', $data->id)->first();
 
@@ -328,6 +343,19 @@ class ImportDataCommand extends Command
                 $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
                 if (! empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0) {
                     $cleaned_phone = '54'.$cleaned_phone;
+                }
+                // Si cleaned_phone está vacío o solo espacios, setear a null
+                if (empty($cleaned_phone) || trim($cleaned_phone) === '') {
+                    $cleaned_phone = null;
+                }
+
+                // Determinar status_id según el estado de la empresa
+                $statusId = 5;
+                if (!empty($data->id_empresa)) {
+                    $enterprise = DB::table('enterprises')->where('id', $data->id_empresa)->first();
+                    if ($enterprise && $enterprise->status_id == 1) {
+                        $statusId = 6;
+                    }
                 }
 
                 $contactData = [
@@ -348,7 +376,7 @@ class ImportDataCommand extends Command
                     'data' => json_encode([
                         'imported_from_cms7' => true,
                     ]),
-                    'status_id' => 5,
+                    'status_id' => $statusId,
                     'created_at' => $data->fecha_alta,
                     'updated_at' => $data->fecha_modificacion,
                 ];
@@ -357,6 +385,13 @@ class ImportDataCommand extends Command
                     DB::table('contacts')->insert($contactData);
                     $stats['imported']++;
                 } else {
+                    // Merge existing data with new imported_from_cms7 flag
+                    $existingData = json_decode($existingContact->data ?? '{}', true);
+                    if (!is_array($existingData)) {
+                        $existingData = [];
+                    }
+                    $existingData['imported_from_cms7'] = true;
+                    $contactData['data'] = json_encode($existingData);
                     DB::table('contacts')->where('id', $existingContact->id)->update($contactData);
                     $stats['updated']++;
                 }
@@ -369,6 +404,7 @@ class ImportDataCommand extends Command
                     if ($enterpriseExists) {
                         // Determinar la posición basada en area_privada
                         $position = 'Usuario'; // Default position
+                        $departmentId = null; // Default department
                         switch ($data->area_privada) {
                             case 1:
                                 $position = 'root';
@@ -378,6 +414,7 @@ class ImportDataCommand extends Command
                                 break;
                             case 3:
                                 $position = 'Administrador';
+                                $departmentId = 1;
                                 break;
                             case 4:
                                 $position = 'Usuario';
@@ -402,6 +439,7 @@ class ImportDataCommand extends Command
                                 'contact_id' => $data->id,
                                 'enterprise_id' => $data->id_empresa,
                                 'position' => $position,
+                                'department_id' => $departmentId,
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ]);
@@ -413,12 +451,27 @@ class ImportDataCommand extends Command
                                 ->where('enterprise_id', $data->id_empresa)
                                 ->update([
                                     'position' => $position,
+                                    'department_id' => $departmentId,
                                     'updated_at' => now(),
                                 ]);
                             $this->info("Updated position to {$position} for contact {$data->id} in enterprise {$data->id_empresa}");
                         }
                     } else {
                         $this->warn("Enterprise with ID {$data->id_empresa} not found, skipping relationship for contact {$data->id}");
+                    }
+                }
+
+                // Al final de la importación de cada contacto:
+                if ($importedCategoryId) {
+                    $exists = DB::table('contact_category')
+                        ->where('contact_id', $data->id)
+                        ->where('category_id', $importedCategoryId)
+                        ->exists();
+                    if (! $exists) {
+                        DB::table('contact_category')->insert([
+                            'contact_id' => $data->id,
+                            'category_id' => $importedCategoryId,
+                        ]);
                     }
                 }
 
@@ -475,69 +528,70 @@ class ImportDataCommand extends Command
                 }
 
                 // Obtenemos el ID del contacto responsable
-                $contactId = null;
-                if (! empty($data->id_contacto)) {
-                    // Verificamos si existe directamente en la tabla contacts
-                    $contactExists = DB::table('contacts')->where('id', $data->id_contacto)->exists();
+                // (Eliminado: ya no se usa responsible_id para relacionar contacto)
+                // $contactId = null;
+                // if (! empty($data->id_contacto)) {
+                //     // Verificamos si existe directamente en la tabla contacts
+                //     $contactExists = DB::table('contacts')->where('id', $data->id_contacto)->exists();
 
-                    if ($contactExists) {
-                        $contactId = $data->id_contacto;
-                        $this->info("Found contact with ID {$contactId} for enterprise {$data->id}");
-                    } else {
-                        // Si no existe, lo importamos desde la base de datos original
-                        $contactData = DB::connection('mysql_tmp')
-                            ->table('contactos')
-                            ->where('id', $data->id_contacto)
-                            ->first();
+                //     if ($contactExists) {
+                //         $contactId = $data->id_contacto;
+                //         $this->info("Found contact with ID {$contactId} for enterprise {$data->id}");
+                //     } else {
+                //         // Si no existe, lo importamos desde la base de datos original
+                //         $contactData = DB::connection('mysql_tmp')
+                //             ->table('contactos')
+                //             ->where('id', $data->id_contacto)
+                //             ->first();
 
-                        if ($contactData) {
-                            // Verificar si el contacto tiene nombre
-                            if (! empty(trim($contactData->nombre))) {
-                                $phone = $contactData->celular ?? $contactData->telefono ?? null;
-                                $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
-                                if (! empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0) {
-                                    $cleaned_phone = '54'.$cleaned_phone;
-                                }
+                //         if ($contactData) {
+                //             // Verificar si el contacto tiene nombre
+                //             if (! empty(trim($contactData->nombre))) {
+                //                 $phone = $contactData->celular ?? $contactData->telefono ?? null;
+                //                 $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
+                //                 if (! empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0) {
+                //                     $cleaned_phone = '54'.$cleaned_phone;
+                //                 }
 
-                                $newContactData = [
-                                    'id' => $contactData->id,
-                                    'team_id' => env('CMS_TEAM_ID'),
-                                    'user_id' => null,
-                                    'name' => $contactData->nombre.' '.$contactData->apellido,
-                                    'source_id' => null,
-                                    'birthday' => null,
-                                    'profile' => null,
-                                    'engagment' => 'temperate',
-                                    'country' => 32,
-                                    'language' => 'es',
-                                    'creator_id' => 1,
-                                    'responsible_id' => null,
-                                    'data' => json_encode([
-                                        'phone' => $cleaned_phone,
-                                        'email' => $contactData->email,
-                                    ]),
-                                    'status_id' => 5,
-                                    'created_at' => $contactData->fecha_alta,
-                                    'updated_at' => $contactData->fecha_modificacion,
-                                ];
+                //                 $newContactData = [
+                //                     'id' => $contactData->id,
+                //                     'team_id' => env('CMS_TEAM_ID'),
+                //                     'user_id' => null,
+                //                     'name' => $contactData->nombre.' '.$contactData->apellido,
+                //                     'source_id' => null,
+                //                     'birthday' => null,
+                //                     'profile' => null,
+                //                     'engagment' => 'temperate',
+                //                     'country' => 32,
+                //                     'language' => 'es',
+                //                     'creator_id' => 1,
+                //                     'responsible_id' => null,
+                //                     'data' => json_encode([
+                //                         'phone' => $cleaned_phone,
+                //                         'email' => $contactData->email,
+                //                     ]),
+                //                     'status_id' => 5,
+                //                     'created_at' => $contactData->fecha_alta,
+                //                     'updated_at' => $contactData->fecha_modificacion,
+                //                 ];
 
-                                DB::table('contacts')->insert($newContactData);
-                                $contactId = $contactData->id;
-                                $this->info("Contact with ID {$contactId} was imported for enterprise {$data->id}");
-                            } else {
-                                $this->warn("Contact with ID {$data->id_contacto} has no name, skipping import");
-                            }
-                        } else {
-                            $this->warn("Contact with ID {$data->id_contacto} not found in source database");
-                        }
-                    }
-                }
+                //                 DB::table('contacts')->insert($newContactData);
+                //                 $contactId = $contactData->id;
+                //                 $this->info("Contact with ID {$contactId} was imported for enterprise {$data->id}");
+                //             } else {
+                //                 $this->warn("Contact with ID {$data->id_contacto} has no name, skipping import");
+                //             }
+                //         } else {
+                //             $this->warn("Contact with ID {$data->id_contacto} not found in source database");
+                //         }
+                //     }
+                // }
 
                 $enterpriseData = [
                     'id' => $data->id,
                     'name' => $data->empresa,
                     'type_id' => $type_id,
-                    'responsible_id' => $contactId,
+                    // 'responsible_id' => $contactId, // Eliminado
                     'referred_by' => $data->referido ?? null,
                     'address' => $data->domicilio ?? null,
                     'postal_code' => $data->codigo_postal ?? null,
@@ -550,7 +604,7 @@ class ImportDataCommand extends Command
                     'website' => $data->web ?? null,
                     // 'payment_type_id' => $data->id_forma_pago ?? null,
                     // 'invoice_type_id' => $data->id_factura_tipo ?? null,
-                    'status_id' => (in_array($data->estado, [1, 2])) ? $data->estado : 2,
+                    'status_id' => ($data->estado == 2) ? 2 : 1,
                     'created_at' => $data->fecha_alta,
                     'updated_at' => $data->fecha_modificacion,
                     'deleted_at' => ($data->estado != 2) ? $data->fecha_modificacion : null,

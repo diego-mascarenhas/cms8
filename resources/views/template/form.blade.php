@@ -32,7 +32,7 @@
 	<form class="card-body" action="{{ route('template.store') }}" method="POST">
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
-		
+
 		<div class="row g-3">
 			<div class="col-md-4">
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />

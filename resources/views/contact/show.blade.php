@@ -60,11 +60,11 @@
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @can('project.create')
-                <a href="{{ route('project.create', ['enterprise_id' => $data->enterprise ? $data->enterprise->id : null]) }}" class="btn btn-success waves-effect waves-light"><i
+                <a href="{{ route('project.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-success waves-effect waves-light"><i
                         class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
             @endcan
             @can('service.create')
-                <a href="{{ route('service.create', ['enterprise_id' => $data->enterprise ? $data->enterprise->id : null]) }}" class="btn btn-info waves-effect waves-light ms-2"><i
+                <a href="{{ route('service.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-info waves-effect waves-light ms-2"><i
                         class="ti ti-server me-1"></i>Crear servicio</a>
             @endcan
             @can('chat.list')
@@ -73,8 +73,8 @@
                         class="btn btn-info waves-effect waves-light"><i class="ti ti-message-chatbot me-1"></i>Chat</a>
                 @endif
             @endcan
-            @if (auth()->user()->currentTeam->id == env('CMS_TEAM_ID') && isset($data->enterprise->id))
-                <a href="{{ route('cms7.empresa', $data->enterprise->id) }}" class="btn btn-secondary waves-effect waves-light" target="_blank">
+            @if (auth()->user()->currentTeam->id == env('CMS_TEAM_ID') && $data->enterprises->first())
+                <a href="{{ route('cms7.empresa', $data->enterprises->first()->id) }}" class="btn btn-secondary waves-effect waves-light" target="_blank">
                     <i class="ti ti-database me-1"></i>
                 </a>
             @endif
@@ -94,8 +94,8 @@
                                 width="100" alt="User avatar" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>
-                                @if ($data->enterprise && $data->enterprise->code)
-                                    <span class="badge bg-label-secondary mt-1">#{{ $data->enterprise->code }}</span>
+                                @if ($data->enterprises->first() && $data->enterprises->first()->code)
+                                    <span class="badge bg-label-secondary mt-1">#{{ $data->enterprises->first()->code }}</span>
                                 @endif
                             </div>
                         </div>
@@ -130,10 +130,14 @@
                                 <span class="fw-medium me-1">Estado:</span>
                                 <span class="badge {{ $data->status->label_class }}">{{ $data->status->name }}</span>
                             </li>
-                            @if ($data->enterprise)
+                            @if ($data->enterprises->count())
                                 <li class="mb-2 pt-1">
-                                    <span class="fw-medium me-1">Empresa:</span>
-                                    <span>{{ $data->enterprise->name }}</span>
+                                    <span class="fw-medium me-1">Empresas:</span>
+                                    <span>
+                                        @foreach ($data->enterprises as $enterprise)
+                                            <span class="badge bg-label-secondary me-1">{{ $enterprise->name }}</span>
+                                        @endforeach
+                                    </span>
                                 </li>
                             @endif
                             <li class="mb-2 pt-1">

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('current_enterprise_id')->nullable()->constrained('enterprises')->onDelete('set null');
             $table->string('name');
             $table->string('surname')->nullable();
             $table->string('email')->nullable();

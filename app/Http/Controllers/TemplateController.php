@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\TemplateDataTable;
 use App\Models\Template;
+use App\Helpers\TemplateImportHelper;
 use Dotlogics\Grapesjs\App\Traits\EditorTrait;
 use Illuminate\Http\Request;
 
@@ -43,6 +44,7 @@ class TemplateController extends Controller
             [
                 'name' => $data['name'],
                 'status_id' => $status_id,
+                'gjs_data' => $data['gjs_data'] ?? null,
             ],
         );
 
