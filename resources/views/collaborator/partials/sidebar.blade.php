@@ -92,7 +92,7 @@
                             $weeklyAvailability = $collaborator->weeklyAvailability;
                             $worksSaturday = $weeklyAvailability ? $weeklyAvailability->saturday : false;
                             $worksSunday = $weeklyAvailability ? $weeklyAvailability->sunday : false;
-                            
+
                             if ($worksSaturday && $worksSunday) {
                                 $weekendText = 'Sábados y domingos';
                                 $badgeClass = 'bg-label-success';
@@ -156,22 +156,7 @@
                     </a>
                 </div>
                 <div class="mb-3">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="ti ti-file-description me-2"></i>
-                        <span>Acuerdo de colaboración</span>
-                    </div>
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="ti ti-file-description me-2"></i>
-                        <span>Curriculum Vitae</span>
-                    </div>
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="ti ti-file-description me-2"></i>
-                        <span>Certificado de retenciones</span>
-                    </div>
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="ti ti-file-description me-2"></i>
-                        <span>Certificado de alta autónomo</span>
-                    </div>
+                    <!-- Remove document listing here. Only keep static document names or remove this block if it was dynamic. -->
                 </div>
                 @if($collaborator->profile)
                 <h5 class="border-bottom pb-2 mt-4 mb-4">Perfil</h5>

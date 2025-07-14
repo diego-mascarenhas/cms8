@@ -253,12 +253,12 @@
                                                 <i class="ti ti-eye me-2"></i>Ver
                                             </a>
                                             @can('collaborator.edit')
-                                                <a class="dropdown-item" href="javascript:void(0)" onclick="editPortfolio({{ $portfolio->id }})">
-                                                    <i class="ti ti-edit me-2"></i>Editar
-                                                </a>
-                                                <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deletePortfolio({{ $portfolio->id }})">
-                                                    <i class="ti ti-trash me-2"></i>Eliminar
-                                                </a>
+                                            <a class="dropdown-item" href="javascript:void(0)" onclick="editPortfolio({{ $portfolio->id }})">
+                                                <i class="ti ti-edit me-2"></i>Editar
+                                            </a>
+                                            <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deletePortfolio({{ $portfolio->id }})">
+                                                <i class="ti ti-trash me-2"></i>Eliminar
+                                            </a>
                                             @endcan
                                         </div>
                                     </div>
@@ -451,10 +451,12 @@
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="badge bg-secondary me-2">{{ strtoupper($media->mime_type) }}</span>
-                                    <form action="{{ route('collaborator.documents.destroy', [$collaborator->id, $media->id]) }}" method="POST" onsubmit="return confirm('¿Eliminar este documento?');">
+                                    <a href="#" class="text-danger delete-document-link" data-media-id="{{ $media->id }}" data-media-name="{{ $media->name }}" title="Eliminar documento">
+                                        <i class="ti ti-trash"></i>
+                                    </a>
+                                    <form action="{{ route('collaborator.documents.destroy', [$collaborator->id, $media->id]) }}" method="POST" class="d-none delete-document-form" id="delete-document-form-{{ $media->id }}">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar documento"><i class="ti ti-trash"></i></button>
                                     </form>
                                 </div>
                             </li>
@@ -1269,5 +1271,33 @@
 
         return flagMap[languageCode] || languageCode.split('-')[1]?.toLowerCase() || 'us';
     }
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.delete-document-link').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                var mediaId = this.getAttribute('data-media-id');
+                var mediaName = this.getAttribute('data-media-name');
+                Swal.fire({
+                    title: '¿Eliminar documento?',
+                    html: '¿Seguro que deseas eliminar <b>' + mediaName + '</b>?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar',
+                    customClass: {
+                        confirmButton: 'btn btn-danger',
+                        cancelButton: 'btn btn-outline-secondary'
+                    },
+                    buttonsStyling: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('delete-document-form-' + mediaId).submit();
+                    }
+                });
+            });
+        });
+    });
 </script>
 @endpush
