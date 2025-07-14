@@ -15,6 +15,7 @@ use Twilio\Rest\Client;
 use App\Helpers\TemplateImportHelper;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
+use App\Models\MessageDeliveryStat;
 
 class MessageController extends Controller
 {
@@ -50,7 +51,7 @@ class MessageController extends Controller
 		$templateId = $data['template_id'] ?? null;
 
 		// Set status_id based on checkbox presence
-		$status_id = $request->has('status_id') ? 2 : 1; // 2 = active, 1 = inactive
+		$status_id = $request->has('status_id') ? 1 : 0; // 1 = active, 0 = inactive
 
 		Message::updateOrCreate(
 			['id' => $request->id],
@@ -90,6 +91,24 @@ class MessageController extends Controller
 			'ratio' => 0, // Puedes calcular el ratio real
 		];
 
+		// Obtener stats de la tabla message_delivery_stats usando el modelo
+		$stats_db = MessageDeliveryStat::where('message_id', $message->id)->first();
+		if (!$stats_db) {
+			$stats_db = (object) [
+				'subscribers' => 0,
+				'remaining' => 0,
+				'failed' => 0,
+				'sent' => 0,
+				'rejected' => 0,
+				'delivered' => 0,
+				'opened' => 0,
+				'unsubscribed' => 0,
+				'clicks' => 0,
+				'unique_opens' => 0,
+				'ratio' => 0,
+			];
+		}
+
 		// Obtener entregas reales
 		$deliveries = MessageDelivery::where('message_id', $message->id)->with('contact')->get();
 
@@ -99,6 +118,7 @@ class MessageController extends Controller
 		return view('message.show', [
 			'message' => $message,
 			'stats' => $stats,
+			'stats_db' => $stats_db,
 			'deliveries' => $deliveries,
 			'links' => $links,
 		]);

@@ -40,7 +40,10 @@
 			<div class="col-xl-12 p-4">
 				<div class="text-light small fw-medium">Status</div>
 				<div class="demo-inline-spacing">
-					<x-input-checkbox name="status_id" label="Active" value="{{ old('status_id', $data->status_id ?? '') }}" />
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" id="status_id" name="status_id" value="1" {{ old('status_id', $data->status_id ?? 0) == 1 ? 'checked' : '' }}>
+						<label class="form-check-label" for="status_id">Active</label>
+					</div>
 				</div>
 			</div>
 		</div>
