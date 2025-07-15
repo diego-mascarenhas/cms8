@@ -589,7 +589,7 @@
     "Filters": "Filtros",
     "Days": "Días",
     "Collaborator": "Colaboradora",
-    "Rating": "Valoración", 
+    "Rating": "Valoración",
     "Combination": "Combinación",
     "Services": "Servicios",
     "All Projects": "Todos los Proyectos",
@@ -730,5 +730,7 @@
     "Region": "Región",
     "Detailed client information": "Información detallada del cliente",
     "This client has no projects assigned yet.": "Este cliente aún no tiene proyectos asignados.",
-    "Create First Project": "Crear Primer Proyecto"
+    "Create First Project": "Crear Primer Proyecto",
+    "Birthday": "Fecha de nacimiento",
+    "Profile Description": "Descripción de perfil"
 }
