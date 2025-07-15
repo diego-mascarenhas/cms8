@@ -83,13 +83,13 @@
 							<dl class="row mb-0">
 								<dt class="col-4 text-truncate">{{ __('Client') }}:</dt>
 								<dd class="col-8">{{ $project->client ? $project->client->name : __('Not assigned') }}</dd>
-								
+
 								<dt class="col-4 text-truncate">{{ __('Category') }}:</dt>
 								<dd class="col-8">{{ $project->category ? $project->category->name : __('Not assigned') }}</dd>
-								
+
 								<dt class="col-4 text-truncate">{{ __('Responsible') }}:</dt>
 								<dd class="col-8">{{ $project->responsible ? $project->responsible->name : __('Not assigned') }}</dd>
-								
+
 								@if($project->client && $project->client->responsible_id)
 								<dt class="col-4 text-truncate">{{ __('Contact') }}:</dt>
 								<dd class="col-8">
@@ -104,15 +104,15 @@
 							<dl class="row mb-0">
 								<dt class="col-4 text-truncate">{{ __('Start Date') }}:</dt>
 								<dd class="col-8">{{ $project->date_start ? \Carbon\Carbon::parse($project->date_start)->format('d/m/Y') : __('Not set') }}</dd>
-								
+
 								@if($project->date_material)
 								<dt class="col-4 text-truncate">{{ __('Material Date') }}:</dt>
 								<dd class="col-8">{{ \Carbon\Carbon::parse($project->date_material)->format('d/m/Y') }}</dd>
 								@endif
-								
+
 								<dt class="col-4 text-truncate">{{ __('End Date') }}:</dt>
 								<dd class="col-8">{{ $project->date_end ? \Carbon\Carbon::parse($project->date_end)->format('d/m/Y') : __('Not set') }}</dd>
-								
+
 								@if(auth()->user()->hasRole('admin') && $project->discount)
 								<dt class="col-4 text-truncate">{{ __('Discount') }}:</dt>
 								<dd class="col-8">{{ $project->discount }}%</dd>
@@ -153,7 +153,7 @@
 									break;
 							}
 						}
-						
+
 						// Get primary language combination for display
 						$primaryLanguage = '';
 						if ($collaborator->languageVariants->count() > 0) {
@@ -167,12 +167,12 @@
 						$messageStatus = $collaborator->pivot->status ?? 'sent';
 						$messageStatusClass = [
 							'sent' => 'bg-label-info',
-							'viewed' => 'bg-label-warning', 
+							'viewed' => 'bg-label-warning',
 							'accepted' => 'bg-label-success',
 							'rejected' => 'bg-label-danger'
 						][$messageStatus] ?? 'bg-label-secondary';
 					@endphp
-					
+
 					<div class="col-md-6 mb-3 d-flex">
 						<div class="card border w-100">
 							<div class="card-body p-3 position-relative">
@@ -186,7 +186,7 @@
 											<a class="dropdown-item" href="{{ route('collaborator.show', $collaborator->id) }}">
 												<i class="ti ti-eye me-2"></i>{{ __('View Details') }}
 											</a>
-											<a class="dropdown-item text-danger" href="javascript:void(0)" 
+											<a class="dropdown-item text-danger" href="javascript:void(0)"
 											   onclick="removeCollaboratorFromProject({{ $project->id }}, {{ $collaborator->id }}, '{{ $collaborator->name }}')">
 												<i class="ti ti-trash me-2"></i>{{ __('Remove from Project') }}
 											</a>
@@ -249,115 +249,7 @@
 			@endif
 		</div>
 
-		<!-- Timeline Sidebar -->
-		<div class="col-xl-4 col-lg-4">
-			<div class="card timeline-card">
-				<div class="card-header">
-					<h5 class="mb-0">{{ __('Project Timeline') }}</h5>
-				</div>
-				<div class="card-body">
-					<ul class="timeline mb-0">
-						<!-- Project Created -->
-						<li class="timeline-item timeline-item-transparent">
-							<span class="timeline-point timeline-point-primary"></span>
-							<div class="timeline-event">
-								<div class="timeline-header mb-1">
-									<h6 class="mb-0">{{ __('Project Created') }}</h6>
-									<small class="text-muted">{{ $project->created_at->format('d M Y, H:i') }}</small>
-								</div>
-								<p class="mb-2">{{ __('Project was created in the system') }}</p>
-								<div class="d-flex">
-									<div class="avatar avatar-sm me-2">
-										<span class="avatar-initial rounded-circle bg-label-primary">{{ substr($project->responsible->name ?? 'U', 0, 1) }}</span>
-									</div>
-									<div>
-										<small class="text-muted">{{ __('by') }} {{ $project->responsible->name ?? __('Unknown') }}</small>
-									</div>
-								</div>
-							</div>
-						</li>
-
-						@if($project->date_start)
-						<!-- Project Start -->
-						<li class="timeline-item timeline-item-transparent">
-							<span class="timeline-point timeline-point-info"></span>
-							<div class="timeline-event">
-								<div class="timeline-header mb-1">
-									<h6 class="mb-0">{{ __('Project Start') }}</h6>
-									<small class="text-muted">{{ \Carbon\Carbon::parse($project->date_start)->format('d M Y') }}</small>
-								</div>
-								<p class="mb-0">{{ __('Planned project start date') }}</p>
-							</div>
-						</li>
-						@endif
-
-						@if($project->date_material)
-						<!-- Material Delivery -->
-						<li class="timeline-item timeline-item-transparent">
-							<span class="timeline-point timeline-point-warning"></span>
-							<div class="timeline-event">
-								<div class="timeline-header mb-1">
-									<h6 class="mb-0">{{ __('Material Delivery') }}</h6>
-									<small class="text-muted">{{ \Carbon\Carbon::parse($project->date_material)->format('d M Y') }}</small>
-								</div>
-								<p class="mb-0">{{ __('Materials should be delivered by this date') }}</p>
-							</div>
-						</li>
-						@endif
-
-						<!-- Notes Timeline -->
-						@if($project->notes && $project->notes->count() > 0)
-							@foreach($project->notes->take(2) as $note)
-							<li class="timeline-item timeline-item-transparent">
-								<span class="timeline-point timeline-point-success"></span>
-								<div class="timeline-event">
-									<div class="timeline-header mb-1">
-										<h6 class="mb-0">{{ __('Note Added') }}</h6>
-										<small class="text-muted">{{ $note->created_at->format('d M Y, H:i') }}</small>
-									</div>
-									<p class="mb-2">{{ Str::limit($note->content, 100) }}</p>
-									<div class="d-flex">
-										<div class="avatar avatar-sm me-2">
-											<span class="avatar-initial rounded-circle bg-label-success">{{ substr($note->user->name ?? 'U', 0, 1) }}</span>
-										</div>
-										<small class="text-muted">{{ __('by') }} {{ $note->user->name ?? __('Unknown') }}</small>
-									</div>
-								</div>
-							</li>
-							@endforeach
-						@endif
-
-						@if($project->date_end)
-						<!-- Project End -->
-						<li class="timeline-item timeline-item-transparent">
-							<span class="timeline-point timeline-point-{{ \Carbon\Carbon::parse($project->date_end)->isPast() ? 'danger' : 'success' }}"></span>
-							<div class="timeline-event">
-								<div class="timeline-header mb-1">
-									<h6 class="mb-0">{{ __('Final Delivery') }}</h6>
-									<small class="text-muted">{{ \Carbon\Carbon::parse($project->date_end)->format('d M Y') }}</small>
-								</div>
-								<p class="mb-0">
-									@if(\Carbon\Carbon::parse($project->date_end)->isPast())
-										<span class="text-danger">{{ __('Project delivery date has passed') }}</span>
-									@else
-										{{ __('Planned final delivery date') }}
-									@endif
-								</p>
-							</div>
-						</li>
-						@endif
-
-						<!-- End marker -->
-						<li class="timeline-end-indicator">
-							<i class="ti ti-flag"></i>
-						</li>
-					</ul>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<!-- Linked Services Section - Full Width -->
+		<!-- Linked Services Section - Full Width -->
 	@if($project->projectFares && $project->projectFares->count() > 0)
 	<div class="card mb-4">
 		<div class="card-header d-flex justify-content-between align-items-center">
@@ -385,18 +277,18 @@
 						@php
 							// Check if there are collaborators that match this service requirements
 							$hasMatchingCollaborator = false;
-							
+
 							if ($project->collaborators && $project->collaborators->count() > 0) {
 								foreach ($project->collaborators as $collaborator) {
 									// Check if collaborator has the required language combination
 									$hasLanguageCombination = $collaborator->languageVariants->contains(function($variant) use ($projectFare) {
-										return $variant->source_language_code === $projectFare->source_language_code 
+										return $variant->source_language_code === $projectFare->source_language_code
 											&& $variant->target_language_code === $projectFare->target_language_code;
 									});
-									
+
 									// Check if collaborator has the required fare/service
 									$hasFare = $collaborator->fares->contains('id', $projectFare->fare_id);
-									
+
 									// If collaborator has both requirements, mark as matching
 									if ($hasLanguageCombination && $hasFare) {
 										$hasMatchingCollaborator = true;
@@ -408,14 +300,14 @@
 						<tr class="{{ $loop->last ? 'border-bottom-0' : '' }}">
 							<td class="col-1 text-center">
 								@if($hasMatchingCollaborator)
-									<i class="ti ti-check text-success ti-lg" 
-									   data-bs-toggle="tooltip" 
-									   data-bs-placement="top" 
+									<i class="ti ti-check text-success ti-lg"
+									   data-bs-toggle="tooltip"
+									   data-bs-placement="top"
 									   title="Hay colaboradores asignados que cumplen con los requisitos"></i>
 								@else
-									<i class="ti ti-alert-triangle text-warning ti-lg" 
-									   data-bs-toggle="tooltip" 
-									   data-bs-placement="top" 
+									<i class="ti ti-alert-triangle text-warning ti-lg"
+									   data-bs-toggle="tooltip"
+									   data-bs-placement="top"
 									   title="No hay colaboradores asignados que cumplan con esta combinación de idioma y servicio"></i>
 								@endif
 							</td>
@@ -428,7 +320,7 @@
 								</div>
 							</td>
 							<td class="col-3 text-center">
-								<x-language-combination-badge 
+								<x-language-combination-badge
 									:sourceLanguage="$projectFare->sourceLanguage"
 									:targetLanguage="$projectFare->targetLanguage"
 									:sourceLanguageCode="$projectFare->source_language_code"
@@ -442,7 +334,7 @@
 								{{ $projectFare->unit }}
 							</td>
 							<td class="col-2 text-center">
-								<a href="{{ route('project.select-collaborators', $project->id) }}?source_language={{ $projectFare->source_language_code }}&target_language={{ $projectFare->target_language_code }}&service={{ $projectFare->fare_id }}" 
+								<a href="{{ route('project.select-collaborators', $project->id) }}?source_language={{ $projectFare->source_language_code }}&target_language={{ $projectFare->target_language_code }}&service={{ $projectFare->fare_id }}"
 								   class="btn btn-sm btn-outline-success">
 									<i class="ti ti-users ti-xs me-1"></i>Asociar
 								</a>
@@ -489,22 +381,22 @@
 				<div class="modal-body">
 					<input type="hidden" id="service-id" name="service_id">
 					<input type="hidden" id="project-id" name="project_id" value="{{ $project->id }}">
-					
+
 					<div class="row g-3">
 						<div class="col-md-6">
-							<x-variant-language-select 
-								name="source_language_code" 
-								id="source_language" 
-								label="Idioma origen (*)" 
+							<x-variant-language-select
+								name="source_language_code"
+								id="source_language"
+								label="Idioma origen (*)"
 								:required="true"
 								placeholder="Seleccionar idioma origen"
 							/>
 						</div>
 						<div class="col-md-6">
-							<x-variant-language-select 
-								name="target_language_code" 
-								id="target_language" 
-								label="Idioma destino (*)" 
+							<x-variant-language-select
+								name="target_language_code"
+								id="target_language"
+								label="Idioma destino (*)"
 								:required="true"
 								placeholder="Seleccionar idioma destino"
 							/>
@@ -527,7 +419,7 @@
 											return $fare->type ? $fare->type->name : 'Sin categoría';
 										});
 								@endphp
-								
+
 								@foreach($faresByType as $typeName => $fareList)
 									<optgroup label="{{ $typeName }}">
 										@foreach($fareList as $fare)
@@ -539,7 +431,7 @@
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Cantidad (*)</label>
-							<input type="number" name="quantity" id="quantity" class="form-control" 
+							<input type="number" name="quantity" id="quantity" class="form-control"
 								   value="1" min="1" step="1" required>
 						</div>
 						<div class="col-md-6">
@@ -549,7 +441,7 @@
 							</select>
 						</div>
 					</div>
-					
+
 					<div class="mt-3">
 						<div class="alert alert-warning d-none" id="duplicate-warning">
 							<i class="ti ti-alert-triangle me-2"></i>
@@ -579,7 +471,7 @@
 		var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 			return new bootstrap.Tooltip(tooltipTriggerEl);
 		});
-		
+
 		// Service modal functionality
 		initializeServiceModal();
 	});
@@ -628,15 +520,15 @@
 			}
 		});
 	}
-	
+
 	// Function to delete project service
 	function deleteProjectService(serviceId) {
 		if (!confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
 			return;
 		}
-		
+
 		const projectId = document.getElementById('project-id').value;
-		
+
 		fetch(`/project/${projectId}/service/${serviceId}`, {
 			method: 'DELETE',
 			headers: {
@@ -658,29 +550,29 @@
 			alert('Error al eliminar servicio');
 		});
 	}
-	
+
 	// Service modal initialization
 	function initializeServiceModal() {
 		const serviceModal = document.getElementById('serviceModal');
 		const serviceForm = document.getElementById('serviceForm');
 		const duplicateWarning = document.getElementById('duplicate-warning');
-		
+
 		let editingServiceId = null;
-		
+
 		// Handle fare selection change for units
 		document.getElementById('fare_select').addEventListener('change', function() {
 			const fareId = this.value;
 			const unitSelect = document.getElementById('unit_select');
-			
+
 			if (!fareId) {
 				unitSelect.innerHTML = '<option value="">Primero selecciona un servicio</option>';
 				return;
 			}
-			
+
 			// Show loading state
 			unitSelect.innerHTML = '<option value="">Cargando unidades...</option>';
 			unitSelect.disabled = true;
-			
+
 			// Fetch units for the selected fare
 			fetch(`/project/fare-units?fare_id=${fareId}`, {
 				method: 'GET',
@@ -693,7 +585,7 @@
 			.then(response => response.json())
 			.then(data => {
 				unitSelect.innerHTML = '<option value="">Seleccionar unidad</option>';
-				
+
 				if (data.units && data.units.length > 0) {
 					data.units.forEach(unit => {
 						const option = document.createElement('option');
@@ -713,11 +605,11 @@
 				unitSelect.disabled = false;
 			});
 		});
-		
+
 		// Handle form submission
 		serviceForm.addEventListener('submit', function(e) {
 			e.preventDefault();
-			
+
 			const formData = new FormData(serviceForm);
 			const serviceData = {
 				service_id: formData.get('service_id'),
@@ -728,9 +620,9 @@
 				quantity: formData.get('quantity'),
 				unit: formData.get('unit')
 			};
-			
+
 			duplicateWarning.classList.add('d-none');
-			
+
 			// Determine if we're editing or adding
 			if (editingServiceId) {
 				updateService(serviceData);
@@ -738,12 +630,12 @@
 				addService(serviceData);
 			}
 		});
-		
+
 		// Handle modal show event
 		serviceModal.addEventListener('show.bs.modal', function(event) {
 			const button = event.relatedTarget;
 			const action = button?.getAttribute('data-action');
-			
+
 			if (action === 'edit') {
 				const serviceId = button.getAttribute('data-service-id');
 				editService(serviceId);
@@ -752,19 +644,19 @@
 				resetForm();
 			}
 		});
-		
+
 		// Handle modal hide event
 		serviceModal.addEventListener('hide.bs.modal', function() {
 			resetForm();
 		});
-		
+
 		function addService(serviceData) {
 			const button = document.getElementById('saveServiceBtn');
 			const originalText = button.innerHTML;
-			
+
 			button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Guardando...';
 			button.disabled = true;
-			
+
 			fetch(`/project/${serviceData.project_id}/service`, {
 				method: 'POST',
 				headers: {
@@ -795,14 +687,14 @@
 				button.disabled = false;
 			});
 		}
-		
+
 		function updateService(serviceData) {
 			const button = document.getElementById('saveServiceBtn');
 			const originalText = button.innerHTML;
-			
+
 			button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Actualizando...';
 			button.disabled = true;
-			
+
 			fetch(`/project/${serviceData.project_id}/service/${serviceData.service_id}`, {
 				method: 'PUT',
 				headers: {
@@ -833,10 +725,10 @@
 				button.disabled = false;
 			});
 		}
-		
+
 		function editService(serviceId) {
 			const projectId = document.getElementById('project-id').value;
-			
+
 			// Get service details from server
 			fetch(`/project/${projectId}/services`, {
 				method: 'GET',
@@ -851,22 +743,22 @@
 					const service = data.services.find(s => s.id == serviceId);
 					if (service) {
 						editingServiceId = serviceId;
-						
+
 						// Update modal title
 						document.getElementById('serviceModalTitle').textContent = 'Editar servicio';
 						document.getElementById('saveServiceText').textContent = 'Actualizar servicio';
-						
+
 						// Fill form with service data
 						document.getElementById('service-id').value = service.id;
 						document.getElementById('source_language').value = service.source_language_code;
 						document.getElementById('target_language').value = service.target_language_code;
 						document.getElementById('fare_select').value = service.fare_id;
 						document.getElementById('quantity').value = service.quantity;
-						
+
 						// Load units for the selected fare
 						const fareSelect = document.getElementById('fare_select');
 						fareSelect.dispatchEvent(new Event('change'));
-						
+
 						// Set unit after units are loaded
 						setTimeout(() => {
 							document.getElementById('unit_select').value = service.unit;
@@ -878,7 +770,7 @@
 				console.error('Error loading service:', error);
 			});
 		}
-		
+
 		function resetForm() {
 			serviceForm.reset();
 			editingServiceId = null;

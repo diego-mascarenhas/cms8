@@ -25,7 +25,7 @@
     "sendgrid/sendgrid": "^8.1",
     "spatie/laravel-activitylog": "^4.10",
     "spatie/laravel-medialibrary": "^11.13",
-    "spatie/laravel-permission": "^6.9",
+    "spatie/laravel-permission": "^6.20",
     "spatie/simple-excel": "^3.6",
     "tijsverkoyen/css-to-inline-styles": "^2.3",
     "twilio/sdk": "^8.2",

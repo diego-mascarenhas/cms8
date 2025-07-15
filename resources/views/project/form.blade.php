@@ -113,34 +113,46 @@
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
 
+		@if ($errors->any())
+    <div class="alert alert-danger">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
 		<div class="row g-4">
 			<!-- Internal name for collaborators -->
 			<div class="col-12">
 				<label for="name" class="form-label">{{ __('Internal Name for Collaborators') }} <i class="ti ti-eye ms-1"></i></label>
-				<input type="text" class="form-control" id="name" name="name"
-					   value="{{ old('name', $data->name ?? '') }}"
-					   placeholder="{{ __('What the collaborator sees') }}" required>
+				<input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $data->name ?? '') }}">
+				@error('name')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
 			</div>
 
 			<!-- Real name -->
 			<div class="col-12">
 				<label for="real_name" class="form-label">{{ __('Real Name') }} <i class="ti ti-link ms-1"></i></label>
-				<input type="text" class="form-control" id="real_name" name="real_name"
-					   value="{{ old('real_name', $data->real_name ?? '') }}"
-					   placeholder="{{ __('What the collaborator sees when accepting the project') }}">
+				<input type="text" name="real_name" class="form-control @error('real_name') is-invalid @enderror" value="{{ old('real_name', $data->real_name ?? '') }}">
+				@error('real_name')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
 			</div>
 
 			<!-- Project status -->
 			<div class="col-md-6">
 				<label for="status_id" class="form-label">{{ __('Project Status') }}</label>
-				<select class="form-select" id="status_id" name="status_id" required>
+				<select name="status_id" class="form-control @error('status_id') is-invalid @enderror">
 					@foreach($statuses as $status)
-						<option value="{{ $status['id'] }}"
-							{{ (old('status_id', $data->status_id ?? '1') == $status['id']) ? 'selected' : '' }}>
-							{{ $status['name'] }}
-						</option>
+						<option value="{{ $status['id'] }}" {{ old('status_id', $data->status_id ?? '') == $status['id'] ? 'selected' : '' }}>{{ $status['name'] }}</option>
 					@endforeach
 				</select>
+				@error('status_id')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
 			</div>
 
 			<!-- Product type (Category) -->
@@ -149,19 +161,25 @@
 					id="category_id"
 					label="{{ __('Product Type') }}"
 					moduleKey="projects"
-					:selected="old('category_id', $data->category_id ?? '')"
+					:selected="is_array(old('category_id', $data->category_id ?? '')) ? (old('category_id', $data->category_id ?? '')[0] ?? '') : old('category_id', $data->category_id ?? '')"
 				/>
+				@error('category_id')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
 			</div>
 
 			<!-- Dates -->
 			<div class="col-md-6">
-				<x-input-date id="date_material" label="{{ __('Material Delivery Date') }}"
+				<x-input-date id="date_material" name="date_material" label="{{ __('Material Delivery Date') }}"
 					value="{{ old('date_material', $data->date_material ?? '') }}" />
 			</div>
 
 			<div class="col-md-6">
 				<x-input-date id="date_end" label="{{ __('Final Delivery Date') }}"
 					value="{{ old('date_end', $data->date_end ?? '') }}" />
+				@error('date_end')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
 			</div>
 
 			<!-- Client -->
@@ -169,8 +187,11 @@
 				<x-client-select
 					id="enterprise_id"
 					label="{{ __('Client') }} (*)"
-					:selected="old('enterprise_id', $enterprise_id  ?? '')"
+					:selected="old('enterprise_id', $data->enterprise_id ?? '')"
 				/>
+				@error('enterprise_id')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
 			</div>
 
 			<!-- Additional fields for admins -->
@@ -217,6 +238,9 @@
 					role="admin"
 					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
 				/>
+				@error('responsible_id')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
 			</div>
 			@else
 			<!-- Simplified view for non-admins -->
@@ -235,14 +259,19 @@
 					role="admin"
 					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
 				/>
+				@error('responsible_id')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
 			</div>
 			@endif
 
 			<!-- Notas del proyecto -->
 			<div class="col-12">
 				<label for="description" class="form-label">{{ __('Project Notes') }}</label>
-				<textarea class="form-control" id="description" name="description" rows="6"
-						  placeholder="{{ __('Free text') }}" required>{{ old('description', $data->description ?? '') }}</textarea>
+				<textarea name="description" class="form-control @error('description') is-invalid @enderror">{{ old('description', $data->description ?? '') }}</textarea>
+				@error('description')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
 			</div>
 
 
