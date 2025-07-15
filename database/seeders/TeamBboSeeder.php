@@ -557,6 +557,52 @@ class TeamBboSeeder extends Seeder
 					}
 				}
 
+				// Asignar tarifas por combinación de idiomas
+				if (!empty($fares) && is_array($fares) && !empty($languageVariants)) {
+					foreach ($fares as $fare) {
+						$fareName = is_array($fare) ? ($fare[0] ?? null) : $fare;
+						$price = is_array($fare) ? ($fare[1] ?? null) : null;
+						$currency = is_array($fare) ? ($fare[2] ?? 'EUR') : 'EUR';
+
+						if ($fareName) {
+							$fareModel = \App\Models\Fare::where('name', $fareName)
+								->where('team_id', $teamId)
+								->with('units')
+								->first();
+
+							if ($fareModel) {
+								// Selecciona la primera unidad disponible para la tarifa
+								$unitId = $fareModel->units->isNotEmpty() ? $fareModel->units->first()->id : null;
+
+								foreach ($languageVariants as $combination) {
+									if (is_array($combination) && count($combination) === 2) {
+										$sourceLanguage = $this->mapLanguageNameToCode($combination[0]);
+										$targetLanguage = $this->mapLanguageNameToCode($combination[1]);
+
+										if ($sourceLanguage && $targetLanguage && $sourceLanguage !== $targetLanguage) {
+											\DB::table('contact_fare')->updateOrInsert(
+												[
+													'contact_id' => $contact->id,
+													'fare_id' => $fareModel->id,
+													'source_language_code' => $sourceLanguage,
+													'target_language_code' => $targetLanguage,
+												],
+												[
+													'price' => $price ?: 0,
+													'currency_code' => $currency ?: 'EUR',
+													'unit_id' => $unitId,
+													'updated_at' => now(),
+													'created_at' => now(),
+												]
+											);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+
 				// Process fares and software
 				$tarifasNoImportadas = [];
 				$softwaresNoImportados = [];
