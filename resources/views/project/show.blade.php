@@ -68,19 +68,15 @@
 		</div>
 	</div>
 
-	<div class="row">
-		<!-- Main Dashboard Content -->
-		<div class="col-xl-8 col-lg-8">
-
-			<!-- Project Details Card -->
-			<div class="card mb-4">
-				<div class="card-header">
-					<h5 class="mb-0">{{ __('Project Details') }}</h5>
-				</div>
-				<div class="card-body">
-					<div class="row">
-						<div class="col-md-6">
-							<dl class="row mb-0">
+<!-- Project Details Card - Full Width -->
+<div class="card mb-4">
+   <div class="card-header">
+       <h5 class="mb-0">{{ __('Project Details') }}</h5>
+   </div>
+   <div class="card-body">
+       <div class="row">
+           <div class="col-md-6">
+               <dl class="row mb-0">
 								<dt class="col-4 text-truncate">{{ __('Client') }}:</dt>
 								<dd class="col-8">{{ $project->client ? $project->client->name : __('Not assigned') }}</dd>
 
@@ -99,9 +95,9 @@
 								</dd>
 								@endif
 							</dl>
-						</div>
-						<div class="col-md-6">
-							<dl class="row mb-0">
+           </div>
+           <div class="col-md-6">
+               <dl class="row mb-0">
 								<dt class="col-4 text-truncate">{{ __('Start Date') }}:</dt>
 								<dd class="col-8">{{ $project->date_start ? \Carbon\Carbon::parse($project->date_start)->format('d/m/Y') : __('Not set') }}</dd>
 
@@ -118,149 +114,113 @@
 								<dd class="col-8">{{ $project->discount }}%</dd>
 								@endif
 							</dl>
-						</div>
-					</div>
-				</div>
-			</div>
+           </div>
+       </div>
+   </div>
+</div>
 
+<!-- Collaborators Section (Floating Cards) -->
+@if($project->collaborators && $project->collaborators->count() > 0)
+<div class="row mb-4" style="align-items: stretch;">
+    @foreach($project->collaborators as $index => $collaborator)
+        @php
+            // Get the valoration for display
+            $valorationIcon = 'ti-star-filled text-warning';
+            $valorationText = 'Top';
+            if ($collaborator->valoration) {
+                switch($collaborator->valoration->name) {
+                    case 'Lista negra':
+                        $valorationIcon = 'ti-x text-danger';
+                        $valorationText = 'Lista negra';
+                        break;
+                    case 'Validada':
+                        $valorationIcon = 'ti-check text-success';
+                        $valorationText = 'Validada';
+                        break;
+                    case 'En espera':
+                        $valorationIcon = 'ti-eye text-warning';
+                        $valorationText = 'Ojo';
+                        break;
+                    case 'Interesante':
+                        $valorationIcon = 'ti-clock text-info';
+                        $valorationText = 'Interesante';
+                        break;
+                }
+            }
 
+            // Get primary language combination for display
+            $primaryLanguage = '';
+            if ($collaborator->languageVariants->count() > 0) {
+                $firstVariant = $collaborator->languageVariants->first();
+                $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
+                $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
+                $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+            }
 
-			<!-- Collaborators Section (Floating Cards) -->
-			@if($project->collaborators && $project->collaborators->count() > 0)
-			<div class="row mb-4" style="align-items: stretch;">
-				@foreach($project->collaborators as $index => $collaborator)
-					@php
-						// Get the valoration for display
-						$valorationIcon = 'ti-star-filled text-warning';
-						$valorationText = 'Top';
-						if ($collaborator->valoration) {
-							switch($collaborator->valoration->name) {
-								case 'Lista negra':
-									$valorationIcon = 'ti-x text-danger';
-									$valorationText = 'Lista negra';
-									break;
-								case 'Validada':
-									$valorationIcon = 'ti-check text-success';
-									$valorationText = 'Validada';
-									break;
-								case 'En espera':
-									$valorationIcon = 'ti-eye text-warning';
-									$valorationText = 'Ojo';
-									break;
-								case 'Interesante':
-									$valorationIcon = 'ti-clock text-info';
-									$valorationText = 'Interesante';
-									break;
-							}
-						}
+            // Get message status
+            $messageStatus = $collaborator->pivot->status ?? 'sent';
+            $messageStatusClass = [
+                'sent' => 'bg-label-info',
+                'viewed' => 'bg-label-warning',
+                'accepted' => 'bg-label-success',
+                'rejected' => 'bg-label-danger'
+            ][$messageStatus] ?? 'bg-label-secondary';
+        @endphp
 
-						// Get primary language combination for display
-						$primaryLanguage = '';
-						if ($collaborator->languageVariants->count() > 0) {
-							$firstVariant = $collaborator->languageVariants->first();
-							$sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
-							$targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
-							$primaryLanguage = $sourceLang . ' → ' . $targetLang;
-						}
+        <div class="col-md-6 mb-3 d-flex">
+            <div class="card border w-100">
+                <div class="card-body p-3 position-relative">
+                    <!-- Dropdown Menu in top right corner -->
+                    <div class="position-absolute top-0 end-0 mt-2 me-2">
+                        <div class="dropdown">
+                            <button class="btn p-0" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="ti ti-dots-vertical ti-sm text-muted"></i>
+                            </button>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" href="{{ route('collaborator.show', $collaborator->id) }}">
+                                    <i class="ti ti-eye me-2"></i>{{ __('View Details') }}
+                                </a>
+                                <a class="dropdown-item text-danger" href="javascript:void(0)"
+                                   onclick="removeCollaboratorFromProject({{ $project->id }}, {{ $collaborator->id }}, '{{ $collaborator->name }}')">
+                                    <i class="ti ti-trash me-2"></i>{{ __('Remove from Project') }}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
 
-						// Get message status
-						$messageStatus = $collaborator->pivot->status ?? 'sent';
-						$messageStatusClass = [
-							'sent' => 'bg-label-info',
-							'viewed' => 'bg-label-warning',
-							'accepted' => 'bg-label-success',
-							'rejected' => 'bg-label-danger'
-						][$messageStatus] ?? 'bg-label-secondary';
-					@endphp
+                    <!-- Collaborator Info -->
+                    <div class="d-flex align-items-center">
+                        <div class="avatar avatar-md me-3">
+                            <span class="avatar-initial rounded-circle bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][($index % 5)] }}">{{ strtoupper(substr($collaborator->name, 0, 2)) }}</span>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">{{ $collaborator->name }}</h6>
+                            <small class="text-muted">{{ $primaryLanguage }}</small>
+                            <div class="d-flex align-items-center mt-1">
+                                <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
+                                <small class="text-muted">{{ $valorationText }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endforeach
+</div>
+@endif
 
-					<div class="col-md-6 mb-3 d-flex">
-						<div class="card border w-100">
-							<div class="card-body p-3 position-relative">
-								<!-- Dropdown Menu in top right corner -->
-								<div class="position-absolute top-0 end-0 mt-2 me-2">
-									<div class="dropdown">
-										<button class="btn p-0" data-bs-toggle="dropdown" aria-expanded="false">
-											<i class="ti ti-dots-vertical ti-sm text-muted"></i>
-										</button>
-										<div class="dropdown-menu">
-											<a class="dropdown-item" href="{{ route('collaborator.show', $collaborator->id) }}">
-												<i class="ti ti-eye me-2"></i>{{ __('View Details') }}
-											</a>
-											<a class="dropdown-item text-danger" href="javascript:void(0)"
-											   onclick="removeCollaboratorFromProject({{ $project->id }}, {{ $collaborator->id }}, '{{ $collaborator->name }}')">
-												<i class="ti ti-trash me-2"></i>{{ __('Remove from Project') }}
-											</a>
-										</div>
-									</div>
-								</div>
-
-								<!-- Collaborator Info -->
-								<div class="d-flex align-items-center">
-									<div class="avatar avatar-md me-3">
-										<span class="avatar-initial rounded-circle bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][($index % 5)] }}">{{ strtoupper(substr($collaborator->name, 0, 2)) }}</span>
-									</div>
-									<div>
-										<h6 class="mb-0">{{ $collaborator->name }}</h6>
-										<small class="text-muted">{{ $primaryLanguage }}</small>
-										<div class="d-flex align-items-center mt-1">
-											<i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
-											<small class="text-muted">{{ $valorationText }}</small>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				@endforeach
-			</div>
-			@endif
-
-			<!-- Notes Section -->
-			@if($project->notes && $project->notes->count() > 0)
-			<div class="card">
-				<div class="card-header d-flex justify-content-between">
-					<h5 class="mb-0">{{ __('Recent Notes') }}</h5>
-					<small class="text-muted">{{ $project->notes->count() }} {{ __('notes') }}</small>
-				</div>
-				<div class="card-body">
-					@foreach($project->notes->take(3) as $note)
-						<div class="d-flex mb-3 {{ !$loop->last ? 'pb-3 border-bottom' : '' }}">
-							<div class="avatar avatar-sm me-3">
-								<span class="avatar-initial rounded-circle bg-label-primary">{{ substr($note->user->name ?? 'U', 0, 1) }}</span>
-							</div>
-							<div class="flex-grow-1">
-								<div class="d-flex justify-content-between align-items-start">
-									<div>
-										<h6 class="mb-1">{{ $note->user->name ?? __('Unknown User') }}</h6>
-										<small class="text-muted">{{ $note->created_at->format('d/m/Y H:i') }}</small>
-									</div>
-								</div>
-								<p class="mb-0 mt-2">{{ $note->content }}</p>
-							</div>
-						</div>
-					@endforeach
-					@if($project->notes->count() > 3)
-						<div class="text-center mt-3">
-							<a href="javascript:void(0)" class="btn btn-label-primary btn-sm">{{ __('View All Notes') }}</a>
-						</div>
-					@endif
-				</div>
-			</div>
-			@endif
-		</div>
-
-		<!-- Linked Services Section - Full Width -->
-	@if($project->projectFares && $project->projectFares->count() > 0)
-	<div class="card mb-4">
-		<div class="card-header d-flex justify-content-between align-items-center">
-			<h5 class="mb-0">{{ __('Linked services') }}</h5>
-			<button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
-				<i class="ti ti-plus ti-xs me-1"></i>{{ __('Vincular servicio') }}
-			</button>
-		</div>
-		<div class="card-body">
-			<div class="table-responsive">
-				<table class="table table-hover">
+<!-- Linked Services Section - Full Width, same style as details -->
+@if($project->projectFares && $project->projectFares->count() > 0)
+<div class="card mb-4">
+   <div class="card-header d-flex justify-content-between align-items-center">
+       <h5 class="mb-0">{{ __('Linked services') }}</h5>
+       <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
+           <i class="ti ti-plus ti-xs me-1"></i>{{ __('Vincular servicio') }}
+       </button>
+   </div>
+   <div class="card-body">
+       <div class="table-responsive">
+           <table class="table table-hover">
 					<thead>
 						<tr>
 							<th class="col-1"></th>
