@@ -234,14 +234,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
 
     // Services
-    Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list')->middleware('role:admin');
-    Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling')->middleware('role:admin');
-    Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create')->middleware('role:admin');
-    Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show')->middleware('role:admin');
-    Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit')->middleware('role:admin');
-    Route::post('/service', [ServiceController::class, 'store'])->name('service.store')->middleware('role:admin');
-    Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update')->middleware('role:admin');
-    Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy')->middleware('role:admin');
+    Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list');
+    Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling');
+    Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create');
+    Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show');
+    Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit');
+    Route::post('/service', [ServiceController::class, 'store'])->name('service.store');
+    Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update');
+    Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy');
 
     // Projects - IMPORTANT: Specific routes MUST be before parameterized routes
     Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');

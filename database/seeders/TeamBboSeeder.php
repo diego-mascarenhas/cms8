@@ -296,22 +296,22 @@ class TeamBboSeeder extends Seeder
 		// Create parent categories for different project types
 		$parentCategories = [
 			[
-				'name' => 'Translation Projects',
-				'description' => 'Translation and localization projects for BBO',
+				'name' => 'Proyectos de Traducción',
+				'description' => 'Proyectos de traducción y localización para BBO',
 				'module_id' => $projectsModule->id,
 				'team_id' => $this->teamId,
 				'status' => 1,
 			],
 			[
-				'name' => 'Film Style Categories',
-				'description' => 'Film and audiovisual style categories for BBO projects',
+				'name' => 'Categorías de Estilo de Cine',
+				'description' => 'Categorías de estilo audiovisual y cine para proyectos BBO',
 				'module_id' => $projectsModule->id,
 				'team_id' => $this->teamId,
 				'status' => 1,
 			],
 			[
-				'name' => 'Content Types',
-				'description' => 'Different types of content for BBO projects',
+				'name' => 'Tipos de Contenido',
+				'description' => 'Diferentes tipos de contenido para proyectos BBO',
 				'module_id' => $projectsModule->id,
 				'team_id' => $this->teamId,
 				'status' => 1,
@@ -335,12 +335,12 @@ class TeamBboSeeder extends Seeder
 
 		// Create subcategories for Translation Projects
 		$translationSubcategories = [
-			'Legal Translation' => 'Legal translation projects for BBO',
-			'Technical Translation' => 'Technical translation projects for BBO',
-			'Medical Translation' => 'Medical and healthcare translation projects',
-			'Marketing Translation' => 'Marketing and advertising translation projects',
-			'Financial Translation' => 'Financial and banking translation projects',
-			'Literary Translation' => 'Literary and creative translation projects',
+			'Traducción Jurídica' => 'Proyectos de traducción jurídica para BBO',
+			'Traducción Técnica' => 'Proyectos de traducción técnica para BBO',
+			'Traducción Médica' => 'Proyectos de traducción médica y sanitaria',
+			'Traducción de Marketing' => 'Proyectos de traducción publicitaria y marketing',
+			'Traducción Financiera' => 'Proyectos de traducción financiera y bancaria',
+			'Traducción Literaria' => 'Proyectos de traducción literaria y creativa',
 		];
 
 		foreach ($translationSubcategories as $name => $description) {
@@ -355,7 +355,7 @@ class TeamBboSeeder extends Seeder
 					'description' => $description,
 					'module_id' => $projectsModule->id,
 					'team_id' => $this->teamId,
-					'parent_id' => $createdParents['Translation Projects']->id,
+					'parent_id' => $createdParents['Proyectos de Traducción']->id,
 					'status' => 1,
 				]
 			);
@@ -364,21 +364,21 @@ class TeamBboSeeder extends Seeder
 
 		// Create subcategories for Film Style Categories
 		$filmStyleSubcategories = [
-			'Drama' => 'Drama and theatrical content',
-			'Comedy' => 'Comedy and humorous content',
-			'Documentary' => 'Documentary and educational content',
-			'Action' => 'Action and adventure content',
-			'Horror' => 'Horror and thriller content',
-			'Romance' => 'Romance and romantic content',
-			'Sci-Fi' => 'Science fiction and fantasy content',
-			'Animation' => 'Animated content and cartoons',
-			'Reality TV' => 'Reality television content',
-			'News' => 'News and current affairs content',
-			'Sports' => 'Sports and athletic content',
-			'Children' => 'Children and family content',
-			'Corporate' => 'Corporate and business content',
-			'Educational' => 'Educational and training content',
-			'Commercial' => 'Commercial and advertising content',
+			'Drama' => 'Contenido dramático y teatral',
+			'Comedia' => 'Contenido de comedia y humorístico',
+			'Documental' => 'Contenido documental y educativo',
+			'Acción' => 'Contenido de acción y aventura',
+			'Terror' => 'Contenido de terror y suspenso',
+			'Romance' => 'Contenido romántico',
+			'Ciencia Ficción' => 'Contenido de ciencia ficción y fantasía',
+			'Animación' => 'Contenido animado y caricaturas',
+			'Reality TV' => 'Contenido de telerrealidad',
+			'Noticias' => 'Contenido de noticias y actualidad',
+			'Deportes' => 'Contenido deportivo',
+			'Infantil' => 'Contenido infantil y familiar',
+			'Corporativo' => 'Contenido corporativo y empresarial',
+			'Educativo' => 'Contenido educativo y de formación',
+			'Comercial' => 'Contenido comercial y publicitario',
 		];
 
 		foreach ($filmStyleSubcategories as $name => $description) {
@@ -393,7 +393,7 @@ class TeamBboSeeder extends Seeder
 					'description' => $description,
 					'module_id' => $projectsModule->id,
 					'team_id' => $this->teamId,
-					'parent_id' => $createdParents['Film Style Categories']->id,
+					'parent_id' => $createdParents['Categorías de Estilo de Cine']->id,
 					'status' => 1,
 				]
 			);
@@ -402,14 +402,14 @@ class TeamBboSeeder extends Seeder
 
 		// Create subcategories for Content Types
 		$contentTypeSubcategories = [
-			'Subtitling' => 'Subtitling and captioning projects',
-			'Dubbing' => 'Dubbing and voice-over projects',
-			'Audio Description' => 'Audio description for accessibility',
-			'Voice Over' => 'Voice over and narration projects',
-			'Transcription' => 'Transcription and closed captioning',
-			'Localization' => 'Content localization and adaptation',
-			'Quality Control' => 'Quality control and review projects',
-			'Post-Production' => 'Post-production and editing projects',
+			'Audiodescripción' => 'Audiodescripción para accesibilidad',
+			'Doblaje' => 'Proyectos de doblaje y voice-over',
+			'Localización' => 'Localización y adaptación de contenido',
+			'Posproducción' => 'Proyectos de posproducción y edición',
+			'Control de calidad' => 'Control de calidad y revisión de proyectos',
+			'Subtitulación' => 'Proyectos de subtitulación y creación de subtítulos',
+			'Transcripción' => 'Transcripción y subtitulado cerrado',
+			'Voice Over' => 'Proyectos de voice over y narración',
 		];
 
 		foreach ($contentTypeSubcategories as $name => $description) {
@@ -424,7 +424,7 @@ class TeamBboSeeder extends Seeder
 					'description' => $description,
 					'module_id' => $projectsModule->id,
 					'team_id' => $this->teamId,
-					'parent_id' => $createdParents['Content Types']->id,
+					'parent_id' => $createdParents['Tipos de Contenido']->id,
 					'status' => 1,
 				]
 			);

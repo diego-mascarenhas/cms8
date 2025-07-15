@@ -17,6 +17,8 @@ class UpdateContactRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'nullable|numeric|digits_between:7,15',
             'birthday' => 'nullable|date',
             'status_id' => 'required|exists:contact_statuses,id',
             'country' => 'required|string|max:3',

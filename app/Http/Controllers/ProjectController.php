@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\ProjectStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Http\Requests\StoreProjectRequest;
 
 class ProjectController extends Controller
 {
@@ -22,6 +23,7 @@ class ProjectController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Project::class);
         $enterprise_id = request('enterprise_id');
         $statuses = ProjectStatus::getOptions();
 
@@ -31,25 +33,9 @@ class ProjectController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreProjectRequest $request)
     {
-        $data = $request->except(['id', '_token']);
-
-        $request->validate([
-            'name' => 'required|string|min:3|max:255',
-            'real_name' => 'nullable|string|max:255',
-            'description' => 'required|string|min:3',
-            'enterprise_id' => 'required|exists:enterprises,id',
-            'responsible_id' => 'required|exists:users,id',
-            'price' => 'nullable|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0|max:100',
-            'cost' => 'nullable|numeric|min:0',
-            'status_id' => 'required|exists:project_statuses,id',
-            'date_material' => 'nullable|date',
-            'date_start' => 'nullable|date',
-            'date_end' => 'nullable|date|after_or_equal:date_start',
-            'category_id' => 'nullable|exists:categories,id',
-        ]);
+        $data = $request->validated();
 
         $project = Project::updateOrCreate(
             ['id' => $request->id],
@@ -59,7 +45,7 @@ class ProjectController extends Controller
                 'real_name' => $data['real_name'] ?? null,
                 'enterprise_id' => $data['enterprise_id'],
                 'category_id' => $data['category_id'] ?? null,
-                'description' => $data['description'],
+                'description' => $data['description'] ?? null,
                 'responsible_id' => $data['responsible_id'],
                 'price' => $data['price'] ?? null,
                 'discount' => $data['discount'] ?? null,
@@ -223,11 +209,11 @@ class ProjectController extends Controller
                 'days_empty' => empty($request->days),
                 'raw_request' => $request->all()
             ]);
-            
+
             // For now, when days filter is applied, we don't restrict the query further
             // This ensures collaborators are returned when only days filter is used
             // In the future, this could filter based on last contact date or availability
-            
+
             // Add a simple constraint to show the filter is working
             // For example, only contacts created in the last year
             $query->where('created_at', '>=', now()->subYear());
@@ -243,11 +229,11 @@ class ProjectController extends Controller
         if ($request->has('delivery_date') && $request->delivery_date) {
             // Log that delivery date filter is being applied
             \Log::info('Applying delivery date filter:', ['delivery_date' => $request->delivery_date]);
-            
+
             // For now, when delivery date filter is applied, we don't restrict the query further
             // This ensures collaborators are returned when only delivery date filter is used
             // In the future, this could filter based on collaborator availability
-            
+
             // Add a simple constraint to show the filter is working
             // For example, only contacts updated in the last 6 months
             $query->where('updated_at', '>=', now()->subMonths(6));
@@ -390,6 +376,8 @@ class ProjectController extends Controller
      */
     public function edit(string $id)
     {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
         $data = Project::with(['projectFares.fare.units', 'projectFares.sourceLanguage', 'projectFares.targetLanguage'])
             ->findOrFail($id);
         $enterprise_id = $data->enterprise_id;
@@ -509,7 +497,7 @@ class ProjectController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('Error in getFareUnits: ' . $e->getMessage());
-            
+
             return response()->json([
                 'units' => [],
                 'error' => 'Error loading units: ' . $e->getMessage(),
@@ -602,7 +590,7 @@ class ProjectController extends Controller
     public function getServices(string $projectId)
     {
         $project = Project::findOrFail($projectId);
-        
+
         $services = $project->projectFares()->with([
             'fare',
             'sourceLanguage',
