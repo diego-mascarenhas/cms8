@@ -130,6 +130,18 @@
                                 <span class="fw-medium me-1">Estado:</span>
                                 <span class="badge {{ $data->status->label_class }}">{{ $data->status->name }}</span>
                             </li>
+                            @if ($data->email)
+                                <li class="mb-2 pt-1">
+                                    <span class="fw-medium me-1">Email:</span>
+                                    <span>{{ $data->email }}</span>
+                                </li>
+                            @endif
+                            @if ($data->phone)
+                                <li class="mb-2 pt-1">
+                                    <span class="fw-medium me-1">Teléfono:</span>
+                                    <span>{{ $data->phone }}</span>
+                                </li>
+                            @endif
                             @if ($data->enterprises->count())
                                 <li class="mb-2 pt-1">
                                     <span class="fw-medium me-1">Empresas:</span>

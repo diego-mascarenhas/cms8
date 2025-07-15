@@ -71,6 +71,8 @@ class ContactController extends Controller
         $contactData['team_id'] = auth()->user()->currentTeam->id;
         $contactData['creator_id'] = auth()->user()->id;
         $contactData['responsible_id'] = $request->responsible_id;
+        $contactData['email'] = $request->email;
+        $contactData['phone'] = $request->phone ? (int) $request->phone : null;
 
         $contact = Contact::create($contactData);
 
@@ -348,6 +350,8 @@ class ContactController extends Controller
 
         // Add responsible_id to the update data
         $contactData['responsible_id'] = $request->responsible_id;
+        $contactData['email'] = $request->email;
+        $contactData['phone'] = $request->phone ? (int) $request->phone : null;
 
         $contact = Contact::findOrFail($id);
         $contact->update($contactData);

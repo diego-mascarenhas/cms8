@@ -131,8 +131,22 @@
                                         value="{{ old('name', $data->name ?? '') }}" />
                                 </div>
                                 <div class="col-sm-4">
-                                    <x-team-users-select 
-                                        id="responsible_id" 
+                                    <label for="email" class="form-label">Email (*)</label>
+                                    <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $data->email ?? '') }}">
+                                    @error('email')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-sm-4">
+                                    <label for="phone" class="form-label">Phone</label>
+                                    <input type="tel" class="form-control @error('phone') is-invalid @enderror" id="phone" name="phone" value="{{ old('phone', $data->phone ?? '') }}">
+                                    @error('phone')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-sm-4">
+                                    <x-team-users-select
+                                        id="responsible_id"
                                         label="Asesor"
                                         :selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
                                         show-null="false"
@@ -168,8 +182,8 @@
                                     @enderror
                                 </div>
                                 <div class="col-sm-12">
-                                    <x-categories-select 
-                                        id="categories" 
+                                    <x-categories-select
+                                        id="categories"
                                         label="Categorías"
                                         :selected="isset($data->categories) ? $data->categories->pluck('id')->toArray() : old('categories', [])"
                                         moduleKey="contacts"
@@ -186,7 +200,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Social Links -->
                         <div id="social-links-modern" class="content">
                             <div class="content-header mb-3 d-flex justify-content-between">
