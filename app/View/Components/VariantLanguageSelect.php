@@ -33,25 +33,21 @@ class VariantLanguageSelect extends Component
 
     public function render()
     {
-        $languages = Language::orderBy('name')->get();
-
-        // Get all language variants, regardless of base language
-        $variants = LanguageVariant::orderBy('name')->get();
-
-        // Get base languages with more than one variant
-        $baseLanguages = LanguageVariant::select('base_language')
+        // Get all base_language codes with more than one variant
+        $baseCodes = LanguageVariant::select('base_language')
             ->groupBy('base_language')
             ->havingRaw('COUNT(*) > 1')
             ->pluck('base_language');
 
-        // Log for debugging
-        Log::info('VariantLanguageSelect: Found '.$variants->count().' language variants');
-        Log::info('VariantLanguageSelect: Found '.count($baseLanguages).' base languages with more than one variant');
+        // Retrieve Language models for those codes
+        $baseLanguages = Language::whereIn('code', $baseCodes)->orderBy('name')->get();
+
+        // Get all variants, eager load baseLanguage relation
+        $variants = LanguageVariant::with('baseLanguage')->orderBy('name')->get();
 
         return view('components.variant-language-select', [
-            'languages' => $languages,
+            'baseLanguages' => $baseLanguages,
             'variants' => $variants,
-            'baseLanguages' => $baseLanguages, // <-- pásalo aquí
         ]);
     }
 }

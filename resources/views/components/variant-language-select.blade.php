@@ -8,8 +8,8 @@
         <option value="">{{ $placeholder ?? 'Seleccione una variante de idioma' }}</option>
         @if(isset($baseLanguages))
             @foreach($baseLanguages as $base)
-                <option value="{{ $base }}" {{ old($name, $value) == $base ? 'selected' : '' }} data-base="{{ $base }}">
-                    {{ strtoupper($base) }}
+                <option value="{{ $base->code }}" {{ old($name, $value) == $base->code ? 'selected' : '' }} data-base="{{ $base->code }}">
+                    {{ $base->name }}
                 </option>
             @endforeach
         @endif
@@ -19,7 +19,7 @@
                     data-country="{{ $variant->country_code ?? '' }}"
                     data-flag="{{ strtolower($variant->country_code ?? '') }}"
                     data-base="{{ $variant->base_language }}">
-                {{ $variant->name }}
+                {{ $variant->name }} ({{ $variant->baseLanguage->name ?? strtoupper($variant->base_language) }})
             </option>
         @endforeach
     </select>
