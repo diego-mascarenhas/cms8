@@ -6,8 +6,12 @@
     @endif
     <select id="{{ $id ?? $name }}" name="{{ $name }}" class="select2 form-select @error($name) is-invalid @enderror" {{ $required ? 'required' : '' }}>
         <option value="">{{ $placeholder ?? 'Seleccione una variante de idioma' }}</option>
+        {{-- Opción hardcoded para Español base --}}
+        <option value="es" {{ old($name, $value) == 'es' ? 'selected' : '' }} data-base="es">
+            Español
+        </option>
         @foreach($variants as $variant)
-            <option value="{{ $variant->code }}" 
+            <option value="{{ $variant->code }}"
                     {{ old($name, $value) == $variant->code ? 'selected' : '' }}
                     data-country="{{ $variant->country_code ?? '' }}"
                     data-flag="{{ strtolower($variant->country_code ?? '') }}"
@@ -30,10 +34,10 @@
             if (!language.id) {
                 return language.text;
             }
-            
+
             const $option = $(language.element);
             let flag = $option.data('flag');
-            
+
             // If no flag specified, try to get it from base language code
             if (!flag) {
                 const baseCode = $option.data('base')?.toLowerCase();
@@ -46,15 +50,15 @@
                         'en': 'gb', // English -> Great Britain
                         'ar': 'sa'  // Arabic -> Saudi Arabia
                     };
-                    
+
                     flag = languageMap[baseCode] || baseCode;
                 }
             }
-            
+
             if (!flag) {
                 return language.text;
             }
-            
+
             return $('<span><i class="fi fi-' + flag + ' me-2"></i>' + language.text + '</span>');
         };
     }
@@ -77,4 +81,4 @@
         }
     });
 </script>
-@endpush 
+@endpush
