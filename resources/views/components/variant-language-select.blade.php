@@ -6,20 +6,9 @@
     @endif
     <select id="{{ $id ?? $name }}" name="{{ $name }}" class="select2 form-select @error($name) is-invalid @enderror" {{ $required ? 'required' : '' }}>
         <option value="">{{ $placeholder ?? 'Seleccione una variante de idioma' }}</option>
-        @if(isset($baseLanguages))
-            @foreach($baseLanguages as $base)
-                <option value="{{ $base->code }}" {{ old($name, $value) == $base->code ? 'selected' : '' }} data-base="{{ $base->code }}">
-                    {{ $base->name }}
-                </option>
-            @endforeach
-        @endif
-        @foreach($variants as $variant)
-            <option value="{{ $variant->code }}"
-                    {{ old($name, $value) == $variant->code ? 'selected' : '' }}
-                    data-country="{{ $variant->country_code ?? '' }}"
-                    data-flag="{{ strtolower($variant->country_code ?? '') }}"
-                    data-base="{{ $variant->base_language }}">
-                {{ $variant->name }} ({{ $variant->baseLanguage->name ?? strtoupper($variant->base_language) }})
+        @foreach($options as $option)
+            <option value="{{ $option->value }}" {{ old($name, $value) == $option->value ? 'selected' : '' }}>
+                {{ $option->label }}
             </option>
         @endforeach
     </select>

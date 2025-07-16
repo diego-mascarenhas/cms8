@@ -4,7 +4,6 @@ namespace App\View\Components;
 
 use App\Models\Language;
 use App\Models\LanguageVariant;
-use Illuminate\Support\Facades\Log;
 use Illuminate\View\Component;
 
 class VariantLanguageSelect extends Component
@@ -33,21 +32,34 @@ class VariantLanguageSelect extends Component
 
     public function render()
     {
-        // Get all base_language codes with more than one variant
+        // Get base languages with more than one variant
         $baseCodes = LanguageVariant::select('base_language')
             ->groupBy('base_language')
             ->havingRaw('COUNT(*) > 1')
             ->pluck('base_language');
 
-        // Retrieve Language models for those codes
-        $baseLanguages = Language::whereIn('code', $baseCodes)->orderBy('name')->get();
+        $baseLanguages = Language::whereIn('code', $baseCodes)->get();
+        $variants = LanguageVariant::with('baseLanguage')->get();
 
-        // Get all variants, eager load baseLanguage relation
-        $variants = LanguageVariant::with('baseLanguage')->orderBy('name')->get();
+        // Merge base languages and variants into a single options collection
+        $options = collect();
+        foreach ($baseLanguages as $base) {
+            $options->push((object)[
+                'value' => $base->code,
+                'label' => $base->name,
+            ]);
+        }
+        foreach ($variants as $variant) {
+            $options->push((object)[
+                'value' => $variant->code,
+                'label' => $variant->name . ' (' . ($variant->baseLanguage->name ?? strtoupper($variant->base_language)) . ')',
+            ]);
+        }
+        // Sort alphabetically by label
+        $options = $options->sortBy('label')->values();
 
         return view('components.variant-language-select', [
-            'baseLanguages' => $baseLanguages,
-            'variants' => $variants,
+            'options' => $options,
         ]);
     }
 }
