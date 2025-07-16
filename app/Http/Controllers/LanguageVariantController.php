@@ -14,6 +14,10 @@ class LanguageVariantController extends Controller
      */
     public function index(LanguageVariantDataTable $dataTable)
     {
+        if (\Gate::denies('view-language-variants')) {
+            return redirect()->route('403');
+        }
+
         return $dataTable->render('language.variants.index');
     }
 

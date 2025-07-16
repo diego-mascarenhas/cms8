@@ -9,129 +9,140 @@ use Illuminate\Support\Facades\Storage;
 
 class StylebookController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(StylebookDataTable $dataTable)
-    {
-        return $dataTable->render('stylebook.index');
-    }
+	public function __construct()
+	{
+		$this->authorizeResource(Stylebook::class, 'stylebook');
+	}
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        return view('stylebook.form');
-    }
+	/**
+	 * Display a listing of the resource.
+	 */
+	public function index(StylebookDataTable $dataTable)
+	{
+		return $dataTable->render('stylebook.index');
+	}
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'language' => 'required|string|max:2',
-            'date' => 'required|date',
-            'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
-        ]);
+	/**
+	 * Show the form for creating a new resource.
+	 */
+	public function create()
+	{
+		return view('stylebook.form');
+	}
 
-        // Handle file upload
-        $filePath = $request->file('file')->store('stylebooks', 'public');
+	/**
+	 * Store a newly created resource in storage.
+	 */
+	public function store(Request $request)
+	{
+		$validated = $request->validate([
+			'name' => 'required|string|max:255',
+			'language' => 'required|string|max:2',
+			'date' => 'required|date',
+			'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
+		]);
 
-        $stylebook = Stylebook::create([
-            'name' => $validated['name'],
-            'language' => $validated['language'],
-            'date' => $validated['date'],
-            'file' => $filePath,
-            'team_id' => auth()->user()->currentTeam->id,
-        ]);
+		// Handle file upload
+		$filePath = $request->file('file')->store('stylebooks', 'public');
 
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Manual de estilo creado exitosamente',
-            ]);
-        }
+		$stylebook = Stylebook::create([
+			'name' => $validated['name'],
+			'language' => $validated['language'],
+			'date' => $validated['date'],
+			'file' => $filePath,
+			'team_id' => auth()->user()->currentTeam->id,
+		]);
 
-        return redirect()->route('stylebook.index')->with('success', 'Manual de estilo creado exitosamente');
-    }
+		if ($request->ajax())
+		{
+			return response()->json([
+				'success' => true,
+				'message' => 'Manual de estilo creado exitosamente',
+			]);
+		}
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Stylebook $stylebook)
-    {
-        return view('stylebook.show', compact('stylebook'));
-    }
+		return redirect()->route('stylebook.index')->with('success', 'Manual de estilo creado exitosamente');
+	}
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Stylebook $stylebook)
-    {
-        return view('stylebook.form', compact('stylebook'));
-    }
+	/**
+	 * Display the specified resource.
+	 */
+	public function show(Stylebook $stylebook)
+	{
+		return view('stylebook.show', compact('stylebook'));
+	}
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Stylebook $stylebook)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'language' => 'required|string|max:2',
-            'date' => 'required|date',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
-        ]);
+	/**
+	 * Show the form for editing the specified resource.
+	 */
+	public function edit(Stylebook $stylebook)
+	{
+		return view('stylebook.form', compact('stylebook'));
+	}
 
-        $data = [
-            'name' => $validated['name'],
-            'language' => $validated['language'],
-            'date' => $validated['date'],
-        ];
+	/**
+	 * Update the specified resource in storage.
+	 */
+	public function update(Request $request, Stylebook $stylebook)
+	{
+		$validated = $request->validate([
+			'name' => 'required|string|max:255',
+			'language' => 'required|string|max:2',
+			'date' => 'required|date',
+			'file' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
+		]);
 
-        // Handle file upload if a new file is provided
-        if ($request->hasFile('file')) {
-            // Delete old file if exists
-            if ($stylebook->file && Storage::disk('public')->exists($stylebook->file)) {
-                Storage::disk('public')->delete($stylebook->file);
-            }
+		$data = [
+			'name' => $validated['name'],
+			'language' => $validated['language'],
+			'date' => $validated['date'],
+		];
 
-            // Store new file
-            $filePath = $request->file('file')->store('stylebooks', 'public');
-            $data['file'] = $filePath;
-        }
+		// Handle file upload if a new file is provided
+		if ($request->hasFile('file'))
+		{
+			// Delete old file if exists
+			if ($stylebook->file && Storage::disk('public')->exists($stylebook->file))
+			{
+				Storage::disk('public')->delete($stylebook->file);
+			}
 
-        $stylebook->update($data);
+			// Store new file
+			$filePath = $request->file('file')->store('stylebooks', 'public');
+			$data['file'] = $filePath;
+		}
 
-        if ($request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Manual de estilo actualizado exitosamente',
-            ]);
-        }
+		$stylebook->update($data);
 
-        return redirect()->route('stylebook.index')->with('success', 'Manual de estilo actualizado exitosamente');
-    }
+		if ($request->ajax())
+		{
+			return response()->json([
+				'success' => true,
+				'message' => 'Manual de estilo actualizado exitosamente',
+			]);
+		}
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Stylebook $stylebook)
-    {
-        // Delete file from storage
-        if ($stylebook->file && Storage::disk('public')->exists($stylebook->file)) {
-            Storage::disk('public')->delete($stylebook->file);
-        }
+		return redirect()->route('stylebook.index')->with('success', 'Manual de estilo actualizado exitosamente');
+	}
 
-        $stylebook->delete();
+	/**
+	 * Remove the specified resource from storage.
+	 */
+	public function destroy(Stylebook $stylebook)
+	{
+		// Delete file from storage
+		if ($stylebook->file && Storage::disk('public')->exists($stylebook->file))
+		{
+			Storage::disk('public')->delete($stylebook->file);
+		}
 
-        if (request()->ajax()) {
-            return response()->json(['success' => true]);
-        }
+		$stylebook->delete();
 
-        return redirect()->route('stylebook.index')->with('success', 'Manual de estilo eliminado exitosamente');
-    }
+		if (request()->ajax())
+		{
+			return response()->json(['success' => true]);
+		}
+
+		return redirect()->route('stylebook.index')->with('success', 'Manual de estilo eliminado exitosamente');
+	}
 }
