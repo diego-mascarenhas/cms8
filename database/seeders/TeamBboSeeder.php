@@ -58,6 +58,9 @@ class TeamBboSeeder extends Seeder
 		// 4.10. Create BBO stylebooks
 		$this->createBboStylebooks();
 
+		// 2. Seed BBO language variants (pasa el team_id real)
+		$this->seedBboLanguageVariants($team->id);
+
 		// 5. Import BBO collaborators from JSON
 		try {
 			$this->command->info('🔧 DEBUG: Starting step 5 - importBboCollaboratorsFromJson');
@@ -552,6 +555,52 @@ class TeamBboSeeder extends Seeder
 
 							if ($sourceLanguage && $targetLanguage && $sourceLanguage !== $targetLanguage) {
 								$this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage);
+							}
+						}
+					}
+				}
+
+				// Asignar tarifas por combinación de idiomas
+				if (!empty($fares) && is_array($fares) && !empty($languageVariants)) {
+					foreach ($fares as $fare) {
+						$fareName = is_array($fare) ? ($fare[0] ?? null) : $fare;
+						$price = is_array($fare) ? ($fare[1] ?? null) : null;
+						$currency = is_array($fare) ? ($fare[2] ?? 'EUR') : 'EUR';
+
+						if ($fareName) {
+							$fareModel = \App\Models\Fare::where('name', $fareName)
+								->where('team_id', $teamId)
+								->with('units')
+								->first();
+
+							if ($fareModel) {
+								// Selecciona la primera unidad disponible para la tarifa
+								$unitId = $fareModel->units->isNotEmpty() ? $fareModel->units->first()->id : null;
+
+								foreach ($languageVariants as $combination) {
+									if (is_array($combination) && count($combination) === 2) {
+										$sourceLanguage = $this->mapLanguageNameToCode($combination[0]);
+										$targetLanguage = $this->mapLanguageNameToCode($combination[1]);
+
+										if ($sourceLanguage && $targetLanguage && $sourceLanguage !== $targetLanguage) {
+											\DB::table('contact_fare')->updateOrInsert(
+												[
+													'contact_id' => $contact->id,
+													'fare_id' => $fareModel->id,
+													'source_language_code' => $sourceLanguage,
+													'target_language_code' => $targetLanguage,
+												],
+												[
+													'price' => $price ?: 0,
+													'currency_code' => $currency ?: 'EUR',
+													'unit_id' => $unitId,
+													'updated_at' => now(),
+													'created_at' => now(),
+												]
+											);
+										}
+									}
+								}
 							}
 						}
 					}
@@ -1687,5 +1736,32 @@ class TeamBboSeeder extends Seeder
 		$this->command->info("   - Existing clients skipped: {$skipped}");
 		$this->command->info("   - Errors: {$errors}");
 		$this->command->info('✅ BBO clients import completed!');
+	}
+
+	private function seedBboLanguageVariants($teamId)
+	{
+		$variants = [
+			['code' => 'es-ES', 'name' => 'Español (España)', 'base_language' => 'es', 'country_code' => 'ES'],
+			['code' => 'fr-FR', 'name' => 'Francés (Francia)', 'base_language' => 'fr', 'country_code' => 'FR'],
+			['code' => 'en-GB', 'name' => 'Inglés (Reino Unido)', 'base_language' => 'en', 'country_code' => 'GB'],
+			['code' => 'pt-PT', 'name' => 'Portugués (Portugal)', 'base_language' => 'pt', 'country_code' => 'PT'],
+			['code' => 'ca-ES', 'name' => 'Catalán (España)', 'base_language' => 'ca', 'country_code' => 'ES'],
+			['code' => 'de-DE', 'name' => 'Alemán (Alemania)', 'base_language' => 'de', 'country_code' => 'DE'],
+			['code' => 'zh-CN', 'name' => 'Chino (China)', 'base_language' => 'zh', 'country_code' => 'CN'],
+			['code' => 'it-IT', 'name' => 'Italiano (Italia)', 'base_language' => 'it', 'country_code' => 'IT'],
+			['code' => 'ru-RU', 'name' => 'Ruso (Rusia)', 'base_language' => 'ru', 'country_code' => 'RU'],
+			['code' => 'es-AR', 'name' => 'Español (Argentina)', 'base_language' => 'es', 'country_code' => 'AR'],
+			['code' => 'ja-JP', 'name' => 'Japonés (Japón)', 'base_language' => 'ja', 'country_code' => 'JP'],
+			['code' => 'gl-ES', 'name' => 'Gallego (España)', 'base_language' => 'gl', 'country_code' => 'ES'],
+			['code' => 'ko-KR', 'name' => 'Coreano (Corea del Sur)', 'base_language' => 'ko', 'country_code' => 'KR'],
+			['code' => 'th-TH', 'name' => 'Tailandés (Tailandia)', 'base_language' => 'th', 'country_code' => 'TH'],
+		];
+
+		foreach ($variants as $variant) {
+			LanguageVariant::updateOrCreate(
+				['code' => $variant['code'], 'team_id' => $teamId],
+				array_merge($variant, ['team_id' => $teamId])
+			);
+		}
 	}
 }

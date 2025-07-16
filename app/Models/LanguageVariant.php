@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class LanguageVariant extends Model
 {
@@ -16,6 +17,16 @@ class LanguageVariant extends Model
     protected $appends = ['flag'];
 
     public $timestamps = false;
+
+    protected static function booted()
+    {
+        static::addGlobalScope('team', function (Builder $builder) {
+            // Check if the user is authenticated before accessing currentTeam
+            if (auth()->check() && auth()->user()->currentTeam) {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+    }
 
     /**
      * Obtiene todas las variantes para un idioma base

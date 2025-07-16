@@ -8,6 +8,7 @@
 	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
 	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
+	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}">
 @endsection
 
 @section('vendor-script')
@@ -15,6 +16,7 @@
 	<script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
 	<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 	<script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
+	<script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -180,11 +182,11 @@
 			<div class="row g-3 mb-3">
 				<div class="col">
 					<x-variant-language-select name="source-language" id="source-language" label="" :required="false"
-						placeholder="{{ __('Idioma origen') }}" />
+						placeholder="{{ __('Idioma origen') }}" :show-base-languages="true" />
 				</div>
 				<div class="col">
 					<x-variant-language-select name="target-language" id="target-language" label="" :required="false"
-						placeholder="{{ __('Idioma destino') }}" />
+						placeholder="{{ __('Idioma destino') }}" :show-base-languages="true" />
 				</div>
 				<div class="col">
 					<x-fare-select name="service" id="service" label="" :required="false"
@@ -281,14 +283,14 @@
 			function validateDeliveryOptions() {
 				var selectedDays = parseInt($('#days').val()) || 0;
 				var deliverySelect = $('#delivery-date');
-				
+
 				// Reset all options to enabled and remove disabled text
 				deliverySelect.find('option').prop('disabled', false).each(function() {
 					var originalText = $(this).data('original-text') || $(this).text();
 					$(this).data('original-text', originalText);
 					$(this).text(originalText);
 				});
-				
+
 				if (selectedDays > 0) {
 					deliverySelect.find('option').each(function() {
 						var optionDays = parseInt($(this).data('days'));
@@ -296,7 +298,7 @@
 							$(this).prop('disabled', true);
 							var originalText = $(this).data('original-text') || $(this).text();
 							$(this).text(originalText + ' (insuficiente)');
-							
+
 							// If currently selected option becomes invalid, reset
 							if ($(this).val() === deliverySelect.val()) {
 								deliverySelect.val('');
@@ -312,7 +314,7 @@
 				if (this.id === 'days') {
 					validateDeliveryOptions();
 				}
-				
+
 				var table = $('#collaborator-table').DataTable();
 
 				// Get current filter values
@@ -617,5 +619,33 @@
 				}
 			});
 		}
+	</script>
+
+	<script>
+		$(function () {
+			if ($.fn.select2) {
+				if ($('#source-language').hasClass('select2-hidden-accessible')) {
+					$('#source-language').select2('destroy');
+				}
+				$('#source-language').select2({
+					allowClear: true,
+					placeholder: '{{ __("Idioma origen") }}',
+					width: '100%',
+					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
+					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
+				});
+
+				if ($('#target-language').hasClass('select2-hidden-accessible')) {
+					$('#target-language').select2('destroy');
+				}
+				$('#target-language').select2({
+					allowClear: true,
+					placeholder: '{{ __("Idioma destino") }}',
+					width: '100%',
+					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
+					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
+				});
+			}
+		});
 	</script>
 @endpush

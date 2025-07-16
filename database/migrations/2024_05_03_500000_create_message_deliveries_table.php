@@ -10,14 +10,14 @@ return new class extends Migration
 	{
 		Schema::create('message_deliveries', function (Blueprint $table) {
 			$table->id();
-			$table->unsignedBigInteger('team_id')->default(501);
+			$table->unsignedBigInteger('team_id');
 			$table->unsignedBigInteger('message_id');
 			$table->unsignedBigInteger('contact_id')->nullable();
 			$table->unsignedSmallInteger('smtp_id')->nullable();
 			$table->dateTime('sent_at')->nullable();
 			$table->dateTime('delivered_at')->nullable();
 			$table->dateTime('removed_at')->nullable();
-			$table->tinyInteger('status')->default(1);
+			$table->tinyInteger('status_id')->default(1);
 			$table->timestamps();
 
 			$table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');

@@ -170,14 +170,14 @@
 			function validateDeliveryOptions() {
 				var selectedDays = parseInt($('#days').val()) || 0;
 				var deliverySelect = $('#delivery-date');
-				
+
 				// Reset all options to enabled and remove disabled text
 				deliverySelect.find('option').prop('disabled', false).each(function() {
 					var originalText = $(this).data('original-text') || $(this).text();
 					$(this).data('original-text', originalText);
 					$(this).text(originalText);
 				});
-				
+
 				if (selectedDays > 0) {
 					deliverySelect.find('option').each(function() {
 						var optionDays = parseInt($(this).data('days'));
@@ -185,7 +185,7 @@
 							$(this).prop('disabled', true);
 							var originalText = $(this).data('original-text') || $(this).text();
 							$(this).text(originalText + ' (insuficiente)');
-							
+
 							// If currently selected option becomes invalid, reset
 							if ($(this).val() === deliverySelect.val()) {
 								deliverySelect.val('');
@@ -294,9 +294,9 @@
 					validateDeliveryOptions();
 					console.log('Days filter triggered! Value:', $(this).val());
 				}
-				
+
 				console.log('Filter changed:', this.id, 'Value:', $(this).val());
-				
+
 				// Special logging for time filters
 				if (this.id === 'days' || this.id === 'delivery-date') {
 					console.log('Time filter changed:', {
@@ -306,7 +306,7 @@
 						element: this
 					});
 				}
-				
+
 				applyFilters();
 			});
 
@@ -316,16 +316,16 @@
 			// Clear filters functionality
 			$('#clear-filters').on('click', function(e) {
 				e.preventDefault();
-				
+
 				// Clear all filter values
 				$('#source-language, #target-language, #service, #days, #delivery-date').val('').trigger('change');
-				
+
 				// Reset collaborators view to show initial state
 				$('#collaborators-container').html('<div class="col-12"><div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>Selecciona una combinación de idiomas, un servicio, o criterios de tiempo para ver colaboradores disponibles.</div></div>');
-				
+
 				// Update selected count
 				updateSelectedCount();
-				
+
 				console.log('Filters cleared');
 			});
 
@@ -344,12 +344,12 @@
 				if ($(this).is(':checked')) {
 					card.addClass('selected');
 					cardElement.addClass('border-primary');
-					
+
 					// Only show collapse if no service is selected (fares are shown inline when service is selected)
 					const faresCollapse = $('#fares-' + collaboratorId);
 					if (faresCollapse.length > 0) {
 						faresCollapse.collapse('show');
-						
+
 						// Filter fares based on current filters after the collapse animation completes
 						setTimeout(function() {
 							filterCollaboratorFares(collaboratorId);
@@ -358,7 +358,7 @@
 				} else {
 					card.removeClass('selected');
 					cardElement.removeClass('border-primary');
-					
+
 					// Hide collaborator fares collapse if it exists
 					const faresCollapse = $('#fares-' + collaboratorId);
 					if (faresCollapse.length > 0) {
@@ -374,26 +374,26 @@
 				const currentService = $('#service').val();
 				const currentSourceLang = $('#source-language').val();
 				const currentTargetLang = $('#target-language').val();
-				
+
 				// Get the fares container for this collaborator
 				const faresContainer = $('#fares-' + collaboratorId);
 				const fareRows = faresContainer.find('.fare-row');
-				
+
 				console.log('Filtering fares for collaborator', collaboratorId, {
 					service: currentService,
 					sourceLang: currentSourceLang,
 					targetLang: currentTargetLang,
 					totalFareRows: fareRows.length
 				});
-				
+
 				let visibleCount = 0;
-				
+
 				fareRows.each(function() {
 					const row = $(this);
 					const fareServiceId = String(row.data('service-id'));
 					const fareSourceLang = row.data('source-lang');
 					const fareTargetLang = row.data('target-lang');
-					
+
 					console.log('Checking fare row:', {
 						fareServiceId: fareServiceId,
 						currentService: currentService,
@@ -401,27 +401,27 @@
 						fareTargetLang: fareTargetLang,
 						serviceMatch: !currentService || fareServiceId === currentService
 					});
-					
+
 					let shouldShow = true;
-					
+
 					// Filter by service if selected (this is the most important filter)
 					if (currentService && fareServiceId !== String(currentService)) {
 						shouldShow = false;
 						console.log('Hidden due to service mismatch:', fareServiceId, '!==', currentService);
 					}
-					
+
 					// Filter by source language if selected
 					if (shouldShow && currentSourceLang && fareSourceLang !== 'N/A' && fareSourceLang !== currentSourceLang) {
 						shouldShow = false;
 						console.log('Hidden due to source language mismatch:', fareSourceLang, '!==', currentSourceLang);
 					}
-					
+
 					// Filter by target language if selected
 					if (shouldShow && currentTargetLang && fareTargetLang !== 'N/A' && fareTargetLang !== currentTargetLang) {
 						shouldShow = false;
 						console.log('Hidden due to target language mismatch:', fareTargetLang, '!==', currentTargetLang);
 					}
-					
+
 					if (shouldShow) {
 						row.show();
 						visibleCount++;
@@ -430,9 +430,9 @@
 						row.hide();
 					}
 				});
-				
+
 				console.log('Visible fares count:', visibleCount, 'out of', fareRows.length);
-				
+
 				// Show/hide the "no matching fares" message
 				const noFaresMessage = faresContainer.find('.no-matching-fares');
 				if (visibleCount === 0 && fareRows.length > 0) {
@@ -448,7 +448,7 @@
 				} else {
 					noFaresMessage.remove();
 				}
-				
+
 				// Hide the entire fares section if no fares match and a service is selected
 				if (visibleCount === 0 && currentService && fareRows.length > 0) {
 					// Could optionally hide the entire fares section, but showing the message is better UX
@@ -484,24 +484,24 @@
 			// Form submission handler
 			$('#collaborator-selection-form').on('submit', function(e) {
 				e.preventDefault();
-				
+
 				// Check if any collaborators are selected
 				const selectedCollaborators = $('.collaborator-checkbox:checked');
 				if (selectedCollaborators.length === 0) {
 					alert('Por favor, selecciona al menos un colaborador');
 					return false;
 				}
-				
+
 				// Use Spanish template as default
 				const messageTemplate = $('#spanish-template').val();
 				$('#message_template').val(messageTemplate);
-				
+
 				// Log data being sent for debugging
 				console.log('Sending form with:', {
 					collaborators: selectedCollaborators.length,
 					template: messageTemplate.substring(0, 50) + '...'
 				});
-				
+
 				// Submit the form
 				this.submit();
 			});
@@ -514,7 +514,7 @@
 					targetLanguage: '{{ $selectedTargetLanguage }}',
 					service: '{{ $selectedService }}'
 				});
-				
+
 				// Trigger filter application
 				applyFilters();
 			}, 500); // Small delay to ensure Select2 components are fully initialized

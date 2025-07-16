@@ -22,13 +22,9 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            // Foreign key constraints for language variants
-            $table->foreign('source_language_code')->references('code')->on('language_variants');
-            $table->foreign('target_language_code')->references('code')->on('language_variants');
-
             // Indexes for better performance
             $table->index(['project_id', 'fare_id']);
-            $table->index(['source_language_code', 'target_language_code']);
+            $table->index(['source_language_code', 'target_language_code']); // Index compuesto
         });
     }
 

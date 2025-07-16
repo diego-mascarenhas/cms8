@@ -10,6 +10,11 @@ use Illuminate\Http\Request;
 
 class SoftwareController extends Controller
 {
+    public function __construct()
+	{
+		$this->authorizeResource(Software::class, 'software');
+	}
+
     /**
      * Display a listing of the resource.
      */

@@ -21,6 +21,7 @@ use App\Policies\ProjectPolicy;
 use App\Policies\ServicePolicy;
 use App\Policies\SoftwarePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -39,5 +40,9 @@ class AuthServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->registerPolicies();
+
+        Gate::define('view-language-variants', function ($user) {
+            return $user->hasRole('admin');
+        });
     }
 }

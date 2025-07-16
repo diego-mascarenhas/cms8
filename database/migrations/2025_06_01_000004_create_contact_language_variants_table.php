@@ -16,8 +16,6 @@ return new class extends Migration
             $table->foreignId('contact_id')->constrained()->onDelete('cascade');
             $table->string('source_language_code');
             $table->string('target_language_code');
-            $table->foreign('source_language_code')->references('code')->on('language_variants');
-            $table->foreign('target_language_code')->references('code')->on('language_variants');
             $table->unsignedTinyInteger('proficiency_level')->default(1); // 1-5 scale
             $table->boolean('is_certified')->default(false);
             $table->text('notes')->nullable();

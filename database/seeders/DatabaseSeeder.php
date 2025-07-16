@@ -25,7 +25,6 @@ class DatabaseSeeder extends Seeder
 			PolicySeeder::class,
 			CountrySeeder::class,
 			LanguageSeeder::class,
-			LanguageVariantSeeder::class,
 			SourceSeeder::class,
 			UserSeeder::class,
 			PaymentTypeSeeder::class,
@@ -52,6 +51,7 @@ class DatabaseSeeder extends Seeder
 			//TeamRevisionAlphaSeeder::class, // Revision Alpha client data for Team 2
 			//TeamHumanoSeeder::class,        // Humano client data for Team 3
 			//TeamBboSeeder::class,           // BBO client data for Team 4
+			LanguageVariantSeeder::class, // Language variants for Team 1
 			CollaboratorsSeeder::class, // Demo collaborators for Team 1
 
 			// Module and category seeders (run after teams are created)
