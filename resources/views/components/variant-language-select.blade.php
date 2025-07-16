@@ -6,10 +6,13 @@
     @endif
     <select id="{{ $id ?? $name }}" name="{{ $name }}" class="select2 form-select @error($name) is-invalid @enderror" {{ $required ? 'required' : '' }}>
         <option value="">{{ $placeholder ?? 'Seleccione una variante de idioma' }}</option>
-        {{-- Opción hardcoded para Español base --}}
-        <option value="es" {{ old($name, $value) == 'es' ? 'selected' : '' }} data-base="es">
-            Español
-        </option>
+        @if(isset($baseLanguages))
+            @foreach($baseLanguages as $base)
+                <option value="{{ $base }}" {{ old($name, $value) == $base ? 'selected' : '' }} data-base="{{ $base }}">
+                    {{ strtoupper($base) }}
+                </option>
+            @endforeach
+        @endif
         @foreach($variants as $variant)
             <option value="{{ $variant->code }}"
                     {{ old($name, $value) == $variant->code ? 'selected' : '' }}
