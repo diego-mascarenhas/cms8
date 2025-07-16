@@ -22,9 +22,7 @@ return new class extends Migration
             $table->string('currency_code', 3)->default('EUR');
             $table->timestamps();
 
-            // Foreign key constraints (nullable references)
-            $table->foreign('source_language_code')->references('code')->on('language_variants')->nullOnDelete();
-            $table->foreign('target_language_code')->references('code')->on('language_variants')->nullOnDelete();
+            // Foreign key constraint for currency_code
             $table->foreign('currency_code')->references('code')->on('currencies');
 
             // Prevent duplicate entries for the same contact and fare (language combinations handled separately)

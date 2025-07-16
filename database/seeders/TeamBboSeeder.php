@@ -58,6 +58,9 @@ class TeamBboSeeder extends Seeder
 		// 4.10. Create BBO stylebooks
 		$this->createBboStylebooks();
 
+		// 2. Seed BBO language variants (pasa el team_id real)
+		$this->seedBboLanguageVariants($team->id);
+
 		// 5. Import BBO collaborators from JSON
 		try {
 			$this->command->info('🔧 DEBUG: Starting step 5 - importBboCollaboratorsFromJson');
@@ -1733,5 +1736,32 @@ class TeamBboSeeder extends Seeder
 		$this->command->info("   - Existing clients skipped: {$skipped}");
 		$this->command->info("   - Errors: {$errors}");
 		$this->command->info('✅ BBO clients import completed!');
+	}
+
+	private function seedBboLanguageVariants($teamId)
+	{
+		$variants = [
+			['code' => 'es-ES', 'name' => 'Español (España)', 'base_language' => 'es', 'country_code' => 'ES'],
+			['code' => 'fr-FR', 'name' => 'Francés (Francia)', 'base_language' => 'fr', 'country_code' => 'FR'],
+			['code' => 'en-GB', 'name' => 'Inglés (Reino Unido)', 'base_language' => 'en', 'country_code' => 'GB'],
+			['code' => 'pt-PT', 'name' => 'Portugués (Portugal)', 'base_language' => 'pt', 'country_code' => 'PT'],
+			['code' => 'ca-ES', 'name' => 'Catalán (España)', 'base_language' => 'ca', 'country_code' => 'ES'],
+			['code' => 'de-DE', 'name' => 'Alemán (Alemania)', 'base_language' => 'de', 'country_code' => 'DE'],
+			['code' => 'zh-CN', 'name' => 'Chino (China)', 'base_language' => 'zh', 'country_code' => 'CN'],
+			['code' => 'it-IT', 'name' => 'Italiano (Italia)', 'base_language' => 'it', 'country_code' => 'IT'],
+			['code' => 'ru-RU', 'name' => 'Ruso (Rusia)', 'base_language' => 'ru', 'country_code' => 'RU'],
+			['code' => 'es-AR', 'name' => 'Español (Argentina)', 'base_language' => 'es', 'country_code' => 'AR'],
+			['code' => 'ja-JP', 'name' => 'Japonés (Japón)', 'base_language' => 'ja', 'country_code' => 'JP'],
+			['code' => 'gl-ES', 'name' => 'Gallego (España)', 'base_language' => 'gl', 'country_code' => 'ES'],
+			['code' => 'ko-KR', 'name' => 'Coreano (Corea del Sur)', 'base_language' => 'ko', 'country_code' => 'KR'],
+			['code' => 'th-TH', 'name' => 'Tailandés (Tailandia)', 'base_language' => 'th', 'country_code' => 'TH'],
+		];
+
+		foreach ($variants as $variant) {
+			LanguageVariant::updateOrCreate(
+				['code' => $variant['code'], 'team_id' => $teamId],
+				array_merge($variant, ['team_id' => $teamId])
+			);
+		}
 	}
 }

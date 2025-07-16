@@ -8,58 +8,66 @@ use Illuminate\View\Component;
 
 class VariantLanguageSelect extends Component
 {
-    public $name;
+	public $name;
 
-    public $id;
+	public $id;
 
-    public $value;
+	public $value;
 
-    public $label;
+	public $label;
 
-    public $baseLanguage;
+	public $baseLanguage;
 
-    public $required;
+	public $required;
 
-    public function __construct($name = 'language_variant', $id = null, $value = null, $label = 'Variante de idioma', $baseLanguage = null, $required = false)
-    {
-        $this->name = $name;
-        $this->id = $id ?? $name;
-        $this->value = $value;
-        $this->label = $label;
-        $this->baseLanguage = $baseLanguage;
-        $this->required = $required;
-    }
+	public $showBaseLanguages;
 
-    public function render()
-    {
-        // Get base languages with more than one variant
-        $baseCodes = LanguageVariant::select('base_language')
-            ->groupBy('base_language')
-            ->havingRaw('COUNT(*) > 1')
-            ->pluck('base_language');
+	public function __construct($name = 'language_variant', $id = null, $value = null, $label = 'Variante de idioma', $baseLanguage = null, $required = false, $showBaseLanguages = false)
+	{
+		$this->name = $name;
+		$this->id = $id ?? $name;
+		$this->value = $value;
+		$this->label = $label;
+		$this->baseLanguage = $baseLanguage;
+		$this->required = $required;
+		$this->showBaseLanguages = $showBaseLanguages;
+	}
 
-        $baseLanguages = Language::whereIn('code', $baseCodes)->get();
-        $variants = LanguageVariant::with('baseLanguage')->get();
+	public function render()
+	{
+		// Get base languages with more than one variant
+		$baseCodes = LanguageVariant::select('base_language')
+			->groupBy('base_language')
+			->havingRaw('COUNT(*) > 1')
+			->pluck('base_language');
 
-        // Merge base languages and variants into a single options collection
-        $options = collect();
-        foreach ($baseLanguages as $base) {
-            $options->push((object)[
-                'value' => $base->code,
-                'label' => $base->name,
-            ]);
-        }
-        foreach ($variants as $variant) {
-            $options->push((object)[
-                'value' => $variant->code,
-                'label' => $variant->name . ' (' . ($variant->baseLanguage->name ?? strtoupper($variant->base_language)) . ')',
-            ]);
-        }
-        // Sort alphabetically by label
-        $options = $options->sortBy('label')->values();
+		$baseLanguages = Language::whereIn('code', $baseCodes)->get();
+		$variants = LanguageVariant::with('baseLanguage')->get();
 
-        return view('components.variant-language-select', [
-            'options' => $options,
-        ]);
-    }
+		// Merge base languages and variants into a single options collection
+		$options = collect();
+		if ($this->showBaseLanguages)
+		{
+			foreach ($baseLanguages as $base)
+			{
+				$options->push((object) [
+					'value' => $base->code,
+					'label' => $base->name,
+				]);
+			}
+		}
+		foreach ($variants as $variant)
+		{
+			$options->push((object) [
+				'value' => $variant->code,
+				'label' => $variant->name . ' (' . ($variant->baseLanguage->name ?? strtoupper($variant->base_language)) . ')',
+			]);
+		}
+		// Sort alphabetically by label
+		$options = $options->sortBy('label')->values();
+
+		return view('components.variant-language-select', [
+			'options' => $options,
+		]);
+	}
 }
