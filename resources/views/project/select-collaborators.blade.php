@@ -134,17 +134,35 @@
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
+			// Configure Spanish locale for Flatpickr
+			flatpickr.localize({
+				firstDayOfWeek: 1,
+				weekdays: {
+					shorthand: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
+					longhand: ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+				},
+				months: {
+					shorthand: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+					longhand: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+				}
+			});
+
 			// Initialize Flatpickr for delivery date
 			const deliveryDateInput = document.getElementById('delivery-date');
 			if (deliveryDateInput) {
 				// Get project delivery date for preselecting
 				const projectDeliveryDate = '{{ $project->date_end ? $project->date_end->format("Y-m-d") : "" }}';
 
+				// Debug: Log the project delivery date
+				console.log('Project delivery date:', {
+					raw: '{{ $project->date_end }}',
+					formatted: projectDeliveryDate,
+					hasDate: !!projectDeliveryDate
+				});
+
 				const fp = flatpickr(deliveryDateInput, {
 					dateFormat: 'd/m/Y',
-					displayFormat: 'd/m/Y',
 					minDate: 'today',
-					locale: 'es',
 					allowInput: false,
 					clickOpens: true,
 					placeholder: '{{ __('Fecha entrega') }}',
@@ -156,6 +174,9 @@
 						}
 					}
 				});
+
+				// Debug: Log the Flatpickr instance
+				console.log('Flatpickr initialized with defaultDate:', projectDeliveryDate);
 			}
 
 			// DON'T use Select2 for days and delivery-date - keep them as native selectors
