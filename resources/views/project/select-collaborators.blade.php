@@ -51,18 +51,22 @@
             </div>
             <div class="row g-3">
                 <div class="col">
+                    <label for="source-language" class="form-label">{{ __('Idioma origen') }}</label>
                     <x-variant-language-select name="source-language" id="source-language" label="" :required="false"
                         placeholder="{{ __('Idioma origen') }}" value="{{ $selectedSourceLanguage }}" :show-base-languages="false" />
                 </div>
                 <div class="col">
+                    <label for="target-language" class="form-label">{{ __('Idioma destino') }}</label>
                     <x-variant-language-select name="target-language" id="target-language" label="" :required="false"
                         placeholder="{{ __('Idioma destino') }}" value="{{ $selectedTargetLanguage }}" :show-base-languages="false" />
                 </div>
                 <div class="col">
+                    <label for="service" class="form-label">{{ __('Servicio') }}</label>
                     <x-fare-select name="service" id="service" label="" :required="false"
                         placeholder="{{ __('Servicio') }}" :selected="$selectedService ? [$selectedService] : []" />
                 </div>
                 <div class="col">
+                    <label for="days" class="form-label">{{ __('Días') }}</label>
                     <select class="form-select" id="days">
                         <option value="" selected>{{ __('Días') }}</option>
                         <option value="5">5 días</option>
@@ -72,7 +76,7 @@
                     </select>
                 </div>
                 <div class="col">
-                    <input type="text" class="form-control" id="delivery-date" placeholder="{{ __('Fecha entrega') }}" readonly>
+                    <x-input-date id="delivery-date" label="{{ __('Fecha entrega') }}" value="{{ $project->date_end }}" />
                 </div>
             </div>
         </div>
@@ -134,75 +138,11 @@
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
-			// Configure Spanish locale for Flatpickr
-			flatpickr.localize({
-				firstDayOfWeek: 1,
-				weekdays: {
-					shorthand: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"],
-					longhand: ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
-				},
-				months: {
-					shorthand: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
-					longhand: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-				}
+			// Add event listener for delivery date changes
+			$(document).on('change', '#delivery-date', function() {
+				console.log('Delivery date changed:', $(this).val());
+				applyFilters();
 			});
-
-			// Initialize Flatpickr for delivery date
-			const deliveryDateInput = document.getElementById('delivery-date');
-			if (deliveryDateInput) {
-				// Get project delivery date for preselecting
-				const projectDeliveryDate = '{{ $project->date_end ? $project->date_end->format("Y-m-d") : "" }}';
-
-				// Debug: Log the project delivery date
-				console.log('Project delivery date:', {
-					raw: '{{ $project->date_end }}',
-					formatted: projectDeliveryDate,
-					hasDate: !!projectDeliveryDate
-				});
-
-				const fp = flatpickr(deliveryDateInput, {
-					dateFormat: 'd/m/Y',
-					minDate: 'today',
-					allowInput: false,
-					clickOpens: true,
-					placeholder: '{{ __('Fecha entrega') }}',
-					defaultDate: projectDeliveryDate || undefined,
-					onChange: function(selectedDates, dateStr, instance) {
-						// Apply filters when date is selected
-						if (dateStr) {
-							applyFilters();
-						}
-					}
-				});
-
-				// Debug: Log the Flatpickr instance
-				console.log('Flatpickr initialized with defaultDate:', projectDeliveryDate);
-			}
-
-			// DON'T use Select2 for days and delivery-date - keep them as native selectors
-			// This matches the collaborator index implementation
-
-			// Note: #service is initialized by the x-fare-select component with allowClear already enabled
-
-			// Enhance existing language selectors with allowClear functionality
-			setTimeout(function() {
-				// Get existing Select2 instances and enhance them
-				$('#source-language').select2('destroy').select2({
-					allowClear: true,
-					placeholder: '{{ __('Idioma origen') }}',
-					width: '100%',
-					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
-					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
-				});
-
-				$('#target-language').select2('destroy').select2({
-					allowClear: true,
-					placeholder: '{{ __('Idioma destino') }}',
-					width: '100%',
-					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
-					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
-				});
-			}, 200);
 
 			// Filter functionality via AJAX (same approach as collaborator index)
 			function applyFilters() {
