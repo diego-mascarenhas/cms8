@@ -59,6 +59,10 @@ Route::middleware([
 // locale
 Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 
+// Public API routes (must be before auth group)
+Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
+	->name('project.get-fare-units');
+
 // main
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
@@ -400,9 +404,7 @@ Route::get('/legal/{document}', [LegalDocumentsController::class, 'show'])->name
 
 Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 
-// Public project routes (no auth required)
-Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])->name('project.get-fare-units');
-Route::get('/project/service-template', [ProjectController::class, 'getServiceTemplate'])->name('project.get-service-template');
+
 
 // Notification tracking routes (no auth required)
 Route::get('/track/{token}', [NotificationTrackingController::class, 'track'])->name('notification.track');
@@ -435,6 +437,47 @@ Route::post('/twilio/status', [TwilioWebhookController::class, 'handleMessageSta
 	->name('twilio.status');
 Route::post('/twilio/fallback', [TwilioWebhookController::class, 'handleFallback'])
 	->name('twilio.fallback');
+
+// Debug route for testing JSON response (no auth required)
+Route::get('/debug-units', function() {
+	$fare = \App\Models\Fare::with('units')->find(1);
+	if (!$fare) {
+		return response()->json(['error' => 'Fare not found']);
+	}
+
+	$units = $fare->units->map(function ($unit) {
+		return [
+			'id' => $unit->id,
+			'type' => $unit->type,
+			'label' => $unit->type,
+		];
+	});
+
+	return response()->json([
+		'units' => $units,
+		'success' => true,
+		'fare_team_id' => $fare->team_id,
+		'fare_name' => $fare->name
+	]);
+})->name('debug-units');
+
+// Debug route for user authentication info
+Route::get('/debug-user', function() {
+	if (!auth()->check()) {
+		return response()->json(['error' => 'Not authenticated']);
+	}
+
+	$user = auth()->user();
+	$team = $user->currentTeam;
+
+	return response()->json([
+		'user_id' => $user->id,
+		'user_name' => $user->name,
+		'team_id' => $team ? $team->id : null,
+		'team_name' => $team ? $team->name : null,
+		'authenticated' => true
+	]);
+})->middleware('auth')->name('debug-user');
 
 /*
  * OVH API Routes

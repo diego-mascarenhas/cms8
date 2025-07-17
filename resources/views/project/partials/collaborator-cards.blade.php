@@ -6,14 +6,14 @@
             $languageCombinations[] = $variant->source_language_code . '-' . $variant->target_language_code;
         }
         $languageString = implode(',', $languageCombinations);
-        
+
         // Build services string for filtering (using unique fare IDs to match the selector)
         $serviceIds = [];
         foreach($collaborator->fares->unique('id') as $fare) {
             $serviceIds[] = $fare->id;
         }
         $servicesString = implode(',', $serviceIds);
-        
+
         // Get the valoration for display
         $valorationIcon = 'ti-star-filled text-warning';
         $valorationText = 'Top';
@@ -37,19 +37,42 @@
                     break;
             }
         }
-        
+
         // Get primary language combination for display
         $primaryLanguage = '';
         if ($collaborator->languageVariants->count() > 0) {
-            $firstVariant = $collaborator->languageVariants->first();
-            $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
-            $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
-            $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+            // If we have filter parameters, show the matching variant
+            if (isset($selectedSourceLanguage) && $selectedSourceLanguage &&
+                isset($selectedTargetLanguage) && $selectedTargetLanguage) {
+                // Find the variant that matches the selected filters
+                $matchingVariant = $collaborator->languageVariants->first(function($variant) use ($selectedSourceLanguage, $selectedTargetLanguage) {
+                    return $variant->source_language_code === $selectedSourceLanguage &&
+                           $variant->target_language_code === $selectedTargetLanguage;
+                });
+
+                if ($matchingVariant) {
+                    $sourceLang = $matchingVariant->sourceLanguage ? $matchingVariant->sourceLanguage->name : $matchingVariant->source_language_code;
+                    $targetLang = $matchingVariant->targetLanguage ? $matchingVariant->targetLanguage->name : $matchingVariant->target_language_code;
+                    $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+                } else {
+                    // Fallback to first variant if no match found
+                    $firstVariant = $collaborator->languageVariants->first();
+                    $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
+                    $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
+                    $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+                }
+            } else {
+                // No filters, show first variant
+                $firstVariant = $collaborator->languageVariants->first();
+                $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
+                $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
+                $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+            }
         }
     @endphp
-    
-    <div class="col-md-4 mb-3 collaborator-card" 
-         data-languages="{{ $languageString }}" 
+
+    <div class="col-md-4 mb-3 collaborator-card"
+         data-languages="{{ $languageString }}"
          data-services="{{ $servicesString }}">
         <div class="card">
             <div class="card-body p-3">
@@ -65,19 +88,132 @@
                                 <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
                                 <small class="text-muted">{{ $valorationText }}</small>
                             </div>
+
+                            {{-- Show availability info when time filters are applied --}}
+                            @if(isset($filterDays) && isset($filterDeliveryDate) && $filterDays && $filterDeliveryDate)
+                                @php
+                                    // Calculate available days for this collaborator
+                                    $startDate = now()->format('Y-m-d');
+                                    $endDate = null;
+
+                                    // Parse delivery date
+                                    switch($filterDeliveryDate) {
+                                        case 'today':
+                                            $endDate = now()->format('Y-m-d');
+                                            break;
+                                        case '1_week':
+                                            $endDate = now()->addWeek()->format('Y-m-d');
+                                            break;
+                                        case '15_days':
+                                            $endDate = now()->addDays(15)->format('Y-m-d');
+                                            break;
+                                        case '1_month':
+                                            $endDate = now()->addMonth()->format('Y-m-d');
+                                            break;
+                                        case '3_months':
+                                            $endDate = now()->addMonths(3)->format('Y-m-d');
+                                            break;
+                                        default:
+                                            try {
+                                                // Handle Spanish date format (d/m/Y) or ISO format (Y-m-d)
+                                                if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $filterDeliveryDate)) {
+                                                    // Spanish format: d/m/Y
+                                                    $endDate = \Carbon\Carbon::createFromFormat('d/m/Y', $filterDeliveryDate)->format('Y-m-d');
+                                                } else {
+                                                    // ISO format: Y-m-d
+                                                    $endDate = \Carbon\Carbon::parse($filterDeliveryDate)->format('Y-m-d');
+                                                }
+                                            } catch (\Exception $e) {
+                                                $endDate = null;
+                                            }
+                                    }
+
+                                    $availableDays = 0;
+                                    if ($endDate) {
+                                        $weeklyAvailability = $collaborator->weeklyAvailability;
+
+                                        // If no weekly availability is set, assume all days are available
+                                        if (!$weeklyAvailability) {
+                                            $weeklyPattern = [
+                                                'monday' => true,
+                                                'tuesday' => true,
+                                                'wednesday' => true,
+                                                'thursday' => true,
+                                                'friday' => true,
+                                                'saturday' => true,
+                                                'sunday' => true,
+                                            ];
+                                        } else {
+                                            $weeklyPattern = [
+                                                'monday' => $weeklyAvailability->monday,
+                                                'tuesday' => $weeklyAvailability->tuesday,
+                                                'wednesday' => $weeklyAvailability->wednesday,
+                                                'thursday' => $weeklyAvailability->thursday,
+                                                'friday' => $weeklyAvailability->friday,
+                                                'saturday' => $weeklyAvailability->saturday,
+                                                'sunday' => $weeklyAvailability->sunday,
+                                            ];
+                                        }
+
+                                        // Get specific absence dates
+                                        $absenceDates = $collaborator->absences()
+                                            ->whereBetween('absence_date', [$startDate, $endDate])
+                                            ->get()
+                                            ->pluck('absence_date')
+                                            ->map(function ($date) {
+                                                return $date->format('Y-m-d');
+                                            })
+                                            ->toArray();
+
+                                        $currentDate = \Carbon\Carbon::parse($startDate);
+                                        $endDateCarbon = \Carbon\Carbon::parse($endDate);
+
+                                        while ($currentDate->lte($endDateCarbon)) {
+                                            $dayOfWeek = strtolower($currentDate->format('l'));
+                                            $dateString = $currentDate->format('Y-m-d');
+
+                                            // Check if this day is available according to weekly pattern
+                                            $isWeeklyAvailable = $weeklyPattern[$dayOfWeek] ?? false;
+
+                                            // Check if this specific date is not in absences
+                                            $isNotAbsent = !in_array($dateString, $absenceDates);
+
+                                            // Day is available if both conditions are met
+                                            if ($isWeeklyAvailable && $isNotAbsent) {
+                                                $availableDays++;
+                                            }
+
+                                            $currentDate->addDay();
+                                        }
+                                    }
+
+                                    $requiredDays = (int) $filterDays;
+                                    $isAvailable = $availableDays >= $requiredDays;
+                                @endphp
+
+                                <div class="d-flex align-items-center mt-1">
+                                    <i class="ti ti-calendar ti-xs me-1 {{ $isAvailable ? 'text-success' : 'text-danger' }}"></i>
+                                    <small class="{{ $isAvailable ? 'text-success' : 'text-danger' }}">
+                                        {{ $availableDays }} días disponibles
+                                        @if(!$isAvailable)
+                                            <span class="text-muted">(necesita {{ $requiredDays }})</span>
+                                        @endif
+                                    </small>
+                                </div>
+                            @endif
                         </div>
                     </div>
-                    
+
                     <div class="form-check">
                         <input class="form-check-input collaborator-checkbox" type="checkbox"
                                name="collaborator_ids[]" value="{{ $collaborator->id }}"
                                data-collaborator-id="{{ $collaborator->id }}">
                     </div>
                 </div>
-                
+
                 {{-- Show fare info only when service AND both languages are selected --}}
-                @if(isset($selectedService) && $selectedService && 
-                    isset($selectedSourceLanguage) && $selectedSourceLanguage && 
+                @if(isset($selectedService) && $selectedService &&
+                    isset($selectedSourceLanguage) && $selectedSourceLanguage &&
                     isset($selectedTargetLanguage) && $selectedTargetLanguage)
                     @php
                         // Find the specific fare that matches the selected service and language combination
@@ -97,7 +233,7 @@
                             $sourceLanguage = $selectedFare->pivot->source_language_code ?? 'N/A';
                             $targetLanguage = $selectedFare->pivot->target_language_code ?? 'N/A';
                             $unit = $selectedFare->pivot->unit_id ?? '';
-                            
+
                             // Get unit name if available
                             $unitName = '';
                             if($unit) {
@@ -118,17 +254,17 @@
                         </div>
                     @endif
                 @endif
-                
+
                 {{-- Show detailed fares only when service OR languages are not selected --}}
-                @if(!isset($selectedService) || !$selectedService || 
-                    !isset($selectedSourceLanguage) || !$selectedSourceLanguage || 
+                @if(!isset($selectedService) || !$selectedService ||
+                    !isset($selectedSourceLanguage) || !$selectedSourceLanguage ||
                     !isset($selectedTargetLanguage) || !$selectedTargetLanguage)
                     <!-- Tarifas del colaborador (inicialmente ocultas) -->
                     <div class="collapse mt-3" id="fares-{{ $collaborator->id }}">
                         <div class="card bg-light">
                             <div class="card-body p-2">
                                 <h6 class="card-title mb-2 text-muted">{{ __('Tarifas del colaborador') }}</h6>
-                                
+
                                 @if($collaborator->fares && $collaborator->fares->count() > 0)
                                     <div class="table-responsive">
                                         <table class="table table-sm table-borderless mb-0">
@@ -145,12 +281,12 @@
                                                         // Get language names
                                                         $sourceLanguage = $fare->pivot->source_language_code ?? 'N/A';
                                                         $targetLanguage = $fare->pivot->target_language_code ?? 'N/A';
-                                                        
+
                                                         // Get price and currency
                                                         $price = $fare->pivot->price ?? 'N/A';
                                                         $currency = $fare->pivot->currency_code ?? 'EUR';
                                                         $unit = $fare->pivot->unit_id ?? '';
-                                                        
+
                                                         // Get unit name if available
                                                         $unitName = '';
                                                         if($unit) {
@@ -158,7 +294,7 @@
                                                             $unitName = $unitModel ? ' por ' . strtolower($unitModel->name) : '';
                                                         }
                                                     @endphp
-                                                    <tr style="font-size: 0.8rem;" class="fare-row" 
+                                                    <tr style="font-size: 0.8rem;" class="fare-row"
                                                         data-service-id="{{ $fare->id }}"
                                                         data-source-lang="{{ $sourceLanguage }}"
                                                         data-target-lang="{{ $targetLanguage }}">
@@ -208,4 +344,4 @@
             @endif
         </div>
     </div>
-@endforelse 
+@endforelse

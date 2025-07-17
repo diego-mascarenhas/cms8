@@ -51,18 +51,22 @@
             </div>
             <div class="row g-3">
                 <div class="col">
+                    <label for="source-language" class="form-label">{{ __('Idioma origen') }}</label>
                     <x-variant-language-select name="source-language" id="source-language" label="" :required="false"
-                        placeholder="{{ __('Idioma origen') }}" value="{{ $selectedSourceLanguage }}" />
+                        placeholder="{{ __('Idioma origen') }}" value="{{ $selectedSourceLanguage }}" :show-base-languages="false" />
                 </div>
                 <div class="col">
+                    <label for="target-language" class="form-label">{{ __('Idioma destino') }}</label>
                     <x-variant-language-select name="target-language" id="target-language" label="" :required="false"
-                        placeholder="{{ __('Idioma destino') }}" value="{{ $selectedTargetLanguage }}" />
+                        placeholder="{{ __('Idioma destino') }}" value="{{ $selectedTargetLanguage }}" :show-base-languages="false" />
                 </div>
                 <div class="col">
+                    <label for="service" class="form-label">{{ __('Servicio') }}</label>
                     <x-fare-select name="service" id="service" label="" :required="false"
                         placeholder="{{ __('Servicio') }}" :selected="$selectedService ? [$selectedService] : []" />
                 </div>
                 <div class="col">
+                    <label for="days" class="form-label">{{ __('Días') }}</label>
                     <select class="form-select" id="days">
                         <option value="" selected>{{ __('Días') }}</option>
                         <option value="5">5 días</option>
@@ -72,14 +76,7 @@
                     </select>
                 </div>
                 <div class="col">
-                    <select class="form-select" id="delivery-date">
-                        <option value="" selected>{{ __('Fecha entrega') }}</option>
-                        <option value="today" data-days="1">Hoy</option>
-                        <option value="1_week" data-days="7">En 1 semana</option>
-                        <option value="15_days" data-days="15">En 15 días</option>
-                        <option value="1_month" data-days="30">En 1 mes</option>
-                        <option value="3_months" data-days="90">En 3 meses</option>
-                    </select>
+                    <x-input-date id="delivery-date" label="{{ __('Fecha entrega') }}" value="{{ $project->date_end }}" />
                 </div>
             </div>
         </div>
@@ -89,7 +86,11 @@
     <div class="card mb-4">
         <div class="card-body">
             <div class="row" id="collaborators-container">
-                @include('project.partials.collaborator-cards', ['collaborators' => $collaborators, 'selectedService' => $selectedService])
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="ti ti-info-circle me-2"></i>{{ __('Selecciona una combinación de idiomas, un servicio, o criterios de tiempo para ver colaboradores disponibles.') }}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -140,60 +141,31 @@
 	</form>
 
 	<script>
+		// Blade variables for auto-filtering
+		@if($selectedSourceLanguage || $selectedTargetLanguage || $selectedService)
+		var hasUrlParameters = true;
+		var urlSourceLanguage = '{{ $selectedSourceLanguage }}';
+		var urlTargetLanguage = '{{ $selectedTargetLanguage }}';
+		var urlService = '{{ $selectedService }}';
+		@else
+		var hasUrlParameters = false;
+		@endif
+
 		document.addEventListener('DOMContentLoaded', function () {
-			// DON'T use Select2 for days and delivery-date - keep them as native selectors
-			// This matches the collaborator index implementation
+			// Add event listener for delivery date changes
+			$(document).on('change', '#delivery-date', function() {
+				console.log('Delivery date changed:', $(this).val());
+				// Only apply filters if there are other filters or if this is a manual change
+				const sourceLanguage = $('#source-language').val();
+				const targetLanguage = $('#target-language').val();
+				const service = $('#service').val();
+				const days = $('#days').val();
 
-			// Note: #service is initialized by the x-fare-select component with allowClear already enabled
-
-			// Enhance existing language selectors with allowClear functionality
-			setTimeout(function() {
-				// Get existing Select2 instances and enhance them
-				$('#source-language').select2('destroy').select2({
-					allowClear: true,
-					placeholder: '{{ __('Idioma origen') }}',
-					width: '100%',
-					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
-					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
-				});
-
-				$('#target-language').select2('destroy').select2({
-					allowClear: true,
-					placeholder: '{{ __('Idioma destino') }}',
-					width: '100%',
-					templateResult: window.formatVariantLanguage || function(lang) { return lang.text; },
-					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
-				});
-			}, 200);
-
-			// Validation function for days vs delivery date (copied exactly from collaborator index)
-			function validateDeliveryOptions() {
-				var selectedDays = parseInt($('#days').val()) || 0;
-				var deliverySelect = $('#delivery-date');
-
-				// Reset all options to enabled and remove disabled text
-				deliverySelect.find('option').prop('disabled', false).each(function() {
-					var originalText = $(this).data('original-text') || $(this).text();
-					$(this).data('original-text', originalText);
-					$(this).text(originalText);
-				});
-
-				if (selectedDays > 0) {
-					deliverySelect.find('option').each(function() {
-						var optionDays = parseInt($(this).data('days'));
-						if (!isNaN(optionDays) && optionDays < selectedDays) {
-							$(this).prop('disabled', true);
-							var originalText = $(this).data('original-text') || $(this).text();
-							$(this).text(originalText + ' (insuficiente)');
-
-							// If currently selected option becomes invalid, reset
-							if ($(this).val() === deliverySelect.val()) {
-								deliverySelect.val('');
-							}
-						}
-					});
+				// Only apply filters if there are other filters or if this is not the initial load
+				if (sourceLanguage || targetLanguage || service || days) {
+					applyFilters();
 				}
-			}
+			});
 
 			// Filter functionality via AJAX (same approach as collaborator index)
 			function applyFilters() {
@@ -233,7 +205,7 @@
 						days: days,
 						deliveryDate: deliveryDate,
 						daysText: days ? $('#days option:selected').text() : 'none',
-						deliveryDateText: deliveryDate ? $('#delivery-date option:selected').text() : 'none',
+						deliveryDateText: deliveryDate,
 						hasTimeFilter: hasTimeFilter,
 						daysOnly: !!days && !deliveryDate,
 						deliveryOnly: !!deliveryDate && !days
@@ -248,8 +220,9 @@
 					});
 				}
 
-				// If no filters applied, show empty state immediately
-				if (!hasLanguageFilter && !hasServiceFilter && !hasTimeFilter) {
+				// If no meaningful filters applied, show empty state immediately
+				// A delivery date alone is not enough to search - need either language filters, service, or days
+				if (!hasLanguageFilter && !hasServiceFilter && !days) {
 					$('#collaborators-container').html('<div class="col-12"><div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>Selecciona una combinación de idiomas, un servicio, o criterios de tiempo para ver colaboradores disponibles.</div></div>');
 					updateSelectedCount();
 					return;
@@ -289,12 +262,6 @@
 
 			// Table filters (copied from collaborator index)
 			$('#source-language, #target-language, #service, #days, #delivery-date').on('change', function () {
-				// Validate delivery options when days change
-				if (this.id === 'days') {
-					validateDeliveryOptions();
-					console.log('Days filter triggered! Value:', $(this).val());
-				}
-
 				console.log('Filter changed:', this.id, 'Value:', $(this).val());
 
 				// Special logging for time filters
@@ -302,16 +269,12 @@
 					console.log('Time filter changed:', {
 						id: this.id,
 						value: $(this).val(),
-						text: $(this).find('option:selected').text(),
 						element: this
 					});
 				}
 
 				applyFilters();
 			});
-
-			// Initialize validation on page load
-			validateDeliveryOptions();
 
 			// Clear filters functionality
 			$('#clear-filters').on('click', function(e) {
@@ -507,21 +470,30 @@
 			});
 
 			// Auto-apply filters if URL parameters are present
-			@if($selectedSourceLanguage || $selectedTargetLanguage || $selectedService)
-			setTimeout(function() {
-				console.log('Auto-applying filters from URL parameters:', {
-					sourceLanguage: '{{ $selectedSourceLanguage }}',
-					targetLanguage: '{{ $selectedTargetLanguage }}',
-					service: '{{ $selectedService }}'
-				});
+			if (hasUrlParameters) {
+				setTimeout(function() {
+					console.log('Auto-applying filters from URL parameters:', {
+						sourceLanguage: urlSourceLanguage,
+						targetLanguage: urlTargetLanguage,
+						service: urlService
+					});
 
-				// Trigger filter application
-				applyFilters();
-			}, 500); // Small delay to ensure Select2 components are fully initialized
-			@endif
+					// Trigger filter application
+					applyFilters();
+				}, 500); // Small delay to ensure Select2 components are fully initialized
+			} else {
+				console.log('No URL parameters found, showing initial state');
+			}
 
 			// Initialize count
 			updateSelectedCount();
+
+			// Log initial state
+			console.log('Collaborator selection page initialized:', {
+				hasUrlParameters: hasUrlParameters,
+				initialCollaboratorsCount: {{ $collaborators->count() }},
+				url: window.location.href
+			});
 		});
 	</script>
 

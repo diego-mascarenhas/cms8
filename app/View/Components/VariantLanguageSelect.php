@@ -52,7 +52,7 @@ class VariantLanguageSelect extends Component
 			{
 				$options->push((object) [
 					'value' => $base->code,
-					'label' => $base->name,
+					'label' => $base->name . '  (Todos)',
 				]);
 			}
 		}
@@ -60,7 +60,7 @@ class VariantLanguageSelect extends Component
 		{
 			$options->push((object) [
 				'value' => $variant->code,
-				'label' => $variant->name . ' (' . ($variant->baseLanguage->name ?? strtoupper($variant->base_language)) . ')',
+				'label' => $variant->name,
 			]);
 		}
 		// Sort alphabetically by label
