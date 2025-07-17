@@ -229,6 +229,8 @@ class ProjectController extends Controller
 
 		// Parse delivery date
 		$endDate = null;
+
+		// First check if it's a predefined option
 		switch ($deliveryDate) {
 			case 'today':
 				$endDate = now()->format('Y-m-d');
@@ -248,7 +250,14 @@ class ProjectController extends Controller
 			default:
 				// If it's a custom date, try to parse it
 				try {
-					$endDate = Carbon::parse($deliveryDate)->format('Y-m-d');
+					// Handle Spanish date format (d/m/Y) or ISO format (Y-m-d)
+					if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $deliveryDate)) {
+						// Spanish format: d/m/Y
+						$endDate = Carbon::createFromFormat('d/m/Y', $deliveryDate)->format('Y-m-d');
+					} else {
+						// ISO format: Y-m-d
+						$endDate = Carbon::parse($deliveryDate)->format('Y-m-d');
+					}
 				} catch (\Exception $e) {
 					return [];
 				}

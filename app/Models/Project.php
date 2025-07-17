@@ -34,6 +34,13 @@ class Project extends Model
         'updated_at',
     ];
 
+    protected $casts = [
+        'date_material' => 'date',
+        'date_start' => 'date',
+        'date_end' => 'date',
+        'deleted_at' => 'datetime',
+    ];
+
     protected static function booted()
     {
         static::addGlobalScope('team', function (Builder $builder) {

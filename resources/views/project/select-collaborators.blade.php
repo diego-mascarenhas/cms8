@@ -137,13 +137,24 @@
 			// Initialize Flatpickr for delivery date
 			const deliveryDateInput = document.getElementById('delivery-date');
 			if (deliveryDateInput) {
-				flatpickr(deliveryDateInput, {
-					dateFormat: 'Y-m-d',
+				// Get project delivery date for preselecting
+				const projectDeliveryDate = '{{ $project->date_end ? $project->date_end->format("Y-m-d") : "" }}';
+
+				const fp = flatpickr(deliveryDateInput, {
+					dateFormat: 'd/m/Y',
+					displayFormat: 'd/m/Y',
 					minDate: 'today',
 					locale: 'es',
 					allowInput: false,
 					clickOpens: true,
-					placeholder: '{{ __('Fecha entrega') }}'
+					placeholder: '{{ __('Fecha entrega') }}',
+					defaultDate: projectDeliveryDate || undefined,
+					onChange: function(selectedDates, dateStr, instance) {
+						// Apply filters when date is selected
+						if (dateStr) {
+							applyFilters();
+						}
+					}
 				});
 			}
 

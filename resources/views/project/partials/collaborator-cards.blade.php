@@ -115,7 +115,14 @@
                                             break;
                                         default:
                                             try {
-                                                $endDate = \Carbon\Carbon::parse($filterDeliveryDate)->format('Y-m-d');
+                                                // Handle Spanish date format (d/m/Y) or ISO format (Y-m-d)
+                                                if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $filterDeliveryDate)) {
+                                                    // Spanish format: d/m/Y
+                                                    $endDate = \Carbon\Carbon::createFromFormat('d/m/Y', $filterDeliveryDate)->format('Y-m-d');
+                                                } else {
+                                                    // ISO format: Y-m-d
+                                                    $endDate = \Carbon\Carbon::parse($filterDeliveryDate)->format('Y-m-d');
+                                                }
                                             } catch (\Exception $e) {
                                                 $endDate = null;
                                             }
