@@ -86,7 +86,11 @@
     <div class="card mb-4">
         <div class="card-body">
             <div class="row" id="collaborators-container">
-                @include('project.partials.collaborator-cards', ['collaborators' => $collaborators, 'selectedService' => $selectedService])
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="ti ti-info-circle me-2"></i>{{ __('Selecciona una combinación de idiomas, un servicio, o criterios de tiempo para ver colaboradores disponibles.') }}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -137,11 +141,30 @@
 	</form>
 
 	<script>
+		// Blade variables for auto-filtering
+		@if($selectedSourceLanguage || $selectedTargetLanguage || $selectedService)
+		var hasUrlParameters = true;
+		var urlSourceLanguage = '{{ $selectedSourceLanguage }}';
+		var urlTargetLanguage = '{{ $selectedTargetLanguage }}';
+		var urlService = '{{ $selectedService }}';
+		@else
+		var hasUrlParameters = false;
+		@endif
+
 		document.addEventListener('DOMContentLoaded', function () {
 			// Add event listener for delivery date changes
 			$(document).on('change', '#delivery-date', function() {
 				console.log('Delivery date changed:', $(this).val());
-				applyFilters();
+				// Only apply filters if there are other filters or if this is a manual change
+				const sourceLanguage = $('#source-language').val();
+				const targetLanguage = $('#target-language').val();
+				const service = $('#service').val();
+				const days = $('#days').val();
+
+				// Only apply filters if there are other filters or if this is not the initial load
+				if (sourceLanguage || targetLanguage || service || days) {
+					applyFilters();
+				}
 			});
 
 			// Filter functionality via AJAX (same approach as collaborator index)
@@ -197,8 +220,9 @@
 					});
 				}
 
-				// If no filters applied, show empty state immediately
-				if (!hasLanguageFilter && !hasServiceFilter && !hasTimeFilter) {
+				// If no meaningful filters applied, show empty state immediately
+				// A delivery date alone is not enough to search - need either language filters, service, or days
+				if (!hasLanguageFilter && !hasServiceFilter && !days) {
 					$('#collaborators-container').html('<div class="col-12"><div class="alert alert-info"><i class="ti ti-info-circle me-2"></i>Selecciona una combinación de idiomas, un servicio, o criterios de tiempo para ver colaboradores disponibles.</div></div>');
 					updateSelectedCount();
 					return;
@@ -446,21 +470,30 @@
 			});
 
 			// Auto-apply filters if URL parameters are present
-			@if($selectedSourceLanguage || $selectedTargetLanguage || $selectedService)
-			setTimeout(function() {
-				console.log('Auto-applying filters from URL parameters:', {
-					sourceLanguage: '{{ $selectedSourceLanguage }}',
-					targetLanguage: '{{ $selectedTargetLanguage }}',
-					service: '{{ $selectedService }}'
-				});
+			if (hasUrlParameters) {
+				setTimeout(function() {
+					console.log('Auto-applying filters from URL parameters:', {
+						sourceLanguage: urlSourceLanguage,
+						targetLanguage: urlTargetLanguage,
+						service: urlService
+					});
 
-				// Trigger filter application
-				applyFilters();
-			}, 500); // Small delay to ensure Select2 components are fully initialized
-			@endif
+					// Trigger filter application
+					applyFilters();
+				}, 500); // Small delay to ensure Select2 components are fully initialized
+			} else {
+				console.log('No URL parameters found, showing initial state');
+			}
 
 			// Initialize count
 			updateSelectedCount();
+
+			// Log initial state
+			console.log('Collaborator selection page initialized:', {
+				hasUrlParameters: hasUrlParameters,
+				initialCollaboratorsCount: {{ $collaborators->count() }},
+				url: window.location.href
+			});
 		});
 	</script>
 
