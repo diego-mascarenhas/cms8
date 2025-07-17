@@ -6,14 +6,14 @@
             $languageCombinations[] = $variant->source_language_code . '-' . $variant->target_language_code;
         }
         $languageString = implode(',', $languageCombinations);
-        
+
         // Build services string for filtering (using unique fare IDs to match the selector)
         $serviceIds = [];
         foreach($collaborator->fares->unique('id') as $fare) {
             $serviceIds[] = $fare->id;
         }
         $servicesString = implode(',', $serviceIds);
-        
+
         // Get the valoration for display
         $valorationIcon = 'ti-star-filled text-warning';
         $valorationText = 'Top';
@@ -37,19 +37,42 @@
                     break;
             }
         }
-        
+
         // Get primary language combination for display
         $primaryLanguage = '';
         if ($collaborator->languageVariants->count() > 0) {
-            $firstVariant = $collaborator->languageVariants->first();
-            $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
-            $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
-            $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+            // If we have filter parameters, show the matching variant
+            if (isset($selectedSourceLanguage) && $selectedSourceLanguage &&
+                isset($selectedTargetLanguage) && $selectedTargetLanguage) {
+                // Find the variant that matches the selected filters
+                $matchingVariant = $collaborator->languageVariants->first(function($variant) use ($selectedSourceLanguage, $selectedTargetLanguage) {
+                    return $variant->source_language_code === $selectedSourceLanguage &&
+                           $variant->target_language_code === $selectedTargetLanguage;
+                });
+
+                if ($matchingVariant) {
+                    $sourceLang = $matchingVariant->sourceLanguage ? $matchingVariant->sourceLanguage->name : $matchingVariant->source_language_code;
+                    $targetLang = $matchingVariant->targetLanguage ? $matchingVariant->targetLanguage->name : $matchingVariant->target_language_code;
+                    $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+                } else {
+                    // Fallback to first variant if no match found
+                    $firstVariant = $collaborator->languageVariants->first();
+                    $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
+                    $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
+                    $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+                }
+            } else {
+                // No filters, show first variant
+                $firstVariant = $collaborator->languageVariants->first();
+                $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
+                $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
+                $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+            }
         }
     @endphp
-    
-    <div class="col-md-4 mb-3 collaborator-card" 
-         data-languages="{{ $languageString }}" 
+
+    <div class="col-md-4 mb-3 collaborator-card"
+         data-languages="{{ $languageString }}"
          data-services="{{ $servicesString }}">
         <div class="card">
             <div class="card-body p-3">
@@ -67,17 +90,17 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="form-check">
                         <input class="form-check-input collaborator-checkbox" type="checkbox"
                                name="collaborator_ids[]" value="{{ $collaborator->id }}"
                                data-collaborator-id="{{ $collaborator->id }}">
                     </div>
                 </div>
-                
+
                 {{-- Show fare info only when service AND both languages are selected --}}
-                @if(isset($selectedService) && $selectedService && 
-                    isset($selectedSourceLanguage) && $selectedSourceLanguage && 
+                @if(isset($selectedService) && $selectedService &&
+                    isset($selectedSourceLanguage) && $selectedSourceLanguage &&
                     isset($selectedTargetLanguage) && $selectedTargetLanguage)
                     @php
                         // Find the specific fare that matches the selected service and language combination
@@ -97,7 +120,7 @@
                             $sourceLanguage = $selectedFare->pivot->source_language_code ?? 'N/A';
                             $targetLanguage = $selectedFare->pivot->target_language_code ?? 'N/A';
                             $unit = $selectedFare->pivot->unit_id ?? '';
-                            
+
                             // Get unit name if available
                             $unitName = '';
                             if($unit) {
@@ -118,17 +141,17 @@
                         </div>
                     @endif
                 @endif
-                
+
                 {{-- Show detailed fares only when service OR languages are not selected --}}
-                @if(!isset($selectedService) || !$selectedService || 
-                    !isset($selectedSourceLanguage) || !$selectedSourceLanguage || 
+                @if(!isset($selectedService) || !$selectedService ||
+                    !isset($selectedSourceLanguage) || !$selectedSourceLanguage ||
                     !isset($selectedTargetLanguage) || !$selectedTargetLanguage)
                     <!-- Tarifas del colaborador (inicialmente ocultas) -->
                     <div class="collapse mt-3" id="fares-{{ $collaborator->id }}">
                         <div class="card bg-light">
                             <div class="card-body p-2">
                                 <h6 class="card-title mb-2 text-muted">{{ __('Tarifas del colaborador') }}</h6>
-                                
+
                                 @if($collaborator->fares && $collaborator->fares->count() > 0)
                                     <div class="table-responsive">
                                         <table class="table table-sm table-borderless mb-0">
@@ -145,12 +168,12 @@
                                                         // Get language names
                                                         $sourceLanguage = $fare->pivot->source_language_code ?? 'N/A';
                                                         $targetLanguage = $fare->pivot->target_language_code ?? 'N/A';
-                                                        
+
                                                         // Get price and currency
                                                         $price = $fare->pivot->price ?? 'N/A';
                                                         $currency = $fare->pivot->currency_code ?? 'EUR';
                                                         $unit = $fare->pivot->unit_id ?? '';
-                                                        
+
                                                         // Get unit name if available
                                                         $unitName = '';
                                                         if($unit) {
@@ -158,7 +181,7 @@
                                                             $unitName = $unitModel ? ' por ' . strtolower($unitModel->name) : '';
                                                         }
                                                     @endphp
-                                                    <tr style="font-size: 0.8rem;" class="fare-row" 
+                                                    <tr style="font-size: 0.8rem;" class="fare-row"
                                                         data-service-id="{{ $fare->id }}"
                                                         data-source-lang="{{ $sourceLanguage }}"
                                                         data-target-lang="{{ $targetLanguage }}">
@@ -208,4 +231,4 @@
             @endif
         </div>
     </div>
-@endforelse 
+@endforelse

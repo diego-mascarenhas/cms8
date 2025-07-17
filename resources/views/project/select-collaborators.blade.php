@@ -52,11 +52,11 @@
             <div class="row g-3">
                 <div class="col">
                     <x-variant-language-select name="source-language" id="source-language" label="" :required="false"
-                        placeholder="{{ __('Idioma origen') }}" value="{{ $selectedSourceLanguage }}" />
+                        placeholder="{{ __('Idioma origen') }}" value="{{ $selectedSourceLanguage }}" :show-base-languages="false" />
                 </div>
                 <div class="col">
                     <x-variant-language-select name="target-language" id="target-language" label="" :required="false"
-                        placeholder="{{ __('Idioma destino') }}" value="{{ $selectedTargetLanguage }}" />
+                        placeholder="{{ __('Idioma destino') }}" value="{{ $selectedTargetLanguage }}" :show-base-languages="false" />
                 </div>
                 <div class="col">
                     <x-fare-select name="service" id="service" label="" :required="false"
