@@ -72,14 +72,7 @@
                     </select>
                 </div>
                 <div class="col">
-                    <select class="form-select" id="delivery-date">
-                        <option value="" selected>{{ __('Fecha entrega') }}</option>
-                        <option value="today" data-days="1">Hoy</option>
-                        <option value="1_week" data-days="7">En 1 semana</option>
-                        <option value="15_days" data-days="15">En 15 días</option>
-                        <option value="1_month" data-days="30">En 1 mes</option>
-                        <option value="3_months" data-days="90">En 3 meses</option>
-                    </select>
+                    <input type="text" class="form-control" id="delivery-date" placeholder="{{ __('Fecha entrega') }}" readonly>
                 </div>
             </div>
         </div>
@@ -141,6 +134,19 @@
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
+			// Initialize Flatpickr for delivery date
+			const deliveryDateInput = document.getElementById('delivery-date');
+			if (deliveryDateInput) {
+				flatpickr(deliveryDateInput, {
+					dateFormat: 'Y-m-d',
+					minDate: 'today',
+					locale: 'es',
+					allowInput: false,
+					clickOpens: true,
+					placeholder: '{{ __('Fecha entrega') }}'
+				});
+			}
+
 			// DON'T use Select2 for days and delivery-date - keep them as native selectors
 			// This matches the collaborator index implementation
 
@@ -165,35 +171,6 @@
 					templateSelection: window.formatVariantLanguage || function(lang) { return lang.text; }
 				});
 			}, 200);
-
-			// Validation function for days vs delivery date (copied exactly from collaborator index)
-			function validateDeliveryOptions() {
-				var selectedDays = parseInt($('#days').val()) || 0;
-				var deliverySelect = $('#delivery-date');
-
-				// Reset all options to enabled and remove disabled text
-				deliverySelect.find('option').prop('disabled', false).each(function() {
-					var originalText = $(this).data('original-text') || $(this).text();
-					$(this).data('original-text', originalText);
-					$(this).text(originalText);
-				});
-
-				if (selectedDays > 0) {
-					deliverySelect.find('option').each(function() {
-						var optionDays = parseInt($(this).data('days'));
-						if (!isNaN(optionDays) && optionDays < selectedDays) {
-							$(this).prop('disabled', true);
-							var originalText = $(this).data('original-text') || $(this).text();
-							$(this).text(originalText + ' (insuficiente)');
-
-							// If currently selected option becomes invalid, reset
-							if ($(this).val() === deliverySelect.val()) {
-								deliverySelect.val('');
-							}
-						}
-					});
-				}
-			}
 
 			// Filter functionality via AJAX (same approach as collaborator index)
 			function applyFilters() {
@@ -233,7 +210,7 @@
 						days: days,
 						deliveryDate: deliveryDate,
 						daysText: days ? $('#days option:selected').text() : 'none',
-						deliveryDateText: deliveryDate ? $('#delivery-date option:selected').text() : 'none',
+						deliveryDateText: deliveryDate,
 						hasTimeFilter: hasTimeFilter,
 						daysOnly: !!days && !deliveryDate,
 						deliveryOnly: !!deliveryDate && !days
@@ -289,12 +266,6 @@
 
 			// Table filters (copied from collaborator index)
 			$('#source-language, #target-language, #service, #days, #delivery-date').on('change', function () {
-				// Validate delivery options when days change
-				if (this.id === 'days') {
-					validateDeliveryOptions();
-					console.log('Days filter triggered! Value:', $(this).val());
-				}
-
 				console.log('Filter changed:', this.id, 'Value:', $(this).val());
 
 				// Special logging for time filters
@@ -302,16 +273,12 @@
 					console.log('Time filter changed:', {
 						id: this.id,
 						value: $(this).val(),
-						text: $(this).find('option:selected').text(),
 						element: this
 					});
 				}
 
 				applyFilters();
 			});
-
-			// Initialize validation on page load
-			validateDeliveryOptions();
 
 			// Clear filters functionality
 			$('#clear-filters').on('click', function(e) {

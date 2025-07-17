@@ -88,6 +88,112 @@
                                 <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
                                 <small class="text-muted">{{ $valorationText }}</small>
                             </div>
+
+                            {{-- Show availability info when time filters are applied --}}
+                            @if(isset($filterDays) && isset($filterDeliveryDate) && $filterDays && $filterDeliveryDate)
+                                @php
+                                    // Calculate available days for this collaborator
+                                    $startDate = now()->format('Y-m-d');
+                                    $endDate = null;
+
+                                    // Parse delivery date
+                                    switch($filterDeliveryDate) {
+                                        case 'today':
+                                            $endDate = now()->format('Y-m-d');
+                                            break;
+                                        case '1_week':
+                                            $endDate = now()->addWeek()->format('Y-m-d');
+                                            break;
+                                        case '15_days':
+                                            $endDate = now()->addDays(15)->format('Y-m-d');
+                                            break;
+                                        case '1_month':
+                                            $endDate = now()->addMonth()->format('Y-m-d');
+                                            break;
+                                        case '3_months':
+                                            $endDate = now()->addMonths(3)->format('Y-m-d');
+                                            break;
+                                        default:
+                                            try {
+                                                $endDate = \Carbon\Carbon::parse($filterDeliveryDate)->format('Y-m-d');
+                                            } catch (\Exception $e) {
+                                                $endDate = null;
+                                            }
+                                    }
+
+                                    $availableDays = 0;
+                                    if ($endDate) {
+                                        $weeklyAvailability = $collaborator->weeklyAvailability;
+
+                                        // If no weekly availability is set, assume all days are available
+                                        if (!$weeklyAvailability) {
+                                            $weeklyPattern = [
+                                                'monday' => true,
+                                                'tuesday' => true,
+                                                'wednesday' => true,
+                                                'thursday' => true,
+                                                'friday' => true,
+                                                'saturday' => true,
+                                                'sunday' => true,
+                                            ];
+                                        } else {
+                                            $weeklyPattern = [
+                                                'monday' => $weeklyAvailability->monday,
+                                                'tuesday' => $weeklyAvailability->tuesday,
+                                                'wednesday' => $weeklyAvailability->wednesday,
+                                                'thursday' => $weeklyAvailability->thursday,
+                                                'friday' => $weeklyAvailability->friday,
+                                                'saturday' => $weeklyAvailability->saturday,
+                                                'sunday' => $weeklyAvailability->sunday,
+                                            ];
+                                        }
+
+                                        // Get specific absence dates
+                                        $absenceDates = $collaborator->absences()
+                                            ->whereBetween('absence_date', [$startDate, $endDate])
+                                            ->get()
+                                            ->pluck('absence_date')
+                                            ->map(function ($date) {
+                                                return $date->format('Y-m-d');
+                                            })
+                                            ->toArray();
+
+                                        $currentDate = \Carbon\Carbon::parse($startDate);
+                                        $endDateCarbon = \Carbon\Carbon::parse($endDate);
+
+                                        while ($currentDate->lte($endDateCarbon)) {
+                                            $dayOfWeek = strtolower($currentDate->format('l'));
+                                            $dateString = $currentDate->format('Y-m-d');
+
+                                            // Check if this day is available according to weekly pattern
+                                            $isWeeklyAvailable = $weeklyPattern[$dayOfWeek] ?? false;
+
+                                            // Check if this specific date is not in absences
+                                            $isNotAbsent = !in_array($dateString, $absenceDates);
+
+                                            // Day is available if both conditions are met
+                                            if ($isWeeklyAvailable && $isNotAbsent) {
+                                                $availableDays++;
+                                            }
+
+                                            $currentDate->addDay();
+                                        }
+                                    }
+
+                                    $requiredDays = (int) $filterDays;
+                                    $isAvailable = $availableDays >= $requiredDays;
+                                @endphp
+
+                                <div class="d-flex align-items-center mt-1">
+                                    <i class="ti ti-calendar ti-xs me-1 {{ $isAvailable ? 'text-success' : 'text-danger' }}"></i>
+                                    <small class="{{ $isAvailable ? 'text-success' : 'text-danger' }}">
+                                        {{ $availableDays }} días disponibles
+                                        @if(!$isAvailable)
+                                            <span class="text-muted">(necesita {{ $requiredDays }})</span>
+                                        @endif
+                                    </small>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
