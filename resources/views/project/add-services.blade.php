@@ -50,7 +50,7 @@
 			})
 			.then(data => {
 				let options = '<option value="">Seleccionar unidad</option>';
-				
+
 				if (data.error) {
 					options += '<option value="">Error: ' + data.error + '</option>';
 				} else if (data.units && Array.isArray(data.units) && data.units.length > 0) {
@@ -62,7 +62,7 @@
 				} else {
 					options += '<option value="">No hay unidades disponibles</option>';
 				}
-				
+
 				unitSelect.innerHTML = options;
 			})
 			.catch(error => {
@@ -73,21 +73,21 @@
 
 	function initializeSelect2(index) {
 		if (typeof $ === 'undefined') return;
-		
+
 		// Inicializar Select2 en los elementos recién agregados
 		setTimeout(() => {
 			const fareSelect = $(`#fare_${index}`);
 			const sourceSelect = $(`#source_language_${index}`);
 			const targetSelect = $(`#target_language_${index}`);
-			
+
 			if (fareSelect.length && !fareSelect.hasClass('select2-hidden-accessible')) {
 				fareSelect.select2({ width: '100%' });
 			}
-			
+
 			if (sourceSelect.length && !sourceSelect.hasClass('select2-hidden-accessible')) {
 				sourceSelect.select2({ width: '100%' });
 			}
-			
+
 			if (targetSelect.length && !targetSelect.hasClass('select2-hidden-accessible')) {
 				targetSelect.select2({ width: '100%' });
 			}
@@ -137,7 +137,7 @@
 				const serviceRow = e.target.closest('.service-row');
 				const index = serviceRow.dataset.index;
 				const unitSelect = serviceRow.querySelector(`select[id="unit_${index}"]`);
-				
+
 				if (unitSelect) {
 					loadUnits(fareId, unitSelect);
 				}
@@ -149,35 +149,42 @@
 
 {{-- JavaScript nuevo para modal --}}
 <script>
+// Global error handler for unhandled promise rejections
+window.addEventListener('unhandledrejection', function(event) {
+	console.error('Unhandled Promise Rejection:', event.reason);
+	console.error('Promise:', event.promise);
+	event.preventDefault(); // Prevent the default browser error
+});
+
 document.addEventListener('DOMContentLoaded', function() {
 	const serviceModal = document.getElementById('serviceModal');
 	const serviceForm = document.getElementById('serviceForm');
 	const servicesList = document.getElementById('services-list');
 	const noServicesMessage = document.getElementById('no-services-message');
 	const duplicateWarning = document.getElementById('duplicate-warning');
-	
+
 	let currentServices = [];
 	let editingServiceId = null;
-	
+
 	// Load existing services
 	loadExistingServices();
-	
+
 	// Handle fare selection change for units
 	document.getElementById('fare_select').addEventListener('change', function() {
 		const fareId = this.value;
 		const unitSelect = document.getElementById('unit_select');
-		
+
 		if (!fareId) {
 			unitSelect.innerHTML = '<option value="">Primero selecciona un servicio</option>';
 			return;
 		}
-		
+
 		// Show loading state
 		unitSelect.innerHTML = '<option value="">Cargando unidades...</option>';
 		unitSelect.disabled = true;
-		
+
 		// Fetch units for the selected fare
-		fetch(`/project/fare-units?fare_id=${fareId}`, {
+		fetch(`/project/fare-units-simple?fare_id=${fareId}`, {
 			method: 'GET',
 			headers: {
 				'Accept': 'application/json',
@@ -185,19 +192,33 @@ document.addEventListener('DOMContentLoaded', function() {
 				'X-Requested-With': 'XMLHttpRequest'
 			}
 		})
-		.then(response => response.json())
-		.then(data => {
-			unitSelect.innerHTML = '<option value="">Seleccionar unidad</option>';
-			
-			if (data.units && data.units.length > 0) {
-				data.units.forEach(unit => {
-					const option = document.createElement('option');
-					option.value = unit.type;
-					option.textContent = unit.label;
-					unitSelect.appendChild(option);
-				});
-			} else {
-				unitSelect.innerHTML = '<option value="">No hay unidades disponibles</option>';
+		.then(response => {
+			console.log('Response status:', response.status);
+			console.log('Response headers:', response.headers);
+			return response.text(); // Get raw response first
+		})
+		.then(text => {
+			console.log('Raw response:', text);
+			try {
+				const data = JSON.parse(text);
+				console.log('Parsed data:', data);
+
+				unitSelect.innerHTML = '<option value="">Seleccionar unidad</option>';
+
+				if (data.units && data.units.length > 0) {
+					data.units.forEach(unit => {
+						const option = document.createElement('option');
+						option.value = unit.type;
+						option.textContent = unit.label;
+						unitSelect.appendChild(option);
+					});
+				} else {
+					unitSelect.innerHTML = '<option value="">No hay unidades disponibles</option>';
+				}
+			} catch (parseError) {
+				console.error('JSON parse error:', parseError);
+				console.error('Raw response that failed to parse:', text);
+				unitSelect.innerHTML = '<option value="">Error al cargar unidades</option>';
 			}
 		})
 		.catch(error => {
@@ -208,11 +229,11 @@ document.addEventListener('DOMContentLoaded', function() {
 			unitSelect.disabled = false;
 		});
 	});
-	
+
 	// Handle form submission
 	serviceForm.addEventListener('submit', function(e) {
 		e.preventDefault();
-		
+
 		const formData = new FormData(serviceForm);
 		const serviceData = {
 			service_id: formData.get('service_id'),
@@ -223,15 +244,15 @@ document.addEventListener('DOMContentLoaded', function() {
 			quantity: formData.get('quantity'),
 			unit: formData.get('unit')
 		};
-		
+
 		// Check for duplicates
 		if (isDuplicateService(serviceData)) {
 			duplicateWarning.classList.remove('d-none');
 			return;
 		}
-		
+
 		duplicateWarning.classList.add('d-none');
-		
+
 		// Determine if we're editing or adding
 		if (editingServiceId) {
 			updateService(serviceData);
@@ -239,12 +260,12 @@ document.addEventListener('DOMContentLoaded', function() {
 			addService(serviceData);
 		}
 	});
-	
+
 	// Handle modal show event
 	serviceModal.addEventListener('show.bs.modal', function(event) {
 		const button = event.relatedTarget;
 		const action = button?.getAttribute('data-action');
-		
+
 		if (action === 'edit') {
 			const serviceId = button.getAttribute('data-service-id');
 			editService(serviceId);
@@ -253,15 +274,15 @@ document.addEventListener('DOMContentLoaded', function() {
 			resetForm();
 		}
 	});
-	
+
 	// Handle modal hide event
 	serviceModal.addEventListener('hide.bs.modal', function() {
 		resetForm();
 	});
-	
+
 	function loadExistingServices() {
 		const projectId = document.getElementById('project-id').value;
-		
+
 		fetch(`/project/${projectId}/services`, {
 			method: 'GET',
 			headers: {
@@ -269,25 +290,34 @@ document.addEventListener('DOMContentLoaded', function() {
 				'X-Requested-With': 'XMLHttpRequest'
 			}
 		})
-		.then(response => response.json())
-		.then(data => {
-			if (data.services && data.services.length > 0) {
-				currentServices = data.services;
-				renderServices();
+		.then(response => {
+			console.log('Load services response status:', response.status);
+			return response.text();
+		})
+		.then(text => {
+			console.log('Load services raw response:', text);
+			try {
+				const data = JSON.parse(text);
+				if (data.services && data.services.length > 0) {
+					currentServices = data.services;
+					renderServices();
+				}
+			} catch (parseError) {
+				console.error('Error parsing services response:', parseError);
 			}
 		})
 		.catch(error => {
 			console.error('Error loading existing services:', error);
 		});
 	}
-	
+
 	function addService(serviceData) {
 		const button = document.getElementById('saveServiceBtn');
 		const originalText = button.innerHTML;
-		
+
 		button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Guardando...';
 		button.disabled = true;
-		
+
 		fetch(`/project/${serviceData.project_id}/service`, {
 			method: 'POST',
 			headers: {
@@ -298,24 +328,42 @@ document.addEventListener('DOMContentLoaded', function() {
 			},
 			body: JSON.stringify(serviceData)
 		})
-		.then(response => response.json())
-		.then(data => {
+		.then(response => {
+			console.log('Response status:', response.status);
+			console.log('Response headers:', response.headers);
+			return response.text(); // Get raw response first
+		})
+		.then(text => {
+			console.log('Raw response:', text);
+			try {
+				const data = JSON.parse(text);
+				console.log('Parsed data:', data);
 			if (data.success) {
 				currentServices.push(data.service);
 				renderServices();
-				
+
 				// Close modal
 				const modal = bootstrap.Modal.getInstance(serviceModal);
 				modal.hide();
-				
+
 				// Show success message
 				showAlert('Servicio agregado exitosamente', 'success');
 			} else {
 				showAlert(data.message || 'Error al agregar servicio', 'error');
 			}
+		} catch (parseError) {
+			console.error('JSON parse error:', parseError);
+			console.error('Raw response that failed to parse:', text);
+			showAlert('Error al procesar respuesta del servidor', 'error');
+		}
 		})
 		.catch(error => {
 			console.error('Error adding service:', error);
+			console.error('Error details:', {
+				name: error.name,
+				message: error.message,
+				stack: error.stack
+			});
 			showAlert('Error al agregar servicio', 'error');
 		})
 		.finally(() => {
@@ -323,14 +371,14 @@ document.addEventListener('DOMContentLoaded', function() {
 			button.disabled = false;
 		});
 	}
-	
+
 	function updateService(serviceData) {
 		const button = document.getElementById('saveServiceBtn');
 		const originalText = button.innerHTML;
-		
+
 		button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Actualizando...';
 		button.disabled = true;
-		
+
 		fetch(`/project/${serviceData.project_id}/service/${serviceData.service_id}`, {
 			method: 'PUT',
 			headers: {
@@ -350,11 +398,11 @@ document.addEventListener('DOMContentLoaded', function() {
 					currentServices[index] = data.service;
 				}
 				renderServices();
-				
+
 				// Close modal
 				const modal = bootstrap.Modal.getInstance(serviceModal);
 				modal.hide();
-				
+
 				// Show success message
 				showAlert('Servicio actualizado exitosamente', 'success');
 			} else {
@@ -370,41 +418,41 @@ document.addEventListener('DOMContentLoaded', function() {
 			button.disabled = false;
 		});
 	}
-	
+
 	function editService(serviceId) {
 		const service = currentServices.find(s => s.id == serviceId);
 		if (!service) return;
-		
+
 		editingServiceId = serviceId;
-		
+
 		// Update modal title
 		document.getElementById('serviceModalTitle').textContent = 'Editar servicio';
 		document.getElementById('saveServiceText').textContent = 'Actualizar servicio';
-		
+
 		// Fill form with service data
 		document.getElementById('service-id').value = service.id;
 		document.getElementById('source_language').value = service.source_language_code;
 		document.getElementById('target_language').value = service.target_language_code;
 		document.getElementById('fare_select').value = service.fare_id;
 		document.getElementById('quantity').value = service.quantity;
-		
+
 		// Load units for the selected fare
 		const fareSelect = document.getElementById('fare_select');
 		fareSelect.dispatchEvent(new Event('change'));
-		
+
 		// Set unit after units are loaded
 		setTimeout(() => {
 			document.getElementById('unit_select').value = service.unit;
 		}, 500);
 	}
-	
+
 	function deleteService(serviceId) {
 		if (!confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
 			return;
 		}
-		
+
 		const projectId = document.getElementById('project-id').value;
-		
+
 		fetch(`/project/${projectId}/service/${serviceId}`, {
 			method: 'DELETE',
 			headers: {
@@ -428,7 +476,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			showAlert('Error al eliminar servicio', 'error');
 		});
 	}
-	
+
 	function renderServices() {
 		if (currentServices.length === 0) {
 			noServicesMessage.classList.remove('d-none');
@@ -436,18 +484,18 @@ document.addEventListener('DOMContentLoaded', function() {
 			servicesList.appendChild(noServicesMessage);
 			return;
 		}
-		
+
 		noServicesMessage.classList.add('d-none');
-		
+
 		// Function to get flag for country code
 		function getCountryFlag(countryCode) {
 			// If no country code, return empty string
 			if (!countryCode) return '';
-			
+
 			// Return lowercase country code for flag-icons
 			return countryCode.toLowerCase();
 		}
-		
+
 		let html = '<div class="table-responsive">';
 		html += '<table class="table table-hover">';
 		html += '<thead>';
@@ -460,11 +508,11 @@ document.addEventListener('DOMContentLoaded', function() {
 		html += '</tr>';
 		html += '</thead>';
 		html += '<tbody>';
-		
+
 		currentServices.forEach(service => {
 			const sourceFlag = getCountryFlag(service.source_country_code);
 			const targetFlag = getCountryFlag(service.target_country_code);
-			
+
 			html += '<tr>';
 			html += `<td><strong>${service.fare_name}</strong></td>`;
 			html += '<td class="text-center">';
@@ -494,23 +542,23 @@ document.addEventListener('DOMContentLoaded', function() {
 			html += '</td>';
 			html += '</tr>';
 		});
-		
+
 		html += '</tbody>';
 		html += '</table>';
 		html += '</div>';
-		
+
 		servicesList.innerHTML = html;
 	}
-	
+
 	function isDuplicateService(serviceData) {
-		return currentServices.some(service => 
-			service.fare_id == serviceData.fare_id && 
+		return currentServices.some(service =>
+			service.fare_id == serviceData.fare_id &&
 			service.source_language_code === serviceData.source_language_code &&
 			service.target_language_code === serviceData.target_language_code &&
 			service.id != serviceData.service_id // Exclude current service when editing
 		);
 	}
-	
+
 	function resetForm() {
 		serviceForm.reset();
 		editingServiceId = null;
@@ -520,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		document.getElementById('unit_select').innerHTML = '<option value="">Primero selecciona un servicio</option>';
 		duplicateWarning.classList.add('d-none');
 	}
-	
+
 	function showAlert(message, type) {
 		const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
 		const alertHtml = `
@@ -529,10 +577,10 @@ document.addEventListener('DOMContentLoaded', function() {
 				<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 			</div>
 		`;
-		
+
 		const alertContainer = document.querySelector('.card-body');
 		alertContainer.insertAdjacentHTML('afterbegin', alertHtml);
-		
+
 		// Auto-dismiss after 5 seconds
 		setTimeout(() => {
 			const alert = document.querySelector('.alert');
@@ -541,7 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			}
 		}, 5000);
 	}
-	
+
 	// Make deleteService available globally
 	window.deleteService = deleteService;
 });
@@ -571,19 +619,19 @@ document.addEventListener('DOMContentLoaded', function() {
 	<h5 class="card-header">Servicios vinculados</h5>
 	<form class="card-body" action="{{ route('project.store-services', $project->id) }}" method="POST">
 		@csrf
-		
+
 		<div class="row g-4">
 			<div class="col-12">
 				<div id="services-container">
 					@include('project.partials.service-row', ['index' => 0, 'projectFare' => null])
 				</div>
-				
+
 				<button type="button" id="add-service" class="btn btn-outline-primary btn-sm">
 					<i class="ti ti-plus me-1"></i>{{ __('Add service') }}
 				</button>
 			</div>
 		</div>
-		
+
 		<div class="pt-4">
 			<div class="d-flex gap-3">
 				<button type="submit" class="btn btn-primary px-5">{{ __('Save services') }}</button>
@@ -621,22 +669,22 @@ document.addEventListener('DOMContentLoaded', function() {
 				<div class="modal-body">
 					<input type="hidden" id="service-id" name="service_id">
 					<input type="hidden" id="project-id" name="project_id" value="{{ $project->id }}">
-					
+
 					<div class="row g-3">
 						<div class="col-md-6">
-							<x-variant-language-select 
-								name="source_language_code" 
-								id="source_language" 
-								label="Idioma origen (*)" 
+							<x-variant-language-select
+								name="source_language_code"
+								id="source_language"
+								label="Idioma origen (*)"
 								:required="true"
 								placeholder="Seleccionar idioma origen"
 							/>
 						</div>
 						<div class="col-md-6">
-							<x-variant-language-select 
-								name="target_language_code" 
-								id="target_language" 
-								label="Idioma destino (*)" 
+							<x-variant-language-select
+								name="target_language_code"
+								id="target_language"
+								label="Idioma destino (*)"
 								:required="true"
 								placeholder="Seleccionar idioma destino"
 							/>
@@ -659,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function() {
 											return $fare->type ? $fare->type->name : 'Sin categoría';
 										});
 								@endphp
-								
+
 								@foreach($faresByType as $typeName => $fareList)
 									<optgroup label="{{ $typeName }}">
 										@foreach($fareList as $fare)
@@ -671,7 +719,7 @@ document.addEventListener('DOMContentLoaded', function() {
 						</div>
 						<div class="col-md-4">
 							<label class="form-label">Cantidad (*)</label>
-							<input type="number" name="quantity" id="quantity" class="form-control" 
+							<input type="number" name="quantity" id="quantity" class="form-control"
 								   value="1" min="1" step="1" required>
 						</div>
 						<div class="col-md-6">
@@ -681,7 +729,7 @@ document.addEventListener('DOMContentLoaded', function() {
 							</select>
 						</div>
 					</div>
-					
+
 					<div class="mt-3">
 						<div class="alert alert-warning d-none" id="duplicate-warning">
 							<i class="ti ti-alert-triangle me-2"></i>
@@ -701,4 +749,4 @@ document.addEventListener('DOMContentLoaded', function() {
 	</div>
 </div>
 
-@endsection 
+@endsection
