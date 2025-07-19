@@ -66,6 +66,27 @@
 	.filter-status:hover {
 		transform: scale(1.05);
 	}
+
+	/* Statistics section animations */
+	#service-statistics {
+		opacity: 0;
+		transform: translateY(-20px);
+		transition: all 0.3s ease-in-out;
+	}
+
+	#service-statistics.show {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	/* Statistics cards hover effects */
+	#service-statistics .avatar-initial {
+		transition: all 0.2s ease-in-out;
+	}
+
+	#service-statistics .d-flex:hover .avatar-initial {
+		transform: scale(1.1);
+	}
 </style>
 
 @section('content')
@@ -252,6 +273,128 @@
 			<hr>
 
 			{{ $dataTable->table(['class' => 'table table-hover table-striped dt-responsive nowrap w-100']) }}
+
+			<!-- Statistics Section -->
+			<div id="service-statistics" class="mt-4" style="display: none;">
+				<div class="card">
+					<div class="card-header">
+						<h5 class="mb-0">
+							<i class="ti ti-chart-bar me-2"></i>
+							<span id="statistics-service-name">Estadísticas del servicio</span>
+						</h5>
+					</div>
+					<div class="card-body">
+						<div class="row">
+							<div class="col-md-3 col-sm-6 mb-3">
+								<div class="d-flex align-items-center">
+									<div class="avatar avatar-sm me-3">
+										<span class="avatar-initial rounded bg-label-primary">
+											<i class="ti ti-calculator"></i>
+										</span>
+									</div>
+									<div>
+										<h6 class="mb-0" id="statistics-media">-</h6>
+										<small class="text-muted">Media</small>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-3 col-sm-6 mb-3">
+								<div class="d-flex align-items-center">
+									<div class="avatar avatar-sm me-3">
+										<span class="avatar-initial rounded bg-label-success">
+											<i class="ti ti-chart-line"></i>
+										</span>
+									</div>
+									<div>
+										<h6 class="mb-0" id="statistics-mediana">-</h6>
+										<small class="text-muted">Mediana</small>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-3 col-sm-6 mb-3">
+								<div class="d-flex align-items-center">
+									<div class="avatar avatar-sm me-3">
+										<span class="avatar-initial rounded bg-label-warning">
+											<i class="ti ti-chart-pie"></i>
+										</span>
+									</div>
+									<div>
+										<h6 class="mb-0" id="statistics-moda">-</h6>
+										<small class="text-muted">Moda</small>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-3 col-sm-6 mb-3">
+								<div class="d-flex align-items-center">
+									<div class="avatar avatar-sm me-3">
+										<span class="avatar-initial rounded bg-label-info">
+											<i class="ti ti-users"></i>
+										</span>
+									</div>
+									<div>
+										<h6 class="mb-0" id="statistics-count">-</h6>
+										<small class="text-muted">Colaboradores</small>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="row mt-3">
+							<div class="col-md-3 col-sm-6 mb-3">
+								<div class="d-flex align-items-center">
+									<div class="avatar avatar-sm me-3">
+										<span class="avatar-initial rounded bg-label-danger">
+											<i class="ti ti-arrow-down"></i>
+										</span>
+									</div>
+									<div>
+										<h6 class="mb-0" id="statistics-min">-</h6>
+										<small class="text-muted">Mínimo</small>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-3 col-sm-6 mb-3">
+								<div class="d-flex align-items-center">
+									<div class="avatar avatar-sm me-3">
+										<span class="avatar-initial rounded bg-label-success">
+											<i class="ti ti-arrow-up"></i>
+										</span>
+									</div>
+									<div>
+										<h6 class="mb-0" id="statistics-max">-</h6>
+										<small class="text-muted">Máximo</small>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-3 col-sm-6 mb-3">
+								<div class="d-flex align-items-center">
+									<div class="avatar avatar-sm me-3">
+										<span class="avatar-initial rounded bg-label-secondary">
+											<i class="ti ti-arrows-horizontal"></i>
+										</span>
+									</div>
+									<div>
+										<h6 class="mb-0" id="statistics-range">-</h6>
+										<small class="text-muted">Rango</small>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-3 col-sm-6 mb-3">
+								<div class="d-flex align-items-center">
+									<div class="avatar avatar-sm me-3">
+										<span class="avatar-initial rounded bg-label-dark">
+											<i class="ti ti-chart-dots"></i>
+										</span>
+									</div>
+									<div>
+										<h6 class="mb-0" id="statistics-std-dev">-</h6>
+										<small class="text-muted">Desv. Estándar</small>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 @endsection
@@ -339,6 +482,14 @@
 
 				// Reload table with new parameters
 				table.draw();
+
+				// Fetch service statistics if a service is selected
+				console.log('Service filter changed to:', service);
+				if (service) {
+					fetchServiceStatistics(service);
+				} else {
+					hideServiceStatistics();
+				}
 			});
 
 			// Initialize validation on page load
@@ -364,6 +515,9 @@
 				// Visual feedback - add active state
 				$('.filter-status').removeClass('active-filter');
 				$(this).addClass('active-filter');
+
+				// Hide service statistics when using dashboard filters
+				hideServiceStatistics();
 			});
 
 			// Clear all filters
@@ -385,6 +539,9 @@
 
 				// Clear search and reload table
 				table.search('').draw();
+
+				// Hide service statistics when filters are cleared
+				hideServiceStatistics();
 			});
 
 			// Re-initialize tooltips after table draw
@@ -471,6 +628,76 @@
 				var id = $(this).data('id');
 				deleteRecord(id, this);
 			});
+
+							// Function to fetch service statistics
+		function fetchServiceStatistics(serviceId) {
+			console.log('Fetching statistics for service ID:', serviceId);
+
+			$.ajax({
+				url: '{{ url("/api/collaborator/service-statistics") }}',
+				type: 'GET',
+				data: {
+					service_id: serviceId,
+					team_id: {{ auth()->user()->currentTeam->id ?? 4 }} // Use current team or default to 4
+				},
+					success: function (response) {
+						console.log('Statistics response:', response);
+						if (response.success) {
+							displayServiceStatistics(response);
+						} else {
+							hideServiceStatistics();
+							toastr['warning']('', response.message, {
+								closeButton: true,
+								tapToDismiss: false,
+								rtl: false
+							});
+						}
+					},
+					error: function (xhr, status, error) {
+						console.error('Error fetching statistics:', {xhr: xhr, status: status, error: error});
+						hideServiceStatistics();
+						var message = 'Error al obtener estadísticas';
+						if (xhr.responseJSON && xhr.responseJSON.message) {
+							message = xhr.responseJSON.message;
+						}
+						toastr['error']('', message, {
+							closeButton: true,
+							tapToDismiss: false,
+							rtl: false
+						});
+					}
+				});
+			}
+
+						// Function to display service statistics
+			function displayServiceStatistics(data) {
+				$('#statistics-service-name').text('Estadísticas: ' + data.service_name);
+				$('#statistics-media').text('€' + data.statistics.media);
+				$('#statistics-mediana').text('€' + data.statistics.mediana);
+
+				// Handle moda (mode) - can be null or array
+				if (data.statistics.moda && data.statistics.moda.length > 0) {
+					var modaText = data.statistics.moda.map(function(value) {
+						return '€' + value;
+					}).join(', ');
+					$('#statistics-moda').text(modaText);
+				} else {
+					$('#statistics-moda').text('No hay moda');
+				}
+
+				$('#statistics-count').text(data.statistics.count);
+				$('#statistics-min').text('€' + data.statistics.min);
+				$('#statistics-max').text('€' + data.statistics.max);
+				$('#statistics-range').text('€' + data.statistics.range);
+				$('#statistics-std-dev').text('€' + data.statistics.standard_deviation);
+
+				$('#service-statistics').show().addClass('show');
+			}
+
+			// Function to hide service statistics
+			function hideServiceStatistics() {
+				$('#service-statistics').removeClass('show').hide();
+			}
 		});
 
 		// Function to mark as watch

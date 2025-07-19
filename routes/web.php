@@ -397,6 +397,8 @@ Route::get('/pages/account-settings-account', [AccountSettingsAccount::class, 'i
 
 // CMS
 Route::get('/terms', [LegalDocumentsController::class, 'terms'])->name('terms');
+
+
 Route::get('/privacy', [LegalDocumentsController::class, 'privacy'])->name('privacy');
 Route::get('/security', [LegalDocumentsController::class, 'security'])->name('security');
 Route::get('/sla', [LegalDocumentsController::class, 'sla'])->name('sla');
@@ -529,8 +531,8 @@ Route::post('/user-link/{type}/{id}/create', [ContactController::class, 'process
 Route::get('/user-unlink/{type}/{id}', [ContactController::class, 'showUserUnlinkPage'])->name('user-unlink.show');
 Route::post('/user-unlink/{type}/{id}/confirm', [ContactController::class, 'processUserUnlink'])->name('user-unlink.process');
 
-Route::post('/collaborator/{id}/documents', [CollaboratorController::class, 'uploadDocument'])->name('collaborator.documents.upload');
-Route::delete('/collaborator/{id}/documents/{media}', [CollaboratorController::class, 'destroyDocument'])->name('collaborator.documents.destroy');
+	Route::post('/collaborator/{id}/documents', [CollaboratorController::class, 'uploadDocument'])->name('collaborator.documents.upload');
+	Route::delete('/collaborator/{id}/documents/{media}', [CollaboratorController::class, 'destroyDocument'])->name('collaborator.documents.destroy');
 
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
 Route::get('message/track/click/{token}', [MessageTrackingController::class, 'trackClick'])->name('message.track.click');
