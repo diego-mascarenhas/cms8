@@ -13,12 +13,12 @@ class UnitsSeeder extends Seeder
     public function run(): void
     {
         $units = [
-            ['type' => 'Minutos'],
-            ['type' => '10 Minutos'],
-            ['type' => 'Horas'],
-            ['type' => 'Palabras'],
-            ['type' => 'Páginas'],
-            ['type' => 'Rollos'],
+            ['type' => 'min'],
+            ['type' => '10 min'],
+            ['type' => 'h'],
+            ['type' => 'pal'],
+            ['type' => 'pág'],
+            ['type' => 'rollo'],
             ['type' => 'Total'],
         ];
 
