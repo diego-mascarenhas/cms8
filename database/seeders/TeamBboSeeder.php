@@ -3,13 +3,20 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
+use App\Models\Certification;
 use App\Models\Contact;
 use App\Models\ContactLanguageVariant;
 use App\Models\Enterprise;
+use App\Models\Fare;
+use App\Models\FareType;
 use App\Models\Language;
 use App\Models\LanguageVariant;
 use App\Models\Module;
+use App\Models\Software;
+use App\Models\SoftwareType;
+use App\Models\Stylebook;
 use App\Models\Team;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -125,7 +132,7 @@ class TeamBboSeeder extends Seeder
 			['id' => 5, 'name' => 'En espera', 'icon' => '👁️'],
 		];
 		foreach ($valorations as $valoration) {
-			\DB::table('contact_valorations')->insertOrIgnore([
+			DB::table('contact_valorations')->insertOrIgnore([
 				'id' => ($team->id * 10) + $valoration['id'],
 				'team_id' => $team->id,
 				'name' => $valoration['name'],
@@ -583,7 +590,7 @@ class TeamBboSeeder extends Seeder
 										$targetLanguage = $this->mapLanguageNameToCode($combination[1]);
 
 										if ($sourceLanguage && $targetLanguage && $sourceLanguage !== $targetLanguage) {
-											\DB::table('contact_fare')->updateOrInsert(
+											DB::table('contact_fare')->updateOrInsert(
 												[
 													'contact_id' => $contact->id,
 													'fare_id' => $fareModel->id,
@@ -1031,13 +1038,13 @@ class TeamBboSeeder extends Seeder
 	{
 		$this->command->info('🔗 Creating BBO fare units relationships...');
 
-		// First, get all the unit IDs - using Spanish names as defined in UnitsSeeder
-		$minuteUnit = \App\Models\Unit::where('type', 'Minutos')->first();
-		$tenMinutesUnit = \App\Models\Unit::where('type', '10 Minutos')->first();
-		$hourUnit = \App\Models\Unit::where('type', 'Horas')->first();
-		$wordUnit = \App\Models\Unit::where('type', 'Palabras')->first();
-		$pageUnit = \App\Models\Unit::where('type', 'Páginas')->first();
-		$rollUnit = \App\Models\Unit::where('type', 'Rollos')->first();
+		// First, get all the unit IDs - using updated names as defined in UnitsSeeder
+		$minuteUnit = \App\Models\Unit::where('type', 'min')->first();
+		$tenMinutesUnit = \App\Models\Unit::where('type', '10 min')->first();
+		$hourUnit = \App\Models\Unit::where('type', 'h')->first();
+		$wordUnit = \App\Models\Unit::where('type', 'pal')->first();
+		$pageUnit = \App\Models\Unit::where('type', 'pág')->first();
+		$rollUnit = \App\Models\Unit::where('type', 'rollo')->first();
 
 		// Check if units exist before proceeding
 		if (!$minuteUnit || !$tenMinutesUnit || !$hourUnit || !$wordUnit || !$pageUnit || !$rollUnit) {
@@ -1104,13 +1111,13 @@ class TeamBboSeeder extends Seeder
 
 				foreach ($relationship['unit_ids'] as $unitId) {
 					// Check if relationship already exists
-					$existingRelationship = \Illuminate\Support\Facades\DB::table('fare_unit')
+					$existingRelationship = DB::table('fare_unit')
 						->where('fare_id', $fare->id)
 						->where('unit_id', $unitId)
 						->first();
 
 					if (!$existingRelationship) {
-						\Illuminate\Support\Facades\DB::table('fare_unit')->insert([
+						DB::table('fare_unit')->insert([
 							'fare_id' => $fare->id,
 							'unit_id' => $unitId,
 							'created_at' => now(),

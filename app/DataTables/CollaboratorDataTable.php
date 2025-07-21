@@ -27,20 +27,20 @@ class CollaboratorDataTable extends DataTable
                 switch ($valoration)
                 {
                     case 'Top':
-                        return '<div class="d-flex align-items-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
+                        return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
                     case 'Lista negra':
-                        return '<div class="d-flex align-items-center"><i class="ti ti-x text-danger ti-sm me-2"></i> Lista negra</div>';
+                        return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-x text-danger ti-sm me-2"></i> Lista negra</div>';
                     case 'Validada':
-                        return '<div class="d-flex align-items-center"><i class="ti ti-check text-success ti-sm me-2"></i> Validada</div>';
+                        return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-check text-success ti-sm me-2"></i> Validada</div>';
                     case 'En espera':
-                        return '<div class="d-flex align-items-center"><i class="ti ti-eye text-warning ti-sm me-2"></i> Ojo</div>';
+                        return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-eye text-warning ti-sm me-2"></i> Ojo</div>';
                     case 'Interesante':
-                        return '<div class="d-flex align-items-center"><i class="ti ti-clock text-info ti-sm me-2"></i> Interesante</div>';
+                        return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-clock text-info ti-sm me-2"></i> Interesante</div>';
                     default:
-                        return '<div class="d-flex align-items-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
+                        return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
                 }
             })
-            ->addColumn('language_combinations', function ($contact)
+                                                                                    ->addColumn('language_combinations', function ($contact)
             {
                 // Get language combinations from the contact's language variants
                 $combinations = [];
@@ -49,17 +49,11 @@ class CollaboratorDataTable extends DataTable
                 {
                     foreach ($contact->languageVariants as $variant)
                     {
-                        $sourceLanguage = $variant->sourceLanguage;
-                        $targetLanguage = $variant->targetLanguage;
-
-                        $sourceName = $sourceLanguage ? $sourceLanguage->name : $variant->source_language_code;
-                        $targetName = $targetLanguage ? $targetLanguage->name : $variant->target_language_code;
-
-                        $combinations[] = $sourceName . ' > ' . $targetName;
+                        $combinations[] = '<div class="language-combination" style="text-align: center;">' . $variant->source_language_code . ' → ' . $variant->target_language_code . '</div>';
                     }
                 }
 
-                return empty($combinations) ? '' : implode('<br>', $combinations);
+                return empty($combinations) ? '' : implode('', $combinations);
             })
             ->addColumn('services', function ($contact)
             {
@@ -522,23 +516,26 @@ class CollaboratorDataTable extends DataTable
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->searchable(false)
-                ->orderable(false),
+                ->orderable(false)
+                ->width(120),
             Column::make('language_combinations')
                 ->title(__('Combination'))
                 ->className('text-center')
                 ->addClass('min-tablet')
                 ->searchable(true)
-                ->orderable(false),
+                ->orderable(false)
+                ->width(180),
             Column::make('services')
                 ->title(__('Services'))
                 ->className('text-center')
-                ->addClass('min-tablet')
+                ->addClass('min-desktop')
                 ->searchable(true),
             Column::make('projects')
                 ->title(__('Projects'))
                 ->className('text-center')
                 ->addClass('min-desktop')
-                ->searchable(false),
+                ->searchable(false)
+                ->width(100),
             Column::computed('action')
                 ->title(__('Acciones'))
                 ->className('text-center')

@@ -140,3 +140,6 @@ Route::middleware('team.token')->prefix('team')->group(function () {
 });
 
 Route::get('/fetch-html', [TemplateImportController::class, 'fetchHtml']);
+
+// Public statistics route (no authentication required)
+Route::get('/collaborator/service-statistics', [App\Http\Controllers\Api\CollaboratorController::class, 'getServiceStatistics']);
