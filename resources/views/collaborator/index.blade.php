@@ -87,6 +87,44 @@
 	#service-statistics .d-flex:hover .avatar-initial {
 		transform: scale(1.1);
 	}
+
+	/* DataTable column centering */
+	#collaborator-table .text-center {
+		text-align: center !important;
+	}
+
+	/* Language combination styling */
+	.language-combination {
+		text-align: center !important;
+	}
+
+	/* Responsive adjustments for smaller screens */
+	@media (max-width: 768px) {
+		#collaborator-table .min-desktop {
+			display: none !important;
+		}
+
+		#collaborator-table .min-tablet {
+			width: auto !important;
+		}
+
+		/* Adjust language combinations for mobile */
+		.language-combination {
+			font-size: 0.9em !important;
+			word-break: break-word !important;
+		}
+	}
+
+	@media (max-width: 576px) {
+		#collaborator-table .min-phone {
+			width: auto !important;
+		}
+
+		/* Make table more compact on very small screens */
+		#collaborator-table td, #collaborator-table th {
+			padding: 0.5rem 0.25rem !important;
+		}
+	}
 </style>
 
 @section('content')
