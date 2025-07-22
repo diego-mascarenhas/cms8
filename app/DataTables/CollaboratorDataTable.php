@@ -229,9 +229,10 @@ class CollaboratorDataTable extends DataTable
         $days = $request->days ? (int) $request->days : null;
         $deliveryDate = null;
 
-        // Parse delivery date filter
+        // Parse delivery date filter - now handles both old format and new date format
         if ($request->delivery_date)
         {
+            // Check if it's the old format (predefined options)
             switch ($request->delivery_date)
             {
                 case 'today':
@@ -249,6 +250,22 @@ class CollaboratorDataTable extends DataTable
                 case '3_months':
                     $deliveryDate = now()->addMonths(3)->format('Y-m-d');
                     break;
+                default:
+                    // Try to parse as a real date (Y-m-d format)
+                    try {
+                        $parsedDate = \Carbon\Carbon::parse($request->delivery_date);
+                        $deliveryDate = $parsedDate->format('Y-m-d');
+
+                        // Check if delivery date is in the past
+                        if ($parsedDate->isPast()) {
+                            \Log::warning('Delivery date is in the past: ' . $deliveryDate);
+                            return $query->whereRaw('1 = 0'); // Return empty result
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Could not parse delivery date: ' . $request->delivery_date);
+                        return $query;
+                    }
+                    break;
             }
         }
 
@@ -264,6 +281,7 @@ class CollaboratorDataTable extends DataTable
                 'startDate' => $startDate,
                 'endDate' => $endDate,
                 'deliveryDate' => $deliveryDate,
+                'originalDeliveryDate' => $request->delivery_date,
             ]);
 
             // Apply a more precise filter using a subquery

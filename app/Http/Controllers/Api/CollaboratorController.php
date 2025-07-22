@@ -235,14 +235,50 @@ class CollaboratorController extends Controller
         }
     }
 
-    /**
+        /**
      * Get available collaborator IDs for statistics (simplified version)
      */
     private function getAvailableCollaboratorIdsForStatistics($days, $deliveryDate)
     {
         // This is a simplified version of the availability calculation
         // For statistics, we'll use a basic availability check
-        $deliveryDate = \Carbon\Carbon::parse($deliveryDate);
+
+        // Parse delivery date - handle both old format and new date format
+        try {
+            if (in_array($deliveryDate, ['today', '1_week', '15_days', '1_month', '3_months'])) {
+                // Old format - convert to actual date
+                switch ($deliveryDate) {
+                    case 'today':
+                        $deliveryDate = now();
+                        break;
+                    case '1_week':
+                        $deliveryDate = now()->addWeek();
+                        break;
+                    case '15_days':
+                        $deliveryDate = now()->addDays(15);
+                        break;
+                    case '1_month':
+                        $deliveryDate = now()->addMonth();
+                        break;
+                    case '3_months':
+                        $deliveryDate = now()->addMonths(3);
+                        break;
+                }
+            } else {
+                // New format - parse as real date
+                $deliveryDate = \Carbon\Carbon::parse($deliveryDate);
+            }
+
+            // Check if delivery date is in the past
+            if ($deliveryDate->isPast()) {
+                \Log::warning('Delivery date is in the past: ' . $deliveryDate->format('Y-m-d'));
+                return [];
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Could not parse delivery date for statistics: ' . $deliveryDate);
+            return [];
+        }
+
         $startDate = now()->format('Y-m-d');
         $endDate = $deliveryDate->format('Y-m-d');
 
