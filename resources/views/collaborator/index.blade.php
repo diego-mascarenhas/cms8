@@ -671,12 +671,22 @@
 		function fetchServiceStatistics(serviceId) {
 			console.log('Fetching statistics for service ID:', serviceId);
 
+			// Get current filter values to pass to statistics API
+			var sourceLanguage = $('#source-language').val();
+			var targetLanguage = $('#target-language').val();
+			var days = $('#days').val();
+			var deliveryDate = $('#delivery-date').val();
+
 			$.ajax({
 				url: '{{ url("/api/collaborator/service-statistics") }}',
 				type: 'GET',
 				data: {
 					service_id: serviceId,
-					team_id: {{ auth()->user()->currentTeam->id ?? 4 }} // Use current team or default to 4
+					team_id: {{ auth()->user()->currentTeam->id ?? 4 }}, // Use current team or default to 4
+					source_language: sourceLanguage,
+					target_language: targetLanguage,
+					days: days,
+					delivery_date: deliveryDate
 				},
 					success: function (response) {
 						console.log('Statistics response:', response);

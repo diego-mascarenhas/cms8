@@ -1098,6 +1098,7 @@ class CollaboratorController extends Controller
      * This endpoint calculates media (mean), moda (mode), and mediana (median)
      * statistics for collaborator prices for a specific service/fare.
      * It also provides additional statistics like min, max, range, and standard deviation.
+     * The statistics are calculated only from collaborators that match the current filters.
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -1114,7 +1115,7 @@ class CollaboratorController extends Controller
             ], 400);
         }
 
-                $serviceId = $request->service_id;
+        $serviceId = $request->service_id;
 
         // For public access, use a default team ID or get from request
         // If user is authenticated, use their team, otherwise use default or request parameter
@@ -1126,8 +1127,8 @@ class CollaboratorController extends Controller
 
         \Log::info('Service statistics: Processing', ['service_id' => $serviceId, 'team_id' => $teamId]);
 
-        // Get all collaborators that have this service with prices
-        $collaboratorsWithPrices = Contact::where('team_id', $teamId)
+        // Build the query similar to CollaboratorDataTable
+        $query = Contact::where('team_id', $teamId)
             ->whereHas('fares', function ($query) use ($serviceId) {
                 $query->where('fares.id', $serviceId)
                     ->whereNotNull('contact_fare.price')
@@ -1137,8 +1138,12 @@ class CollaboratorController extends Controller
                 $query->where('fares.id', $serviceId)
                     ->whereNotNull('contact_fare.price')
                     ->where('contact_fare.price', '>', 0);
-            }])
-            ->get();
+            }]);
+
+        // Apply the same filters as the DataTable
+        $this->applyDataTableFilters($query, $request);
+
+        $collaboratorsWithPrices = $query->get();
 
         \Log::info('Service statistics: Found collaborators', ['count' => $collaboratorsWithPrices->count()]);
 
@@ -1179,6 +1184,114 @@ class CollaboratorController extends Controller
             'total_collaborators' => count($prices),
             'statistics' => $statistics
         ]);
+    }
+
+    /**
+     * Apply the same filters as used in CollaboratorDataTable
+     */
+    private function applyDataTableFilters($query, $request)
+    {
+        // Filter by source language (base or variant)
+        if ($request->has('source_language') && $request->source_language) {
+            $source = $request->source_language;
+            if (strlen($source) === 2) {
+                // If base language (2-letter), match all variants as source
+                $query->whereHas('languageVariants', function ($q) use ($source) {
+                    $q->where('source_language_code', 'like', $source . '%')
+                        ->orWhere('source_language_code', $source);
+                });
+            } else {
+                // If exact variant, match only that as source
+                $query->whereHas('languageVariants', function ($q) use ($source) {
+                    $q->where('source_language_code', $source);
+                });
+            }
+        }
+
+        // Filter by target language (base or variant)
+        if ($request->has('target_language') && $request->target_language) {
+            $target = $request->target_language;
+            if (strlen($target) === 2) {
+                // If base language (2-letter), match all variants as target
+                $query->whereHas('languageVariants', function ($q) use ($target) {
+                    $q->where('target_language_code', 'like', $target . '%')
+                        ->orWhere('target_language_code', $target);
+                });
+            } else {
+                // If exact variant, match only that as target
+                $query->whereHas('languageVariants', function ($q) use ($target) {
+                    $q->where('target_language_code', $target);
+                });
+            }
+        }
+
+        // Filter by availability (days and delivery date)
+        if (($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date)) {
+            $availableCollaboratorIds = $this->getAvailableCollaboratorIdsForStatistics($request->days, $request->delivery_date);
+
+            if (!empty($availableCollaboratorIds)) {
+                $query->whereIn('id', $availableCollaboratorIds);
+            } else {
+                // If no collaborators are available, return empty result
+                $query->whereRaw('1 = 0');
+            }
+        }
+    }
+
+    /**
+     * Get available collaborator IDs for statistics (simplified version)
+     */
+    private function getAvailableCollaboratorIdsForStatistics($days, $deliveryDate)
+    {
+        // This is a simplified version of the availability calculation
+        // For statistics, we'll use a basic availability check
+        $deliveryDate = \Carbon\Carbon::parse($deliveryDate);
+        $startDate = now()->format('Y-m-d');
+        $endDate = $deliveryDate->format('Y-m-d');
+
+        // Get collaborators with weekly availability data
+        $collaborators = Contact::where('team_id', auth()->user()->currentTeam->id)
+            ->whereHas('weeklyAvailability')
+            ->with('weeklyAvailability')
+            ->get();
+
+        $availableIds = [];
+
+        foreach ($collaborators as $collaborator) {
+            $availableDays = $this->calculateAvailableDaysForStatistics($collaborator, $startDate, $endDate);
+
+            if ($availableDays >= $days) {
+                $availableIds[] = $collaborator->id;
+            }
+        }
+
+        return $availableIds;
+    }
+
+    /**
+     * Calculate available days for statistics (simplified version)
+     */
+    private function calculateAvailableDaysForStatistics($collaborator, $startDate, $endDate)
+    {
+        if (!$collaborator->weeklyAvailability) {
+            return 0;
+        }
+
+        $start = \Carbon\Carbon::parse($startDate);
+        $end = \Carbon\Carbon::parse($endDate);
+        $availableDays = 0;
+
+        while ($start->lte($end)) {
+            $dayOfWeek = strtolower($start->format('l')); // monday, tuesday, etc.
+
+            if (isset($collaborator->weeklyAvailability->$dayOfWeek) && $collaborator->weeklyAvailability->$dayOfWeek) {
+                $availableDays++;
+            }
+
+            $start->addDay();
+        }
+
+        return $availableDays;
     }
 
     /**
