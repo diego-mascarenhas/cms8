@@ -225,7 +225,7 @@ class ProjectController extends Controller
 	private function getAvailableCollaboratorIds($requiredDays, $deliveryDate)
 	{
 		$availableIds = [];
-		$startDate = now()->format('Y-m-d');
+		$startDate = now()->addDay()->format('Y-m-d');
 
 		// Parse delivery date
 		$endDate = null;
@@ -257,6 +257,11 @@ class ProjectController extends Controller
 					} else {
 						// ISO format: Y-m-d
 						$endDate = Carbon::parse($deliveryDate)->format('Y-m-d');
+					}
+
+					// Check if delivery date is in the past
+					if (Carbon::parse($endDate)->isPast()) {
+						return [];
 					}
 				} catch (\Exception $e) {
 					return [];
