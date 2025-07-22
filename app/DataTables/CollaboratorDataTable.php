@@ -272,7 +272,7 @@ class CollaboratorDataTable extends DataTable
         // If both days and delivery date are provided, filter by availability
         if ($days && $deliveryDate)
         {
-            $startDate = now()->format('Y-m-d');
+            $startDate = now()->addDay()->format('Y-m-d');
             $endDate = $deliveryDate;
 
             // Debug: Log the parameters

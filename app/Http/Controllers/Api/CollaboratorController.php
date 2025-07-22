@@ -63,8 +63,8 @@ class CollaboratorController extends Controller
             $hasAvailabilityFilter = ($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date);
 
             if ($hasAvailabilityFilter) {
-                // Calculate actual available days between today and delivery date
-                $startDate = now()->startOfDay();
+                // Calculate actual available days between tomorrow and delivery date
+                $startDate = now()->addDay()->startOfDay();
                 $endDate = \Carbon\Carbon::parse($request->delivery_date)->endOfDay();
                 $actualAvailableDays = $startDate->diffInDays($endDate) + 1; // +1 to include both start and end dates
 
