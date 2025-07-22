@@ -9,6 +9,7 @@
 	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
 	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}">
+	<link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -17,6 +18,7 @@
 	<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 	<script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
 	<script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+	<script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -96,6 +98,39 @@
 	/* Language combination styling */
 	.language-combination {
 		text-align: center !important;
+	}
+
+	/* Date input styling */
+	.flatpickr-input {
+		background-color: #fff !important;
+		border: 1px solid #d9dee3 !important;
+		border-radius: 0.375rem !important;
+		padding: 0.4375rem 0.875rem !important;
+		font-size: 0.9375rem !important;
+		line-height: 1.53 !important;
+		color: #697a8d !important;
+	}
+
+	.flatpickr-input:focus {
+		border-color: #696cff !important;
+		box-shadow: 0 0 0.25rem rgba(105, 108, 255, 0.1) !important;
+	}
+
+	/* Flatpickr calendar styling */
+	.flatpickr-calendar {
+		background: #fff !important;
+		border: 1px solid #d9dee3 !important;
+		border-radius: 0.375rem !important;
+		box-shadow: 0 0.25rem 1.125rem rgba(75, 70, 92, 0.1) !important;
+	}
+
+	.flatpickr-day.selected {
+		background: #696cff !important;
+		border-color: #696cff !important;
+	}
+
+	.flatpickr-day:hover {
+		background: #e7e7ff !important;
 	}
 
 	/* Responsive adjustments for smaller screens */
@@ -240,18 +275,22 @@
 			<h5 class="mb-3">Filtros</h5>
 			<div class="row g-3 mb-3">
 				<div class="col">
+					<label for="source-language" class="form-label">{{ __('Idioma origen') }}</label>
 					<x-variant-language-select name="source-language" id="source-language" label="" :required="false"
 						placeholder="{{ __('Idioma origen') }}" :show-base-languages="true" />
 				</div>
 				<div class="col">
+					<label for="target-language" class="form-label">{{ __('Idioma destino') }}</label>
 					<x-variant-language-select name="target-language" id="target-language" label="" :required="false"
 						placeholder="{{ __('Idioma destino') }}" :show-base-languages="true" />
 				</div>
 				<div class="col">
+					<label for="service" class="form-label">{{ __('Servicio') }}</label>
 					<x-fare-select name="service" id="service" label="" :required="false"
 						placeholder="{{ __('Servicio') }}" />
 				</div>
 				<div class="col">
+					<label for="days" class="form-label">{{ __('Días') }}</label>
 					<select class="form-select" id="days">
 						<option value="" selected>{{ __('Días') }}</option>
 						<option value="5">5 días</option>
@@ -261,14 +300,7 @@
 					</select>
 				</div>
 				<div class="col">
-					<select class="form-select" id="delivery-date">
-						<option value="" selected>{{ __('Fecha entrega') }}</option>
-						<option value="today" data-days="1">Hoy</option>
-						<option value="1_week" data-days="7">En 1 semana</option>
-						<option value="15_days" data-days="15">En 15 días</option>
-						<option value="1_month" data-days="30">En 1 mes</option>
-						<option value="3_months" data-days="90">En 3 meses</option>
-					</select>
+					<x-input-date id="delivery-date" label="{{ __('Fecha entrega') }}" value="" />
 				</div>
 			</div>
 			<div class="row align-items-center mb-4">
@@ -463,75 +495,107 @@
 			// Validation function for days vs delivery date
 			function validateDeliveryOptions() {
 				var selectedDays = parseInt($('#days').val()) || 0;
-				var deliverySelect = $('#delivery-date');
+				var deliveryDate = $('#delivery-date').val();
 
-				// Reset all options to enabled and remove disabled text
-				deliverySelect.find('option').prop('disabled', false).each(function() {
-					var originalText = $(this).data('original-text') || $(this).text();
-					$(this).data('original-text', originalText);
-					$(this).text(originalText);
-				});
-
-				if (selectedDays > 0) {
-					deliverySelect.find('option').each(function() {
-						var optionDays = parseInt($(this).data('days'));
-						if (!isNaN(optionDays) && optionDays < selectedDays) {
-							$(this).prop('disabled', true);
-							var originalText = $(this).data('original-text') || $(this).text();
-							$(this).text(originalText + ' (insuficiente)');
-
-							// If currently selected option becomes invalid, reset
-							if ($(this).val() === deliverySelect.val()) {
-								deliverySelect.val('');
-							}
-						}
-					});
+				// If days are selected, ensure delivery date is also selected
+				if (selectedDays > 0 && !deliveryDate) {
+					console.log('Days selected but no delivery date. Both are required for availability filtering.');
 				}
+
+				// If delivery date is selected, ensure days are also selected
+				if (deliveryDate && !selectedDays) {
+					console.log('Delivery date selected but no days. Both are required for availability filtering.');
+				}
+
+				// Check if delivery date is in the past
+				if (deliveryDate && selectedDays > 0) {
+					var today = new Date();
+					today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+					var deliveryDateObj = new Date(deliveryDate);
+
+					if (deliveryDateObj < today) {
+						// Show warning message
+						toastr.warning('La fecha de entrega no puede ser anterior a hoy. No se encontrarán colaboradores disponibles.', 'Fecha inválida', {
+							timeOut: 5000,
+							extendedTimeOut: 2000,
+							closeButton: true,
+							progressBar: true
+						});
+
+						// Clear the delivery date
+						$('#delivery-date').val('');
+						return false;
+					}
+				}
+
+				return true;
+			}
+
+			// Debounce function to prevent multiple rapid calls
+			let filterTimeout;
+			function debouncedApplyFilters() {
+				clearTimeout(filterTimeout);
+				filterTimeout = setTimeout(function() {
+					// Validate delivery options when days change
+					if (this.id === 'days') {
+						validateDeliveryOptions();
+					}
+
+					var table = $('#collaborator-table').DataTable();
+
+					// Get current filter values
+					var sourceLanguage = $('#source-language').val();
+					var targetLanguage = $('#target-language').val();
+					var service = $('#service').val();
+					var days = $('#days').val();
+					var deliveryDate = $('#delivery-date').val();
+
+					// Clear dashboard filter when using regular filters
+					$('.filter-status').removeClass('active-filter');
+
+					// Add parameters to ajax request
+					table.settings()[0].ajax.data = function (d) {
+						d.source_language = sourceLanguage;
+						d.target_language = targetLanguage;
+						d.service = service;
+						d.days = days;
+						d.delivery_date = deliveryDate;
+						// Don't include dashboard_filter when using regular filters
+					};
+
+					// Reload table with new parameters
+					table.draw();
+
+					// Fetch service statistics if a service is selected
+					console.log('Service filter changed to:', service);
+					if (service) {
+						fetchServiceStatistics(service);
+					} else {
+						hideServiceStatistics();
+					}
+				}, 300); // 300ms delay
 			}
 
 			// Table filters
 			$('#source-language, #target-language, #service, #days, #delivery-date').on('change', function () {
-				// Validate delivery options when days change
-				if (this.id === 'days') {
-					validateDeliveryOptions();
+				// Add event listener for delivery date changes (for date picker)
+				if (this.id === 'delivery-date') {
+					console.log('Delivery date changed:', $(this).val());
 				}
 
-				var table = $('#collaborator-table').DataTable();
-
-				// Get current filter values
-				var sourceLanguage = $('#source-language').val();
-				var targetLanguage = $('#target-language').val();
-				var service = $('#service').val();
-				var days = $('#days').val();
-				var deliveryDate = $('#delivery-date').val();
-
-				// Clear dashboard filter when using regular filters
-				$('.filter-status').removeClass('active-filter');
-
-				// Add parameters to ajax request
-				table.settings()[0].ajax.data = function (d) {
-					d.source_language = sourceLanguage;
-					d.target_language = targetLanguage;
-					d.service = service;
-					d.days = days;
-					d.delivery_date = deliveryDate;
-					// Don't include dashboard_filter when using regular filters
-				};
-
-				// Reload table with new parameters
-				table.draw();
-
-				// Fetch service statistics if a service is selected
-				console.log('Service filter changed to:', service);
-				if (service) {
-					fetchServiceStatistics(service);
-				} else {
-					hideServiceStatistics();
-				}
+				debouncedApplyFilters();
 			});
 
 			// Initialize validation on page load
 			validateDeliveryOptions();
+
+			// Add event listener for delivery date changes (for date picker component)
+			$(document).on('change', '#delivery-date', function() {
+				console.log('Delivery date changed:', $(this).val());
+				// Trigger the same filter logic as other filters
+				$('#source-language, #target-language, #service, #days').trigger('change');
+			});
 
 			// Dashboard filters
 			$('.filter-status').on('click', function(e) {
@@ -671,12 +735,22 @@
 		function fetchServiceStatistics(serviceId) {
 			console.log('Fetching statistics for service ID:', serviceId);
 
+			// Get current filter values to pass to statistics API
+			var sourceLanguage = $('#source-language').val();
+			var targetLanguage = $('#target-language').val();
+			var days = $('#days').val();
+			var deliveryDate = $('#delivery-date').val();
+
 			$.ajax({
 				url: '{{ url("/api/collaborator/service-statistics") }}',
 				type: 'GET',
 				data: {
 					service_id: serviceId,
-					team_id: {{ auth()->user()->currentTeam->id ?? 4 }} // Use current team or default to 4
+					team_id: {{ auth()->user()->currentTeam->id ?? 4 }}, // Use current team or default to 4
+					source_language: sourceLanguage,
+					target_language: targetLanguage,
+					days: days,
+					delivery_date: deliveryDate
 				},
 					success: function (response) {
 						console.log('Statistics response:', response);
@@ -684,24 +758,43 @@
 							displayServiceStatistics(response);
 						} else {
 							hideServiceStatistics();
-							toastr['warning']('', response.message, {
+							// Clear any existing toasts first
+							toastr.clear();
+
+							// Check if this is an availability issue
+							var hasAvailabilityFilter = $('#days').val() && $('#delivery-date').val();
+							var message = response.message;
+
+							if (hasAvailabilityFilter && message.includes('disponibilidad')) {
+								message += ' (La tabla muestra colaboradores con el servicio, pero sin disponibilidad suficiente)';
+							}
+
+							// Show only one warning message
+							toastr['warning']('', message, {
 								closeButton: true,
 								tapToDismiss: false,
-								rtl: false
+								rtl: false,
+								timeOut: 10000,
+								extendedTimeOut: 2000
 							});
 						}
 					},
 					error: function (xhr, status, error) {
 						console.error('Error fetching statistics:', {xhr: xhr, status: status, error: error});
 						hideServiceStatistics();
-						var message = 'Error al obtener estadísticas';
+						var message = 'Error al obtener estadísticas del servicio';
 						if (xhr.responseJSON && xhr.responseJSON.message) {
 							message = xhr.responseJSON.message;
 						}
-						toastr['error']('', message, {
+						// Clear any existing toasts first
+						toastr.clear();
+						// Show only one warning message
+						toastr['warning']('', message, {
 							closeButton: true,
 							tapToDismiss: false,
-							rtl: false
+							rtl: false,
+							timeOut: 8000,
+							extendedTimeOut: 2000
 						});
 					}
 				});
@@ -886,8 +979,20 @@
 		}
 	</script>
 
-	<script>
-		$(function () {
+			<script>
+			$(function () {
+				// Initialize Flatpickr for delivery date with minimum date
+				if (typeof flatpickr !== 'undefined') {
+					const today = new Date().toISOString().split('T')[0];
+					flatpickr('#delivery-date', {
+						dateFormat: 'Y-m-d',
+						allowInput: true,
+						altInput: true,
+						altFormat: 'd-m-Y',
+						minDate: today,
+						monthSelectorType: 'static'
+					});
+				}
 			if ($.fn.select2) {
 				if ($('#source-language').hasClass('select2-hidden-accessible')) {
 					$('#source-language').select2('destroy');

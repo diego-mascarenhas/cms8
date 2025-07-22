@@ -129,7 +129,7 @@ class TeamBboSeeder extends Seeder
 			['id' => 2, 'name' => 'Validada', 'icon' => '✅'],
 			['id' => 3, 'name' => 'Interesante', 'icon' => '🕐'],
 			['id' => 4, 'name' => 'Lista negra', 'icon' => '❌'],
-			['id' => 5, 'name' => 'En espera', 'icon' => '👁️'],
+			['id' => 5, 'name' => 'Ojo', 'icon' => '👁️'],
 		];
 		foreach ($valorations as $valoration) {
 			DB::table('contact_valorations')->insertOrIgnore([
@@ -148,11 +148,22 @@ class TeamBboSeeder extends Seeder
 	 */
 	private function createBboTeam()
 	{
-		$bboOwner = User::where('email', 'victor@machbel.com')->first();
+		$bboOwner = User::where('email', 'bego@bbosubtitulado.com')->first();
 
 		if (!$bboOwner) {
-			$this->command->error('BBO owner user not found. Please run UserSeeder first.');
-			return null;
+			$this->command->info('BBO owner user not found. Creating Bego Ballester Olmos...');
+
+			$bboOwner = User::create([
+				'name' => 'Begoña Ballester Olmos',
+				'email' => 'bego@bbosubtitulado.com',
+				'password' => Hash::make('bbounicornio123'),
+				'email_verified_at' => now(),
+			]);
+
+			// Assign admin role
+			$bboOwner->assignRole('admin');
+
+			$this->command->info('✅ Created BBO owner user: ' . $bboOwner->name);
 		}
 
 		// Verificar si ya existe un equipo con ID 4
@@ -519,6 +530,9 @@ class TeamBboSeeder extends Seeder
 				// Map country names to IDs that exist in the database
 				$countryCode = $this->mapCountryToCode($pais);
 
+				// Map valoration to ID
+				$valorationId = $this->mapValorationToId($valoracion);
+
 				// Prepare additional data with extras structure
 				$additionalData = [
 					'extras' => [
@@ -547,11 +561,19 @@ class TeamBboSeeder extends Seeder
 					'country' => $countryCode,
 					'language' => $defaultLanguage,
 					'status_id' => $defaultStatusId,
+					'valoration_id' => $valorationId, // Assign valoration
 					'creator_id' => 1,  // Admin user
 					'responsible_id' => 1,  // Admin user
 					'data' => $additionalData,
 					'profile' => 'BBO Collaborator imported from legacy system',
 				]);
+
+				// Log valoration assignment
+				if ($valorationId) {
+					$this->command->info("✅ Assigned valoration ID {$valorationId} to contact: {$nombre}");
+				} else {
+					$this->command->info("ℹ️ No valoration assigned to contact: {$nombre} (valoracion: {$valoracion})");
+				}
 
 				// Process language combinations
 				if (!empty($languageVariants) && is_array($languageVariants)) {
@@ -889,6 +911,28 @@ class TeamBboSeeder extends Seeder
 		];
 
 		return $languageMapping[$normalizedName] ?? null;
+	}
+
+	/**
+	 * Map valoration names to valoration IDs for BBO team
+	 */
+	private function mapValorationToId(?string $valorationName): ?int
+	{
+		if (empty($valorationName)) {
+			return null;
+		}
+
+		$valorationMapping = [
+			'Top' => ($this->teamId * 10) + 1,
+			'Validada' => ($this->teamId * 10) + 2,
+			'Interesante' => ($this->teamId * 10) + 3,
+			'Lista negra' => ($this->teamId * 10) + 4,
+			'Ojo' => ($this->teamId * 10) + 5,
+			'OJO' => ($this->teamId * 10) + 5, // Handle uppercase version from CSV
+			'En espera' => ($this->teamId * 10) + 5, // Legacy mapping for backward compatibility
+		];
+
+		return $valorationMapping[$valorationName] ?? null;
 	}
 
 	/**

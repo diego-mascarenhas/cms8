@@ -1098,6 +1098,7 @@ class CollaboratorController extends Controller
      * This endpoint calculates media (mean), moda (mode), and mediana (median)
      * statistics for collaborator prices for a specific service/fare.
      * It also provides additional statistics like min, max, range, and standard deviation.
+     * The statistics are calculated only from collaborators that match the current filters.
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -1114,7 +1115,7 @@ class CollaboratorController extends Controller
             ], 400);
         }
 
-                $serviceId = $request->service_id;
+        $serviceId = $request->service_id;
 
         // For public access, use a default team ID or get from request
         // If user is authenticated, use their team, otherwise use default or request parameter
@@ -1126,8 +1127,8 @@ class CollaboratorController extends Controller
 
         \Log::info('Service statistics: Processing', ['service_id' => $serviceId, 'team_id' => $teamId]);
 
-        // Get all collaborators that have this service with prices
-        $collaboratorsWithPrices = Contact::where('team_id', $teamId)
+        // Build the query similar to CollaboratorDataTable
+        $query = Contact::where('team_id', $teamId)
             ->whereHas('fares', function ($query) use ($serviceId) {
                 $query->where('fares.id', $serviceId)
                     ->whereNotNull('contact_fare.price')
@@ -1137,16 +1138,51 @@ class CollaboratorController extends Controller
                 $query->where('fares.id', $serviceId)
                     ->whereNotNull('contact_fare.price')
                     ->where('contact_fare.price', '>', 0);
-            }])
-            ->get();
+            }]);
+
+        // Apply the same filters as the DataTable
+        $this->applyDataTableFilters($query, $request);
+
+        $collaboratorsWithPrices = $query->get();
 
         \Log::info('Service statistics: Found collaborators', ['count' => $collaboratorsWithPrices->count()]);
 
         if ($collaboratorsWithPrices->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No collaborators found with prices for this service'
-            ], 404);
+            // Check if this is due to availability filtering
+            $hasAvailabilityFilter = ($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date);
+
+            if ($hasAvailabilityFilter) {
+                                // Calculate actual available days between tomorrow and delivery date
+                $startDate = now()->addDay()->startOfDay();
+                $endDate = \Carbon\Carbon::parse($request->delivery_date)->endOfDay();
+                $actualAvailableDays = $startDate->diffInDays($endDate) + 1; // +1 to include both start and end dates
+
+                // Debug: Log the calculation details
+                \Log::info('Days calculation debug', [
+                    'startDate' => $startDate->format('Y-m-d H:i:s'),
+                    'endDate' => $endDate->format('Y-m-d H:i:s'),
+                    'diffInDays' => $startDate->diffInDays($endDate),
+                    'actualAvailableDays' => $actualAvailableDays,
+                    'requestedDays' => $request->days
+                ]);
+
+                if ($actualAvailableDays < $request->days) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Solo hay ' . $actualAvailableDays . ' días disponibles hasta la fecha de entrega, pero se requieren ' . $request->days . ' días'
+                    ], 404);
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No se encontraron colaboradores con precios para este servicio que cumplan con la disponibilidad de ' . $request->days . ' días'
+                    ], 404);
+                }
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron colaboradores con precios para este servicio'
+                ], 404);
+            }
         }
 
         // Extract all prices for this service
@@ -1179,6 +1215,184 @@ class CollaboratorController extends Controller
             'total_collaborators' => count($prices),
             'statistics' => $statistics
         ]);
+    }
+
+    /**
+     * Apply the same filters as used in CollaboratorDataTable
+     */
+    private function applyDataTableFilters($query, $request)
+    {
+        // Filter by source language (base or variant)
+        if ($request->has('source_language') && $request->source_language) {
+            $source = $request->source_language;
+            if (strlen($source) === 2) {
+                // If base language (2-letter), match all variants as source
+                $query->whereHas('languageVariants', function ($q) use ($source) {
+                    $q->where('source_language_code', 'like', $source . '%')
+                        ->orWhere('source_language_code', $source);
+                });
+            } else {
+                // If exact variant, match only that as source
+                $query->whereHas('languageVariants', function ($q) use ($source) {
+                    $q->where('source_language_code', $source);
+                });
+            }
+        }
+
+        // Filter by target language (base or variant)
+        if ($request->has('target_language') && $request->target_language) {
+            $target = $request->target_language;
+            if (strlen($target) === 2) {
+                // If base language (2-letter), match all variants as target
+                $query->whereHas('languageVariants', function ($q) use ($target) {
+                    $q->where('target_language_code', 'like', $target . '%')
+                        ->orWhere('target_language_code', $target);
+                });
+            } else {
+                // If exact variant, match only that as target
+                $query->whereHas('languageVariants', function ($q) use ($target) {
+                    $q->where('target_language_code', $target);
+                });
+            }
+        }
+
+        // Filter by availability (days and delivery date)
+        if (($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date)) {
+            $availableCollaboratorIds = $this->getAvailableCollaboratorIdsForStatistics($request->days, $request->delivery_date);
+
+            if (!empty($availableCollaboratorIds)) {
+                $query->whereIn('id', $availableCollaboratorIds);
+            } else {
+                // If no collaborators are available, return empty result
+                $query->whereRaw('1 = 0');
+            }
+        }
+    }
+
+        /**
+     * Get available collaborator IDs for statistics (simplified version)
+     */
+    private function getAvailableCollaboratorIdsForStatistics($days, $deliveryDate)
+    {
+        // This is a simplified version of the availability calculation
+        // For statistics, we'll use a basic availability check
+
+        // Parse delivery date - handle both old format and new date format
+        try {
+            if (in_array($deliveryDate, ['today', '1_week', '15_days', '1_month', '3_months'])) {
+                // Old format - convert to actual date
+                switch ($deliveryDate) {
+                    case 'today':
+                        $deliveryDate = now();
+                        break;
+                    case '1_week':
+                        $deliveryDate = now()->addWeek();
+                        break;
+                    case '15_days':
+                        $deliveryDate = now()->addDays(15);
+                        break;
+                    case '1_month':
+                        $deliveryDate = now()->addMonth();
+                        break;
+                    case '3_months':
+                        $deliveryDate = now()->addMonths(3);
+                        break;
+                }
+            } else {
+                // New format - parse as real date
+                $deliveryDate = \Carbon\Carbon::parse($deliveryDate);
+            }
+
+            // Check if delivery date is in the past
+            if ($deliveryDate->isPast()) {
+                \Log::warning('Delivery date is in the past: ' . $deliveryDate->format('Y-m-d'));
+                return [];
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Could not parse delivery date for statistics: ' . $deliveryDate);
+            return [];
+        }
+
+        $startDate = now()->format('Y-m-d');
+        $endDate = $deliveryDate->format('Y-m-d');
+
+        // Get collaborators with weekly availability data
+        $collaborators = Contact::where('team_id', auth()->user()->currentTeam->id)
+            ->whereHas('weeklyAvailability')
+            ->with('weeklyAvailability')
+            ->get();
+
+        $availableIds = [];
+
+        foreach ($collaborators as $collaborator) {
+            $availableDays = $this->calculateAvailableDaysForStatistics($collaborator, $startDate, $endDate);
+
+            if ($availableDays >= $days) {
+                $availableIds[] = $collaborator->id;
+            }
+        }
+
+        return $availableIds;
+    }
+
+    /**
+     * Calculate available days for statistics (simplified version)
+     */
+    private function calculateAvailableDaysForStatistics($collaborator, $startDate, $endDate)
+    {
+        $weeklyAvailability = $collaborator->weeklyAvailability;
+
+        // If no weekly availability is set, assume all days are available (same logic as DataTable)
+        if (!$weeklyAvailability) {
+            $weeklyPattern = [
+                'monday' => true,
+                'tuesday' => true,
+                'wednesday' => true,
+                'thursday' => true,
+                'friday' => true,
+                'saturday' => true,
+                'sunday' => true,
+            ];
+        } else {
+            $weeklyPattern = [
+                'monday' => $weeklyAvailability->monday,
+                'tuesday' => $weeklyAvailability->tuesday,
+                'wednesday' => $weeklyAvailability->wednesday,
+                'thursday' => $weeklyAvailability->thursday,
+                'friday' => $weeklyAvailability->friday,
+                'saturday' => $weeklyAvailability->saturday,
+                'sunday' => $weeklyAvailability->sunday,
+            ];
+        }
+
+        // Get specific absence dates
+        $absenceDates = $collaborator->absences->pluck('absence_date')->map(function ($date) {
+            return $date->format('Y-m-d');
+        })->toArray();
+
+        $availableDays = 0;
+        $currentDate = \Carbon\Carbon::parse($startDate);
+        $endDateCarbon = \Carbon\Carbon::parse($endDate);
+
+        while ($currentDate->lte($endDateCarbon)) {
+            $dayOfWeek = strtolower($currentDate->format('l'));
+            $dateString = $currentDate->format('Y-m-d');
+
+            // Check if this day is available according to weekly pattern
+            $isWeeklyAvailable = $weeklyPattern[$dayOfWeek] ?? false;
+
+            // Check if this specific date is not in absences
+            $isNotAbsent = !in_array($dateString, $absenceDates);
+
+            // Day is available if both conditions are met
+            if ($isWeeklyAvailable && $isNotAbsent) {
+                $availableDays++;
+            }
+
+            $currentDate->addDay();
+        }
+
+        return $availableDays;
     }
 
     /**
@@ -1235,5 +1449,115 @@ class CollaboratorController extends Controller
             'standard_deviation' => round($standardDeviation, 2),
             'count' => $count
         ];
+    }
+
+    /**
+     * Debug method to check availability filtering
+     */
+    public function debugAvailability(Request $request)
+    {
+        $days = $request->days ? (int) $request->days : null;
+        $deliveryDate = $request->delivery_date;
+        $serviceId = $request->service;
+
+        $debug = [
+            'input' => [
+                'days' => $days,
+                'delivery_date' => $deliveryDate,
+                'service_id' => $serviceId,
+            ],
+            'team_id' => auth()->user()->currentTeam->id,
+        ];
+
+        // Parse delivery date
+        $parsedDeliveryDate = null;
+        try {
+            if (in_array($deliveryDate, ['today', '1_week', '15_days', '1_month', '3_months'])) {
+                switch ($deliveryDate) {
+                    case 'today':
+                        $parsedDeliveryDate = now();
+                        break;
+                    case '1_week':
+                        $parsedDeliveryDate = now()->addWeek();
+                        break;
+                    case '15_days':
+                        $parsedDeliveryDate = now()->addDays(15);
+                        break;
+                    case '1_month':
+                        $parsedDeliveryDate = now()->addMonth();
+                        break;
+                    case '3_months':
+                        $parsedDeliveryDate = now()->addMonths(3);
+                        break;
+                }
+            } else {
+                $parsedDeliveryDate = \Carbon\Carbon::parse($deliveryDate);
+            }
+            $debug['parsed_delivery_date'] = $parsedDeliveryDate->format('Y-m-d');
+        } catch (\Exception $e) {
+            $debug['parse_error'] = $e->getMessage();
+            return response()->json($debug);
+        }
+
+        // Check collaborators with the service
+        $collaboratorsWithService = Contact::where('team_id', auth()->user()->currentTeam->id)
+            ->whereHas('fares', function ($query) use ($serviceId) {
+                $query->where('fares.id', $serviceId);
+            })
+            ->count();
+
+        $debug['collaborators_with_service'] = $collaboratorsWithService;
+
+        // Check collaborators with weekly availability
+        $collaboratorsWithAvailability = Contact::where('team_id', auth()->user()->currentTeam->id)
+            ->whereHas('weeklyAvailability')
+            ->count();
+
+        $debug['collaborators_with_availability'] = $collaboratorsWithAvailability;
+
+        // Check availability calculation for first 5 collaborators
+        $startDate = now()->format('Y-m-d');
+        $endDate = $parsedDeliveryDate->format('Y-m-d');
+
+        $sampleCollaborators = Contact::where('team_id', auth()->user()->currentTeam->id)
+            ->whereHas('fares', function ($query) use ($serviceId) {
+                $query->where('fares.id', $serviceId);
+            })
+            ->with(['weeklyAvailability', 'absences' => function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('absence_date', [$startDate, $endDate]);
+            }])
+            ->limit(5)
+            ->get();
+
+        $debug['sample_collaborators'] = [];
+
+        foreach ($sampleCollaborators as $collaborator) {
+            $availableDays = $this->calculateAvailableDaysForStatistics($collaborator, $startDate, $endDate);
+
+            $debug['sample_collaborators'][] = [
+                'id' => $collaborator->id,
+                'name' => $collaborator->name,
+                'has_weekly_availability' => $collaborator->weeklyAvailability ? 'yes' : 'no',
+                'weekly_availability' => $collaborator->weeklyAvailability ? [
+                    'monday' => $collaborator->weeklyAvailability->monday,
+                    'tuesday' => $collaborator->weeklyAvailability->tuesday,
+                    'wednesday' => $collaborator->weeklyAvailability->wednesday,
+                    'thursday' => $collaborator->weeklyAvailability->thursday,
+                    'friday' => $collaborator->weeklyAvailability->friday,
+                    'saturday' => $collaborator->weeklyAvailability->saturday,
+                    'sunday' => $collaborator->weeklyAvailability->sunday,
+                ] : null,
+                'absences_count' => $collaborator->absences->count(),
+                'available_days' => $availableDays,
+                'meets_requirement' => $availableDays >= $days ? 'yes' : 'no',
+            ];
+        }
+
+        // Check total available collaborators
+        $availableCollaboratorIds = $this->getAvailableCollaboratorIdsForStatistics($days, $deliveryDate);
+        $debug['total_available_collaborators'] = count($availableCollaboratorIds);
+        $debug['available_ids'] = $availableCollaboratorIds;
+
+        return response()->json($debug);
     }
 }

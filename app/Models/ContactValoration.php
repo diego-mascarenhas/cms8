@@ -65,7 +65,7 @@ class ContactValoration extends Model
             'Validada',
             'Interesante',
             'Lista negra',
-            'En espera',
+            'Ojo',
         ];
     }
 

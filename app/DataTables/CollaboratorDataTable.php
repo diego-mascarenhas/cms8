@@ -22,7 +22,11 @@ class CollaboratorDataTable extends DataTable
             ->addColumn('rating', function ($contact)
             {
                 // Get the valoration name from the relationship
-                $valoration = $contact->valoration ? $contact->valoration->name : 'Top';
+                if (!$contact->valoration) {
+                    return ''; // Return empty string if no valoration
+                }
+
+                $valoration = $contact->valoration->name;
 
                 switch ($valoration)
                 {
@@ -32,12 +36,12 @@ class CollaboratorDataTable extends DataTable
                         return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-x text-danger ti-sm me-2"></i> Lista negra</div>';
                     case 'Validada':
                         return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-check text-success ti-sm me-2"></i> Validada</div>';
-                    case 'En espera':
+                    case 'Ojo':
                         return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-eye text-warning ti-sm me-2"></i> Ojo</div>';
                     case 'Interesante':
                         return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-clock text-info ti-sm me-2"></i> Interesante</div>';
                     default:
-                        return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
+                        return ''; // Return empty string for unknown valorations
                 }
             })
                                                                                     ->addColumn('language_combinations', function ($contact)
@@ -225,9 +229,10 @@ class CollaboratorDataTable extends DataTable
         $days = $request->days ? (int) $request->days : null;
         $deliveryDate = null;
 
-        // Parse delivery date filter
+        // Parse delivery date filter - now handles both old format and new date format
         if ($request->delivery_date)
         {
+            // Check if it's the old format (predefined options)
             switch ($request->delivery_date)
             {
                 case 'today':
@@ -245,13 +250,29 @@ class CollaboratorDataTable extends DataTable
                 case '3_months':
                     $deliveryDate = now()->addMonths(3)->format('Y-m-d');
                     break;
+                default:
+                    // Try to parse as a real date (Y-m-d format)
+                    try {
+                        $parsedDate = \Carbon\Carbon::parse($request->delivery_date);
+                        $deliveryDate = $parsedDate->format('Y-m-d');
+
+                        // Check if delivery date is in the past
+                        if ($parsedDate->isPast()) {
+                            \Log::warning('Delivery date is in the past: ' . $deliveryDate);
+                            return $query->whereRaw('1 = 0'); // Return empty result
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Could not parse delivery date: ' . $request->delivery_date);
+                        return $query;
+                    }
+                    break;
             }
         }
 
         // If both days and delivery date are provided, filter by availability
         if ($days && $deliveryDate)
         {
-            $startDate = now()->format('Y-m-d');
+            $startDate = now()->addDay()->format('Y-m-d');
             $endDate = $deliveryDate;
 
             // Debug: Log the parameters
@@ -260,6 +281,7 @@ class CollaboratorDataTable extends DataTable
                 'startDate' => $startDate,
                 'endDate' => $endDate,
                 'deliveryDate' => $deliveryDate,
+                'originalDeliveryDate' => $request->delivery_date,
             ]);
 
             // Apply a more precise filter using a subquery
