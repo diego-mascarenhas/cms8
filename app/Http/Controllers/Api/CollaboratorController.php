@@ -59,10 +59,32 @@ class CollaboratorController extends Controller
         \Log::info('API Service statistics: Found collaborators', ['count' => $collaboratorsWithPrices->count()]);
 
         if ($collaboratorsWithPrices->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No collaborators found with prices for this service'
-            ], 404);
+            // Check if this is due to availability filtering
+            $hasAvailabilityFilter = ($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date);
+
+            if ($hasAvailabilityFilter) {
+                // Calculate actual available days between today and delivery date
+                $startDate = now();
+                $endDate = \Carbon\Carbon::parse($request->delivery_date);
+                $actualAvailableDays = $startDate->diffInDays($endDate) + 1; // +1 to include both start and end dates
+
+                if ($actualAvailableDays < $request->days) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Solo hay ' . $actualAvailableDays . ' días disponibles hasta la fecha de entrega, pero se requieren ' . $request->days . ' días'
+                    ], 404);
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No se encontraron colaboradores con precios para este servicio que cumplan con la disponibilidad de ' . $request->days . ' días'
+                    ], 404);
+                }
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron colaboradores con precios para este servicio'
+                ], 404);
+            }
         }
 
         // Debug: Log some sample prices to see what we're working with

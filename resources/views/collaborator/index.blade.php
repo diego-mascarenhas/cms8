@@ -532,50 +532,59 @@
 				return true;
 			}
 
+			// Debounce function to prevent multiple rapid calls
+			let filterTimeout;
+			function debouncedApplyFilters() {
+				clearTimeout(filterTimeout);
+				filterTimeout = setTimeout(function() {
+					// Validate delivery options when days change
+					if (this.id === 'days') {
+						validateDeliveryOptions();
+					}
+
+					var table = $('#collaborator-table').DataTable();
+
+					// Get current filter values
+					var sourceLanguage = $('#source-language').val();
+					var targetLanguage = $('#target-language').val();
+					var service = $('#service').val();
+					var days = $('#days').val();
+					var deliveryDate = $('#delivery-date').val();
+
+					// Clear dashboard filter when using regular filters
+					$('.filter-status').removeClass('active-filter');
+
+					// Add parameters to ajax request
+					table.settings()[0].ajax.data = function (d) {
+						d.source_language = sourceLanguage;
+						d.target_language = targetLanguage;
+						d.service = service;
+						d.days = days;
+						d.delivery_date = deliveryDate;
+						// Don't include dashboard_filter when using regular filters
+					};
+
+					// Reload table with new parameters
+					table.draw();
+
+					// Fetch service statistics if a service is selected
+					console.log('Service filter changed to:', service);
+					if (service) {
+						fetchServiceStatistics(service);
+					} else {
+						hideServiceStatistics();
+					}
+				}, 300); // 300ms delay
+			}
+
 			// Table filters
 			$('#source-language, #target-language, #service, #days, #delivery-date').on('change', function () {
-				// Validate delivery options when days change
-				if (this.id === 'days') {
-					validateDeliveryOptions();
-				}
-
 				// Add event listener for delivery date changes (for date picker)
 				if (this.id === 'delivery-date') {
 					console.log('Delivery date changed:', $(this).val());
 				}
 
-				var table = $('#collaborator-table').DataTable();
-
-				// Get current filter values
-				var sourceLanguage = $('#source-language').val();
-				var targetLanguage = $('#target-language').val();
-				var service = $('#service').val();
-				var days = $('#days').val();
-				var deliveryDate = $('#delivery-date').val();
-
-				// Clear dashboard filter when using regular filters
-				$('.filter-status').removeClass('active-filter');
-
-				// Add parameters to ajax request
-				table.settings()[0].ajax.data = function (d) {
-					d.source_language = sourceLanguage;
-					d.target_language = targetLanguage;
-					d.service = service;
-					d.days = days;
-					d.delivery_date = deliveryDate;
-					// Don't include dashboard_filter when using regular filters
-				};
-
-				// Reload table with new parameters
-				table.draw();
-
-				// Fetch service statistics if a service is selected
-				console.log('Service filter changed to:', service);
-				if (service) {
-					fetchServiceStatistics(service);
-				} else {
-					hideServiceStatistics();
-				}
+				debouncedApplyFilters();
 			});
 
 			// Initialize validation on page load
@@ -749,24 +758,43 @@
 							displayServiceStatistics(response);
 						} else {
 							hideServiceStatistics();
-							toastr['warning']('', response.message, {
+							// Clear any existing toasts first
+							toastr.clear();
+
+							// Check if this is an availability issue
+							var hasAvailabilityFilter = $('#days').val() && $('#delivery-date').val();
+							var message = response.message;
+
+							if (hasAvailabilityFilter && message.includes('disponibilidad')) {
+								message += ' (La tabla muestra colaboradores con el servicio, pero sin disponibilidad suficiente)';
+							}
+
+							// Show only one warning message
+							toastr['warning']('', message, {
 								closeButton: true,
 								tapToDismiss: false,
-								rtl: false
+								rtl: false,
+								timeOut: 10000,
+								extendedTimeOut: 2000
 							});
 						}
 					},
 					error: function (xhr, status, error) {
 						console.error('Error fetching statistics:', {xhr: xhr, status: status, error: error});
 						hideServiceStatistics();
-						var message = 'Error al obtener estadísticas';
+						var message = 'Error al obtener estadísticas del servicio';
 						if (xhr.responseJSON && xhr.responseJSON.message) {
 							message = xhr.responseJSON.message;
 						}
-						toastr['error']('', message, {
+						// Clear any existing toasts first
+						toastr.clear();
+						// Show only one warning message
+						toastr['warning']('', message, {
 							closeButton: true,
 							tapToDismiss: false,
-							rtl: false
+							rtl: false,
+							timeOut: 8000,
+							extendedTimeOut: 2000
 						});
 					}
 				});
