@@ -22,7 +22,11 @@ class CollaboratorDataTable extends DataTable
             ->addColumn('rating', function ($contact)
             {
                 // Get the valoration name from the relationship
-                $valoration = $contact->valoration ? $contact->valoration->name : 'Top';
+                if (!$contact->valoration) {
+                    return ''; // Return empty string if no valoration
+                }
+
+                $valoration = $contact->valoration->name;
 
                 switch ($valoration)
                 {
@@ -32,12 +36,12 @@ class CollaboratorDataTable extends DataTable
                         return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-x text-danger ti-sm me-2"></i> Lista negra</div>';
                     case 'Validada':
                         return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-check text-success ti-sm me-2"></i> Validada</div>';
-                    case 'En espera':
+                    case 'Ojo':
                         return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-eye text-warning ti-sm me-2"></i> Ojo</div>';
                     case 'Interesante':
                         return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-clock text-info ti-sm me-2"></i> Interesante</div>';
                     default:
-                        return '<div class="d-flex align-items-center justify-content-center"><i class="ti ti-star-filled text-warning ti-sm me-2"></i> Top</div>';
+                        return ''; // Return empty string for unknown valorations
                 }
             })
                                                                                     ->addColumn('language_combinations', function ($contact)
