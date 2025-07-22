@@ -1145,16 +1145,6 @@ class CollaboratorController extends Controller
 
         $collaboratorsWithPrices = $query->get();
 
-        // Debug: Log the query and results
-        \Log::info('Service Statistics Debug', [
-            'service_id' => $serviceId,
-            'has_availability_filter' => ($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date),
-            'days' => $request->days,
-            'delivery_date' => $request->delivery_date,
-            'total_collaborators_found' => $collaboratorsWithPrices->count(),
-            'collaborator_ids' => $collaboratorsWithPrices->pluck('id')->toArray()
-        ]);
-
         \Log::info('Service statistics: Found collaborators', ['count' => $collaboratorsWithPrices->count()]);
 
         if ($collaboratorsWithPrices->isEmpty()) {
@@ -1162,10 +1152,19 @@ class CollaboratorController extends Controller
             $hasAvailabilityFilter = ($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date);
 
             if ($hasAvailabilityFilter) {
-                // Calculate actual available days between today and delivery date
-                $startDate = now();
-                $endDate = \Carbon\Carbon::parse($request->delivery_date);
+                                // Calculate actual available days between today and delivery date
+                $startDate = now()->startOfDay();
+                $endDate = \Carbon\Carbon::parse($request->delivery_date)->endOfDay();
                 $actualAvailableDays = $startDate->diffInDays($endDate) + 1; // +1 to include both start and end dates
+
+                // Debug: Log the calculation details
+                \Log::info('Days calculation debug', [
+                    'startDate' => $startDate->format('Y-m-d H:i:s'),
+                    'endDate' => $endDate->format('Y-m-d H:i:s'),
+                    'diffInDays' => $startDate->diffInDays($endDate),
+                    'actualAvailableDays' => $actualAvailableDays,
+                    'requestedDays' => $request->days
+                ]);
 
                 if ($actualAvailableDays < $request->days) {
                     return response()->json([
@@ -1341,22 +1340,56 @@ class CollaboratorController extends Controller
      */
     private function calculateAvailableDaysForStatistics($collaborator, $startDate, $endDate)
     {
-        if (!$collaborator->weeklyAvailability) {
-            return 0;
+        $weeklyAvailability = $collaborator->weeklyAvailability;
+
+        // If no weekly availability is set, assume all days are available (same logic as DataTable)
+        if (!$weeklyAvailability) {
+            $weeklyPattern = [
+                'monday' => true,
+                'tuesday' => true,
+                'wednesday' => true,
+                'thursday' => true,
+                'friday' => true,
+                'saturday' => true,
+                'sunday' => true,
+            ];
+        } else {
+            $weeklyPattern = [
+                'monday' => $weeklyAvailability->monday,
+                'tuesday' => $weeklyAvailability->tuesday,
+                'wednesday' => $weeklyAvailability->wednesday,
+                'thursday' => $weeklyAvailability->thursday,
+                'friday' => $weeklyAvailability->friday,
+                'saturday' => $weeklyAvailability->saturday,
+                'sunday' => $weeklyAvailability->sunday,
+            ];
         }
 
-        $start = \Carbon\Carbon::parse($startDate);
-        $end = \Carbon\Carbon::parse($endDate);
+        // Get specific absence dates
+        $absenceDates = $collaborator->absences->pluck('absence_date')->map(function ($date) {
+            return $date->format('Y-m-d');
+        })->toArray();
+
         $availableDays = 0;
+        $currentDate = \Carbon\Carbon::parse($startDate);
+        $endDateCarbon = \Carbon\Carbon::parse($endDate);
 
-        while ($start->lte($end)) {
-            $dayOfWeek = strtolower($start->format('l')); // monday, tuesday, etc.
+        while ($currentDate->lte($endDateCarbon)) {
+            $dayOfWeek = strtolower($currentDate->format('l'));
+            $dateString = $currentDate->format('Y-m-d');
 
-            if (isset($collaborator->weeklyAvailability->$dayOfWeek) && $collaborator->weeklyAvailability->$dayOfWeek) {
+            // Check if this day is available according to weekly pattern
+            $isWeeklyAvailable = $weeklyPattern[$dayOfWeek] ?? false;
+
+            // Check if this specific date is not in absences
+            $isNotAbsent = !in_array($dateString, $absenceDates);
+
+            // Day is available if both conditions are met
+            if ($isWeeklyAvailable && $isNotAbsent) {
                 $availableDays++;
             }
 
-            $start->addDay();
+            $currentDate->addDay();
         }
 
         return $availableDays;
