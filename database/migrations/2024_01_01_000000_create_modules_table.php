@@ -18,7 +18,6 @@ return new class extends Migration
 			$table->unsignedTinyInteger('level')->nullable();
 			$table->string('icon')->nullable();
 			$table->text('description')->nullable();
-			$table->json('data')->nullable();
 			$table->boolean('is_core')->default(false);
 			$table->tinyInteger('status')->default(1);
 			$table->timestamps();

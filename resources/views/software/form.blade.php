@@ -23,14 +23,14 @@
 <script>
     $(function() {
         if ($.fn.select2) {
-            $('#type_id').select2();
+            $('#category_id').select2();
         }
 
         // Delete functionality with form submission
         $(document).on('click', '.btn-delete', function(e) {
             e.preventDefault();
             const form = $(this).closest('form');
-            
+
             Swal.fire({
                 title: '¿Estás seguro?',
                 text: "¡No podrás revertir esto!",
@@ -57,7 +57,7 @@
                             Swal.showLoading();
                         }
                     });
-                    
+
                     // Enviar el formulario
                     form.submit();
                 }
@@ -93,28 +93,28 @@
         @if(isset($software))
             @method('PUT')
         @endif
-        
+
         <div class="row g-3">
             <div class="col-md-6">
                 <x-input-general id="name" label="Nombre (*)" value="{{ old('name', $software->name ?? '') }}" />
             </div>
-            
+
             <div class="col-md-6">
-                <label class="form-label" for="type_id">Categoría</label>
-                <select name="type_id" id="type_id" class="form-select @error('type_id') is-invalid @enderror">
+                <label class="form-label" for="category_id">Categoría</label>
+                <select name="category_id" id="category_id" class="form-select @error('category_id') is-invalid @enderror">
                     <option value="">Seleccione categoría (opcional)</option>
-                    @foreach($types as $type)
-                        <option value="{{ $type->id }}" {{ isset($software) && $software->type_id == $type->id ? 'selected' : '' }}>
-                            {{ $type->name }}
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" {{ isset($software) && $software->category_id == $category->id ? 'selected' : '' }}>
+                            {{ $category->name }}
                         </option>
                     @endforeach
                 </select>
-                @error('type_id')
+                @error('category_id')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>
         </div>
-        
+
         <div class="pt-4">
             <div class="col-12 d-flex">
                 <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
@@ -123,4 +123,4 @@
         </div>
     </form>
 </div>
-@endsection 
+@endsection

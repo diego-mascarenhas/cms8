@@ -36,37 +36,23 @@
                     $valorationText = 'Interesante';
                     break;
             }
+        } else {
+            // No valoration assigned
+            $valorationIcon = 'ti-minus text-muted';
+            $valorationText = 'Sin valoración';
         }
 
-        // Get primary language combination for display
-        $primaryLanguage = '';
-        if ($collaborator->languageVariants->count() > 0) {
-            // If we have filter parameters, show the matching variant
-            if (isset($selectedSourceLanguage) && $selectedSourceLanguage &&
-                isset($selectedTargetLanguage) && $selectedTargetLanguage) {
-                // Find the variant that matches the selected filters
-                $matchingVariant = $collaborator->languageVariants->first(function($variant) use ($selectedSourceLanguage, $selectedTargetLanguage) {
-                    return $variant->source_language_code === $selectedSourceLanguage &&
-                           $variant->target_language_code === $selectedTargetLanguage;
-                });
+        // Get last project date for display
+        $lastProjectText = 'Sin proyectos';
+        if ($collaborator->lastProject) {
+            $lastProject = $collaborator->lastProject;
 
-                if ($matchingVariant) {
-                    $sourceLang = $matchingVariant->sourceLanguage ? $matchingVariant->sourceLanguage->name : $matchingVariant->source_language_code;
-                    $targetLang = $matchingVariant->targetLanguage ? $matchingVariant->targetLanguage->name : $matchingVariant->target_language_code;
-                    $primaryLanguage = $sourceLang . ' → ' . $targetLang;
-                } else {
-                    // Fallback to first variant if no match found
-                    $firstVariant = $collaborator->languageVariants->first();
-                    $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
-                    $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
-                    $primaryLanguage = $sourceLang . ' → ' . $targetLang;
-                }
+            // Check if the last project is the current one
+            if (isset($project) && $lastProject->id == $project->id) {
+                $lastProjectText = 'Este mismo';
             } else {
-                // No filters, show first variant
-                $firstVariant = $collaborator->languageVariants->first();
-                $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
-                $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
-                $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+                // Format the date
+                $lastProjectText = $lastProject->created_at->format('d/m/Y');
             }
         }
     @endphp
@@ -74,20 +60,26 @@
     <div class="col-md-4 mb-3 collaborator-card"
          data-languages="{{ $languageString }}"
          data-services="{{ $servicesString }}">
-        <div class="card">
+        <div class="card position-relative">
+            {{-- Eye icon positioned absolutely at top-right --}}
+            <div class="position-absolute" style="top: 8px; right: 8px; z-index: 10;">
+                <a href="{{ route('collaborator.show', $collaborator->id) }}" class="text-body" title="{{ __('View collaborator details') }}">
+                    <i class="ti ti-eye ti-sm"></i>
+                </a>
+            </div>
+
             <div class="card-body p-3">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center">
-                        <div class="avatar avatar-md me-3">
-                            <span class="avatar-initial rounded-circle bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][($index % 5)] }}">{{ strtoupper(substr($collaborator->name, 0, 2)) }}</span>
+                <div class="d-flex align-items-center">
+                    <div class="avatar avatar-md me-3">
+                        <span class="avatar-initial rounded-circle bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][($index % 5)] }}">{{ strtoupper(substr($collaborator->name, 0, 2)) }}</span>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">{{ $collaborator->name }}</h6>
+                        <small class="text-muted">{{ $lastProjectText }}</small>
+                        <div class="d-flex align-items-center mt-1">
+                            <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
+                            <small class="text-muted">{{ $valorationText }}</small>
                         </div>
-                        <div>
-                            <h6 class="mb-0">{{ $collaborator->name }}</h6>
-                            <small class="text-muted">{{ $primaryLanguage }}</small>
-                            <div class="d-flex align-items-center mt-1">
-                                <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
-                                <small class="text-muted">{{ $valorationText }}</small>
-                            </div>
 
                             {{-- Show availability info when time filters are applied --}}
                             @if(isset($filterDays) && isset($filterDeliveryDate) && $filterDays && $filterDeliveryDate)
@@ -204,11 +196,6 @@
                         </div>
                     </div>
 
-                    <div class="form-check">
-                        <input class="form-check-input collaborator-checkbox" type="checkbox"
-                               name="collaborator_ids[]" value="{{ $collaborator->id }}"
-                               data-collaborator-id="{{ $collaborator->id }}">
-                    </div>
                 </div>
 
                 {{-- Show fare info only when service AND both languages are selected --}}
@@ -234,23 +221,35 @@
                             $targetLanguage = $selectedFare->pivot->target_language_code ?? 'N/A';
                             $unit = $selectedFare->pivot->unit_id ?? '';
 
-                            // Get unit name if available
+                            // Get unit name from database
                             $unitName = '';
                             if($unit) {
                                 $unitModel = \App\Models\Unit::find($unit);
                                 if($unitModel) {
-                                    $unitTypes = \App\Models\Unit::getTypes();
-                                    $unitDisplay = $unitTypes[$unitModel->type] ?? $unitModel->type;
-                                    $unitName = ' por ' . strtolower($unitDisplay);
+                                    $unitName = '/' . $unitModel->type;
                                 }
                             }
+
+                            // Get currency symbol from database
+                            $currencySymbol = '€'; // Default fallback
+                            $currencyModel = \App\Models\Currency::where('code', $currency)->first();
+                            if($currencyModel) {
+                                $currencySymbol = $currencyModel->symbol;
+                            }
                         @endphp
-                        <div class="mt-2 px-3 py-2" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
-                            @if($price !== 'N/A')
-                                <strong class="text-success">{{ number_format($price, 2) }} {{ $currency }}{{ $unitName }}</strong>
-                            @else
-                                <span class="text-muted">{{ __('Por consultar') }}</span>
-                            @endif
+                        <div class="mt-2 px-3 py-2 d-flex align-items-center justify-content-between" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input collaborator-checkbox" type="checkbox"
+                                       name="collaborator_ids[]" value="{{ $collaborator->id }}"
+                                       data-collaborator-id="{{ $collaborator->id }}">
+                            </div>
+                            <div class="text-end">
+                                @if($price !== 'N/A')
+                                    <strong class="text-success">{{ number_format($price, 2) }}{{ $currencySymbol }} {{ $unitName }}</strong>
+                                @else
+                                    <span class="text-muted">{{ __('Por consultar') }}</span>
+                                @endif
+                            </div>
                         </div>
                     @endif
                 @endif
@@ -259,7 +258,20 @@
                 @if(!isset($selectedService) || !$selectedService ||
                     !isset($selectedSourceLanguage) || !$selectedSourceLanguage ||
                     !isset($selectedTargetLanguage) || !$selectedTargetLanguage)
-                    <!-- Tarifas del colaborador (inicialmente ocultas) -->
+
+                    {{-- Price box with checkbox when no specific fare is selected --}}
+                    <div class="mt-2 px-3 py-2 d-flex align-items-center justify-content-between" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input collaborator-checkbox" type="checkbox"
+                                   name="collaborator_ids[]" value="{{ $collaborator->id }}"
+                                   data-collaborator-id="{{ $collaborator->id }}">
+                        </div>
+                        <div class="text-end">
+                            <span class="text-muted">{{ __('Selecciona servicio e idiomas') }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Collaborator fares (initially hidden) -->
                     <div class="collapse mt-3" id="fares-{{ $collaborator->id }}">
                         <div class="card bg-light">
                             <div class="card-body p-2">
@@ -287,11 +299,20 @@
                                                         $currency = $fare->pivot->currency_code ?? 'EUR';
                                                         $unit = $fare->pivot->unit_id ?? '';
 
-                                                        // Get unit name if available
+                                                        // Get unit name from database
                                                         $unitName = '';
                                                         if($unit) {
                                                             $unitModel = \App\Models\Unit::find($unit);
-                                                            $unitName = $unitModel ? ' por ' . strtolower($unitModel->name) : '';
+                                                            if($unitModel) {
+                                                                $unitName = '/' . $unitModel->type;
+                                                            }
+                                                        }
+
+                                                        // Get currency symbol from database
+                                                        $currencySymbol = '€'; // Default fallback
+                                                        $currencyModel = \App\Models\Currency::where('code', $currency)->first();
+                                                        if($currencyModel) {
+                                                            $currencySymbol = $currencyModel->symbol;
                                                         }
                                                     @endphp
                                                     <tr style="font-size: 0.8rem;" class="fare-row"
@@ -313,7 +334,7 @@
                                                         </td>
                                                         <td class="text-end">
                                                             @if($price !== 'N/A')
-                                                                <strong class="text-success">{{ number_format($price, 2) }} {{ $currency }}{{ $unitName }}</strong>
+                                                                <strong class="text-success">{{ number_format($price, 2) }}{{ $currencySymbol }} {{ $unitName }}</strong>
                                                             @else
                                                                 <span class="text-muted">{{ __('Por consultar') }}</span>
                                                             @endif

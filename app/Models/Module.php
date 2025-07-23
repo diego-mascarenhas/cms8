@@ -14,13 +14,11 @@ class Module extends Model
         'key',
         'icon',
         'description',
-        'data',
         'is_core',
         'status',
     ];
 
     protected $casts = [
-        'data' => 'array',
         'is_core' => 'boolean',
     ];
 

@@ -120,9 +120,9 @@
 </div>
 
 <!-- Collaborators Section (Floating Cards) -->
-@if($project->collaborators && $project->collaborators->count() > 0)
+@if($project->allCollaborators && $project->allCollaborators->count() > 0)
 <div class="row mb-4" style="align-items: stretch;">
-    @foreach($project->collaborators as $index => $collaborator)
+    @foreach($project->allCollaborators as $index => $collaborator)
         @php
             // Get the valoration for display
             $valorationIcon = 'ti-star-filled text-warning';
@@ -146,6 +146,10 @@
                         $valorationText = 'Interesante';
                         break;
                 }
+            } else {
+                // No valoration assigned
+                $valorationIcon = 'ti-minus text-muted';
+                $valorationText = 'Sin valoración';
             }
 
             // Get primary language combination for display
@@ -156,6 +160,19 @@
                 $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
                 $primaryLanguage = $sourceLang . ' → ' . $targetLang;
             }
+
+            // Get primary service for display
+            $primaryService = '';
+            if ($collaborator->fares->count() > 0) {
+                $firstFare = $collaborator->fares->first();
+                $primaryService = $firstFare->name ?? 'N/A';
+                if ($firstFare->type) {
+                    $primaryService .= ' (' . $firstFare->type->name . ')';
+                }
+            }
+
+            // Check if collaborator was removed from project
+            $isRemoved = $collaborator->pivot->deleted_at !== null;
 
             // Get message status
             $messageStatus = $collaborator->pivot->status ?? 'sent';
@@ -168,7 +185,7 @@
         @endphp
 
         <div class="col-md-6 mb-3 d-flex">
-            <div class="card border w-100">
+            <div class="card border w-100 {{ $isRemoved ? 'bg-light opacity-75' : '' }}">
                 <div class="card-body p-3 position-relative">
                     <!-- Dropdown Menu in top right corner -->
                     <div class="position-absolute top-0 end-0 mt-2 me-2">
@@ -180,10 +197,12 @@
                                 <a class="dropdown-item" href="{{ route('collaborator.show', $collaborator->id) }}">
                                     <i class="ti ti-eye me-2"></i>{{ __('View Details') }}
                                 </a>
+                                @if(!$isRemoved)
                                 <a class="dropdown-item text-danger" href="javascript:void(0)"
                                    onclick="removeCollaboratorFromProject({{ $project->id }}, {{ $collaborator->id }}, '{{ $collaborator->name }}')">
                                     <i class="ti ti-trash me-2"></i>{{ __('Remove from Project') }}
                                 </a>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -195,10 +214,16 @@
                         </div>
                         <div>
                             <h6 class="mb-0">{{ $collaborator->name }}</h6>
-                            <small class="text-muted">{{ $primaryLanguage }}</small>
+                            @if($primaryService)
+                                <small class="text-muted">{{ $primaryService }}</small>
+                            @endif
+                            <small class="text-muted d-block">{{ $primaryLanguage }}</small>
                             <div class="d-flex align-items-center mt-1">
                                 <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
                                 <small class="text-muted">{{ $valorationText }}</small>
+                                @if($isRemoved)
+                                    <span class="badge bg-secondary ms-2">Eliminado</span>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -238,8 +263,8 @@
 							// Check if there are collaborators that match this service requirements
 							$hasMatchingCollaborator = false;
 
-							if ($project->collaborators && $project->collaborators->count() > 0) {
-								foreach ($project->collaborators as $collaborator) {
+							if ($project->allCollaborators && $project->allCollaborators->count() > 0) {
+								foreach ($project->allCollaborators as $collaborator) {
 									// Check if collaborator has the required language combination
 									$hasLanguageCombination = $collaborator->languageVariants->contains(function($variant) use ($projectFare) {
 										return $variant->source_language_code === $projectFare->source_language_code

@@ -122,7 +122,7 @@ class CollaboratorController extends Controller
     public function show($id)
     {
         $collaborator = Contact::with([
-            'softwares.type',
+            'softwares.category',
             'user.roles',
             'valoration',
             'fares.type',
@@ -390,15 +390,15 @@ class CollaboratorController extends Controller
         // Sync software - use empty array explicitly if no IDs
         $collaborator->softwares()->sync(empty($softwareIds) ? [] : $softwareIds);
 
-        // Load updated softwares with types
-        $collaborator->load('softwares.type');
+        // Load updated softwares with categories
+        $collaborator->load('softwares.category');
 
         // Format response data
         $softwares = $collaborator->softwares->map(function ($software) {
             return [
                 'id' => $software->id,
                 'name' => $software->name,
-                'type_name' => $software->type ? $software->type->name : null,
+                'category_name' => $software->category ? $software->category->name : null,
             ];
         });
 

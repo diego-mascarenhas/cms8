@@ -22,6 +22,7 @@ class ModuleCategorySeeder extends Seeder
             'tickets' => Module::where('key', 'tickets')->first()?->id,
             'mail' => Module::where('key', 'mail')->first()?->id,
             'chat' => Module::where('key', 'chat')->first()?->id,
+            'softwares' => Module::where('key', 'softwares')->first()?->id,
         ];
 
         // Global Categories (no team_id)
@@ -151,6 +152,36 @@ class ModuleCategorySeeder extends Seeder
                 'parent_id' => $projectTypesParent->id,
                 'status' => 1,
             ]);
+        }
+
+        // Software Categories (Global)
+        if ($moduleIds['softwares']) {
+            $softwareParent = Category::create([
+                'name' => 'Software Types',
+                'module_id' => $moduleIds['softwares'],
+                'team_id' => 1,
+                'description' => 'Main software categories available to all teams',
+                'status' => 1,
+            ]);
+
+            $softwareCategories = [
+                'Subtitulación' => 'Software para subtitulación y captions',
+                'Doblaje' => 'Software para doblaje y audio',
+                'Edición de video' => 'Software para edición de video',
+                'CAT Tools' => 'Computer Assisted Translation tools',
+                'Desarrollo' => 'Software de desarrollo y programación',
+            ];
+
+            foreach ($softwareCategories as $category => $description) {
+                Category::create([
+                    'name' => $category,
+                    'module_id' => $moduleIds['softwares'],
+                    'team_id' => 1,
+                    'parent_id' => $softwareParent->id,
+                    'description' => $description,
+                    'status' => 1,
+                ]);
+            }
         }
     }
 

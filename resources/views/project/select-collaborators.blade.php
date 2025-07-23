@@ -101,7 +101,7 @@
 				<div class="card mb-4">
 					<div class="card-body">
 						<h6 class="card-title">Mensaje predefinido español</h6>
-						<textarea class="form-control mb-3" rows="10" id="spanish-template" readonly>Hola, {nombre}:
+						<textarea class="form-control mb-3" rows="13" id="spanish-template" readonly>Hola, {nombre}:
 
 	Esperamos que estés muy bien. Te contactamos desde bbo porque tenemos un nuevo proyecto. Hay que hacer {servicio}, de un {nombre_proyecto}, de {idioma_source} a {idioma_target}. La fecha de entrega ideal es {fecha_entrega_materiales}.
 
@@ -118,7 +118,7 @@
 				<div class="card mb-4">
 					<div class="card-body">
 						<h6 class="card-title">Mensaje predefinido inglés</h6>
-						<textarea class="form-control mb-3" rows="10" id="english-template" readonly>Hi, {nombre}:
+						<textarea class="form-control mb-3" rows="13" id="english-template" readonly>Hi, {nombre}:
 
 	We hope you're doing well. We're writing to you from bbo because we have a new project. We need {servicio}, for {nombre_proyecto}, from {idioma_source} to {idioma_target}. The ideal delivery date would be {fecha_entrega_materiales}.
 
@@ -133,10 +133,13 @@
 		</div>
 
 		<!-- Submit Button -->
-		<div class="d-flex justify-content-center mb-4">
-			<button type="submit" class="btn btn-primary btn-lg px-5" id="send-messages-btn">
-				<i class="ti ti-send me-2"></i>Enviar mensajes
+		<div class="d-flex justify-content-start gap-2 mb-4">
+			<button type="submit" class="btn btn-primary btn-sm" id="send-messages-btn">
+				<i class="ti ti-send me-1"></i>Enviar mensajes
 			</button>
+			<a href="{{ route('project.show', $project->id) }}" class="btn btn-outline-secondary btn-sm">
+				<i class="ti ti-x me-1"></i>Cancelar
+			</a>
 		</div>
 	</form>
 
@@ -469,8 +472,8 @@
 				this.submit();
 			});
 
-			// Auto-apply filters if URL parameters are present
-			if (hasUrlParameters) {
+			// Auto-apply filters if URL parameters are present AND no collaborators are already loaded
+			if (hasUrlParameters && {{ $collaborators->count() }} === 0) {
 				setTimeout(function() {
 					console.log('Auto-applying filters from URL parameters:', {
 						sourceLanguage: urlSourceLanguage,
@@ -482,7 +485,7 @@
 					applyFilters();
 				}, 500); // Small delay to ensure Select2 components are fully initialized
 			} else {
-				console.log('No URL parameters found, showing initial state');
+				console.log('No URL parameters found or collaborators already loaded, showing current state');
 			}
 
 			// Initialize count
