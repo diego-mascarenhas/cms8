@@ -85,9 +85,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Software - for user-based authentication (Sanctum tokens)
     // Define specific routes BEFORE resource routes to avoid conflicts
-    Route::get('software/types', [SoftwareController::class, 'types'])->name('api.software.types');
-    Route::get('software/categories', [SoftwareController::class, 'softwareTypes'])->name('api.software.categories');
-    Route::get('software/type/{type}', [SoftwareController::class, 'byType'])->name('api.software.byType');
+    Route::get('software/categories', [SoftwareController::class, 'categories'])->name('api.software.categories');
+    Route::get('software/category/{category}', [SoftwareController::class, 'byCategory'])->name('api.software.byCategory');
     Route::apiResource('software', SoftwareController::class)->names([
         'index' => 'api.software.index',
         'store' => 'api.software.store',

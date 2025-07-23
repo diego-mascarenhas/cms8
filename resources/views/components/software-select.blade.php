@@ -6,10 +6,10 @@
         @if($showNull)
             <option value="">Seleccione software</option>
         @endif
-        
+
         @php
-            // Obtener todos los software agrupados por tipo
-            $softwareByType = \App\Models\Software::with('type')
+            // Obtener todos los software agrupados por categoría
+            $softwareByCategory = \App\Models\Software::with('category')
                 ->where(function($query) {
                     $query->whereNull('team_id')
                         ->orWhere('team_id', auth()->user()->currentTeam->id);
@@ -17,12 +17,12 @@
                 ->orderBy('name')
                 ->get()
                 ->groupBy(function($software) {
-                    return $software->type ? $software->type->name : 'Sin categoría';
+                    return $software->category ? $software->category->name : 'Sin categoría';
                 });
         @endphp
-        
-        @foreach($softwareByType as $typeName => $softwareList)
-            <optgroup label="{{ $typeName }}">
+
+        @foreach($softwareByCategory as $categoryName => $softwareList)
+            <optgroup label="{{ $categoryName }}">
                 @foreach($softwareList as $software)
                     <option value="{{ $software->id }}" {{ in_array($software->id, old('software_ids', $selected)) ? 'selected' : '' }}>
                         {{ $software->name }}
@@ -31,7 +31,7 @@
             </optgroup>
         @endforeach
     </select>
-    
+
     @error($id)
         <span class="invalid-feedback" role="alert">
             <strong>{{ $message }}</strong>
@@ -50,4 +50,4 @@
         });
     });
 </script>
-@endpush 
+@endpush

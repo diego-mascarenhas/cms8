@@ -1277,70 +1277,117 @@ class TeamBboSeeder extends Seeder
 	{
 		$this->command->info('💻 Creating BBO software...');
 
-		// Get or create software types
-		$subtitleType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Subtitulación']);
-		$dubbingType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Doblaje']);
-		$videoEditingType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Edición de video']);
-		$catToolsType = \App\Models\SoftwareType::firstOrCreate(['name' => 'CAT Tools']);
-		$developmentType = \App\Models\SoftwareType::firstOrCreate(['name' => 'Desarrollo']);
+		// Get the software module
+		$softwareModule = \App\Models\Module::where('key', 'softwares')->first();
+
+		if (!$softwareModule) {
+			$this->command->warn('Software module not found, skipping software creation');
+			return;
+		}
+
+		// Get or create software categories
+		$subtitleCategory = \App\Models\Category::firstOrCreate([
+			'name' => 'Subtitulación',
+			'module_id' => $softwareModule->id,
+			'team_id' => $this->teamId,
+		], [
+			'description' => 'Software para subtitulación y captions',
+			'status' => 1,
+		]);
+
+		$dubbingCategory = \App\Models\Category::firstOrCreate([
+			'name' => 'Doblaje',
+			'module_id' => $softwareModule->id,
+			'team_id' => $this->teamId,
+		], [
+			'description' => 'Software para doblaje y audio',
+			'status' => 1,
+		]);
+
+		$videoEditingCategory = \App\Models\Category::firstOrCreate([
+			'name' => 'Edición de video',
+			'module_id' => $softwareModule->id,
+			'team_id' => $this->teamId,
+		], [
+			'description' => 'Software para edición de video',
+			'status' => 1,
+		]);
+
+		$catToolsCategory = \App\Models\Category::firstOrCreate([
+			'name' => 'CAT Tools',
+			'module_id' => $softwareModule->id,
+			'team_id' => $this->teamId,
+		], [
+			'description' => 'Computer Assisted Translation tools',
+			'status' => 1,
+		]);
+
+		$developmentCategory = \App\Models\Category::firstOrCreate([
+			'name' => 'Desarrollo',
+			'module_id' => $softwareModule->id,
+			'team_id' => $this->teamId,
+		], [
+			'description' => 'Software de desarrollo y programación',
+			'status' => 1,
+		]);
 
 		// Create BBO-specific software
 		$bboSoftware = [
 			// Subtitulación
-			['name' => 'Aegisub', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Subtitle Edit', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Subtitle Workshop', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'EZTitles', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'SubtitleNEXT', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Ooona', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Amara', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Kapwing', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'FAB Subtitler', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'VisualSubSync', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Media Subtitler', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Caption Hub', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+			['name' => 'Aegisub', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Subtitle Edit', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Subtitle Workshop', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'EZTitles', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'SubtitleNEXT', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Ooona', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Amara', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Kapwing', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'FAB Subtitler', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'VisualSubSync', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Media Subtitler', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Caption Hub', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
 			// Doblaje
-			['name' => 'Pro Tools', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
-			['name' => 'Adobe Audition', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
-			['name' => 'Logic Pro X', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
-			['name' => 'Cubase', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
-			['name' => 'REAPER', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
-			['name' => 'Audacity', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
-			['name' => 'GarageBand', 'team_id' => $this->teamId, 'type_id' => $dubbingType->id],
+			['name' => 'Pro Tools', 'team_id' => $this->teamId, 'category_id' => $dubbingCategory->id],
+			['name' => 'Adobe Audition', 'team_id' => $this->teamId, 'category_id' => $dubbingCategory->id],
+			['name' => 'Logic Pro X', 'team_id' => $this->teamId, 'category_id' => $dubbingCategory->id],
+			['name' => 'Cubase', 'team_id' => $this->teamId, 'category_id' => $dubbingCategory->id],
+			['name' => 'REAPER', 'team_id' => $this->teamId, 'category_id' => $dubbingCategory->id],
+			['name' => 'Audacity', 'team_id' => $this->teamId, 'category_id' => $dubbingCategory->id],
+			['name' => 'GarageBand', 'team_id' => $this->teamId, 'category_id' => $dubbingCategory->id],
 			// Edición de video
-			['name' => 'Adobe Premiere Pro', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
-			['name' => 'Final Cut Pro', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
-			['name' => 'DaVinci Resolve', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
-			['name' => 'Avid Media Composer', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
-			['name' => 'Vegas Pro', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
-			['name' => 'iMovie', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
-			['name' => 'OpenShot', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
-			['name' => 'Shotcut', 'team_id' => $this->teamId, 'type_id' => $videoEditingType->id],
+			['name' => 'Adobe Premiere Pro', 'team_id' => $this->teamId, 'category_id' => $videoEditingCategory->id],
+			['name' => 'Final Cut Pro', 'team_id' => $this->teamId, 'category_id' => $videoEditingCategory->id],
+			['name' => 'DaVinci Resolve', 'team_id' => $this->teamId, 'category_id' => $videoEditingCategory->id],
+			['name' => 'Avid Media Composer', 'team_id' => $this->teamId, 'category_id' => $videoEditingCategory->id],
+			['name' => 'Vegas Pro', 'team_id' => $this->teamId, 'category_id' => $videoEditingCategory->id],
+			['name' => 'iMovie', 'team_id' => $this->teamId, 'category_id' => $videoEditingCategory->id],
+			['name' => 'OpenShot', 'team_id' => $this->teamId, 'category_id' => $videoEditingCategory->id],
+			['name' => 'Shotcut', 'team_id' => $this->teamId, 'category_id' => $videoEditingCategory->id],
 			// CAT Tools y Software de Traducción
-			['name' => 'SDL Trados', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
-			['name' => 'MemoQ', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
-			['name' => 'Wordfast', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
-			['name' => 'Memsource', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
-			['name' => 'Xbench', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
-			['name' => 'OmegaT', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
-			['name' => 'Smartcat', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
-			['name' => 'Phrase TMS', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
-			['name' => 'Crowdin', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
-			['name' => 'Multiterm', 'team_id' => $this->teamId, 'type_id' => $catToolsType->id],
+			['name' => 'SDL Trados', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
+			['name' => 'MemoQ', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
+			['name' => 'Wordfast', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
+			['name' => 'Memsource', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
+			['name' => 'Xbench', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
+			['name' => 'OmegaT', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
+			['name' => 'Smartcat', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
+			['name' => 'Phrase TMS', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
+			['name' => 'Crowdin', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
+			['name' => 'Multiterm', 'team_id' => $this->teamId, 'category_id' => $catToolsCategory->id],
 			// Software de Desarrollo y Edición
-			['name' => 'Visual Studio Code', 'team_id' => $this->teamId, 'type_id' => $developmentType->id],
-			['name' => 'Notepad++', 'team_id' => $this->teamId, 'type_id' => $developmentType->id],
-			['name' => 'Adobe Photoshop', 'team_id' => $this->teamId, 'type_id' => $developmentType->id],
-			['name' => 'Swift', 'team_id' => $this->teamId, 'type_id' => $developmentType->id],
+			['name' => 'Visual Studio Code', 'team_id' => $this->teamId, 'category_id' => $developmentCategory->id],
+			['name' => 'Notepad++', 'team_id' => $this->teamId, 'category_id' => $developmentCategory->id],
+			['name' => 'Adobe Photoshop', 'team_id' => $this->teamId, 'category_id' => $developmentCategory->id],
+			['name' => 'Swift', 'team_id' => $this->teamId, 'category_id' => $developmentCategory->id],
 			// Software Especializado
-			['name' => 'Wincap', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'SWXE', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Annotation edit (Mac)', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Spot', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'SSTG1', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'GTS', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Maestra Suite', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
-			['name' => 'Ayato', 'team_id' => $this->teamId, 'type_id' => $subtitleType->id],
+			['name' => 'Wincap', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'SWXE', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Annotation edit (Mac)', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Spot', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'SSTG1', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'GTS', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Maestra Suite', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
+			['name' => 'Ayato', 'team_id' => $this->teamId, 'category_id' => $subtitleCategory->id],
 		];
 
 		$created = 0;

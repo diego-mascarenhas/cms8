@@ -16,7 +16,7 @@ class Software extends Model
     protected $fillable = [
         'name',
         'team_id',
-        'type_id',
+        'category_id',
     ];
 
     protected static function booted()
@@ -29,11 +29,11 @@ class Software extends Model
     }
 
     /**
-     * Get the type that owns the software.
+     * Get the category that owns the software.
      */
-    public function type()
+    public function category()
     {
-        return $this->belongsTo(SoftwareType::class, 'type_id');
+        return $this->belongsTo(Category::class, 'category_id');
     }
 
     /**
@@ -59,12 +59,12 @@ class Software extends Model
      */
     public static function getOptions()
     {
-        return self::with('type')->get()->map(function ($data) {
+        return self::with('category')->get()->map(function ($data) {
             return [
                 'id' => $data->id,
                 'name' => $data->name,
-                'type' => $data->type ? $data->type->name : '',
-                'text' => $data->name.($data->type ? ' ('.$data->type->name.')' : ''),
+                'category' => $data->category ? $data->category->name : '',
+                'text' => $data->name.($data->category ? ' ('.$data->category->name.')' : ''),
             ];
         });
     }

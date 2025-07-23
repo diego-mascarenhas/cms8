@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\DataTables\SoftwareDataTable;
 use App\Models\Software;
-use App\Models\SoftwareType;
+use App\Models\Category;
+use App\Models\Module;
 use App\Models\Team;
 use Illuminate\Http\Request;
 
@@ -28,9 +29,10 @@ class SoftwareController extends Controller
      */
     public function create()
     {
-        $types = SoftwareType::all();
+        $softwareModule = Module::where('key', 'softwares')->first();
+        $categories = $softwareModule ? Category::where('module_id', $softwareModule->id)->get() : collect();
 
-        return view('software.form', compact('types'));
+        return view('software.form', compact('categories'));
     }
 
     /**
@@ -40,7 +42,7 @@ class SoftwareController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type_id' => 'nullable|exists:software_types,id',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
         // Add the current team ID
@@ -57,9 +59,10 @@ class SoftwareController extends Controller
      */
     public function edit(Software $software)
     {
-        $types = SoftwareType::all();
+        $softwareModule = Module::where('key', 'softwares')->first();
+        $categories = $softwareModule ? Category::where('module_id', $softwareModule->id)->get() : collect();
 
-        return view('software.form', compact('software', 'types'));
+        return view('software.form', compact('software', 'categories'));
     }
 
     /**
@@ -69,7 +72,7 @@ class SoftwareController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type_id' => 'nullable|exists:software_types,id',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
         $software->update($validated);
@@ -95,12 +98,12 @@ class SoftwareController extends Controller
     {
         $search = $request->get('q', '');
 
-        $query = Software::with('type');
+        $query = Software::with('category');
 
         if (! empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                    ->orWhereHas('type', function ($subQuery) use ($search) {
+                    ->orWhereHas('category', function ($subQuery) use ($search) {
                         $subQuery->where('name', 'LIKE', "%{$search}%");
                     });
             });
@@ -111,9 +114,9 @@ class SoftwareController extends Controller
             ->map(function ($software) {
                 return [
                     'id' => $software->id,
-                    'text' => $software->name.($software->type ? ' ('.$software->type->name.')' : ''),
+                    'text' => $software->name.($software->category ? ' ('.$software->category->name.')' : ''),
                     'name' => $software->name,
-                    'type' => $software->type ? $software->type->name : '',
+                    'category' => $software->category ? $software->category->name : '',
                 ];
             });
 

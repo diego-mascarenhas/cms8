@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Software;
-use App\Models\SoftwareType;
+use App\Models\Category;
+use App\Models\Module;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -23,11 +24,11 @@ class SoftwareController extends Controller
     {
         $this->authorize('viewAny', Software::class);
 
-        $query = Software::with(['type', 'team']);
+        $query = Software::with(['category', 'team']);
 
-        // Filter by type if provided
-        if ($request->has('type_id')) {
-            $query->where('type_id', $request->type_id);
+        // Filter by category if provided
+        if ($request->has('category_id')) {
+            $query->where('category_id', $request->category_id);
         }
 
         // Search by name if provided
@@ -55,13 +56,13 @@ class SoftwareController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'type_id' => ['required', 'exists:software_types,id'],
+            'category_id' => ['required', 'exists:categories,id'],
         ]);
 
         $validated['team_id'] = auth()->user()->currentTeam->id;
 
         $software = Software::create($validated);
-        $software->load(['type', 'team']);
+        $software->load(['category', 'team']);
 
         return response()->json([
             'success' => true,
@@ -77,7 +78,7 @@ class SoftwareController extends Controller
     {
         $this->authorize('view', $software);
 
-        $software->load(['type', 'team', 'contacts']);
+        $software->load(['category', 'team', 'contacts']);
 
         return response()->json([
             'success' => true,
@@ -95,11 +96,11 @@ class SoftwareController extends Controller
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'type_id' => ['sometimes', 'exists:software_types,id'],
+            'category_id' => ['sometimes', 'exists:categories,id'],
         ]);
 
         $software->update($validated);
-        $software->load(['type', 'team']);
+        $software->load(['category', 'team']);
 
         return response()->json([
             'success' => true,
@@ -124,38 +125,40 @@ class SoftwareController extends Controller
     }
 
     /**
-     * Get all software types.
+     * Get all software categories.
      */
-    public function types(): JsonResponse
+    public function categories(): JsonResponse
     {
         $this->authorize('viewAny', Software::class);
 
-        $types = SoftwareType::withCount('software')
+        $softwareModule = Module::where('key', 'softwares')->first();
+        $categories = $softwareModule ? Category::where('module_id', $softwareModule->id)
+            ->withCount('software')
             ->orderBy('name')
-            ->get();
+            ->get() : collect();
 
         return response()->json([
             'success' => true,
-            'data' => $types,
-            'message' => 'Software types retrieved successfully'
+            'data' => $categories,
+            'message' => 'Software categories retrieved successfully'
         ]);
     }
 
     /**
-     * Get software by type.
+     * Get software by category.
      */
-    public function byType(SoftwareType $type): JsonResponse
+    public function byCategory(Category $category): JsonResponse
     {
         $this->authorize('viewAny', Software::class);
 
-        $software = Software::with(['type', 'team'])
-            ->where('type_id', $type->id)
+        $software = Software::with(['category', 'team'])
+            ->where('category_id', $category->id)
             ->get();
 
         return response()->json([
             'success' => true,
             'data' => $software,
-            'message' => 'Software filtered by type retrieved successfully'
+            'message' => 'Software filtered by category retrieved successfully'
         ]);
     }
 
@@ -186,33 +189,33 @@ class SoftwareController extends Controller
 
         foreach ($software as $soft) {
             $name = strtolower($soft->name);
-            
+
             if (str_contains($name, 'subtitle') || str_contains($name, 'aegisub') || str_contains($name, 'eztitles')) {
                 $types['subtitling'][] = $soft->name;
-            } elseif (str_contains($name, 'trados') || str_contains($name, 'memoq') || str_contains($name, 'wordfast') || 
+            } elseif (str_contains($name, 'trados') || str_contains($name, 'memoq') || str_contains($name, 'wordfast') ||
                       str_contains($name, 'cat') || str_contains($name, 'omegat') || str_contains($name, 'smartcat')) {
                 $types['cat_tools'][] = $soft->name;
-            } elseif (str_contains($name, 'pro tools') || str_contains($name, 'audition') || str_contains($name, 'logic') || 
+            } elseif (str_contains($name, 'pro tools') || str_contains($name, 'audition') || str_contains($name, 'logic') ||
                       str_contains($name, 'cubase') || str_contains($name, 'reaper') || str_contains($name, 'audacity')) {
                 $types['audio_editing'][] = $soft->name;
-            } elseif (str_contains($name, 'premiere') || str_contains($name, 'final cut') || str_contains($name, 'davinci') || 
+            } elseif (str_contains($name, 'premiere') || str_contains($name, 'final cut') || str_contains($name, 'davinci') ||
                       str_contains($name, 'avid') || str_contains($name, 'vegas') || str_contains($name, 'after effects')) {
                 $types['video_editing'][] = $soft->name;
-            } elseif (str_contains($name, 'word') || str_contains($name, 'excel') || str_contains($name, 'powerpoint') || 
+            } elseif (str_contains($name, 'word') || str_contains($name, 'excel') || str_contains($name, 'powerpoint') ||
                       str_contains($name, 'office') || str_contains($name, 'google docs') || str_contains($name, 'sheets')) {
                 $types['office_suite'][] = $soft->name;
             } elseif (str_contains($name, 'acrobat') || str_contains($name, 'pdf') || str_contains($name, 'foxit')) {
                 $types['pdf_editing'][] = $soft->name;
-            } elseif (str_contains($name, 'photoshop') || str_contains($name, 'illustrator') || str_contains($name, 'indesign') || 
+            } elseif (str_contains($name, 'photoshop') || str_contains($name, 'illustrator') || str_contains($name, 'indesign') ||
                       str_contains($name, 'canva') || str_contains($name, 'figma') || str_contains($name, 'sketch')) {
                 $types['design_software'][] = $soft->name;
-            } elseif (str_contains($name, 'chrome') || str_contains($name, 'firefox') || str_contains($name, 'safari') || 
+            } elseif (str_contains($name, 'chrome') || str_contains($name, 'firefox') || str_contains($name, 'safari') ||
                       str_contains($name, 'edge') || str_contains($name, 'browser')) {
                 $types['browsers'][] = $soft->name;
-            } elseif (str_contains($name, 'slack') || str_contains($name, 'teams') || str_contains($name, 'zoom') || 
+            } elseif (str_contains($name, 'slack') || str_contains($name, 'teams') || str_contains($name, 'zoom') ||
                       str_contains($name, 'skype') || str_contains($name, 'discord') || str_contains($name, 'whatsapp')) {
                 $types['communication'][] = $soft->name;
-            } elseif (str_contains($name, 'trello') || str_contains($name, 'asana') || str_contains($name, 'jira') || 
+            } elseif (str_contains($name, 'trello') || str_contains($name, 'asana') || str_contains($name, 'jira') ||
                       str_contains($name, 'notion') || str_contains($name, 'monday')) {
                 $types['project_management'][] = $soft->name;
             } else {

@@ -356,7 +356,7 @@
                         @if($collaborator->softwares && $collaborator->softwares->count() > 0)
                             @foreach($collaborator->softwares as $software)
                                 <span class="badge bg-label-primary rounded-pill me-1 mb-1">
-                                    {{ $software->name }}{{ $software->type ? ' (' . $software->type->name . ')' : '' }}
+                                    {{ $software->name }}{{ $software->category ? ' (' . $software->category->name . ')' : '' }}
                                 </span>
                             @endforeach
                         @else
@@ -579,7 +579,7 @@
                     let badgesHtml = '';
                     if (data.softwares && data.softwares.length > 0) {
                         data.softwares.forEach(function(software) {
-                            const softwareText = software.name + (software.type_name ? ' (' + software.type_name + ')' : '');
+                            const softwareText = software.name + (software.category_name ? ' (' + software.category_name + ')' : '');
                             badgesHtml += `<span class="badge bg-label-primary rounded-pill me-1 mb-1">${softwareText}</span>`;
                         });
                     } else {

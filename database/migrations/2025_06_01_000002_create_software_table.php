@@ -15,11 +15,11 @@ return new class extends Migration
             $table->unsignedSmallInteger('id', true);
             $table->foreignId('team_id')->nullable()->constrained()->onDelete('cascade');
             $table->string('name', 255);
-            $table->unsignedSmallInteger('type_id')->nullable();
+            $table->unsignedBigInteger('category_id')->nullable();
             $table->timestamps();
             $table->softDeletes();
 
-            $table->foreign('type_id')->references('id')->on('software_types');
+            $table->foreign('category_id')->references('id')->on('categories');
         });
     }
 
