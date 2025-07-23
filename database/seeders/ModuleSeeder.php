@@ -11,7 +11,7 @@ class ModuleSeeder extends Seeder
     protected $coreModules = [
         'dashboard' => [
             'name' => 'Dashboard',
-            'icon' => 'dashboard',
+            'icon' => 'layout-dashboard',
             'description' => 'Main dashboard and analytics',
         ],
         'users' => [
@@ -21,12 +21,12 @@ class ModuleSeeder extends Seeder
         ],
         'settings' => [
             'name' => 'Settings',
-            'icon' => 'cog',
+            'icon' => 'settings',
             'description' => 'System settings module',
         ],
         'tasks' => [
             'name' => 'Tasks',
-            'icon' => 'tasks',
+            'icon' => 'checklist',
             'description' => 'Task management module',
         ],
         'clients' => [
@@ -49,12 +49,12 @@ class ModuleSeeder extends Seeder
         ],
         'collaborators' => [
             'name' => 'Collaborators',
-            'icon' => 'user-group',
+            'icon' => 'users-group',
             'description' => 'Collaborators management module',
         ],
         'projects' => [
             'name' => 'Projects',
-            'icon' => 'project-diagram',
+            'icon' => 'folder',
             'description' => 'Project management module',
         ],
         'services' => [
@@ -74,22 +74,22 @@ class ModuleSeeder extends Seeder
         ],
         'payments' => [
             'name' => 'Payments',
-            'icon' => 'money-bill',
+            'icon' => 'credit-card',
             'description' => 'Payment management module',
         ],
         'communications' => [
             'name' => 'Communications',
-            'icon' => 'comments',
+            'icon' => 'message-circle',
             'description' => 'Communications management module',
         ],
         'notes' => [
             'name' => 'Notes',
-            'icon' => 'sticky-note',
+            'icon' => 'note',
             'description' => 'Notes management module',
         ],
         'tickets' => [
             'name' => 'Tickets',
-            'icon' => 'ticket-alt',
+            'icon' => 'ticket',
             'description' => 'Support ticket management module',
         ],
         'events' => [
@@ -99,12 +99,12 @@ class ModuleSeeder extends Seeder
         ],
         'landings' => [
             'name' => 'Landings',
-            'icon' => 'pager',
+            'icon' => 'page-break',
             'description' => 'Landing pages management module',
         ],
         'multimedia' => [
             'name' => 'Multimedia',
-            'icon' => 'photo-video',
+            'icon' => 'photo',
             'description' => 'Multimedia files management module',
         ],
         'website' => [
@@ -119,12 +119,12 @@ class ModuleSeeder extends Seeder
         ],
         'mail' => [
             'name' => 'Mail',
-            'icon' => 'envelope',
+            'icon' => 'mail',
             'description' => 'Email management module',
         ],
         'chat' => [
             'name' => 'Chat',
-            'icon' => 'comment-dots',
+            'icon' => 'message-circle',
             'description' => 'Live chat module',
         ],
         'today' => [
@@ -134,7 +134,7 @@ class ModuleSeeder extends Seeder
         ],
         'times' => [
             'name' => 'Times',
-            'icon' => 'hourglass-low',
+            'icon' => 'hourglass',
             'description' => 'Time tracking module',
         ],
         'documentation' => [
@@ -144,7 +144,7 @@ class ModuleSeeder extends Seeder
         ],
         'earnings' => [
             'name' => 'Earnings',
-            'icon' => 'moneybag',
+            'icon' => 'coin',
             'description' => 'Earnings management module',
         ],
         'expenses' => [
@@ -154,12 +154,12 @@ class ModuleSeeder extends Seeder
         ],
         'accounting' => [
             'name' => 'Accounting',
-            'icon' => 'receipt-tax',
+            'icon' => 'calculator',
             'description' => 'Accounting management module',
         ],
         'financial' => [
             'name' => 'Financial',
-            'icon' => 'graph',
+            'icon' => 'chart-line',
             'description' => 'Financial evolution module',
         ],
         'departments' => [
@@ -179,7 +179,7 @@ class ModuleSeeder extends Seeder
         ],
         'integrations' => [
             'name' => 'Integrations',
-            'icon' => 'api-app',
+            'icon' => 'api',
             'description' => 'Integrations management module',
         ],
         'campaigns' => [
@@ -205,22 +205,22 @@ class ModuleSeeder extends Seeder
         'fares' => [
             'name' => 'Fares',
             'icon' => 'currency-dollar',
-            'description' => 'Fares and pricing management module',
+            'description' => 'Fares management module',
         ],
         'softwares' => [
-            'name' => 'Softwares',
-            'icon' => 'cpu',
+            'name' => 'Software',
+            'icon' => 'device-laptop',
             'description' => 'Software management module',
         ],
         'certifications' => [
             'name' => 'Certifications',
-            'icon' => 'award',
+            'icon' => 'certificate',
             'description' => 'Certifications management module',
         ],
         'stylebooks' => [
             'name' => 'Stylebooks',
             'icon' => 'book',
-            'description' => 'Stylebooks and guidelines module',
+            'description' => 'Stylebooks management module',
         ],
         'notifications' => [
             'name' => 'Notifications',
