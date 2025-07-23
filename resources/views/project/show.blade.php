@@ -146,6 +146,10 @@
                         $valorationText = 'Interesante';
                         break;
                 }
+            } else {
+                // No valoration assigned
+                $valorationIcon = 'ti-minus text-muted';
+                $valorationText = 'Sin valoración';
             }
 
             // Get primary language combination for display
