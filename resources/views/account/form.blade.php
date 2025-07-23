@@ -24,7 +24,7 @@
                 <form action="{{ route('account.update', $team->id) }}" method="POST">
                     @csrf
                     @method('PUT')
-                    
+
                     <div class="row">
                         <div class="col-12 mb-3">
                             <label class="form-label" for="name">Account Name</label>
@@ -34,7 +34,35 @@
 
                     <div class="row">
                         <div class="col-12 mb-3">
+                            <label class="form-label">Core Modules</label>
+                            <p class="text-muted small">These are essential modules that are enabled by default but can be disabled if needed.</p>
+                            <div class="row">
+                                @foreach($coreModules as $module)
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                name="modules[]"
+                                                value="{{ $module->key }}"
+                                                id="module_{{ $module->key }}"
+                                                {{ $team->hasModule($module->key) ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="module_{{ $module->key }}">
+                                                <i class="ti ti-{{ $module->icon }} me-2"></i>
+                                                {{ $module->name }}
+                                                @if($module->description)
+                                                    <small class="text-muted d-block">{{ $module->description }}</small>
+                                                @endif
+                                            </label>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12 mb-3">
                             <label class="form-label">Additional Modules</label>
+                            <p class="text-muted small">These are optional modules that can be enabled based on your needs.</p>
                             <div class="row">
                                 @foreach($additionalModules as $module)
                                     <div class="col-md-4 mb-3">
@@ -45,7 +73,11 @@
                                                 id="module_{{ $module->key }}"
                                                 {{ $team->hasModule($module->key) ? 'checked' : '' }}>
                                             <label class="form-check-label" for="module_{{ $module->key }}">
+                                                <i class="ti ti-{{ $module->icon }} me-2"></i>
                                                 {{ $module->name }}
+                                                @if($module->description)
+                                                    <small class="text-muted d-block">{{ $module->description }}</small>
+                                                @endif
                                             </label>
                                         </div>
                                     </div>
@@ -65,4 +97,4 @@
         </div>
     </div>
 </div>
-@endsection 
+@endsection

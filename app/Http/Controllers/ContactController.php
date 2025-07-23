@@ -634,52 +634,7 @@ class ContactController extends Controller
     public function search(Request $request)
     {
         $query = $request->input('q');
-
-        $members = Contact::where('name', 'like', "%{$query}%")
-            ->select('id', 'name', 'created_at')
-            ->get()
-            ->map(function ($contact) {
-                return [
-                    'name' => $contact->name,
-                    'subtitle' => 'Creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs',
-                    'src' => 'img/avatars/guru-meditating.jpg',
-                    'url' => route('contact.show', $contact->id),
-                ];
-            });
-
-        $enterprises = \App\Models\Enterprise::where('name', 'like', "%{$query}%")
-            ->select('id', 'name', 'created_at', 'responsible_id')
-            ->get()
-            ->map(function ($enterprise) {
-                return [
-                    'name' => $enterprise->name,
-                    'subtitle' => 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs',
-                    'src' => 'img/icons/brands/enterprise.png',
-                    'url' => $enterprise->responsible_id ? route('contact.show', $enterprise->responsible_id) : '#',
-                ];
-            });
-
-        $services = \App\Models\Service::where(function ($q) use ($query) {
-            // Search for domain in the JSON data
-            $q->whereRaw("JSON_EXTRACT(data, '$.domain') LIKE ?", ["%{$query}%"])
-              // Search for user in the JSON data
-                ->orWhereRaw("JSON_EXTRACT(data, '$.user') LIKE ?", ["%{$query}%"])
-              // Search for IP in the JSON data
-                ->orWhereRaw("JSON_EXTRACT(data, '$.ip') LIKE ?", ["%{$query}%"]);
-        })
-            ->select('id', 'enterprise_id', 'data', 'created_at')
-            ->get()
-            ->map(function ($service) {
-                $domain = isset($service->data->domain) ? $service->data->domain : 'No domain';
-                $user = isset($service->data->user) ? $service->data->user : '';
-
-                return [
-                    'name' => $domain,
-                    'subtitle' => ! empty($user) ? "Usuario: {$user}" : 'Servicio creado el '.$service->created_at->format('d-m-Y'),
-                    'src' => 'img/icons/brands/web.png',
-                    'url' => route('service.show', $service->id),
-                ];
-            });
+        $team = auth()->user()->currentTeam;
 
         $data = [
             'pages' => [
@@ -692,21 +647,6 @@ class ContactController extends Controller
                     'name' => 'Kanban',
                     'icon' => 'ti-layout-kanban',
                     'url' => 'app/kanban',
-                ],
-                [
-                    'name' => 'Contactos',
-                    'icon' => 'ti-users',
-                    'url' => 'contact/list',
-                ],
-                [
-                    'name' => 'Clientes',
-                    'icon' => 'ti-user-heart',
-                    'url' => 'client/list',
-                ],
-                [
-                    'name' => 'Lista de 60',
-                    'icon' => 'ti-list-check',
-                    'url' => 'list60/list',
                 ],
             ],
             'files' => [
@@ -732,10 +672,174 @@ class ContactController extends Controller
                     'url' => 'javascript:;',
                 ],
             ],
-            'members' => $members,
-            'enterprises' => $enterprises,
-            'services' => $services,
+            'members' => [],
+            'enterprises' => [],
+            'services' => [],
+            'projects' => [],
+            'collaborators' => [],
+            'invoices' => [],
         ];
+
+        // Only search contacts if the contacts module is active
+        if ($team && $team->hasModule('contacts')) {
+            $data['members'] = Contact::where('name', 'like', "%{$query}%")
+                ->select('id', 'name', 'created_at')
+                ->get()
+                ->map(function ($contact) {
+                    return [
+                        'name' => $contact->name,
+                        'subtitle' => 'Creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs',
+                        'src' => 'img/avatars/guru-meditating.jpg',
+                        'url' => route('contact.show', $contact->id),
+                    ];
+                });
+
+            // Add contact-related pages only if contacts module is active
+            $data['pages'][] = [
+                'name' => 'Contactos',
+                'icon' => 'ti-users',
+                'url' => 'contact/list',
+            ];
+        }
+
+        // Only search enterprises if the enterprises module is active
+        if ($team && $team->hasModule('enterprises')) {
+            $data['enterprises'] = \App\Models\Enterprise::where('name', 'like', "%{$query}%")
+                ->select('id', 'name', 'created_at', 'responsible_id')
+                ->get()
+                ->map(function ($enterprise) {
+                    return [
+                        'name' => $enterprise->name,
+                        'subtitle' => 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs',
+                        'src' => 'img/icons/brands/enterprise.png',
+                        'url' => $enterprise->responsible_id ? route('contact.show', $enterprise->responsible_id) : '#',
+                    ];
+                });
+        }
+
+        // Only search services if the services module is active
+        if ($team && $team->hasModule('services')) {
+            $data['services'] = \App\Models\Service::where(function ($q) use ($query) {
+                // Search for domain in the JSON data
+                $q->whereRaw("JSON_EXTRACT(data, '$.domain') LIKE ?", ["%{$query}%"])
+                  // Search for user in the JSON data
+                    ->orWhereRaw("JSON_EXTRACT(data, '$.user') LIKE ?", ["%{$query}%"])
+                  // Search for IP in the JSON data
+                    ->orWhereRaw("JSON_EXTRACT(data, '$.ip') LIKE ?", ["%{$query}%"]);
+            })
+                ->select('id', 'enterprise_id', 'data', 'created_at')
+                ->get()
+                ->map(function ($service) {
+                    $domain = isset($service->data->domain) ? $service->data->domain : 'No domain';
+                    $user = isset($service->data->user) ? $service->data->user : '';
+
+                    return [
+                        'name' => $domain,
+                        'subtitle' => ! empty($user) ? "Usuario: {$user}" : 'Servicio creado el '.$service->created_at->format('d-m-Y'),
+                        'src' => 'img/icons/brands/web.png',
+                        'url' => route('service.show', $service->id),
+                    ];
+                });
+        }
+
+        // Only search projects if the projects module is active
+        if ($team && $team->hasModule('projects')) {
+            $data['projects'] = \App\Models\Project::where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('real_name', 'like', "%{$query}%")
+                  ->orWhere('description', 'like', "%{$query}%");
+            })
+                ->with(['client', 'status'])
+                ->select('id', 'name', 'real_name', 'enterprise_id', 'status_id', 'created_at')
+                ->get()
+                ->map(function ($project) {
+                    $clientName = $project->client ? $project->client->name : 'Sin cliente';
+                    $statusName = $project->status ? $project->status->name : 'Sin estado';
+
+                    return [
+                        'name' => $project->real_name ?: $project->name,
+                        'subtitle' => "Cliente: {$clientName} - Estado: {$statusName}",
+                        'src' => 'img/icons/brands/project.png',
+                        'url' => route('project.show', $project->id),
+                    ];
+                });
+
+            // Add project-related pages only if projects module is active
+            $data['pages'][] = [
+                'name' => 'Proyectos',
+                'icon' => 'ti-folder',
+                'url' => 'project/list',
+            ];
+        }
+
+        // Only search collaborators if the collaborators module is active
+        if ($team && $team->hasModule('collaborators')) {
+            $data['collaborators'] = Contact::where('name', 'like', "%{$query}%")
+                ->whereHas('languageVariants') // Only contacts with language variants (collaborators)
+                ->whereHas('fares') // Only contacts with services/fares
+                ->select('id', 'name', 'created_at')
+                ->get()
+                ->map(function ($contact) {
+                    return [
+                        'name' => $contact->name,
+                        'subtitle' => 'Colaborador creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs',
+                        'src' => 'img/avatars/collaborator.png',
+                        'url' => route('collaborator.show', $contact->id),
+                    ];
+                });
+
+            // Add collaborator-related pages only if collaborators module is active
+            $data['pages'][] = [
+                'name' => 'Colaboradores',
+                'icon' => 'ti-user-group',
+                'url' => 'collaborator/list',
+            ];
+        }
+
+        // Only search invoices if the invoices module is active
+        if ($team && $team->hasModule('invoices')) {
+            $data['invoices'] = \App\Models\Invoice::where(function ($q) use ($query) {
+                $q->where('number', 'like', "%{$query}%");
+            })
+                ->with(['enterprise'])
+                ->select('id', 'number', 'enterprise_id', 'created_at')
+                ->get()
+                ->map(function ($invoice) {
+                    $clientName = $invoice->enterprise ? $invoice->enterprise->name : 'Sin cliente';
+
+                    return [
+                        'name' => $invoice->number,
+                        'subtitle' => "Cliente: {$clientName}",
+                        'src' => 'img/icons/brands/invoice.png',
+                        'url' => route('invoice.show', $invoice->id),
+                    ];
+                });
+
+            // Add invoice-related pages only if invoices module is active
+            $data['pages'][] = [
+                'name' => 'Facturas',
+                'icon' => 'ti-file-invoice',
+                'url' => 'invoice/list',
+            ];
+        }
+
+        // Add client-related pages only if clients module is active
+        if ($team && $team->hasModule('clients')) {
+            $data['pages'][] = [
+                'name' => 'Clientes',
+                'icon' => 'ti-user-heart',
+                'url' => 'client/list',
+            ];
+        }
+
+        // Add list60-related pages only if list60 module is active
+        if ($team && $team->hasModule('list60')) {
+            $data['pages'][] = [
+                'name' => 'Lista de 60',
+                'icon' => 'ti-list-check',
+                'url' => 'list60/list',
+            ];
+        }
 
         return response()->json($data);
     }

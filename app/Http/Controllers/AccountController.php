@@ -44,9 +44,10 @@ class AccountController extends Controller
     public function edit(string $id)
     {
         $team = Team::findOrFail($id);
+        $coreModules = Module::where('is_core', true)->get();
         $additionalModules = Module::where('is_core', false)->get();
 
-        return view('account.form', compact('team', 'additionalModules'));
+        return view('account.form', compact('team', 'coreModules', 'additionalModules'));
     }
 
     /**
@@ -66,10 +67,10 @@ class AccountController extends Controller
             'name' => $request->name,
         ]);
 
-        // Get all non-core modules
-        $allModules = Module::where('is_core', false)->get();
+        // Get all modules (core and additional)
+        $allModules = Module::all();
 
-        // Disable all non-core modules first
+        // Disable all modules first
         foreach ($allModules as $module) {
             $team->disableModule($module->key);
         }

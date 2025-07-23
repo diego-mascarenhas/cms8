@@ -29,11 +29,6 @@ class ModuleSeeder extends Seeder
             'icon' => 'tasks',
             'description' => 'Task management module',
         ],
-        'contacts' => [
-            'name' => 'Contacts',
-            'icon' => 'address-book',
-            'description' => 'Contact management module',
-        ],
         'clients' => [
             'name' => 'Clients',
             'icon' => 'user-heart',
@@ -47,6 +42,16 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $additionalModules = [
+        'contacts' => [
+            'name' => 'Contacts',
+            'icon' => 'address-book',
+            'description' => 'Contact management module',
+        ],
+        'collaborators' => [
+            'name' => 'Collaborators',
+            'icon' => 'user-group',
+            'description' => 'Collaborators management module',
+        ],
         'projects' => [
             'name' => 'Projects',
             'icon' => 'project-diagram',
@@ -222,11 +227,6 @@ class ModuleSeeder extends Seeder
             'icon' => 'bell',
             'description' => 'Notifications and alerts module',
         ],
-        'collaborators' => [
-            'name' => 'Collaborators',
-            'icon' => 'user-group',
-            'description' => 'Collaborators management module',
-        ],
     ];
 
     protected $teamModules = [
@@ -268,17 +268,20 @@ class ModuleSeeder extends Seeder
             $this->command->info("Módulo adicional '{$moduleData['name']}' creado o actualizado");
         }
 
-        // $teams = Team::all();
-        // $coreModuleObjects = Module::where('is_core', true)->get();
+        // Enable core modules for all teams
+        $teams = Team::all();
+        $coreModuleObjects = Module::where('is_core', true)->get();
 
-        // foreach ($teams as $team) {
-        //     $this->command->info("Habilitando módulos core para equipo '{$team->name}'");
+        foreach ($teams as $team) {
+            $this->command->info("Habilitando módulos core para equipo '{$team->name}'");
 
-        //     foreach ($coreModuleObjects as $module) {
-        //         $team->enableModule($module->key);
-        //     }
-        // }
+            foreach ($coreModuleObjects as $module) {
+                $team->enableModule($module->key);
+                $this->command->info("- Módulo core '{$module->name}' habilitado");
+            }
+        }
 
+        // Enable additional modules for specific teams
         foreach ($this->teamModules as $teamId => $moduleKeys) {
             $team = Team::find($teamId);
 
