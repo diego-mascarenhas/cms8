@@ -36,6 +36,10 @@
                     $valorationText = 'Interesante';
                     break;
             }
+        } else {
+            // No valoration assigned
+            $valorationIcon = 'ti-minus text-muted';
+            $valorationText = 'Sin valoración';
         }
 
         // Get last project date for display
@@ -56,20 +60,26 @@
     <div class="col-md-4 mb-3 collaborator-card"
          data-languages="{{ $languageString }}"
          data-services="{{ $servicesString }}">
-        <div class="card">
+        <div class="card position-relative">
+            {{-- Eye icon positioned absolutely at top-right --}}
+            <div class="position-absolute" style="top: 8px; right: 8px; z-index: 10;">
+                <a href="{{ route('collaborator.show', $collaborator->id) }}" class="text-body" title="{{ __('View collaborator details') }}">
+                    <i class="ti ti-eye ti-sm"></i>
+                </a>
+            </div>
+
             <div class="card-body p-3">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center">
-                        <div class="avatar avatar-md me-3">
-                            <span class="avatar-initial rounded-circle bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][($index % 5)] }}">{{ strtoupper(substr($collaborator->name, 0, 2)) }}</span>
+                <div class="d-flex align-items-center">
+                    <div class="avatar avatar-md me-3">
+                        <span class="avatar-initial rounded-circle bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][($index % 5)] }}">{{ strtoupper(substr($collaborator->name, 0, 2)) }}</span>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">{{ $collaborator->name }}</h6>
+                        <small class="text-muted">{{ $lastProjectText }}</small>
+                        <div class="d-flex align-items-center mt-1">
+                            <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
+                            <small class="text-muted">{{ $valorationText }}</small>
                         </div>
-                        <div>
-                            <h6 class="mb-0">{{ $collaborator->name }}</h6>
-                            <small class="text-muted">{{ $lastProjectText }}</small>
-                            <div class="d-flex align-items-center mt-1">
-                                <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
-                                <small class="text-muted">{{ $valorationText }}</small>
-                            </div>
 
                             {{-- Show availability info when time filters are applied --}}
                             @if(isset($filterDays) && isset($filterDeliveryDate) && $filterDays && $filterDeliveryDate)
