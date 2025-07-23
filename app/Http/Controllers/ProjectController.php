@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ProjectDataTable;
 use App\Http\Requests\StoreProjectRequest;
+use App\Models\ContactProject;
 use App\Models\Fare;
 use App\Models\Language;
 use App\Models\Project;
@@ -435,6 +436,9 @@ class ProjectController extends Controller
 			'status',
 			'category',
 			'notes',
+			'collaborators' => function($query) {
+				$query->withTrashed(); // Include removed collaborators
+			},
 			'collaborators.valoration',
 			'collaborators.languageVariants.sourceLanguage',
 			'collaborators.languageVariants.targetLanguage',
