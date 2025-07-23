@@ -573,4 +573,14 @@ class Contact extends Model implements HasMedia
     {
         return $this->belongsTo(\App\Models\Enterprise::class, 'current_enterprise_id');
     }
+
+    /**
+     * Get the last project for this collaborator
+     */
+    public function getLastProjectAttribute()
+    {
+        return $this->projects()
+            ->orderBy('created_at', 'desc')
+            ->first();
+    }
 }

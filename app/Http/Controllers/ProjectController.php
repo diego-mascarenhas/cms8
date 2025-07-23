@@ -137,6 +137,7 @@ class ProjectController extends Controller
 			return response()->json([
 				'html' => view('project.partials.collaborator-cards', [
 					'collaborators' => collect(),
+					'project' => $project,
 					'selectedService' => null,
 					'selectedSourceLanguage' => null,
 					'selectedTargetLanguage' => null,
@@ -209,6 +210,7 @@ class ProjectController extends Controller
 		return response()->json([
 			'html' => view('project.partials.collaborator-cards', [
 				'collaborators' => $collaborators,
+				'project' => $project,
 				'selectedService' => $request->service ?? null,
 				'selectedSourceLanguage' => $request->source_language ?? null,
 				'selectedTargetLanguage' => $request->target_language ?? null,

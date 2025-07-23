@@ -38,35 +38,17 @@
             }
         }
 
-        // Get primary language combination for display
-        $primaryLanguage = '';
-        if ($collaborator->languageVariants->count() > 0) {
-            // If we have filter parameters, show the matching variant
-            if (isset($selectedSourceLanguage) && $selectedSourceLanguage &&
-                isset($selectedTargetLanguage) && $selectedTargetLanguage) {
-                // Find the variant that matches the selected filters
-                $matchingVariant = $collaborator->languageVariants->first(function($variant) use ($selectedSourceLanguage, $selectedTargetLanguage) {
-                    return $variant->source_language_code === $selectedSourceLanguage &&
-                           $variant->target_language_code === $selectedTargetLanguage;
-                });
+        // Get last project date for display
+        $lastProjectText = 'Sin proyectos';
+        if ($collaborator->lastProject) {
+            $lastProject = $collaborator->lastProject;
 
-                if ($matchingVariant) {
-                    $sourceLang = $matchingVariant->sourceLanguage ? $matchingVariant->sourceLanguage->name : $matchingVariant->source_language_code;
-                    $targetLang = $matchingVariant->targetLanguage ? $matchingVariant->targetLanguage->name : $matchingVariant->target_language_code;
-                    $primaryLanguage = $sourceLang . ' → ' . $targetLang;
-                } else {
-                    // Fallback to first variant if no match found
-                    $firstVariant = $collaborator->languageVariants->first();
-                    $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
-                    $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
-                    $primaryLanguage = $sourceLang . ' → ' . $targetLang;
-                }
+            // Check if the last project is the current one
+            if (isset($project) && $lastProject->id == $project->id) {
+                $lastProjectText = 'Este mismo';
             } else {
-                // No filters, show first variant
-                $firstVariant = $collaborator->languageVariants->first();
-                $sourceLang = $firstVariant->sourceLanguage ? $firstVariant->sourceLanguage->name : $firstVariant->source_language_code;
-                $targetLang = $firstVariant->targetLanguage ? $firstVariant->targetLanguage->name : $firstVariant->target_language_code;
-                $primaryLanguage = $sourceLang . ' → ' . $targetLang;
+                // Format the date
+                $lastProjectText = $lastProject->created_at->format('d/m/Y');
             }
         }
     @endphp
@@ -83,7 +65,7 @@
                         </div>
                         <div>
                             <h6 class="mb-0">{{ $collaborator->name }}</h6>
-                            <small class="text-muted">{{ $primaryLanguage }}</small>
+                            <small class="text-muted">{{ $lastProjectText }}</small>
                             <div class="d-flex align-items-center mt-1">
                                 <i class="ti {{ $valorationIcon }} ti-xs me-1"></i>
                                 <small class="text-muted">{{ $valorationText }}</small>
