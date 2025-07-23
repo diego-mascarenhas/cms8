@@ -65,6 +65,9 @@ class TeamBboSeeder extends Seeder
 		// 4.10. Create BBO stylebooks
 		$this->createBboStylebooks();
 
+		// 4.11. Create BBO valorations (must be before importing collaborators)
+		$this->createBboValorations($team);
+
 		// 2. Seed BBO language variants (pasa el team_id real)
 		$this->seedBboLanguageVariants($team->id);
 
@@ -123,24 +126,7 @@ class TeamBboSeeder extends Seeder
 			$this->command->info("✅ Módulo '{$moduleKey}' habilitado para el equipo BBO");
 		}
 
-		// Add valorations for team_id 4 (BBO)
-		$valorations = [
-			['id' => 1, 'name' => 'Top', 'icon' => '⭐'],
-			['id' => 2, 'name' => 'Validada', 'icon' => '✅'],
-			['id' => 3, 'name' => 'Interesante', 'icon' => '🕐'],
-			['id' => 4, 'name' => 'Lista negra', 'icon' => '❌'],
-			['id' => 5, 'name' => 'Ojo', 'icon' => '👁️'],
-		];
-		foreach ($valorations as $valoration) {
-			DB::table('contact_valorations')->insertOrIgnore([
-				'id' => ($team->id * 10) + $valoration['id'],
-				'team_id' => $team->id,
-				'name' => $valoration['name'],
-				'icon' => $valoration['icon'],
-				'created_at' => now(),
-				'updated_at' => now(),
-			]);
-		}
+
 	}
 
 	/**
@@ -1285,13 +1271,24 @@ class TeamBboSeeder extends Seeder
 			return;
 		}
 
-		// Get or create software categories
+		// Create parent category for software
+		$softwareParentCategory = \App\Models\Category::firstOrCreate([
+			'name' => 'Software de Traducción Audiovisual',
+			'module_id' => $softwareModule->id,
+			'team_id' => $this->teamId,
+		], [
+			'description' => 'Software especializado para traducción audiovisual y localización',
+			'status' => 1,
+		]);
+
+		// Get or create software subcategories
 		$subtitleCategory = \App\Models\Category::firstOrCreate([
 			'name' => 'Subtitulación',
 			'module_id' => $softwareModule->id,
 			'team_id' => $this->teamId,
 		], [
 			'description' => 'Software para subtitulación y captions',
+			'parent_id' => $softwareParentCategory->id,
 			'status' => 1,
 		]);
 
@@ -1301,6 +1298,7 @@ class TeamBboSeeder extends Seeder
 			'team_id' => $this->teamId,
 		], [
 			'description' => 'Software para doblaje y audio',
+			'parent_id' => $softwareParentCategory->id,
 			'status' => 1,
 		]);
 
@@ -1310,6 +1308,7 @@ class TeamBboSeeder extends Seeder
 			'team_id' => $this->teamId,
 		], [
 			'description' => 'Software para edición de video',
+			'parent_id' => $softwareParentCategory->id,
 			'status' => 1,
 		]);
 
@@ -1319,6 +1318,7 @@ class TeamBboSeeder extends Seeder
 			'team_id' => $this->teamId,
 		], [
 			'description' => 'Computer Assisted Translation tools',
+			'parent_id' => $softwareParentCategory->id,
 			'status' => 1,
 		]);
 
@@ -1328,6 +1328,7 @@ class TeamBboSeeder extends Seeder
 			'team_id' => $this->teamId,
 		], [
 			'description' => 'Software de desarrollo y programación',
+			'parent_id' => $softwareParentCategory->id,
 			'status' => 1,
 		]);
 
@@ -1615,6 +1616,60 @@ class TeamBboSeeder extends Seeder
 		$this->command->info("✅ Created {$created} new BBO stylebook entries");
 		if ($updated > 0) {
 			$this->command->info("🔄 Updated {$updated} existing BBO stylebook entries");
+		}
+	}
+
+	/**
+	 * Create BBO valorations
+	 */
+	private function createBboValorations($team)
+	{
+		$this->command->info('🏷️ Creating BBO valorations...');
+
+		$valorations = [
+			['id' => 1, 'name' => 'Top', 'icon' => '⭐'],
+			['id' => 2, 'name' => 'Validada', 'icon' => '✅'],
+			['id' => 3, 'name' => 'Interesante', 'icon' => '🕐'],
+			['id' => 4, 'name' => 'Lista negra', 'icon' => '❌'],
+			['id' => 5, 'name' => 'Ojo', 'icon' => '👁️'],
+		];
+
+		$created = 0;
+		$updated = 0;
+
+		foreach ($valorations as $valoration) {
+			$valorationId = ($team->id * 10) + $valoration['id'];
+
+			$existing = DB::table('contact_valorations')
+				->where('id', $valorationId)
+				->first();
+
+			if ($existing) {
+				DB::table('contact_valorations')
+					->where('id', $valorationId)
+					->update([
+						'team_id' => $team->id,
+						'name' => $valoration['name'],
+						'icon' => $valoration['icon'],
+						'updated_at' => now(),
+					]);
+				$updated++;
+			} else {
+				DB::table('contact_valorations')->insert([
+					'id' => $valorationId,
+					'team_id' => $team->id,
+					'name' => $valoration['name'],
+					'icon' => $valoration['icon'],
+					'created_at' => now(),
+					'updated_at' => now(),
+				]);
+				$created++;
+			}
+		}
+
+		$this->command->info("✅ Created {$created} new BBO valoration entries");
+		if ($updated > 0) {
+			$this->command->info("🔄 Updated {$updated} existing BBO valoration entries");
 		}
 	}
 
