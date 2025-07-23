@@ -436,13 +436,10 @@ class ProjectController extends Controller
 			'status',
 			'category',
 			'notes',
-			'collaborators' => function($query) {
-				$query->withTrashed(); // Include removed collaborators
-			},
-			'collaborators.valoration',
-			'collaborators.languageVariants.sourceLanguage',
-			'collaborators.languageVariants.targetLanguage',
-			'collaborators.fares.type',
+			'allCollaborators.valoration',
+			'allCollaborators.languageVariants.sourceLanguage',
+			'allCollaborators.languageVariants.targetLanguage',
+			'allCollaborators.fares.type',
 			'projectFares.fare.type',
 			'projectFares.sourceLanguage',
 			'projectFares.targetLanguage',

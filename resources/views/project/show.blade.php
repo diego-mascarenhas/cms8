@@ -120,9 +120,9 @@
 </div>
 
 <!-- Collaborators Section (Floating Cards) -->
-@if($project->collaborators && $project->collaborators->count() > 0)
+@if($project->allCollaborators && $project->allCollaborators->count() > 0)
 <div class="row mb-4" style="align-items: stretch;">
-    @foreach($project->collaborators as $index => $collaborator)
+    @foreach($project->allCollaborators as $index => $collaborator)
         @php
             // Get the valoration for display
             $valorationIcon = 'ti-star-filled text-warning';
@@ -263,8 +263,8 @@
 							// Check if there are collaborators that match this service requirements
 							$hasMatchingCollaborator = false;
 
-							if ($project->collaborators && $project->collaborators->count() > 0) {
-								foreach ($project->collaborators as $collaborator) {
+							if ($project->allCollaborators && $project->allCollaborators->count() > 0) {
+								foreach ($project->allCollaborators as $collaborator) {
 									// Check if collaborator has the required language combination
 									$hasLanguageCombination = $collaborator->languageVariants->contains(function($variant) use ($projectFare) {
 										return $variant->source_language_code === $projectFare->source_language_code
