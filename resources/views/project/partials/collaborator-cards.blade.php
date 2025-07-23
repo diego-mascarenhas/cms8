@@ -186,11 +186,6 @@
                         </div>
                     </div>
 
-                    <div class="form-check">
-                        <input class="form-check-input collaborator-checkbox" type="checkbox"
-                               name="collaborator_ids[]" value="{{ $collaborator->id }}"
-                               data-collaborator-id="{{ $collaborator->id }}">
-                    </div>
                 </div>
 
                 {{-- Show fare info only when service AND both languages are selected --}}
@@ -216,23 +211,35 @@
                             $targetLanguage = $selectedFare->pivot->target_language_code ?? 'N/A';
                             $unit = $selectedFare->pivot->unit_id ?? '';
 
-                            // Get unit name if available
+                            // Get unit name from database
                             $unitName = '';
                             if($unit) {
                                 $unitModel = \App\Models\Unit::find($unit);
                                 if($unitModel) {
-                                    $unitTypes = \App\Models\Unit::getTypes();
-                                    $unitDisplay = $unitTypes[$unitModel->type] ?? $unitModel->type;
-                                    $unitName = ' por ' . strtolower($unitDisplay);
+                                    $unitName = '/' . $unitModel->type;
                                 }
                             }
+
+                            // Get currency symbol from database
+                            $currencySymbol = '€'; // Default fallback
+                            $currencyModel = \App\Models\Currency::where('code', $currency)->first();
+                            if($currencyModel) {
+                                $currencySymbol = $currencyModel->symbol;
+                            }
                         @endphp
-                        <div class="mt-2 px-3 py-2" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
-                            @if($price !== 'N/A')
-                                <strong class="text-success">{{ number_format($price, 2) }} {{ $currency }}{{ $unitName }}</strong>
-                            @else
-                                <span class="text-muted">{{ __('Por consultar') }}</span>
-                            @endif
+                        <div class="mt-2 px-3 py-2 d-flex align-items-center justify-content-between" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input collaborator-checkbox" type="checkbox"
+                                       name="collaborator_ids[]" value="{{ $collaborator->id }}"
+                                       data-collaborator-id="{{ $collaborator->id }}">
+                            </div>
+                            <div class="text-end">
+                                @if($price !== 'N/A')
+                                    <strong class="text-success">{{ number_format($price, 2) }}{{ $currencySymbol }} {{ $unitName }}</strong>
+                                @else
+                                    <span class="text-muted">{{ __('Por consultar') }}</span>
+                                @endif
+                            </div>
                         </div>
                     @endif
                 @endif
@@ -241,7 +248,20 @@
                 @if(!isset($selectedService) || !$selectedService ||
                     !isset($selectedSourceLanguage) || !$selectedSourceLanguage ||
                     !isset($selectedTargetLanguage) || !$selectedTargetLanguage)
-                    <!-- Tarifas del colaborador (inicialmente ocultas) -->
+
+                    {{-- Price box with checkbox when no specific fare is selected --}}
+                    <div class="mt-2 px-3 py-2 d-flex align-items-center justify-content-between" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input collaborator-checkbox" type="checkbox"
+                                   name="collaborator_ids[]" value="{{ $collaborator->id }}"
+                                   data-collaborator-id="{{ $collaborator->id }}">
+                        </div>
+                        <div class="text-end">
+                            <span class="text-muted">{{ __('Selecciona servicio e idiomas') }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Collaborator fares (initially hidden) -->
                     <div class="collapse mt-3" id="fares-{{ $collaborator->id }}">
                         <div class="card bg-light">
                             <div class="card-body p-2">
@@ -269,11 +289,20 @@
                                                         $currency = $fare->pivot->currency_code ?? 'EUR';
                                                         $unit = $fare->pivot->unit_id ?? '';
 
-                                                        // Get unit name if available
+                                                        // Get unit name from database
                                                         $unitName = '';
                                                         if($unit) {
                                                             $unitModel = \App\Models\Unit::find($unit);
-                                                            $unitName = $unitModel ? ' por ' . strtolower($unitModel->name) : '';
+                                                            if($unitModel) {
+                                                                $unitName = '/' . $unitModel->type;
+                                                            }
+                                                        }
+
+                                                        // Get currency symbol from database
+                                                        $currencySymbol = '€'; // Default fallback
+                                                        $currencyModel = \App\Models\Currency::where('code', $currency)->first();
+                                                        if($currencyModel) {
+                                                            $currencySymbol = $currencyModel->symbol;
                                                         }
                                                     @endphp
                                                     <tr style="font-size: 0.8rem;" class="fare-row"
@@ -295,7 +324,7 @@
                                                         </td>
                                                         <td class="text-end">
                                                             @if($price !== 'N/A')
-                                                                <strong class="text-success">{{ number_format($price, 2) }} {{ $currency }}{{ $unitName }}</strong>
+                                                                <strong class="text-success">{{ number_format($price, 2) }}{{ $currencySymbol }} {{ $unitName }}</strong>
                                                             @else
                                                                 <span class="text-muted">{{ __('Por consultar') }}</span>
                                                             @endif

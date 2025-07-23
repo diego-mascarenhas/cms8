@@ -101,7 +101,7 @@
 				<div class="card mb-4">
 					<div class="card-body">
 						<h6 class="card-title">Mensaje predefinido español</h6>
-						<textarea class="form-control mb-3" rows="10" id="spanish-template" readonly>Hola, {nombre}:
+						<textarea class="form-control mb-3" rows="13" id="spanish-template" readonly>Hola, {nombre}:
 
 	Esperamos que estés muy bien. Te contactamos desde bbo porque tenemos un nuevo proyecto. Hay que hacer {servicio}, de un {nombre_proyecto}, de {idioma_source} a {idioma_target}. La fecha de entrega ideal es {fecha_entrega_materiales}.
 
@@ -118,7 +118,7 @@
 				<div class="card mb-4">
 					<div class="card-body">
 						<h6 class="card-title">Mensaje predefinido inglés</h6>
-						<textarea class="form-control mb-3" rows="10" id="english-template" readonly>Hi, {nombre}:
+						<textarea class="form-control mb-3" rows="13" id="english-template" readonly>Hi, {nombre}:
 
 	We hope you're doing well. We're writing to you from bbo because we have a new project. We need {servicio}, for {nombre_proyecto}, from {idioma_source} to {idioma_target}. The ideal delivery date would be {fecha_entrega_materiales}.
 
