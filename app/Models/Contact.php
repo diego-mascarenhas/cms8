@@ -57,6 +57,19 @@ class Contact extends Model implements HasMedia
         });
     }
 
+    /**
+     * Scope to exclude collaborators removed from a specific project
+     */
+    public function scopeExcludeRemovedFromProject($query, $projectId)
+    {
+        return $query->whereNotIn('id', function ($subQuery) use ($projectId) {
+            $subQuery->select('contact_id')
+                     ->from('contact_project')
+                     ->where('project_id', $projectId)
+                     ->whereNotNull('deleted_at');
+        });
+    }
+
     public function team()
     {
         return $this->belongsTo(Team::class);

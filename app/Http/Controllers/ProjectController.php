@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\ProjectStatus;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\Contact;
 
 class ProjectController extends Controller
 {
@@ -85,7 +86,7 @@ class ProjectController extends Controller
 		$collaborators = collect();
 		if ($selectedSourceLanguage && $selectedTargetLanguage && $selectedService) {
 			// Build the query for contacts with language variants and fares
-			$query = \App\Models\Contact::with([
+			$query = Contact::with([
 				'valoration',
 				'languageVariants.sourceLanguage',
 				'languageVariants.targetLanguage',
@@ -147,7 +148,7 @@ class ProjectController extends Controller
 		}
 
 		// Build the query for contacts with language variants and fares
-		$query = \App\Models\Contact::with([
+		$query = Contact::with([
 			'valoration',
 			'languageVariants.sourceLanguage',
 			'languageVariants.targetLanguage',
@@ -160,7 +161,8 @@ class ProjectController extends Controller
 		// Basic requirements for collaborators
 		$query
 			->whereHas('languageVariants')  // Only contacts with language variants
-			->whereHas('fares');  // Only contacts with services/fares
+			->whereHas('fares')  // Only contacts with services/fares
+			->excludeRemovedFromProject($projectId);
 
 		// Apply language filters - each filter searches in its respective field
 		if ($request->has('source_language') &&
@@ -271,7 +273,7 @@ class ProjectController extends Controller
 		}
 
 		// Get all collaborators with their weekly availability and absences
-		$collaborators = \App\Models\Contact::with(['weeklyAvailability', 'absences' => function ($q) use ($startDate, $endDate) {
+		$collaborators = Contact::with(['weeklyAvailability', 'absences' => function ($q) use ($startDate, $endDate) {
 			$q->whereBetween('absence_date', [$startDate, $endDate]);
 		}])->get();
 
@@ -378,7 +380,7 @@ class ProjectController extends Controller
 
 		foreach ($collaboratorIds as $collaboratorId) {
 			try {
-				$collaborator = \App\Models\Contact::findOrFail($collaboratorId);
+				$collaborator = Contact::findOrFail($collaboratorId);
 
 				// Replace {nombre} placeholder with collaborator name
 				$personalizedMessage = str_replace('{nombre}', $collaborator->name, $messageTemplate);
@@ -479,10 +481,10 @@ class ProjectController extends Controller
 	{
 		try {
 			// Find the collaborator
-			$collaboratorModel = \App\Models\Contact::findOrFail($collaborator);
+			$collaboratorModel = Contact::findOrFail($collaborator);
 
 			// Find the pivot record using the ContactProject model
-			$pivotRecord = \App\Models\ContactProject::where('contact_id', $collaborator)
+			$pivotRecord = ContactProject::where('contact_id', $collaborator)
 				->where('project_id', $project->id)
 				->whereNull('deleted_at')
 				->first();
@@ -537,7 +539,7 @@ class ProjectController extends Controller
 			}
 
 			// Use withoutGlobalScopes to avoid team_id restriction
-			$fare = \App\Models\Fare::withoutGlobalScopes()->with('units')->find($fareId);
+			$fare = Fare::withoutGlobalScopes()->with('units')->find($fareId);
 
 			if (!$fare) {
 				return response()->json([
