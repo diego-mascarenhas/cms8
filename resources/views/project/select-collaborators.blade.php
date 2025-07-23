@@ -469,8 +469,8 @@
 				this.submit();
 			});
 
-			// Auto-apply filters if URL parameters are present
-			if (hasUrlParameters) {
+			// Auto-apply filters if URL parameters are present AND no collaborators are already loaded
+			if (hasUrlParameters && {{ $collaborators->count() }} === 0) {
 				setTimeout(function() {
 					console.log('Auto-applying filters from URL parameters:', {
 						sourceLanguage: urlSourceLanguage,
@@ -482,7 +482,7 @@
 					applyFilters();
 				}, 500); // Small delay to ensure Select2 components are fully initialized
 			} else {
-				console.log('No URL parameters found, showing initial state');
+				console.log('No URL parameters found or collaborators already loaded, showing current state');
 			}
 
 			// Initialize count
