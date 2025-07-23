@@ -133,10 +133,13 @@
 		</div>
 
 		<!-- Submit Button -->
-		<div class="d-flex justify-content-center mb-4">
-			<button type="submit" class="btn btn-primary btn-lg px-5" id="send-messages-btn">
-				<i class="ti ti-send me-2"></i>Enviar mensajes
+		<div class="d-flex justify-content-start gap-2 mb-4">
+			<button type="submit" class="btn btn-primary btn-sm" id="send-messages-btn">
+				<i class="ti ti-send me-1"></i>Enviar mensajes
 			</button>
+			<a href="{{ route('project.show', $project->id) }}" class="btn btn-outline-secondary btn-sm">
+				<i class="ti ti-x me-1"></i>Cancelar
+			</a>
 		</div>
 	</form>
 
