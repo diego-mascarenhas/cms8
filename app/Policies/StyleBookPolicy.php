@@ -2,7 +2,7 @@
 
 namespace App\Policies;
 
-use App\Models\StyleBook;
+use App\Models\Stylebook;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -21,10 +21,10 @@ class StyleBookPolicy
 	/**
 	 * Determine whether the user can view the stylebook.
 	 */
-	public function view(User $user, StyleBook $styleBook): bool
+	public function view(User $user, Stylebook $stylebook): bool
 	{
 		return $user->hasAnyRole(['admin', 'collaborator', 'client']) &&
-			$user->currentTeam->id === $styleBook->team_id;
+			$user->currentTeam->id === $stylebook->team_id;
 	}
 
 	/**
@@ -38,18 +38,18 @@ class StyleBookPolicy
 	/**
 	 * Determine whether the user can update the stylebook.
 	 */
-	public function update(User $user, StyleBook $styleBook): bool
+	public function update(User $user, Stylebook $stylebook): bool
 	{
 		// Admin can update any stylebook in their team
-		if ($user->hasRole('admin') && $user->currentTeam->id === $styleBook->team_id)
+		if ($user->hasRole('admin') && $user->currentTeam->id === $stylebook->team_id)
 		{
 			return true;
 		}
 
 		// Collaborator can only update their own stylebooks within their team
 		if ($user->hasRole('collaborator') &&
-			$user->currentTeam->id === $styleBook->team_id &&
-			$styleBook->user_id === $user->id)
+			$user->currentTeam->id === $stylebook->team_id &&
+			$stylebook->user_id === $user->id)
 		{
 			return true;
 		}
@@ -60,18 +60,18 @@ class StyleBookPolicy
 	/**
 	 * Determine whether the user can delete the stylebook.
 	 */
-	public function delete(User $user, StyleBook $styleBook): bool
+	public function delete(User $user, Stylebook $stylebook): bool
 	{
 		// Admin can delete any stylebook in their team
-		if ($user->hasRole('admin') && $user->currentTeam->id === $styleBook->team_id)
+		if ($user->hasRole('admin') && $user->currentTeam->id === $stylebook->team_id)
 		{
 			return true;
 		}
 
 		// Collaborator can only delete their own stylebooks within their team
 		if ($user->hasRole('collaborator') &&
-			$user->currentTeam->id === $styleBook->team_id &&
-			$styleBook->user_id === $user->id)
+			$user->currentTeam->id === $stylebook->team_id &&
+			$stylebook->user_id === $user->id)
 		{
 			return true;
 		}

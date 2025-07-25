@@ -11,6 +11,7 @@ use App\Models\LanguageVariant;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\Software;
+use App\Models\Stylebook;
 use App\Policies\CertificationPolicy;
 use App\Policies\ClientPolicy;
 use App\Policies\ContactPolicy;
@@ -20,6 +21,7 @@ use App\Policies\LanguageVariantPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\ServicePolicy;
 use App\Policies\SoftwarePolicy;
+use App\Policies\StyleBookPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -35,6 +37,7 @@ class AuthServiceProvider extends ServiceProvider
         Invoice::class => InvoicePolicy::class,
         LanguageVariant::class => LanguageVariantPolicy::class,
         Software::class => SoftwarePolicy::class,
+        Stylebook::class => StyleBookPolicy::class,
     ];
 
     public function boot()
