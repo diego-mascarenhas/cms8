@@ -225,12 +225,17 @@ class TeamBboSeeder extends Seeder
 			[
 				'name' => 'Vendors',
 				'email' => 'vendors@bbosubtitulado.com',
-				'role' => 5,  // Vendor Manager role
+				'role' => 2,  // Vendor Manager role
 			],
 			[
 				'name' => 'Amy Martínez',
 				'email' => 'amy@bbosubtitulado.com',
 				'role' => 2,  // Admin role
+			],
+			[
+				'name' => 'Tester',
+				'email' => 'tester@bbosubtitulado.com',
+				'role' => 3,  // Collaborator role
 			],
 		];
 
