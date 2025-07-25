@@ -109,7 +109,7 @@
                         @endphp
                         <span class="badge {{ $badgeClass }} rounded-pill">{{ $weekendText }}</span>
                     </li>
-                    <li class="mb-2 pt-3">
+                    <li class="mb-2 pt-3 d-none">
                         @if ($collaborator->user_id)
                             @php $linkedUser = \App\Models\User::find($collaborator->user_id); @endphp
                             @if ($linkedUser)
