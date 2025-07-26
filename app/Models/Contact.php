@@ -630,11 +630,5 @@ class Contact extends Model implements HasMedia
             ]);
     }
 
-    /**
-     * Get the path generator for media collections
-     */
-    public function getPathGenerator(): \Spatie\MediaLibrary\Support\PathGenerator\PathGenerator
-    {
-        return new \App\Services\CollaboratorMediaPathGenerator();
-    }
+
 }
