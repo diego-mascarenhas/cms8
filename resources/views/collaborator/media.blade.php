@@ -24,7 +24,7 @@
         <!-- Media Management -->
         <div class="card">
             <div class="card-header">
-                <h5 class="card-title mb-0">Media Management</h5>
+                <h5 class="card-title mb-0">Gestión de Media</h5>
             </div>
             <div class="card-body">
                 @can('collaborator.edit')
@@ -33,12 +33,12 @@
                     <div class="mb-3">
                         <i class="ti ti-upload ti-lg text-muted"></i>
                     </div>
-                    <h6 class="mb-2">Drag files here or click to select</h6>
-                    <p class="text-muted mb-3">Supports images, videos, audio and documents</p>
+                    <h6 class="mb-2">Arrastra archivos aquí o haz clic para seleccionar</h6>
+                    <p class="text-muted mb-3">Soporta imágenes, videos, audio y documentos</p>
                     <div class="file-input-wrapper">
                         <input type="file" id="fileInput" class="file-input" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx">
                         <label for="fileInput" class="file-input-label">
-                            <i class="ti ti-plus me-1"></i>Select Files
+                            <i class="ti ti-plus me-1"></i>Seleccionar Archivos
                         </label>
                     </div>
                 </div>
@@ -47,10 +47,10 @@
                 <div class="upload-progress d-none" id="uploadProgress">
                     <div class="d-flex align-items-center mb-2">
                         <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between">
-                                <span class="fw-medium">Uploading files...</span>
-                                <span class="text-muted" id="uploadCount">0/0</span>
-                            </div>
+                                                    <div class="d-flex justify-content-between">
+                            <span class="fw-medium">Subiendo archivos...</span>
+                            <span class="text-muted" id="uploadCount">0/0</span>
+                        </div>
                         </div>
                     </div>
                     <div class="progress">
@@ -88,17 +88,17 @@
                                             <span class="badge bg-secondary ms-2">{{ strtoupper($media->mime_type) }}</span>
                                         </div>
                                         <p class="text-muted mb-1">{{ number_format($media->size / 1024, 2) }} KB</p>
-                                        <small class="text-muted">Uploaded on {{ $media->created_at->format('d/m/Y H:i') }}</small>
+                                        <small class="text-muted">Subido el {{ $media->created_at->format('d/m/Y H:i') }}</small>
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
-                                        <a href="{{ $media->getUrl() }}" target="_blank" class="btn btn-sm btn-outline-primary" title="View">
+                                        <a href="{{ $media->getUrl() }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Ver">
                                             <i class="ti ti-eye"></i>
                                         </a>
                                         @can('collaborator.edit')
-                                        <button class="btn btn-sm btn-outline-secondary edit-media-name" data-media-id="{{ $media->id }}" title="Edit name">
+                                        <button class="btn btn-sm btn-outline-secondary edit-media-name" data-media-id="{{ $media->id }}" title="Editar nombre">
                                             <i class="ti ti-edit"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-danger delete-media" data-media-id="{{ $media->id }}" title="Delete">
+                                        <button class="btn btn-sm btn-outline-danger delete-media" data-media-id="{{ $media->id }}" title="Eliminar">
                                             <i class="ti ti-trash"></i>
                                         </button>
                                         @endcan
@@ -114,8 +114,8 @@
                                     <i class="ti ti-photo ti-md"></i>
                                 </span>
                             </div>
-                            <h5 class="mb-2">No media files</h5>
-                            <p class="mb-0 text-muted">Upload files by dragging them or using the select button.</p>
+                            <h5 class="mb-2">No hay archivos de media</h5>
+                            <p class="mb-0 text-muted">Sube archivos arrastrándolos o usando el botón de selección.</p>
                         </div>
                     @endif
                 </div>
@@ -220,8 +220,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error(`Error uploading ${file.name}:`, data.message);
                     Swal.fire({
                         icon: 'error',
-                        title: 'Upload Error',
-                        text: data.message || 'Unknown error uploading file'
+                        title: 'Error de Subida',
+                        text: data.message || 'Error desconocido al subir el archivo'
                     });
                 }
 
@@ -240,8 +240,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 Swal.fire({
                     icon: 'error',
-                    title: 'Connection Error',
-                    text: `Error uploading ${file.name}: ${error.message}`
+                    title: 'Error de Conexión',
+                    text: `Error al subir ${file.name}: ${error.message}`
                 });
 
                 if (uploadedFiles === totalFiles) {
@@ -297,17 +297,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="badge bg-secondary ms-2">${media.mime_type.toUpperCase()}</span>
                     </div>
                     <p class="text-muted mb-1">${(media.size / 1024).toFixed(2)} KB</p>
-                    <small class="text-muted">Uploaded now</small>
+                    <small class="text-muted">Subido ahora</small>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <a href="${media.url}" target="_blank" class="btn btn-sm btn-outline-primary" title="View">
+                    <a href="${media.url}" target="_blank" class="btn btn-sm btn-outline-primary" title="Ver">
                         <i class="ti ti-eye"></i>
                     </a>
                     @can('collaborator.edit')
-                    <button class="btn btn-sm btn-outline-secondary edit-media-name" data-media-id="${media.id}" title="Edit name">
+                    <button class="btn btn-sm btn-outline-secondary edit-media-name" data-media-id="${media.id}" title="Editar nombre">
                         <i class="ti ti-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger delete-media" data-media-id="${media.id}" title="Delete">
+                    <button class="btn btn-sm btn-outline-danger delete-media" data-media-id="${media.id}" title="Eliminar">
                         <i class="ti ti-trash"></i>
                     </button>
                     @endcan
@@ -339,15 +339,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentName = nameElement.textContent;
 
             Swal.fire({
-                title: 'Edit file name',
+                title: 'Editar nombre del archivo',
                 input: 'text',
                 inputValue: currentName,
                 showCancelButton: true,
-                confirmButtonText: 'Save',
-                cancelButtonText: 'Cancel',
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
                 inputValidator: (value) => {
                     if (!value) {
-                        return 'Name cannot be empty';
+                        return 'El nombre no puede estar vacío';
                     }
                 }
             }).then((result) => {
@@ -375,8 +375,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 Swal.fire({
                     icon: 'success',
-                    title: 'Success!',
-                    text: 'Name updated successfully',
+                    title: '¡Éxito!',
+                    text: 'Nombre actualizado correctamente',
                     timer: 2000,
                     showConfirmButton: false
                 });
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: data.message || 'Failed to update name'
+                    text: data.message || 'Error al actualizar el nombre'
                 });
             }
         })
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function() {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Failed to update name'
+                text: 'Error al actualizar el nombre'
             });
         });
     }
@@ -406,14 +406,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const mediaItem = button.closest('.media-item');
 
             Swal.fire({
-                title: 'Are you sure?',
-                text: 'This action cannot be undone',
+                title: '¿Estás seguro?',
+                text: 'Esta acción no se puede deshacer',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, delete it!',
-                cancelButtonText: 'Cancel'
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
                     deleteMedia(mediaId, mediaItem);
@@ -444,16 +444,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <i class="ti ti-photo ti-md"></i>
                                 </span>
                             </div>
-                            <h5 class="mb-2">No media files</h5>
-                            <p class="mb-0 text-muted">Upload files by dragging them or using the select button.</p>
+                            <h5 class="mb-2">No hay archivos de media</h5>
+                            <p class="mb-0 text-muted">Sube archivos arrastrándolos o usando el botón de selección.</p>
                         </div>
                     `;
                 }
 
                 Swal.fire({
                     icon: 'success',
-                    title: 'Deleted!',
-                    text: 'File deleted successfully',
+                    title: '¡Eliminado!',
+                    text: 'Archivo eliminado correctamente',
                     timer: 2000,
                     showConfirmButton: false
                 });
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: data.message || 'Failed to delete file'
+                    text: data.message || 'Error al eliminar el archivo'
                 });
             }
         })
@@ -470,7 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Failed to delete file'
+                text: 'Error al eliminar el archivo'
             });
         });
     }
