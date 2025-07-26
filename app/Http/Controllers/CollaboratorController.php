@@ -1093,45 +1093,109 @@ class CollaboratorController extends Controller
      */
     public function uploadMedia(Request $request, $id)
     {
-        if (! auth()->user()->can('collaborator.edit')) {
-            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
-        }
+        try {
+            if (! auth()->user()->can('collaborator.edit')) {
+                return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+            }
 
-        $request->validate([
-            'media' => 'required|file|max:51200', // 50MB max
-        ]);
+            $request->validate([
+                'media' => 'required|file|max:51200', // 50MB max
+            ]);
 
-        $collaborator = \App\Models\Contact::findOrFail($id);
+            $collaborator = \App\Models\Contact::findOrFail($id);
 
-        $mediaAdder = $collaborator->addMedia($request->file('media'));
-        $mediaAdder->toMediaCollection('media');
+            // Log the upload attempt
+            \Log::info('Starting media upload', [
+                'collaborator_id' => $id,
+                'file_name' => $request->file('media')->getClientOriginalName(),
+                'file_size' => $request->file('media')->getSize(),
+                'mime_type' => $request->file('media')->getMimeType(),
+                'user_id' => auth()->id()
+            ]);
 
-        $media = $collaborator->getMedia('media')->last();
+            // Normalize filename for better organization
+            $originalName = $request->file('media')->getClientOriginalName();
+            $extension = $request->file('media')->getClientOriginalExtension();
+            $name = pathinfo($originalName, PATHINFO_FILENAME);
 
-        // Log activity
-        activity()
-            ->performedOn($collaborator)
-            ->causedBy(auth()->user())
-            ->withProperties([
+            // Create a normalized filename
+            $normalizedName = \Illuminate\Support\Str::slug($name);
+            if (empty($normalizedName)) {
+                $normalizedName = 'file_' . substr(md5(time() . rand()), 0, 8);
+            }
+
+            // Add timestamp to ensure uniqueness
+            $finalName = $normalizedName . '_' . time() . '.' . strtolower($extension);
+
+            \Log::info('Filename processed', [
+                'original_name' => $originalName,
+                'normalized_name' => $normalizedName,
+                'final_name' => $finalName
+            ]);
+
+            $mediaAdder = $collaborator->addMedia($request->file('media'));
+            $mediaAdder->usingName($originalName) // Keep original name for display
+                       ->usingFileName($finalName); // Use normalized name for storage
+
+            $mediaAdder->toMediaCollection('media');
+
+            $media = $collaborator->getMedia('media')->last();
+            if (!$media) {
+                throw new \Exception('Could not create media record');
+            }
+
+            // Log successful upload
+            \Log::info('Media upload successful', [
                 'media_id' => $media->id,
-                'media_name' => $media->name,
-                'media_type' => $media->mime_type,
-                'media_size' => $media->size,
-                'action' => 'media_uploaded'
-            ])
-            ->log('Media subido: ' . $media->name);
+                'collaborator_id' => $id,
+                'file_name' => $media->name,
+                'file_size' => $media->size,
+                'user_id' => auth()->id()
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Media subido correctamente.',
-            'media' => [
-                'id' => $media->id,
-                'name' => $media->name,
-                'mime_type' => $media->mime_type,
-                'size' => $media->size,
-                'url' => $media->getUrl(),
-            ]
-        ]);
+            // Log activity
+            activity()
+                ->performedOn($collaborator)
+                ->causedBy(auth()->user())
+                ->log('uploaded media file: ' . $media->name);
+
+            return response()->json([
+                'success' => true,
+                'media' => [
+                    'id' => $media->id,
+                    'name' => $media->name,
+                    'url' => $media->getUrl(),
+                    'size' => $media->size,
+                    'mime_type' => $media->mime_type
+                ]
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation error in uploadMedia', [
+                'collaborator_id' => $id,
+                'errors' => $e->errors(),
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error: ' . implode(', ', array_flatten($e->errors()))
+            ], 422);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in uploadMedia', [
+                'collaborator_id' => $id,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error uploading file: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -1139,43 +1203,50 @@ class CollaboratorController extends Controller
      */
     public function updateMedia(Request $request, $id, $mediaId)
     {
-        if (! auth()->user()->can('collaborator.edit')) {
-            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
-        }
+        try {
+            if (! auth()->user()->can('collaborator.edit')) {
+                return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+            }
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-        ]);
+            $request->validate([
+                'name' => 'required|string|max:255',
+            ]);
 
-        $collaborator = \App\Models\Contact::findOrFail($id);
-        $media = $collaborator->getMedia('media')->where('id', $mediaId)->first();
+            $collaborator = \App\Models\Contact::findOrFail($id);
+            $media = $collaborator->getMedia('media')->where('id', $mediaId)->first();
 
-        if (!$media) {
+            if (!$media) {
+                return response()->json(['success' => false, 'message' => 'Media not found'], 404);
+            }
+
+            $oldName = $media->name;
+            $media->name = $request->name;
+            $media->save();
+
+            // Log activity
+            activity()
+                ->performedOn($collaborator)
+                ->causedBy(auth()->user())
+                ->log('updated media file name from "' . $oldName . '" to "' . $request->name . '"');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Media name updated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in updateMedia', [
+                'collaborator_id' => $id,
+                'media_id' => $mediaId,
+                'message' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'No se encontró el archivo de media.'
-            ], 404);
+                'message' => 'Error updating media name: ' . $e->getMessage()
+            ], 500);
         }
-
-        $oldName = $media->name;
-        $media->update(['name' => $request->name]);
-
-        // Log activity
-        activity()
-            ->performedOn($collaborator)
-            ->causedBy(auth()->user())
-            ->withProperties([
-                'media_id' => $media->id,
-                'old_name' => $oldName,
-                'new_name' => $request->name,
-                'action' => 'media_renamed'
-            ])
-            ->log('Media renombrado: ' . $oldName . ' → ' . $request->name);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Nombre actualizado correctamente.',
-        ]);
     }
 
     /**
@@ -1183,38 +1254,45 @@ class CollaboratorController extends Controller
      */
     public function destroyMedia($id, $mediaId)
     {
-        if (! auth()->user()->can('collaborator.edit')) {
-            return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
-        }
+        try {
+            if (! auth()->user()->can('collaborator.edit')) {
+                return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+            }
 
-        $collaborator = \App\Models\Contact::findOrFail($id);
-        $media = $collaborator->getMedia('media')->where('id', $mediaId)->first();
+            $collaborator = \App\Models\Contact::findOrFail($id);
+            $media = $collaborator->getMedia('media')->where('id', $mediaId)->first();
 
-        if (!$media) {
+            if (!$media) {
+                return response()->json(['success' => false, 'message' => 'Media not found'], 404);
+            }
+
+            $mediaName = $media->name;
+            $media->delete();
+
+            // Log activity
+            activity()
+                ->performedOn($collaborator)
+                ->causedBy(auth()->user())
+                ->log('deleted media file: ' . $mediaName);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Media deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in destroyMedia', [
+                'collaborator_id' => $id,
+                'media_id' => $mediaId,
+                'message' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'No se encontró el archivo de media.'
-            ], 404);
+                'message' => 'Error deleting media: ' . $e->getMessage()
+            ], 500);
         }
-
-        $mediaName = $media->name;
-        $media->delete();
-
-        // Log activity
-        activity()
-            ->performedOn($collaborator)
-            ->causedBy(auth()->user())
-            ->withProperties([
-                'media_id' => $mediaId,
-                'media_name' => $mediaName,
-                'action' => 'media_deleted'
-            ])
-            ->log('Media eliminado: ' . $mediaName);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Media eliminado correctamente.',
-        ]);
     }
 
     /**
