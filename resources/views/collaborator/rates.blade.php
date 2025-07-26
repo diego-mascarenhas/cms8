@@ -9,15 +9,15 @@
 		.btn-group .btn {
 			transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
 		}
-		
+
 		.btn-group .btn.opacity-50 {
 			opacity: 0.5;
 		}
-		
+
 		.btn-group .btn:not(.opacity-50) {
 			opacity: 1;
 		}
-		
+
 		/* Ensure active buttons have proper styling */
 		.btn-group .btn.active {
 			background-color: var(--bs-primary) !important;
@@ -25,7 +25,7 @@
 			color: white !important;
 			opacity: 1 !important;
 		}
-		
+
 		/* Same rates mode - all buttons should appear active */
 		.btn-group .btn.same-rates-mode {
 			background-color: var(--bs-primary);
@@ -33,7 +33,7 @@
 			color: white;
 			opacity: 1;
 		}
-		
+
 		/* Disabled/Non-assigned service fields */
 		.fare-input:disabled,
 		.unit-select:disabled {
@@ -42,7 +42,7 @@
 			border-color: #e0e0e0 !important;
 			cursor: not-allowed;
 		}
-		
+
 		.input-group-text.bg-light {
 			background-color: #f8f9fa !important;
 			border-color: #e0e0e0 !important;
@@ -69,7 +69,7 @@
 	<div class="col-xl-8 col-lg-7 col-md-7">
 		<!-- Tabs -->
 		@include('collaborator.partials.tabs')
-		
+
 		<div class="card mb-4">
 			<div class="card-body">
 				<form id="rates-form" method="POST" action="{{ route('collaborator.rates.save', $collaborator->id) }}">
@@ -77,7 +77,7 @@
 					<!-- Language selection -->
 					<div class="mb-3">
 						<h5 class="mb-3">Combinaciones de idiomas</h5>
-						
+
 						@if($collaborator->languageVariants && $collaborator->languageVariants->count() > 0)
 							<div class="d-flex flex-wrap gap-2 mb-3">
 								@foreach($collaborator->languageVariants as $index => $variant)
@@ -86,16 +86,16 @@
 										if (empty($sourceFlag) && $variant->sourceLanguage) {
 											$sourceFlag = strtolower($variant->source_language_code);
 										}
-										
+
 										$targetFlag = strtolower($variant->targetLanguage ? $variant->targetLanguage->country_code ?? '' : '');
 										if (empty($targetFlag) && $variant->targetLanguage) {
 											$targetFlag = strtolower($variant->target_language_code);
 										}
-										
+
 										// Check if this combination should be active based on URL params or default
 										$urlLanguagePair = request('language_pair');
 										$isActive = false;
-										
+
 										if ($urlLanguagePair) {
 											[$urlSource, $urlTarget] = explode('|', $urlLanguagePair);
 											$isActive = ($variant->source_language_code === $urlSource && $variant->target_language_code === $urlTarget);
@@ -103,10 +103,10 @@
 											$isActive = $index === 0; // First combination active by default if no URL param
 										}
 									@endphp
-									
+
 									<div class="btn-group me-2">
 										<button type="button" class="btn btn-outline-primary {{ $isActive ? 'active' : '' }} px-3"
-												data-source="{{ $variant->source_language_code }}" 
+												data-source="{{ $variant->source_language_code }}"
 												data-target="{{ $variant->target_language_code }}">
 											@if(!empty($sourceFlag))
 												<span class="fi fi-{{ $sourceFlag }} me-1"></span>
@@ -121,18 +121,18 @@
 									</div>
 								@endforeach
 							</div>
-							
+
 							<div class="form-check mt-2">
-								<input class="form-check-input" type="checkbox" id="sameRates" name="same_rates" 
+								<input class="form-check-input" type="checkbox" id="sameRates" name="same_rates"
 									   {{ request('same_rates') === '1' ? 'checked' : '' }}>
 								<label class="form-check-label" for="sameRates">
 									Usar las mismas tarifas para todas las combinaciones
 								</label>
 							</div>
-							
 
-							
-							<input type="hidden" name="current_language_pair" id="current_language_pair" 
+
+
+							<input type="hidden" name="current_language_pair" id="current_language_pair"
 								   value="{{ $currentLanguagePair ?? '' }}">
 						@else
 							<div class="alert alert-warning">
@@ -169,24 +169,24 @@
 							$defaultSourceCode = $defaultLanguagePair->source_language_code;
 							$defaultTargetCode = $defaultLanguagePair->target_language_code;
 						@endphp
-						
+
 						@foreach($allFares as $typeName => $fares)
 							<h5 class="mt-4 mb-3">{{ $typeName ?: 'Sin categoría' }}</h5>
-							
+
 							@php
 								$fareChunks = $fares->chunk(2);
 							@endphp
-							
+
 							@foreach($fareChunks as $fareChunk)
 								<div class="row mb-3">
 									@foreach($fareChunk as $fare)
 										@php
 											// Check if this fare is assigned to the collaborator
 											$isCollaboratorFare = $collaborator->fares->contains('id', $fare->id);
-											
+
 											// If $allInputsActive is true, all inputs will be active regardless of whether they're assigned
 											$inputEnabled = $allInputsActive || $isCollaboratorFare;
-											
+
 											// Use specific rates data if available, otherwise default to empty
 											$currentPrice = $currentRatesData[$fare->id]['price'] ?? 0;
 											$currentUnitId = $currentRatesData[$fare->id]['unit_id'] ?? ($fare->units->count() > 0 ? $fare->units->first()->id : null);
@@ -200,24 +200,24 @@
 											</label>
 											<div class="input-group input-group-sm">
 												<span class="input-group-text currency-symbol {{ !$inputEnabled ? 'bg-light text-muted' : '' }}"></span>
-												<input type="number" 
-													   class="form-control fare-input {{ !$inputEnabled ? 'bg-light text-muted' : '' }}" 
+												<input type="number"
+													   class="form-control fare-input {{ !$inputEnabled ? 'bg-light text-muted' : '' }}"
 													   data-fare-id="{{ $fare->id }}"
-													   name="rates[{{ $fare->id }}]" 
-													   value="{{ $inputEnabled ? number_format($currentPrice, 2, '.', '') : '' }}" 
-													   step="0.01" 
+													   name="rates[{{ $fare->id }}]"
+													   value="{{ $inputEnabled ? number_format($currentPrice, 2, '.', '') : '' }}"
+													   step="0.01"
 													   min="0"
 													   placeholder="{{ $inputEnabled ? '0.00' : 'No disponible' }}"
 													   {{ !$inputEnabled ? 'disabled readonly' : '' }}>
-												
+
 												@if($fare->units && $fare->units->count() > 1)
-													<select class="form-select unit-select {{ !$inputEnabled ? 'bg-light text-muted' : '' }}" 
+													<select class="form-select unit-select {{ !$inputEnabled ? 'bg-light text-muted' : '' }}"
 															data-fare-id="{{ $fare->id }}"
-															name="units[{{ $fare->id }}]" 
-															style="max-width: 120px;" 
+															name="units[{{ $fare->id }}]"
+															style="max-width: 120px;"
 															{{ !$inputEnabled ? 'disabled' : 'required' }}>
 														@foreach($fare->units as $unit)
-															<option value="{{ $unit->id }}" 
+															<option value="{{ $unit->id }}"
 																{{ $currentUnitId == $unit->id ? 'selected' : '' }}>
 																/{{ $unit->type }}
 															</option>
@@ -275,51 +275,51 @@
 			'USD': '$',
 			'GBP': '£'
 		};
-		
+
 		// Store rates data for each language combination
 		let ratesData = {};
-		
+
 		// Function to save current form state
 		function saveCurrentRatesState() {
 			const currentPair = $('#current_language_pair').val();
 			if (!currentPair) return;
-			
+
 			const [sourceCode, targetCode] = currentPair.split('|');
 			const key = `${sourceCode}|${targetCode}`;
-			
+
 			ratesData[key] = {
 				currency: $('select[name="currency"]').val(),
 				rates: {},
 				units: {}
 			};
-			
+
 			$('.fare-input:not(:disabled)').each(function() {
 				const fareId = $(this).data('fare-id');
 				ratesData[key].rates[fareId] = $(this).val();
-				
+
 				const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]:not(:disabled)`);
 				if (unitSelect.length) {
 					ratesData[key].units[fareId] = unitSelect.val();
 				}
-				
+
 				const unitHidden = $(`input[type="hidden"][name="units[${fareId}]"]`);
 				if (unitHidden.length) {
 					ratesData[key].units[fareId] = unitHidden.val();
 				}
 			});
 		}
-		
+
 		// Function to restore form state
 		function restoreRatesState(sourceCode, targetCode) {
 			const key = `${sourceCode}|${targetCode}`;
-			
+
 			if (ratesData[key]) {
 				// Restore rates and units only, keep current currency
 				$('.fare-input:not(:disabled)').each(function() {
 					const fareId = $(this).data('fare-id');
 					const rate = ratesData[key].rates[fareId] || '0.00';
 					$(this).val(rate);
-					
+
 					const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]:not(:disabled)`);
 					if (unitSelect.length && ratesData[key].units[fareId]) {
 						unitSelect.val(ratesData[key].units[fareId]);
@@ -330,17 +330,17 @@
 				loadRatesFromServer(sourceCode, targetCode);
 			}
 		}
-		
+
 		// Function to update currency symbols without triggering events
 		function updateCurrencySymbols(currency) {
 			const symbol = currencySymbols[currency] || '€';
 			$('.currency-symbol').text(symbol);
 		}
-		
+
 		// Function to load rates from server for specific language combination
 		function loadRatesFromServer(sourceCode, targetCode) {
 			const collaboratorId = {{ $collaborator->id }};
-			
+
 			$.ajax({
 				url: `{{ route('collaborator.rates.get', ':id') }}`.replace(':id', collaboratorId),
 				method: 'GET',
@@ -356,7 +356,7 @@
 							rates: {},
 							units: {}
 						};
-						
+
 						// Process the rates from server
 						response.rates.forEach(function(rate) {
 							ratesData[key].rates[rate.fare_id] = rate.price;
@@ -364,14 +364,14 @@
 								ratesData[key].units[rate.fare_id] = rate.unit_id;
 							}
 						});
-						
+
 						// Update only the rates, keep current currency selection
-						
+
 						$('.fare-input:not(:disabled)').each(function() {
 							const fareId = $(this).data('fare-id');
 							const rate = ratesData[key].rates[fareId] || '0.00';
 							$(this).val(rate);
-							
+
 							const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]:not(:disabled)`);
 							if (unitSelect.length && ratesData[key].units[fareId]) {
 								unitSelect.val(ratesData[key].units[fareId]);
@@ -391,48 +391,48 @@
 				}
 			});
 		}
-		
+
 		// Language combination button click handler
 		$('[data-source][data-target]').on('click', function() {
 			const sourceCode = $(this).data('source');
 			const targetCode = $(this).data('target');
 			const isSameRates = $('#sameRates').is(':checked');
-			
+
 			// If same rates mode, don't allow switching between combinations
 			if (isSameRates) {
 				return;
 			}
-			
+
 			// Save current state before switching
 			saveCurrentRatesState();
-			
+
 			// Update active state - act like radio buttons
 			$('[data-source][data-target]').removeClass('active').addClass('opacity-50');
 			$(this).removeClass('opacity-50').addClass('active');
-			
+
 			if (sourceCode && targetCode) {
 				// Update hidden field
 				$('#current_language_pair').val(sourceCode + '|' + targetCode);
-				
+
 				// Load rates for this combination
 				restoreRatesState(sourceCode, targetCode);
 			}
 		});
-		
+
 		// Same rates checkbox handler
 		$('#sameRates').on('change', function() {
 			const isChecked = $(this).is(':checked');
-			
+
 			if (isChecked) {
 				// Same rates for all combinations - show all as selected
 				$('[data-source][data-target]').removeClass('opacity-50').addClass('active');
-				
+
 				// Save current state before switching to same rates mode
 				saveCurrentRatesState();
 			} else {
 				// Different rates for each combination - show only current active one
 				$('[data-source][data-target]').removeClass('active').addClass('opacity-50');
-				
+
 				// Activate only the current language pair
 				const currentPair = $('#current_language_pair').val();
 				if (currentPair) {
@@ -442,15 +442,15 @@
 				}
 			}
 		});
-		
+
 		// Handle currency change - Update ALL records for this collaborator
 		$('select[name="currency"]').on('change', function() {
 			const selectedCurrency = $(this).val();
 			const symbol = currencySymbols[selectedCurrency] || '€';
-			
+
 			// Update all currency symbols in the form
 			$('.currency-symbol').text(symbol);
-			
+
 			// Update stored data for ALL language combinations
 			for (let key in ratesData) {
 				if (ratesData[key]) {
@@ -458,7 +458,7 @@
 				}
 			}
 		});
-		
+
 		// Set initial language combination FIRST
 		const activeBtn = $('[data-source][data-target].active');
 		if (activeBtn.length) {
@@ -479,13 +479,13 @@
 				}
 			}
 		}
-		
+
 		// Get parameters from URL for initial state
 		const urlParams = new URLSearchParams(window.location.search);
 		const urlCurrency = urlParams.get('currency');
 		const urlLanguagePair = urlParams.get('language_pair');
 		const urlSameRates = urlParams.get('same_rates');
-		
+
 		// Set currency from URL or default to EUR
 		if (urlCurrency) {
 			$('select[name="currency"]').val(urlCurrency);
@@ -499,12 +499,12 @@
 				$('select[name="currency"]').val('EUR');
 			}
 		}
-		
+
 		// Set checkbox state from URL
 		if (urlSameRates === '1') {
 			$('#sameRates').prop('checked', true);
 		}
-		
+
 		// Set active language combination from URL if provided
 		if (urlLanguagePair) {
 			const [urlSourceCode, urlTargetCode] = urlLanguagePair.split('|');
@@ -518,25 +518,25 @@
 				}
 			}
 		}
-		
+
 		// Initialize currency symbols WITHOUT triggering events
 		const currentCurrency = $('select[name="currency"]').val();
 		updateCurrencySymbols(currentCurrency);
-		
+
 		// Clean URL parameters immediately after setting initial state
 		if (urlCurrency || urlLanguagePair || urlSameRates) {
 			const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
 			window.history.replaceState({path: cleanUrl}, '', cleanUrl);
 		}
-		
+
 		// Initialize checkbox state LAST (this will trigger proper visual behavior)
 		setTimeout(() => {
 			$('#sameRates').trigger('change');
 		}, 10);
-		
+
 		// Only load rates from server if we don't have initial data from PHP
 		const hasInitialData = @json(!empty($currentRatesData));
-		
+
 		if (!hasInitialData) {
 			// Load initial rates AFTER everything is set up (only in different rates mode)
 			setTimeout(() => {
@@ -550,16 +550,16 @@
 				}
 			}, 50); // Small delay to avoid flicker during initialization
 		}
-		
+
 		// Form submission handler
 		$('#rates-form').on('submit', function(e) {
 			const isSameRates = $('#sameRates').is(':checked');
-			
+
 			// Save current state before submitting (always do this)
 			saveCurrentRatesState();
-			
+
 			let hasRates = false;
-			
+
 			// Check if at least one rate is filled (only enabled inputs)
 			$('.fare-input:not(:disabled)').each(function() {
 				if ($(this).val() && parseFloat($(this).val()) > 0) {
@@ -567,22 +567,26 @@
 					return false;
 				}
 			});
-			
+
 			if (!hasRates) {
 				e.preventDefault();
-				alert('Debe especificar al menos una tarifa.');
+				Swal.fire({
+					icon: 'warning',
+					title: 'Validación requerida',
+					text: 'Debe especificar al menos una tarifa.'
+				});
 				return false;
 			}
-			
+
 			// If using different rates per combination, add stored data
 			if (!isSameRates) {
 				// Create hidden inputs for each language combination's rates
 				for (let langPair in ratesData) {
 					const [sourceCode, targetCode] = langPair.split('|');
 					const data = ratesData[langPair];
-					
+
 					if (!data || !data.rates) continue;
-					
+
 					// Add hidden inputs for this language pair
 					for (let fareId in data.rates) {
 						if (data.rates[fareId] && parseFloat(data.rates[fareId]) > 0) {
@@ -591,7 +595,7 @@
 								name: `language_rates[${sourceCode}|${targetCode}][rates][${fareId}]`,
 								value: data.rates[fareId]
 							}).appendTo(this);
-							
+
 							if (data.units && data.units[fareId]) {
 								$('<input>').attr({
 									type: 'hidden',
@@ -599,7 +603,7 @@
 									value: data.units[fareId]
 								}).appendTo(this);
 							}
-							
+
 							$('<input>').attr({
 								type: 'hidden',
 								name: `language_rates[${sourceCode}|${targetCode}][currency]`,
@@ -610,8 +614,8 @@
 				}
 			}
 		});
-		
+
 
 	});
 </script>
-@endpush 
+@endpush

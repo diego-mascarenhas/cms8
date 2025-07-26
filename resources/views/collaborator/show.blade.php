@@ -594,22 +594,22 @@
                     $('#toggleSoftwareEdit').removeClass('d-none');
 
                     // Show success notification
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Éxito!',
-                            text: 'Software actualizado correctamente',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        alert('Software actualizado correctamente');
-                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: 'Software actualizado correctamente',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
                 }
             })
             .catch(error => {
                 console.error('Fetch Error:', error);
-                alert('Error al actualizar el software');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al actualizar el software'
+                });
             });
         });
 
@@ -657,22 +657,22 @@
                     $('#toggleServicesEdit').removeClass('d-none');
 
                     // Show success notification
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Éxito!',
-                            text: 'Servicios actualizados correctamente',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        alert('Servicios actualizados correctamente');
-                    }
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: 'Servicios actualizados correctamente',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
                 }
             })
             .catch(error => {
                 console.error('Fetch Error:', error);
-                alert('Error al actualizar los servicios');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al actualizar los servicios'
+                });
             });
         });
 
@@ -727,14 +727,16 @@
                             timer: 2000,
                             showConfirmButton: false
                         });
-                    } else {
-                        alert('Temáticas actualizadas correctamente');
-                    }
+
                 }
             })
             .catch(error => {
                 console.error('Fetch Error:', error);
-                alert('Error al actualizar las temáticas');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al actualizar las temáticas'
+                });
             });
         });
 
