@@ -15,6 +15,24 @@ class StylebookController extends Controller
 	}
 
 	/**
+	 * Generate a secure hash for the team ID
+	 */
+	protected function getTeamHash($teamId)
+	{
+		return substr(md5('team_salt_' . $teamId . '_' . config('app.key')), 0, 12);
+	}
+
+	/**
+	 * Get the upload path for stylebooks with team hash
+	 */
+	protected function getStylebookUploadPath()
+	{
+		$teamId = auth()->user()->currentTeam->id ?? 'default';
+		$teamHash = $this->getTeamHash($teamId);
+		return "stylebooks/{$teamHash}";
+	}
+
+	/**
 	 * Display a listing of the resource.
 	 */
 	public function index(StylebookDataTable $dataTable)
@@ -42,8 +60,9 @@ class StylebookController extends Controller
 			'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:10240',
 		]);
 
-		// Handle file upload
-		$filePath = $request->file('file')->store('stylebooks', 'public');
+		// Handle file upload with team hash path
+		$uploadPath = $this->getStylebookUploadPath();
+		$filePath = $request->file('file')->store($uploadPath, 'public');
 
 		$stylebook = Stylebook::create([
 			'name' => $validated['name'],
@@ -107,8 +126,9 @@ class StylebookController extends Controller
 				Storage::disk('public')->delete($stylebook->file);
 			}
 
-			// Store new file
-			$filePath = $request->file('file')->store('stylebooks', 'public');
+			// Store new file with team hash path
+			$uploadPath = $this->getStylebookUploadPath();
+			$filePath = $request->file('file')->store($uploadPath, 'public');
 			$data['file'] = $filePath;
 		}
 
