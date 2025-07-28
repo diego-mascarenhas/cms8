@@ -356,7 +356,7 @@
                         @if($collaborator->softwares && $collaborator->softwares->count() > 0)
                             @foreach($collaborator->softwares as $software)
                                 <span class="badge bg-label-primary rounded-pill me-1 mb-1">
-                                    {{ $software->name }}{{ $software->category ? ' (' . $software->category->name . ')' : '' }}
+                                    {{ $software->name }}{{ $software->type ? ' (' . $software->type->name . ')' : '' }}
                                 </span>
                             @endforeach
                         @else
@@ -579,7 +579,7 @@
                     let badgesHtml = '';
                     if (data.softwares && data.softwares.length > 0) {
                         data.softwares.forEach(function(software) {
-                            const softwareText = software.name + (software.category_name ? ' (' + software.category_name + ')' : '');
+                            const softwareText = software.name + (software.type_name ? ' (' + software.type_name + ')' : '');
                             badgesHtml += `<span class="badge bg-label-primary rounded-pill me-1 mb-1">${softwareText}</span>`;
                         });
                     } else {
@@ -594,22 +594,22 @@
                     $('#toggleSoftwareEdit').removeClass('d-none');
 
                     // Show success notification
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Éxito!',
-                        text: 'Software actualizado correctamente',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: 'Software actualizado correctamente',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert('Software actualizado correctamente');
+                    }
                 }
             })
             .catch(error => {
                 console.error('Fetch Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Error al actualizar el software'
-                });
+                alert('Error al actualizar el software');
             });
         });
 
@@ -657,22 +657,22 @@
                     $('#toggleServicesEdit').removeClass('d-none');
 
                     // Show success notification
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Éxito!',
-                        text: 'Servicios actualizados correctamente',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Éxito!',
+                            text: 'Servicios actualizados correctamente',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        alert('Servicios actualizados correctamente');
+                    }
                 }
             })
             .catch(error => {
                 console.error('Fetch Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Error al actualizar los servicios'
-                });
+                alert('Error al actualizar los servicios');
             });
         });
 
@@ -727,16 +727,14 @@
                             timer: 2000,
                             showConfirmButton: false
                         });
-
+                    } else {
+                        alert('Temáticas actualizadas correctamente');
+                    }
                 }
             })
             .catch(error => {
                 console.error('Fetch Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Error al actualizar las temáticas'
-                });
+                alert('Error al actualizar las temáticas');
             });
         });
 
