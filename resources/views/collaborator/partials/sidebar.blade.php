@@ -17,7 +17,7 @@
                 @endif
             </div>
             <div class="d-flex flex-wrap justify-content-around mt-3 pt-3 pb-4 border-bottom">
-                <div class="d-flex align-items-start gap-3 mb-2 px-3">
+                <div class="d-flex align-items-center gap-3 mb-2 px-3">
                     <div class="bg-label-primary p-3 rounded"
                         style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
                         <i class='ti ti-folder text-primary' style="font-size: 1.25rem;"></i>
@@ -28,7 +28,7 @@
                         <small class="text-muted" style="line-height: 1.2;">Proyectos</small>
                     </div>
                 </div>
-                <div class="d-flex align-items-start gap-3 mb-2 px-3">
+                <div class="d-flex align-items-center gap-3 mb-2 px-3">
                     <div class="bg-label-primary p-3 rounded"
                         style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
                         <i class='ti ti-briefcase text-primary' style="font-size: 1.25rem;"></i>

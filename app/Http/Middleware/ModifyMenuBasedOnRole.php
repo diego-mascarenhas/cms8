@@ -57,7 +57,7 @@ class ModifyMenuBasedOnRole
 
                     // If it's a core module, always show it
                     // If it's not a core module, check if the team has access
-                    if ($moduleKey && ! in_array($moduleKey, $coreModules) && ! $team->hasModule($moduleKey)) {
+                    if ($moduleKey && ! in_array($moduleKey, $coreModules) && $team && ! $team->hasModule($moduleKey)) {
                         continue;
                     }
 

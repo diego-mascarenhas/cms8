@@ -51,7 +51,7 @@ class Contact extends Model implements HasMedia
     protected static function booted()
     {
         static::addGlobalScope('team', function (Builder $builder) {
-            if (auth()->check()) {
+            if (auth()->check() && auth()->user()->currentTeam) {
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
@@ -579,7 +579,15 @@ class Contact extends Model implements HasMedia
         return LogOptions::defaults()
             ->logOnly(['name', 'surname', 'email', 'phone', 'source_id', 'country', 'language', 'responsible_id', 'status_id', 'valoration_id'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(function(string $eventName) {
+                return match($eventName) {
+                    'created' => 'Colaborador creado',
+                    'updated' => 'Colaborador actualizado',
+                    'deleted' => 'Colaborador eliminado',
+                    default => $eventName
+                };
+            });
     }
 
     public function currentEnterprise()
@@ -596,4 +604,31 @@ class Contact extends Model implements HasMedia
             ->orderBy('created_at', 'desc')
             ->first();
     }
+
+    /**
+     * Register media collections
+     */
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('documents')
+            ->useDisk('public')
+            ->acceptsMimeTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation']);
+
+        $this->addMediaCollection('media')
+            ->useDisk('public')
+            ->acceptsMimeTypes([
+                // Images
+                'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp', 'image/tiff',
+                // Videos
+                'video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/flv', 'video/webm', 'video/mkv',
+                // Audio
+                'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/flac',
+                // Documents
+                'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'text/plain', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            ]);
+    }
+
+
 }

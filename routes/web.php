@@ -211,6 +211,10 @@ Route::middleware(['auth'])->group(function ()
 
 	Route::get('/collaborator/{id}/notifications', [CollaboratorController::class, 'notifications'])->name('collaborator.notifications');
 	Route::get('/collaborator/{id}/activity', [CollaboratorController::class, 'activity'])->name('collaborator.activity');
+	Route::get('/collaborator/{id}/media', [CollaboratorController::class, 'media'])->name('collaborator.media');
+	Route::post('/collaborator/{id}/media', [CollaboratorController::class, 'uploadMedia'])->name('collaborator.media.upload');
+	Route::put('/collaborator/{id}/media/{mediaId}', [CollaboratorController::class, 'updateMedia'])->name('collaborator.media.update');
+	Route::delete('/collaborator/{id}/media/{mediaId}', [CollaboratorController::class, 'destroyMedia'])->name('collaborator.media.destroy');
 	Route::get('/collaborator/{id}/accept', [CollaboratorController::class, 'showAcceptForm'])->name('collaborator.accept');
 	Route::post('/collaborator/{id}/accept', [CollaboratorController::class, 'processAccept'])->name('collaborator.process-accept');
 

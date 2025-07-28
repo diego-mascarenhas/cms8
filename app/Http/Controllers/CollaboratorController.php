@@ -795,68 +795,64 @@ class CollaboratorController extends Controller
     }
 
     /**
-     * Show activity history for a collaborator
+     * Show collaborator activity
      */
     public function activity($id)
     {
-        $collaborator = Contact::with(['user'])->findOrFail($id);
+        $collaborator = Contact::with([
+            'user.roles',
+            'valoration',
+        ])->findOrFail($id);
 
-        // Get activities for this collaborator's user
-        $activities = collect();
-
-        if ($collaborator->user_id) {
-            // Get activities where this user was the causer (performer)
-            $userActivities = Activity::with(['subject'])
-                ->where('causer_id', $collaborator->user_id)
-                ->latest()
-                ->paginate(20);
-
-            // Also get activities where this contact was the subject
-            $contactActivities = Activity::with(['causer'])
-                ->where('subject_type', Contact::class)
-                ->where('subject_id', $collaborator->id)
-                ->latest()
-                ->paginate(20);
-
-            // Merge and sort activities
-            $allActivities = $userActivities->items();
-            foreach ($contactActivities->items() as $activity) {
-                $allActivities[] = $activity;
-            }
-
-            // Sort by created_at descending
-            $activities = collect($allActivities)->sortByDesc('created_at')->take(50);
-        } else {
-            // If no user linked, just get activities where this contact was the subject
-            $contactActivities = Activity::with(['causer'])
-                ->where('subject_type', Contact::class)
-                ->where('subject_id', $collaborator->id)
-                ->latest()
-                ->paginate(20);
-
-            $activities = collect($contactActivities->items());
-        }
+        // Get activities for this collaborator
+        $activities = Activity::where('subject_type', Contact::class)
+            ->where('subject_id', $id)
+            ->orWhere(function ($query) use ($collaborator) {
+                // Also get activities from the linked user if exists
+                if ($collaborator->user_id) {
+                    $query->where('subject_type', \App\Models\User::class)
+                        ->where('subject_id', $collaborator->user_id);
+                }
+            })
+            ->with(['causer', 'subject'])
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
 
         // Format activities for display
         $formattedActivities = $activities->map(function ($activity) use ($collaborator) {
-            $isOwnActivity = $activity->causer_id == $collaborator->user_id;
+            $isOwnActivity = $activity->causer_id === $collaborator->user_id;
 
             return [
                 'id' => $activity->id,
+                'description' => $activity->description,
+                'properties' => $activity->properties,
                 'user_name' => $activity->causer ? $activity->causer->name : 'Sistema',
                 'user_photo' => $activity->causer ? $activity->causer->profile_photo_url : null,
                 'is_own_activity' => $isOwnActivity,
-                'description' => $activity->description,
-                'subject_type' => $activity->subject ? class_basename($activity->subject_type) : null,
-                'subject_id' => $activity->subject_id,
                 'time_ago' => $activity->created_at->diffForHumans(),
                 'created_at' => $activity->created_at,
-                'properties' => $activity->properties,
-                'raw_activity' => $activity,
             ];
         });
 
         return view('collaborator.activity', compact('collaborator', 'formattedActivities'));
+    }
+
+    /**
+     * Show collaborator media
+     */
+    public function media($id)
+    {
+        if (! auth()->user()->can('collaborator.show')) {
+            abort(403, 'No tienes permisos para ver esta página.');
+        }
+
+        $collaborator = Contact::with([
+            'user.roles',
+            'valoration',
+        ])->findOrFail($id);
+
+        return view('collaborator.media', compact('collaborator'));
     }
 
     /**
@@ -1090,6 +1086,213 @@ class CollaboratorController extends Controller
             return back()->with('success', 'Documento eliminado correctamente.');
         }
         return back()->with('error', 'No se encontró el documento.');
+    }
+
+    /**
+     * Upload media for a collaborator
+     */
+    public function uploadMedia(Request $request, $id)
+    {
+        try {
+            if (! auth()->user()->can('collaborator.edit')) {
+                return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+            }
+
+            $request->validate([
+                'media' => 'required|file|max:51200', // 50MB max
+            ]);
+
+            $collaborator = \App\Models\Contact::findOrFail($id);
+
+            // Log the upload attempt
+            \Log::info('Starting media upload', [
+                'collaborator_id' => $id,
+                'file_name' => $request->file('media')->getClientOriginalName(),
+                'file_size' => $request->file('media')->getSize(),
+                'mime_type' => $request->file('media')->getMimeType(),
+                'user_id' => auth()->id()
+            ]);
+
+            // Normalize filename for better organization
+            $originalName = $request->file('media')->getClientOriginalName();
+            $extension = $request->file('media')->getClientOriginalExtension();
+            $name = pathinfo($originalName, PATHINFO_FILENAME);
+
+            // Create a normalized filename
+            $normalizedName = \Illuminate\Support\Str::slug($name);
+            if (empty($normalizedName)) {
+                $normalizedName = 'file_' . substr(md5(time() . rand()), 0, 8);
+            }
+
+            // Add timestamp to ensure uniqueness
+            $finalName = $normalizedName . '_' . time() . '.' . strtolower($extension);
+
+            \Log::info('Filename processed', [
+                'original_name' => $originalName,
+                'normalized_name' => $normalizedName,
+                'final_name' => $finalName
+            ]);
+
+            $mediaAdder = $collaborator->addMedia($request->file('media'));
+            $mediaAdder->usingName($originalName) // Keep original name for display
+                       ->usingFileName($finalName); // Use normalized name for storage
+
+            $mediaAdder->toMediaCollection('media');
+
+            $media = $collaborator->getMedia('media')->last();
+            if (!$media) {
+                throw new \Exception('Could not create media record');
+            }
+
+            // Log successful upload
+            \Log::info('Media upload successful', [
+                'media_id' => $media->id,
+                'collaborator_id' => $id,
+                'file_name' => $media->name,
+                'file_size' => $media->size,
+                'user_id' => auth()->id()
+            ]);
+
+            // Log activity
+            activity()
+                ->performedOn($collaborator)
+                ->causedBy(auth()->user())
+                ->log('uploaded media file: ' . $media->name);
+
+            return response()->json([
+                'success' => true,
+                'media' => [
+                    'id' => $media->id,
+                    'name' => $media->name,
+                    'url' => $media->getUrl(),
+                    'size' => $media->size,
+                    'mime_type' => $media->mime_type
+                ]
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation error in uploadMedia', [
+                'collaborator_id' => $id,
+                'errors' => $e->errors(),
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error: ' . implode(', ', array_flatten($e->errors()))
+            ], 422);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in uploadMedia', [
+                'collaborator_id' => $id,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error uploading file: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update media name for a collaborator
+     */
+    public function updateMedia(Request $request, $id, $mediaId)
+    {
+        try {
+            if (! auth()->user()->can('collaborator.edit')) {
+                return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+            }
+
+            $request->validate([
+                'name' => 'required|string|max:255',
+            ]);
+
+            $collaborator = \App\Models\Contact::findOrFail($id);
+            $media = $collaborator->getMedia('media')->where('id', $mediaId)->first();
+
+            if (!$media) {
+                return response()->json(['success' => false, 'message' => 'Media not found'], 404);
+            }
+
+            $oldName = $media->name;
+            $media->name = $request->name;
+            $media->save();
+
+            // Log activity
+            activity()
+                ->performedOn($collaborator)
+                ->causedBy(auth()->user())
+                ->log('updated media file name from "' . $oldName . '" to "' . $request->name . '"');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Media name updated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in updateMedia', [
+                'collaborator_id' => $id,
+                'media_id' => $mediaId,
+                'message' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating media name: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete media for a collaborator
+     */
+    public function destroyMedia($id, $mediaId)
+    {
+        try {
+            if (! auth()->user()->can('collaborator.edit')) {
+                return response()->json(['success' => false, 'message' => 'No tienes permisos para esta acción'], 403);
+            }
+
+            $collaborator = \App\Models\Contact::findOrFail($id);
+            $media = $collaborator->getMedia('media')->where('id', $mediaId)->first();
+
+            if (!$media) {
+                return response()->json(['success' => false, 'message' => 'Media not found'], 404);
+            }
+
+            $mediaName = $media->name;
+            $media->delete();
+
+            // Log activity
+            activity()
+                ->performedOn($collaborator)
+                ->causedBy(auth()->user())
+                ->log('deleted media file: ' . $mediaName);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Media deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in destroyMedia', [
+                'collaborator_id' => $id,
+                'media_id' => $mediaId,
+                'message' => $e->getMessage(),
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting media: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
