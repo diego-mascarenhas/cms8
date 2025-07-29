@@ -126,6 +126,9 @@ class EmployeeDataTable extends DataTable
 				->title(__('Active'))
 				->className('text-center')
 				->addClass('min-tablet'),
+			Column::make('status_id')
+				->title(__('Status'))
+				->addClass('min-tablet'),
 			Column::computed('action')
 				->title(__('Actions'))
 				->width(20)

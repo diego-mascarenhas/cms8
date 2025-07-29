@@ -20,6 +20,20 @@
 			"badge": ["info", "754"]
 		},
 		{
+			"url": "employee/activity",
+			"name": "Actividad de Empleados",
+			"icon": "menu-icon tf-icons ti ti-chart-bar",
+			"slug": "employee-activity",
+			"badge": ["primary", "156"]
+		},
+		{
+			"url": "employee/reports",
+			"name": "Reportes",
+			"icon": "menu-icon tf-icons ti ti-file-text",
+			"slug": "employee-reports",
+			"badge": ["warning", "89"]
+		},
+		{
 			"menuHeader": "NAVEGACIÓN PRINCIPAL"
 		},
 		{

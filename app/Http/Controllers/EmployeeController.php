@@ -36,7 +36,22 @@ class EmployeeController extends Controller
 			})->where('created_at', '>=', now()->subWeek())->count(),
 		];
 
-		return $dataTable->render('employee.index', compact('dashboardStats'));
+		// Get statuses for filter
+		$statuses = ContactStatus::all()->map(function ($status) {
+			return ['id' => $status->id, 'name' => $status->name];
+		})->toArray();
+
+		// Get categories for filter (employees use the contacts module)
+		// Since there are no specific categories for contacts, we'll use general categories or empty array
+		$categories = \App\Models\Category::whereIn('module_id', [10, 14, 22]) // services, communications, mail
+			->orWhereNull('module_id')
+			->get()
+			->map(function ($category) {
+				return ['id' => $category->id, 'name' => $category->name];
+			})
+			->toArray();
+
+		return $dataTable->render('employee.index', compact('dashboardStats', 'statuses', 'categories'));
 	}
 
 	    public function create()
