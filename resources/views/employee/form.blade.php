@@ -63,7 +63,7 @@
 				<x-input-date id="birthday" label="Birthday" value="{{ old('birthday', $contact->birthday ?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="language" label="Language (*)" :options="$languages->pluck('name', 'code')" value="{{ old('language', $contact->language ?? '') }}" />
+				<x-input-select id="language" label="Language (*)" :options="$languages" value="{{ old('language', $contact->language ?? '') }}" />
 			</div>
 
 			<!-- Employee Specific Fields -->
@@ -103,11 +103,11 @@
 				<x-input-general id="account_number" label="Account Number" value="{{ old('account_number', $contact->data->account_number ?? '') }}" />
 			</div>
 			<div class="col-md-6">
-				<x-input-select id="status_id" label="Status (*)" :options="$statuses->pluck('name', 'id')" value="{{ old('status_id', $contact->status_id ?? '1') }}" />
+				<x-input-select id="status_id" label="Status (*)" :options="$statuses" value="{{ old('status_id', $contact->status_id ?? '1') }}" />
 			</div>
 
 			<div class="col-md-6">
-				<x-input-select id="responsible_id" label="Responsible" :options="$users->pluck('name', 'id')" value="{{ old('responsible_id', $contact->responsible_id ?? '') }}" />
+				<x-input-select id="responsible_id" label="Responsible" :options="$users" value="{{ old('responsible_id', $contact->responsible_id ?? '') }}" />
 			</div>
 			<div class="col-md-6">
 				<div class="form-check form-switch">

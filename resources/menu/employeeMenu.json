@@ -49,21 +49,21 @@
 		{
 			"url": "diet/list",
 			"name": "Dietas",
-			"icon": "menu-icon tf-icons ti ti-list",
+			"icon": "menu-icon tf-icons ti ti-clipboard-list",
 			"slug": "diet-list",
 			"badge": ["secondary", "228"]
 		},
 		{
 			"url": "bonus/list",
 			"name": "Pluses",
-			"icon": "menu-icon tf-icons ti ti-star",
+			"icon": "menu-icon tf-icons ti ti-gift",
 			"slug": "bonus-list",
 			"badge": ["info", "196"]
 		},
 		{
 			"url": "action-type/list",
 			"name": "Tipos de acción",
-			"icon": "menu-icon tf-icons ti ti-search-plus",
+			"icon": "menu-icon tf-icons ti ti-plus",
 			"slug": "action-type-list",
 			"badge": ["danger", "49"]
 		},
@@ -77,48 +77,43 @@
 		{
 			"url": "salary/list",
 			"name": "Salarios",
-			"icon": "menu-icon tf-icons ti ti-currency-euro",
+			"icon": "menu-icon tf-icons ti ti-currency-dollar",
 			"slug": "salary-list",
 			"badge": ["secondary", "125"]
 		},
 		{
 			"url": "module/list",
 			"name": "Módulos",
-			"icon": "menu-icon tf-icons ti ti-grid",
+			"icon": "menu-icon tf-icons ti ti-puzzle",
 			"slug": "module-list",
 			"badge": ["secondary", "18"]
 		},
 		{
 			"url": "permission/list",
 			"name": "Permisos",
-			"icon": "menu-icon tf-icons ti ti-user-x",
+			"icon": "menu-icon tf-icons ti ti-shield-lock",
 			"slug": "permission-list",
 			"badge": ["info", "63"]
 		},
 		{
 			"url": "role/list",
-			"name": "Roles",
+			"name": "Roles y Permisos",
 			"icon": "menu-icon tf-icons ti ti-users",
 			"slug": "role-list",
 			"badge": ["success", "5"]
 		},
-		{
-			"url": "role-permission/assign",
-			"name": "Asignar Permisos a Roles",
-			"icon": "menu-icon tf-icons ti ti-user-plus",
-			"slug": "role-permission-assign"
-		},
+
 		{
 			"url": "access-control/list",
-			"name": "Control de accesos",
-			"icon": "menu-icon tf-icons ti ti-search",
+			"name": "Accesos",
+			"icon": "menu-icon tf-icons ti ti-eye",
 			"slug": "access-control-list",
 			"badge": ["info", "18333"]
 		},
 		{
 			"url": "activity-control/list",
-			"name": "Control de actividades",
-			"icon": "menu-icon tf-icons ti ti-refresh",
+			"name": "Actividades",
+			"icon": "menu-icon tf-icons ti ti-activity",
 			"slug": "activity-control-list",
 			"badge": ["warning", "70494"]
 		},

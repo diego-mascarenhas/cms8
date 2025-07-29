@@ -43,15 +43,15 @@ class EmployeeController extends Controller
     {
         $statuses = ContactStatus::all()->map(function ($status) {
             return ['id' => $status->id, 'name' => $status->name];
-        });
+        })->toArray();
         $languages = Language::all()->map(function ($language) {
             return ['id' => $language->code, 'name' => $language->name];
-        });
+        })->toArray();
         $users = User::whereHas('roles', function ($query) {
             $query->where('name', 'employee');
         })->get()->map(function ($user) {
             return ['id' => $user->id, 'name' => $user->name];
-        });
+        })->toArray();
 
         return view('employee.form', compact('statuses', 'languages', 'users'));
     }
@@ -153,15 +153,15 @@ class EmployeeController extends Controller
         $contact = Contact::findOrFail($id);
         $statuses = ContactStatus::all()->map(function ($status) {
             return ['id' => $status->id, 'name' => $status->name];
-        });
+        })->toArray();
         $languages = Language::all()->map(function ($language) {
             return ['id' => $language->code, 'name' => $language->name];
-        });
+        })->toArray();
         $users = User::whereHas('roles', function ($query) {
             $query->where('name', 'employee');
         })->get()->map(function ($user) {
             return ['id' => $user->id, 'name' => $user->name];
-        });
+        })->toArray();
 
         return view('employee.form', compact('contact', 'statuses', 'languages', 'users'));
     }
