@@ -62,6 +62,8 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 
 
 
+
+
 // Public API routes (must be before auth group)
 Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
 	->name('project.get-fare-units');
