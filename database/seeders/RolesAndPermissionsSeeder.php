@@ -79,6 +79,15 @@ class RolesAndPermissionsSeeder extends Seeder
 		Permission::create(['name' => 'collaborator.update']);
 		Permission::create(['name' => 'collaborator.destroy']);
 
+		Permission::create(['name' => 'employee.index']);
+		Permission::create(['name' => 'employee.list']);
+		Permission::create(['name' => 'employee.create']);
+		Permission::create(['name' => 'employee.show']);
+		Permission::create(['name' => 'employee.edit']);
+		Permission::create(['name' => 'employee.store']);
+		Permission::create(['name' => 'employee.update']);
+		Permission::create(['name' => 'employee.destroy']);
+
 		Permission::create(['name' => 'client.index']);
 		Permission::create(['name' => 'client.list']);
 		Permission::create(['name' => 'client.create']);
@@ -316,6 +325,14 @@ class RolesAndPermissionsSeeder extends Seeder
 			'collaborator.store',
 			'collaborator.update',
 			'collaborator.destroy',
+			'employee.index',
+			'employee.list',
+			'employee.create',
+			'employee.show',
+			'employee.edit',
+			'employee.store',
+			'employee.update',
+			'employee.destroy',
 			'list60.list',
 			'project.index',
 			'project.list',
@@ -412,6 +429,14 @@ class RolesAndPermissionsSeeder extends Seeder
 			'profile.show',
 			'profile.edit',
 			'profile.update',
+		]);
+
+		$employeeRole = Role::create(['name' => 'employee']);
+		$employeeRole->syncPermissions([
+			'profile.show',
+			'profile.edit',
+			'profile.update',
+			'password.update',
 		]);
 
 		$editorRole = Role::create(['name' => 'editor']);
