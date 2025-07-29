@@ -39,16 +39,22 @@ class EmployeeController extends Controller
 		return $dataTable->render('employee.index', compact('dashboardStats'));
 	}
 
-	public function create()
-	{
-		$statuses = ContactStatus::all();
-		$languages = Language::all();
-		$users = User::whereHas('roles', function ($query) {
-			$query->where('name', 'employee');
-		})->get();
+	    public function create()
+    {
+        $statuses = ContactStatus::all()->map(function ($status) {
+            return ['id' => $status->id, 'name' => $status->name];
+        });
+        $languages = Language::all()->map(function ($language) {
+            return ['id' => $language->code, 'name' => $language->name];
+        });
+        $users = User::whereHas('roles', function ($query) {
+            $query->where('name', 'employee');
+        })->get()->map(function ($user) {
+            return ['id' => $user->id, 'name' => $user->name];
+        });
 
-		return view('employee.form', compact('statuses', 'languages', 'users'));
-	}
+        return view('employee.form', compact('statuses', 'languages', 'users'));
+    }
 
 	public function store(Request $request)
 	{
@@ -142,17 +148,23 @@ class EmployeeController extends Controller
 		return view('employee.show', compact('contact', 'totalSeconds'));
 	}
 
-	public function edit($id)
-	{
-		$contact = Contact::findOrFail($id);
-		$statuses = ContactStatus::all();
-		$languages = Language::all();
-		$users = User::whereHas('roles', function ($query) {
-			$query->where('name', 'employee');
-		})->get();
+	    public function edit($id)
+    {
+        $contact = Contact::findOrFail($id);
+        $statuses = ContactStatus::all()->map(function ($status) {
+            return ['id' => $status->id, 'name' => $status->name];
+        });
+        $languages = Language::all()->map(function ($language) {
+            return ['id' => $language->code, 'name' => $language->name];
+        });
+        $users = User::whereHas('roles', function ($query) {
+            $query->where('name', 'employee');
+        })->get()->map(function ($user) {
+            return ['id' => $user->id, 'name' => $user->name];
+        });
 
-		return view('employee.form', compact('contact', 'statuses', 'languages', 'users'));
-	}
+        return view('employee.form', compact('contact', 'statuses', 'languages', 'users'));
+    }
 
 	public function update(Request $request, $id)
 	{
@@ -224,18 +236,28 @@ class EmployeeController extends Controller
 
 	public function absences($id)
 	{
-		$contact = Contact::with(['absences', 'weeklyAvailability'])->findOrFail($id);
+		// Get specified employee contact
+		$contact = Contact::findOrFail($id);
 
-		// Get absences for the current year
+		// Get employee absences for the next 6 months
+		$startDate = Carbon::now()->startOfMonth();
+		$endDate = Carbon::now()->addMonths(5)->endOfMonth();
+
 		$absences = $contact->absences()
-			->whereYear('date', date('Y'))
-			->pluck('date')
+			->whereBetween('absence_date', [$startDate, $endDate])
+			->get()
+			->pluck('absence_date')
+			->map(function ($date) {
+				return $date->format('Y-m-d');
+			})
 			->toArray();
 
 		// Get weekly availability
 		$weeklyAvailability = $contact->weeklyAvailability;
-		if (!$weeklyAvailability) {
+		if (! $weeklyAvailability) {
+			// Create default availability if none exists
 			$weeklyAvailability = $contact->weeklyAvailability()->create([
+				'contact_id' => $contact->id,
 				'monday' => true,
 				'tuesday' => true,
 				'wednesday' => true,
@@ -243,63 +265,96 @@ class EmployeeController extends Controller
 				'friday' => true,
 				'saturday' => false,
 				'sunday' => false,
+				'team_id' => auth()->user()->currentTeam->id,
 			]);
 		}
 
-		// Generate months data for the calendar
+		// Generate months for calendar
 		$months = [];
-		$currentYear = date('Y');
-
-		for ($month = 1; $month <= 12; $month++) {
-			$date = Carbon::createFromDate($currentYear, $month, 1);
-			$daysInMonth = $date->daysInMonth;
-			$startPadding = $date->copy()->startOfMonth()->dayOfWeek;
-
-			// Adjust for Monday as first day of week
-			$startPadding = $startPadding == 0 ? 6 : $startPadding - 1;
-
+		for ($i = 0; $i < 6; $i++) {
+			$currentMonth = Carbon::now()->addMonths($i);
 			$months[] = [
-				'name' => $date->format('F'),
-				'month' => $month,
-				'year' => $currentYear,
-				'daysInMonth' => $daysInMonth,
-				'startPadding' => $startPadding,
+				'name' => $currentMonth->format('F Y'),
+				'month' => $currentMonth->format('n'),
+				'year' => $currentMonth->format('Y'),
+				'firstDay' => $currentMonth->copy()->startOfMonth()->dayOfWeek,
+				'daysInMonth' => $currentMonth->daysInMonth,
+				'startPadding' => $currentMonth->copy()->startOfMonth()->dayOfWeekIso - 1,
 			];
 		}
 
-		return view('employee.absences', compact('contact', 'absences', 'weeklyAvailability', 'months'));
+		return view('employee.absences', [
+			'absences' => $absences,
+			'weeklyAvailability' => $weeklyAvailability,
+			'months' => $months,
+			'employee' => $contact,
+		]);
 	}
 
 	public function toggleAbsenceDate(Request $request, $id)
 	{
+		$request->validate([
+			'date' => 'required|date',
+		]);
+
 		$contact = Contact::findOrFail($id);
-		$date = $request->date;
+		$date = Carbon::parse($request->date);
 
-		$existingAbsence = $contact->absences()->where('date', $date)->first();
+		// Check if absence already exists
+		$absence = $contact->absences()->where('absence_date', $date)->first();
 
-		if ($existingAbsence) {
-			$existingAbsence->delete();
-			$status = 'available';
+		if ($absence) {
+			// Delete absence (mark as available)
+			$absence->delete();
+
+			return response()->json(['status' => 'available', 'date' => $request->date]);
 		} else {
-			$contact->absences()->create(['date' => $date]);
-			$status = 'unavailable';
-		}
+			// Create absence (mark as unavailable)
+			$contact->absences()->create([
+				'absence_date' => $date,
+				'team_id' => auth()->user()->currentTeam->id,
+			]);
 
-		return response()->json(['status' => $status]);
+			return response()->json(['status' => 'unavailable', 'date' => $request->date]);
+		}
 	}
 
 	public function updateWeeklyAvailability(Request $request, $id)
 	{
-		$contact = Contact::findOrFail($id);
-		$weeklyAvailability = $contact->weeklyAvailability;
+		$request->validate([
+			'monday' => 'required|boolean',
+			'tuesday' => 'required|boolean',
+			'wednesday' => 'required|boolean',
+			'thursday' => 'required|boolean',
+			'friday' => 'required|boolean',
+			'saturday' => 'required|boolean',
+			'sunday' => 'required|boolean',
+		]);
 
-		if (!$weeklyAvailability) {
-			$weeklyAvailability = $contact->weeklyAvailability()->create([]);
+		$contact = Contact::findOrFail($id);
+
+		// Get or create weekly availability
+		$weeklyAvailability = $contact->weeklyAvailability;
+		if (! $weeklyAvailability) {
+			$weeklyAvailability = new ContactWeeklyAvailability;
+			$weeklyAvailability->contact_id = $contact->id;
+			$weeklyAvailability->team_id = auth()->user()->currentTeam->id;
 		}
 
-		$weeklyAvailability->update($request->all());
+		// Update values
+		$weeklyAvailability->monday = $request->monday;
+		$weeklyAvailability->tuesday = $request->tuesday;
+		$weeklyAvailability->wednesday = $request->wednesday;
+		$weeklyAvailability->thursday = $request->thursday;
+		$weeklyAvailability->friday = $request->friday;
+		$weeklyAvailability->saturday = $request->saturday;
+		$weeklyAvailability->sunday = $request->sunday;
+		$weeklyAvailability->save();
 
-		return response()->json(['status' => 'success']);
+		return response()->json([
+			'status' => 'success',
+			'data' => $weeklyAvailability,
+		]);
 	}
 
 	public function activity($id)

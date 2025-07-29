@@ -89,12 +89,12 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
-		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">Employee/</span> {{ $contact->name }}</h4>
-		<p class="text-muted">Manage employee availability</p>
+		<h4 class="mb-1 mt-3">Disponibilidad del Empleado</h4>
+		<p class="text-muted">Gestiona la disponibilidad de {{ $employee->name }}</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
-		<a href="{{ route('employee.show', $contact->id) }}" class="btn btn-primary waves-effect waves-light">
-			<i class="ti ti-arrow-left me-1"></i>Back to Employee
+		<a href="{{ route('employee.show', $employee->id) }}" class="btn btn-primary waves-effect waves-light">
+			<i class="ti ti-arrow-left me-1"></i>Volver al Empleado
 		</a>
 	</div>
 </div>
@@ -106,12 +106,12 @@
 			<div class="card-body">
 				<div class="d-flex align-items-center flex-column">
 					<img class="img-fluid rounded mb-3 pt-1 mt-4"
-						src="https://ui-avatars.com/api/?format=svg&name={{ $contact->name }}" height="100"
+						src="https://ui-avatars.com/api/?format=svg&name={{ $employee->name }}" height="100"
 						width="100" alt="Employee avatar" />
 					<div class="user-info text-center">
-						<h4 class="mb-2">{{ $contact->name }}</h4>
-						@if($contact->data->command ?? false)
-							<span class="badge bg-label-secondary mt-1">#{{ $contact->data->command }}</span>
+						<h4 class="mb-2">{{ $employee->name }}</h4>
+						@if($employee->data->command ?? false)
+							<span class="badge bg-label-secondary mt-1">#{{ $employee->data->command }}</span>
 						@endif
 					</div>
 				</div>
@@ -119,24 +119,24 @@
 					<ul class="list-unstyled">
 						<li class="mb-2 pt-1">
 							<span class="fw-medium me-1">Email:</span>
-							<span>{{ $contact->email }}</span>
+							<span>{{ $employee->email }}</span>
 						</li>
-						@if($contact->phone)
+						@if($employee->phone)
 							<li class="mb-2 pt-1">
-								<span class="fw-medium me-1">Phone:</span>
-								<span>{{ $contact->phone }}</span>
+								<span class="fw-medium me-1">Teléfono:</span>
+								<span>{{ $employee->phone }}</span>
 							</li>
 						@endif
-						@if($contact->data->city ?? false)
+						@if($employee->data->city ?? false)
 							<li class="mb-2 pt-1">
-								<span class="fw-medium me-1">City:</span>
-								<span>{{ $contact->data->city }}</span>
+								<span class="fw-medium me-1">Ciudad:</span>
+								<span>{{ $employee->data->city }}</span>
 							</li>
 						@endif
-						@if($contact->data->province ?? false)
+						@if($employee->data->province ?? false)
 							<li class="mb-2 pt-1">
-								<span class="fw-medium me-1">Province:</span>
-								<span>{{ $contact->data->province }}</span>
+								<span class="fw-medium me-1">Provincia:</span>
+								<span>{{ $employee->data->province }}</span>
 							</li>
 						@endif
 					</ul>
@@ -148,27 +148,28 @@
 	<!-- Availability Content -->
 	<div class="col-xl-8 col-lg-7 col-md-7 order-0 order-md-1">
 		<div class="card mb-4">
+			<div class="card-header">
+				<h5 class="card-title mb-0">Períodos de no disponibilidad</h5>
+				<p class="card-subtitle text-muted mt-1">Selecciona los períodos en los que el empleado no estará disponible.</p>
+				<p class="text-muted">Esto nos ayudará a planificar mejor los proyectos y asignaciones.</p>
+			</div>
 			<div class="card-body">
-				<h5 class="mb-4">Availability Periods</h5>
-				<p class="text-muted">Select the periods when the employee will not be available for work.</p>
-				<p class="text-muted mb-4">This will help you contact them only when they are actually available.</p>
-
-				<h6 class="mb-3">Weekly Availability</h6>
+				<h6 class="mb-3">Disponibilidad por día de la semana</h6>
 				<div class="d-flex flex-wrap mb-4">
 					<div class="btn-group w-100 mb-3">
-						<button type="button" class="btn {{ $weeklyAvailability->monday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="monday">Monday</button>
-						<button type="button" class="btn {{ $weeklyAvailability->tuesday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="tuesday">Tuesday</button>
-						<button type="button" class="btn {{ $weeklyAvailability->wednesday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="wednesday">Wednesday</button>
-						<button type="button" class="btn {{ $weeklyAvailability->thursday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="thursday">Thursday</button>
-						<button type="button" class="btn {{ $weeklyAvailability->friday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="friday">Friday</button>
-						<button type="button" class="btn {{ $weeklyAvailability->saturday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="saturday">Saturday</button>
-						<button type="button" class="btn {{ $weeklyAvailability->sunday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="sunday">Sunday</button>
+						<button type="button" class="btn {{ $weeklyAvailability->monday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="monday">Lunes</button>
+						<button type="button" class="btn {{ $weeklyAvailability->tuesday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="tuesday">Martes</button>
+						<button type="button" class="btn {{ $weeklyAvailability->wednesday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="wednesday">Miércoles</button>
+						<button type="button" class="btn {{ $weeklyAvailability->thursday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="thursday">Jueves</button>
+						<button type="button" class="btn {{ $weeklyAvailability->friday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="friday">Viernes</button>
+						<button type="button" class="btn {{ $weeklyAvailability->saturday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="saturday">Sábado</button>
+						<button type="button" class="btn {{ $weeklyAvailability->sunday ? 'btn-outline-secondary' : 'btn-danger text-white' }}" data-day="sunday">Domingo</button>
 					</div>
-					<p class="text-muted w-100 mt-2">Days marked in <strong class="text-danger">red</strong> indicate that the employee is <strong class="text-danger">NOT</strong> available on that day of the week.</p>
+					<p class="text-muted w-100 mt-2">Los días marcados en <strong class="text-danger">rojo</strong> indican que el empleado <strong class="text-danger">NO</strong> está disponible ese día de la semana.</p>
 				</div>
 
-				<h6 class="mb-3">Specific Unavailable Dates</h6>
-				<p class="text-muted mb-4">Select specific days when the employee will not be available.</p>
+				<h6 class="mb-3">Fechas específicas de no disponibilidad</h6>
+				<p class="text-muted mb-4">Selecciona los días específicos en los que no estará disponible.</p>
 
 				<div class="row">
 					@foreach($months as $index => $month)
@@ -177,13 +178,13 @@
 								<div class="card-body">
 									<h5 class="text-center mb-4">{{ $month['name'] }}</h5>
 									<div class="calendar-grid">
-										<div class="calendar-header">Mon</div>
-										<div class="calendar-header">Tue</div>
-										<div class="calendar-header">Wed</div>
-										<div class="calendar-header">Thu</div>
-										<div class="calendar-header">Fri</div>
-										<div class="calendar-header">Sat</div>
-										<div class="calendar-header">Sun</div>
+										<div class="calendar-header">Do</div>
+										<div class="calendar-header">Lu</div>
+										<div class="calendar-header">Ma</div>
+										<div class="calendar-header">Mi</div>
+										<div class="calendar-header">Ju</div>
+										<div class="calendar-header">Vi</div>
+										<div class="calendar-header">Sa</div>
 
 										@for($i = 0; $i < $month['startPadding']; $i++)
 											<div class="calendar-day day-disabled"></div>
@@ -239,7 +240,7 @@
 document.addEventListener('DOMContentLoaded', function() {
 	// CSRF Token setup for AJAX
 	const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-	const employeeId = {{ $contact->id }};
+	const employeeId = {{ $employee->id }};
 
 	// Weekly availability toggle
 	const weekdayToggles = document.querySelectorAll('.btn-group button');
@@ -270,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			}
 
 			// Send update to server
-			fetch(`/employee/${employeeId}/absences/update-weekly`, {
+			fetch('{{ route('employee.absences.update-weekly', $employee->id) }}', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -285,8 +286,8 @@ document.addEventListener('DOMContentLoaded', function() {
 					updateCalendarForWeekday(day, !weeklyAvailability[day]);
 
 					Swal.fire({
-						title: 'Updated',
-						text: 'Weekly availability has been updated',
+						title: 'Actualizado',
+						text: 'La disponibilidad semanal ha sido actualizada',
 						icon: 'success',
 						customClass: {
 							confirmButton: 'btn btn-primary'
@@ -352,8 +353,8 @@ document.addEventListener('DOMContentLoaded', function() {
 			// Don't allow selecting days marked as unavailable by weekly pattern
 			if (this.getAttribute('data-weekly-unavailable') === 'true') {
 				Swal.fire({
-					title: 'Day not selectable',
-					text: 'This day is not available according to the configured weekly pattern.',
+					title: 'Día no seleccionable',
+					text: 'Este día no está disponible según el patrón semanal configurado.',
 					icon: 'info',
 					customClass: {
 						confirmButton: 'btn btn-primary'
@@ -366,7 +367,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			const date = this.getAttribute('data-date');
 
 			// Send update to server
-			fetch(`/employee/${employeeId}/absences/toggle-date`, {
+			fetch('{{ route('employee.absences.toggle-date', $employee->id) }}', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

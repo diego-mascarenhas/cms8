@@ -1,0 +1,132 @@
+{
+	"menu": [
+		{
+			"menuHeader": ""
+		},
+		{
+			"url": "dashboard",
+			"name": "Panel de control",
+			"icon": "menu-icon tf-icons ti ti-smart-home",
+			"slug": "dashboard"
+		},
+		{
+			"menuHeader": "ADMIN"
+		},
+		{
+			"url": "employee/list",
+			"name": "Empleados",
+			"icon": "menu-icon tf-icons ti ti-users",
+			"slug": "employee-list",
+			"badge": ["info", "754"]
+		},
+		{
+			"menuHeader": "NAVEGACIÓN PRINCIPAL"
+		},
+		{
+			"url": "location/list",
+			"name": "Locales",
+			"icon": "menu-icon tf-icons ti ti-home",
+			"slug": "location-list",
+			"badge": ["warning", "2922"]
+		},
+		{
+			"url": "action/list",
+			"name": "Acciones",
+			"icon": "menu-icon tf-icons ti ti-star",
+			"slug": "action-list",
+			"badge": ["success", "6213"]
+		},
+		{
+			"url": "notification/list",
+			"name": "Notificaciones",
+			"icon": "menu-icon tf-icons ti ti-bell",
+			"slug": "notification-list",
+			"badge": ["warning", "23"]
+		},
+		{
+			"menuHeader": "CONFIGURACIÓN"
+		},
+		{
+			"url": "diet/list",
+			"name": "Dietas",
+			"icon": "menu-icon tf-icons ti ti-list",
+			"slug": "diet-list",
+			"badge": ["secondary", "228"]
+		},
+		{
+			"url": "bonus/list",
+			"name": "Pluses",
+			"icon": "menu-icon tf-icons ti ti-star",
+			"slug": "bonus-list",
+			"badge": ["info", "196"]
+		},
+		{
+			"url": "action-type/list",
+			"name": "Tipos de acción",
+			"icon": "menu-icon tf-icons ti ti-search-plus",
+			"slug": "action-type-list",
+			"badge": ["danger", "49"]
+		},
+		{
+			"url": "user/list",
+			"name": "Usuarios",
+			"icon": "menu-icon tf-icons ti ti-user",
+			"slug": "user-list",
+			"badge": ["info", "859"]
+		},
+		{
+			"url": "salary/list",
+			"name": "Salarios",
+			"icon": "menu-icon tf-icons ti ti-currency-euro",
+			"slug": "salary-list",
+			"badge": ["secondary", "125"]
+		},
+		{
+			"url": "module/list",
+			"name": "Módulos",
+			"icon": "menu-icon tf-icons ti ti-grid",
+			"slug": "module-list",
+			"badge": ["secondary", "18"]
+		},
+		{
+			"url": "permission/list",
+			"name": "Permisos",
+			"icon": "menu-icon tf-icons ti ti-user-x",
+			"slug": "permission-list",
+			"badge": ["info", "63"]
+		},
+		{
+			"url": "role/list",
+			"name": "Roles",
+			"icon": "menu-icon tf-icons ti ti-users",
+			"slug": "role-list",
+			"badge": ["success", "5"]
+		},
+		{
+			"url": "role-permission/assign",
+			"name": "Asignar Permisos a Roles",
+			"icon": "menu-icon tf-icons ti ti-user-plus",
+			"slug": "role-permission-assign"
+		},
+		{
+			"url": "access-control/list",
+			"name": "Control de accesos",
+			"icon": "menu-icon tf-icons ti ti-search",
+			"slug": "access-control-list",
+			"badge": ["info", "18333"]
+		},
+		{
+			"url": "activity-control/list",
+			"name": "Control de actividades",
+			"icon": "menu-icon tf-icons ti ti-refresh",
+			"slug": "activity-control-list",
+			"badge": ["warning", "70494"]
+		},
+		{
+			"url": "settings",
+			"name": "Configuración",
+			"icon": "menu-icon tf-icons ti ti-settings",
+			"slug": "settings"
+		}
+	]
+}
