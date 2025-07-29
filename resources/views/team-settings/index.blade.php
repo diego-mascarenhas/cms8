@@ -29,7 +29,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
@@ -43,7 +43,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
@@ -54,7 +54,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
@@ -65,7 +65,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
@@ -73,6 +73,17 @@
                             <h5 class="card-title">API Access Token</h5>
                             <p class="card-text">Generate and manage team API tokens for external access</p>
                             <a href="{{ route('team-settings.api-tokens', $team) }}" class="btn btn-primary">Manage</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-language mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Custom Translations</h5>
+                            <p class="card-text">Manage custom translations for your team</p>
+                            <a href="{{ route('team-settings.custom-translations', $team) }}" class="btn btn-primary">Manage</a>
                         </div>
                     </div>
                 </div>
@@ -121,4 +132,4 @@
             @endif
         </div>
     </div>
-@endsection 
+@endsection

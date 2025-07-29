@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Certification;
 use App\Models\Contact;
+use App\Models\CustomTranslation;
 use App\Models\ContactLanguageVariant;
 use App\Models\Enterprise;
 use App\Models\Fare;
@@ -67,6 +68,9 @@ class TeamBboSeeder extends Seeder
 
 		// 4.11. Create BBO valorations (must be before importing collaborators)
 		$this->createBboValorations($team);
+
+		// 4.12. Create BBO custom translations
+		$this->createBboCustomTranslations($team);
 
 		// 2. Seed BBO language variants (pasa el team_id real)
 		$this->seedBboLanguageVariants($team->id);
@@ -1921,5 +1925,46 @@ class TeamBboSeeder extends Seeder
 				array_merge($variant, ['team_id' => $teamId])
 			);
 		}
+	}
+
+	/**
+	 * Create BBO custom translations
+	 */
+	private function createBboCustomTranslations($team)
+	{
+		$this->command->info('🌐 Creating BBO custom translations...');
+
+		// Only create the welcome translation for team 1 (used for unauthenticated users)
+		$welcomeTranslation = [
+			'key' => 'welcome',
+			'value' => '¡Bienvenida a :name! 👋',
+			'locale' => 'es',
+			'group' => 'auth',
+		];
+
+		$existing = \App\Models\CustomTranslation::where('team_id', 1)
+			->where('key', $welcomeTranslation['key'])
+			->where('group', $welcomeTranslation['group'])
+			->where('locale', $welcomeTranslation['locale'])
+			->first();
+
+		if ($existing) {
+			$existing->update([
+				'value' => $welcomeTranslation['value'],
+				'updated_at' => now(),
+			]);
+			$this->command->info("🔄 Updated welcome translation for team 1");
+		} else {
+			\App\Models\CustomTranslation::create([
+				'team_id' => 1,
+				'key' => $welcomeTranslation['key'],
+				'value' => $welcomeTranslation['value'],
+				'locale' => $welcomeTranslation['locale'],
+				'group' => $welcomeTranslation['group'],
+			]);
+			$this->command->info("✅ Created welcome translation for team 1");
+		}
+
+		$this->command->info("✅ BBO custom translations completed");
 	}
 }
