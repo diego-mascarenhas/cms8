@@ -152,25 +152,26 @@
                                         <td>
                                             <span class="badge bg-label-primary">{{ $availableLocales[$translation->locale] ?? $translation->locale }}</span>
                                         </td>
-                                        <td>
-                                            <div class="d-flex gap-2">
-                                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#editTranslationModal"
-                                                        data-translation="{{ $translation->id }}"
-                                                        data-key="{{ $translation->key }}"
-                                                        data-value="{{ $translation->value }}"
-                                                        data-group="{{ $translation->group }}"
-                                                        data-locale="{{ $translation->locale }}">
-                                                    <i class="ti ti-edit"></i>
-                                                </button>
+                                                                                                                        <td>
+                                            <div class="d-inline-flex">
+                                                <a href="javascript:;" class="text-body me-1"
+                                                   data-bs-toggle="modal"
+                                                   data-bs-target="#editTranslationModal"
+                                                   data-translation="{{ $translation->id }}"
+                                                   data-key="{{ $translation->key }}"
+                                                   data-value="{{ $translation->value }}"
+                                                   data-group="{{ $translation->group }}"
+                                                   data-locale="{{ $translation->locale }}">
+                                                    <i class="ti ti-edit ti-sm me-2"></i>
+                                                </a>
                                                 <form action="{{ route('team-settings.custom-translations.destroy', ['team' => $team, 'translation' => $translation]) }}"
                                                       method="POST"
-                                                      onsubmit="return confirm('Are you sure you want to delete this translation?')">
+                                                      onsubmit="return confirm('Are you sure you want to delete this translation?')"
+                                                      class="d-inline">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                        <i class="ti ti-trash"></i>
+                                                    <button type="submit" class="text-danger border-0 bg-transparent p-0">
+                                                        <i class="ti ti-trash ti-sm"></i>
                                                     </button>
                                                 </form>
                                             </div>
