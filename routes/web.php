@@ -10,7 +10,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\ContactController;
-use App\Http\Controllers\CustomTranslationController;
+
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\EmailController;
@@ -135,8 +135,15 @@ Route::middleware(['auth'])->group(function ()
 
 	// Team API Tokens
 	Route::get('/team/{team}/api-tokens', [TeamSettingController::class, 'apiTokens'])->name('team-settings.api-tokens');
-	Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
-	Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
+Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
+Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
+
+// Custom Translations
+Route::get('/team/{team}/custom-translations', [TeamSettingController::class, 'customTranslations'])->name('team-settings.custom-translations');
+Route::post('/team/{team}/custom-translations', [TeamSettingController::class, 'storeCustomTranslation'])->name('team-settings.custom-translations.store');
+Route::put('/team/{team}/custom-translations/{translation}', [TeamSettingController::class, 'updateCustomTranslation'])->name('team-settings.custom-translations.update');
+Route::delete('/team/{team}/custom-translations/{translation}', [TeamSettingController::class, 'destroyCustomTranslation'])->name('team-settings.custom-translations.destroy');
+Route::post('/team/{team}/custom-translations/import', [TeamSettingController::class, 'importCustomTranslations'])->name('team-settings.custom-translations.import');
 
 	// Categories Management
 	Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
@@ -304,11 +311,7 @@ Route::middleware(['auth'])->group(function ()
 	Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
 
 	// Custom Translations
-	Route::get('/custom-translations', [CustomTranslationController::class, 'index'])->name('custom-translations.index');
-	Route::post('/custom-translations', [CustomTranslationController::class, 'store'])->name('custom-translations.store');
-	Route::put('/custom-translations/{id}', [CustomTranslationController::class, 'update'])->name('custom-translations.update');
-	Route::delete('/custom-translations/{id}', [CustomTranslationController::class, 'destroy'])->name('custom-translations.destroy');
-	Route::get('/custom-translations/example', [CustomTranslationController::class, 'example'])->name('custom-translations.example');
+
 
 	// Accounting
 	Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');

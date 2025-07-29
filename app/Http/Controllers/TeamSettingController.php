@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateTeamSettingsRequest;
 use App\Models\ContactValoration;
+use App\Models\CustomTranslation;
 use App\Models\Team;
 use Illuminate\Http\Request;
 
@@ -342,5 +343,179 @@ class TeamSettingController extends Controller
         $team->settings()->where('group', 'api')->delete();
 
         return redirect()->back()->with('success', 'API token revoked successfully');
+    }
+
+    /**
+     * Show custom translations management page
+     */
+    public function customTranslations(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $translations = CustomTranslation::where('team_id', $team->id)
+            ->orderBy('group')
+            ->orderBy('key')
+            ->get()
+            ->groupBy('group');
+
+        // Get available translation groups
+        $availableGroups = [
+            'app' => 'Application',
+            'auth' => 'Authentication',
+            'validation' => 'Validation',
+            'pagination' => 'Pagination',
+            'passwords' => 'Passwords',
+        ];
+
+        // Get available locales
+        $availableLocales = [
+            'es' => 'Español',
+            'en' => 'English',
+            'fr' => 'Français',
+            'de' => 'Deutsch',
+        ];
+
+        return view('team-settings.custom-translations', compact('team', 'translations', 'availableGroups', 'availableLocales'));
+    }
+
+    /**
+     * Store a new custom translation
+     */
+    public function storeCustomTranslation(Request $request, Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $request->validate([
+            'key' => 'required|string|max:255',
+            'value' => 'required|string',
+            'group' => 'required|string|max:50',
+            'locale' => 'required|string|max:5',
+        ]);
+
+        // Check if translation already exists
+        $existing = CustomTranslation::where('team_id', $team->id)
+            ->where('key', $request->key)
+            ->where('group', $request->group)
+            ->where('locale', $request->locale)
+            ->first();
+
+        if ($existing) {
+            return redirect()->back()->with('error', 'Esta traducción ya existe para este equipo');
+        }
+
+        CustomTranslation::create([
+            'team_id' => $team->id,
+            'key' => $request->key,
+            'value' => $request->value,
+            'group' => $request->group,
+            'locale' => $request->locale,
+        ]);
+
+        // Clear cache for this translation
+        app(\App\Services\CustomTranslationService::class)->clearCache($request->key, $request->group, $request->locale);
+
+        return redirect()->back()->with('success', 'Traducción personalizada creada exitosamente');
+    }
+
+    /**
+     * Update an existing custom translation
+     */
+    public function updateCustomTranslation(Request $request, Team $team, CustomTranslation $translation)
+    {
+        $this->authorize('update', $team);
+
+        // Ensure the translation belongs to this team
+        if ($translation->team_id !== $team->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'key' => 'required|string|max:255',
+            'value' => 'required|string',
+            'group' => 'required|string|max:50',
+            'locale' => 'required|string|max:5',
+        ]);
+
+        $translation->update([
+            'key' => $request->key,
+            'value' => $request->value,
+            'group' => $request->group,
+            'locale' => $request->locale,
+        ]);
+
+        // Clear cache for this translation
+        app(\App\Services\CustomTranslationService::class)->clearCache($request->key, $request->group, $request->locale);
+
+        return redirect()->back()->with('success', 'Traducción personalizada actualizada exitosamente');
+    }
+
+    /**
+     * Delete a custom translation
+     */
+    public function destroyCustomTranslation(Team $team, CustomTranslation $translation)
+    {
+        $this->authorize('update', $team);
+
+        // Ensure the translation belongs to this team
+        if ($translation->team_id !== $team->id) {
+            abort(403);
+        }
+
+        $translation->delete();
+
+        // Clear cache for this translation
+        app(\App\Services\CustomTranslationService::class)->clearCache($translation->key, $translation->group, $translation->locale);
+
+        return redirect()->back()->with('success', 'Traducción personalizada eliminada exitosamente');
+    }
+
+    /**
+     * Bulk import custom translations
+     */
+    public function importCustomTranslations(Request $request, Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $request->validate([
+            'translations' => 'required|array',
+            'translations.*.key' => 'required|string|max:255',
+            'translations.*.value' => 'required|string',
+            'translations.*.group' => 'required|string|max:50',
+            'translations.*.locale' => 'required|string|max:5',
+        ]);
+
+        $imported = 0;
+        $updated = 0;
+
+        foreach ($request->translations as $translationData) {
+            $existing = CustomTranslation::where('team_id', $team->id)
+                ->where('key', $translationData['key'])
+                ->where('group', $translationData['group'])
+                ->where('locale', $translationData['locale'])
+                ->first();
+
+            if ($existing) {
+                $existing->update([
+                    'value' => $translationData['value'],
+                    'updated_at' => now(),
+                ]);
+                $updated++;
+            } else {
+                CustomTranslation::create([
+                    'team_id' => $team->id,
+                    'key' => $translationData['key'],
+                    'value' => $translationData['value'],
+                    'group' => $translationData['group'],
+                    'locale' => $translationData['locale'],
+                ]);
+                $imported++;
+            }
+        }
+
+        // Clear all cache for this team
+        app(\App\Services\CustomTranslationService::class)->clearCache();
+
+        $message = "Importación completada: {$imported} nuevas traducciones, {$updated} actualizadas";
+        return redirect()->back()->with('success', $message);
     }
 }
