@@ -53,6 +53,8 @@ class VariantLanguageSelect extends Component
 				$options->push((object) [
 					'value' => $base->code,
 					'label' => $base->name . '  (Todos)',
+					'flag' => null, // Base languages don't have specific flags
+					'base' => $base->code,
 				]);
 			}
 		}
@@ -61,6 +63,8 @@ class VariantLanguageSelect extends Component
 			$options->push((object) [
 				'value' => $variant->code,
 				'label' => $variant->name,
+				'flag' => $variant->flag,
+				'base' => $variant->base_language,
 			]);
 		}
 		// Sort alphabetically by label
