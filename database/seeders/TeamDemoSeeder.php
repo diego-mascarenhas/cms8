@@ -795,8 +795,18 @@ class TeamDemoSeeder extends Seeder
 		$servicesCreated = 0;
 
 		foreach ($collaborators as $collaborator) {
-			// Assign random rating (11-15, which are the actual IDs)
-			$ratingId = rand(11, 15);
+			// Assign rating with realistic distribution: 70% Validada, 20% Interesante, 10% others
+			// Ojo tiene prioridad sobre Lista negra (mayor probabilidad)
+			$random = rand(1, 100);
+			if ($random <= 70) {
+				$ratingId = 12; // Validada
+			} elseif ($random <= 90) {
+				$ratingId = 13; // Interesante
+			} elseif ($random <= 95) {
+				$ratingId = 14; // Ojo (ID 14) - 5% probabilidad
+			} else {
+				$ratingId = 15; // Lista negra (ID 15) - 5% probabilidad
+			}
 			$collaborator->update(['valoration_id' => $ratingId]);
 			$ratingsCreated++;
 
