@@ -72,6 +72,9 @@ class TeamBboSeeder extends Seeder
 		// 4.12. Create BBO custom translations
 		$this->createBboCustomTranslations($team);
 
+		// 4.13. Create BBO topics (all from TopicsSeeder)
+		$this->createBboTopics();
+
 		// 2. Seed BBO language variants (pasa el team_id real)
 		$this->seedBboLanguageVariants($team->id);
 
@@ -921,9 +924,9 @@ class TeamBboSeeder extends Seeder
 			'Top' => ($this->teamId * 10) + 1,
 			'Validada' => ($this->teamId * 10) + 2,
 			'Interesante' => ($this->teamId * 10) + 3,
-			'Lista negra' => ($this->teamId * 10) + 4,
 			'Ojo' => ($this->teamId * 10) + 5,
 			'OJO' => ($this->teamId * 10) + 5, // Handle uppercase version from CSV
+			'Lista negra' => ($this->teamId * 10) + 4,
 			'En espera' => ($this->teamId * 10) + 5, // Legacy mapping for backward compatibility
 		];
 
@@ -1639,8 +1642,8 @@ class TeamBboSeeder extends Seeder
 			['id' => 1, 'name' => 'Top', 'icon' => '⭐'],
 			['id' => 2, 'name' => 'Validada', 'icon' => '✅'],
 			['id' => 3, 'name' => 'Interesante', 'icon' => '🕐'],
-			['id' => 4, 'name' => 'Lista negra', 'icon' => '❌'],
 			['id' => 5, 'name' => 'Ojo', 'icon' => '👁️'],
+			['id' => 4, 'name' => 'Lista negra', 'icon' => '❌'],
 		];
 
 		$created = 0;
@@ -1966,5 +1969,105 @@ class TeamBboSeeder extends Seeder
 		}
 
 		$this->command->info("✅ BBO custom translations completed");
+	}
+
+	/**
+	 * Create BBO topics (all from TopicsSeeder)
+	 */
+	private function createBboTopics()
+	{
+		$this->command->info('🎯 Creating BBO topics (all from TopicsSeeder)...');
+
+		// Check if team 4 already has topics
+		$existingTeam4Topics = \App\Models\Topic::where('team_id', 4)->count();
+		if ($existingTeam4Topics > 0) {
+			$this->command->warn("⚠️ Team 4 already has {$existingTeam4Topics} topics. Skipping creation.");
+			return;
+		}
+
+		// All topics from TopicsSeeder
+		$bboTopics = [
+			'Medicina',
+			'Viajes',
+			'Técnica',
+			'Ciencia',
+			'Cine',
+			'Letras',
+			'Tecnología',
+			'Deportes',
+			'Arte',
+			'Música',
+			'Gastronomía',
+			'Historia',
+			'Educación',
+			'Psicología',
+			'Economía',
+			'Política',
+			'Medio Ambiente',
+			'Salud',
+			'Cultura',
+			'Literatura',
+			'Filosofía',
+			'Arquitectura',
+			'Diseño',
+			'Marketing',
+			'Negocios',
+			'Finanzas',
+			'Legal',
+			'Inmobiliario',
+			'Agricultura',
+			'Turismo',
+			'Comunicación',
+			'Periodismo',
+			'Traducción',
+			'Interpretación',
+			'Subtitulado',
+			'Localización',
+			'Gaming',
+			'E-commerce',
+			'Redes Sociales',
+			'Automóvil',
+			'Energía',
+			'Ingeniería',
+			'Biotecnología',
+			'Farmacéutica',
+			'Cosmética',
+			'Moda',
+			'Textil',
+			'Alimentación',
+			'Bebidas',
+			'Entretenimiento',
+		];
+
+		$created = 0;
+		$skipped = 0;
+
+		foreach ($bboTopics as $topicName) {
+			// Check if topic already exists for team 4
+			$existingTopic = \App\Models\Topic::where('name', $topicName)
+				->where('team_id', 4)
+				->first();
+
+			if ($existingTopic) {
+				$skipped++;
+				$this->command->info("⏭️ Skipped existing topic: {$topicName}");
+			} else {
+				// Create new topic for team 4
+				\App\Models\Topic::create([
+					'name' => $topicName,
+					'team_id' => 4,
+					'created_at' => now(),
+					'updated_at' => now(),
+				]);
+				$created++;
+				$this->command->info("✅ Created BBO topic: {$topicName}");
+			}
+		}
+
+		$this->command->info('📊 BBO topics creation summary:');
+		$this->command->info("   - New topics created: {$created}");
+		$this->command->info("   - Topics skipped: {$skipped}");
+		$this->command->info("   - Total topics for team 4: " . \App\Models\Topic::where('team_id', 4)->count());
+		$this->command->info('✅ BBO topics creation completed successfully!');
 	}
 }
