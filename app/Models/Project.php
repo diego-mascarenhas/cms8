@@ -94,13 +94,14 @@ class Project extends Model
             ->wherePivotNull('deleted_at'); // Only get non-deleted relationships
     }
 
-    public function allCollaborators()
-    {
-        return $this->belongsToMany(Contact::class, 'contact_project')
-            ->using(ContactProject::class)
-            ->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message', 'deleted_at')
-            ->withTimestamps(); // Include all relationships including deleted ones
-    }
+    	public function allCollaborators()
+	{
+		return $this->belongsToMany(Contact::class, 'contact_project')
+			->using(ContactProject::class)
+			->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message', 'deleted_at')
+			->withTimestamps()
+			->orderBy('valoration_id', 'asc'); // Order by valoration (lower ID = higher priority)
+	}
 
     public function projectFares()
     {

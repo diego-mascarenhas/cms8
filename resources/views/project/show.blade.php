@@ -129,21 +129,25 @@
             $valorationText = 'Top';
             if ($collaborator->valoration) {
                 switch($collaborator->valoration->name) {
-                    case 'Lista negra':
-                        $valorationIcon = 'ti-x text-danger';
-                        $valorationText = 'Lista negra';
+                    case 'Top':
+                        $valorationIcon = 'ti-star-filled text-warning';
+                        $valorationText = 'Top';
                         break;
                     case 'Validada':
                         $valorationIcon = 'ti-check text-success';
                         $valorationText = 'Validada';
                         break;
-                    case 'En espera':
-                        $valorationIcon = 'ti-eye text-warning';
-                        $valorationText = 'Ojo';
-                        break;
                     case 'Interesante':
                         $valorationIcon = 'ti-clock text-info';
                         $valorationText = 'Interesante';
+                        break;
+                    case 'Ojo':
+                        $valorationIcon = 'ti-eye text-warning';
+                        $valorationText = 'Ojo';
+                        break;
+                    case 'Lista negra':
+                        $valorationIcon = 'ti-x text-danger';
+                        $valorationText = 'Lista negra';
                         break;
                 }
             } else {

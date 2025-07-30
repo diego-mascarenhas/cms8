@@ -44,6 +44,11 @@ class CollaboratorDataTable extends DataTable
                         return ''; // Return empty string for unknown valorations
                 }
             })
+            ->orderColumn('rating', function ($query, $order)
+            {
+                // Order by valoration_id (lower ID = higher priority)
+                $query->orderBy('valoration_id', $order);
+            })
                                                                                     ->addColumn('language_combinations', function ($contact)
             {
                 // Get language combinations from the contact's language variants
@@ -476,7 +481,7 @@ class CollaboratorDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('Brtip')
-            ->orderBy(1, 'asc')
+            ->orderBy(2, 'asc')
             ->responsive(true)
             ->processing(false)
             ->serverSide(true)
@@ -538,7 +543,7 @@ class CollaboratorDataTable extends DataTable
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->searchable(false)
-                ->orderable(false)
+                ->orderable(true)
                 ->width(120),
             Column::make('language_combinations')
                 ->title(__('Combination'))
