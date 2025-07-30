@@ -205,7 +205,7 @@
         <!-- WhatsApp Support -->
         @if(config('app.whatsapp_support'))
             <li class="nav-item me-3 me-xl-1">
-                <a class="nav-link" href="https://wa.me/{{ trim(config('app.whatsapp_support')) }}" target="_blank" 
+                <a class="nav-link" href="https://wa.me/{{ trim(config('app.whatsapp_support')) }}" target="_blank"
                    data-bs-toggle="tooltip" data-bs-placement="bottom" title="Soporte por WhatsApp">
                     <i class="ti ti-brand-whatsapp ti-md"></i>
                 </a>
@@ -266,7 +266,7 @@
                     </a>
                 </li>
 
-                @if (auth()->user()->ownsTeam(auth()->user()->currentTeam))
+                @if (Auth::check() && auth()->user()->currentTeam && auth()->user()->ownsTeam(auth()->user()->currentTeam))
                     <li>
                         <a class="dropdown-item" href="{{ route('team-settings.edit', auth()->user()->currentTeam->id) }}">
                             <i class="ti ti-settings-automation me-2 ti-sm"></i>
@@ -293,7 +293,7 @@
                   </span></a>
               </li>
               -->
-                @if ((Auth::User() && Laravel\Jetstream\Jetstream::hasTeamFeatures() && config('custom.TeamManager')) || Auth::user()->hasRole('admin'))
+                @if ((Auth::User() && Laravel\Jetstream\Jetstream::hasTeamFeatures() && config('custom.TeamManager')) || (Auth::check() && Auth::user()->hasRole('admin')))
                     <li>
                         <div class="dropdown-divider"></div>
                     </li>
@@ -319,7 +319,7 @@
                             </a>
                         </li>
                     @endcan
-                    @if (Auth::user()->allTeams()->count() > 1)
+                    @if (Auth::check() && Auth::user()->allTeams()->count() > 1)
                         <li>
                             <div class="dropdown-divider"></div>
                         </li>
