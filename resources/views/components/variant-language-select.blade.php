@@ -14,8 +14,11 @@
 	<select id="{{ $id ?? $name }}" name="{{ $name }}"
 		class="select2 form-select @error($name) is-invalid @enderror" {{ $required ? 'required' : '' }}>
 		<option value="">{{ $placeholder ?? 'Seleccione una variante de idioma' }}</option>
-		@foreach ($options as $option)
-			<option value="{{ $option->value }}" {{ old($name, $value) == $option->value ? 'selected' : '' }}>
+				@foreach ($options as $option)
+			<option value="{{ $option->value }}"
+				{{ old($name, $value) == $option->value ? 'selected' : '' }}
+				data-flag="{{ strtolower($option->flag ?? '') }}"
+				data-base="{{ strtolower($option->base ?? '') }}">
 				{{ $option->label }}
 			</option>
 		@endforeach
@@ -28,36 +31,47 @@
 @once
 	@push('page-script')
 		<script>
-			// Función global para formatear idiomas con banderas (solo se define una vez)
+									// Función global para formatear idiomas con banderas (solo se define una vez)
 			if (typeof window.formatVariantLanguage === 'undefined') {
 				window.formatVariantLanguage = function(language) {
 					if (!language.id) {
 						return language.text;
 					}
 
-					const $option = $(language.element);
-					let flag = $option.data('flag');
+					// Try to get flag from the option element
+					let flag = null;
+					let baseCode = null;
+
+					if (language.element) {
+						const $option = $(language.element);
+						flag = $option.data('flag');
+						baseCode = $option.data('base');
+					}
 
 					// If no flag specified, try to get it from base language code
-					if (!flag) {
-						const baseCode = $option.data('base')?.toLowerCase();
-						if (baseCode) {
-							// Map language codes to country codes for flags
-							const languageMap = {
-								'ja': 'jp', // Japanese -> Japan
-								'ko': 'kr', // Korean -> South Korea
-								'zh': 'cn', // Chinese -> China
-								'en': 'gb', // English -> Great Britain
-								'ar': 'sa' // Arabic -> Saudi Arabia
-							};
+					if (!flag && baseCode) {
+						// Map language codes to country codes for flags
+						const languageMap = {
+							'ja': 'jp', 'ko': 'kr', 'zh': 'cn', 'en': 'gb', 'ar': 'sa',
+							'fr': 'fr', 'es': 'es', 'de': 'de', 'it': 'it', 'pt': 'pt',
+							'ru': 'ru', 'ca': 'es', 'eu': 'es', 'gl': 'es', 'val': 'es',
+							'nl': 'nl', 'sv': 'se', 'da': 'dk', 'no': 'no', 'fi': 'fi',
+							'pl': 'pl', 'cs': 'cz', 'sk': 'sk', 'hu': 'hu', 'ro': 'ro',
+							'bg': 'bg', 'hr': 'hr', 'sl': 'si', 'et': 'ee', 'lv': 'lv',
+							'lt': 'lt', 'mt': 'mt', 'ga': 'ie', 'cy': 'gb', 'gd': 'gb',
+							'kw': 'gb', 'br': 'fr', 'oc': 'fr', 'co': 'fr', 'wa': 'be',
+							'lb': 'lu', 'rm': 'ch'
+						};
 
-							flag = languageMap[baseCode] || baseCode;
-						}
+						flag = languageMap[baseCode] || baseCode;
 					}
 
 					if (!flag) {
 						return language.text;
 					}
+
+					// Ensure flag is lowercase for CSS class
+					flag = flag.toString().toLowerCase();
 
 					return $('<span><i class="fi fi-' + flag + ' me-2"></i>' + language.text + '</span>');
 				};
