@@ -42,6 +42,9 @@ class TeamDemoSeeder extends Seeder
 			->withUnits()
 			->create();
 
+		// Create fare-unit relationships for demo team
+		$this->createDemoFareUnits();
+
 		// Create demo software
 		$this->command->info('Creating demo software...');
 		Software::factory()
@@ -61,6 +64,101 @@ class TeamDemoSeeder extends Seeder
 			->create();
 
 		$this->command->info('Team Demo data seeded successfully!');
+	}
+
+	/**
+	 * Create fare-unit relationships for demo team
+	 */
+	private function createDemoFareUnits()
+	{
+		$this->command->info('🔗 Creating demo fare-unit relationships...');
+
+		// Get all units
+		$minuteUnit = \App\Models\Unit::where('type', 'min')->first();
+		$tenMinutesUnit = \App\Models\Unit::where('type', '10 min')->first();
+		$hourUnit = \App\Models\Unit::where('type', 'h')->first();
+		$wordUnit = \App\Models\Unit::where('type', 'pal')->first();
+		$pageUnit = \App\Models\Unit::where('type', 'pág')->first();
+		$rollUnit = \App\Models\Unit::where('type', 'rollo')->first();
+
+		// Check if units exist
+		if (!$minuteUnit || !$tenMinutesUnit || !$hourUnit || !$wordUnit || !$pageUnit || !$rollUnit) {
+			$this->command->warn('Warning: Some units not found. Skipping demo fare units creation.');
+			return;
+		}
+
+		$minuteId = $minuteUnit->id;
+		$tenMinutesId = $tenMinutesUnit->id;
+		$hourId = $hourUnit->id;
+		$wordId = $wordUnit->id;
+		$pageId = $pageUnit->id;
+		$rollId = $rollUnit->id;
+
+		// Get all demo fares (team 1)
+		$demoFares = \App\Models\Fare::where('team_id', 1)->get();
+
+		if ($demoFares->isEmpty()) {
+			$this->command->warn('No demo fares found. Skipping fare-unit relationships.');
+			return;
+		}
+
+		$created = 0;
+		$skipped = 0;
+
+		// Assign units to demo fares based on their names
+		foreach ($demoFares as $fare) {
+			$unitIds = [];
+
+			// Determine units based on fare name
+			if (str_contains(strtolower($fare->name), 'traducción') || str_contains(strtolower($fare->name), 'translation')) {
+				if (str_contains(strtolower($fare->name), 'subtitulado') || str_contains(strtolower($fare->name), 'subtitling')) {
+					$unitIds = [$minuteId];
+				} elseif (str_contains(strtolower($fare->name), 'doblaje') || str_contains(strtolower($fare->name), 'dubbing')) {
+					$unitIds = [$minuteId, $rollId];
+				} elseif (str_contains(strtolower($fare->name), 'guion') || str_contains(strtolower($fare->name), 'script')) {
+					$unitIds = [$pageId];
+				} else {
+					$unitIds = [$wordId];
+				}
+			} elseif (str_contains(strtolower($fare->name), 'revisión') || str_contains(strtolower($fare->name), 'review')) {
+				$unitIds = [$wordId];
+			} elseif (str_contains(strtolower($fare->name), 'transcripción') || str_contains(strtolower($fare->name), 'transcription')) {
+				$unitIds = [$minuteId];
+			} elseif (str_contains(strtolower($fare->name), 'localización') || str_contains(strtolower($fare->name), 'localization')) {
+				$unitIds = [$wordId];
+			} elseif (str_contains(strtolower($fare->name), 'audiodescripción') || str_contains(strtolower($fare->name), 'audio description')) {
+				$unitIds = [$minuteId];
+			} else {
+				// Default to words for unknown fare types
+				$unitIds = [$wordId];
+			}
+
+			// Create relationships
+			foreach ($unitIds as $unitId) {
+				// Check if relationship already exists
+				$existingRelationship = \Illuminate\Support\Facades\DB::table('fare_unit')
+					->where('fare_id', $fare->id)
+					->where('unit_id', $unitId)
+					->first();
+
+				if (!$existingRelationship) {
+					\Illuminate\Support\Facades\DB::table('fare_unit')->insert([
+						'fare_id' => $fare->id,
+						'unit_id' => $unitId,
+						'created_at' => now(),
+						'updated_at' => now(),
+					]);
+					$created++;
+				} else {
+					$skipped++;
+				}
+			}
+		}
+
+		$this->command->info("✅ Created {$created} new demo fare-unit relationships");
+		if ($skipped > 0) {
+			$this->command->info("⏭️ Skipped {$skipped} existing relationships");
+		}
 	}
 
 	/**
