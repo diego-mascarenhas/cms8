@@ -68,6 +68,16 @@ class ProfileUpdateController extends Controller
 			}
 		}
 
+		// Add basic contact data to existingData
+		$existingData['contact_info'] = [
+			'first_name' => $contact->name,
+			'last_name' => $contact->surname,
+			'email' => $contact->email,
+			'phone' => $contact->phone,
+			'country' => $contact->data->country ?? 'ES',
+			'timezone' => 'Europe/Madrid', // Default timezone
+		];
+
 		// Language variants are now handled by the x-variant-language-select component
 
 		// Get fares (services) for the collaborator
