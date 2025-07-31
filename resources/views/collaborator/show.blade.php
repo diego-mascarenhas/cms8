@@ -60,39 +60,34 @@
                                 <th>PROYECTO</th>
                                 <th>PM</th>
                                 <th>CLIENTE</th>
-                                <th>ESTADO</th>
-                                <th>FECHA</th>
-                                <th>ACCIÓN</th>
+                                <th class="text-center">ESTADO</th>
+                                <th class="text-center">FECHA</th>
+                                <th class="text-center">ACCIÓN</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($collaborator->projects as $project)
                             <tr>
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][array_rand(['primary', 'success', 'info', 'warning', 'danger'])] }} me-2">
-                                            <span class="avatar-initial rounded-circle">{{ strtoupper(substr($project->name, 0, 1)) }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="fw-medium">{{ $project->name }}</span>
-                                            @if($project->real_name && $project->real_name !== $project->name)
-                                                <small class="d-block text-muted">{{ $project->real_name }}</small>
-                                            @endif
-                                        </div>
+                                    <div>
+                                        <span class="fw-medium">{{ $project->name }}</span>
+                                        @if($project->real_name && $project->real_name !== $project->name)
+                                            <small class="d-block text-muted">{{ $project->real_name }}</small>
+                                        @endif
                                     </div>
                                 </td>
                                 <td>{{ $project->responsible ? $project->responsible->name : '-' }}</td>
                                 <td>{{ $project->enterprise ? $project->enterprise->name : '-' }}</td>
-                                <td>
+                                <td class="text-center">
                                     @if($project->status)
-                                        <span class="badge {{ $project->status->label_class ?? 'bg-label-secondary' }}">
-                                            {{ $project->status->name }}
+                                        <span class="badge rounded-pill {{ $project->status->label_class ?? 'bg-label-secondary' }}">
+                                            {{ $project->status->translated_name }}
                                         </span>
                                     @else
-                                        <span class="badge bg-label-secondary">Sin estado</span>
+                                        <span class="badge rounded-pill bg-label-secondary">Sin estado</span>
                                     @endif
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     @if($project->date_end)
                                         {{ \Carbon\Carbon::parse($project->date_end)->format('d-m-Y') }}
                                     @elseif($project->date_material)
@@ -101,7 +96,7 @@
                                         {{ \Carbon\Carbon::parse($project->created_at)->format('d-m-Y') }}
                                     @endif
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     <div class="dropdown">
                                         <button class="btn p-0" data-bs-toggle="dropdown" aria-expanded="false">
                                             <i class="ti ti-dots-vertical ti-sm text-muted"></i>
@@ -215,16 +210,11 @@
                                 data-notes="{{ $portfolio->notes }}"
                                 data-languages="{{ json_encode($portfolio->languages) }}">
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][array_rand(['primary', 'success', 'info', 'warning', 'danger'])] }} me-2">
-                                            <span class="avatar-initial rounded-circle">{{ strtoupper(substr($portfolio->title, 0, 1)) }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="fw-medium">{{ $portfolio->title }}</span>
-                                            @if($portfolio->description)
-                                                <small class="d-block text-muted">{{ Str::limit($portfolio->description, 50) }}</small>
-                                            @endif
-                                        </div>
+                                    <div>
+                                        <span class="fw-medium">{{ $portfolio->title }}</span>
+                                        @if($portfolio->description)
+                                            <small class="d-block text-muted">{{ Str::limit($portfolio->description, 50) }}</small>
+                                        @endif
                                     </div>
                                 </td>
                                 <td>{{ $portfolio->position ?? '-' }}</td>
