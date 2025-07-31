@@ -152,6 +152,13 @@ class CollaboratorDataTable extends DataTable
                 },
             ]);
 
+        // Apply Contact Policy filter
+        $user = auth()->user();
+        if ($user) {
+            $policyFilter = \App\Policies\ContactPolicy::getQueryFilter($user);
+            $policyFilter($query);
+        }
+
         // Handle custom filters from request
         $request = request();
 

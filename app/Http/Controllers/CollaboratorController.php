@@ -16,6 +16,9 @@ class CollaboratorController extends Controller
 {
     public function index(CollaboratorDataTable $dataTable)
     {
+        // Use the Contact Policy for authorization
+        $this->authorize('viewAny', Contact::class);
+
         // Get real statistics for the dashboard cards
         $dashboardStats = [
             'pendingAcceptance' => Contact::getPendingAcceptanceCount(),
@@ -151,6 +154,9 @@ class CollaboratorController extends Controller
             },
         ])->findOrFail($id);
 
+        // Use the Contact Policy for authorization
+        $this->authorize('view', $collaborator);
+
         return view('collaborator.show', compact('collaborator'));
     }
 
@@ -161,6 +167,9 @@ class CollaboratorController extends Controller
             'languageVariants.targetLanguage',
             'fares',
         ])->findOrFail($id);
+
+        // Use the Contact Policy for authorization
+        $this->authorize('update', $collaborator);
 
         // Force language loading
         $languagePairs = [];
@@ -186,6 +195,9 @@ class CollaboratorController extends Controller
     public function update(Request $request, $id)
     {
         $collaborator = Contact::findOrFail($id);
+
+        // Use the Contact Policy for authorization
+        $this->authorize('update', $collaborator);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
