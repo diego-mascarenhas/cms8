@@ -16,6 +16,7 @@ use App\Models\Fare;
 use App\Models\FareType;
 use App\Models\Unit;
 use App\Models\Language;
+use Carbon\Carbon;
 
 class ProfileUpdateController extends Controller
 {
@@ -98,6 +99,53 @@ class ProfileUpdateController extends Controller
 		// Get all languages for the team
 		$allLanguages = Language::whereIn('code', $allLanguageVariants->pluck('base_language')->unique())->get();
 
+		\Log::info('Languages loaded, about to start availability data preparation');
+
+		// Get collaborator availability data
+		\Log::info('Starting availability data preparation');
+		$startDate = Carbon::now()->startOfMonth();
+		$endDate = Carbon::now()->addMonths(5)->endOfMonth();
+
+		$absences = $contact->absences()
+			->whereBetween('absence_date', [$startDate, $endDate])
+			->get()
+			->pluck('absence_date')
+			->map(function ($date) {
+				return $date->format('Y-m-d');
+			})
+			->toArray();
+
+		// Get weekly availability
+		$weeklyAvailability = $contact->weeklyAvailability;
+		if (!$weeklyAvailability) {
+			// Create default availability if none exists
+			$weeklyAvailability = $contact->weeklyAvailability()->create([
+				'contact_id' => $contact->id,
+				'monday' => true,
+				'tuesday' => true,
+				'wednesday' => true,
+				'thursday' => true,
+				'friday' => true,
+				'saturday' => false,
+				'sunday' => false,
+				'team_id' => auth()->user()->currentTeam->id,
+			]);
+		}
+
+		// Generate months for calendar
+		$months = [];
+		for ($i = 0; $i < 6; $i++) {
+			$currentMonth = Carbon::now()->addMonths($i);
+			$months[] = [
+				'name' => $currentMonth->format('F Y'),
+				'month' => $currentMonth->format('n'),
+				'year' => $currentMonth->format('Y'),
+				'firstDay' => $currentMonth->copy()->startOfMonth()->dayOfWeek,
+				'daysInMonth' => $currentMonth->daysInMonth,
+				'startPadding' => $currentMonth->copy()->startOfMonth()->dayOfWeekIso - 1,
+			];
+		}
+
 		\Log::info('ProfileUpdateController@index data prepared', [
 			'fares_count' => $fares->count(),
 			'fare_types_count' => $fareTypes->count(),
@@ -105,7 +153,11 @@ class ProfileUpdateController extends Controller
 			'languages_count' => $languages->count(),
 			'base_languages_count' => $baseLanguages->count(),
 			'all_language_variants_count' => $allLanguageVariants->count(),
-			'all_languages_count' => $allLanguages->count()
+			'all_languages_count' => $allLanguages->count(),
+			'contact_id' => $contact->id,
+			'weekly_availability_exists' => isset($weeklyAvailability),
+			'absences_count' => count($absences),
+			'months_count' => count($months)
 		]);
 
 		return view('frontend.profile-update.index', compact(
@@ -119,7 +171,10 @@ class ProfileUpdateController extends Controller
 			'baseLanguageObjects',
 			'allLanguageVariants',
 			'languagesWithVariants',
-			'allLanguages'
+			'allLanguages',
+			'absences',
+			'weeklyAvailability',
+			'months'
 		));
 	}
 
