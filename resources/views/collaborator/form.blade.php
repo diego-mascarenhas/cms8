@@ -48,7 +48,7 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="name" class="form-label">{{ __('Name') }} (*)</label>
-                        <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $collaborator->name ?? '') }}" required>
+                        <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $collaborator->name ?? '') }}">
                         @error('name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -64,7 +64,7 @@
 
                     <div class="col-md-6 mb-3">
                         <label for="email" class="form-label">{{ __('Email') }} (*)</label>
-                        <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $collaborator->email ?? '') }}" required>
+                        <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $collaborator->email ?? '') }}">
                         @error('email')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -93,7 +93,6 @@
                             id="language"
                             label="{{ __('Language') }} (*)"
                             :value="old('language', $collaborator->language ?? '')"
-                            :required="true"
                         />
                         @error('language')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -420,67 +419,9 @@
                 @endforeach
             @endif
 
-            // Form submit handler for validation
+            // Form submit handler - removed client-side validation to rely on Laravel validation
             $('form').on('submit', function(e) {
-                // Validate required language field
-                const language = $('#language').val();
-                if (!language) {
-                    e.preventDefault();
-                    Swal.fire({
-                        title: '{{ __("Validation Error") }}',
-                        text: '{{ __("Language field is required") }}',
-                        icon: 'error',
-                        customClass: {
-                            confirmButton: 'btn btn-primary'
-                        },
-                        buttonsStyling: false
-                    });
-                    return false;
-                }
-
-                // Validate language pairs if any exist
-                const languagePairs = [];
-                $('input[name="language_pairs[]"]').each(function() {
-                    const value = $(this).val();
-                    if (value) {
-                        const parts = value.split('|');
-                        if (parts.length === 2 && parts[0] && parts[1]) {
-                            languagePairs.push(value);
-                        }
-                    }
-                });
-
-                // Check for invalid pairs only if there are any pairs
-                if ($('input[name="language_pairs[]"]').length > 0) {
-                    let hasInvalidPairs = false;
-                    $('input[name="language_pairs[]"]').each(function() {
-                        const value = $(this).val();
-                        if (value) {
-                            const parts = value.split('|');
-                            if (parts.length !== 2 || !parts[0] || !parts[1]) {
-                                hasInvalidPairs = true;
-                                return false; // break the loop
-                            }
-                        }
-                    });
-
-                    if (hasInvalidPairs) {
-                        // Show error message
-                        e.preventDefault();
-                        Swal.fire({
-                            title: '{{ __("Validation Error") }}',
-                            text: '{{ __("Some language pairs are invalid") }}',
-                            icon: 'error',
-                            customClass: {
-                                confirmButton: 'btn btn-primary'
-                            },
-                            buttonsStyling: false
-                        });
-                        return false;
-                    }
-                }
-
-                // If all checks pass, allow the form to submit
+                // Allow form to submit - Laravel will handle validation
                 return true;
             });
         });
