@@ -63,7 +63,8 @@ class ProfileUpdateController extends Controller
 			if (is_string($contact->data)) {
 				$existingData = json_decode($contact->data, true) ?: [];
 			} elseif (is_object($contact->data) || is_array($contact->data)) {
-				$existingData = (array) $contact->data;
+				// Convert object to array recursively
+				$existingData = json_decode(json_encode($contact->data), true) ?: [];
 			}
 		}
 
@@ -155,8 +156,20 @@ class ProfileUpdateController extends Controller
 			'all_language_variants_count' => $allLanguageVariants->count(),
 			'all_languages_count' => $allLanguages->count(),
 			'contact_id' => $contact->id,
+			'contact_name' => $contact->name . ' ' . $contact->surname,
 			'weekly_availability_exists' => isset($weeklyAvailability),
+			'weekly_availability_id' => $weeklyAvailability->id ?? 'null',
+			'weekly_availability_data' => [
+				'monday' => $weeklyAvailability->monday ?? false,
+				'tuesday' => $weeklyAvailability->tuesday ?? false,
+				'wednesday' => $weeklyAvailability->wednesday ?? false,
+				'thursday' => $weeklyAvailability->thursday ?? false,
+				'friday' => $weeklyAvailability->friday ?? false,
+				'saturday' => $weeklyAvailability->saturday ?? false,
+				'sunday' => $weeklyAvailability->sunday ?? false,
+			],
 			'absences_count' => count($absences),
+			'absences_dates' => $absences,
 			'months_count' => count($months)
 		]);
 
