@@ -196,38 +196,11 @@
 			"module_key": "campaigns"
 		},
 		{
-			"menuHeader": "Projects"
-		},
-		{
 			"url": "project/list",
-			"name": "All Projects",
+			"name": "Projects",
 			"icon": "menu-icon tf-icons ti ti-folder",
 			"slug": "project-list",
 			"permission": "project.list",
-			"module_key": "projects"
-		},
-		{
-			"url": "project/create",
-			"name": "New Project",
-			"icon": "menu-icon tf-icons ti ti-folder-plus",
-			"slug": "project-create",
-			"permission": "project.create",
-			"module_key": "projects"
-		},
-		{
-			"url": "project/tasks",
-			"name": "Tasks",
-			"icon": "menu-icon tf-icons ti ti-checklist",
-			"slug": "project-tasks",
-			"permission": "project.tasks",
-			"module_key": "projects"
-		},
-		{
-			"url": "projects/calendar",
-			"name": "Calendar",
-			"icon": "menu-icon tf-icons ti ti-calendar",
-			"slug": "project-calendar",
-			"permission": "project.calendar",
 			"module_key": "projects"
 		},
 		{
