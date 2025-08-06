@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Mail\IncomingMessageNotification;
+use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Twilio\Rest\Client;
@@ -24,6 +27,100 @@ class TwilioService
         $this->whatsappFromNumber = 'whatsapp:'.config('services.twilio.whatsapp_from', '+14155238886');
 
         $this->client = new Client($sid, $token);
+    }
+
+    /**
+     * Get user information by phone number
+     */
+    private function getUserByPhone($phoneNumber)
+    {
+        // Clean the phone number (remove whatsapp: prefix, plus sign, and any non-digits)
+        $cleanNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
+
+        // Always try to get user directly by phone (full number)
+        $user = User::where('phone', $cleanNumber)->first();
+        if ($user) {
+            return $user;
+        }
+
+        // Try without country code if not found
+        if (strlen($cleanNumber) > 9) {
+            $withoutCountryCode = substr($cleanNumber, -9);
+            $user = User::where('phone', $withoutCountryCode)->first();
+            if ($user) {
+                return $user;
+            }
+        }
+
+        // If no user found directly, try to find through contact relationship
+        $contact = Contact::whereHas('sources', function ($query) use ($cleanNumber) {
+            $query->where('source_id', 2) // Phone source
+                ->where('value', $cleanNumber);
+        })->first();
+
+        if ($contact && $contact->user) {
+            return $contact->user;
+        }
+
+        // If still no user found, try to get contact name
+        if ($contact) {
+            return (object) [
+                'name' => $contact->name,
+                'id' => null,
+                'is_contact' => true,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if this is the first message of the day from this contact
+     */
+    private function isFirstMessageToday($phoneNumber)
+    {
+        $today = Carbon::today();
+
+        $messageCount = Conversation::where('from', $phoneNumber)
+            ->where('direction', 'inbound')
+            ->whereDate('created_at', $today)
+            ->count();
+
+        // Return true if this is the first message (count = 1, which includes the message just saved)
+        return $messageCount === 1;
+    }
+
+    /**
+     * Send automatic greeting if it's the first message of the day
+     */
+    private function sendAutoGreeting($phoneNumber)
+    {
+        // Check if it's the first message today
+        if (! $this->isFirstMessageToday($phoneNumber)) {
+            return false;
+        }
+
+        // Get user information
+        $user = $this->getUserByPhone($phoneNumber);
+
+        if ($user && ! empty($user->name)) {
+            $greeting = "¡Hola {$user->name}! 👋";
+
+            try {
+                // Send the greeting
+                $this->sendWhatsApp($phoneNumber, $greeting);
+
+                Log::info("Auto greeting sent to {$phoneNumber}: {$greeting}");
+
+                return true;
+            } catch (\Exception $e) {
+                Log::error("Failed to send auto greeting to {$phoneNumber}: ".$e->getMessage());
+
+                return false;
+            }
+        }
+
+        return false;
     }
 
     public function sendSms($to, $message)
@@ -170,6 +267,11 @@ class TwilioService
                 'media' => ! empty($media) ? $media : null,
                 'metadata' => $request->except(['_token']),
             ]);
+
+            // Send automatic greeting if it's WhatsApp and first message of the day
+            if ($channel == 'whatsapp') {
+                $this->sendAutoGreeting($cleanFrom);
+            }
 
             // Send email notification for new message
             $notificationEmail = config('services.notifications.email');
