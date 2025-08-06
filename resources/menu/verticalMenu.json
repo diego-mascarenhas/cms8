@@ -68,6 +68,14 @@
 			"module_key": "services"
 		},
 		{
+			"url": "project/list",
+			"name": "Projects",
+			"icon": "menu-icon tf-icons ti ti-folder",
+			"slug": "project-list",
+			"permission": "project.list",
+			"module_key": "projects"
+		},
+		{
 			"url": "task/list",
 			"name": "Tasks",
 			"icon": "menu-icon tf-icons ti ti-checklist",
@@ -194,14 +202,6 @@
 			"slug": "message-list",
 			"permission": "message.list",
 			"module_key": "campaigns"
-		},
-		{
-			"url": "project/list",
-			"name": "Projects",
-			"icon": "menu-icon tf-icons ti ti-folder",
-			"slug": "project-list",
-			"permission": "project.list",
-			"module_key": "projects"
 		},
 		{
 			"menuHeader": "Web Site"

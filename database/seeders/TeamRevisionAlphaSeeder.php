@@ -50,7 +50,6 @@ class TeamRevisionAlphaSeeder extends Seeder
             21, // hosting
             22, // mail
             23, // chat
-            34, // integrations
             35, // campaigns
             36, // templates
             42, // stylebooks
