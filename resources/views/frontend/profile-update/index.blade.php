@@ -17,6 +17,9 @@
 	<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 	<link href="https://cdn.jsdelivr.net/npm/flag-icons@7.0.0/css/flag-icons.min.css" rel="stylesheet" />
 
+	<!-- Select2 Bootstrap 5 Theme -->
+	<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
 	<style>
 		:root {
 			--bbo-red: #E7241E;
@@ -552,7 +555,70 @@
 			margin-bottom: 40px;
 		}
 
-				/* Responsive */
+				/* Select2 Custom Styles */
+		.select2-container--bootstrap-5 .select2-selection {
+			border: 1px solid #ced4da;
+			border-radius: 0.375rem;
+			min-height: 38px;
+			background-color: #fff;
+		}
+
+		.select2-container--bootstrap-5 .select2-selection--single {
+			height: 38px;
+			padding: 0.375rem 0.75rem;
+		}
+
+		.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+			line-height: 1.5;
+			padding-left: 0;
+			color: #212529;
+		}
+
+		.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+			height: 36px;
+			right: 8px;
+		}
+
+		.select2-container--bootstrap-5 .select2-dropdown {
+			border: 1px solid #ced4da;
+			border-radius: 0.375rem;
+			box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+		}
+
+		.select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field {
+			border: 1px solid #ced4da;
+			border-radius: 0.375rem;
+			padding: 0.375rem 0.75rem;
+		}
+
+		.select2-container--bootstrap-5 .select2-results__option {
+			padding: 0.375rem 0.75rem;
+		}
+
+		.select2-container--bootstrap-5 .select2-results__option--highlighted {
+			background-color: #0d6efd;
+			color: white;
+		}
+
+		.select2-container--bootstrap-5 .select2-results__group {
+			font-weight: 600;
+			color: #6c757d;
+			background-color: #f8f9fa;
+			padding: 0.5rem 0.75rem;
+			border-bottom: 1px solid #dee2e6;
+		}
+
+		.select2-container--bootstrap-5 .select2-results__option[aria-selected=true] {
+			background-color: #e9ecef;
+		}
+
+		/* Focus states */
+		.select2-container--bootstrap-5.select2-container--focus .select2-selection {
+			border-color: #86b7fe;
+			box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+		}
+
+		/* Responsive */
 		@media (max-width: 768px) {
 			.profile-update-container {
 				flex-direction: column;
@@ -721,30 +787,12 @@
 						</div>
 
 						<div class="form-group">
-							<label for="timezone">Zona horaria *</label>
-							<select id="timezone" name="timezone" class="form-control">
-								<option value="">Selecciona una zona horaria</option>
-								<option value="Europe/Madrid" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'Europe/Madrid') ? 'selected' : '' }}>Madrid (UTC+1)</option>
-								<option value="America/Mexico_City" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Mexico_City') ? 'selected' : '' }}>Ciudad de México (UTC-6)</option>
-								<option value="America/Argentina/Buenos_Aires" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Argentina/Buenos_Aires') ? 'selected' : '' }}>Buenos Aires (UTC-3)</option>
-								<option value="America/Bogota" {{ (old('country', $existingData['contact_info']['timezone'] ?? '') == 'America/Bogota') ? 'selected' : '' }}>Bogotá (UTC-5)</option>
-								<option value="America/Lima" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Lima') ? 'selected' : '' }}>Lima (UTC-5)</option>
-								<option value="America/Caracas" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Caracas') ? 'selected' : '' }}>Caracas (UTC-4)</option>
-								<option value="America/Santiago" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Santiago') ? 'selected' : '' }}>Santiago (UTC-3)</option>
-								<option value="America/Guayaquil" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Guayaquil') ? 'selected' : '' }}>Guayaquil (UTC-5)</option>
-								<option value="America/Guatemala" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Guatemala') ? 'selected' : '' }}>Guatemala (UTC-6)</option>
-								<option value="America/Havana" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Havana') ? 'selected' : '' }}>La Habana (UTC-5)</option>
-								<option value="America/La_Paz" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/La_Paz') ? 'selected' : '' }}>La Paz (UTC-4)</option>
-								<option value="America/Santo_Domingo" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Santo_Domingo') ? 'selected' : '' }}>Santo Domingo (UTC-4)</option>
-								<option value="America/Tegucigalpa" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Tegucigalpa') ? 'selected' : '' }}>Tegucigalpa (UTC-6)</option>
-								<option value="America/Asuncion" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Asuncion') ? 'selected' : '' }}>Asunción (UTC-3)</option>
-								<option value="America/El_Salvador" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/El_Salvador') ? 'selected' : '' }}>San Salvador (UTC-6)</option>
-								<option value="America/Managua" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Managua') ? 'selected' : '' }}>Managua (UTC-6)</option>
-								<option value="America/Costa_Rica" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Costa_Rica') ? 'selected' : '' }}>San José (UTC-6)</option>
-								<option value="America/Panama" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Panama') ? 'selected' : '' }}>Panamá (UTC-5)</option>
-								<option value="America/Montevideo" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Montevideo') ? 'selected' : '' }}>Montevideo (UTC-3)</option>
-								<option value="Africa/Malabo" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'Africa/Malabo') ? 'selected' : '' }}>Malabo (UTC+1)</option>
-							</select>
+							<x-timezone-select
+								name="timezone"
+								id="timezone"
+								label="Zona horaria *"
+								:value="old('timezone', $existingData['contact_info']['timezone'] ?? '')"
+							/>
 						</div>
 					</div>
 
@@ -897,16 +945,54 @@
 
 		<script>
 		$(document).ready(function() {
-			// Initialize Select2 for timezone field only (country uses x-country-select component)
-			$('#timezone').select2({
-				placeholder: 'Selecciona una opción',
-				allowClear: true
-			});
+			// Format timezone options with offset and current time
+			function formatTimezoneOption(option) {
+				if (!option.id) {
+					return option.text;
+				}
 
-			// Initialize Select2 for language selectors with custom template
-			$('.select2').select2({
+				// Simplified for debugging
+				return option.text;
+			}
+
+			// Format selected timezone
+			function formatTimezoneSelection(option) {
+				if (!option.id) {
+					return option.text;
+				}
+
+				// Simplified for debugging
+				return option.text;
+			}
+
+			// Initialize Select2 for language selectors with custom template (exclude timezone)
+			$('.select2:not(#timezone)').select2({
+				theme: 'bootstrap-5',
 				templateResult: formatLanguageOption,
 				templateSelection: formatLanguageOption
+			});
+
+						// Initialize timezone select with enhanced features
+			$('#timezone').select2({
+				theme: 'bootstrap-5',
+				placeholder: 'Selecciona una zona horaria',
+				allowClear: true,
+				width: '100%',
+				searchInputPlaceholder: 'Buscar zonas horarias...',
+				templateResult: formatTimezoneOption,
+				templateSelection: formatTimezoneSelection,
+				escapeMarkup: function(markup) {
+					return markup;
+				}
+			});
+
+			// Update current time when timezone changes
+			$('#timezone').on('change', function() {
+				const selectedTimezone = $(this).val();
+				const $currentTimeSpan = $('#timezone-current-time');
+				if (selectedTimezone && $currentTimeSpan.length) {
+					updateCurrentTime(selectedTimezone);
+				}
 			});
 
 			// Add language pair button handler
@@ -991,6 +1077,39 @@
 
 				const flag = $(option.element).data('flag');
 				return $(`<span><i class="fi fi-${flag} me-2"></i>${option.text}</span>`);
+			}
+
+			// Update current time display (client-side only)
+			function updateCurrentTime(timezone) {
+				try {
+					const now = new Date();
+					const options = {
+						weekday: 'long',
+						year: 'numeric',
+						month: 'long',
+						day: 'numeric',
+						hour: '2-digit',
+						minute: '2-digit',
+						timeZone: timezone,
+						timeZoneName: 'short'
+					};
+
+					const formattedTime = new Intl.DateTimeFormat('en-US', options).format(now);
+					$('#timezone-current-time').text(formattedTime);
+				} catch (error) {
+					$('#timezone-current-time').text('Unable to display time');
+				}
+			}
+
+			// Auto-refresh current time every minute
+			const $currentTimeSpan = $('#timezone-current-time');
+			if ($currentTimeSpan.length) {
+				setInterval(function() {
+					const selectedTimezone = $('#timezone').val();
+					if (selectedTimezone) {
+						updateCurrentTime(selectedTimezone);
+					}
+				}, 60000); // Update every minute
 			}
 
 			// Check if language pair already exists
