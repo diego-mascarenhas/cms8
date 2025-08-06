@@ -111,6 +111,9 @@ class ProfileUpdateController extends Controller
 		// Get all languages for the team
 		$allLanguages = Language::whereIn('code', $allLanguageVariants->pluck('base_language')->unique())->get();
 
+		// Get collaborator's language variants
+		$collaboratorLanguageVariants = $contact->languageVariants()->with(['sourceLanguage', 'targetLanguage'])->get();
+
 		// Software is handled by the x-software-select component
 
 		\Log::info('Languages loaded, about to start availability data preparation');
@@ -199,7 +202,7 @@ class ProfileUpdateController extends Controller
 			'allLanguageVariants',
 			'languagesWithVariants',
 			'allLanguages',
-
+			'collaboratorLanguageVariants',
 			'absences',
 			'weeklyAvailability',
 			'months'

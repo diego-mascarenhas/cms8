@@ -991,28 +991,36 @@
 							<div class="mb-3">
 								<h5 class="mb-3">Combinaciones de idiomas</h5>
 
-								@if(isset($existingData['language_pairs']) && count($existingData['language_pairs']) > 0)
+								@if($collaboratorLanguageVariants && $collaboratorLanguageVariants->count() > 0)
 									<div class="d-flex flex-wrap gap-2 mb-3">
-										@foreach($existingData['language_pairs'] as $index => $pair)
+										@foreach($collaboratorLanguageVariants as $index => $variant)
 											@php
-												$sourceFlag = strtolower($pair['source_flag'] ?? '');
-												$targetFlag = strtolower($pair['target_flag'] ?? '');
+												$sourceFlag = strtolower($variant->sourceLanguage ? $variant->sourceLanguage->country_code ?? '' : '');
+												if (empty($sourceFlag) && $variant->sourceLanguage) {
+													$sourceFlag = strtolower($variant->source_language_code);
+												}
+
+												$targetFlag = strtolower($variant->targetLanguage ? $variant->targetLanguage->country_code ?? '' : '');
+												if (empty($targetFlag) && $variant->targetLanguage) {
+													$targetFlag = strtolower($variant->target_language_code);
+												}
+
 												$isActive = $index === 0; // First combination active by default
 											@endphp
 
 											<div class="btn-group me-2">
 												<button type="button" class="btn btn-outline-primary {{ $isActive ? 'active' : '' }} px-3"
-														data-source="{{ $pair['source'] }}"
-														data-target="{{ $pair['target'] }}">
+														data-source="{{ $variant->source_language_code }}"
+														data-target="{{ $variant->target_language_code }}">
 													@if(!empty($sourceFlag))
 														<span class="fi fi-{{ $sourceFlag }} me-1"></span>
 													@endif
-													{{ $pair['source_text'] }}
+													{{ $variant->sourceLanguage ? $variant->sourceLanguage->name : $variant->source_language_code }}
 													<span class="mx-1"><i class="ti ti-arrow-right text-muted"></i></span>
 													@if(!empty($targetFlag))
 														<span class="fi fi-{{ $targetFlag }} me-1"></span>
 													@endif
-													{{ $pair['target_text'] }}
+													{{ $variant->targetLanguage ? $variant->targetLanguage->name : $variant->target_language_code }}
 												</button>
 											</div>
 										@endforeach
@@ -1030,7 +1038,7 @@
 									<div class="alert alert-warning">
 										<div class="d-flex align-items-center">
 											<i class="ti ti-alert-triangle me-2"></i>
-											<span>No hay combinaciones de idiomas registradas. Primero añade pares de idiomas en la sección anterior.</span>
+											<span>No hay combinaciones de idiomas registradas para este colaborador.</span>
 										</div>
 									</div>
 								@endif
@@ -1050,7 +1058,7 @@
 							<hr>
 
 							<!-- Dynamic Fares by Type -->
-							@if(isset($fares) && $fares->count() > 0 && isset($existingData['language_pairs']) && count($existingData['language_pairs']) > 0)
+							@if(isset($fares) && $fares->count() > 0 && $collaboratorLanguageVariants && $collaboratorLanguageVariants->count() > 0)
 								@foreach($fares->groupBy('type.name') as $typeName => $fares)
 									<h5 class="mt-4 mb-3">{{ $typeName ?: 'Sin categoría' }}</h5>
 
@@ -1108,8 +1116,8 @@
 									<div class="d-flex align-items-center">
 										<i class="ti ti-info-circle me-2"></i>
 										<span>
-											@if(!isset($existingData['language_pairs']) || count($existingData['language_pairs']) == 0)
-												No hay combinaciones de idiomas registradas. Primero añade pares de idiomas en la sección anterior.
+											@if(!$collaboratorLanguageVariants || $collaboratorLanguageVariants->count() == 0)
+												No hay combinaciones de idiomas registradas para este colaborador.
 											@else
 												No hay tarifas disponibles para configurar.
 											@endif
