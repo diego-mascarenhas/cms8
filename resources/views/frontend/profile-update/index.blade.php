@@ -690,57 +690,39 @@
 						<div class="form-group">
 							<label for="first_name">Nombre *</label>
 							<input type="text" id="first_name" name="first_name" class="form-control" placeholder="Nombre"
-								   value="{{ old('first_name', $existingData['contact_info']['first_name'] ?? '') }}" required>
+								   value="{{ old('first_name', $existingData['contact_info']['first_name'] ?? '') }}">
 						</div>
 
 						<div class="form-group">
 							<label for="last_name">Apellido *</label>
 							<input type="text" id="last_name" name="last_name" class="form-control" placeholder="Apellido"
-								   value="{{ old('last_name', $existingData['contact_info']['last_name'] ?? '') }}" required>
+								   value="{{ old('last_name', $existingData['contact_info']['last_name'] ?? '') }}">
 						</div>
 
 						<div class="form-group">
 							<label for="email">Correo electrónico *</label>
-							<input type="email" id="email" name="email" class="form-control" placeholder="Correo electrónico"
-								   value="{{ old('email', $existingData['contact_info']['email'] ?? '') }}" required>
+							<input type="text" id="email" name="email" class="form-control" placeholder="Correo electrónico"
+								   value="{{ old('email', $existingData['contact_info']['email'] ?? '') }}">
 						</div>
 
 						<div class="form-group">
 							<label for="phone">Teléfono *</label>
-							<input type="tel" id="phone" name="phone" class="form-control" placeholder="Teléfono"
-								   value="{{ old('phone', $existingData['contact_info']['phone'] ?? '') }}" required>
+							<input type="text" id="phone" name="phone" class="form-control" placeholder="Teléfono"
+								   value="{{ old('phone', $existingData['contact_info']['phone'] ?? '') }}">
 						</div>
 
 						<div class="form-group">
-							<label for="country">País *</label>
-							<select id="country" name="country" class="form-control" required>
-								<option value="">Selecciona un país</option>
-								<option value="ES" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'ES') ? 'selected' : '' }}>España</option>
-								<option value="MX" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'MX') ? 'selected' : '' }}>México</option>
-								<option value="AR" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'AR') ? 'selected' : '' }}>Argentina</option>
-								<option value="CO" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'CO') ? 'selected' : '' }}>Colombia</option>
-								<option value="PE" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'PE') ? 'selected' : '' }}>Perú</option>
-								<option value="VE" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'VE') ? 'selected' : '' }}>Venezuela</option>
-								<option value="CL" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'CL') ? 'selected' : '' }}>Chile</option>
-								<option value="EC" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'EC') ? 'selected' : '' }}>Ecuador</option>
-								<option value="GT" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'GT') ? 'selected' : '' }}>Guatemala</option>
-								<option value="CU" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'CU') ? 'selected' : '' }}>Cuba</option>
-								<option value="BO" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'BO') ? 'selected' : '' }}>Bolivia</option>
-								<option value="DO" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'DO') ? 'selected' : '' }}>República Dominicana</option>
-								<option value="HN" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'HN') ? 'selected' : '' }}>Honduras</option>
-								<option value="PY" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'PY') ? 'selected' : '' }}>Paraguay</option>
-								<option value="SV" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'SV') ? 'selected' : '' }}>El Salvador</option>
-								<option value="NI" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'NI') ? 'selected' : '' }}>Nicaragua</option>
-								<option value="CR" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'CR') ? 'selected' : '' }}>Costa Rica</option>
-								<option value="PA" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'PA') ? 'selected' : '' }}>Panamá</option>
-								<option value="UY" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'UY') ? 'selected' : '' }}>Uruguay</option>
-								<option value="GQ" {{ (old('country', $existingData['contact_info']['country'] ?? '') == 'GQ') ? 'selected' : '' }}>Guinea Ecuatorial</option>
-							</select>
+							<x-country-select
+								name="country"
+								id="country"
+								label="País *"
+								:value="old('country', $existingData['contact_info']['country'] ?? '')"
+							/>
 						</div>
 
 						<div class="form-group">
 							<label for="timezone">Zona horaria *</label>
-							<select id="timezone" name="timezone" class="form-control" required>
+							<select id="timezone" name="timezone" class="form-control">
 								<option value="">Selecciona una zona horaria</option>
 								<option value="Europe/Madrid" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'Europe/Madrid') ? 'selected' : '' }}>Madrid (UTC+1)</option>
 								<option value="America/Mexico_City" {{ (old('timezone', $existingData['contact_info']['timezone'] ?? '') == 'America/Mexico_City') ? 'selected' : '' }}>Ciudad de México (UTC-6)</option>
@@ -773,12 +755,12 @@
 
 						<div class="form-group">
 							<label for="freelance_certificate">Certificado de autónomo *</label>
-							<input type="file" id="freelance_certificate" name="freelance_certificate" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+							<input type="file" id="freelance_certificate" name="freelance_certificate" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
 						</div>
 
 						<div class="form-group">
 							<label for="resume">Curriculum vitae *</label>
-							<input type="file" id="resume" name="resume" class="form-control" accept=".pdf,.doc,.docx" required>
+							<input type="file" id="resume" name="resume" class="form-control" accept=".pdf,.doc,.docx">
 						</div>
 
 						<div class="form-group">
@@ -915,8 +897,8 @@
 
 		<script>
 		$(document).ready(function() {
-			// Initialize Select2 for basic fields
-			$('#country, #timezone').select2({
+			// Initialize Select2 for timezone field only (country uses x-country-select component)
+			$('#timezone').select2({
 				placeholder: 'Selecciona una opción',
 				allowClear: true
 			});
@@ -932,15 +914,12 @@
 				const sourceLanguage = $('#source_language').select2('data')[0];
 				const targetLanguage = $('#target_language').select2('data')[0];
 
-				// Validate source language
+				// Check if languages are selected (no validation alerts)
 				if (!sourceLanguage || !$('#source_language').val()) {
-					alert('Error: El idioma origen es requerido');
 					return;
 				}
 
-				// Validate target language
 				if (!targetLanguage || !$('#target_language').val()) {
-					alert('Error: El idioma destino es requerido');
 					return;
 				}
 
@@ -954,14 +933,12 @@
 
 				// Check if source and target are the same
 				if (sourceValue === targetValue) {
-					alert('Error: Los idiomas origen y destino no pueden ser iguales');
 					return;
 				}
 
 				// Check if this pair already exists
 				const pairExists = checkIfPairExists(sourceValue, targetValue);
 				if (pairExists) {
-					alert('Error: Este par de idiomas ya existe');
 					return;
 				}
 
