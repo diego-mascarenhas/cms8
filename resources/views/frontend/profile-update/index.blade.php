@@ -17,8 +17,12 @@
 	<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 	<link href="https://cdn.jsdelivr.net/npm/flag-icons@7.0.0/css/flag-icons.min.css" rel="stylesheet" />
 
-	<!-- Select2 Bootstrap 5 Theme -->
-	<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+	<!-- Vuexy Template CSS -->
+	<link href="{{ asset('assets/vendor/css/core.css') }}" rel="stylesheet" />
+	<link href="{{ asset('assets/vendor/css/theme-default.css') }}" rel="stylesheet" />
+	<link href="{{ asset('assets/css/demo.css') }}" rel="stylesheet" />
+	<link href="{{ asset('assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css') }}" rel="stylesheet" />
+	<link href="{{ asset('assets/vendor/libs/select2/select2.css') }}" rel="stylesheet" />
 
 	<style>
 		:root {
@@ -618,6 +622,48 @@
 			box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 		}
 
+		/* Software badges */
+		.badge.bg-label-primary {
+			background-color: rgba(105, 108, 255, 0.16) !important;
+			color: #696cff !important;
+		}
+
+		.badge.rounded-pill {
+			border-radius: 50rem !important;
+			padding: 0.35em 0.8em !important;
+			font-size: 0.75em !important;
+			font-weight: 500 !important;
+		}
+
+		/* Rates section styles */
+		.btn-group .btn {
+			transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
+		}
+
+		.btn-group .btn.opacity-50 {
+			opacity: 0.5;
+		}
+
+		.btn-group .btn:not(.opacity-50) {
+			opacity: 1;
+		}
+
+		/* Ensure active buttons have proper styling */
+		.btn-group .btn.active {
+			background-color: var(--bs-primary) !important;
+			border-color: var(--bs-primary) !important;
+			color: white !important;
+			opacity: 1 !important;
+		}
+
+		/* Same rates mode - all buttons should appear active */
+		.btn-group .btn.same-rates-mode {
+			background-color: var(--bs-primary);
+			border-color: var(--bs-primary);
+			color: white;
+			opacity: 1;
+		}
+
 		/* Responsive */
 		@media (max-width: 768px) {
 			.profile-update-container {
@@ -723,9 +769,10 @@
 						<li><a href="#contact-info">Datos de contacto</a></li>
 						<li><a href="#resume">Curriculum</a></li>
 						<li><a href="#more-info">Más información</a></li>
+						<li><a href="#software">Software</a></li>
 						<li><a href="#voice-acting">Locuciones</a></li>
 						<li><a href="#languages">Mis pares de idiomas</a></li>
-						<li><a href="#rates">Tarifas profesionales</a></li>
+						<li><a href="#rates">Tarifas</a></li>
 						<li><a href="#availability">Disponibilidad</a></li>
 					</ul>
 				</div>
@@ -836,13 +883,52 @@
 						<p>Información adicional sobre tu perfil profesional</p>
 
 						<div class="form-group">
-							<label for="software">Software que manejas</label>
-							<textarea id="software" name="software" class="form-control" rows="3" placeholder="Lista el software que manejas">{{ old('software', $existingData['more_info']['software'] ?? '') }}</textarea>
-						</div>
-
-						<div class="form-group">
 							<label for="certification">Certificaciones</label>
 							<textarea id="certification" name="certification" class="form-control" rows="3" placeholder="Tus certificaciones profesionales">{{ old('certification', $existingData['more_info']['certification'] ?? '') }}</textarea>
+						</div>
+					</div>
+
+					<!-- Software -->
+					<div class="form-section" id="software">
+						<div class="card-header border-bottom d-flex justify-content-between align-items-center">
+							<h5 class="mb-0">Software de trabajo</h5>
+							<a href="javascript:void(0)" id="toggleSoftwareEdit" class="text-secondary">
+								<i class="ti ti-edit ti-sm"></i>
+							</a>
+						</div>
+						<div class="card-body pt-4">
+
+
+
+						<!-- Read-only view -->
+						<div id="software-display">
+							@if(isset($existingData['software']) && is_array($existingData['software']) && count($existingData['software']) > 0)
+								@foreach($existingData['software'] as $software)
+									<span class="badge bg-label-primary rounded-pill me-1 mb-1">
+										{{ $software['name'] }}{{ isset($software['category_name']) ? ' (' . $software['category_name'] . ')' : '' }}
+									</span>
+								@endforeach
+							@else
+								<div class="mt-2">
+									<span class="text-muted">No hay software asignado</span>
+								</div>
+							@endif
+						</div>
+
+						<!-- Edit form -->
+						<form id="software-edit-form" class="mt-3 d-none">
+							@csrf
+							<x-software-select
+								id="software_ids"
+								label="Software que dominas"
+								:selected="old('software_ids', $existingData['software_ids'] ?? [])"
+							/>
+							<div class="mt-3">
+								<button type="button" id="saveSoftware" class="btn btn-primary btn-sm">Guardar</button>
+								<button type="button" id="cancelSoftwareEdit" class="btn btn-outline-secondary btn-sm">Cancelar</button>
+							</div>
+						</form>
+
 						</div>
 					</div>
 
@@ -897,25 +983,140 @@
 
 					<!-- Rates -->
 					<div class="form-section" id="rates">
-						<h3>Tarifas profesionales</h3>
-						<p>Define tus tarifas por tipo de servicio</p>
-
-						<div class="form-group">
-							<label for="rate_audiovisual">Tarifa traducción audiovisual (por minuto)</label>
-							<input type="number" id="rate_audiovisual" name="rate_audiovisual" class="form-control" placeholder="0.00" step="0.01" min="0"
-								   value="{{ old('rate_audiovisual', $existingData['rates']['audiovisual'] ?? '') }}">
+						<div class="card-header border-bottom d-flex justify-content-between align-items-center">
+							<h5 class="mb-0">Tarifas profesionales</h5>
 						</div>
+						<div class="card-body pt-4">
+							<!-- Language selection -->
+							<div class="mb-3">
+								<h5 class="mb-3">Combinaciones de idiomas</h5>
 
-						<div class="form-group">
-							<label for="rate_general">Tarifa traducción general (por palabra)</label>
-							<input type="number" id="rate_general" name="rate_general" class="form-control" placeholder="0.00" step="0.01" min="0"
-								   value="{{ old('rate_general', $existingData['rates']['general'] ?? '') }}">
-						</div>
+								@if(isset($existingData['language_pairs']) && count($existingData['language_pairs']) > 0)
+									<div class="d-flex flex-wrap gap-2 mb-3">
+										@foreach($existingData['language_pairs'] as $index => $pair)
+											@php
+												$sourceFlag = strtolower($pair['source_flag'] ?? '');
+												$targetFlag = strtolower($pair['target_flag'] ?? '');
+												$isActive = $index === 0; // First combination active by default
+											@endphp
 
-						<div class="form-group">
-							<label for="rate_accessibility">Tarifa accesibilidad (por hora)</label>
-							<input type="number" id="rate_accessibility" name="rate_accessibility" class="form-control" placeholder="0.00" step="0.01" min="0"
-								   value="{{ old('rate_accessibility', $existingData['rates']['accessibility'] ?? '') }}">
+											<div class="btn-group me-2">
+												<button type="button" class="btn btn-outline-primary {{ $isActive ? 'active' : '' }} px-3"
+														data-source="{{ $pair['source'] }}"
+														data-target="{{ $pair['target'] }}">
+													@if(!empty($sourceFlag))
+														<span class="fi fi-{{ $sourceFlag }} me-1"></span>
+													@endif
+													{{ $pair['source_text'] }}
+													<span class="mx-1"><i class="ti ti-arrow-right text-muted"></i></span>
+													@if(!empty($targetFlag))
+														<span class="fi fi-{{ $targetFlag }} me-1"></span>
+													@endif
+													{{ $pair['target_text'] }}
+												</button>
+											</div>
+										@endforeach
+									</div>
+
+									<div class="form-check mt-2">
+										<input class="form-check-input" type="checkbox" id="sameRates" name="same_rates">
+										<label class="form-check-label" for="sameRates">
+											Usar las mismas tarifas para todas las combinaciones
+										</label>
+									</div>
+
+									<input type="hidden" name="current_language_pair" id="current_language_pair" value="">
+								@else
+									<div class="alert alert-warning">
+										<div class="d-flex align-items-center">
+											<i class="ti ti-alert-triangle me-2"></i>
+											<span>No hay combinaciones de idiomas registradas. Primero añade pares de idiomas en la sección anterior.</span>
+										</div>
+									</div>
+								@endif
+							</div>
+
+							<!-- Currency selection -->
+							<div class="mb-3 row">
+								<label class="col-form-label col-md-2">Divisa (*)</label>
+								<div class="col-md-4">
+									<select class="form-select" name="currency" required>
+										<option value="EUR" {{ old('currency', $existingData['rates']['currency'] ?? 'EUR') === 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
+										<option value="USD" {{ old('currency', $existingData['rates']['currency'] ?? 'EUR') === 'USD' ? 'selected' : '' }}>USD - Dólar estadounidense</option>
+										<option value="GBP" {{ old('currency', $existingData['rates']['currency'] ?? 'EUR') === 'GBP' ? 'selected' : '' }}>GBP - Libra esterlina</option>
+									</select>
+								</div>
+							</div>
+							<hr>
+
+							<!-- Dynamic Fares by Type -->
+							@if(isset($fares) && $fares->count() > 0 && isset($existingData['language_pairs']) && count($existingData['language_pairs']) > 0)
+								@foreach($fares->groupBy('type.name') as $typeName => $fares)
+									<h5 class="mt-4 mb-3">{{ $typeName ?: 'Sin categoría' }}</h5>
+
+									@php
+										$fareChunks = $fares->chunk(2);
+									@endphp
+
+									@foreach($fareChunks as $fareChunk)
+										<div class="row mb-3">
+											@foreach($fareChunk as $fare)
+												@php
+													$currentPrice = old("rates.{$fare->id}", $existingData['rates'][$fare->id] ?? 0);
+													$currentUnitId = old("units.{$fare->id}", $existingData['rates']['units'][$fare->id] ?? ($fare->units->count() > 0 ? $fare->units->first()->id : null));
+												@endphp
+												<div class="col-md-6">
+													<label class="form-label">{{ $fare->name }}</label>
+													<div class="input-group input-group-sm">
+														<span class="input-group-text currency-symbol"></span>
+														<input type="number"
+															   class="form-control fare-input"
+															   data-fare-id="{{ $fare->id }}"
+															   name="rates[{{ $fare->id }}]"
+															   value="{{ number_format($currentPrice, 2, '.', '') }}"
+															   step="0.01"
+															   min="0"
+															   placeholder="0.00">
+
+														@if($fare->units && $fare->units->count() > 1)
+															<select class="form-select unit-select"
+																	data-fare-id="{{ $fare->id }}"
+																	name="units[{{ $fare->id }}]"
+																	style="max-width: 120px;"
+																	required>
+																@foreach($fare->units as $unit)
+																	<option value="{{ $unit->id }}"
+																		{{ $currentUnitId == $unit->id ? 'selected' : '' }}>
+																		/{{ $unit->type }}
+																	</option>
+																@endforeach
+															</select>
+														@elseif($fare->units && $fare->units->count() == 1)
+															<span class="input-group-text">/{{ $fare->units->first()->type }}</span>
+															<input type="hidden" name="units[{{ $fare->id }}]" value="{{ $fare->units->first()->id }}">
+														@else
+															<span class="input-group-text">/unidad</span>
+														@endif
+													</div>
+												</div>
+											@endforeach
+										</div>
+									@endforeach
+								@endforeach
+							@else
+								<div class="alert alert-info">
+									<div class="d-flex align-items-center">
+										<i class="ti ti-info-circle me-2"></i>
+										<span>
+											@if(!isset($existingData['language_pairs']) || count($existingData['language_pairs']) == 0)
+												No hay combinaciones de idiomas registradas. Primero añade pares de idiomas en la sección anterior.
+											@else
+												No hay tarifas disponibles para configurar.
+											@endif
+										</span>
+									</div>
+								</div>
+							@endif
 						</div>
 					</div>
 
@@ -965,6 +1166,8 @@
 				return option.text;
 			}
 
+
+
 			// Initialize Select2 for language selectors with custom template (exclude timezone)
 			$('.select2:not(#timezone)').select2({
 				theme: 'bootstrap-5',
@@ -992,6 +1195,55 @@
 				const $currentTimeSpan = $('#timezone-current-time');
 				if (selectedTimezone && $currentTimeSpan.length) {
 					updateCurrentTime(selectedTimezone);
+				}
+			});
+
+			// Software management
+			$('#toggleSoftwareEdit').on('click', function() {
+				$('#software-display').addClass('d-none');
+				$('#software-edit-form').removeClass('d-none');
+				$('#software-edit-button').addClass('d-none');
+			});
+
+			$('#cancelSoftwareEdit').on('click', function() {
+				$('#software-edit-form').addClass('d-none');
+				$('#software-display').removeClass('d-none');
+				$('#software-edit-button').removeClass('d-none');
+			});
+
+			$('#saveSoftware').on('click', function() {
+				const softwareIds = $('#software_ids').val() || [];
+
+				// Update the display with selected software
+				let badgesHtml = '';
+				if (softwareIds.length > 0) {
+					// Get selected options and create badges
+					$('#software_ids option:selected').each(function() {
+						const softwareText = $(this).text();
+						badgesHtml += `<span class="badge bg-label-primary rounded-pill me-1 mb-1">${softwareText}</span>`;
+					});
+				} else {
+					badgesHtml = '<div class="mt-2"><span class="text-muted">No hay software asignado</span></div>';
+				}
+
+				$('#software-display').html(badgesHtml);
+
+				// Return to read-only view
+				$('#software-edit-form').addClass('d-none');
+				$('#software-display').removeClass('d-none');
+				$('#software-edit-button').removeClass('d-none');
+
+				// Show success notification
+				if (typeof Swal !== 'undefined') {
+					Swal.fire({
+						icon: 'success',
+						title: '¡Éxito!',
+						text: 'Software actualizado correctamente',
+						timer: 2000,
+						showConfirmButton: false
+					});
+				} else {
+					alert('Software actualizado correctamente');
 				}
 			});
 
@@ -1185,6 +1437,166 @@
 					}
 				});
 			});
+
+			// Rates functionality
+			// Currency symbol mapping
+			const currencySymbols = {
+				'EUR': '€',
+				'USD': '$',
+				'GBP': '£'
+			};
+
+			// Store rates data for each language combination
+			let ratesData = {};
+
+			// Function to save current form state
+			function saveCurrentRatesState() {
+				const currentPair = $('#current_language_pair').val();
+				if (!currentPair) return;
+
+				const [sourceCode, targetCode] = currentPair.split('|');
+				const key = `${sourceCode}|${targetCode}`;
+
+				ratesData[key] = {
+					currency: $('select[name="currency"]').val(),
+					rates: {},
+					units: {}
+				};
+
+				$('.fare-input').each(function() {
+					const fareId = $(this).data('fare-id');
+					ratesData[key].rates[fareId] = $(this).val();
+
+					const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]`);
+					if (unitSelect.length) {
+						ratesData[key].units[fareId] = unitSelect.val();
+					}
+
+					const unitHidden = $(`input[type="hidden"][name="units[${fareId}]"]`);
+					if (unitHidden.length) {
+						ratesData[key].units[fareId] = unitHidden.val();
+					}
+				});
+			}
+
+			// Function to restore form state
+			function restoreRatesState(sourceCode, targetCode) {
+				const key = `${sourceCode}|${targetCode}`;
+
+				if (ratesData[key]) {
+					// Restore rates and units only, keep current currency selection
+					$('.fare-input').each(function() {
+						const fareId = $(this).data('fare-id');
+						const rate = ratesData[key].rates[fareId] || '0.00';
+						$(this).val(rate);
+
+						const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]`);
+						if (unitSelect.length && ratesData[key].units[fareId]) {
+							unitSelect.val(ratesData[key].units[fareId]);
+						}
+					});
+				}
+			}
+
+			// Function to update currency symbols without triggering events
+			function updateCurrencySymbols(currency) {
+				const symbol = currencySymbols[currency] || '€';
+				$('.currency-symbol').text(symbol);
+			}
+
+			// Language combination button click handler
+			$('[data-source][data-target]').on('click', function() {
+				const sourceCode = $(this).data('source');
+				const targetCode = $(this).data('target');
+				const isSameRates = $('#sameRates').is(':checked');
+
+				// If same rates mode, don't allow switching between combinations
+				if (isSameRates) {
+					return;
+				}
+
+				// Save current state before switching
+				saveCurrentRatesState();
+
+				// Update active state - act like radio buttons
+				$('[data-source][data-target]').removeClass('active').addClass('opacity-50');
+				$(this).removeClass('opacity-50').addClass('active');
+
+				if (sourceCode && targetCode) {
+					// Update hidden field
+					$('#current_language_pair').val(sourceCode + '|' + targetCode);
+
+					// Load rates for this combination
+					restoreRatesState(sourceCode, targetCode);
+				}
+			});
+
+			// Same rates checkbox handler
+			$('#sameRates').on('change', function() {
+				const isChecked = $(this).is(':checked');
+
+				if (isChecked) {
+					// Same rates for all combinations - show all as selected
+					$('[data-source][data-target]').removeClass('opacity-50').addClass('active');
+				} else {
+					// Different rates for each combination - show only current active one
+					$('[data-source][data-target]').removeClass('active').addClass('opacity-50');
+
+					// Activate only the current language pair
+					const currentPair = $('#current_language_pair').val();
+					if (currentPair) {
+						const [sourceCode, targetCode] = currentPair.split('|');
+						const activeBtn = $(`[data-source="${sourceCode}"][data-target="${targetCode}"]`);
+						activeBtn.removeClass('opacity-50').addClass('active');
+					}
+				}
+			});
+
+			// Handle currency change
+			$('select[name="currency"]').on('change', function() {
+				const selectedCurrency = $(this).val();
+				const symbol = currencySymbols[selectedCurrency] || '€';
+
+				// Update all currency symbols in the form
+				$('.currency-symbol').text(symbol);
+
+				// Update stored data for ALL language combinations
+				for (let key in ratesData) {
+					if (ratesData[key]) {
+						ratesData[key].currency = selectedCurrency;
+					}
+				}
+			});
+
+			// Set initial language combination
+			const activeBtn = $('[data-source][data-target].active');
+			if (activeBtn.length) {
+				const sourceCode = activeBtn.data('source');
+				const targetCode = activeBtn.data('target');
+				if (sourceCode && targetCode) {
+					$('#current_language_pair').val(sourceCode + '|' + targetCode);
+				}
+			} else {
+				// If no active button, activate the first one
+				const firstBtn = $('[data-source][data-target]').first();
+				if (firstBtn.length) {
+					firstBtn.addClass('active');
+					const sourceCode = firstBtn.data('source');
+					const targetCode = firstBtn.data('target');
+					if (sourceCode && targetCode) {
+						$('#current_language_pair').val(sourceCode + '|' + targetCode);
+					}
+				}
+			}
+
+			// Initialize currency symbols
+			const currentCurrency = $('select[name="currency"]').val();
+			updateCurrencySymbols(currentCurrency);
+
+			// Initialize checkbox state
+			setTimeout(() => {
+				$('#sameRates').trigger('change');
+			}, 10);
 		});
 	</script>
 

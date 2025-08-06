@@ -16,6 +16,7 @@ use App\Models\Fare;
 use App\Models\FareType;
 use App\Models\Unit;
 use App\Models\Language;
+use App\Models\Software;
 use Carbon\Carbon;
 
 class ProfileUpdateController extends Controller
@@ -110,6 +111,8 @@ class ProfileUpdateController extends Controller
 		// Get all languages for the team
 		$allLanguages = Language::whereIn('code', $allLanguageVariants->pluck('base_language')->unique())->get();
 
+		// Software is handled by the x-software-select component
+
 		\Log::info('Languages loaded, about to start availability data preparation');
 
 		// Get collaborator availability data
@@ -165,6 +168,7 @@ class ProfileUpdateController extends Controller
 			'base_languages_count' => $baseLanguages->count(),
 			'all_language_variants_count' => $allLanguageVariants->count(),
 			'all_languages_count' => $allLanguages->count(),
+			'softwares_count' => 'handled by component',
 			'contact_id' => $contact->id,
 			'contact_name' => $contact->name . ' ' . $contact->surname,
 			'weekly_availability_exists' => isset($weeklyAvailability),
@@ -195,6 +199,7 @@ class ProfileUpdateController extends Controller
 			'allLanguageVariants',
 			'languagesWithVariants',
 			'allLanguages',
+
 			'absences',
 			'weeklyAvailability',
 			'months'
