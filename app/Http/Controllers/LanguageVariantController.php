@@ -6,6 +6,7 @@ use App\DataTables\LanguageVariantDataTable;
 use App\Models\Language;
 use App\Models\LanguageVariant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class LanguageVariantController extends Controller
 {
@@ -14,7 +15,7 @@ class LanguageVariantController extends Controller
      */
     public function index(LanguageVariantDataTable $dataTable)
     {
-        if (\Gate::denies('view-language-variants')) {
+        if (Gate::denies('view-language-variants')) {
             return redirect()->route('403');
         }
 
@@ -37,11 +38,13 @@ class LanguageVariantController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:10|unique:language_variants',
+            'code' => 'required|string|max:10|unique:language_variants,code,NULL,id,team_id,' . auth()->user()->currentTeam->id,
             'name' => 'required|string|max:255',
             'base_language' => 'required|string|exists:languages,code',
             'country_code' => 'required|string|max:2',
         ]);
+
+        $validated['team_id'] = auth()->user()->currentTeam->id;
 
         LanguageVariant::create($validated);
 
@@ -66,7 +69,7 @@ class LanguageVariantController extends Controller
     public function update(Request $request, LanguageVariant $languageVariant)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:10|unique:language_variants,code,'.$languageVariant->id,
+            'code' => 'required|string|max:10|unique:language_variants,code,' . $languageVariant->id . ',id,team_id,' . auth()->user()->currentTeam->id,
             'name' => 'required|string|max:255',
             'base_language' => 'required|string|exists:languages,code',
             'country_code' => 'required|string|max:2',

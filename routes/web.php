@@ -555,5 +555,11 @@ Route::delete('/collaborator/{id}/documents/{media}', [CollaboratorController::c
 // Debug route for availability filtering
 Route::get('/collaborator/debug/availability', [CollaboratorController::class, 'debugAvailability'])->name('collaborator.debug.availability');
 
+// Profile Update Routes
+Route::prefix('profile-update')->name('profile-update.')->middleware(['auth', 'verified'])->group(function () {
+	Route::get('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'index'])->name('index');
+	Route::post('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'store'])->name('store');
+});
+
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
 Route::get('message/track/click/{token}', [MessageTrackingController::class, 'trackClick'])->name('message.track.click');

@@ -938,17 +938,16 @@ class TeamBboSeeder extends Seeder
 	 */
 	private function mapCountryToCode(?string $country): int
 	{
-		if (empty($country) || !is_numeric($country)) {
+		if (empty($country) || is_numeric($country)) {
 			return 724;  // Default to Spain
 		}
 
 		$countryMappings = [
+			// Spanish-speaking countries
 			'España' => 724,
 			'Spain' => 724,
 			'Argentina' => 32,
 			'Bolivia' => 68,
-			'Brasil' => 76,
-			'Brazil' => 76,
 			'Chile' => 152,
 			'Colombia' => 170,
 			'Costa Rica' => 188,
@@ -957,11 +956,6 @@ class TeamBboSeeder extends Seeder
 			'Dominican Republic' => 214,
 			'Ecuador' => 218,
 			'El Salvador' => 222,
-			'Estados Unidos' => 840,
-			'United States' => 840,
-			'EEUU' => 840,
-			'USA' => 840,
-			'US' => 840,
 			'Guatemala' => 320,
 			'Honduras' => 340,
 			'México' => 484,
@@ -974,22 +968,309 @@ class TeamBboSeeder extends Seeder
 			'Peru' => 604,
 			'Uruguay' => 858,
 			'Venezuela' => 862,
-			'France' => 250,
+
+			// Major economies & English-speaking
+			'Estados Unidos' => 840,
+			'United States' => 840,
+			'EEUU' => 840,
+			'USA' => 840,
+			'US' => 840,
+			'Reino Unido' => 826,
+			'United Kingdom' => 826,
+			'Great Britain' => 826,
+			'Canadá' => 124,
+			'Canada' => 124,
+			'Australia' => 36,
+			'Nueva Zelanda' => 554,
+			'New Zealand' => 554,
+			'Irlanda' => 372,
+			'Ireland' => 372,
+
+			// European countries
 			'Francia' => 250,
-			'Germany' => 276,
+			'France' => 250,
 			'Alemania' => 276,
-			'Italy' => 380,
+			'Germany' => 276,
 			'Italia' => 380,
+			'Italy' => 380,
 			'Portugal' => 620,
+			'Países Bajos' => 528,
+			'Netherlands' => 528,
+			'Paises Bajos' => 528,
+			'Bélgica' => 56,
+			'Belgium' => 56,
+			'Bélgica' => 56,
+			'Suiza' => 756,
+			'Switzerland' => 756,
+			'Austria' => 40,
+			'Suecia' => 752,
+			'Sweden' => 752,
+			'Noruega' => 578,
+			'Norway' => 578,
+			'Dinamarca' => 208,
+			'Denmark' => 208,
+			'Finlandia' => 246,
+			'Finland' => 246,
+			'Grecia' => 300,
+			'Greece' => 300,
+			'Polonia' => 616,
+			'Poland' => 616,
+			'República Checa' => 203,
+			'Czech Republic' => 203,
+			'Eslovaquia' => 703,
+			'Slovakia' => 703,
+			'Eslovenia' => 705,
+			'Slovenia' => 705,
+			'Hungría' => 348,
+			'Hungary' => 348,
+			'Rumanía' => 642,
+			'Romania' => 642,
+			'Bulgaria' => 100,
+			'Croatia' => 191,
+			'Croacia' => 191,
+			'Serbia' => 688,
+			'Bosnia' => 70,
+			'Bosnia and Herzegovina' => 70,
+			'Montenegro' => 499,
+			'Macedonia' => 807,
+			'Albania' => 8,
+			'Estonia' => 233,
+			'Letonia' => 428,
+			'Latvia' => 428,
+			'Lituania' => 440,
+			'Lithuania' => 440,
+			'Ucrania' => 804,
+			'Ukraine' => 804,
+			'Moldova' => 498,
+			'Moldavia' => 498,
+
+			// Asian countries
 			'China' => 156,
-			'Japan' => 392,
 			'Japón' => 392,
+			'Japan' => 392,
+			'Corea del sur' => 410,
+			'Corea del Sur' => 410,
 			'Korea' => 410,
 			'Corea' => 410,
-			'Thailand' => 764,
+			'South Korea' => 410,
+			'India' => 356,
 			'Tailandia' => 764,
-			'Russia' => 643,
+			'Thailand' => 764,
+			'Vietnam' => 704,
+			'Indonesia' => 360,
+			'Malasia' => 458,
+			'Malaysia' => 458,
+			'Filipinas' => 608,
+			'Philippines' => 608,
+			'Singapur' => 702,
+			'Singapore' => 702,
+			'Taiwán' => 158,
+			'Taiwan' => 158,
+			'Hong Kong' => 344,
+			'Israel' => 376,
+			'Turquía' => 792,
+			'Turkey' => 792,
+			'Armenia' => 51,
+			'Georgia' => 268,
+			'Azerbaiyán' => 31,
+			'Azerbaijan' => 31,
+			'Kazajstán' => 398,
+			'Kazakhstan' => 398,
+			'Uzbekistán' => 860,
+			'Uzbekistan' => 860,
+			'Kirguistán' => 417,
+			'Kyrgyzstan' => 417,
+			'Tayikistán' => 762,
+			'Tajikistan' => 762,
+			'Turkmenistán' => 795,
+			'Turkmenistan' => 795,
+
+			// Middle East & Africa
 			'Rusia' => 643,
+			'Russia' => 643,
+			'Egipto' => 818,
+			'Egypt' => 818,
+			'Marruecos' => 504,
+			'Morocco' => 504,
+			'Túnez' => 788,
+			'Tunisia' => 788,
+			'Algeria' => 12,
+			'Argelia' => 12,
+			'Libia' => 434,
+			'Libya' => 434,
+			'Sudáfrica' => 710,
+			'South Africa' => 710,
+			'Nigeria' => 566,
+			'Ghana' => 288,
+			'Kenia' => 404,
+			'Kenya' => 404,
+			'Tanzania' => 834,
+			'Etiopía' => 231,
+			'Ethiopia' => 231,
+			'Uganda' => 800,
+			'Ruanda' => 646,
+			'Rwanda' => 646,
+			'Senegal' => 686,
+			'Costa de Marfil' => 384,
+			'Ivory Coast' => 384,
+			'Mali' => 466,
+			'Burkina Faso' => 854,
+			'Niger' => 562,
+			'Chad' => 148,
+			'Camerún' => 120,
+			'Cameroon' => 120,
+			'República Centroafricana' => 140,
+			'Central African Republic' => 140,
+			'Congo' => 178,
+			'República Democrática del Congo' => 180,
+			'Democratic Republic of Congo' => 180,
+			'Angola' => 24,
+			'Zambia' => 894,
+			'Zimbabwe' => 716,
+			'Botswana' => 72,
+			'Namibia' => 516,
+			'Mozambique' => 508,
+			'Madagascar' => 450,
+			'Mauricio' => 480,
+			'Mauritius' => 480,
+			'Seychelles' => 690,
+			'Comoras' => 174,
+			'Comoros' => 174,
+
+			// Middle East continued
+			'Arabia Saudí' => 682,
+			'Arabia Saudita' => 682,
+			'Saudi Arabia' => 682,
+			'Emiratos Árabes Unidos' => 784,
+			'United Arab Emirates' => 784,
+			'Kuwait' => 414,
+			'Qatar' => 634,
+			'Bahrein' => 48,
+			'Bahrain' => 48,
+			'Omán' => 512,
+			'Oman' => 512,
+			'Yemen' => 887,
+			'Jordania' => 400,
+			'Jordan' => 400,
+			'Líbano' => 422,
+			'Lebanon' => 422,
+			'Siria' => 760,
+			'Syria' => 760,
+			'Irak' => 368,
+			'Iraq' => 368,
+			'Irán' => 364,
+			'Iran' => 364,
+			'Afganistán' => 4,
+			'Afghanistan' => 4,
+			'Pakistán' => 586,
+			'Pakistan' => 586,
+			'Bangladesh' => 50,
+			'Sri Lanka' => 144,
+			'Maldivas' => 462,
+			'Maldives' => 462,
+			'Nepal' => 524,
+			'Bután' => 64,
+			'Bhutan' => 64,
+			'Myanmar' => 104,
+			'Birmania' => 104,
+			'Burma' => 104,
+			'Laos' => 418,
+			'Camboya' => 116,
+			'Cambodia' => 116,
+
+			// Brazil (special case)
+			'Brasil' => 76,
+			'Brazil' => 76,
+
+			// Other European territories
+			'Islandia' => 352,
+			'Iceland' => 352,
+			'Malta' => 470,
+			'Chipre' => 196,
+			'Cyprus' => 196,
+			'Luxemburgo' => 442,
+			'Luxembourg' => 442,
+			'Liechtenstein' => 438,
+			'Mónaco' => 492,
+			'Monaco' => 492,
+			'San Marino' => 674,
+			'Andorra' => 20,
+			'Vaticano' => 336,
+			'Vatican' => 336,
+
+			// Caribbean & Pacific Islands
+			'Jamaica' => 388,
+			'Trinidad y Tobago' => 780,
+			'Trinidad and Tobago' => 780,
+			'Barbados' => 52,
+			'Bahamas' => 44,
+			'Bermudas' => 60,
+			'Bermuda' => 60,
+			'Islas Caimán' => 136,
+			'Cayman Islands' => 136,
+			'Islas Vírgenes' => 850,
+			'Virgin Islands' => 850,
+			'Puerto Rico' => 630,
+			'República Dominicana' => 214,
+			'Haití' => 332,
+			'Haiti' => 332,
+			'Granada' => 308,
+			'Grenada' => 308,
+			'Santa Lucía' => 662,
+			'Saint Lucia' => 662,
+			'San Vicente y las Granadinas' => 670,
+			'Saint Vincent and the Grenadines' => 670,
+			'Antigua y Barbuda' => 28,
+			'Antigua and Barbuda' => 28,
+			'San Cristóbal y Nieves' => 659,
+			'Saint Kitts and Nevis' => 659,
+			'Dominica' => 212,
+			'Guadalupe' => 312,
+			'Guadeloupe' => 312,
+			'Martinica' => 474,
+			'Martinique' => 474,
+			'Aruba' => 533,
+			'Curazao' => 531,
+			'Curacao' => 531,
+			'Sint Maarten' => 534,
+			'Bonaire' => 535,
+			'Guyana' => 328,
+			'Suriname' => 740,
+			'Guayana Francesa' => 254,
+			'French Guiana' => 254,
+
+			// Pacific Islands
+			'Fiji' => 242,
+			'Tonga' => 776,
+			'Samoa' => 882,
+			'Vanuatu' => 548,
+			'Islas Salomón' => 90,
+			'Solomon Islands' => 90,
+			'Papua Nueva Guinea' => 598,
+			'Papua New Guinea' => 598,
+			'Palaos' => 585,
+			'Palau' => 585,
+			'Micronesia' => 583,
+			'Islas Marshall' => 584,
+			'Marshall Islands' => 584,
+			'Kiribati' => 296,
+			'Nauru' => 520,
+			'Tuvalu' => 798,
+			'Guam' => 316,
+			'Islas Marianas' => 580,
+			'Northern Mariana Islands' => 580,
+			'Samoa Americana' => 16,
+			'American Samoa' => 16,
+			'Polinesia Francesa' => 258,
+			'French Polynesia' => 258,
+			'Nueva Caledonia' => 540,
+			'New Caledonia' => 540,
+			'Islas Cook' => 184,
+			'Cook Islands' => 184,
+			'Niue' => 570,
+			'Tokelau' => 772,
+			'Wallis y Futuna' => 876,
+			'Wallis and Futuna' => 876,
 		];
 
 		return $countryMappings[$country] ?? 724;
@@ -1905,29 +2186,189 @@ class TeamBboSeeder extends Seeder
 
 	private function seedBboLanguageVariants($teamId)
 	{
+		$this->command->info('🌐 Creating comprehensive language variants for BBO team...');
+
 		$variants = [
-			['code' => 'es-ES', 'name' => 'Español (España)', 'base_language' => 'es', 'country_code' => 'ES'],
-			['code' => 'fr-FR', 'name' => 'Francés (Francia)', 'base_language' => 'fr', 'country_code' => 'FR'],
-			['code' => 'en-GB', 'name' => 'Inglés (Reino Unido)', 'base_language' => 'en', 'country_code' => 'GB'],
-			['code' => 'pt-PT', 'name' => 'Portugués (Portugal)', 'base_language' => 'pt', 'country_code' => 'PT'],
+			// Arabic variants
+			['code' => 'ar-SA', 'name' => 'Árabe (Arabia Saudí)', 'base_language' => 'ar', 'country_code' => 'SA'],
+			['code' => 'ar-EG', 'name' => 'Árabe (Egipto)', 'base_language' => 'ar', 'country_code' => 'EG'],
+			['code' => 'ar-AE', 'name' => 'Árabe (Emiratos Árabes Unidos)', 'base_language' => 'ar', 'country_code' => 'AE'],
+
+			// Bulgarian variants
+			['code' => 'bg-BG', 'name' => 'Búlgaro (Bulgaria)', 'base_language' => 'bg', 'country_code' => 'BG'],
+
+			// Catalan variants
 			['code' => 'ca-ES', 'name' => 'Catalán (España)', 'base_language' => 'ca', 'country_code' => 'ES'],
+			['code' => 'ca-AD', 'name' => 'Catalán (Andorra)', 'base_language' => 'ca', 'country_code' => 'AD'],
+
+			// Czech variants
+			['code' => 'cs-CZ', 'name' => 'Checo (República Checa)', 'base_language' => 'cs', 'country_code' => 'CZ'],
+
+			// Danish variants
+			['code' => 'da-DK', 'name' => 'Danés (Dinamarca)', 'base_language' => 'da', 'country_code' => 'DK'],
+
+			// German variants
 			['code' => 'de-DE', 'name' => 'Alemán (Alemania)', 'base_language' => 'de', 'country_code' => 'DE'],
-			['code' => 'zh-CN', 'name' => 'Chino (China)', 'base_language' => 'zh', 'country_code' => 'CN'],
-			['code' => 'it-IT', 'name' => 'Italiano (Italia)', 'base_language' => 'it', 'country_code' => 'IT'],
-			['code' => 'ru-RU', 'name' => 'Ruso (Rusia)', 'base_language' => 'ru', 'country_code' => 'RU'],
+			['code' => 'de-AT', 'name' => 'Alemán (Austria)', 'base_language' => 'de', 'country_code' => 'AT'],
+			['code' => 'de-CH', 'name' => 'Alemán (Suiza)', 'base_language' => 'de', 'country_code' => 'CH'],
+
+			// Greek variants
+			['code' => 'el-GR', 'name' => 'Griego (Grecia)', 'base_language' => 'el', 'country_code' => 'GR'],
+
+			// English variants
+			['code' => 'en-US', 'name' => 'Inglés (Estados Unidos)', 'base_language' => 'en', 'country_code' => 'US'],
+			['code' => 'en-GB', 'name' => 'Inglés (Reino Unido)', 'base_language' => 'en', 'country_code' => 'GB'],
+			['code' => 'en-CA', 'name' => 'Inglés (Canadá)', 'base_language' => 'en', 'country_code' => 'CA'],
+			['code' => 'en-AU', 'name' => 'Inglés (Australia)', 'base_language' => 'en', 'country_code' => 'AU'],
+			['code' => 'en-IE', 'name' => 'Inglés (Irlanda)', 'base_language' => 'en', 'country_code' => 'IE'],
+			['code' => 'en-NZ', 'name' => 'Inglés (Nueva Zelanda)', 'base_language' => 'en', 'country_code' => 'NZ'],
+			['code' => 'en-ZA', 'name' => 'Inglés (Sudáfrica)', 'base_language' => 'en', 'country_code' => 'ZA'],
+			['code' => 'en-IN', 'name' => 'Inglés (India)', 'base_language' => 'en', 'country_code' => 'IN'],
+
+			// Spanish variants
+			['code' => 'es-ES', 'name' => 'Español (España)', 'base_language' => 'es', 'country_code' => 'ES'],
+			['code' => 'es-MX', 'name' => 'Español (México)', 'base_language' => 'es', 'country_code' => 'MX'],
 			['code' => 'es-AR', 'name' => 'Español (Argentina)', 'base_language' => 'es', 'country_code' => 'AR'],
-			['code' => 'ja-JP', 'name' => 'Japonés (Japón)', 'base_language' => 'ja', 'country_code' => 'JP'],
+			['code' => 'es-CO', 'name' => 'Español (Colombia)', 'base_language' => 'es', 'country_code' => 'CO'],
+			['code' => 'es-CL', 'name' => 'Español (Chile)', 'base_language' => 'es', 'country_code' => 'CL'],
+			['code' => 'es-PE', 'name' => 'Español (Perú)', 'base_language' => 'es', 'country_code' => 'PE'],
+			['code' => 'es-VE', 'name' => 'Español (Venezuela)', 'base_language' => 'es', 'country_code' => 'VE'],
+			['code' => 'es-EC', 'name' => 'Español (Ecuador)', 'base_language' => 'es', 'country_code' => 'EC'],
+			['code' => 'es-UY', 'name' => 'Español (Uruguay)', 'base_language' => 'es', 'country_code' => 'UY'],
+			['code' => 'es-PY', 'name' => 'Español (Paraguay)', 'base_language' => 'es', 'country_code' => 'PY'],
+			['code' => 'es-BO', 'name' => 'Español (Bolivia)', 'base_language' => 'es', 'country_code' => 'BO'],
+			['code' => 'es-CR', 'name' => 'Español (Costa Rica)', 'base_language' => 'es', 'country_code' => 'CR'],
+			['code' => 'es-DO', 'name' => 'Español (República Dominicana)', 'base_language' => 'es', 'country_code' => 'DO'],
+			['code' => 'es-GT', 'name' => 'Español (Guatemala)', 'base_language' => 'es', 'country_code' => 'GT'],
+			['code' => 'es-HN', 'name' => 'Español (Honduras)', 'base_language' => 'es', 'country_code' => 'HN'],
+			['code' => 'es-NI', 'name' => 'Español (Nicaragua)', 'base_language' => 'es', 'country_code' => 'NI'],
+			['code' => 'es-PA', 'name' => 'Español (Panamá)', 'base_language' => 'es', 'country_code' => 'PA'],
+			['code' => 'es-SV', 'name' => 'Español (El Salvador)', 'base_language' => 'es', 'country_code' => 'SV'],
+			['code' => 'es-CU', 'name' => 'Español (Cuba)', 'base_language' => 'es', 'country_code' => 'CU'],
+
+			// Estonian variants
+			['code' => 'et-EE', 'name' => 'Estonio (Estonia)', 'base_language' => 'et', 'country_code' => 'EE'],
+
+			// Basque variants
+			['code' => 'eu-ES', 'name' => 'Euskera (España)', 'base_language' => 'eu', 'country_code' => 'ES'],
+
+			// Finnish variants
+			['code' => 'fi-FI', 'name' => 'Finés (Finlandia)', 'base_language' => 'fi', 'country_code' => 'FI'],
+
+			// French variants
+			['code' => 'fr-FR', 'name' => 'Francés (Francia)', 'base_language' => 'fr', 'country_code' => 'FR'],
+			['code' => 'fr-CA', 'name' => 'Francés (Canadá)', 'base_language' => 'fr', 'country_code' => 'CA'],
+			['code' => 'fr-BE', 'name' => 'Francés (Bélgica)', 'base_language' => 'fr', 'country_code' => 'BE'],
+			['code' => 'fr-CH', 'name' => 'Francés (Suiza)', 'base_language' => 'fr', 'country_code' => 'CH'],
+
+			// Galician variants
 			['code' => 'gl-ES', 'name' => 'Gallego (España)', 'base_language' => 'gl', 'country_code' => 'ES'],
+
+			// Croatian variants
+			['code' => 'hr-HR', 'name' => 'Croata (Croacia)', 'base_language' => 'hr', 'country_code' => 'HR'],
+
+			// Hungarian variants
+			['code' => 'hu-HU', 'name' => 'Húngaro (Hungría)', 'base_language' => 'hu', 'country_code' => 'HU'],
+
+			// Indonesian variants - removed until 'id' language is added to languages table
+			// ['code' => 'id-ID', 'name' => 'Indonesio (Indonesia)', 'base_language' => 'id', 'country_code' => 'ID'],
+
+			// Icelandic variants - removed until 'is' language is added to languages table
+			// ['code' => 'is-IS', 'name' => 'Islandés (Islandia)', 'base_language' => 'is', 'country_code' => 'IS'],
+
+			// Italian variants
+			['code' => 'it-IT', 'name' => 'Italiano (Italia)', 'base_language' => 'it', 'country_code' => 'IT'],
+			['code' => 'it-CH', 'name' => 'Italiano (Suiza)', 'base_language' => 'it', 'country_code' => 'CH'],
+
+			// Japanese variants
+			['code' => 'ja-JP', 'name' => 'Japonés (Japón)', 'base_language' => 'ja', 'country_code' => 'JP'],
+
+			// Korean variants
 			['code' => 'ko-KR', 'name' => 'Coreano (Corea del Sur)', 'base_language' => 'ko', 'country_code' => 'KR'],
+
+			// Lithuanian variants
+			['code' => 'lt-LT', 'name' => 'Lituano (Lituania)', 'base_language' => 'lt', 'country_code' => 'LT'],
+
+			// Latvian variants
+			['code' => 'lv-LV', 'name' => 'Letón (Letonia)', 'base_language' => 'lv', 'country_code' => 'LV'],
+
+			// Macedonian variants - removed until 'mk' language is added to languages table
+			// ['code' => 'mk-MK', 'name' => 'Macedonio (Macedonia del Norte)', 'base_language' => 'mk', 'country_code' => 'MK'],
+
+			// Dutch variants
+			['code' => 'nl-NL', 'name' => 'Holandés (Países Bajos)', 'base_language' => 'nl', 'country_code' => 'NL'],
+			['code' => 'nl-BE', 'name' => 'Holandés (Bélgica)', 'base_language' => 'nl', 'country_code' => 'BE'],
+
+			// Norwegian variants
+			['code' => 'nb-NO', 'name' => 'Noruego Bokmål (Noruega)', 'base_language' => 'nb', 'country_code' => 'NO'],
+			// ['code' => 'no-NO', 'name' => 'Noruego (Noruega)', 'base_language' => 'no', 'country_code' => 'NO'], // 'no' not available, using 'nb'
+			// ['code' => 'nn-NO', 'name' => 'Noruego Nynorsk (Noruega)', 'base_language' => 'nn', 'country_code' => 'NO'], // 'nn' not available
+
+			// Polish variants
+			['code' => 'pl-PL', 'name' => 'Polaco (Polonia)', 'base_language' => 'pl', 'country_code' => 'PL'],
+
+			// Portuguese variants
+			['code' => 'pt-PT', 'name' => 'Portugués (Portugal)', 'base_language' => 'pt', 'country_code' => 'PT'],
+			['code' => 'pt-BR', 'name' => 'Portugués (Brasil)', 'base_language' => 'pt', 'country_code' => 'BR'],
+
+			// Romanian variants
+			['code' => 'ro-RO', 'name' => 'Rumano (Rumanía)', 'base_language' => 'ro', 'country_code' => 'RO'],
+
+			// Russian variants
+			['code' => 'ru-RU', 'name' => 'Ruso (Rusia)', 'base_language' => 'ru', 'country_code' => 'RU'],
+
+			// Slovak variants
+			['code' => 'sk-SK', 'name' => 'Eslovaco (Eslovaquia)', 'base_language' => 'sk', 'country_code' => 'SK'],
+
+			// Slovenian variants
+			['code' => 'sl-SI', 'name' => 'Esloveno (Eslovenia)', 'base_language' => 'sl', 'country_code' => 'SI'],
+
+			// Serbian variants - removed until 'sr' language is added to languages table
+			// ['code' => 'sr-RS', 'name' => 'Serbio (Serbia)', 'base_language' => 'sr', 'country_code' => 'RS'],
+
+			// Swedish variants
+			['code' => 'sv-SE', 'name' => 'Sueco (Suecia)', 'base_language' => 'sv', 'country_code' => 'SE'],
+
+			// Thai variants
 			['code' => 'th-TH', 'name' => 'Tailandés (Tailandia)', 'base_language' => 'th', 'country_code' => 'TH'],
+
+			// Turkish variants
+			['code' => 'tr-TR', 'name' => 'Turco (Turquía)', 'base_language' => 'tr', 'country_code' => 'TR'],
+
+			// Ukrainian variants
+			['code' => 'uk-UA', 'name' => 'Ucraniano (Ucrania)', 'base_language' => 'uk', 'country_code' => 'UA'],
+
+			// Vietnamese variants
+			['code' => 'vi-VN', 'name' => 'Vietnamita (Vietnam)', 'base_language' => 'vi', 'country_code' => 'VN'],
+
+			// Chinese variants
+			['code' => 'zh-CN', 'name' => 'Chino Simplificado (China)', 'base_language' => 'zh', 'country_code' => 'CN'],
+			['code' => 'zh-TW', 'name' => 'Chino Tradicional (Taiwán)', 'base_language' => 'zh', 'country_code' => 'TW'],
+			['code' => 'zh-HK', 'name' => 'Chino Tradicional (Hong Kong)', 'base_language' => 'zh', 'country_code' => 'HK'],
 		];
 
+		$created = 0;
+		$updated = 0;
+
 		foreach ($variants as $variant) {
-			LanguageVariant::updateOrCreate(
-				['code' => $variant['code'], 'team_id' => $teamId],
-				array_merge($variant, ['team_id' => $teamId])
-			);
+			$existing = LanguageVariant::where('code', $variant['code'])
+										->where('team_id', $teamId)
+										->first();
+
+			if ($existing) {
+				// Update existing variant to fix any incorrect data
+				$existing->update($variant);
+				$updated++;
+				$this->command->info("  ✏️  Updated: {$variant['code']} - {$variant['name']}");
+			} else {
+				// Create new variant
+				LanguageVariant::create(array_merge($variant, ['team_id' => $teamId]));
+				$created++;
+				$this->command->info("  ✅ Created: {$variant['code']} - {$variant['name']}");
+			}
 		}
+
+		$this->command->info("✅ Language variants completed! Created: {$created}, Updated: {$updated}");
 	}
 
 	/**

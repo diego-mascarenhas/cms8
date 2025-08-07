@@ -114,7 +114,7 @@ class ProjectController extends Controller
 				$q->where('fares.id', $selectedService);
 			});
 
-			$collaborators = $query->orderBy('valoration_id', 'asc')->get();
+			$collaborators = $query->orderByRaw('valoration_id IS NULL, valoration_id ASC')->get();
 		}
 
 		return view('project.select-collaborators', compact('project', 'languages', 'fares', 'collaborators', 'selectedService', 'selectedSourceLanguage', 'selectedTargetLanguage'));
@@ -207,7 +207,7 @@ class ProjectController extends Controller
 			}
 		}
 
-		$collaborators = $query->orderBy('valoration_id', 'asc')->get();
+		$collaborators = $query->orderByRaw('valoration_id IS NULL, valoration_id ASC')->get();
 
 		// Return the HTML for the collaborator cards
 		return response()->json([
