@@ -46,8 +46,8 @@ class CollaboratorDataTable extends DataTable
             })
             ->orderColumn('rating', function ($query, $order)
             {
-                // Order by valoration_id (lower ID = higher priority)
-                $query->orderBy('valoration_id', $order);
+                // Order by valoration_id (lower ID = higher priority, NULL values last)
+                $query->orderByRaw("valoration_id IS NULL, valoration_id $order");
             })
                                                                                     ->addColumn('language_combinations', function ($contact)
             {
@@ -362,6 +362,9 @@ class CollaboratorDataTable extends DataTable
                 // No filter applied
                 break;
         }
+
+        // Default ordering: collaborators with valoration first, then without valoration
+        $query->orderByRaw('valoration_id IS NULL, valoration_id ASC');
 
         return $query;
     }
