@@ -2186,29 +2186,189 @@ class TeamBboSeeder extends Seeder
 
 	private function seedBboLanguageVariants($teamId)
 	{
+		$this->command->info('🌐 Creating comprehensive language variants for BBO team...');
+
 		$variants = [
-			['code' => 'es-ES', 'name' => 'Español (España)', 'base_language' => 'es', 'country_code' => 'ES'],
-			['code' => 'fr-FR', 'name' => 'Francés (Francia)', 'base_language' => 'fr', 'country_code' => 'FR'],
-			['code' => 'en-GB', 'name' => 'Inglés (Reino Unido)', 'base_language' => 'en', 'country_code' => 'GB'],
-			['code' => 'pt-PT', 'name' => 'Portugués (Portugal)', 'base_language' => 'pt', 'country_code' => 'PT'],
+			// Arabic variants
+			['code' => 'ar-SA', 'name' => 'Árabe (Arabia Saudí)', 'base_language' => 'ar', 'country_code' => 'SA'],
+			['code' => 'ar-EG', 'name' => 'Árabe (Egipto)', 'base_language' => 'ar', 'country_code' => 'EG'],
+			['code' => 'ar-AE', 'name' => 'Árabe (Emiratos Árabes Unidos)', 'base_language' => 'ar', 'country_code' => 'AE'],
+
+			// Bulgarian variants
+			['code' => 'bg-BG', 'name' => 'Búlgaro (Bulgaria)', 'base_language' => 'bg', 'country_code' => 'BG'],
+
+			// Catalan variants
 			['code' => 'ca-ES', 'name' => 'Catalán (España)', 'base_language' => 'ca', 'country_code' => 'ES'],
+			['code' => 'ca-AD', 'name' => 'Catalán (Andorra)', 'base_language' => 'ca', 'country_code' => 'AD'],
+
+			// Czech variants
+			['code' => 'cs-CZ', 'name' => 'Checo (República Checa)', 'base_language' => 'cs', 'country_code' => 'CZ'],
+
+			// Danish variants
+			['code' => 'da-DK', 'name' => 'Danés (Dinamarca)', 'base_language' => 'da', 'country_code' => 'DK'],
+
+			// German variants
 			['code' => 'de-DE', 'name' => 'Alemán (Alemania)', 'base_language' => 'de', 'country_code' => 'DE'],
-			['code' => 'zh-CN', 'name' => 'Chino (China)', 'base_language' => 'zh', 'country_code' => 'CN'],
-			['code' => 'it-IT', 'name' => 'Italiano (Italia)', 'base_language' => 'it', 'country_code' => 'IT'],
-			['code' => 'ru-RU', 'name' => 'Ruso (Rusia)', 'base_language' => 'ru', 'country_code' => 'RU'],
+			['code' => 'de-AT', 'name' => 'Alemán (Austria)', 'base_language' => 'de', 'country_code' => 'AT'],
+			['code' => 'de-CH', 'name' => 'Alemán (Suiza)', 'base_language' => 'de', 'country_code' => 'CH'],
+
+			// Greek variants
+			['code' => 'el-GR', 'name' => 'Griego (Grecia)', 'base_language' => 'el', 'country_code' => 'GR'],
+
+			// English variants
+			['code' => 'en-US', 'name' => 'Inglés (Estados Unidos)', 'base_language' => 'en', 'country_code' => 'US'],
+			['code' => 'en-GB', 'name' => 'Inglés (Reino Unido)', 'base_language' => 'en', 'country_code' => 'GB'],
+			['code' => 'en-CA', 'name' => 'Inglés (Canadá)', 'base_language' => 'en', 'country_code' => 'CA'],
+			['code' => 'en-AU', 'name' => 'Inglés (Australia)', 'base_language' => 'en', 'country_code' => 'AU'],
+			['code' => 'en-IE', 'name' => 'Inglés (Irlanda)', 'base_language' => 'en', 'country_code' => 'IE'],
+			['code' => 'en-NZ', 'name' => 'Inglés (Nueva Zelanda)', 'base_language' => 'en', 'country_code' => 'NZ'],
+			['code' => 'en-ZA', 'name' => 'Inglés (Sudáfrica)', 'base_language' => 'en', 'country_code' => 'ZA'],
+			['code' => 'en-IN', 'name' => 'Inglés (India)', 'base_language' => 'en', 'country_code' => 'IN'],
+
+			// Spanish variants
+			['code' => 'es-ES', 'name' => 'Español (España)', 'base_language' => 'es', 'country_code' => 'ES'],
+			['code' => 'es-MX', 'name' => 'Español (México)', 'base_language' => 'es', 'country_code' => 'MX'],
 			['code' => 'es-AR', 'name' => 'Español (Argentina)', 'base_language' => 'es', 'country_code' => 'AR'],
-			['code' => 'ja-JP', 'name' => 'Japonés (Japón)', 'base_language' => 'ja', 'country_code' => 'JP'],
+			['code' => 'es-CO', 'name' => 'Español (Colombia)', 'base_language' => 'es', 'country_code' => 'CO'],
+			['code' => 'es-CL', 'name' => 'Español (Chile)', 'base_language' => 'es', 'country_code' => 'CL'],
+			['code' => 'es-PE', 'name' => 'Español (Perú)', 'base_language' => 'es', 'country_code' => 'PE'],
+			['code' => 'es-VE', 'name' => 'Español (Venezuela)', 'base_language' => 'es', 'country_code' => 'VE'],
+			['code' => 'es-EC', 'name' => 'Español (Ecuador)', 'base_language' => 'es', 'country_code' => 'EC'],
+			['code' => 'es-UY', 'name' => 'Español (Uruguay)', 'base_language' => 'es', 'country_code' => 'UY'],
+			['code' => 'es-PY', 'name' => 'Español (Paraguay)', 'base_language' => 'es', 'country_code' => 'PY'],
+			['code' => 'es-BO', 'name' => 'Español (Bolivia)', 'base_language' => 'es', 'country_code' => 'BO'],
+			['code' => 'es-CR', 'name' => 'Español (Costa Rica)', 'base_language' => 'es', 'country_code' => 'CR'],
+			['code' => 'es-DO', 'name' => 'Español (República Dominicana)', 'base_language' => 'es', 'country_code' => 'DO'],
+			['code' => 'es-GT', 'name' => 'Español (Guatemala)', 'base_language' => 'es', 'country_code' => 'GT'],
+			['code' => 'es-HN', 'name' => 'Español (Honduras)', 'base_language' => 'es', 'country_code' => 'HN'],
+			['code' => 'es-NI', 'name' => 'Español (Nicaragua)', 'base_language' => 'es', 'country_code' => 'NI'],
+			['code' => 'es-PA', 'name' => 'Español (Panamá)', 'base_language' => 'es', 'country_code' => 'PA'],
+			['code' => 'es-SV', 'name' => 'Español (El Salvador)', 'base_language' => 'es', 'country_code' => 'SV'],
+			['code' => 'es-CU', 'name' => 'Español (Cuba)', 'base_language' => 'es', 'country_code' => 'CU'],
+
+			// Estonian variants
+			['code' => 'et-EE', 'name' => 'Estonio (Estonia)', 'base_language' => 'et', 'country_code' => 'EE'],
+
+			// Basque variants
+			['code' => 'eu-ES', 'name' => 'Euskera (España)', 'base_language' => 'eu', 'country_code' => 'ES'],
+
+			// Finnish variants
+			['code' => 'fi-FI', 'name' => 'Finés (Finlandia)', 'base_language' => 'fi', 'country_code' => 'FI'],
+
+			// French variants
+			['code' => 'fr-FR', 'name' => 'Francés (Francia)', 'base_language' => 'fr', 'country_code' => 'FR'],
+			['code' => 'fr-CA', 'name' => 'Francés (Canadá)', 'base_language' => 'fr', 'country_code' => 'CA'],
+			['code' => 'fr-BE', 'name' => 'Francés (Bélgica)', 'base_language' => 'fr', 'country_code' => 'BE'],
+			['code' => 'fr-CH', 'name' => 'Francés (Suiza)', 'base_language' => 'fr', 'country_code' => 'CH'],
+
+			// Galician variants
 			['code' => 'gl-ES', 'name' => 'Gallego (España)', 'base_language' => 'gl', 'country_code' => 'ES'],
+
+			// Croatian variants
+			['code' => 'hr-HR', 'name' => 'Croata (Croacia)', 'base_language' => 'hr', 'country_code' => 'HR'],
+
+			// Hungarian variants
+			['code' => 'hu-HU', 'name' => 'Húngaro (Hungría)', 'base_language' => 'hu', 'country_code' => 'HU'],
+
+			// Indonesian variants - removed until 'id' language is added to languages table
+			// ['code' => 'id-ID', 'name' => 'Indonesio (Indonesia)', 'base_language' => 'id', 'country_code' => 'ID'],
+
+			// Icelandic variants - removed until 'is' language is added to languages table
+			// ['code' => 'is-IS', 'name' => 'Islandés (Islandia)', 'base_language' => 'is', 'country_code' => 'IS'],
+
+			// Italian variants
+			['code' => 'it-IT', 'name' => 'Italiano (Italia)', 'base_language' => 'it', 'country_code' => 'IT'],
+			['code' => 'it-CH', 'name' => 'Italiano (Suiza)', 'base_language' => 'it', 'country_code' => 'CH'],
+
+			// Japanese variants
+			['code' => 'ja-JP', 'name' => 'Japonés (Japón)', 'base_language' => 'ja', 'country_code' => 'JP'],
+
+			// Korean variants
 			['code' => 'ko-KR', 'name' => 'Coreano (Corea del Sur)', 'base_language' => 'ko', 'country_code' => 'KR'],
+
+			// Lithuanian variants
+			['code' => 'lt-LT', 'name' => 'Lituano (Lituania)', 'base_language' => 'lt', 'country_code' => 'LT'],
+
+			// Latvian variants
+			['code' => 'lv-LV', 'name' => 'Letón (Letonia)', 'base_language' => 'lv', 'country_code' => 'LV'],
+
+			// Macedonian variants - removed until 'mk' language is added to languages table
+			// ['code' => 'mk-MK', 'name' => 'Macedonio (Macedonia del Norte)', 'base_language' => 'mk', 'country_code' => 'MK'],
+
+			// Dutch variants
+			['code' => 'nl-NL', 'name' => 'Holandés (Países Bajos)', 'base_language' => 'nl', 'country_code' => 'NL'],
+			['code' => 'nl-BE', 'name' => 'Holandés (Bélgica)', 'base_language' => 'nl', 'country_code' => 'BE'],
+
+			// Norwegian variants
+			['code' => 'nb-NO', 'name' => 'Noruego Bokmål (Noruega)', 'base_language' => 'nb', 'country_code' => 'NO'],
+			// ['code' => 'no-NO', 'name' => 'Noruego (Noruega)', 'base_language' => 'no', 'country_code' => 'NO'], // 'no' not available, using 'nb'
+			// ['code' => 'nn-NO', 'name' => 'Noruego Nynorsk (Noruega)', 'base_language' => 'nn', 'country_code' => 'NO'], // 'nn' not available
+
+			// Polish variants
+			['code' => 'pl-PL', 'name' => 'Polaco (Polonia)', 'base_language' => 'pl', 'country_code' => 'PL'],
+
+			// Portuguese variants
+			['code' => 'pt-PT', 'name' => 'Portugués (Portugal)', 'base_language' => 'pt', 'country_code' => 'PT'],
+			['code' => 'pt-BR', 'name' => 'Portugués (Brasil)', 'base_language' => 'pt', 'country_code' => 'BR'],
+
+			// Romanian variants
+			['code' => 'ro-RO', 'name' => 'Rumano (Rumanía)', 'base_language' => 'ro', 'country_code' => 'RO'],
+
+			// Russian variants
+			['code' => 'ru-RU', 'name' => 'Ruso (Rusia)', 'base_language' => 'ru', 'country_code' => 'RU'],
+
+			// Slovak variants
+			['code' => 'sk-SK', 'name' => 'Eslovaco (Eslovaquia)', 'base_language' => 'sk', 'country_code' => 'SK'],
+
+			// Slovenian variants
+			['code' => 'sl-SI', 'name' => 'Esloveno (Eslovenia)', 'base_language' => 'sl', 'country_code' => 'SI'],
+
+			// Serbian variants - removed until 'sr' language is added to languages table
+			// ['code' => 'sr-RS', 'name' => 'Serbio (Serbia)', 'base_language' => 'sr', 'country_code' => 'RS'],
+
+			// Swedish variants
+			['code' => 'sv-SE', 'name' => 'Sueco (Suecia)', 'base_language' => 'sv', 'country_code' => 'SE'],
+
+			// Thai variants
 			['code' => 'th-TH', 'name' => 'Tailandés (Tailandia)', 'base_language' => 'th', 'country_code' => 'TH'],
+
+			// Turkish variants
+			['code' => 'tr-TR', 'name' => 'Turco (Turquía)', 'base_language' => 'tr', 'country_code' => 'TR'],
+
+			// Ukrainian variants
+			['code' => 'uk-UA', 'name' => 'Ucraniano (Ucrania)', 'base_language' => 'uk', 'country_code' => 'UA'],
+
+			// Vietnamese variants
+			['code' => 'vi-VN', 'name' => 'Vietnamita (Vietnam)', 'base_language' => 'vi', 'country_code' => 'VN'],
+
+			// Chinese variants
+			['code' => 'zh-CN', 'name' => 'Chino Simplificado (China)', 'base_language' => 'zh', 'country_code' => 'CN'],
+			['code' => 'zh-TW', 'name' => 'Chino Tradicional (Taiwán)', 'base_language' => 'zh', 'country_code' => 'TW'],
+			['code' => 'zh-HK', 'name' => 'Chino Tradicional (Hong Kong)', 'base_language' => 'zh', 'country_code' => 'HK'],
 		];
 
+		$created = 0;
+		$updated = 0;
+
 		foreach ($variants as $variant) {
-			LanguageVariant::updateOrCreate(
-				['code' => $variant['code'], 'team_id' => $teamId],
-				array_merge($variant, ['team_id' => $teamId])
-			);
+			$existing = LanguageVariant::where('code', $variant['code'])
+										->where('team_id', $teamId)
+										->first();
+
+			if ($existing) {
+				// Update existing variant to fix any incorrect data
+				$existing->update($variant);
+				$updated++;
+				$this->command->info("  ✏️  Updated: {$variant['code']} - {$variant['name']}");
+			} else {
+				// Create new variant
+				LanguageVariant::create(array_merge($variant, ['team_id' => $teamId]));
+				$created++;
+				$this->command->info("  ✅ Created: {$variant['code']} - {$variant['name']}");
+			}
 		}
+
+		$this->command->info("✅ Language variants completed! Created: {$created}, Updated: {$updated}");
 	}
 
 	/**
