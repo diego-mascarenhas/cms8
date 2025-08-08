@@ -81,6 +81,8 @@ class ClientController extends Controller
             'projects.responsible',
             'projects.status',
             'projects.category',
+            'services.currency',
+            'invoices.billingAddress',
         ])->findOrFail($id);
 
         // Ensure it's a client (type_id = 1)
