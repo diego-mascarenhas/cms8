@@ -86,7 +86,32 @@ class TeamDemoSeeder extends Seeder
 			->create();
 
 		$this->command->info('Team Demo data seeded successfully!');
+
+		// Also seed team-scoped payments for the demo team
+		$this->seedDemoPayments();
 	}
+
+    /**
+     * Seed demo payment accounts and payments for Team 1
+     */
+    private function seedDemoPayments(): void
+    {
+        $this->command->info('💳 Creating demo payment accounts and payments for Team 1...');
+
+        // Ensure payment accounts exist for Team 1
+        $accountsBefore = \App\Models\PaymentAccount::where('team_id', 1)->count();
+        if ($accountsBefore === 0) {
+            $this->call(PaymentAccountSeeder::class);
+        }
+
+        // Create sample payments for Team 1
+        $this->call(PaymentSeeder::class);
+
+        $accountsAfter = \App\Models\PaymentAccount::where('team_id', 1)->count();
+        $payments = \App\Models\Payment::where('team_id', 1)->count();
+
+        $this->command->info("✅ Demo payments ready. Accounts: {$accountsAfter}, Payments: {$payments}");
+    }
 
 	/**
 	 * Create language variants for demo team
