@@ -9,6 +9,18 @@ use App\Models\Software;
 use App\Models\Certification;
 use App\Models\ContactPortfolio;
 use App\Models\Contact;
+use App\Models\Category;
+use App\Models\Service;
+use App\Models\EnterpriseBillingAddress;
+use App\Models\EnterpriseTaxStatusType;
+use App\Models\Invoice;
+use App\Models\InvoiceType;
+use App\Models\InvoiceItem;
+use App\Models\Payment;
+use App\Models\PaymentAccount;
+use App\Models\PaymentType;
+use App\Models\ContactSentiment;
+use App\Models\ContactSentimentHistory;
 use Database\Factories\ClientFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -1263,7 +1275,7 @@ class TeamDemoSeeder extends Seeder
 		$this->command->info('👥 Creating demo contacts for Team 1...');
 
 		// Create demo enterprises first
-		$adminEnterprise = \App\Models\Enterprise::updateOrCreate(
+		$adminEnterprise = Enterprise::updateOrCreate(
 			['name' => 'Admin Enterprise', 'team_id' => 1],
 			[
 				'team_id' => 1,
@@ -1274,7 +1286,7 @@ class TeamDemoSeeder extends Seeder
 			]
 		);
 
-		$techEnterprise = \App\Models\Enterprise::updateOrCreate(
+		$techEnterprise = Enterprise::updateOrCreate(
 			['name' => 'Freaky Technologies', 'team_id' => 1],
 			[
 				'team_id' => 1,
@@ -1311,7 +1323,7 @@ class TeamDemoSeeder extends Seeder
 		];
 
 		foreach ($exampleContacts as $contactData) {
-			$contact = \App\Models\Contact::updateOrCreate(
+			$contact = Contact::updateOrCreate(
 				['email' => $contactData['email'], 'team_id' => $contactData['team_id']],
 				$contactData
 			);
@@ -1334,18 +1346,18 @@ class TeamDemoSeeder extends Seeder
 			}
 
 			// Create sentiment history for example contacts
-			if (!\App\Models\ContactSentimentHistory::where('contact_id', $contact->id)->exists()) {
-				\App\Models\ContactSentimentHistory::create([
+			if (!ContactSentimentHistory::where('contact_id', $contact->id)->exists()) {
+				ContactSentimentHistory::create([
 					'contact_id' => $contact->id,
 					'sentiment_id' => (function () {
 						$rand = rand(1, 100);
 						if ($rand <= 80) {
-							return \App\Models\ContactSentiment::whereIn('id', [3, 4, 5])
+							return ContactSentiment::whereIn('id', [3, 4, 5])
 								->inRandomOrder()
 								->first()
 								->id;
 						} else {
-							return \App\Models\ContactSentiment::whereIn('id', [1, 2])
+							return ContactSentiment::whereIn('id', [1, 2])
 								->inRandomOrder()
 								->first()
 								->id;
@@ -1356,6 +1368,419 @@ class TeamDemoSeeder extends Seeder
 			}
 		}
 
-		$this->command->info('✅ Demo contacts and enterprises created for Team 1');
+		// Create comprehensive demo data for Freaky Technologies
+		$this->createDemoEcosystemForFreakyTech($techEnterprise);
+
+		$this->command->info('✅ Demo contacts, enterprises and complete ecosystem created for Team 1');
+	}
+
+	/**
+	 * Create a complete demo ecosystem for Freaky Technologies
+	 */
+	private function createDemoEcosystemForFreakyTech($enterprise): void
+	{
+		$this->command->info('🚀 Creating comprehensive demo ecosystem for Freaky Technologies...');
+
+		// Create billing address FIRST (needed for invoices)
+		$this->createBillingAddressForEnterprise($enterprise);
+
+		// Create additional contacts for the enterprise
+		$this->createAdditionalContactsForEnterprise($enterprise);
+
+		// Create services for the enterprise
+		$this->createServicesForEnterprise($enterprise);
+
+		// Create projects for the enterprise
+		$this->createProjectsForEnterprise($enterprise);
+
+		// Create invoices and payments (billing address already exists)
+		$this->createInvoicesAndPaymentsForEnterprise($enterprise);
+
+		$this->command->info('✅ Complete demo ecosystem created for Freaky Technologies');
+	}
+
+	/**
+	 * Create additional contacts for the enterprise
+	 */
+	private function createAdditionalContactsForEnterprise($enterprise): void
+	{
+		$this->command->info('👥 Creating additional contacts for Freaky Technologies...');
+
+		$additionalContacts = [
+			[
+				'name' => 'Sarah Johnson',
+				'surname' => 'CEO',
+				'email' => 'sarah.johnson@freakytech.com',
+				'phone' => 34722372859,
+				'profile' => 'CEO and Founder of Freaky Technologies',
+				'position' => 'Chief Executive Officer'
+			],
+			[
+				'name' => 'Mike Rodriguez',
+				'surname' => 'CTO',
+				'email' => 'mike.rodriguez@freakytech.com',
+				'phone' => 34722372860,
+				'profile' => 'Chief Technology Officer at Freaky Technologies',
+				'position' => 'Chief Technology Officer'
+			],
+			[
+				'name' => 'Lisa Chen',
+				'surname' => 'CFO',
+				'email' => 'lisa.chen@freakytech.com',
+				'phone' => 34722372861,
+				'profile' => 'Chief Financial Officer at Freaky Technologies',
+				'position' => 'Chief Financial Officer'
+			],
+			[
+				'name' => 'David Smith',
+				'surname' => 'Project Manager',
+				'email' => 'david.smith@freakytech.com',
+				'phone' => 34722372862,
+				'profile' => 'Senior Project Manager at Freaky Technologies',
+				'position' => 'Senior Project Manager'
+			]
+		];
+
+		foreach ($additionalContacts as $contactData) {
+			$contact = Contact::updateOrCreate(
+				['email' => $contactData['email'], 'team_id' => 1],
+				[
+					'team_id' => 1,
+					'name' => $contactData['name'],
+					'surname' => $contactData['surname'],
+					'email' => $contactData['email'],
+					'phone' => $contactData['phone'],
+					'profile' => $contactData['profile'],
+					'creator_id' => 1,
+					'responsible_id' => 1,
+					'status_id' => 5,
+					'current_enterprise_id' => $enterprise->id,
+				]
+			);
+
+			// Create relationship in contact_enterprise pivot table
+			\Illuminate\Support\Facades\DB::table('contact_enterprise')->updateOrInsert(
+				[
+					'contact_id' => $contact->id,
+					'enterprise_id' => $enterprise->id
+				],
+				[
+					'position' => $contactData['position'],
+					'department_id' => null,
+					'superior_id' => null,
+					'created_at' => now(),
+					'updated_at' => now(),
+				]
+			);
+		}
+	}
+
+	/**
+	 * Create services for the enterprise
+	 */
+	private function createServicesForEnterprise($enterprise): void
+	{
+		$this->command->info('🛠️ Creating services for Freaky Technologies...');
+
+		// Get a default category for services
+		$defaultCategory = Category::where('team_id', 1)->first();
+		if (!$defaultCategory) {
+			$defaultCategory = Category::create([
+				'team_id' => 1,
+				'name' => 'Technology Services',
+				'description' => 'Technology and software services',
+			]);
+		}
+
+		$services = [
+			[
+				'description' => 'AI Software Development - Custom AI solution development for enterprise clients',
+				'price' => 15000.00,
+				'next_billing' => now()->addMonth()->toDateString(),
+				'status' => 1
+			],
+			[
+				'description' => 'Cloud Infrastructure Management - Complete cloud infrastructure setup and management',
+				'price' => 8500.00,
+				'next_billing' => now()->addMonth()->toDateString(),
+				'status' => 1
+			],
+			[
+				'description' => 'Mobile App Development - Cross-platform mobile application development',
+				'price' => 12000.00,
+				'next_billing' => now()->addMonth()->toDateString(),
+				'status' => 1
+			],
+			[
+				'description' => 'Cybersecurity Consulting - Enterprise cybersecurity assessment and implementation',
+				'price' => 6500.00,
+				'next_billing' => now()->addMonth()->toDateString(),
+				'status' => 1
+			],
+			[
+				'description' => 'Data Analytics Platform - Business intelligence and data analytics solution',
+				'price' => 9800.00,
+				'next_billing' => null,
+				'status' => 0
+			]
+		];
+
+		foreach ($services as $serviceData) {
+			Service::create([
+				'category_id' => $defaultCategory->id,
+				'enterprise_id' => $enterprise->id,
+				'description' => $serviceData['description'],
+				'price' => $serviceData['price'],
+				'next_billing' => $serviceData['next_billing'],
+				'status' => $serviceData['status'],
+				'operation' => 'sell',
+				'frequency' => 1, // Monthly
+				'responsible_id' => 1,
+				'created_at' => now(),
+				'updated_at' => now(),
+			]);
+		}
+	}
+
+	/**
+	 * Create projects for the enterprise
+	 */
+	private function createProjectsForEnterprise($enterprise): void
+	{
+		$this->command->info('📋 Creating projects for Freaky Technologies...');
+
+		// Get a default category for projects
+		$defaultCategory = Category::where('team_id', 1)->first();
+		if (!$defaultCategory) {
+			$defaultCategory = Category::create([
+				'team_id' => 1,
+				'name' => 'Software Development',
+				'description' => 'Software development projects',
+			]);
+		}
+
+		$projects = [
+			[
+				'name' => 'E-commerce Platform Redesign',
+				'description' => 'Complete redesign of the company e-commerce platform with AI recommendations',
+				'status_id' => 2, // En progreso
+				'date_start' => now()->subDays(45)->toDateString(),
+				'date_end' => now()->addDays(30)->toDateString(),
+				'price' => 45000.00,
+			],
+			[
+				'name' => 'Customer Data Migration',
+				'description' => 'Migration of legacy customer data to new cloud infrastructure',
+				'status_id' => 3, // Completado
+				'date_start' => now()->subDays(120)->toDateString(),
+				'date_end' => now()->subDays(30)->toDateString(),
+				'price' => 28000.00,
+			],
+			[
+				'name' => 'Mobile App MVP',
+				'description' => 'Development of minimum viable product for iOS and Android',
+				'status_id' => 1, // Pendiente
+				'date_start' => now()->addDays(15)->toDateString(),
+				'date_end' => now()->addDays(90)->toDateString(),
+				'price' => 65000.00,
+			],
+			[
+				'name' => 'Security Audit Implementation',
+				'description' => 'Implementation of security recommendations from cybersecurity audit',
+				'status_id' => 2, // En progreso
+				'date_start' => now()->subDays(20)->toDateString(),
+				'date_end' => now()->addDays(45)->toDateString(),
+				'price' => 18500.00,
+			]
+		];
+
+		foreach ($projects as $projectData) {
+			Project::create([
+				'team_id' => 1,
+				'enterprise_id' => $enterprise->id,
+				'category_id' => $defaultCategory->id,
+				'responsible_id' => 1,
+				'name' => $projectData['name'],
+				'description' => $projectData['description'],
+				'status_id' => $projectData['status_id'],
+				'date_start' => $projectData['date_start'],
+				'date_end' => $projectData['date_end'],
+				'price' => $projectData['price'],
+				'created_at' => now(),
+				'updated_at' => now(),
+			]);
+		}
+	}
+
+	/**
+	 * Create billing address for the enterprise
+	 */
+	private function createBillingAddressForEnterprise($enterprise): void
+	{
+		$this->command->info('🏢 Creating billing address for Freaky Technologies...');
+
+		$taxStatusTypes = EnterpriseTaxStatusType::pluck('id')->all();
+		if (empty($taxStatusTypes)) {
+			$taxStatusTypes = [1]; // Default fallback
+		}
+
+		EnterpriseBillingAddress::updateOrCreate(
+			['enterprise_id' => $enterprise->id],
+			[
+				'name' => 'Freaky Technologies - Headquarters',
+				'identification_number' => 'B98765432',
+				'tax_status_type_id' => collect($taxStatusTypes)->random(),
+				'address' => 'Avenida Tecnológica 123, Torre Innovation',
+				'postal_code' => '28001',
+				'locality' => 'Madrid',
+				'province' => 'Madrid',
+				'country' => 'ES',
+				'status' => 1,
+				'created_at' => now(),
+				'updated_at' => now(),
+			]
+		);
+	}
+
+	/**
+	 * Create invoices and payments for the enterprise
+	 */
+	private function createInvoicesAndPaymentsForEnterprise($enterprise): void
+	{
+		$this->command->info('💰 Creating invoices and payments for Freaky Technologies...');
+
+		// Ensure billing address exists and get it
+		$billingAddress = EnterpriseBillingAddress::where('enterprise_id', $enterprise->id)->first();
+		if (!$billingAddress) {
+			$this->command->warn('⚠️ No billing address found for enterprise. Creating one...');
+			$this->createBillingAddressForEnterprise($enterprise);
+			$billingAddress = EnterpriseBillingAddress::where('enterprise_id', $enterprise->id)->first();
+		}
+
+		$invoiceType = InvoiceType::first();
+
+		// Create multiple invoices with different statuses
+		$invoices = [
+			[
+				'number' => '2024-FT-001',
+				'date' => now()->subDays(90)->toDateString(),
+				'due_date' => now()->subDays(60)->toDateString(),
+				'gross_amount' => 15000.00,
+				'total_amount' => 18150.00,
+				'status' => 1, // Paid
+				'items' => [
+					['description' => 'AI Software Development - Q1 2024', 'quantity' => 1, 'unit_price' => 15000.00]
+				]
+			],
+			[
+				'number' => '2024-FT-002',
+				'date' => now()->subDays(60)->toDateString(),
+				'due_date' => now()->subDays(30)->toDateString(),
+				'gross_amount' => 21500.00,
+				'total_amount' => 26015.00,
+				'status' => 1, // Paid
+				'items' => [
+					['description' => 'Cloud Infrastructure Management', 'quantity' => 1, 'unit_price' => 8500.00],
+					['description' => 'Mobile App Development', 'quantity' => 1, 'unit_price' => 12000.00],
+					['description' => 'Setup Fee', 'quantity' => 1, 'unit_price' => 1000.00]
+				]
+			],
+			[
+				'number' => '2024-FT-003',
+				'date' => now()->subDays(30)->toDateString(),
+				'due_date' => now()->toDateString(),
+				'gross_amount' => 24300.00,
+				'total_amount' => 29403.00,
+				'status' => 2, // Pending
+				'items' => [
+					['description' => 'AI Software Development - Q2 2024', 'quantity' => 1, 'unit_price' => 15000.00],
+					['description' => 'Data Analytics Platform', 'quantity' => 1, 'unit_price' => 9300.00]
+				]
+			],
+			[
+				'number' => '2024-FT-004',
+				'date' => now()->subDays(15)->toDateString(),
+				'due_date' => now()->addDays(15)->toDateString(),
+				'gross_amount' => 6500.00,
+				'total_amount' => 7865.00,
+				'status' => 2, // Pending
+				'items' => [
+					['description' => 'Cybersecurity Consulting - Monthly Fee', 'quantity' => 1, 'unit_price' => 6500.00]
+				]
+			]
+		];
+
+		foreach ($invoices as $invoiceData) {
+			$invoice = Invoice::create([
+				'enterprise_id' => $enterprise->id,
+				'billing_id' => $billingAddress->id, // Explicitly assign billing_id (not nullable)
+				'type_id' => $invoiceType?->id ?? 1,
+				'operation' => 'sell',
+				'number' => $invoiceData['number'],
+				'date' => $invoiceData['date'],
+				'due_date' => $invoiceData['due_date'],
+				'gross_amount' => $invoiceData['gross_amount'],
+				'discount' => 0,
+				'total_amount' => $invoiceData['total_amount'],
+				'balance' => $invoiceData['status'] == 1 ? 0 : $invoiceData['total_amount'],
+				'status' => $invoiceData['status'],
+				'created_at' => now(),
+				'updated_at' => now(),
+			]);
+
+			$this->command->info("✅ Created invoice {$invoiceData['number']} with billing_id: {$billingAddress->id}");
+
+			// Create invoice items
+			foreach ($invoiceData['items'] as $item) {
+				InvoiceItem::create([
+					'invoice_id' => $invoice->id,
+					'description' => $item['description'],
+					'quantity' => $item['quantity'],
+					'unit_price' => $item['unit_price'],
+					'discount' => 0,
+					'tax_percentage' => 21,
+					'created_at' => now(),
+					'updated_at' => now(),
+				]);
+			}
+
+			// Create payments for paid invoices
+			if ($invoiceData['status'] == 1) {
+				// Get or create default payment account and type
+				$paymentAccount = PaymentAccount::where('team_id', 1)->first();
+				if (!$paymentAccount) {
+					$paymentAccount = PaymentAccount::create([
+						'team_id' => 1,
+						'name' => 'Main Business Account',
+						'account_number' => 'ES21 1234 5678 9012 3456 7890',
+						'balance' => 0,
+						'status' => 1,
+					]);
+				}
+
+				$paymentType = PaymentType::first();
+				if (!$paymentType) {
+					$paymentType = PaymentType::create([
+						'name' => 'Bank Transfer',
+						'description' => 'Wire transfer payment',
+					]);
+				}
+
+				Payment::create([
+					'team_id' => 1,
+					'enterprise_id' => $enterprise->id,
+					'invoice_id' => $invoice->id,
+					'transaction_type' => 'I', // Income
+					'date' => $invoiceData['due_date'],
+					'account_id' => $paymentAccount->id,
+					'type_id' => $paymentType->id,
+					'amount' => $invoiceData['total_amount'],
+					'remarks' => 'Payment received for invoice ' . $invoiceData['number'],
+					'status' => 1, // Completed
+					'created_at' => now(),
+					'updated_at' => now(),
+				]);
+			}
+		}
 	}
 }
