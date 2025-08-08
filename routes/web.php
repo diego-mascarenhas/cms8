@@ -18,6 +18,7 @@ use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\FareController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostingController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\language\LanguageController;
 use App\Http\Controllers\laravel_example\UserManagement;
@@ -30,6 +31,7 @@ use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
 use App\Http\Controllers\OvhApiController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\ProjectController;
@@ -296,6 +298,24 @@ Route::post('/team/{team}/custom-translations/import', [TeamSettingController::c
 	Route::post('/task', [TaskController::class, 'store'])->name('task.store');
 	Route::put('/task/{id}', [TaskController::class, 'update'])->name('task.update');
 	Route::delete('/task/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
+
+	// Invoice Routes
+	Route::get('/invoice/list', [InvoiceController::class, 'index'])->name('invoice.index');
+	Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
+	Route::get('/invoice/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
+	Route::get('/invoice/{id}/edit', [InvoiceController::class, 'edit'])->name('invoice.edit');
+	Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
+	Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
+	Route::delete('/invoice/{id}', [InvoiceController::class, 'destroy'])->name('invoice.destroy');
+
+	// Payment Routes
+	Route::get('/payment/list', [PaymentController::class, 'index'])->name('payment.index');
+	Route::get('/payment/create', [PaymentController::class, 'create'])->name('payment.create');
+	Route::get('/payment/{id}', [PaymentController::class, 'show'])->name('payment.show');
+	Route::get('/payment/{id}/edit', [PaymentController::class, 'edit'])->name('payment.edit');
+	Route::post('/payment', [PaymentController::class, 'store'])->name('payment.store');
+	Route::put('/payment/{id}', [PaymentController::class, 'update'])->name('payment.update');
+	Route::delete('/payment/{id}', [PaymentController::class, 'destroy'])->name('payment.destroy');
 
 	// Hosting
 	Route::resource('hosting', HostingController::class);

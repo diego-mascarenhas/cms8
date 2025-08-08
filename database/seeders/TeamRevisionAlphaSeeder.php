@@ -37,33 +37,40 @@ class TeamRevisionAlphaSeeder extends Seeder
         $this->createRevisionAlphaCategories();
 
         // Asignar módulos por defecto al equipo Revision Alpha
-        $defaultModules = [
-            7,  // contacts
-            9,  // projects
-            10, // services
-            11, // enterprises
-            12, // invoices
-            13, // payments
-            15, // notes
-            16, // tickets
-            20, // website
-            21, // hosting
-            22, // mail
-            23, // chat
-            35, // campaigns
-            36, // templates
-            42, // stylebooks
-            43, // notifications
+        $defaultModuleKeys = [
+            'contacts',
+            'projects',
+            'services',
+            'enterprises',
+            'invoices',
+            'payments',
+            'notes',
+            'tickets',
+            'website',
+            'hosting',
+            'mail',
+            'chat',
+            'campaigns',
+            'templates',
+            'stylebooks',
+            'notifications',
         ];
-        foreach ($defaultModules as $moduleId) {
-            DB::table('module_team')->updateOrInsert([
-                'module_id' => $moduleId,
-                'team_id' => $team->id,
-            ], [
-                'status' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+
+        foreach ($defaultModuleKeys as $moduleKey) {
+            $module = Module::where('key', $moduleKey)->first();
+            if ($module) {
+                DB::table('module_team')->updateOrInsert([
+                    'module_id' => $module->id,
+                    'team_id' => $team->id,
+                ], [
+                    'status' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $this->command->info("✅ Enabled module: {$module->name} ({$moduleKey})");
+            } else {
+                $this->command->warn("⚠️  Module not found: {$moduleKey}");
+            }
         }
 
         $this->command->info('✅ REVISION ALPHA setup completed successfully');

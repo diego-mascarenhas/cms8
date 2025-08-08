@@ -103,6 +103,22 @@
 			"menuHeader": "Billing"
 		},
 		{
+			"url": "invoice/list",
+			"name": "Invoices",
+			"icon": "menu-icon tf-icons ti ti-file-invoice",
+			"slug": "invoice-list",
+			"permission": "invoice.list",
+			"module_key": "invoices"
+		},
+		{
+			"url": "payment/list",
+			"name": "Payments",
+			"icon": "menu-icon tf-icons ti ti-credit-card",
+			"slug": "payment-list",
+			"permission": "payment.list",
+			"module_key": "payments"
+		},
+		{
 			"url": "earning/list",
 			"name": "Earnings",
 			"icon": "menu-icon tf-icons ti ti-moneybag",

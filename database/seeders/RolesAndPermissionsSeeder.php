@@ -205,6 +205,15 @@ class RolesAndPermissionsSeeder extends Seeder
 		Permission::create(['name' => 'invoice.update']);
 		Permission::create(['name' => 'invoice.destroy']);
 
+		Permission::create(['name' => 'payment.index']);
+		Permission::create(['name' => 'payment.list']);
+		Permission::create(['name' => 'payment.create']);
+		Permission::create(['name' => 'payment.show']);
+		Permission::create(['name' => 'payment.edit']);
+		Permission::create(['name' => 'payment.store']);
+		Permission::create(['name' => 'payment.update']);
+		Permission::create(['name' => 'payment.destroy']);
+
 		Permission::create(['name' => 'campaign.index']);
 		Permission::create(['name' => 'campaign.list']);
 		Permission::create(['name' => 'campaign.create']);
@@ -386,6 +395,22 @@ class RolesAndPermissionsSeeder extends Seeder
 			'stylebook.store',
 			'stylebook.update',
 			'stylebook.destroy',
+			'invoice.index',
+			'invoice.list',
+			'invoice.create',
+			'invoice.show',
+			'invoice.edit',
+			'invoice.store',
+			'invoice.update',
+			'invoice.destroy',
+			'payment.index',
+			'payment.list',
+			'payment.create',
+			'payment.show',
+			'payment.edit',
+			'payment.store',
+			'payment.update',
+			'payment.destroy',
 		]);
 
 		$collaboratorRole = Role::create(['name' => 'collaborator']);
@@ -466,6 +491,9 @@ class RolesAndPermissionsSeeder extends Seeder
 			'invoice.index',
 			'invoice.list',
 			'invoice.show',
+			'payment.index',
+			'payment.list',
+			'payment.show',
 			'project.index',
 			'project.list',
 			'project.show',
