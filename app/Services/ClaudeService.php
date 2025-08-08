@@ -680,10 +680,10 @@ EOT;
         // Example for download requests
         $userContext .= "EXAMPLE FOR INVOICE DOWNLOADS:\n";
         $userContext .= "User: '¿Puedes enviarme el link para descargar mis facturas?' o '¿Dónde puedo descargar mi factura?'\n";
-        
+
         if ($user && $user->email) {
             $accessToken = base64_encode($user->email . '|' . time());
-            $clientAreaUrl = "https://revisionalpha.com/login?token=" . urlencode($accessToken);
+            $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
             $userContext .= "Correct response: 'Para descargar tus facturas, accede a nuestra área de clientes donde tendrás disponible el historial completo de facturación: " . $clientAreaUrl . "'\n";
         } else {
             $userContext .= "Correct response: 'Para descargar tus facturas, accede a nuestra área de clientes: https://revisionalpha.com/login'\n";
@@ -693,7 +693,7 @@ EOT;
         $userContext .= "\nUser: '¿Me puedes dar el link para descargar la factura #12345?'\n";
         if ($user && $user->email) {
             $accessToken = base64_encode($user->email . '|' . time());
-            $clientAreaUrl = "https://revisionalpha.com/login?token=" . urlencode($accessToken);
+            $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
             $userContext .= "Correct response: 'Para descargar la factura #12345, accede a tu área de clientes donde encontrarás todas tus facturas disponibles para descarga: " . $clientAreaUrl . "'\n";
         } else {
             $userContext .= "Correct response: 'Para descargar la factura #12345, accede a tu área de clientes: https://revisionalpha.com/login'\n";
@@ -708,7 +708,7 @@ EOT;
         if ($user && $user->email) {
             // Generate access token for the client area
             $accessToken = base64_encode($user->email . '|' . time());
-            $clientAreaUrl = "https://revisionalpha.com/login?token=" . urlencode($accessToken);
+            $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
 
             $userContext .= "ÁREA DE CLIENTES:\n";
             $userContext .= "- Si el usuario necesita gestionar servicios, facturación o soporte técnico avanzado\n";
@@ -730,7 +730,7 @@ EOT;
         $userContext .= "User: 'Necesito cambiar la configuración de mi hosting'\n";
         if ($user && $user->email) {
             $accessToken = base64_encode($user->email . '|' . time());
-            $clientAreaUrl = "https://revisionalpha.com/login?token=" . urlencode($accessToken);
+            $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
             $userContext .= "Correct response: 'Para cambios técnicos en tu hosting, te recomiendo acceder a nuestra área de clientes donde tendrás acceso completo a todas las configuraciones: " . $clientAreaUrl . "'\n";
         } else {
             $userContext .= "Correct response: 'Para cambios técnicos en tu hosting, te recomiendo acceder a nuestra área de clientes: https://revisionalpha.com/login'\n";
