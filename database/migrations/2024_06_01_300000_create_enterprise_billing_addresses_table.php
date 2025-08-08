@@ -26,7 +26,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->foreign('fiscal_condition_type_id')->references('id')->on('enterprise_fiscal_condition_types')->onDelete('cascade');
+            $table->foreign('fiscal_condition_type_id')->references('id')->on('enterprise_tax_status_types')->onDelete('cascade');
         });
     }
 
