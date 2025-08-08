@@ -62,8 +62,10 @@ class ChatController extends Controller
         }
 
         $hasContact = false;
+        $selectedContact = null;
         if ($selectedUser && $selectedUser->id) {
-            $hasContact = Contact::where('user_id', $selectedUser->id)->exists();
+            $selectedContact = Contact::where('user_id', $selectedUser->id)->first();
+            $hasContact = $selectedContact !== null;
         }
 
         $userIds = $messages->pluck('user_id')->filter()->unique();
@@ -73,7 +75,7 @@ class ChatController extends Controller
             $message->body = TextHelper::sanitizeAndLink($message->body);
         }
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'users'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users'));
     }
 
     /**

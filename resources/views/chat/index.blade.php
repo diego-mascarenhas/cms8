@@ -512,8 +512,8 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
-                                @if(isset($selectedUser) && $selectedUser->id && $hasContact)
-                                    <a href="{{ route('contact.show', $selectedUser->id) }}" class="me-2">
+                                @if(isset($selectedContact) && $selectedContact->id)
+                                    <a href="{{ route('contact.show', $selectedContact->id) }}" class="me-2">
                                         <i class="ti ti-eye"></i>
                                     </a>
                                 @elseif(isset($selectedUser) && $selectedUser->id)
@@ -521,9 +521,6 @@
                                         <i class="ti ti-users ti-xs me-1"></i>Vincular con contacto
                                     </a>
                                 @endif
-                                <a href="{{ route('claude.prompts.index') }}" class="btn btn-sm btn-primary me-2" title="Gestionar prompts de Claude">
-                                    <i class="ti ti-robot me-1"></i>Prompts
-                                </a>
                             </div>
                         </div>
                         @endif
