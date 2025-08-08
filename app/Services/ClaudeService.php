@@ -534,13 +534,10 @@ EOT;
                             $userContext .= '- FACTURAS PENDIENTES DE PAGO ('.$unpaidInvoices->count()."):\n";
                             // Show ALL unpaid invoices
                             foreach ($unpaidInvoices as $i => $invoice) {
-                                $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
-
                                 $userContext .= '  * Factura #'.$invoice->number.
                                                ' - Fecha: '.($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A').
                                                ' - Importe Total: $'.number_format($invoice->total_amount, 2).
-                                               ' - Pendiente: $'.number_format($invoice->balance, 2).
-                                               ' - Descargar: '.$downloadLink."\n";
+                                               ' - Pendiente: $'.number_format($invoice->balance, 2)."\n";
                             }
 
                             // Also show the 3 most recent invoices if different from the unpaid ones
@@ -551,23 +548,17 @@ EOT;
                             if ($paidInvoices->count() > 0) {
                                 $userContext .= '- ÚLTIMAS FACTURAS PAGADAS ('.$paidInvoices->count()."):\n";
                                 foreach ($paidInvoices as $i => $invoice) {
-                                    $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
-
                                     $userContext .= '  * Factura #'.$invoice->number.
                                                    ' - Fecha: '.($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A').
-                                                   ' - Importe: $'.number_format($invoice->total_amount, 2).
-                                                   ' - Descargar: '.$downloadLink."\n";
+                                                   ' - Importe: $'.number_format($invoice->total_amount, 2)."\n";
                                 }
                             }
                         } else {
                             $userContext .= '- ÚLTIMAS FACTURAS (Todas pagadas) ('.$invoices->count()."):\n";
                             foreach ($invoices as $i => $invoice) {
-                                $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
-
                                 $userContext .= '  * Factura #'.$invoice->number.
                                                ' - Fecha: '.($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A').
-                                               ' - Importe: $'.number_format($invoice->total_amount, 2).
-                                               ' - Descargar: '.$downloadLink."\n";
+                                               ' - Importe: $'.number_format($invoice->total_amount, 2)."\n";
                             }
                         }
                     } else {
@@ -686,60 +677,55 @@ EOT;
         }
         $userContext .= "Incorrect response: 'No puedo ver tus facturas.' o 'No tengo acceso a esa información.'\n\n";
 
-        // Example for download links
-        $userContext .= "EXAMPLE WITH DOWNLOAD LINKS:\n";
-        $userContext .= "User: '¿Puedes enviarme el link para descargar mis facturas?'\n";
-        $userContext .= "Correct response: 'Claro, aquí tienes los links para descargar tus facturas:'\n";
-
-        // Include example of how to display download links
-        if (! empty($enterprises)) {
-            foreach ($enterprises as $e) {
-                $invoices = $enterpriseInvoices[$e['id']] ?? collect();
-
-                if ($invoices && $invoices->count() > 0) {
-                    $userContext .= 'Para '.$e['name'].":\n";
-
-                    foreach ($invoices->take(2) as $invoice) {
-                        $downloadLink = $this->generateInvoiceDownloadLink($invoice->id);
-                        $userContext .= '- Factura #'.$invoice->number.
-                                      ' ($'.number_format($invoice->total_amount, 2).'): '.
-                                      $downloadLink."\n";
-                    }
-                }
-            }
+        // Example for download requests
+        $userContext .= "EXAMPLE FOR INVOICE DOWNLOADS:\n";
+        $userContext .= "User: '¿Puedes enviarme el link para descargar mis facturas?' o '¿Dónde puedo descargar mi factura?'\n";
+        
+        if ($user && $user->email) {
+            $accessToken = base64_encode($user->email . '|' . time());
+            $clientAreaUrl = "https://revisionalpha.com/login?token=" . urlencode($accessToken);
+            $userContext .= "Correct response: 'Para descargar tus facturas, accede a nuestra área de clientes donde tendrás disponible el historial completo de facturación: " . $clientAreaUrl . "'\n";
+        } else {
+            $userContext .= "Correct response: 'Para descargar tus facturas, accede a nuestra área de clientes: https://revisionalpha.com/login'\n";
         }
 
         // User asking for specific invoice download
         $userContext .= "\nUser: '¿Me puedes dar el link para descargar la factura #12345?'\n";
-        $userContext .= "Correct response: 'Aquí tienes el link para descargar la factura #12345: https://wsaa.revisionalpha.com/[hash-correspondiente].pdf'\n";
+        if ($user && $user->email) {
+            $accessToken = base64_encode($user->email . '|' . time());
+            $clientAreaUrl = "https://revisionalpha.com/login?token=" . urlencode($accessToken);
+            $userContext .= "Correct response: 'Para descargar la factura #12345, accede a tu área de clientes donde encontrarás todas tus facturas disponibles para descarga: " . $clientAreaUrl . "'\n";
+        } else {
+            $userContext .= "Correct response: 'Para descargar la factura #12345, accede a tu área de clientes: https://revisionalpha.com/login'\n";
+        }
 
-        $userContext .= "Incorrect response: 'No puedo proporcionar enlaces de descarga.'\n";
+        $userContext .= "Incorrect response: 'Aquí tienes el enlace directo: https://wsaa.revisionalpha.com/...' o 'No puedo proporcionar enlaces de descarga.'\n";
 
         // Add client area and contact information
         $userContext .= "\n===== ÁREA DE CLIENTES Y CONTACTO =====\n";
         $userContext .= "IMPORTANTE: Para gestiones más específicas o complejas, dirige al usuario a nuestros canales oficiales:\n\n";
-        
+
         if ($user && $user->email) {
             // Generate access token for the client area
             $accessToken = base64_encode($user->email . '|' . time());
             $clientAreaUrl = "https://revisionalpha.com/login?token=" . urlencode($accessToken);
-            
+
             $userContext .= "ÁREA DE CLIENTES:\n";
             $userContext .= "- Si el usuario necesita gestionar servicios, facturación o soporte técnico avanzado\n";
             $userContext .= "- Proporciona este enlace directo: " . $clientAreaUrl . "\n";
             $userContext .= "- Este enlace permite acceso automático con su email registrado\n\n";
         }
-        
+
         $userContext .= "FORMULARIO DE CONTACTO:\n";
         $userContext .= "- Si el usuario aún no es cliente o necesita información sobre nuevos servicios\n";
         $userContext .= "- Dirige al formulario: https://revisionalpha.com/contactenos\n";
         $userContext .= "- Allí puede enviar consultas específicas que serán atendidas por nuestro equipo\n\n";
-        
+
         $userContext .= "CUÁNDO USAR CADA OPCIÓN:\n";
         $userContext .= "- Área de clientes: Para clientes existentes que necesitan gestionar sus servicios\n";
         $userContext .= "- Formulario de contacto: Para consultas comerciales, presupuestos o nuevos servicios\n";
         $userContext .= "- WhatsApp: Para consultas rápidas sobre información básica de cuenta\n\n";
-        
+
         $userContext .= "EJEMPLO DE RESPUESTA:\n";
         $userContext .= "User: 'Necesito cambiar la configuración de mi hosting'\n";
         if ($user && $user->email) {
@@ -749,10 +735,10 @@ EOT;
         } else {
             $userContext .= "Correct response: 'Para cambios técnicos en tu hosting, te recomiendo acceder a nuestra área de clientes: https://revisionalpha.com/login'\n";
         }
-        
+
         $userContext .= "\nUser: 'Quiero contratar un nuevo servicio'\n";
         $userContext .= "Correct response: 'Para consultas sobre nuevos servicios, puedes enviarnos tu consulta a través de nuestro formulario de contacto: https://revisionalpha.com/contactenos y nuestro equipo comercial te responderá con toda la información.'\n";
-        
+
         $userContext .= "===== FIN ÁREA DE CLIENTES Y CONTACTO =====\n\n";
 
         $userContext .= "===== END USER INFORMATION =====\n\n";
@@ -770,21 +756,5 @@ EOT;
         return $systemPrompt.$userContext;
     }
 
-    /**
-     * Generate a download link for an invoice
-     *
-     * @param  int  $invoiceId  The invoice ID
-     * @return string The download URL
-     */
-    private function generateInvoiceDownloadLink($invoiceId)
-    {
-        // Group is always 502
-        $group = 502;
 
-        // Generate MD5 of "502{invoice_id}"
-        $md5Hash = md5($group.$invoiceId);
-
-        // Return the download URL
-        return "https://wsaa.revisionalpha.com/{$md5Hash}.pdf";
-    }
 }
