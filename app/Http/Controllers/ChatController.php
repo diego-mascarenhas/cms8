@@ -57,6 +57,13 @@ class ChatController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
+            // Mark inbound messages as read when user views the conversation
+            Conversation::where('channel', 'whatsapp')
+                ->where('direction', 'inbound')
+                ->where('from', $selectedPhone)
+                ->where('status', 'received')
+                ->update(['status' => 'read']);
+
             // Get user information for the header
             $selectedUser = $this->getUserByPhone($selectedPhone);
         }
