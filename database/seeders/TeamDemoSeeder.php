@@ -1262,6 +1262,29 @@ class TeamDemoSeeder extends Seeder
 	{
 		$this->command->info('👥 Creating demo contacts for Team 1...');
 
+		// Create demo enterprises first
+		$adminEnterprise = \App\Models\Enterprise::updateOrCreate(
+			['name' => 'Admin Enterprise', 'team_id' => 1],
+			[
+				'team_id' => 1,
+				'type_id' => 1, // Cliente
+				'status_id' => 1, // Activo
+				'created_at' => now(),
+				'updated_at' => now(),
+			]
+		);
+
+		$techEnterprise = \App\Models\Enterprise::updateOrCreate(
+			['name' => 'Freaky Technologies', 'team_id' => 1],
+			[
+				'team_id' => 1,
+				'type_id' => 1, // Cliente
+				'status_id' => 1, // Activo
+				'created_at' => now(),
+				'updated_at' => now(),
+			]
+		);
+
 		// Example contacts for Team 1 (Demo)
 		$exampleContacts = [
 			[
@@ -1272,16 +1295,18 @@ class TeamDemoSeeder extends Seeder
 				'creator_id' => 1,
 				'responsible_id' => 1,
 				'status_id' => 5,
+				'current_enterprise_id' => $adminEnterprise->id,
 			],
 			[
 				'team_id' => 1,
 				'name' => 'Demo User',
 				'email' => 'demo@example.com',
-				'profile' => 'Example demo contact for testing',
+				'profile' => 'Example demo contact for testing - Freaky Technologies',
 				'creator_id' => 1,
 				'responsible_id' => 1,
 				'user_id' => 8,
 				'status_id' => 5,
+				'current_enterprise_id' => $techEnterprise->id,
 			],
 		];
 
@@ -1290,6 +1315,23 @@ class TeamDemoSeeder extends Seeder
 				['email' => $contactData['email'], 'team_id' => $contactData['team_id']],
 				$contactData
 			);
+
+			// Create relationship in contact_enterprise pivot table
+			if (isset($contactData['current_enterprise_id'])) {
+				\Illuminate\Support\Facades\DB::table('contact_enterprise')->updateOrInsert(
+					[
+						'contact_id' => $contact->id,
+						'enterprise_id' => $contactData['current_enterprise_id']
+					],
+					[
+						'position' => 'Contact Person',
+						'department_id' => null,
+						'superior_id' => null,
+						'created_at' => now(),
+						'updated_at' => now(),
+					]
+				);
+			}
 
 			// Create sentiment history for example contacts
 			if (!\App\Models\ContactSentimentHistory::where('contact_id', $contact->id)->exists()) {
@@ -1314,6 +1356,6 @@ class TeamDemoSeeder extends Seeder
 			}
 		}
 
-		$this->command->info('✅ Demo contacts created for Team 1');
+		$this->command->info('✅ Demo contacts and enterprises created for Team 1');
 	}
 }
