@@ -92,7 +92,39 @@ class TeamDemoSeeder extends Seeder
 
 		// Seed demo billing addresses and invoices
 		$this->seedDemoBillingAndInvoices();
+
+		// Seed demo services for Team 1
+		$this->seedDemoServices();
 	}
+
+    private function seedDemoServices(): void
+    {
+        $this->command->info('🛠️ Creating demo services for Team 1...');
+
+        // Hosting services (annual, active)
+        \App\Models\Service::factory()
+            ->forTeam1()
+            ->active()
+            ->hosting()
+            ->count(5)
+            ->create();
+
+        // Generic active services
+        \App\Models\Service::factory()
+            ->forTeam1()
+            ->active()
+            ->count(15)
+            ->create();
+
+        // Mixed operation services (buy/sell)
+        \App\Models\Service::factory()
+            ->forTeam1()
+            ->count(10)
+            ->create();
+
+        $total = \App\Models\Service::whereHas('enterprise', function($q){ $q->where('team_id', 1); })->count();
+        $this->command->info("✅ Demo services created for Team 1. Total services: {$total}");
+    }
 
     private function seedDemoBillingAndInvoices(): void
     {
