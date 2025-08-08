@@ -11,11 +11,11 @@ class UserSeeder extends Seeder
     public function run()
     {
         // Core system users - these will be assigned to teams by their respective seeders
-        
+
         // Administrator revision alpha - will be handled by RevisionAlphaSeeder
         $revision = User::factory()->create([
             'name' => 'Diego Mascarenhas',
-            'phone' => 34722372858,
+            // 'phone' => 34722372858,
             'email' => 'diego.mascarenhas@icloud.com',
             'password' => '$2y$10$9His4IIPh5nFp0TSilz.h.0DLLE4DzhX1Os2y0QHwt.a19s6whxyC',
         ]);
@@ -38,7 +38,7 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
         $user->assignRole([2]);
-        
+
         // Create Demo Team (Team 1)
         $demoTeam = $user->ownedTeams()->create([
             'name' => "Demo's Team",
@@ -56,7 +56,7 @@ class UserSeeder extends Seeder
             ['name' => 'Editor', 'email' => 'editor@example.com', 'role' => 4],
             ['name' => 'Auditor', 'email' => 'auditor@example.com', 'role' => 5],
             ['name' => 'Technical', 'email' => 'technical@example.com', 'role' => 6],
-            ['name' => 'Client', 'email' => 'client@example.com', 'role' => 7],
+            ['name' => 'Client', 'email' => 'client@example.com', 'role' => 7, 'phone' => 34722372858],
             ['name' => 'User', 'email' => 'user@example.com', 'role' => 8],
             ['name' => 'Guest', 'email' => 'guest@example.com', 'role' => 9],
         ];
@@ -64,6 +64,7 @@ class UserSeeder extends Seeder
         foreach ($demoUsers as $userData) {
             $user = User::factory()->create([
                 'name' => $userData['name'],
+                'phone' => $userData['phone'] ?? null,
                 'email' => $userData['email'],
                 'password' => Hash::make('Passw0rd!'),
                 'email_verified_at' => null,

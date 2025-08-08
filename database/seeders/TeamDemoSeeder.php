@@ -95,6 +95,9 @@ class TeamDemoSeeder extends Seeder
 
 		// Seed demo services for Team 1
 		$this->seedDemoServices();
+
+		// Seed demo contacts
+		$this->seedDemoContacts();
 	}
 
     private function seedDemoServices(): void
@@ -1250,5 +1253,67 @@ class TeamDemoSeeder extends Seeder
 			->count(5)
 			->pending()
 			->create();
+	}
+
+	/**
+	 * Seed demo contacts for Team 1
+	 */
+	private function seedDemoContacts(): void
+	{
+		$this->command->info('👥 Creating demo contacts for Team 1...');
+
+		// Example contacts for Team 1 (Demo)
+		$exampleContacts = [
+			[
+				'team_id' => 1,
+				'name' => 'Admin Example',
+				'email' => 'admin@example.com',
+				'profile' => 'Example admin contact for demonstration',
+				'creator_id' => 1,
+				'responsible_id' => 1,
+				'status_id' => 5,
+			],
+			[
+				'team_id' => 1,
+				'name' => 'Demo User',
+				'email' => 'demo@example.com',
+				'profile' => 'Example demo contact for testing',
+				'creator_id' => 1,
+				'responsible_id' => 1,
+				'user_id' => 8,
+				'status_id' => 5,
+			],
+		];
+
+		foreach ($exampleContacts as $contactData) {
+			$contact = \App\Models\Contact::updateOrCreate(
+				['email' => $contactData['email'], 'team_id' => $contactData['team_id']],
+				$contactData
+			);
+
+			// Create sentiment history for example contacts
+			if (!\App\Models\ContactSentimentHistory::where('contact_id', $contact->id)->exists()) {
+				\App\Models\ContactSentimentHistory::create([
+					'contact_id' => $contact->id,
+					'sentiment_id' => (function () {
+						$rand = rand(1, 100);
+						if ($rand <= 80) {
+							return \App\Models\ContactSentiment::whereIn('id', [3, 4, 5])
+								->inRandomOrder()
+								->first()
+								->id;
+						} else {
+							return \App\Models\ContactSentiment::whereIn('id', [1, 2])
+								->inRandomOrder()
+								->first()
+								->id;
+						}
+					})(),
+					'notes' => fake()->sentence,
+				]);
+			}
+		}
+
+		$this->command->info('✅ Demo contacts created for Team 1');
 	}
 }
