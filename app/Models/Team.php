@@ -80,6 +80,14 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Get the payment accounts for this team.
+     */
+    public function paymentAccounts()
+    {
+        return $this->hasMany(PaymentAccount::class);
+    }
+
+    /**
      * Get the modules enabled for this team.
      */
     public function modules()

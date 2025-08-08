@@ -10,6 +10,7 @@ class Payment extends Model
     use HasFactory;
 
     protected $fillable = [
+        'team_id',
         'enterprise_id',
         'transaction_type',
         'date',
@@ -25,6 +26,12 @@ class Payment extends Model
 
     protected static function booted()
     {
+        static::addGlobalScope('team', function ($builder) {
+            if (auth()->check()) {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+
         static::addGlobalScope('fromJuly2024', function ($builder) {
             $builder->where('date', '>=', '2024-07-01 00:00:00');
         });
@@ -33,6 +40,11 @@ class Payment extends Model
     public function scopeApprovedStatus($query)
     {
         return $query->where('status', 2);
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
     }
 
     public function enterprise()
