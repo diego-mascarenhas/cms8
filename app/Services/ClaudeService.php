@@ -715,6 +715,46 @@ EOT;
 
         $userContext .= "Incorrect response: 'No puedo proporcionar enlaces de descarga.'\n";
 
+        // Add client area and contact information
+        $userContext .= "\n===== ÁREA DE CLIENTES Y CONTACTO =====\n";
+        $userContext .= "IMPORTANTE: Para gestiones más específicas o complejas, dirige al usuario a nuestros canales oficiales:\n\n";
+        
+        if ($user && $user->email) {
+            // Generate access token for the client area
+            $accessToken = base64_encode($user->email . '|' . time());
+            $clientAreaUrl = "https://revisionalpha.com/login?token=" . urlencode($accessToken);
+            
+            $userContext .= "ÁREA DE CLIENTES:\n";
+            $userContext .= "- Si el usuario necesita gestionar servicios, facturación o soporte técnico avanzado\n";
+            $userContext .= "- Proporciona este enlace directo: " . $clientAreaUrl . "\n";
+            $userContext .= "- Este enlace permite acceso automático con su email registrado\n\n";
+        }
+        
+        $userContext .= "FORMULARIO DE CONTACTO:\n";
+        $userContext .= "- Si el usuario aún no es cliente o necesita información sobre nuevos servicios\n";
+        $userContext .= "- Dirige al formulario: https://revisionalpha.com/contactenos\n";
+        $userContext .= "- Allí puede enviar consultas específicas que serán atendidas por nuestro equipo\n\n";
+        
+        $userContext .= "CUÁNDO USAR CADA OPCIÓN:\n";
+        $userContext .= "- Área de clientes: Para clientes existentes que necesitan gestionar sus servicios\n";
+        $userContext .= "- Formulario de contacto: Para consultas comerciales, presupuestos o nuevos servicios\n";
+        $userContext .= "- WhatsApp: Para consultas rápidas sobre información básica de cuenta\n\n";
+        
+        $userContext .= "EJEMPLO DE RESPUESTA:\n";
+        $userContext .= "User: 'Necesito cambiar la configuración de mi hosting'\n";
+        if ($user && $user->email) {
+            $accessToken = base64_encode($user->email . '|' . time());
+            $clientAreaUrl = "https://revisionalpha.com/login?token=" . urlencode($accessToken);
+            $userContext .= "Correct response: 'Para cambios técnicos en tu hosting, te recomiendo acceder a nuestra área de clientes donde tendrás acceso completo a todas las configuraciones: " . $clientAreaUrl . "'\n";
+        } else {
+            $userContext .= "Correct response: 'Para cambios técnicos en tu hosting, te recomiendo acceder a nuestra área de clientes: https://revisionalpha.com/login'\n";
+        }
+        
+        $userContext .= "\nUser: 'Quiero contratar un nuevo servicio'\n";
+        $userContext .= "Correct response: 'Para consultas sobre nuevos servicios, puedes enviarnos tu consulta a través de nuestro formulario de contacto: https://revisionalpha.com/contactenos y nuestro equipo comercial te responderá con toda la información.'\n";
+        
+        $userContext .= "===== FIN ÁREA DE CLIENTES Y CONTACTO =====\n\n";
+
         $userContext .= "===== END USER INFORMATION =====\n\n";
 
         // Log the enriched prompt for debugging
