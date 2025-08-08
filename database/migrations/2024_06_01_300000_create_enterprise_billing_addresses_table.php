@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('enterprise_id')->constrained('enterprises')->onDelete('cascade');
             $table->string('name');
-            $table->unsignedTinyInteger('fiscal_condition_type_id')->default(1);
+            $table->unsignedTinyInteger('tax_status_type_id')->default(1);
             $table->string('identification_number')->nullable();
             $table->string('address')->nullable();
             $table->string('postal_code')->nullable();
@@ -26,7 +26,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->foreign('fiscal_condition_type_id')->references('id')->on('enterprise_tax_status_types')->onDelete('cascade');
+            $table->foreign('tax_status_type_id')->references('id')->on('enterprise_tax_status_types')->onDelete('cascade');
         });
     }
 

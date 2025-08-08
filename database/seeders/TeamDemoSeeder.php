@@ -89,7 +89,101 @@ class TeamDemoSeeder extends Seeder
 
 		// Also seed team-scoped payments for the demo team
 		$this->seedDemoPayments();
+
+		// Seed demo billing addresses and invoices
+		$this->seedDemoBillingAndInvoices();
 	}
+
+    private function seedDemoBillingAndInvoices(): void
+    {
+        $this->command->info('🏷️ Creating demo billing addresses and invoices...');
+
+        // Ensure we have a tax status type to reference
+        $taxStatuses = \App\Models\EnterpriseTaxStatusType::pluck('id')->all();
+        if (empty($taxStatuses)) {
+            $this->call(EnterpriseTaxStatusTypeSeeder::class);
+            $taxStatuses = \App\Models\EnterpriseTaxStatusType::pluck('id')->all();
+        }
+
+        // Create one billing address per enterprise (team 1)
+        $enterprises = \App\Models\Enterprise::where('team_id', 1)->get();
+        foreach ($enterprises as $enterprise) {
+            \App\Models\EnterpriseBillingAddress::firstOrCreate(
+                [
+                    'enterprise_id' => $enterprise->id,
+                    'name' => $enterprise->name . ' Billing',
+                ],
+                [
+                    'identification_number' => 'ID' . str_pad((string)$enterprise->id, 6, '0', STR_PAD_LEFT),
+                    'tax_status_type_id' => collect($taxStatuses)->random(),
+                    'address' => 'Main St 123',
+                    'postal_code' => '28001',
+                    'locality' => collect(['Madrid','Barcelona','Valencia','Sevilla','Bilbao','Málaga'])->random(),
+                    'province' => collect(['Madrid','Barcelona','Valencia','Sevilla','Vizcaya','Málaga'])->random(),
+                    'country' => 'ES',
+                    'status' => 1,
+                ]
+            );
+        }
+
+        // Create invoices with items for 10 random enterprises
+        $invoiceType = \App\Models\InvoiceType::first();
+        $targets = $enterprises->random(min(10, max(1, $enterprises->count())));
+        foreach ($targets as $enterprise) {
+            $billing = \App\Models\EnterpriseBillingAddress::where('enterprise_id', $enterprise->id)->first();
+
+            // Build diverse items from fares (services) of the team when possible
+            $fares = \App\Models\Fare::where('team_id', 1)->inRandomOrder()->take(3)->get();
+            $items = [];
+            foreach ($fares as $fare) {
+                $items[] = [
+                    'description' => $fare->name,
+                    'quantity' => rand(1, 5) * 100, // e.g., 100/200/300 words or minutes
+                    'unit_price' => round(rand(8, 20) / 100, 2), // e.g., 0.08 - 0.20
+                    'discount' => 0,
+                    'tax_percentage' => 21,
+                ];
+            }
+            // fallback default items if no fares
+            if (empty($items)) {
+                $items = [
+                    ['description' => 'Translation service', 'quantity' => 1000, 'unit_price' => 0.08, 'discount' => 0, 'tax_percentage' => 21],
+                    ['description' => 'Review service', 'quantity' => 1000, 'unit_price' => 0.03, 'discount' => 0, 'tax_percentage' => 21],
+                ];
+            }
+
+            $gross = 0;
+            foreach ($items as $it) {
+                $gross += ($it['quantity'] * $it['unit_price']) - $it['discount'];
+            }
+            $discount = 0;
+            $total = $gross; // taxes not included in this simple example
+
+            $invoice = \App\Models\Invoice::create([
+                'enterprise_id' => $enterprise->id,
+                'billing_id' => $billing?->id,
+                'type_id' => $invoiceType?->id ?? 1,
+                'operation' => 'sell',
+                'number' => (string)now()->format('Ymd') . '-' . rand(100, 999),
+                'date' => now()->toDateString(),
+                'due_date' => now()->addDays(30)->toDateString(),
+                'gross_amount' => $gross,
+                'discount' => $discount,
+                'total_amount' => $total,
+                'balance' => $total,
+                'status' => 1,
+            ]);
+
+            foreach ($items as $it) {
+                \App\Models\InvoiceItem::create(array_merge($it, [
+                    'invoice_id' => $invoice->id,
+                ]));
+            }
+        }
+
+        $count = \App\Models\Invoice::count();
+        $this->command->info("✅ Demo invoices created. Total invoices: {$count}");
+    }
 
     /**
      * Seed demo payment accounts and payments for Team 1

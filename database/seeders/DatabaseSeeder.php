@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
 			SourceSeeder::class,
 			UserSeeder::class,
 			PaymentTypeSeeder::class,
+			EnterpriseTaxStatusTypeSeeder::class,
 			InvoiceTypeSeeder::class,
 			ProjectStatusSeeder::class,
 			EnterpriseTypeSeeder::class,
