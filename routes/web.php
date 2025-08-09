@@ -73,6 +73,10 @@ Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
 // main
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
+
+// Auto-login with token route
+Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
+
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
 

@@ -81,4 +81,47 @@ class AuthController extends Controller
             'message' => 'Su sesión se ha cerrado correctamente',
         ]);
     }
+
+    /**
+     * Login user with token for auto-access to client area
+     */
+    public function loginWithToken($token)
+    {
+        try {
+            // Find the token in the personal_access_tokens table
+            $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            
+            if (!$accessToken || $accessToken->expires_at < now()) {
+                return redirect()->route('login')->withErrors(['error' => 'Token inválido o expirado']);
+            }
+
+            $user = $accessToken->tokenable;
+            
+            if (!$user) {
+                return redirect()->route('login')->withErrors(['error' => 'Usuario no encontrado']);
+            }
+
+            // Log the user in using the session guard
+            auth()->login($user, true);
+            
+            // Optionally revoke the token since it was used for single login
+            $accessToken->delete();
+            
+            // Redirect to the appropriate dashboard based on user role
+            if ($user->hasRole('admin')) {
+                return redirect()->route('dashboard');
+            } elseif ($user->hasRole('collaborator')) {
+                return redirect()->route('dashboard.collaborator');
+            } elseif ($user->hasRole('client')) {
+                return redirect()->route('dashboard.client');
+            }
+            
+            // Default fallback
+            return redirect()->route('dashboard');
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in token login: ' . $e->getMessage());
+            return redirect()->route('login')->withErrors(['error' => 'Error al procesar el token']);
+        }
+    }
 }
