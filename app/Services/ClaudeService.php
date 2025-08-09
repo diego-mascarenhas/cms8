@@ -530,29 +530,29 @@ EOT;
 
                     if ($services && $services->count() > 0) {
                         $userContext .= '- SERVICIOS ACTIVOS (' . $services->count() . "):\n";
-                        
+
                         foreach ($services as $service) {
                             $statusText = $service->status == 1 ? 'Activo' : 'Inactivo';
                             $userContext .= '  * ' . $service->description . ' - Estado: ' . $statusText;
-                            
+
                             if ($service->category) {
                                 $userContext .= ' - Categoría: ' . $service->category->name;
                             }
-                            
+
                             if ($service->price) {
                                 $currency = $service->currency ? $service->currency->symbol : '$';
                                 $userContext .= ' - Precio: ' . $currency . number_format($service->price, 2);
                             }
-                            
+
                             if ($service->next_billing) {
                                 $nextBilling = \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y');
                                 $userContext .= ' - Próxima facturación: ' . $nextBilling;
                             }
-                            
+
                             if ($service->expires_at) {
                                 $expiresAt = \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y');
                                 $daysUntilExpiry = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($service->expires_at), false);
-                                
+
                                 if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0) {
                                     $userContext .= ' - ⚠️ Expira en ' . $daysUntilExpiry . ' días (' . $expiresAt . ')';
                                 } else if ($daysUntilExpiry < 0) {
@@ -561,7 +561,7 @@ EOT;
                                     $userContext .= ' - Expira: ' . $expiresAt;
                                 }
                             }
-                            
+
                             $userContext .= "\n";
                         }
                     } else {

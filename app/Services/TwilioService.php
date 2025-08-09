@@ -421,15 +421,15 @@ class TwilioService
             // Find user by phone number
             $phoneAsInt = is_numeric($phoneNumber) ? (int) $phoneNumber : null;
             $user = null;
-            
+
             if ($phoneAsInt) {
                 $user = \App\Models\User::where('phone', $phoneAsInt)->first();
             }
-            
+
             if (!$user) {
                 $user = \App\Models\User::where('phone', 'like', '%'.$phoneNumber.'%')->first();
             }
-            
+
             if (!$user) {
                 \Log::info('No user found for sentiment analysis', ['phone' => $phoneNumber]);
                 return;
@@ -444,7 +444,7 @@ class TwilioService
 
             // Analyze message for emotional indicators
             $sentiment = $this->detectSentiment($messageBody);
-            
+
             if ($sentiment) {
                 // Create sentiment history entry
                 \App\Models\ContactSentimentHistory::create([
@@ -472,16 +472,16 @@ class TwilioService
     private function detectSentiment($message)
     {
         $message = strtolower($message);
-        
+
         // Very negative indicators (sentiment_id = 1)
         $veryNegativeKeywords = [
-            'terrible', 'horrible', 'pésimo', 'malísimo', 'odio', 'detesto', 
+            'terrible', 'horrible', 'pésimo', 'malísimo', 'odio', 'detesto',
             'furioso', 'indignado', 'inaceptable', 'vergonzoso', 'estafa',
             'robo', 'ladrones', 'cancelar', 'cancelaré', 'nunca más',
             'demanda', 'denuncia', 'abogado', 'fraude'
         ];
 
-        // Negative indicators (sentiment_id = 2)  
+        // Negative indicators (sentiment_id = 2)
         $negativeKeywords = [
             'molesto', 'enfadado', 'problema', 'falla', 'error', 'mal',
             'no funciona', 'deficiente', 'lento', 'caro', 'insatisfecho',
@@ -517,7 +517,7 @@ class TwilioService
             if (strpos($message, $keyword) !== false) {
                 return [
                     'id' => 2,
-                    'name' => 'Negativo', 
+                    'name' => 'Negativo',
                     'reason' => "Detectada palabra clave: '$keyword'"
                 ];
             }
@@ -575,7 +575,7 @@ class TwilioService
         try {
             // Clean and normalize the message
             $normalizedMessage = strtolower(trim($message));
-            
+
             // Find user by phone number
             $user = $this->getUserByPhone($phoneNumber);
             if (!$user || isset($user->is_contact)) {
@@ -628,7 +628,7 @@ class TwilioService
                 $responseMessage .= "• O déjanos más detalles aquí y te ayudaremos.";
             } else {
                 $responseMessage = "📋 *Información de tus servicios:*\n\n";
-                
+
                 foreach ($enterprises as $enterprise) {
                     $services = Service::where('enterprise_id', $enterprise->id)
                         ->with(['category', 'currency'])
@@ -637,32 +637,32 @@ class TwilioService
                         ->get();
 
                     $responseMessage .= "🏢 *{$enterprise->name}*\n";
-                    
+
                     if ($services->isEmpty()) {
                         $responseMessage .= "• No hay servicios registrados actualmente\n\n";
                     } else {
                         foreach ($services as $service) {
                             $statusEmoji = $service->status == 1 ? '✅' : '⚠️';
                             $responseMessage .= "{$statusEmoji} *{$service->description}*\n";
-                            
+
                             if ($service->category) {
                                 $responseMessage .= "   Categoría: {$service->category->name}\n";
                             }
-                            
+
                             if ($service->price) {
                                 $currency = $service->currency ? $service->currency->symbol : '$';
                                 $responseMessage .= "   Precio: {$currency}" . number_format($service->price, 2) . "\n";
                             }
-                            
+
                             if ($service->next_billing) {
                                 $nextBilling = \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y');
                                 $responseMessage .= "   Próxima facturación: {$nextBilling}\n";
                             }
-                            
+
                             if ($service->expires_at) {
                                 $expiresAt = \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y');
                                 $daysUntilExpiry = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($service->expires_at), false);
-                                
+
                                 if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0) {
                                     $responseMessage .= "   ⚠️ Expira: {$expiresAt} (en {$daysUntilExpiry} días)\n";
                                 } else if ($daysUntilExpiry < 0) {
@@ -671,7 +671,7 @@ class TwilioService
                                     $responseMessage .= "   Expira: {$expiresAt}\n";
                                 }
                             }
-                            
+
                             $responseMessage .= "\n";
                         }
                     }
@@ -679,20 +679,20 @@ class TwilioService
 
                 // Add helpful information
                 $responseMessage .= "💡 *¿Necesitas ayuda?*\n";
-                
+
                 if ($user->email) {
                     $accessToken = base64_encode($user->email . '|' . time());
                     $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
                     $responseMessage .= "• Área de clientes: {$clientAreaUrl}\n";
                 }
-                
+
                 $responseMessage .= "• Soporte: https://revisionalpha.com/contactenos\n";
                 $responseMessage .= "• O puedes escribirme aquí para consultas rápidas 😊";
             }
 
             // Send the response
             $this->sendWhatsApp($phoneNumber, $responseMessage);
-            
+
             // Log the service inquiry
             \Log::info("Service inquiry processed for user", [
                 'phone' => $phoneNumber,
