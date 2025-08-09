@@ -681,7 +681,8 @@ class TwilioService
                 $responseMessage .= "💡 *¿Necesitas ayuda?*\n";
 
                 if ($user->email) {
-                    $accessToken = base64_encode($user->email . '|' . time());
+                    // Generate a valid Sanctum token for autologin
+                    $accessToken = $user->createToken('WhatsApp Access Token', ['*'], now()->addHours(24))->plainTextToken;
                     $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
                     $responseMessage .= "• Área de clientes: {$clientAreaUrl}\n";
                 }
