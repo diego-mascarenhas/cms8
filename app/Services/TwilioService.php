@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -289,6 +290,12 @@ class TwilioService
                 if ($registrationResponse) {
                     return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'registration' => true]);
                 }
+
+                // Check if user is trying to report service information
+                $serviceResponse = $this->processServiceCommands($cleanFrom, $body);
+                if ($serviceResponse) {
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
+                }
             }
 
             // Automatic AI response using Claude
@@ -558,5 +565,147 @@ class TwilioService
 
         // No strong emotion detected
         return null;
+    }
+
+    /**
+     * Process service-related commands from WhatsApp messages
+     */
+    public function processServiceCommands($phoneNumber, $message)
+    {
+        try {
+            // Clean and normalize the message
+            $normalizedMessage = strtolower(trim($message));
+            
+            // Find user by phone number
+            $user = $this->getUserByPhone($phoneNumber);
+            if (!$user || isset($user->is_contact)) {
+                // User not found or is just a contact, skip service processing
+                return null;
+            }
+
+            // Get the user's contact for enterprises
+            $contact = Contact::where('user_id', $user->id)->first();
+            if (!$contact) {
+                return null;
+            }
+
+            // Check if message contains service-related keywords
+            $serviceKeywords = [
+                'servicio', 'service', 'hosting', 'dominio', 'domain', 'web',
+                'desarrollo', 'development', 'mantenimiento', 'maintenance',
+                'soporte', 'support', 'backup', 'ssl', 'certificado',
+                'renovar', 'renew', 'vence', 'expires', 'caducidad'
+            ];
+
+            $containsServiceKeyword = false;
+            foreach ($serviceKeywords as $keyword) {
+                if (strpos($normalizedMessage, $keyword) !== false) {
+                    $containsServiceKeyword = true;
+                    break;
+                }
+            }
+
+            // Check for service reporting patterns
+            $isServiceReport = (
+                preg_match('/mi\s+(servicio|hosting|dominio|web)/i', $message) ||
+                preg_match('/(tengo|necesito|quiero|contratar)\s+(un\s+)?(servicio|hosting|dominio)/i', $message) ||
+                preg_match('/(vence|expira|caduca)\s+(mi|el)/i', $message) ||
+                preg_match('/información\s+de\s+(mi\s+)?(servicio|hosting|dominio)/i', $message)
+            );
+
+            if (!$containsServiceKeyword && !$isServiceReport) {
+                return null;
+            }
+
+            // Get user's enterprises to check existing services
+            $enterprises = $contact->enterprises()->get();
+            $responseMessage = '';
+
+            if ($enterprises->isEmpty()) {
+                $responseMessage = "Veo que estás preguntando sobre servicios. Actualmente no tienes empresas registradas en nuestro sistema.\n\n";
+                $responseMessage .= "Para consultar sobre nuevos servicios o registrar tu empresa, puedes:\n";
+                $responseMessage .= "• Contactarnos a través de: https://revisionalpha.com/contactenos\n";
+                $responseMessage .= "• O déjanos más detalles aquí y te ayudaremos.";
+            } else {
+                $responseMessage = "📋 *Información de tus servicios:*\n\n";
+                
+                foreach ($enterprises as $enterprise) {
+                    $services = Service::where('enterprise_id', $enterprise->id)
+                        ->with(['category', 'currency'])
+                        ->orderBy('status', 'desc')
+                        ->orderBy('next_billing', 'asc')
+                        ->get();
+
+                    $responseMessage .= "🏢 *{$enterprise->name}*\n";
+                    
+                    if ($services->isEmpty()) {
+                        $responseMessage .= "• No hay servicios registrados actualmente\n\n";
+                    } else {
+                        foreach ($services as $service) {
+                            $statusEmoji = $service->status == 1 ? '✅' : '⚠️';
+                            $responseMessage .= "{$statusEmoji} *{$service->description}*\n";
+                            
+                            if ($service->category) {
+                                $responseMessage .= "   Categoría: {$service->category->name}\n";
+                            }
+                            
+                            if ($service->price) {
+                                $currency = $service->currency ? $service->currency->symbol : '$';
+                                $responseMessage .= "   Precio: {$currency}" . number_format($service->price, 2) . "\n";
+                            }
+                            
+                            if ($service->next_billing) {
+                                $nextBilling = \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y');
+                                $responseMessage .= "   Próxima facturación: {$nextBilling}\n";
+                            }
+                            
+                            if ($service->expires_at) {
+                                $expiresAt = \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y');
+                                $daysUntilExpiry = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($service->expires_at), false);
+                                
+                                if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0) {
+                                    $responseMessage .= "   ⚠️ Expira: {$expiresAt} (en {$daysUntilExpiry} días)\n";
+                                } else if ($daysUntilExpiry < 0) {
+                                    $responseMessage .= "   🔴 Expiró: {$expiresAt}\n";
+                                } else {
+                                    $responseMessage .= "   Expira: {$expiresAt}\n";
+                                }
+                            }
+                            
+                            $responseMessage .= "\n";
+                        }
+                    }
+                }
+
+                // Add helpful information
+                $responseMessage .= "💡 *¿Necesitas ayuda?*\n";
+                
+                if ($user->email) {
+                    $accessToken = base64_encode($user->email . '|' . time());
+                    $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
+                    $responseMessage .= "• Área de clientes: {$clientAreaUrl}\n";
+                }
+                
+                $responseMessage .= "• Soporte: https://revisionalpha.com/contactenos\n";
+                $responseMessage .= "• O puedes escribirme aquí para consultas rápidas 😊";
+            }
+
+            // Send the response
+            $this->sendWhatsApp($phoneNumber, $responseMessage);
+            
+            // Log the service inquiry
+            \Log::info("Service inquiry processed for user", [
+                'phone' => $phoneNumber,
+                'user_id' => $user->id,
+                'enterprises_count' => $enterprises->count(),
+                'message_preview' => substr($message, 0, 50)
+            ]);
+
+            return ['success' => true, 'message' => 'Service information sent'];
+
+        } catch (\Exception $e) {
+            \Log::error('Error processing service commands: ' . $e->getMessage());
+            return null;
+        }
     }
 }
