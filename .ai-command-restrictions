@@ -1,0 +1,70 @@
+# AI Command Restrictions
+# Esta lista bloquea comandos que la IA no debería ejecutar automáticamente
+
+# Git commands - Para evitar commits automáticos no autorizados
+git add
+git commit
+git push
+git pull
+git merge
+git rebase
+git reset --hard
+git clean -fd
+git branch -D
+git tag -d
+
+# File system destructive commands
+rm -rf
+rm -f
+rmdir
+del
+format
+fdisk
+mkfs
+
+# System administration commands
+sudo
+su
+chmod 777
+chown
+systemctl
+service
+kill -9
+killall
+
+# Database commands
+DROP DATABASE
+DROP TABLE
+TRUNCATE
+DELETE FROM
+
+# Package management
+npm publish
+composer publish
+docker push
+docker rmi
+
+# Network/Security sensitive
+curl -X POST
+wget -O
+ssh
+scp
+rsync --delete
+
+# Laravel/Artisan destructive commands
+php artisan migrate:reset
+php artisan migrate:fresh
+php artisan db:wipe
+php artisan queue:clear
+php artisan cache:clear --force
+
+# IDE/Editor commands that modify files
+code .
+vim
+nano
+emacs
+
+# Backup/Archive extraction
+tar -xf
+unzip -o
+7z x -y
