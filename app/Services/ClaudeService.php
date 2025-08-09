@@ -507,10 +507,10 @@ EOT;
             ]);
         }
 
-        // Add enterprise information
+        // Add enterprise and services information
         if (! empty($enterprises)) {
-            $userContext .= "\n===== USER ENTERPRISES =====\n";
-            $userContext .= "IMPORTANTE: El usuario está asociado con las siguientes empresas:\n\n";
+            $userContext .= "\n===== USER ENTERPRISES AND SERVICES =====\n";
+            $userContext .= "IMPORTANTE: El usuario está asociado con las siguientes empresas y servicios:\n\n";
 
             foreach ($enterprises as $index => $enterprise) {
                 $userContext .= 'EMPRESA #'.($index + 1).":\n";
@@ -518,6 +518,66 @@ EOT;
                 $userContext .= '- ID: '.$enterprise['id']."\n";
                 if (! empty($enterprise['position'])) {
                     $userContext .= '- POSICIÓN: '.$enterprise['position']."\n";
+                }
+
+                // Obtener servicios asociados a esta empresa
+                try {
+                    $services = \App\Models\Service::where('enterprise_id', $enterprise['id'])
+                        ->with(['category', 'currency'])
+                        ->orderBy('status', 'desc')
+                        ->orderBy('next_billing', 'asc')
+                        ->get();
+
+                    if ($services && $services->count() > 0) {
+                        $userContext .= '- SERVICIOS ACTIVOS (' . $services->count() . "):\n";
+                        
+                        foreach ($services as $service) {
+                            $statusText = $service->status == 1 ? 'Activo' : 'Inactivo';
+                            $userContext .= '  * ' . $service->description . ' - Estado: ' . $statusText;
+                            
+                            if ($service->category) {
+                                $userContext .= ' - Categoría: ' . $service->category->name;
+                            }
+                            
+                            if ($service->price) {
+                                $currency = $service->currency ? $service->currency->symbol : '$';
+                                $userContext .= ' - Precio: ' . $currency . number_format($service->price, 2);
+                            }
+                            
+                            if ($service->next_billing) {
+                                $nextBilling = \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y');
+                                $userContext .= ' - Próxima facturación: ' . $nextBilling;
+                            }
+                            
+                            if ($service->expires_at) {
+                                $expiresAt = \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y');
+                                $daysUntilExpiry = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($service->expires_at), false);
+                                
+                                if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0) {
+                                    $userContext .= ' - ⚠️ Expira en ' . $daysUntilExpiry . ' días (' . $expiresAt . ')';
+                                } else if ($daysUntilExpiry < 0) {
+                                    $userContext .= ' - 🔴 EXPIRADO (' . $expiresAt . ')';
+                                } else {
+                                    $userContext .= ' - Expira: ' . $expiresAt;
+                                }
+                            }
+                            
+                            $userContext .= "\n";
+                        }
+                    } else {
+                        $userContext .= "- SERVICIOS: No hay servicios registrados para esta empresa\n";
+                    }
+
+                    \Log::info('Services loaded for enterprise', [
+                        'enterprise_id' => $enterprise['id'],
+                        'service_count' => $services ? $services->count() : 0,
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Error loading services for enterprise', [
+                        'enterprise_id' => $enterprise['id'],
+                        'error' => $e->getMessage(),
+                    ]);
+                    $userContext .= "- SERVICIOS: Error al cargar los servicios\n";
                 }
 
                 // Obtener facturas asociadas a esta empresa
@@ -590,13 +650,17 @@ EOT;
         $userContext .= "- If they ask 'What's my birthday?' respond with their birthday from the USER BIRTHDAY field.\n";
         $userContext .= "- If they ask about what companies or enterprises they are associated with, ALWAYS tell them about the companies listed in USER ENTERPRISES section above.\n";
         $userContext .= "- VERY IMPORTANT: If the user asks about their company or enterprise, you MUST respond with the list of enterprises shown in USER ENTERPRISES section.\n";
+        $userContext .= "- If they ask about their services, hosting, domains, or any technical services, tell them about the services listed under SERVICIOS ACTIVOS for each enterprise.\n";
+        $userContext .= "- If they ask about service expiration dates, renewal dates, or billing dates, use the information from the SERVICIOS section.\n";
         $userContext .= "- If they ask about invoices or bills for their company, tell them about the invoices listed under each enterprise.\n";
         $userContext .= "- If they ask for the total amount of their recent invoices, calculate the sum of all invoice amounts listed.\n";
         $userContext .= "- NEVER say that you don't have access to their company information.\n";
+        $userContext .= "- NEVER say that you don't have access to their service information.\n";
         $userContext .= "- NEVER say that you don't have access to their invoice information.\n";
         $userContext .= "- DO NOT say you don't have access to their data.\n";
         $userContext .= "- DO NOT say that you can only see what's in the conversation.\n";
         $userContext .= "- DO tell them their company information if they ask about it, using the exact names from USER ENTERPRISES.\n";
+        $userContext .= "- DO tell them their service information if they ask about services, hosting, domains, etc.\n";
         $userContext .= "- Pretend you already know this information about them.\n";
         $userContext .= "- Be helpful and provide EXACTLY the information from the IMPORTANT USER INFORMATION section.\n";
 
@@ -614,6 +678,25 @@ EOT;
             $userContext .= "Correct response: 'No tengo registros de que estés asociado con alguna empresa en este momento.'\n";
         }
         $userContext .= "Incorrect response: 'No puedo acceder a esa información.' o 'No tengo esa información.'\n\n";
+
+        // Example for services
+        $userContext .= "User: '¿Qué servicios tengo contratados?' o '¿Cuáles son mis servicios?' o 'Información de mi hosting'\n";
+        if (! empty($enterprises)) {
+            $userContext .= "Correct response: 'Aquí tienes la información de tus servicios por empresa:'\n";
+            foreach ($enterprises as $e) {
+                $userContext .= 'Para ' . $e['name'] . ': ';
+                $userContext .= 'Tienes X servicios activos. Por ejemplo: hosting, dominio, etc. (usar la información real de SERVICIOS ACTIVOS)';
+                $userContext .= "\n";
+            }
+        } else {
+            $userContext .= "Correct response: 'No tienes servicios registrados actualmente en nuestro sistema.'\n";
+        }
+        $userContext .= "Incorrect response: 'No puedo ver tus servicios.' o 'No tengo acceso a esa información.'\n\n";
+
+        // Example for service expiration
+        $userContext .= "User: '¿Cuándo vence mi hosting?' o '¿Cuándo expira mi dominio?'\n";
+        $userContext .= "Correct response: 'Según tu información de servicios: [listar las fechas de expiración de los servicios relevantes]'\n";
+        $userContext .= "Incorrect response: 'No puedo verificar las fechas de expiración.'\n\n";
 
         // Example for invoices
         $userContext .= "User: '¿Cuáles son mis facturas pendientes?'\n";
