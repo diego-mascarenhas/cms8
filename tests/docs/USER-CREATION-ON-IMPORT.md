@@ -86,7 +86,7 @@ Users skipped: 14
 ## 🔐 **Configuración de Seguridad**
 
 ### **Password Temporal**
-- **Password por defecto**: `password123`
+- **Password por defecto**: `Simplicity!`
 - **Verificación de email**: Automáticamente verificado
 - **Cambio obligatorio**: Se recomienda forzar cambio en primer login
 

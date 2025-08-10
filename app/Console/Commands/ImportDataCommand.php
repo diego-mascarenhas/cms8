@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Helpers\PhoneHelper;
 use App\Models\Module;
 use App\Models\User;
 use Exception;
@@ -352,14 +353,7 @@ class ImportDataCommand extends Command
                 $existingContact = DB::table('contacts')->where('id', $data->id)->first();
 
                 $phone = $data->celular ?? $data->telefono ?? null;
-                $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
-                if (! empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0) {
-                    $cleaned_phone = '54'.$cleaned_phone;
-                }
-                // Si cleaned_phone está vacío o solo espacios, setear a null
-                if (empty($cleaned_phone) || trim($cleaned_phone) === '') {
-                    $cleaned_phone = null;
-                }
+                $cleaned_phone = PhoneHelper::clean($phone, '54', true);
 
                 // Determinar status_id según el estado de la empresa
                 $statusId = 5;
@@ -394,7 +388,7 @@ class ImportDataCommand extends Command
                                 'name' => trim($data->nombre . ' ' . ($data->apellido ?? '')),
                                 'email' => $data->email,
                                 'phone' => $cleaned_phone,
-                                'password' => Hash::make('password123'), // Password temporal
+                                'password' => Hash::make('Simplicity!'), // Password temporal
                                 'email_verified_at' => now(),
                                 'created_at' => $data->fecha_alta,
                                 'updated_at' => $data->fecha_modificacion,
@@ -1091,6 +1085,8 @@ class ImportDataCommand extends Command
 
         return $stats;
     }
+
+
 
     // Add other import methods...
 }
