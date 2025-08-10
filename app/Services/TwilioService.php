@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\TokenHelper;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -681,8 +682,8 @@ class TwilioService
                 $responseMessage .= "💡 *¿Necesitas ayuda?*\n";
 
                 if ($user->email) {
-                    // Generate a valid Sanctum token for autologin
-                    $accessToken = $user->createToken('WhatsApp Access Token', ['*'], now()->addHours(24))->plainTextToken;
+                    // Generate a signed token that works across different databases
+                    $accessToken = TokenHelper::generateSignedToken($user, 'whatsapp_autologin', 24);
                     $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
                     $responseMessage .= "• Área de clientes: {$clientAreaUrl}\n";
                 }

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\TokenHelper;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -765,8 +766,8 @@ EOT;
         $userContext .= "User: '¿Puedes enviarme el link para descargar mis facturas?' o '¿Dónde puedo descargar mi factura?'\n";
 
         if ($user && $user->email) {
-            // Generate a valid Sanctum token for autologin
-            $accessToken = $user->createToken('Claude Access Token', ['*'], now()->addHours(24))->plainTextToken;
+            // Generate a signed token that works across different databases
+            $accessToken = TokenHelper::generateSignedToken($user, 'claude_autologin', 24);
             $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
             $userContext .= "Correct response: 'Para descargar tus facturas, accede a nuestra área de clientes donde tendrás disponible el historial completo de facturación: " . $clientAreaUrl . "'\n";
         } else {
@@ -776,8 +777,8 @@ EOT;
         // User asking for specific invoice download
         $userContext .= "\nUser: '¿Me puedes dar el link para descargar la factura #12345?'\n";
         if ($user && $user->email) {
-            // Generate a valid Sanctum token for autologin
-            $accessToken = $user->createToken('Claude Access Token', ['*'], now()->addHours(24))->plainTextToken;
+            // Generate a signed token that works across different databases
+            $accessToken = TokenHelper::generateSignedToken($user, 'claude_autologin', 24);
             $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
             $userContext .= "Correct response: 'Para descargar la factura #12345, accede a tu área de clientes donde encontrarás todas tus facturas disponibles para descarga: " . $clientAreaUrl . "'\n";
         } else {
@@ -791,8 +792,8 @@ EOT;
         $userContext .= "IMPORTANTE: Para gestiones más específicas o complejas, dirige al usuario a nuestros canales oficiales:\n\n";
 
         if ($user && $user->email) {
-            // Generate a valid Sanctum token for autologin
-            $accessToken = $user->createToken('Claude Access Token', ['*'], now()->addHours(24))->plainTextToken;
+            // Generate a signed token that works across different databases
+            $accessToken = TokenHelper::generateSignedToken($user, 'claude_autologin', 24);
             $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
 
             $userContext .= "ÁREA DE CLIENTES:\n";
@@ -814,8 +815,8 @@ EOT;
         $userContext .= "EJEMPLO DE RESPUESTA:\n";
         $userContext .= "User: 'Necesito cambiar la configuración de mi hosting'\n";
         if ($user && $user->email) {
-            // Generate a valid Sanctum token for autologin
-            $accessToken = $user->createToken('Claude Access Token', ['*'], now()->addHours(24))->plainTextToken;
+            // Generate a signed token that works across different databases
+            $accessToken = TokenHelper::generateSignedToken($user, 'claude_autologin', 24);
             $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
             $userContext .= "Correct response: 'Para cambios técnicos en tu hosting, te recomiendo acceder a nuestra área de clientes donde tendrás acceso completo a todas las configuraciones: " . $clientAreaUrl . "'\n";
         } else {
