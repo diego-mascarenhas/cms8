@@ -3,9 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Models\Module;
+use App\Models\User;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class ImportDataCommand extends Command
 {
@@ -286,6 +288,13 @@ class ImportDataCommand extends Command
                 if (isset($result['updated'])) {
                     $this->info("Updated {$result['updated']} existing records.");
                 }
+
+                // Mostrar estadísticas de usuarios si están disponibles
+                if (isset($result['users_created'])) {
+                    $this->info("Users created: {$result['users_created']}");
+                    $this->info("Users existing: {$result['users_existing']}");
+                    $this->info("Users skipped: {$result['users_skipped']}");
+                }
             }
         } catch (\Exception $e) {
             $this->error('Error during import: '.$e->getMessage());
@@ -297,6 +306,9 @@ class ImportDataCommand extends Command
         $stats = [
             'imported' => 0,
             'updated' => 0,
+            'users_created' => 0,
+            'users_existing' => 0,
+            'users_skipped' => 0,
             'message' => null,
         ];
 
@@ -358,10 +370,71 @@ class ImportDataCommand extends Command
                     }
                 }
 
+                // Crear usuario si corresponde según area_privada
+                $userId = null;
+                $shouldCreateUser = in_array($data->area_privada, [2, 3, 4]); // 2=admin, 3=client, 4=user
+
+                if ($shouldCreateUser && $data->email) {
+                    // Mapear area_privada a roles
+                    $roleMapping = [
+                        2 => 'admin',
+                        3 => 'client',
+                        4 => 'user'
+                    ];
+
+                    $roleName = $roleMapping[$data->area_privada];
+
+                    // Verificar si ya existe un usuario con este email
+                    $existingUser = User::where('email', $data->email)->first();
+
+                    if (!$existingUser) {
+                        try {
+                            // Crear nuevo usuario
+                            $user = User::create([
+                                'name' => trim($data->nombre . ' ' . ($data->apellido ?? '')),
+                                'email' => $data->email,
+                                'phone' => $cleaned_phone,
+                                'password' => Hash::make('password123'), // Password temporal
+                                'email_verified_at' => now(),
+                                'created_at' => $data->fecha_alta,
+                                'updated_at' => $data->fecha_modificacion,
+                            ]);
+
+                            // Asignar rol
+                            $user->assignRole($roleName);
+
+                            // Asignar al equipo CMS
+                            $teamId = env('CMS_TEAM_ID');
+                            if ($teamId) {
+                                $user->teams()->attach($teamId, ['role' => $roleName]);
+                            }
+
+                            $userId = $user->id;
+                            $stats['users_created']++;
+                            $this->info("Usuario creado: {$data->email} con rol {$roleName} (ID: {$userId})");
+
+                        } catch (\Exception $e) {
+                            $stats['users_skipped']++;
+                            $this->error("Error creando usuario {$data->email}: " . $e->getMessage());
+                        }
+                    } else {
+                        $userId = $existingUser->id;
+                        $stats['users_existing']++;
+                        $this->info("Usuario existente encontrado: {$data->email} (ID: {$userId})");
+                    }
+                } else {
+                    $stats['users_skipped']++;
+                    if (!$shouldCreateUser) {
+                        $this->info("Contacto {$data->id} - area_privada={$data->area_privada} no requiere usuario");
+                    } else {
+                        $this->warn("Contacto {$data->id} - sin email, no se puede crear usuario");
+                    }
+                }
+
                 $contactData = [
                     'id' => $data->id,
                     'team_id' => env('CMS_TEAM_ID'),
-                    'user_id' => null,
+                    'user_id' => $userId,
                     'name' => $data->nombre,
                     'surname' => $data->apellido,
                     'email' => $data->email,
@@ -375,6 +448,8 @@ class ImportDataCommand extends Command
                     'responsible_id' => null,
                     'data' => json_encode([
                         'imported_from_cms7' => true,
+                        'area_privada' => $data->area_privada,
+                        'original_id' => $data->id,
                     ]),
                     'status_id' => $statusId,
                     'created_at' => $data->fecha_alta,
