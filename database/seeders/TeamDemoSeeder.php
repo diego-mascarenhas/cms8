@@ -1293,7 +1293,9 @@ class TeamDemoSeeder extends Seeder
 			[
 				'id' => 2,
 				'team_id' => 1,
-				'name' => 'Freaky Technologies',
+				'name' => 'Idoneo Technologies',
+				'website' => 'https://idoneo.dev',
+				'email' => 'bitcoder@idoneo.dev',
 				'type_id' => 1, // Cliente
 				'status_id' => 1, // Activo
 				'created_at' => '2025-08-10 15:12:31',
@@ -1317,7 +1319,7 @@ class TeamDemoSeeder extends Seeder
 				'team_id' => 1,
 				'name' => 'Demo User',
 				'email' => 'demo@example.com',
-				'profile' => 'Example demo contact for testing - Freaky Technologies',
+				'profile' => 'Example demo contact for testing - Idoneo Technologies',
 				'creator_id' => 1,
 				'responsible_id' => 1,
 				'user_id' => 8,
@@ -1372,18 +1374,18 @@ class TeamDemoSeeder extends Seeder
 			}
 		}
 
-		// Create comprehensive demo data for Freaky Technologies
-		$this->createDemoEcosystemForFreakyTech($techEnterprise);
+		// Create comprehensive demo data for Idoneo Technologies
+		$this->createDemoEcosystemForIdoneoTech($techEnterprise);
 
 		$this->command->info('✅ Demo contacts, enterprises and complete ecosystem created for Team 1');
 	}
 
 	/**
-	 * Create a complete demo ecosystem for Freaky Technologies
+	 * Create a complete demo ecosystem for Idoneo Technologies
 	 */
-	private function createDemoEcosystemForFreakyTech($enterprise): void
+	private function createDemoEcosystemForIdoneoTech($enterprise): void
 	{
-		$this->command->info('🚀 Creating comprehensive demo ecosystem for Freaky Technologies...');
+		$this->command->info('🚀 Creating comprehensive demo ecosystem for Idoneo Technologies...');
 
 		// Create billing address FIRST (needed for invoices)
 		$this->createBillingAddressForEnterprise($enterprise);
@@ -1400,7 +1402,7 @@ class TeamDemoSeeder extends Seeder
 		// Create invoices and payments (billing address already exists)
 		$this->createInvoicesAndPaymentsForEnterprise($enterprise);
 
-		$this->command->info('✅ Complete demo ecosystem created for Freaky Technologies');
+		$this->command->info('✅ Complete demo ecosystem created for Idoneo Technologies');
 	}
 
 	/**
@@ -1408,39 +1410,39 @@ class TeamDemoSeeder extends Seeder
 	 */
 	private function createAdditionalContactsForEnterprise($enterprise): void
 	{
-		$this->command->info('👥 Creating additional contacts for Freaky Technologies...');
+		$this->command->info('👥 Creating additional contacts for Idoneo Technologies...');
 
 		$additionalContacts = [
 			[
 				'name' => 'Sarah Johnson',
 				'surname' => 'CEO',
-				'email' => 'sarah.johnson@freakytech.com',
+				'email' => 'sarah.johnson@idoneo.dev',
 				'phone' => 34722372859,
-				'profile' => 'CEO and Founder of Freaky Technologies',
+				'profile' => 'CEO and Founder of Idoneo Technologies',
 				'position' => 'Chief Executive Officer'
 			],
 			[
 				'name' => 'Mike Rodriguez',
 				'surname' => 'CTO',
-				'email' => 'mike.rodriguez@freakytech.com',
+				'email' => 'mike.rodriguez@idoneo.dev',
 				'phone' => 34722372860,
-				'profile' => 'Chief Technology Officer at Freaky Technologies',
+				'profile' => 'Chief Technology Officer at Idoneo Technologies',
 				'position' => 'Chief Technology Officer'
 			],
 			[
 				'name' => 'Lisa Chen',
 				'surname' => 'CFO',
-				'email' => 'lisa.chen@freakytech.com',
+				'email' => 'lisa.chen@idoneo.dev',
 				'phone' => 34722372861,
-				'profile' => 'Chief Financial Officer at Freaky Technologies',
+				'profile' => 'Chief Financial Officer at Idoneo Technologies',
 				'position' => 'Chief Financial Officer'
 			],
 			[
 				'name' => 'David Smith',
 				'surname' => 'Project Manager',
-				'email' => 'david.smith@freakytech.com',
+				'email' => 'david.smith@idoneo.dev',
 				'phone' => 34722372862,
-				'profile' => 'Senior Project Manager at Freaky Technologies',
+				'profile' => 'Senior Project Manager at Idoneo Technologies',
 				'position' => 'Senior Project Manager'
 			]
 		];
@@ -1484,7 +1486,7 @@ class TeamDemoSeeder extends Seeder
 	 */
 	private function createServicesForEnterprise($enterprise): void
 	{
-		$this->command->info('🛠️ Creating services for Freaky Technologies...');
+		$this->command->info('🛠️ Creating services for Idoneo Technologies...');
 
 		// Get a default category for services
 		$defaultCategory = Category::where('team_id', 1)->first();
@@ -1551,7 +1553,7 @@ class TeamDemoSeeder extends Seeder
 	 */
 	private function createProjectsForEnterprise($enterprise): void
 	{
-		$this->command->info('📋 Creating projects for Freaky Technologies...');
+		$this->command->info('📋 Creating projects for Idoneo Technologies...');
 
 		// Get a default category for projects
 		$defaultCategory = Category::where('team_id', 1)->first();
@@ -1621,7 +1623,7 @@ class TeamDemoSeeder extends Seeder
 	 */
 	private function createBillingAddressForEnterprise($enterprise): void
 	{
-		$this->command->info('🏢 Creating billing address for Freaky Technologies...');
+		$this->command->info('🏢 Creating billing address for Idoneo Technologies...');
 
 		$taxStatusTypes = EnterpriseTaxStatusType::pluck('id')->all();
 		if (empty($taxStatusTypes)) {
@@ -1631,13 +1633,13 @@ class TeamDemoSeeder extends Seeder
 		EnterpriseBillingAddress::updateOrCreate(
 			['enterprise_id' => $enterprise->id],
 			[
-				'name' => 'Freaky Technologies - Headquarters',
+				'name' => 'Idoneo Technologies - Headquarters',
 				'identification_number' => 'B98765432',
 				'tax_status_type_id' => collect($taxStatusTypes)->random(),
-				'address' => 'Avenida Tecnológica 123, Torre Innovation',
-				'postal_code' => '28001',
-				'locality' => 'Madrid',
-				'province' => 'Madrid',
+				'address' => 'Avenida Innovación 456, Torre Desarrollo',
+				'postal_code' => '08001',
+				'locality' => 'Barcelona',
+				'province' => 'Barcelona',
 				'country' => 'ES',
 				'status' => 1,
 				'created_at' => now(),
@@ -1651,7 +1653,7 @@ class TeamDemoSeeder extends Seeder
 	 */
 	private function createInvoicesAndPaymentsForEnterprise($enterprise): void
 	{
-		$this->command->info('💰 Creating invoices and payments for Freaky Technologies...');
+		$this->command->info('💰 Creating invoices and payments for Idoneo Technologies...');
 
 		// Ensure billing address exists and get it
 		$billingAddress = EnterpriseBillingAddress::where('enterprise_id', $enterprise->id)->first();

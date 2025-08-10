@@ -297,6 +297,12 @@ class TwilioService
                 if ($serviceResponse) {
                     return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
                 }
+
+                // Check if user sent "DEMO" command
+                $demoResponse = $this->processDemoCommand($cleanFrom, $body);
+                if ($demoResponse) {
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'demo_processed' => true]);
+                }
             }
 
             // Automatic AI response using Claude
@@ -709,5 +715,233 @@ class TwilioService
             \Log::error('Error processing service commands: ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Process DEMO command for automatic user registration
+     */
+    public function processDemoCommand($phoneNumber, $message)
+    {
+        try {
+            $normalizedMessage = trim($message);
+
+            // Check if message is exactly "DEMO" (case sensitive)
+            if ($normalizedMessage === 'DEMO') {
+                // Check if user already exists
+                $existingUser = $this->getUserByPhone($phoneNumber);
+                if ($existingUser && !isset($existingUser->is_contact)) {
+                    $this->sendWhatsApp($phoneNumber, "¡Hola! Ya tienes una cuenta registrada en nuestro sistema. 😊\n\nPuedes acceder a tu área de cliente o contactarnos si necesitas ayuda.");
+                    return ['success' => true, 'message' => 'User already exists'];
+                }
+
+                // Start demo registration process
+                $this->sendWhatsApp($phoneNumber, "🎉 ¡Bienvenido al DEMO de Idoneo Technologies!\n\nPara crear tu cuenta demo, necesito algunos datos:\n\n👤 Por favor, envíame tu *nombre completo*:");
+
+                // Store demo state in conversation metadata
+                $this->storeDemoState($phoneNumber, 'awaiting_name');
+
+                return ['success' => true, 'message' => 'Demo registration started'];
+            }
+
+            // Check if we're in a demo registration flow
+            $demoState = $this->getDemoState($phoneNumber);
+            if ($demoState) {
+                return $this->handleDemoRegistrationStep($phoneNumber, $message, $demoState);
+            }
+
+            return null;
+
+        } catch (\Exception $e) {
+            \Log::error('Error processing demo command: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Handle demo registration steps
+     */
+    private function handleDemoRegistrationStep($phoneNumber, $message, $state)
+    {
+        try {
+            switch ($state) {
+                case 'awaiting_name':
+                    if (strlen(trim($message)) < 2) {
+                        $this->sendWhatsApp($phoneNumber, "❌ Por favor, ingresa un nombre válido (mínimo 2 caracteres):");
+                        return ['success' => false, 'message' => 'Invalid name'];
+                    }
+
+                    // Store name and ask for email
+                    $this->storeDemoData($phoneNumber, 'name', trim($message));
+                    $this->storeDemoState($phoneNumber, 'awaiting_email');
+                    $this->sendWhatsApp($phoneNumber, "✅ Perfecto, *{$message}*!\n\n📧 Ahora envíame tu *email*:");
+
+                    return ['success' => true, 'message' => 'Name collected'];
+
+                case 'awaiting_email':
+                    $email = trim($message);
+
+                    // Validate email format
+                    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $this->sendWhatsApp($phoneNumber, "❌ Por favor, ingresa un email válido (ejemplo: tu@email.com):");
+                        return ['success' => false, 'message' => 'Invalid email'];
+                    }
+
+                    // Check if email already exists
+                    $existingUser = \App\Models\User::where('email', $email)->first();
+                    if ($existingUser) {
+                        $this->sendWhatsApp($phoneNumber, "❌ Este email ya está registrado en nuestro sistema.\n\n📧 Por favor, usa otro email:");
+                        return ['success' => false, 'message' => 'Email already exists'];
+                    }
+
+                    // Create the demo user and contact
+                    $result = $this->createDemoUser($phoneNumber, $email);
+
+                    // Clear demo state
+                    $this->clearDemoState($phoneNumber);
+
+                    return $result;
+
+                default:
+                    $this->clearDemoState($phoneNumber);
+                    return null;
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error handling demo registration step: ' . $e->getMessage());
+            $this->clearDemoState($phoneNumber);
+            return null;
+        }
+    }
+
+    /**
+     * Create demo user and contact
+     */
+    private function createDemoUser($phoneNumber, $email)
+    {
+        try {
+            $name = $this->getDemoData($phoneNumber, 'name');
+            $cleanPhone = \App\Helpers\PhoneHelper::clean($phoneNumber, '54', true);
+
+            // Create user
+            $user = \App\Models\User::create([
+                'name' => $name,
+                'email' => $email,
+                'phone' => $cleanPhone,
+                'password' => \Illuminate\Support\Facades\Hash::make('Simplicity!'),
+                'email_verified_at' => now(),
+            ]);
+
+            // Assign role
+            $user->assignRole('client');
+
+            // Associate with team 1
+            $user->teams()->attach(1, ['role' => 'client']);
+
+            // Create contact
+            $contact = \App\Models\Contact::create([
+                'team_id' => 1,
+                'user_id' => $user->id,
+                'name' => $name,
+                'email' => $email,
+                'phone' => $cleanPhone,
+                'whatsapp' => $cleanPhone,
+                'status_id' => 1, // Active
+                'creator_id' => 1, // System user
+            ]);
+
+            // Associate contact with Idoneo Technologies (ID: 2)
+            $idoneoTech = \App\Models\Enterprise::find(2);
+            if ($idoneoTech) {
+                $contact->enterprises()->attach(2);
+            }
+
+            // Generate auto-login token
+            $accessToken = \App\Helpers\TokenHelper::generateSignedToken($user, 'demo_autologin', 24);
+            $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
+
+            // Send success message
+            $responseMessage = "🎉 ¡Felicidades! Tu cuenta demo ha sido creada exitosamente.\n\n";
+            $responseMessage .= "📧 Email: {$email}\n";
+            $responseMessage .= "🔐 Contraseña temporal: Simplicity!\n\n";
+            $responseMessage .= "🚀 Ahora tienes acceso a nuestros servicios de Idoneo Technologies:\n";
+            $responseMessage .= "• Desarrollo de Software con IA\n";
+            $responseMessage .= "• Gestión de Infraestructura en la Nube\n";
+            $responseMessage .= "• Desarrollo de Apps Móviles\n";
+            $responseMessage .= "• Consultoría en Ciberseguridad\n\n";
+            $responseMessage .= "🌐 Visita nuestro sitio web: https://idoneo.dev\n";
+            $responseMessage .= "🌐 Accede directamente a tu área de cliente:\n{$clientAreaUrl}\n\n";
+            $responseMessage .= "¡Gracias por probar nuestro demo! 🚀";
+
+            $this->sendWhatsApp($phoneNumber, $responseMessage);
+
+            // Clear demo data
+            $this->clearDemoData($phoneNumber);
+
+            \Log::info("Demo user created successfully", [
+                'user_id' => $user->id,
+                'contact_id' => $contact->id,
+                'email' => $email,
+                'phone' => $phoneNumber
+            ]);
+
+            return ['success' => true, 'message' => 'Demo user created'];
+
+        } catch (\Exception $e) {
+            \Log::error('Error creating demo user: ' . $e->getMessage());
+            $this->sendWhatsApp($phoneNumber, "❌ Hubo un error creando tu cuenta demo. Por favor, intenta más tarde o contacta soporte.");
+            $this->clearDemoData($phoneNumber);
+            return ['success' => false, 'message' => 'Error creating user'];
+        }
+    }
+
+    /**
+     * Store demo registration state
+     */
+    private function storeDemoState($phoneNumber, $state)
+    {
+        \Illuminate\Support\Facades\Cache::put("demo_state_{$phoneNumber}", $state, 600); // 10 minutes
+    }
+
+    /**
+     * Get demo registration state
+     */
+    private function getDemoState($phoneNumber)
+    {
+        return \Illuminate\Support\Facades\Cache::get("demo_state_{$phoneNumber}");
+    }
+
+    /**
+     * Clear demo registration state
+     */
+    private function clearDemoState($phoneNumber)
+    {
+        \Illuminate\Support\Facades\Cache::forget("demo_state_{$phoneNumber}");
+    }
+
+    /**
+     * Store demo data
+     */
+    private function storeDemoData($phoneNumber, $key, $value)
+    {
+        $data = \Illuminate\Support\Facades\Cache::get("demo_data_{$phoneNumber}", []);
+        $data[$key] = $value;
+        \Illuminate\Support\Facades\Cache::put("demo_data_{$phoneNumber}", $data, 600); // 10 minutes
+    }
+
+    /**
+     * Get demo data
+     */
+    private function getDemoData($phoneNumber, $key)
+    {
+        $data = \Illuminate\Support\Facades\Cache::get("demo_data_{$phoneNumber}", []);
+        return $data[$key] ?? null;
+    }
+
+    /**
+     * Clear demo data
+     */
+    private function clearDemoData($phoneNumber)
+    {
+        \Illuminate\Support\Facades\Cache::forget("demo_data_{$phoneNumber}");
     }
 }
