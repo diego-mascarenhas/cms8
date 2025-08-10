@@ -1276,24 +1276,28 @@ class TeamDemoSeeder extends Seeder
 
 		// Create demo enterprises first
 		$adminEnterprise = Enterprise::updateOrCreate(
-			['name' => 'Admin Enterprise', 'team_id' => 1],
+			['id' => 1],
 			[
+				'id' => 1,
 				'team_id' => 1,
+				'name' => 'Admin Enterprise',
 				'type_id' => 1, // Cliente
 				'status_id' => 1, // Activo
-				'created_at' => now(),
-				'updated_at' => now(),
+				'created_at' => '2025-08-10 15:12:31',
+				'updated_at' => '2025-08-10 15:12:31',
 			]
 		);
 
 		$techEnterprise = Enterprise::updateOrCreate(
-			['name' => 'Freaky Technologies', 'team_id' => 1],
+			['id' => 2],
 			[
+				'id' => 2,
 				'team_id' => 1,
+				'name' => 'Freaky Technologies',
 				'type_id' => 1, // Cliente
 				'status_id' => 1, // Activo
-				'created_at' => now(),
-				'updated_at' => now(),
+				'created_at' => '2025-08-10 15:12:31',
+				'updated_at' => '2025-08-10 15:12:31',
 			]
 		);
 
