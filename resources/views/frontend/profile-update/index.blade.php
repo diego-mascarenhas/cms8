@@ -1049,9 +1049,9 @@
 								<label class="col-form-label col-md-2">Divisa (*)</label>
 								<div class="col-md-4">
 									<select class="form-select" name="currency" required>
-										<option value="EUR" {{ old('currency', $existingData['rates']['currency'] ?? 'EUR') === 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
-										<option value="USD" {{ old('currency', $existingData['rates']['currency'] ?? 'EUR') === 'USD' ? 'selected' : '' }}>USD - Dólar estadounidense</option>
-										<option value="GBP" {{ old('currency', $existingData['rates']['currency'] ?? 'EUR') === 'GBP' ? 'selected' : '' }}>GBP - Libra esterlina</option>
+										<option value="EUR" {{ old('currency', $currentCurrency) === 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
+										<option value="USD" {{ old('currency', $currentCurrency) === 'USD' ? 'selected' : '' }}>USD - Dólar estadounidense</option>
+										<option value="GBP" {{ old('currency', $currentCurrency) === 'GBP' ? 'selected' : '' }}>GBP - Libra esterlina</option>
 									</select>
 								</div>
 							</div>
@@ -1070,8 +1070,8 @@
 										<div class="row mb-3">
 											@foreach($fareChunk as $fare)
 												@php
-													$currentPrice = old("rates.{$fare->id}", $existingData['rates'][$fare->id] ?? 0);
-													$currentUnitId = old("units.{$fare->id}", $existingData['rates']['units'][$fare->id] ?? ($fare->units->count() > 0 ? $fare->units->first()->id : null));
+													$currentPrice = old("rates.{$fare->id}", $currentRatesData[$fare->id]['price'] ?? 0);
+													$currentUnitId = old("units.{$fare->id}", $currentRatesData[$fare->id]['unit_id'] ?? ($fare->units->count() > 0 ? $fare->units->first()->id : null));
 												@endphp
 												<div class="col-md-6">
 													<label class="form-label">{{ $fare->name }}</label>

@@ -110,6 +110,36 @@ class ProfileUpdateController extends Controller
 				// Get collaborator's language variants
 		$collaboratorLanguageVariants = $contact->languageVariants()->with(['sourceLanguage', 'targetLanguage'])->get();
 
+		// Load existing rates from the pivot table
+		$currentRatesData = [];
+		$currentCurrency = 'EUR'; // Default currency
+
+		if ($collaboratorLanguageVariants->count() > 0) {
+			// Use the first language pair for now (you can modify this logic later)
+			$firstVariant = $collaboratorLanguageVariants->first();
+
+			// Load rates for the first language combination
+			$existingRates = $contact->fares()
+				->wherePivot('source_language_code', $firstVariant->source_language_code)
+				->wherePivot('target_language_code', $firstVariant->target_language_code)
+				->with('units')
+				->get();
+
+			// Build rates data array for the form
+			foreach ($existingRates as $fare) {
+				$currentRatesData[$fare->id] = [
+					'price' => $fare->pivot->price,
+					'unit_id' => $fare->pivot->unit_id,
+					'currency_code' => $fare->pivot->currency_code,
+				];
+
+				// Set the currency from the first rate found
+				if (!empty($fare->pivot->currency_code)) {
+					$currentCurrency = $fare->pivot->currency_code;
+				}
+			}
+		}
+
 		// Software is handled by the x-software-select component
 
 		// Get collaborator availability data
@@ -171,6 +201,8 @@ class ProfileUpdateController extends Controller
 			'languagesWithVariants',
 			'allLanguages',
 			'collaboratorLanguageVariants',
+			'currentRatesData',
+			'currentCurrency',
 			'absences',
 			'weeklyAvailability',
 			'months'
@@ -393,6 +425,9 @@ class ProfileUpdateController extends Controller
 			$contact->languageVariants()->delete();
 		}
 
+		// Process and save rates to the pivot table (like backend does)
+		$this->saveCollaboratorRates($request, $contact);
+
 		// Update user password if provided
 		if ($request->password) {
 			Auth::user()->update([
@@ -401,6 +436,48 @@ class ProfileUpdateController extends Controller
 		}
 
 		return redirect()->route('profile-update.index')->with('success', 'Profile updated successfully. Your data has been submitted for admin review.');
+	}
+
+	/**
+	 * Save collaborator rates to the pivot table
+	 */
+	private function saveCollaboratorRates(Request $request, $contact)
+	{
+		// Get rates and units from the request
+		$rates = $request->input('rates', []);
+		$units = $request->input('units', []);
+		$currency = $request->input('currency', 'EUR');
+
+		// Only process if we have language pairs and rates
+		if (empty($rates) || !$contact->languageVariants()->exists()) {
+			return;
+		}
+
+		// Delete existing rates for this collaborator
+		$contact->fares()->detach();
+
+		// Get collaborator's language variants
+		$languageVariants = $contact->languageVariants;
+
+		// Save rates for each language combination
+		foreach ($languageVariants as $variant) {
+			foreach ($rates as $fareId => $price) {
+				// Only save rates that have a value greater than 0
+				if (!empty($price) && $price > 0) {
+					$attachData = [
+						'price' => $price,
+						'currency_code' => $currency,
+						'unit_id' => $units[$fareId] ?? null,
+						'source_language_code' => $variant->source_language_code,
+						'target_language_code' => $variant->target_language_code,
+						'created_at' => now(),
+						'updated_at' => now(),
+					];
+
+					$contact->fares()->attach($fareId, $attachData);
+				}
+			}
+		}
 	}
 
 	/**
