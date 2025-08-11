@@ -1033,7 +1033,7 @@
 										</label>
 									</div>
 
-									<input type="hidden" name="current_language_pair" id="current_language_pair" value="">
+									<input type="hidden" name="current_language_pair" id="current_language_pair" value="{{ $currentLanguagePair ?? '' }}">
 								@else
 									<div class="alert alert-warning">
 										<div class="d-flex align-items-center">
@@ -1049,9 +1049,9 @@
 								<label class="col-form-label col-md-2">Divisa (*)</label>
 								<div class="col-md-4">
 									<select class="form-select" name="currency" required>
-										<option value="EUR" {{ old('currency', $existingData['rates']['currency'] ?? 'EUR') === 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
-										<option value="USD" {{ old('currency', $existingData['rates']['currency'] ?? 'EUR') === 'USD' ? 'selected' : '' }}>USD - Dólar estadounidense</option>
-										<option value="GBP" {{ old('currency', $existingData['rates']['currency'] ?? 'EUR') === 'GBP' ? 'selected' : '' }}>GBP - Libra esterlina</option>
+										<option value="EUR" {{ old('currency', $currentCurrency) === 'EUR' ? 'selected' : '' }}>EUR - Euro</option>
+										<option value="USD" {{ old('currency', $currentCurrency) === 'USD' ? 'selected' : '' }}>USD - Dólar estadounidense</option>
+										<option value="GBP" {{ old('currency', $currentCurrency) === 'GBP' ? 'selected' : '' }}>GBP - Libra esterlina</option>
 									</select>
 								</div>
 							</div>
@@ -1070,8 +1070,8 @@
 										<div class="row mb-3">
 											@foreach($fareChunk as $fare)
 												@php
-													$currentPrice = old("rates.{$fare->id}", $existingData['rates'][$fare->id] ?? 0);
-													$currentUnitId = old("units.{$fare->id}", $existingData['rates']['units'][$fare->id] ?? ($fare->units->count() > 0 ? $fare->units->first()->id : null));
+													$currentPrice = old("rates.{$fare->id}", $currentRatesData[$fare->id]['price'] ?? 0);
+													$currentUnitId = old("units.{$fare->id}", $currentRatesData[$fare->id]['unit_id'] ?? ($fare->units->count() > 0 ? $fare->units->first()->id : null));
 												@endphp
 												<div class="col-md-6">
 													<label class="form-label">{{ $fare->name }}</label>
@@ -1491,6 +1491,7 @@
 			function restoreRatesState(sourceCode, targetCode) {
 				const key = `${sourceCode}|${targetCode}`;
 
+				// First check if we have local data
 				if (ratesData[key]) {
 					// Restore rates and units only, keep current currency selection
 					$('.fare-input').each(function() {
@@ -1503,7 +1504,68 @@
 							unitSelect.val(ratesData[key].units[fareId]);
 						}
 					});
+				} else {
+					// Load from server via AJAX
+					loadRatesFromServer(sourceCode, targetCode);
 				}
+			}
+
+			// Function to load rates from server
+			function loadRatesFromServer(sourceCode, targetCode) {
+				const languagePair = `${sourceCode}|${targetCode}`;
+
+				$.ajax({
+					url: '{{ route("profile-update.get-rates") }}',
+					method: 'POST',
+					data: {
+						language_pair: languagePair,
+						_token: $('meta[name="csrf-token"]').attr('content')
+					},
+					success: function(response) {
+						if (response.success) {
+							// Update form with server data
+							$('.fare-input').each(function() {
+								const fareId = $(this).data('fare-id');
+								const rate = response.rates[fareId] ? response.rates[fareId].price : '0.00';
+								$(this).val(parseFloat(rate).toFixed(2));
+
+								const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]`);
+								if (unitSelect.length && response.rates[fareId] && response.rates[fareId].unit_id) {
+									unitSelect.val(response.rates[fareId].unit_id);
+								}
+							});
+
+							// Update currency if different
+							if (response.currency && response.currency !== $('select[name="currency"]').val()) {
+								$('select[name="currency"]').val(response.currency);
+								updateCurrencySymbols(response.currency);
+							}
+
+							// Store in local cache for future use
+							const key = `${sourceCode}|${targetCode}`;
+							ratesData[key] = {
+								currency: response.currency,
+								rates: {},
+								units: {}
+							};
+
+							$('.fare-input').each(function() {
+								const fareId = $(this).data('fare-id');
+								ratesData[key].rates[fareId] = $(this).val();
+
+								const unitSelect = $(`.unit-select[data-fare-id="${fareId}"]`);
+								if (unitSelect.length) {
+									ratesData[key].units[fareId] = unitSelect.val();
+								}
+							});
+						}
+					},
+					error: function(xhr, status, error) {
+						console.error('Error loading rates:', error);
+						// Clear form on error
+						$('.fare-input').val('0.00');
+					}
+				});
 			}
 
 			// Function to update currency symbols without triggering events
@@ -1517,6 +1579,8 @@
 				const sourceCode = $(this).data('source');
 				const targetCode = $(this).data('target');
 				const isSameRates = $('#sameRates').is(':checked');
+
+				console.log('Language combination clicked:', sourceCode, targetCode);
 
 				// If same rates mode, don't allow switching between combinations
 				if (isSameRates) {
@@ -1535,6 +1599,7 @@
 					$('#current_language_pair').val(sourceCode + '|' + targetCode);
 
 					// Load rates for this combination
+					console.log('Loading rates for:', sourceCode, targetCode);
 					restoreRatesState(sourceCode, targetCode);
 				}
 			});

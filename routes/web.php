@@ -559,6 +559,7 @@ Route::get('/collaborator/debug/availability', [CollaboratorController::class, '
 Route::prefix('profile-update')->name('profile-update.')->middleware(['auth', 'verified'])->group(function () {
 	Route::get('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'index'])->name('index');
 	Route::post('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'store'])->name('store');
+	Route::post('/get-rates', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'getRatesForLanguagePair'])->name('get-rates');
 });
 
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');

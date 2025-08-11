@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Contact;
+use App\Models\ContactLanguageVariant;
 use App\Models\User;
 use App\Models\LanguageVariant;
 use App\Models\Fare;
@@ -23,12 +24,7 @@ class ProfileUpdateController extends Controller
 {
 	public function index()
 	{
-		// Debug information
-		\Log::info('ProfileUpdateController@index accessed', [
-			'auth_check' => Auth::check(),
-			'user_id' => Auth::id(),
-			'user_roles' => Auth::check() ? Auth::user()->getRoleNames() : 'not authenticated'
-		]);
+
 
 		// Check if user is authenticated
 		if (!Auth::check()) {
@@ -54,7 +50,7 @@ class ProfileUpdateController extends Controller
 				'email' => Auth::user()->email,
 				'data' => json_encode([])
 			]);
-			\Log::info('Created temporary contact record for testing', ['contact_id' => $contact->id]);
+
 		}
 
 		// Get existing data from JSON field
@@ -111,15 +107,44 @@ class ProfileUpdateController extends Controller
 		// Get all languages for the team
 		$allLanguages = Language::whereIn('code', $allLanguageVariants->pluck('base_language')->unique())->get();
 
-		// Get collaborator's language variants
+				// Get collaborator's language variants
 		$collaboratorLanguageVariants = $contact->languageVariants()->with(['sourceLanguage', 'targetLanguage'])->get();
+
+				// Load existing rates from the pivot table
+		$currentRatesData = [];
+		$currentCurrency = 'EUR'; // Default currency
+		$currentLanguagePair = '';
+
+		if ($collaboratorLanguageVariants->count() > 0) {
+			// Use the first language pair as default
+			$firstVariant = $collaboratorLanguageVariants->first();
+			$currentLanguagePair = $firstVariant->source_language_code . '|' . $firstVariant->target_language_code;
+
+			// Load rates for the first language combination
+			$existingRates = $contact->fares()
+				->wherePivot('source_language_code', $firstVariant->source_language_code)
+				->wherePivot('target_language_code', $firstVariant->target_language_code)
+				->with('units')
+				->get();
+
+			// Build rates data array for the form
+			foreach ($existingRates as $fare) {
+				$currentRatesData[$fare->id] = [
+					'price' => $fare->pivot->price,
+					'unit_id' => $fare->pivot->unit_id,
+					'currency_code' => $fare->pivot->currency_code,
+				];
+
+				// Set the currency from the first rate found
+				if (!empty($fare->pivot->currency_code)) {
+					$currentCurrency = $fare->pivot->currency_code;
+				}
+			}
+		}
 
 		// Software is handled by the x-software-select component
 
-		\Log::info('Languages loaded, about to start availability data preparation');
-
 		// Get collaborator availability data
-		\Log::info('Starting availability data preparation');
 		$startDate = Carbon::now()->startOfMonth();
 		$endDate = Carbon::now()->addMonths(5)->endOfMonth();
 
@@ -163,32 +188,7 @@ class ProfileUpdateController extends Controller
 			];
 		}
 
-		\Log::info('ProfileUpdateController@index data prepared', [
-			'fares_count' => $fares->count(),
-			'fare_types_count' => $fareTypes->count(),
-			'units_count' => $units->count(),
-			'languages_count' => $languages->count(),
-			'base_languages_count' => $baseLanguages->count(),
-			'all_language_variants_count' => $allLanguageVariants->count(),
-			'all_languages_count' => $allLanguages->count(),
-			'softwares_count' => 'handled by component',
-			'contact_id' => $contact->id,
-			'contact_name' => $contact->name . ' ' . $contact->surname,
-			'weekly_availability_exists' => isset($weeklyAvailability),
-			'weekly_availability_id' => $weeklyAvailability->id ?? 'null',
-			'weekly_availability_data' => [
-				'monday' => $weeklyAvailability->monday ?? false,
-				'tuesday' => $weeklyAvailability->tuesday ?? false,
-				'wednesday' => $weeklyAvailability->wednesday ?? false,
-				'thursday' => $weeklyAvailability->thursday ?? false,
-				'friday' => $weeklyAvailability->friday ?? false,
-				'saturday' => $weeklyAvailability->saturday ?? false,
-				'sunday' => $weeklyAvailability->sunday ?? false,
-			],
-			'absences_count' => count($absences),
-			'absences_dates' => $absences,
-			'months_count' => count($months)
-		]);
+
 
 		return view('frontend.profile-update.index', compact(
 			'contact',
@@ -203,6 +203,9 @@ class ProfileUpdateController extends Controller
 			'languagesWithVariants',
 			'allLanguages',
 			'collaboratorLanguageVariants',
+			'currentRatesData',
+			'currentCurrency',
+			'currentLanguagePair',
 			'absences',
 			'weeklyAvailability',
 			'months'
@@ -221,16 +224,16 @@ class ProfileUpdateController extends Controller
 			return redirect()->route('dashboard')->with('error', 'Access denied. Collaborator role required.');
 		}
 
-		// Validate the request
+				// Validate the request
 		$validator = Validator::make($request->all(), [
 			'first_name' => 'required|string|max:255',
-			'last_name' => 'required|string|max:255',
+			'last_name' => 'nullable|string|max:255',
 			'email' => 'required|email|max:255',
-			'phone' => 'required|string|max:255',
-			'country' => 'required|string|max:255',
+			'phone' => 'nullable|string|max:255',
+			'country' => 'nullable|string|max:255',
 			'timezone' => 'required|string|max:255',
-			'freelance_certificate' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
-			'resume' => 'required|file|mimes:pdf,doc,docx|max:10240',
+			'freelance_certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+			'resume' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
 			'password' => 'nullable|string|min:6|confirmed',
 		]);
 
@@ -378,6 +381,56 @@ class ProfileUpdateController extends Controller
 			'phone' => $request->phone,
 		]);
 
+		// Process and save language pairs to ContactLanguageVariant table
+		if ($request->has('language_pairs') && is_array($request->language_pairs) && count($request->language_pairs) > 0) {
+			// Delete existing language pairs for this contact
+			$contact->languageVariants()->delete();
+
+			$processedPairs = []; // To avoid duplicates
+
+			// Add new language pairs
+			foreach ($request->language_pairs as $pair) {
+				if (empty($pair)) {
+					continue;
+				}
+
+				$parts = explode('|', $pair);
+				if (count($parts) !== 2) continue;
+
+				[$sourceLanguage, $targetLanguage] = $parts;
+
+				// Avoid duplicates in the same request
+				$pairKey = $sourceLanguage.'-'.$targetLanguage;
+				if (in_array($pairKey, $processedPairs)) {
+					continue;
+				}
+
+				$processedPairs[] = $pairKey;
+
+				try {
+					ContactLanguageVariant::create([
+						'contact_id' => $contact->id,
+						'source_language_code' => $sourceLanguage,
+						'target_language_code' => $targetLanguage,
+						'proficiency_level' => 3, // Default proficiency level
+						'is_certified' => false, // Default to not certified
+					]);
+				} catch (\Illuminate\Database\QueryException $e) {
+					// If it's a duplicate error, simply ignore it
+					if ($e->errorInfo[1] == 1062) {
+						continue;
+					}
+					throw $e; // If it's another type of error, throw it
+				}
+			}
+		} else {
+			// If there are no language pairs, delete all existing ones
+			$contact->languageVariants()->delete();
+		}
+
+		// Process and save rates to the pivot table (like backend does)
+		$this->saveCollaboratorRates($request, $contact);
+
 		// Update user password if provided
 		if ($request->password) {
 			Auth::user()->update([
@@ -386,6 +439,148 @@ class ProfileUpdateController extends Controller
 		}
 
 		return redirect()->route('profile-update.index')->with('success', 'Profile updated successfully. Your data has been submitted for admin review.');
+	}
+
+	/**
+	 * Save collaborator rates to the pivot table
+	 */
+	private function saveCollaboratorRates(Request $request, $contact)
+	{
+		// Get rates and units from the request
+		$rates = $request->input('rates', []);
+		$units = $request->input('units', []);
+		$currency = $request->input('currency', 'EUR');
+		$sameRates = $request->has('same_rates'); // Check if "same rates" checkbox is checked
+		$currentLanguagePair = $request->input('current_language_pair', '');
+
+		// Only process if we have language pairs and rates
+		if (empty($rates) || !$contact->languageVariants()->exists()) {
+			return;
+		}
+
+		// Get collaborator's language variants
+		$languageVariants = $contact->languageVariants;
+
+		if ($sameRates) {
+			// Same rates for ALL language combinations - OVERWRITE ALL
+			$contact->fares()->detach(); // Delete all existing rates
+
+			// Save the same rates for each language combination
+			foreach ($languageVariants as $variant) {
+				foreach ($rates as $fareId => $price) {
+					// Only save rates that have a value greater than 0
+					if (!empty($price) && $price > 0) {
+						$attachData = [
+							'price' => $price,
+							'currency_code' => $currency,
+							'unit_id' => $units[$fareId] ?? null,
+							'source_language_code' => $variant->source_language_code,
+							'target_language_code' => $variant->target_language_code,
+							'created_at' => now(),
+							'updated_at' => now(),
+						];
+
+						$contact->fares()->attach($fareId, $attachData);
+					}
+				}
+			}
+		} else {
+			// Different rates per language combination - save only for the current active pair
+			if (empty($currentLanguagePair)) {
+				// If no specific language pair, use the first one
+				$firstVariant = $languageVariants->first();
+				if ($firstVariant) {
+					$currentLanguagePair = $firstVariant->source_language_code . '|' . $firstVariant->target_language_code;
+				}
+			}
+
+			if (!empty($currentLanguagePair)) {
+				$parts = explode('|', $currentLanguagePair);
+				if (count($parts) === 2) {
+					[$sourceCode, $targetCode] = $parts;
+
+					// Delete existing rates for ONLY this specific language combination
+					$contact->fares()
+						->wherePivot('source_language_code', $sourceCode)
+						->wherePivot('target_language_code', $targetCode)
+						->detach();
+
+					// Save new rates for this specific language combination
+					foreach ($rates as $fareId => $price) {
+						// Only save rates that have a value greater than 0
+						if (!empty($price) && $price > 0) {
+							$attachData = [
+								'price' => $price,
+								'currency_code' => $currency,
+								'unit_id' => $units[$fareId] ?? null,
+								'source_language_code' => $sourceCode,
+								'target_language_code' => $targetCode,
+								'created_at' => now(),
+								'updated_at' => now(),
+							];
+
+							$contact->fares()->attach($fareId, $attachData);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Get rates for a specific language combination via AJAX
+	 */
+	public function getRatesForLanguagePair(Request $request)
+	{
+		$languagePair = $request->input('language_pair');
+
+		if (empty($languagePair)) {
+			return response()->json(['error' => 'Language pair required'], 400);
+		}
+
+		$parts = explode('|', $languagePair);
+		if (count($parts) !== 2) {
+			return response()->json(['error' => 'Invalid language pair format'], 400);
+		}
+
+		[$sourceCode, $targetCode] = $parts;
+
+		// Get the collaborator's contact record
+		$contact = Contact::where('user_id', Auth::id())->first();
+
+		if (!$contact) {
+			return response()->json(['error' => 'Contact not found'], 404);
+		}
+
+		// Load rates for this specific language combination
+		$existingRates = $contact->fares()
+			->wherePivot('source_language_code', $sourceCode)
+			->wherePivot('target_language_code', $targetCode)
+			->with('units')
+			->get();
+
+		$ratesData = [];
+		$currency = 'EUR'; // Default
+
+		// Build rates data array
+		foreach ($existingRates as $fare) {
+			$ratesData[$fare->id] = [
+				'price' => $fare->pivot->price,
+				'unit_id' => $fare->pivot->unit_id,
+				'currency_code' => $fare->pivot->currency_code,
+			];
+
+			// Set the currency from the first rate found
+			if (!empty($fare->pivot->currency_code)) {
+				$currency = $fare->pivot->currency_code;
+			}
+		}
+
+		return response()->json([
+			'success' => true,
+			'rates' => $ratesData,
+			'currency' => $currency
+		]);
 	}
 
 	/**
