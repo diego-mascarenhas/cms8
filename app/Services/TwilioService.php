@@ -308,6 +308,12 @@ class TwilioService
                 if ($demoResponse) {
                     return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'demo_processed' => true]);
                 }
+
+                // Check if user is requesting QR code
+                $qrResponse = $this->processQrCommand($cleanFrom, $body);
+                if ($qrResponse) {
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'qr_processed' => true]);
+                }
             }
 
             // Automatic AI response using Claude
@@ -1075,5 +1081,241 @@ class TwilioService
     private function clearDemoData($phoneNumber)
     {
         \Illuminate\Support\Facades\Cache::forget("demo_data_{$phoneNumber}");
+    }
+
+    /**
+     * Process QR code generation command
+     */
+    public function processQrCommand($phoneNumber, $message)
+    {
+        // Check if user is requesting QR code
+        $qrKeywords = ['qr', 'QR', 'codigo', 'código', 'qrcode', 'QRCODE'];
+
+        if (!in_array(trim($message), $qrKeywords)) {
+            return false;
+        }
+
+        try {
+            // Get user information
+            $user = $this->getUserByPhone($phoneNumber);
+
+            if (!$user) {
+                // If no user found, send generic QR
+                $this->sendGenericQr($phoneNumber);
+                return true;
+            }
+
+            // Generate personalized QR with user data
+            $this->sendPersonalizedQr($phoneNumber, $user);
+            return true;
+
+        } catch (\Exception $e) {
+            \Log::error('Error processing QR command: ' . $e->getMessage());
+            $this->sendWhatsApp($phoneNumber, '❌ Hubo un error generando tu código QR. Por favor, intenta más tarde.');
+            return true;
+        }
+    }
+
+    /**
+     * Send generic QR code for unknown users
+     */
+    private function sendGenericQr($phoneNumber)
+    {
+        try {
+            // Generate QR code image
+            $qrImagePath = $this->generateQrCodeImage(
+                "https://revisionalpha.com/contactenos?name=NOMBRE&email=EMAIL&phone=PHONE&message=FRASE_INSPIRE_LARAVEL",
+                'generic_qr'
+            );
+
+            if ($qrImagePath) {
+                // Send QR image via WhatsApp
+                $this->sendWhatsAppWithMedia($phoneNumber, $qrImagePath, 'generic_qr');
+
+                $message = "📱 *Código QR de Contacto*\n\n";
+                $message .= "🔗 *Enlace directo:*\n";
+                $message .= "https://revisionalpha.com/contactenos?name=NOMBRE&email=EMAIL&phone=PHONE&message=FRASE_INSPIRE_LARAVEL\n\n";
+                $message .= "💡 *Tip:* Personaliza el enlace reemplazando:\n";
+                $message .= "• NOMBRE: Tu nombre completo\n";
+                $message .= "• EMAIL: Tu correo electrónico\n";
+                $message .= "• PHONE: Tu número de teléfono\n";
+                $message .= "• FRASE_INSPIRE_LARAVEL: Tu mensaje personalizado\n\n";
+                $message .= "🎯 *¿Necesitas ayuda?* Responde con 'ayuda' para más información.";
+
+                $this->sendWhatsApp($phoneNumber, $message);
+            } else {
+                // Fallback to text-only if image generation fails
+                $this->sendGenericQrTextOnly($phoneNumber);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error generating generic QR: ' . $e->getMessage());
+            $this->sendGenericQrTextOnly($phoneNumber);
+        }
+    }
+
+    /**
+     * Send personalized QR code for known users
+     */
+    private function sendPersonalizedQr($phoneNumber, $user)
+    {
+        try {
+            // Prepare user data
+            $name = $user->name ?? 'Usuario';
+            $email = $user->email ?? 'email@ejemplo.com';
+            $phone = $user->phone ?? $phoneNumber;
+
+            // Create personalized message
+            $personalMessage = "¡Hola {$name}! Estamos aquí para ayudarte con tus necesidades tecnológicas.";
+
+            // Generate personalized URL
+            $personalizedUrl = "https://revisionalpha.com/contactenos?" . http_build_query([
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'message' => $personalMessage
+            ]);
+
+            // Generate QR code image
+            $qrImagePath = $this->generateQrCodeImage($personalizedUrl, 'personalized_qr');
+
+            if ($qrImagePath) {
+                // Send QR image via WhatsApp
+                $this->sendWhatsAppWithMedia($phoneNumber, $qrImagePath, 'personalized_qr');
+
+                $message = "👤 *Código QR Personalizado*\n";
+                $message .= "Generado especialmente para: *{$name}*\n\n";
+                $message .= "📱 *Datos incluidos:*\n";
+                $message .= "• Nombre: {$name}\n";
+                $message .= "• Email: {$email}\n";
+                $message .= "• Teléfono: {$phone}\n";
+                $message .= "• Mensaje: {$personalMessage}\n\n";
+                $message .= "🔗 *Enlace personalizado:*\n";
+                $message .= $personalizedUrl . "\n\n";
+                $message .= "💡 *¿Qué puedes hacer?*\n";
+                $message .= "• Compartir este QR con colegas\n";
+                $message .= "• Usarlo en presentaciones\n";
+                $message .= "• Agregarlo a tu firma de email\n\n";
+                $message .= "🎯 *¿Necesitas modificar algo?* Responde con 'modificar' para cambiar los datos.";
+
+                $this->sendWhatsApp($phoneNumber, $message);
+            } else {
+                // Fallback to text-only if image generation fails
+                $this->sendPersonalizedQrTextOnly($phoneNumber, $user);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error generating personalized QR: ' . $e->getMessage());
+            $this->sendPersonalizedQrTextOnly($phoneNumber, $user);
+        }
+    }
+
+    /**
+     * Generate QR code image using chillerlan/php-qrcode
+     */
+    private function generateQrCodeImage($data, $filename)
+    {
+        try {
+            // Create QR code instance
+            $qrcode = new \chillerlan\QRCode\QRCode();
+
+            // Generate QR code as PNG image
+            $qrImageData = $qrcode->render($data);
+
+            // Create storage directory if it doesn't exist
+            $storagePath = storage_path('app/public/qr-codes');
+            if (!file_exists($storagePath)) {
+                mkdir($storagePath, 0755, true);
+            }
+
+            // Generate unique filename
+            $uniqueFilename = $filename . '_' . time() . '_' . uniqid() . '.png';
+            $fullPath = $storagePath . '/' . $uniqueFilename;
+
+            // Save image to file
+            file_put_contents($fullPath, $qrImageData);
+
+            // Return the public URL path
+            return 'storage/qr-codes/' . $uniqueFilename;
+
+        } catch (\Exception $e) {
+            \Log::error('Error generating QR code image: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Send WhatsApp message with media attachment
+     */
+    private function sendWhatsAppWithMedia($phoneNumber, $mediaPath, $type)
+    {
+        try {
+            $fullMediaPath = public_path($mediaPath);
+
+            if (file_exists($fullMediaPath)) {
+                // For now, we'll just log that we would send media
+                // In a real implementation, you'd use Twilio's media API
+                \Log::info("Would send {$type} QR image via WhatsApp to {$phoneNumber}: {$mediaPath}");
+
+                // TODO: Implement actual media sending via Twilio
+                // This requires additional Twilio configuration for media
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error sending WhatsApp media: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Fallback methods for text-only responses
+     */
+    private function sendGenericQrTextOnly($phoneNumber)
+    {
+        $message = "🔄 Generando tu código QR...\n\n";
+        $message .= "📱 *Código QR de Contacto*\n";
+        $message .= "Este QR te llevará a nuestra página de contacto.\n\n";
+        $message .= "🔗 *Enlace directo:*\n";
+        $message .= "https://revisionalpha.com/contactenos?name=NOMBRE&email=EMAIL&phone=PHONE&message=FRASE_INSPIRE_LARAVEL\n\n";
+        $message .= "💡 *Tip:* Personaliza el enlace reemplazando:\n";
+        $message .= "• NOMBRE: Tu nombre completo\n";
+        $message .= "• EMAIL: Tu correo electrónico\n";
+        $message .= "• PHONE: Tu número de teléfono\n";
+        $message .= "• FRASE_INSPIRE_LARAVEL: Tu mensaje personalizado\n\n";
+        $message .= "🎯 *¿Necesitas ayuda?* Responde con 'ayuda' para más información.";
+
+        $this->sendWhatsApp($phoneNumber, $message);
+    }
+
+    private function sendPersonalizedQrTextOnly($phoneNumber, $user)
+    {
+        $name = $user->name ?? 'Usuario';
+        $email = $user->email ?? 'email@ejemplo.com';
+        $phone = $user->phone ?? $phoneNumber;
+
+        $personalMessage = "¡Hola {$name}! Estamos aquí para ayudarte con tus necesidades tecnológicas.";
+
+        $personalizedUrl = "https://revisionalpha.com/contactenos?" . http_build_query([
+            'name' => $name,
+            'email' => $email,
+            'phone' => $phone,
+            'message' => $personalMessage
+        ]);
+
+        $message = "🔄 Generando tu código QR personalizado...\n\n";
+        $message .= "👤 *Código QR Personalizado*\n";
+        $message .= "Generado especialmente para: *{$name}*\n\n";
+        $message .= "📱 *Datos incluidos:*\n";
+        $message .= "• Nombre: {$name}\n";
+        $message .= "• Email: {$email}\n";
+        $message .= "• Teléfono: {$phone}\n";
+        $message .= "• Mensaje: {$personalMessage}\n\n";
+        $message .= "🔗 *Enlace personalizado:*\n";
+        $message .= $personalizedUrl . "\n\n";
+        $message .= "💡 *¿Qué puedes hacer?*\n";
+        $message .= "• Compartir este QR con colegas\n";
+        $message .= "• Usarlo en presentaciones\n";
+        $message .= "• Agregarlo a tu firma de email\n\n";
+        $message .= "🎯 *¿Necesitas modificar algo?* Responde con 'modificar' para cambiar los datos.";
+
+        $this->sendWhatsApp($phoneNumber, $message);
     }
 }
