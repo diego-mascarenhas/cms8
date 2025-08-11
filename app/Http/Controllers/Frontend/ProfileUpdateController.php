@@ -110,13 +110,15 @@ class ProfileUpdateController extends Controller
 				// Get collaborator's language variants
 		$collaboratorLanguageVariants = $contact->languageVariants()->with(['sourceLanguage', 'targetLanguage'])->get();
 
-		// Load existing rates from the pivot table
+				// Load existing rates from the pivot table
 		$currentRatesData = [];
 		$currentCurrency = 'EUR'; // Default currency
+		$currentLanguagePair = '';
 
 		if ($collaboratorLanguageVariants->count() > 0) {
-			// Use the first language pair for now (you can modify this logic later)
+			// Use the first language pair as default
 			$firstVariant = $collaboratorLanguageVariants->first();
+			$currentLanguagePair = $firstVariant->source_language_code . '|' . $firstVariant->target_language_code;
 
 			// Load rates for the first language combination
 			$existingRates = $contact->fares()
@@ -203,6 +205,7 @@ class ProfileUpdateController extends Controller
 			'collaboratorLanguageVariants',
 			'currentRatesData',
 			'currentCurrency',
+			'currentLanguagePair',
 			'absences',
 			'weeklyAvailability',
 			'months'
@@ -447,37 +450,137 @@ class ProfileUpdateController extends Controller
 		$rates = $request->input('rates', []);
 		$units = $request->input('units', []);
 		$currency = $request->input('currency', 'EUR');
+		$sameRates = $request->has('same_rates'); // Check if "same rates" checkbox is checked
+		$currentLanguagePair = $request->input('current_language_pair', '');
 
 		// Only process if we have language pairs and rates
 		if (empty($rates) || !$contact->languageVariants()->exists()) {
 			return;
 		}
 
-		// Delete existing rates for this collaborator
-		$contact->fares()->detach();
-
 		// Get collaborator's language variants
 		$languageVariants = $contact->languageVariants;
 
-		// Save rates for each language combination
-		foreach ($languageVariants as $variant) {
-			foreach ($rates as $fareId => $price) {
-				// Only save rates that have a value greater than 0
-				if (!empty($price) && $price > 0) {
-					$attachData = [
-						'price' => $price,
-						'currency_code' => $currency,
-						'unit_id' => $units[$fareId] ?? null,
-						'source_language_code' => $variant->source_language_code,
-						'target_language_code' => $variant->target_language_code,
-						'created_at' => now(),
-						'updated_at' => now(),
-					];
+		if ($sameRates) {
+			// Same rates for ALL language combinations - OVERWRITE ALL
+			$contact->fares()->detach(); // Delete all existing rates
 
-					$contact->fares()->attach($fareId, $attachData);
+			// Save the same rates for each language combination
+			foreach ($languageVariants as $variant) {
+				foreach ($rates as $fareId => $price) {
+					// Only save rates that have a value greater than 0
+					if (!empty($price) && $price > 0) {
+						$attachData = [
+							'price' => $price,
+							'currency_code' => $currency,
+							'unit_id' => $units[$fareId] ?? null,
+							'source_language_code' => $variant->source_language_code,
+							'target_language_code' => $variant->target_language_code,
+							'created_at' => now(),
+							'updated_at' => now(),
+						];
+
+						$contact->fares()->attach($fareId, $attachData);
+					}
+				}
+			}
+		} else {
+			// Different rates per language combination - save only for the current active pair
+			if (empty($currentLanguagePair)) {
+				// If no specific language pair, use the first one
+				$firstVariant = $languageVariants->first();
+				if ($firstVariant) {
+					$currentLanguagePair = $firstVariant->source_language_code . '|' . $firstVariant->target_language_code;
+				}
+			}
+
+			if (!empty($currentLanguagePair)) {
+				$parts = explode('|', $currentLanguagePair);
+				if (count($parts) === 2) {
+					[$sourceCode, $targetCode] = $parts;
+
+					// Delete existing rates for ONLY this specific language combination
+					$contact->fares()
+						->wherePivot('source_language_code', $sourceCode)
+						->wherePivot('target_language_code', $targetCode)
+						->detach();
+
+					// Save new rates for this specific language combination
+					foreach ($rates as $fareId => $price) {
+						// Only save rates that have a value greater than 0
+						if (!empty($price) && $price > 0) {
+							$attachData = [
+								'price' => $price,
+								'currency_code' => $currency,
+								'unit_id' => $units[$fareId] ?? null,
+								'source_language_code' => $sourceCode,
+								'target_language_code' => $targetCode,
+								'created_at' => now(),
+								'updated_at' => now(),
+							];
+
+							$contact->fares()->attach($fareId, $attachData);
+						}
+					}
 				}
 			}
 		}
+	}
+
+	/**
+	 * Get rates for a specific language combination via AJAX
+	 */
+	public function getRatesForLanguagePair(Request $request)
+	{
+		$languagePair = $request->input('language_pair');
+
+		if (empty($languagePair)) {
+			return response()->json(['error' => 'Language pair required'], 400);
+		}
+
+		$parts = explode('|', $languagePair);
+		if (count($parts) !== 2) {
+			return response()->json(['error' => 'Invalid language pair format'], 400);
+		}
+
+		[$sourceCode, $targetCode] = $parts;
+
+		// Get the collaborator's contact record
+		$contact = Contact::where('user_id', Auth::id())->first();
+
+		if (!$contact) {
+			return response()->json(['error' => 'Contact not found'], 404);
+		}
+
+		// Load rates for this specific language combination
+		$existingRates = $contact->fares()
+			->wherePivot('source_language_code', $sourceCode)
+			->wherePivot('target_language_code', $targetCode)
+			->with('units')
+			->get();
+
+		$ratesData = [];
+		$currency = 'EUR'; // Default
+
+		// Build rates data array
+		foreach ($existingRates as $fare) {
+			$ratesData[$fare->id] = [
+				'price' => $fare->pivot->price,
+				'unit_id' => $fare->pivot->unit_id,
+				'currency_code' => $fare->pivot->currency_code,
+			];
+
+			// Set the currency from the first rate found
+			if (!empty($fare->pivot->currency_code)) {
+				$currency = $fare->pivot->currency_code;
+			}
+		}
+
+		return response()->json([
+			'success' => true,
+			'rates' => $ratesData,
+			'currency' => $currency
+		]);
 	}
 
 	/**
