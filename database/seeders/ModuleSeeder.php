@@ -48,20 +48,35 @@ class ModuleSeeder extends Seeder
             'description' => 'Contact management module',
         ],
         'collaborators' => [
-            'name' => 'Collaborators',
+			'name' => 'Collaborators',
             'icon' => 'users-group',
             'description' => 'Collaborators management module',
         ],
         'projects' => [
-            'name' => 'Projects',
+			'name' => 'Projects',
             'icon' => 'folder',
             'description' => 'Project management module',
         ],
         'services' => [
-            'name' => 'Services',
+			'name' => 'Services',
             'icon' => 'server',
             'description' => 'Service management module',
         ],
+		'products' => [
+			'name' => 'Products',
+			'icon' => 'package',
+			'description' => 'Products management module',
+		],
+		'orders' => [
+			'name' => 'Orders',
+			'icon' => 'shopping-bag',
+			'description' => 'Orders management module',
+		],
+		'ecommerce' => [
+			'name' => 'E-commerce',
+			'icon' => 'shopping-cart',
+			'description' => 'E-commerce management module',
+		],
         'enterprises' => [
             'name' => 'Enterprises',
             'icon' => 'building',
@@ -230,7 +245,7 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'templates', 'contacts', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'campaigns'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'templates', 'contacts', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'campaigns', 'products', 'orders'],
     ];
 
     public function run()

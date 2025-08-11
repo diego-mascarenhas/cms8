@@ -10,296 +10,326 @@ class RolesAndPermissionsSeeder extends Seeder
 {
 	public function run()
 	{
-		Permission::create(['name' => 'user.management']);
-		Permission::create(['name' => 'profile.show']);
-		Permission::create(['name' => 'profile.edit']);
-		Permission::create(['name' => 'profile.update']);
-		Permission::create(['name' => 'password.update']);
+		Permission::firstOrCreate(['name' => 'user.management']);
+		Permission::firstOrCreate(['name' => 'profile.show']);
+		Permission::firstOrCreate(['name' => 'profile.edit']);
+		Permission::firstOrCreate(['name' => 'profile.update']);
+		Permission::firstOrCreate(['name' => 'password.update']);
 
-		Permission::create(['name' => 'user.index']);
-		Permission::create(['name' => 'user.list']);
-		Permission::create(['name' => 'user.create']);
-		Permission::create(['name' => 'user.show']);
-		Permission::create(['name' => 'user.edit']);
-		Permission::create(['name' => 'user.store']);
-		Permission::create(['name' => 'user.update']);
-		Permission::create(['name' => 'user.destroy']);
+		Permission::firstOrCreate(['name' => 'user.index']);
+		Permission::firstOrCreate(['name' => 'user.list']);
+		Permission::firstOrCreate(['name' => 'user.create']);
+		Permission::firstOrCreate(['name' => 'user.show']);
+		Permission::firstOrCreate(['name' => 'user.edit']);
+		Permission::firstOrCreate(['name' => 'user.store']);
+		Permission::firstOrCreate(['name' => 'user.update']);
+		Permission::firstOrCreate(['name' => 'user.destroy']);
 
-		Permission::create(['name' => 'today.index']);
-		Permission::create(['name' => 'today.list']);
-		Permission::create(['name' => 'today.create']);
-		Permission::create(['name' => 'today.show']);
-		Permission::create(['name' => 'today.edit']);
-		Permission::create(['name' => 'today.store']);
-		Permission::create(['name' => 'today.update']);
-		Permission::create(['name' => 'today.destroy']);
+		Permission::firstOrCreate(['name' => 'today.index']);
+		Permission::firstOrCreate(['name' => 'today.list']);
+		Permission::firstOrCreate(['name' => 'today.create']);
+		Permission::firstOrCreate(['name' => 'today.show']);
+		Permission::firstOrCreate(['name' => 'today.edit']);
+		Permission::firstOrCreate(['name' => 'today.store']);
+		Permission::firstOrCreate(['name' => 'today.update']);
+		Permission::firstOrCreate(['name' => 'today.destroy']);
 
-		Permission::create(['name' => 'chat.index']);
-		Permission::create(['name' => 'chat.list']);
-		Permission::create(['name' => 'chat.create']);
-		Permission::create(['name' => 'chat.show']);
-		Permission::create(['name' => 'chat.edit']);
-		Permission::create(['name' => 'chat.store']);
-		Permission::create(['name' => 'chat.update']);
-		Permission::create(['name' => 'chat.destroy']);
+		Permission::firstOrCreate(['name' => 'chat.index']);
+		Permission::firstOrCreate(['name' => 'chat.list']);
+		Permission::firstOrCreate(['name' => 'chat.create']);
+		Permission::firstOrCreate(['name' => 'chat.show']);
+		Permission::firstOrCreate(['name' => 'chat.edit']);
+		Permission::firstOrCreate(['name' => 'chat.store']);
+		Permission::firstOrCreate(['name' => 'chat.update']);
+		Permission::firstOrCreate(['name' => 'chat.destroy']);
 
-		Permission::create(['name' => 'mail.index']);
-		Permission::create(['name' => 'mail.list']);
-		Permission::create(['name' => 'mail.create']);
-		Permission::create(['name' => 'mail.show']);
-		Permission::create(['name' => 'mail.edit']);
-		Permission::create(['name' => 'mail.store']);
-		Permission::create(['name' => 'mail.update']);
-		Permission::create(['name' => 'mail.destroy']);
+		Permission::firstOrCreate(['name' => 'mail.index']);
+		Permission::firstOrCreate(['name' => 'mail.list']);
+		Permission::firstOrCreate(['name' => 'mail.create']);
+		Permission::firstOrCreate(['name' => 'mail.show']);
+		Permission::firstOrCreate(['name' => 'mail.edit']);
+		Permission::firstOrCreate(['name' => 'mail.store']);
+		Permission::firstOrCreate(['name' => 'mail.update']);
+		Permission::firstOrCreate(['name' => 'mail.destroy']);
 
-		Permission::create(['name' => 'service.index']);
-		Permission::create(['name' => 'service.list']);
-		Permission::create(['name' => 'service.create']);
-		Permission::create(['name' => 'service.show']);
-		Permission::create(['name' => 'service.edit']);
-		Permission::create(['name' => 'service.store']);
-		Permission::create(['name' => 'service.update']);
-		Permission::create(['name' => 'service.destroy']);
+		Permission::firstOrCreate(['name' => 'service.index']);
+		Permission::firstOrCreate(['name' => 'service.list']);
+		Permission::firstOrCreate(['name' => 'service.create']);
+		Permission::firstOrCreate(['name' => 'service.show']);
+		Permission::firstOrCreate(['name' => 'service.edit']);
+		Permission::firstOrCreate(['name' => 'service.store']);
+		Permission::firstOrCreate(['name' => 'service.update']);
+		Permission::firstOrCreate(['name' => 'service.destroy']);
 
-		Permission::create(['name' => 'contact.index']);
-		Permission::create(['name' => 'contact.list']);
-		Permission::create(['name' => 'contact.create']);
-		Permission::create(['name' => 'contact.show']);
-		Permission::create(['name' => 'contact.edit']);
-		Permission::create(['name' => 'contact.store']);
-		Permission::create(['name' => 'contact.update']);
-		Permission::create(['name' => 'contact.destroy']);
+		Permission::firstOrCreate(['name' => 'contact.index']);
+		Permission::firstOrCreate(['name' => 'contact.list']);
+		Permission::firstOrCreate(['name' => 'contact.create']);
+		Permission::firstOrCreate(['name' => 'contact.show']);
+		Permission::firstOrCreate(['name' => 'contact.edit']);
+		Permission::firstOrCreate(['name' => 'contact.store']);
+		Permission::firstOrCreate(['name' => 'contact.update']);
+		Permission::firstOrCreate(['name' => 'contact.destroy']);
 
-		Permission::create(['name' => 'collaborator.index']);
-		Permission::create(['name' => 'collaborator.list']);
-		Permission::create(['name' => 'collaborator.create']);
-		Permission::create(['name' => 'collaborator.show']);
-		Permission::create(['name' => 'collaborator.edit']);
-		Permission::create(['name' => 'collaborator.store']);
-		Permission::create(['name' => 'collaborator.update']);
-		Permission::create(['name' => 'collaborator.destroy']);
+		Permission::firstOrCreate(['name' => 'collaborator.index']);
+		Permission::firstOrCreate(['name' => 'collaborator.list']);
+		Permission::firstOrCreate(['name' => 'collaborator.create']);
+		Permission::firstOrCreate(['name' => 'collaborator.show']);
+		Permission::firstOrCreate(['name' => 'collaborator.edit']);
+		Permission::firstOrCreate(['name' => 'collaborator.store']);
+		Permission::firstOrCreate(['name' => 'collaborator.update']);
+		Permission::firstOrCreate(['name' => 'collaborator.destroy']);
 
-		Permission::create(['name' => 'client.index']);
-		Permission::create(['name' => 'client.list']);
-		Permission::create(['name' => 'client.create']);
-		Permission::create(['name' => 'client.show']);
-		Permission::create(['name' => 'client.edit']);
-		Permission::create(['name' => 'client.store']);
-		Permission::create(['name' => 'client.update']);
-		Permission::create(['name' => 'client.destroy']);
+		Permission::firstOrCreate(['name' => 'client.index']);
+		Permission::firstOrCreate(['name' => 'client.list']);
+		Permission::firstOrCreate(['name' => 'client.create']);
+		Permission::firstOrCreate(['name' => 'client.show']);
+		Permission::firstOrCreate(['name' => 'client.edit']);
+		Permission::firstOrCreate(['name' => 'client.store']);
+		Permission::firstOrCreate(['name' => 'client.update']);
+		Permission::firstOrCreate(['name' => 'client.destroy']);
 
-		Permission::create(['name' => 'list60.index']);
-		Permission::create(['name' => 'list60.list']);
-		Permission::create(['name' => 'list60.create']);
-		Permission::create(['name' => 'list60.show']);
-		Permission::create(['name' => 'list60.edit']);
-		Permission::create(['name' => 'list60.store']);
-		Permission::create(['name' => 'list60.update']);
-		Permission::create(['name' => 'list60.destroy']);
+		Permission::firstOrCreate(['name' => 'list60.index']);
+		Permission::firstOrCreate(['name' => 'list60.list']);
+		Permission::firstOrCreate(['name' => 'list60.create']);
+		Permission::firstOrCreate(['name' => 'list60.show']);
+		Permission::firstOrCreate(['name' => 'list60.edit']);
+		Permission::firstOrCreate(['name' => 'list60.store']);
+		Permission::firstOrCreate(['name' => 'list60.update']);
+		Permission::firstOrCreate(['name' => 'list60.destroy']);
 
-		Permission::create(['name' => 'task.index']);
-		Permission::create(['name' => 'task.list']);
-		Permission::create(['name' => 'task.create']);
-		Permission::create(['name' => 'task.show']);
-		Permission::create(['name' => 'task.edit']);
-		Permission::create(['name' => 'task.store']);
-		Permission::create(['name' => 'task.update']);
-		Permission::create(['name' => 'task.destroy']);
+		Permission::firstOrCreate(['name' => 'task.index']);
+		Permission::firstOrCreate(['name' => 'task.list']);
+		Permission::firstOrCreate(['name' => 'task.create']);
+		Permission::firstOrCreate(['name' => 'task.show']);
+		Permission::firstOrCreate(['name' => 'task.edit']);
+		Permission::firstOrCreate(['name' => 'task.store']);
+		Permission::firstOrCreate(['name' => 'task.update']);
+		Permission::firstOrCreate(['name' => 'task.destroy']);
 
-		Permission::create(['name' => 'time.index']);
-		Permission::create(['name' => 'time.list']);
-		Permission::create(['name' => 'time.create']);
-		Permission::create(['name' => 'time.show']);
-		Permission::create(['name' => 'time.edit']);
-		Permission::create(['name' => 'time.store']);
-		Permission::create(['name' => 'time.update']);
-		Permission::create(['name' => 'time.destroy']);
+		Permission::firstOrCreate(['name' => 'time.index']);
+		Permission::firstOrCreate(['name' => 'time.list']);
+		Permission::firstOrCreate(['name' => 'time.create']);
+		Permission::firstOrCreate(['name' => 'time.show']);
+		Permission::firstOrCreate(['name' => 'time.edit']);
+		Permission::firstOrCreate(['name' => 'time.store']);
+		Permission::firstOrCreate(['name' => 'time.update']);
+		Permission::firstOrCreate(['name' => 'time.destroy']);
 
-		Permission::create(['name' => 'documentation.index']);
-		Permission::create(['name' => 'documentation.list']);
-		Permission::create(['name' => 'documentation.create']);
-		Permission::create(['name' => 'documentation.show']);
-		Permission::create(['name' => 'documentation.edit']);
-		Permission::create(['name' => 'documentation.store']);
-		Permission::create(['name' => 'documentation.update']);
-		Permission::create(['name' => 'documentation.destroy']);
+		Permission::firstOrCreate(['name' => 'documentation.index']);
+		Permission::firstOrCreate(['name' => 'documentation.list']);
+		Permission::firstOrCreate(['name' => 'documentation.create']);
+		Permission::firstOrCreate(['name' => 'documentation.show']);
+		Permission::firstOrCreate(['name' => 'documentation.edit']);
+		Permission::firstOrCreate(['name' => 'documentation.store']);
+		Permission::firstOrCreate(['name' => 'documentation.update']);
+		Permission::firstOrCreate(['name' => 'documentation.destroy']);
 
-		Permission::create(['name' => 'earning.index']);
-		Permission::create(['name' => 'earning.list']);
-		Permission::create(['name' => 'earning.create']);
-		Permission::create(['name' => 'earning.show']);
-		Permission::create(['name' => 'earning.edit']);
-		Permission::create(['name' => 'earning.store']);
-		Permission::create(['name' => 'earning.update']);
-		Permission::create(['name' => 'earning.destroy']);
+		Permission::firstOrCreate(['name' => 'earning.index']);
+		Permission::firstOrCreate(['name' => 'earning.list']);
+		Permission::firstOrCreate(['name' => 'earning.create']);
+		Permission::firstOrCreate(['name' => 'earning.show']);
+		Permission::firstOrCreate(['name' => 'earning.edit']);
+		Permission::firstOrCreate(['name' => 'earning.store']);
+		Permission::firstOrCreate(['name' => 'earning.update']);
+		Permission::firstOrCreate(['name' => 'earning.destroy']);
 
-		Permission::create(['name' => 'expense.index']);
-		Permission::create(['name' => 'expense.list']);
-		Permission::create(['name' => 'expense.create']);
-		Permission::create(['name' => 'expense.show']);
-		Permission::create(['name' => 'expense.edit']);
-		Permission::create(['name' => 'expense.store']);
-		Permission::create(['name' => 'expense.update']);
-		Permission::create(['name' => 'expense.destroy']);
+		Permission::firstOrCreate(['name' => 'expense.index']);
+		Permission::firstOrCreate(['name' => 'expense.list']);
+		Permission::firstOrCreate(['name' => 'expense.create']);
+		Permission::firstOrCreate(['name' => 'expense.show']);
+		Permission::firstOrCreate(['name' => 'expense.edit']);
+		Permission::firstOrCreate(['name' => 'expense.store']);
+		Permission::firstOrCreate(['name' => 'expense.update']);
+		Permission::firstOrCreate(['name' => 'expense.destroy']);
 
-		Permission::create(['name' => 'accounting.index']);
-		Permission::create(['name' => 'accounting.list']);
-		Permission::create(['name' => 'accounting.create']);
-		Permission::create(['name' => 'accounting.show']);
-		Permission::create(['name' => 'accounting.edit']);
-		Permission::create(['name' => 'accounting.store']);
-		Permission::create(['name' => 'accounting.update']);
-		Permission::create(['name' => 'accounting.destroy']);
+		Permission::firstOrCreate(['name' => 'accounting.index']);
+		Permission::firstOrCreate(['name' => 'accounting.list']);
+		Permission::firstOrCreate(['name' => 'accounting.create']);
+		Permission::firstOrCreate(['name' => 'accounting.show']);
+		Permission::firstOrCreate(['name' => 'accounting.edit']);
+		Permission::firstOrCreate(['name' => 'accounting.store']);
+		Permission::firstOrCreate(['name' => 'accounting.update']);
+		Permission::firstOrCreate(['name' => 'accounting.destroy']);
 
-		Permission::create(['name' => 'financial.index']);
-		Permission::create(['name' => 'financial.list']);
-		Permission::create(['name' => 'financial.create']);
-		Permission::create(['name' => 'financial.show']);
-		Permission::create(['name' => 'financial.edit']);
-		Permission::create(['name' => 'financial.store']);
-		Permission::create(['name' => 'financial.update']);
-		Permission::create(['name' => 'financial.destroy']);
+		Permission::firstOrCreate(['name' => 'financial.index']);
+		Permission::firstOrCreate(['name' => 'financial.list']);
+		Permission::firstOrCreate(['name' => 'financial.create']);
+		Permission::firstOrCreate(['name' => 'financial.show']);
+		Permission::firstOrCreate(['name' => 'financial.edit']);
+		Permission::firstOrCreate(['name' => 'financial.store']);
+		Permission::firstOrCreate(['name' => 'financial.update']);
+		Permission::firstOrCreate(['name' => 'financial.destroy']);
 
-		Permission::create(['name' => 'department.index']);
-		Permission::create(['name' => 'department.list']);
-		Permission::create(['name' => 'department.create']);
-		Permission::create(['name' => 'department.show']);
-		Permission::create(['name' => 'department.edit']);
-		Permission::create(['name' => 'department.store']);
-		Permission::create(['name' => 'department.update']);
-		Permission::create(['name' => 'department.destroy']);
+		Permission::firstOrCreate(['name' => 'department.index']);
+		Permission::firstOrCreate(['name' => 'department.list']);
+		Permission::firstOrCreate(['name' => 'department.create']);
+		Permission::firstOrCreate(['name' => 'department.show']);
+		Permission::firstOrCreate(['name' => 'department.edit']);
+		Permission::firstOrCreate(['name' => 'department.store']);
+		Permission::firstOrCreate(['name' => 'department.update']);
+		Permission::firstOrCreate(['name' => 'department.destroy']);
 
-		Permission::create(['name' => 'funnel.index']);
-		Permission::create(['name' => 'funnel.list']);
-		Permission::create(['name' => 'funnel.create']);
-		Permission::create(['name' => 'funnel.show']);
-		Permission::create(['name' => 'funnel.edit']);
-		Permission::create(['name' => 'funnel.store']);
-		Permission::create(['name' => 'funnel.update']);
-		Permission::create(['name' => 'funnel.destroy']);
+		Permission::firstOrCreate(['name' => 'funnel.index']);
+		Permission::firstOrCreate(['name' => 'funnel.list']);
+		Permission::firstOrCreate(['name' => 'funnel.create']);
+		Permission::firstOrCreate(['name' => 'funnel.show']);
+		Permission::firstOrCreate(['name' => 'funnel.edit']);
+		Permission::firstOrCreate(['name' => 'funnel.store']);
+		Permission::firstOrCreate(['name' => 'funnel.update']);
+		Permission::firstOrCreate(['name' => 'funnel.destroy']);
 
-		Permission::create(['name' => 'automation.index']);
-		Permission::create(['name' => 'automation.list']);
-		Permission::create(['name' => 'automation.create']);
-		Permission::create(['name' => 'automation.show']);
-		Permission::create(['name' => 'automation.edit']);
-		Permission::create(['name' => 'automation.store']);
-		Permission::create(['name' => 'automation.update']);
-		Permission::create(['name' => 'automation.destroy']);
+		Permission::firstOrCreate(['name' => 'automation.index']);
+		Permission::firstOrCreate(['name' => 'automation.list']);
+		Permission::firstOrCreate(['name' => 'automation.create']);
+		Permission::firstOrCreate(['name' => 'automation.show']);
+		Permission::firstOrCreate(['name' => 'automation.edit']);
+		Permission::firstOrCreate(['name' => 'automation.store']);
+		Permission::firstOrCreate(['name' => 'automation.update']);
+		Permission::firstOrCreate(['name' => 'automation.destroy']);
 
-		Permission::create(['name' => 'integration.index']);
-		Permission::create(['name' => 'integration.list']);
-		Permission::create(['name' => 'integration.create']);
-		Permission::create(['name' => 'integration.show']);
-		Permission::create(['name' => 'integration.edit']);
-		Permission::create(['name' => 'integration.store']);
-		Permission::create(['name' => 'integration.update']);
-		Permission::create(['name' => 'integration.destroy']);
+		Permission::firstOrCreate(['name' => 'integration.index']);
+		Permission::firstOrCreate(['name' => 'integration.list']);
+		Permission::firstOrCreate(['name' => 'integration.create']);
+		Permission::firstOrCreate(['name' => 'integration.show']);
+		Permission::firstOrCreate(['name' => 'integration.edit']);
+		Permission::firstOrCreate(['name' => 'integration.store']);
+		Permission::firstOrCreate(['name' => 'integration.update']);
+		Permission::firstOrCreate(['name' => 'integration.destroy']);
 
-		Permission::create(['name' => 'invoice.index']);
-		Permission::create(['name' => 'invoice.list']);
-		Permission::create(['name' => 'invoice.create']);
-		Permission::create(['name' => 'invoice.show']);
-		Permission::create(['name' => 'invoice.edit']);
-		Permission::create(['name' => 'invoice.store']);
-		Permission::create(['name' => 'invoice.update']);
-		Permission::create(['name' => 'invoice.destroy']);
+		Permission::firstOrCreate(['name' => 'invoice.index']);
+		Permission::firstOrCreate(['name' => 'invoice.list']);
+		Permission::firstOrCreate(['name' => 'invoice.create']);
+		Permission::firstOrCreate(['name' => 'invoice.show']);
+		Permission::firstOrCreate(['name' => 'invoice.edit']);
+		Permission::firstOrCreate(['name' => 'invoice.store']);
+		Permission::firstOrCreate(['name' => 'invoice.update']);
+		Permission::firstOrCreate(['name' => 'invoice.destroy']);
 
-		Permission::create(['name' => 'payment.index']);
-		Permission::create(['name' => 'payment.list']);
-		Permission::create(['name' => 'payment.create']);
-		Permission::create(['name' => 'payment.show']);
-		Permission::create(['name' => 'payment.edit']);
-		Permission::create(['name' => 'payment.store']);
-		Permission::create(['name' => 'payment.update']);
-		Permission::create(['name' => 'payment.destroy']);
+		Permission::firstOrCreate(['name' => 'payment.index']);
+		Permission::firstOrCreate(['name' => 'payment.list']);
+		Permission::firstOrCreate(['name' => 'payment.create']);
+		Permission::firstOrCreate(['name' => 'payment.show']);
+		Permission::firstOrCreate(['name' => 'payment.edit']);
+		Permission::firstOrCreate(['name' => 'payment.store']);
+		Permission::firstOrCreate(['name' => 'payment.update']);
+		Permission::firstOrCreate(['name' => 'payment.destroy']);
 
-		Permission::create(['name' => 'campaign.index']);
-		Permission::create(['name' => 'campaign.list']);
-		Permission::create(['name' => 'campaign.create']);
-		Permission::create(['name' => 'campaign.show']);
-		Permission::create(['name' => 'campaign.edit']);
-		Permission::create(['name' => 'campaign.store']);
-		Permission::create(['name' => 'campaign.update']);
-		Permission::create(['name' => 'campaign.destroy']);
+		Permission::firstOrCreate(['name' => 'campaign.index']);
+		Permission::firstOrCreate(['name' => 'campaign.list']);
+		Permission::firstOrCreate(['name' => 'campaign.create']);
+		Permission::firstOrCreate(['name' => 'campaign.show']);
+		Permission::firstOrCreate(['name' => 'campaign.edit']);
+		Permission::firstOrCreate(['name' => 'campaign.store']);
+		Permission::firstOrCreate(['name' => 'campaign.update']);
+		Permission::firstOrCreate(['name' => 'campaign.destroy']);
 
-		Permission::create(['name' => 'project.index']);
-		Permission::create(['name' => 'project.list']);
-		Permission::create(['name' => 'project.create']);
-		Permission::create(['name' => 'project.show']);
-		Permission::create(['name' => 'project.edit']);
-		Permission::create(['name' => 'project.store']);
-		Permission::create(['name' => 'project.update']);
-		Permission::create(['name' => 'project.destroy']);
-		Permission::create(['name' => 'project.tasks']);
-		Permission::create(['name' => 'project.calendar']);
+		Permission::firstOrCreate(['name' => 'project.index']);
+		Permission::firstOrCreate(['name' => 'project.list']);
+		Permission::firstOrCreate(['name' => 'project.create']);
+		Permission::firstOrCreate(['name' => 'project.show']);
+		Permission::firstOrCreate(['name' => 'project.edit']);
+		Permission::firstOrCreate(['name' => 'project.store']);
+		Permission::firstOrCreate(['name' => 'project.update']);
+		Permission::firstOrCreate(['name' => 'project.destroy']);
+		Permission::firstOrCreate(['name' => 'project.tasks']);
+		Permission::firstOrCreate(['name' => 'project.calendar']);
 
-		Permission::create(['name' => 'pages.edit']);
+		Permission::firstOrCreate(['name' => 'pages.edit']);
 
-		Permission::create(['name' => 'category.list']);
-		Permission::create(['name' => 'message.list']);
-		Permission::create(['name' => 'template.list']);
+		Permission::firstOrCreate(['name' => 'category.list']);
+		Permission::firstOrCreate(['name' => 'message.list']);
+		Permission::firstOrCreate(['name' => 'template.list']);
 
-		Permission::create(['name' => 'hosting.index']);
-		Permission::create(['name' => 'hosting.list']);
-		Permission::create(['name' => 'hosting.create']);
-		Permission::create(['name' => 'hosting.show']);
-		Permission::create(['name' => 'hosting.edit']);
-		Permission::create(['name' => 'hosting.store']);
-		Permission::create(['name' => 'hosting.update']);
-		Permission::create(['name' => 'hosting.destroy']);
+		Permission::firstOrCreate(['name' => 'hosting.index']);
+		Permission::firstOrCreate(['name' => 'hosting.list']);
+		Permission::firstOrCreate(['name' => 'hosting.create']);
+		Permission::firstOrCreate(['name' => 'hosting.show']);
+		Permission::firstOrCreate(['name' => 'hosting.edit']);
+		Permission::firstOrCreate(['name' => 'hosting.store']);
+		Permission::firstOrCreate(['name' => 'hosting.update']);
+		Permission::firstOrCreate(['name' => 'hosting.destroy']);
 
-		Permission::create(['name' => 'domain.index']);
-		Permission::create(['name' => 'domain.list']);
-		Permission::create(['name' => 'domain.create']);
-		Permission::create(['name' => 'domain.show']);
-		Permission::create(['name' => 'domain.edit']);
-		Permission::create(['name' => 'domain.store']);
-		Permission::create(['name' => 'domain.update']);
-		Permission::create(['name' => 'domain.destroy']);
+		Permission::firstOrCreate(['name' => 'domain.index']);
+		Permission::firstOrCreate(['name' => 'domain.list']);
+		Permission::firstOrCreate(['name' => 'domain.create']);
+		Permission::firstOrCreate(['name' => 'domain.show']);
+		Permission::firstOrCreate(['name' => 'domain.edit']);
+		Permission::firstOrCreate(['name' => 'domain.store']);
+		Permission::firstOrCreate(['name' => 'domain.update']);
+		Permission::firstOrCreate(['name' => 'domain.destroy']);
 
-		Permission::create(['name' => 'server.index']);
-		Permission::create(['name' => 'server.list']);
-		Permission::create(['name' => 'server.create']);
-		Permission::create(['name' => 'server.show']);
-		Permission::create(['name' => 'server.edit']);
-		Permission::create(['name' => 'server.store']);
-		Permission::create(['name' => 'server.update']);
-		Permission::create(['name' => 'server.destroy']);
+		Permission::firstOrCreate(['name' => 'server.index']);
+		Permission::firstOrCreate(['name' => 'server.list']);
+		Permission::firstOrCreate(['name' => 'server.create']);
+		Permission::firstOrCreate(['name' => 'server.show']);
+		Permission::firstOrCreate(['name' => 'server.edit']);
+		Permission::firstOrCreate(['name' => 'server.store']);
+		Permission::firstOrCreate(['name' => 'server.update']);
+		Permission::firstOrCreate(['name' => 'server.destroy']);
 
-		Permission::create(['name' => 'software.index']);
-		Permission::create(['name' => 'software.list']);
-		Permission::create(['name' => 'software.create']);
-		Permission::create(['name' => 'software.show']);
-		Permission::create(['name' => 'software.edit']);
-		Permission::create(['name' => 'software.store']);
-		Permission::create(['name' => 'software.update']);
-		Permission::create(['name' => 'software.destroy']);
+		Permission::firstOrCreate(['name' => 'software.index']);
+		Permission::firstOrCreate(['name' => 'software.list']);
+		Permission::firstOrCreate(['name' => 'software.create']);
+		Permission::firstOrCreate(['name' => 'software.show']);
+		Permission::firstOrCreate(['name' => 'software.edit']);
+		Permission::firstOrCreate(['name' => 'software.store']);
+		Permission::firstOrCreate(['name' => 'software.update']);
+		Permission::firstOrCreate(['name' => 'software.destroy']);
 
-		Permission::create(['name' => 'certification.index']);
-		Permission::create(['name' => 'certification.list']);
-		Permission::create(['name' => 'certification.create']);
-		Permission::create(['name' => 'certification.show']);
-		Permission::create(['name' => 'certification.edit']);
-		Permission::create(['name' => 'certification.store']);
-		Permission::create(['name' => 'certification.update']);
-		Permission::create(['name' => 'certification.destroy']);
+		Permission::firstOrCreate(['name' => 'certification.index']);
+		Permission::firstOrCreate(['name' => 'certification.list']);
+		Permission::firstOrCreate(['name' => 'certification.create']);
+		Permission::firstOrCreate(['name' => 'certification.show']);
+		Permission::firstOrCreate(['name' => 'certification.edit']);
+		Permission::firstOrCreate(['name' => 'certification.store']);
+		Permission::firstOrCreate(['name' => 'certification.update']);
+		Permission::firstOrCreate(['name' => 'certification.destroy']);
 
-		Permission::create(['name' => 'stylebook.index']);
-		Permission::create(['name' => 'stylebook.list']);
-		Permission::create(['name' => 'stylebook.create']);
-		Permission::create(['name' => 'stylebook.show']);
-		Permission::create(['name' => 'stylebook.edit']);
-		Permission::create(['name' => 'stylebook.store']);
-		Permission::create(['name' => 'stylebook.update']);
-		Permission::create(['name' => 'stylebook.destroy']);
+		Permission::firstOrCreate(['name' => 'stylebook.index']);
+		Permission::firstOrCreate(['name' => 'stylebook.list']);
+		Permission::firstOrCreate(['name' => 'stylebook.create']);
+		Permission::firstOrCreate(['name' => 'stylebook.show']);
+		Permission::firstOrCreate(['name' => 'stylebook.edit']);
+		Permission::firstOrCreate(['name' => 'stylebook.store']);
+		Permission::firstOrCreate(['name' => 'stylebook.update']);
+		Permission::firstOrCreate(['name' => 'stylebook.destroy']);
 
-		$rootRole = Role::create(['name' => 'root']);
+		// E-commerce permissions
+		Permission::firstOrCreate(['name' => 'product.index']);
+		Permission::firstOrCreate(['name' => 'product.list']);
+		Permission::firstOrCreate(['name' => 'product.create']);
+		Permission::firstOrCreate(['name' => 'product.show']);
+		Permission::firstOrCreate(['name' => 'product.edit']);
+		Permission::firstOrCreate(['name' => 'product.store']);
+		Permission::firstOrCreate(['name' => 'product.update']);
+		Permission::firstOrCreate(['name' => 'product.destroy']);
+
+		Permission::firstOrCreate(['name' => 'order.index']);
+		Permission::firstOrCreate(['name' => 'order.list']);
+		Permission::firstOrCreate(['name' => 'order.create']);
+		Permission::firstOrCreate(['name' => 'order.show']);
+		Permission::firstOrCreate(['name' => 'order.edit']);
+		Permission::firstOrCreate(['name' => 'order.store']);
+		Permission::firstOrCreate(['name' => 'order.update']);
+		Permission::firstOrCreate(['name' => 'order.destroy']);
+
+		Permission::firstOrCreate(['name' => 'ecommerce.index']);
+		Permission::firstOrCreate(['name' => 'ecommerce.list']);
+		Permission::firstOrCreate(['name' => 'ecommerce.create']);
+		Permission::firstOrCreate(['name' => 'ecommerce.show']);
+		Permission::firstOrCreate(['name' => 'ecommerce.edit']);
+		Permission::firstOrCreate(['name' => 'ecommerce.store']);
+		Permission::firstOrCreate(['name' => 'ecommerce.update']);
+		Permission::firstOrCreate(['name' => 'ecommerce.destroy']);
+		Permission::firstOrCreate(['name' => 'ecommerce.dashboard']);
+		Permission::firstOrCreate(['name' => 'ecommerce.settings']);
+
+		$rootRole = Role::firstOrCreate(['name' => 'root']);
 		$rootRole->syncPermissions([
 			'user.management',
 		]);
 
-		$administratorRole = Role::create(['name' => 'admin']);
+		$administratorRole = Role::firstOrCreate(['name' => 'admin']);
 		$administratorRole->syncPermissions([
 			'client.index',
 			'client.list',
@@ -413,7 +443,7 @@ class RolesAndPermissionsSeeder extends Seeder
 			'payment.destroy',
 		]);
 
-		$collaboratorRole = Role::create(['name' => 'collaborator']);
+		$collaboratorRole = Role::firstOrCreate(['name' => 'collaborator']);
 		$collaboratorRole->syncPermissions([
 			'user.list',
 			'today.list',
@@ -437,9 +467,36 @@ class RolesAndPermissionsSeeder extends Seeder
 			'profile.show',
 			'profile.edit',
 			'profile.update',
+			// E-commerce permissions (admin only)
+			'product.index',
+			'product.list',
+			'product.create',
+			'product.show',
+			'product.edit',
+			'product.store',
+			'product.update',
+			'product.destroy',
+			'order.index',
+			'order.list',
+			'order.create',
+			'order.show',
+			'order.edit',
+			'order.store',
+			'order.update',
+			'order.destroy',
+			'ecommerce.index',
+			'ecommerce.list',
+			'ecommerce.create',
+			'ecommerce.show',
+			'ecommerce.edit',
+			'ecommerce.store',
+			'ecommerce.update',
+			'ecommerce.destroy',
+			'ecommerce.dashboard',
+			'ecommerce.settings',
 		]);
 
-		$editorRole = Role::create(['name' => 'editor']);
+		$editorRole = Role::firstOrCreate(['name' => 'editor']);
 		$editorRole->syncPermissions([
 			'profile.show',
 			'profile.edit',
@@ -463,15 +520,15 @@ class RolesAndPermissionsSeeder extends Seeder
 			'template.list',
 		]);
 
-		$editorRole = Role::create(['name' => 'auditor']);
-		$editorRole->syncPermissions([
+		$auditorRole = Role::firstOrCreate(['name' => 'auditor']);
+		$auditorRole->syncPermissions([
 			'profile.show',
 			'profile.edit',
 			'profile.update',
 			'password.update',
 		]);
 
-		$technicalRole = Role::create(['name' => 'technical']);
+		$technicalRole = Role::firstOrCreate(['name' => 'technical']);
 		$technicalRole->syncPermissions([
 			'profile.show',
 			'profile.edit',
@@ -479,7 +536,7 @@ class RolesAndPermissionsSeeder extends Seeder
 			'password.update',
 		]);
 
-		$clientRole = Role::create(['name' => 'client']);
+		$clientRole = Role::firstOrCreate(['name' => 'client']);
 		$clientRole->syncPermissions([
 			'profile.show',
 			'profile.edit',
@@ -499,7 +556,7 @@ class RolesAndPermissionsSeeder extends Seeder
 			'project.show',
 		]);
 
-		$userRole = Role::create(['name' => 'user']);
+		$userRole = Role::firstOrCreate(['name' => 'user']);
 		$userRole->syncPermissions([
 			'profile.show',
 			'profile.edit',
@@ -507,16 +564,16 @@ class RolesAndPermissionsSeeder extends Seeder
 			'password.update',
 		]);
 
-		$userRole = Role::create(['name' => 'guest']);
-		$userRole->syncPermissions([
+		$guestRole = Role::firstOrCreate(['name' => 'guest']);
+		$guestRole->syncPermissions([
 			'profile.show',
 			'profile.edit',
 			'profile.update',
 			'password.update',
 		]);
 
-		$userRole = Role::create(['name' => 'developer']);
-		$userRole->syncPermissions([
+		$developerRole = Role::firstOrCreate(['name' => 'developer']);
+		$developerRole->syncPermissions([
 			'user.list',
 			'user.create',
 			'user.show',

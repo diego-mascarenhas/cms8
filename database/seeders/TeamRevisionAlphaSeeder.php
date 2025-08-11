@@ -39,9 +39,12 @@ class TeamRevisionAlphaSeeder extends Seeder
         // Asignar módulos por defecto al equipo Revision Alpha
         $defaultModuleKeys = [
             'contacts',
+            'enterprises',
             'projects',
             'services',
-            'enterprises',
+            'products',
+            'orders',
+            'ecommerce',
             'invoices',
             'payments',
             'notes',

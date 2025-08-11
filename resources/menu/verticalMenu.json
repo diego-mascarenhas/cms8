@@ -100,6 +100,25 @@
 			"module_key": "documentation"
 		},
 		{
+			"menuHeader": "E-commerce"
+		},
+		{
+			"url": "product/list",
+			"name": "Products",
+			"icon": "menu-icon tf-icons ti ti-package",
+			"slug": "product-list",
+			"permission": "product.list",
+			"module_key": "products"
+		},
+		{
+			"url": "order/list",
+			"name": "Orders",
+			"icon": "menu-icon tf-icons ti ti-shopping-bag",
+			"slug": "order-list",
+			"permission": "order.list",
+			"module_key": "orders"
+		},
+		{
 			"menuHeader": "Billing"
 		},
 		{
