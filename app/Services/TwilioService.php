@@ -1245,23 +1245,165 @@ class TwilioService
     }
 
     /**
-     * Send WhatsApp message with media attachment
+     * Send WhatsApp message with media attachment using Twilio API
      */
     private function sendWhatsAppWithMedia($phoneNumber, $mediaPath, $type)
     {
         try {
             $fullMediaPath = public_path($mediaPath);
 
-            if (file_exists($fullMediaPath)) {
-                // For now, we'll just log that we would send media
-                // In a real implementation, you'd use Twilio's media API
-                \Log::info("Would send {$type} QR image via WhatsApp to {$phoneNumber}: {$mediaPath}");
-
-                // TODO: Implement actual media sending via Twilio
-                // This requires additional Twilio configuration for media
+            if (!file_exists($fullMediaPath)) {
+                \Log::error("Media file not found: {$fullMediaPath}");
+                return false;
             }
+
+            // Format phone number for WhatsApp
+            $whatsappTo = 'whatsapp:' . $this->formatPhoneNumber($phoneNumber);
+            $whatsappFrom = $this->whatsappFromNumber;
+
+            // Get file info
+            $fileSize = filesize($fullMediaPath);
+            $fileExtension = pathinfo($fullMediaPath, PATHINFO_EXTENSION);
+            $mimeType = $this->getMimeType($fileExtension);
+
+            // Check file size (Twilio limit: 16MB for media)
+            if ($fileSize > 16 * 1024 * 1024) {
+                \Log::error("File too large for Twilio: {$fileSize} bytes");
+                return false;
+            }
+
+            // Get the full public URL for the media
+            $publicUrl = url($mediaPath);
+
+            // For local development, we'll use a placeholder or skip media
+            if (strpos($publicUrl, 'localhost') !== false || strpos($publicUrl, '.test') !== false) {
+                \Log::info("Local environment detected, skipping media send for: {$publicUrl}");
+                // In local environment, we'll just send the text message
+                $message = $this->client->messages->create(
+                    $whatsappTo,
+                    [
+                        'from' => $whatsappFrom,
+                        'body' => "🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.\n\n🔗 Enlace directo: {$publicUrl}"
+                    ]
+                );
+            } else {
+                // Production environment - send with media
+                $message = $this->client->messages->create(
+                    $whatsappTo,
+                    [
+                        'from' => $whatsappFrom,
+                        'body' => "🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.",
+                        'mediaUrl' => [$publicUrl]
+                    ]
+                );
+            }
+
+            if ($message->sid) {
+                \Log::info("WhatsApp media message sent successfully", [
+                    'message_sid' => $message->sid,
+                    'to' => $phoneNumber,
+                    'media_path' => $mediaPath,
+                    'type' => $type,
+                    'status' => $message->status
+                ]);
+
+                // Save to conversation history
+                $this->saveMediaMessageToHistory($phoneNumber, $message, $mediaPath, $type);
+
+                return true;
+            } else {
+                \Log::error("Failed to send WhatsApp media message: No message SID returned");
+                return false;
+            }
+
         } catch (\Exception $e) {
-            \Log::error('Error sending WhatsApp media: ' . $e->getMessage());
+            \Log::error('Error sending WhatsApp media: ' . $e->getMessage(), [
+                'phone_number' => $phoneNumber,
+                'media_path' => $mediaPath,
+                'type' => $type,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Format phone number for WhatsApp
+     */
+    private function formatPhoneNumber($phoneNumber)
+    {
+        // Remove all non-numeric characters
+        $cleanNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
+
+        // Ensure it starts with country code
+        if (strlen($cleanNumber) === 9 && substr($cleanNumber, 0, 1) === '9') {
+            // Argentine mobile number, add 54
+            $cleanNumber = '54' . $cleanNumber;
+        } elseif (strlen($cleanNumber) === 10 && substr($cleanNumber, 0, 2) === '15') {
+            // Argentine mobile with 15 prefix, replace with 54 9
+            $cleanNumber = '54' . substr($cleanNumber, 2);
+        }
+
+        return $cleanNumber;
+    }
+
+    /**
+     * Get MIME type for file extension
+     */
+    private function getMimeType($extension)
+    {
+        $mimeTypes = [
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'pdf' => 'application/pdf',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+
+        return $mimeTypes[strtolower($extension)] ?? 'application/octet-stream';
+    }
+
+    /**
+     * Save media message to conversation history
+     */
+    private function saveMediaMessageToHistory($phoneNumber, $twilioMessage, $mediaPath, $type)
+    {
+        try {
+            $conversation = Conversation::create([
+                'message_sid' => $twilioMessage->sid,
+                'channel' => 'whatsapp',
+                'from' => config('services.twilio.whatsapp_from'),
+                'to' => $phoneNumber,
+                'body' => "🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.",
+                'status' => $twilioMessage->status ?? 'sent',
+                'direction' => 'outbound',
+                'media' => [
+                    [
+                        'url' => url($mediaPath),
+                        'content_type' => 'image/png',
+                        'type' => $type,
+                        'local_path' => $mediaPath
+                    ]
+                ],
+                'metadata' => [
+                    'twilio_message_sid' => $twilioMessage->sid,
+                    'qr_type' => $type,
+                    'media_sent' => true,
+                    'file_path' => $mediaPath
+                ],
+            ]);
+
+            \Log::info("Media message saved to conversation history", [
+                'conversation_id' => $conversation->id,
+                'message_sid' => $twilioMessage->sid,
+                'phone_number' => $phoneNumber
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error saving media message to history: ' . $e->getMessage());
         }
     }
 
