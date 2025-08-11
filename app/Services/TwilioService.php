@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Helpers\TokenHelper;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -433,19 +432,21 @@ class TwilioService
                 $user = \App\Models\User::where('phone', $phoneAsInt)->first();
             }
 
-            if (!$user) {
+            if (! $user) {
                 $user = \App\Models\User::where('phone', 'like', '%'.$phoneNumber.'%')->first();
             }
 
-            if (!$user) {
+            if (! $user) {
                 \Log::info('No user found for sentiment analysis', ['phone' => $phoneNumber]);
+
                 return;
             }
 
             // Find associated contact
             $contact = \App\Models\Contact::where('user_id', $user->id)->first();
-            if (!$contact) {
+            if (! $contact) {
                 \Log::info('No contact found for sentiment analysis', ['user_id' => $user->id]);
+
                 return;
             }
 
@@ -457,18 +458,18 @@ class TwilioService
                 \App\Models\ContactSentimentHistory::create([
                     'contact_id' => $contact->id,
                     'sentiment_id' => $sentiment['id'],
-                    'notes' => 'Análisis automático de WhatsApp: ' . $sentiment['reason']
+                    'notes' => 'Análisis automático de WhatsApp: '.$sentiment['reason'],
                 ]);
 
                 \Log::info('Sentiment detected and recorded', [
                     'contact_id' => $contact->id,
                     'sentiment' => $sentiment['name'],
-                    'message' => substr($messageBody, 0, 100)
+                    'message' => substr($messageBody, 0, 100),
                 ]);
             }
 
         } catch (\Exception $e) {
-            \Log::error('Error in sentiment analysis: ' . $e->getMessage());
+            \Log::error('Error in sentiment analysis: '.$e->getMessage());
         }
     }
 
@@ -485,27 +486,27 @@ class TwilioService
             'terrible', 'horrible', 'pésimo', 'malísimo', 'odio', 'detesto',
             'furioso', 'indignado', 'inaceptable', 'vergonzoso', 'estafa',
             'robo', 'ladrones', 'cancelar', 'cancelaré', 'nunca más',
-            'demanda', 'denuncia', 'abogado', 'fraude'
+            'demanda', 'denuncia', 'abogado', 'fraude',
         ];
 
         // Negative indicators (sentiment_id = 2)
         $negativeKeywords = [
             'molesto', 'enfadado', 'problema', 'falla', 'error', 'mal',
             'no funciona', 'deficiente', 'lento', 'caro', 'insatisfecho',
-            'decepcionado', 'preocupado', 'disgustado'
+            'decepcionado', 'preocupado', 'disgustado',
         ];
 
         // Very positive indicators (sentiment_id = 5)
         $veryPositiveKeywords = [
             'excelente', 'fantástico', 'perfecto', 'increíble', 'maravilloso',
             'espectacular', 'genial', 'amor', 'amo', 'feliz', 'encantado',
-            'satisfecho', 'recomiendo', 'recomendaré', '10/10', 'cinco estrellas'
+            'satisfecho', 'recomiendo', 'recomendaré', '10/10', 'cinco estrellas',
         ];
 
         // Positive indicators (sentiment_id = 4)
         $positiveKeywords = [
             'bien', 'bueno', 'gracias', 'perfecto', 'ok', 'vale', 'correcto',
-            'funciona', 'rápido', 'eficiente', 'útil', 'contento'
+            'funciona', 'rápido', 'eficiente', 'útil', 'contento',
         ];
 
         // Check for very negative sentiment
@@ -514,7 +515,7 @@ class TwilioService
                 return [
                     'id' => 1,
                     'name' => 'Muy Negativo',
-                    'reason' => "Detectada palabra clave: '$keyword'"
+                    'reason' => "Detectada palabra clave: '$keyword'",
                 ];
             }
         }
@@ -525,7 +526,7 @@ class TwilioService
                 return [
                     'id' => 2,
                     'name' => 'Negativo',
-                    'reason' => "Detectada palabra clave: '$keyword'"
+                    'reason' => "Detectada palabra clave: '$keyword'",
                 ];
             }
         }
@@ -536,7 +537,7 @@ class TwilioService
                 return [
                     'id' => 5,
                     'name' => 'Muy Positivo',
-                    'reason' => "Detectada palabra clave: '$keyword'"
+                    'reason' => "Detectada palabra clave: '$keyword'",
                 ];
             }
         }
@@ -547,7 +548,7 @@ class TwilioService
                 return [
                     'id' => 4,
                     'name' => 'Positivo',
-                    'reason' => "Detectada palabra clave: '$keyword'"
+                    'reason' => "Detectada palabra clave: '$keyword'",
                 ];
             }
         }
@@ -557,7 +558,7 @@ class TwilioService
             return [
                 'id' => 2,
                 'name' => 'Negativo',
-                'reason' => 'Detectado patrón negativo'
+                'reason' => 'Detectado patrón negativo',
             ];
         }
 
@@ -566,7 +567,7 @@ class TwilioService
             return [
                 'id' => 1,
                 'name' => 'Muy Negativo',
-                'reason' => 'Detectado lenguaje muy negativo'
+                'reason' => 'Detectado lenguaje muy negativo',
             ];
         }
 
@@ -585,14 +586,14 @@ class TwilioService
 
             // Find user by phone number
             $user = $this->getUserByPhone($phoneNumber);
-            if (!$user || isset($user->is_contact)) {
+            if (! $user || isset($user->is_contact)) {
                 // User not found or is just a contact, skip service processing
                 return null;
             }
 
             // Get the user's contact for enterprises
             $contact = Contact::where('user_id', $user->id)->first();
-            if (!$contact) {
+            if (! $contact) {
                 return null;
             }
 
@@ -601,7 +602,7 @@ class TwilioService
                 'servicio', 'service', 'hosting', 'dominio', 'domain', 'web',
                 'desarrollo', 'development', 'mantenimiento', 'maintenance',
                 'soporte', 'support', 'backup', 'ssl', 'certificado',
-                'renovar', 'renew', 'vence', 'expires', 'caducidad'
+                'renovar', 'renew', 'vence', 'expires', 'caducidad',
             ];
 
             $containsServiceKeyword = false;
@@ -620,7 +621,7 @@ class TwilioService
                 preg_match('/información\s+de\s+(mi\s+)?(servicio|hosting|dominio)/i', $message)
             );
 
-            if (!$containsServiceKeyword && !$isServiceReport) {
+            if (! $containsServiceKeyword && ! $isServiceReport) {
                 return null;
             }
 
@@ -632,7 +633,7 @@ class TwilioService
                 $responseMessage = "Veo que estás preguntando sobre servicios. Actualmente no tienes empresas registradas en nuestro sistema.\n\n";
                 $responseMessage .= "Para consultar sobre nuevos servicios o registrar tu empresa, puedes:\n";
                 $responseMessage .= "• Contactarnos a través de: https://revisionalpha.com/contactenos\n";
-                $responseMessage .= "• O déjanos más detalles aquí y te ayudaremos.";
+                $responseMessage .= '• O déjanos más detalles aquí y te ayudaremos.';
             } else {
                 $responseMessage = "📋 *Información de tus servicios:*\n\n";
 
@@ -658,7 +659,7 @@ class TwilioService
 
                             if ($service->price) {
                                 $currency = $service->currency ? $service->currency->symbol : '$';
-                                $responseMessage .= "   Precio: {$currency}" . number_format($service->price, 2) . "\n";
+                                $responseMessage .= "   Precio: {$currency}".number_format($service->price, 2)."\n";
                             }
 
                             if ($service->next_billing) {
@@ -672,7 +673,7 @@ class TwilioService
 
                                 if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0) {
                                     $responseMessage .= "   ⚠️ Expira: {$expiresAt} (en {$daysUntilExpiry} días)\n";
-                                } else if ($daysUntilExpiry < 0) {
+                                } elseif ($daysUntilExpiry < 0) {
                                     $responseMessage .= "   🔴 Expiró: {$expiresAt}\n";
                                 } else {
                                     $responseMessage .= "   Expira: {$expiresAt}\n";
@@ -687,32 +688,27 @@ class TwilioService
                 // Add helpful information
                 $responseMessage .= "💡 *¿Necesitas ayuda?*\n";
 
-                if ($user->email) {
-                    // Generate a signed token that works across different databases
-                    $accessToken = TokenHelper::generateSignedToken($user, 'whatsapp_autologin', 24);
-                    $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
-                    $responseMessage .= "• Área de clientes: {$clientAreaUrl}\n";
-                }
-
+                $responseMessage .= "• Área de clientes: https://revisionalpha.com/login\n";
                 $responseMessage .= "• Soporte: https://revisionalpha.com/contactenos\n";
-                $responseMessage .= "• O puedes escribirme aquí para consultas rápidas 😊";
+                $responseMessage .= '• O puedes escribirme aquí para consultas rápidas 😊';
             }
 
             // Send the response
             $this->sendWhatsApp($phoneNumber, $responseMessage);
 
             // Log the service inquiry
-            \Log::info("Service inquiry processed for user", [
+            \Log::info('Service inquiry processed for user', [
                 'phone' => $phoneNumber,
                 'user_id' => $user->id,
                 'enterprises_count' => $enterprises->count(),
-                'message_preview' => substr($message, 0, 50)
+                'message_preview' => substr($message, 0, 50),
             ]);
 
             return ['success' => true, 'message' => 'Service information sent'];
 
         } catch (\Exception $e) {
-            \Log::error('Error processing service commands: ' . $e->getMessage());
+            \Log::error('Error processing service commands: '.$e->getMessage());
+
             return null;
         }
     }
@@ -729,8 +725,9 @@ class TwilioService
             if ($normalizedMessage === 'DEMO') {
                 // Check if user already exists
                 $existingUser = $this->getUserByPhone($phoneNumber);
-                if ($existingUser && !isset($existingUser->is_contact)) {
+                if ($existingUser && ! isset($existingUser->is_contact)) {
                     $this->sendWhatsApp($phoneNumber, "¡Hola! Ya tienes una cuenta registrada en nuestro sistema. 😊\n\nPuedes acceder a tu área de cliente o contactarnos si necesitas ayuda.");
+
                     return ['success' => true, 'message' => 'User already exists'];
                 }
 
@@ -752,7 +749,8 @@ class TwilioService
             return null;
 
         } catch (\Exception $e) {
-            \Log::error('Error processing demo command: ' . $e->getMessage());
+            \Log::error('Error processing demo command: '.$e->getMessage());
+
             return null;
         }
     }
@@ -766,7 +764,8 @@ class TwilioService
             switch ($state) {
                 case 'awaiting_name':
                     if (strlen(trim($message)) < 2) {
-                        $this->sendWhatsApp($phoneNumber, "❌ Por favor, ingresa un nombre válido (mínimo 2 caracteres):");
+                        $this->sendWhatsApp($phoneNumber, '❌ Por favor, ingresa un nombre válido (mínimo 2 caracteres):');
+
                         return ['success' => false, 'message' => 'Invalid name'];
                     }
 
@@ -781,8 +780,9 @@ class TwilioService
                     $email = trim($message);
 
                     // Validate email format
-                    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        $this->sendWhatsApp($phoneNumber, "❌ Por favor, ingresa un email válido (ejemplo: tu@email.com):");
+                    if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $this->sendWhatsApp($phoneNumber, '❌ Por favor, ingresa un email válido (ejemplo: tu@email.com):');
+
                         return ['success' => false, 'message' => 'Invalid email'];
                     }
 
@@ -790,6 +790,7 @@ class TwilioService
                     $existingUser = \App\Models\User::where('email', $email)->first();
                     if ($existingUser) {
                         $this->sendWhatsApp($phoneNumber, "❌ Este email ya está registrado en nuestro sistema.\n\n📧 Por favor, usa otro email:");
+
                         return ['success' => false, 'message' => 'Email already exists'];
                     }
 
@@ -803,12 +804,14 @@ class TwilioService
 
                 default:
                     $this->clearDemoState($phoneNumber);
+
                     return null;
             }
 
         } catch (\Exception $e) {
-            \Log::error('Error handling demo registration step: ' . $e->getMessage());
+            \Log::error('Error handling demo registration step: '.$e->getMessage());
             $this->clearDemoState($phoneNumber);
+
             return null;
         }
     }
@@ -855,10 +858,6 @@ class TwilioService
                 $contact->enterprises()->attach(2);
             }
 
-            // Generate auto-login token
-            $accessToken = \App\Helpers\TokenHelper::generateSignedToken($user, 'demo_autologin', 24);
-            $clientAreaUrl = "https://revisionalpha.com/login/token/" . $accessToken;
-
             // Send success message
             $responseMessage = "🎉 ¡Felicidades! Tu cuenta demo ha sido creada exitosamente.\n\n";
             $responseMessage .= "📧 Email: {$email}\n";
@@ -868,28 +867,29 @@ class TwilioService
             $responseMessage .= "• Gestión de Infraestructura en la Nube\n";
             $responseMessage .= "• Desarrollo de Apps Móviles\n";
             $responseMessage .= "• Consultoría en Ciberseguridad\n\n";
-            $responseMessage .= "🌐 Visita nuestro sitio web: https://idoneo.dev\n";
-            $responseMessage .= "🌐 Accede directamente a tu área de cliente:\n{$clientAreaUrl}\n\n";
-            $responseMessage .= "¡Gracias por probar nuestro demo! 🚀";
+            $responseMessage .= "🌐 Visita nuestro sitio web: https://revisionalpha.com\n";
+            $responseMessage .= "🌐 Accede a tu área de cliente: https://revisionalpha.com/login\n\n";
+            $responseMessage .= '¡Gracias por probar nuestro demo! 🚀';
 
             $this->sendWhatsApp($phoneNumber, $responseMessage);
 
             // Clear demo data
             $this->clearDemoData($phoneNumber);
 
-            \Log::info("Demo user created successfully", [
+            \Log::info('Demo user created successfully', [
                 'user_id' => $user->id,
                 'contact_id' => $contact->id,
                 'email' => $email,
-                'phone' => $phoneNumber
+                'phone' => $phoneNumber,
             ]);
 
             return ['success' => true, 'message' => 'Demo user created'];
 
         } catch (\Exception $e) {
-            \Log::error('Error creating demo user: ' . $e->getMessage());
-            $this->sendWhatsApp($phoneNumber, "❌ Hubo un error creando tu cuenta demo. Por favor, intenta más tarde o contacta soporte.");
+            \Log::error('Error creating demo user: '.$e->getMessage());
+            $this->sendWhatsApp($phoneNumber, '❌ Hubo un error creando tu cuenta demo. Por favor, intenta más tarde o contacta soporte.');
             $this->clearDemoData($phoneNumber);
+
             return ['success' => false, 'message' => 'Error creating user'];
         }
     }
@@ -934,6 +934,7 @@ class TwilioService
     private function getDemoData($phoneNumber, $key)
     {
         $data = \Illuminate\Support\Facades\Cache::get("demo_data_{$phoneNumber}", []);
+
         return $data[$key] ?? null;
     }
 
