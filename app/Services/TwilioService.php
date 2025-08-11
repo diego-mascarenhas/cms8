@@ -778,8 +778,17 @@ class TwilioService
     private function sendProductCatalog($phoneNumber)
     {
         try {
-            // Get active products that are WhatsApp enabled
-            $products = \App\Models\Product::active()
+            // Find user and their team for product filtering
+            $user = $this->getUserByPhone($phoneNumber);
+            $teamId = 1; // Default to team 1 for demo
+
+            if ($user && ! isset($user->is_contact) && $user->currentTeam) {
+                $teamId = $user->currentTeam->id;
+            }
+
+            // Get active products that are WhatsApp enabled for the specific team
+            $products = \App\Models\Product::where('team_id', $teamId)
+                ->active()
                 ->whatsAppEnabled()
                 ->with(['category', 'currency'])
                 ->orderBy('category_id')
