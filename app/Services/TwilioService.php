@@ -297,6 +297,12 @@ class TwilioService
                     return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
                 }
 
+                // Check if user is asking about products
+                $productResponse = $this->processProductCommands($cleanFrom, $body);
+                if ($productResponse) {
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'product_processed' => true]);
+                }
+
                 // Check if user sent "DEMO" command
                 $demoResponse = $this->processDemoCommand($cleanFrom, $body);
                 if ($demoResponse) {
@@ -710,6 +716,122 @@ class TwilioService
             \Log::error('Error processing service commands: '.$e->getMessage());
 
             return null;
+        }
+    }
+
+    /**
+     * Process product-related commands from WhatsApp messages
+     */
+    public function processProductCommands($phoneNumber, $message)
+    {
+        try {
+            // Clean and normalize the message
+            $normalizedMessage = strtolower(trim($message));
+
+            // Check if message contains product-related keywords
+            $productKeywords = [
+                'productos', 'servicios', 'catalogo', 'precios', 'hosting', 'dominio',
+                'ssl', 'backup', 'desarrollo', 'app', 'consultoria', 'soporte',
+            ];
+
+            $containsProductKeyword = false;
+            foreach ($productKeywords as $keyword) {
+                if (strpos($normalizedMessage, $keyword) !== false) {
+                    $containsProductKeyword = true;
+                    break;
+                }
+            }
+
+            // Check for specific product commands
+            $isProductCommand = (
+                preg_match('/productos?/i', $message) ||
+                preg_match('/servicios?/i', $message) ||
+                preg_match('/catalogo/i', $message) ||
+                preg_match('/precios?/i', $message)
+            );
+
+            if (! $containsProductKeyword && ! $isProductCommand) {
+                return null;
+            }
+
+            // Send product catalog
+            $this->sendProductCatalog($phoneNumber);
+
+            // Log the product inquiry
+            \Log::info('Product inquiry processed', [
+                'phone' => $phoneNumber,
+                'message_preview' => substr($message, 0, 50),
+            ]);
+
+            return ['success' => true, 'message' => 'Product catalog sent'];
+
+        } catch (\Exception $e) {
+            \Log::error('Error processing product commands: '.$e->getMessage());
+
+            return null;
+        }
+    }
+
+    /**
+     * Send product catalog via WhatsApp
+     */
+    private function sendProductCatalog($phoneNumber)
+    {
+        try {
+            // Get active products that are WhatsApp enabled
+            $products = \App\Models\Product::active()
+                ->whatsAppEnabled()
+                ->with(['category', 'currency'])
+                ->orderBy('category_id')
+                ->orderBy('price')
+                ->get();
+
+            if ($products->isEmpty()) {
+                $message = "📦 *Catálogo de Productos*\n\n";
+                $message .= "Actualmente no hay productos disponibles.\n\n";
+                $message .= '📞 Contacta a soporte: https://revisionalpha.com/contactenos';
+
+                $this->sendWhatsApp($phoneNumber, $message);
+
+                return;
+            }
+
+            $message = "🛍️ *Catálogo de Productos y Servicios*\n\n";
+
+            // Group products by category
+            $productsByCategory = $products->groupBy('category.name');
+
+            foreach ($productsByCategory as $categoryName => $categoryProducts) {
+                $message .= "📂 *{$categoryName}*\n";
+
+                foreach ($categoryProducts as $product) {
+                    $currency = $product->currency ? $product->currency->symbol : '$';
+                    $message .= "• *{$product->name}*\n";
+                    $message .= "  💰 {$currency}".number_format($product->price, 2)."\n";
+                    $message .= '  📝 '.\Illuminate\Support\Str::limit($product->description, 80)."\n\n";
+                }
+            }
+
+            $message .= "💡 *Para contratar:*\n";
+            $message .= "• Escribe: *contratar [nombre del producto]*\n";
+            $message .= "• O contacta soporte: https://revisionalpha.com/contactenos\n\n";
+            $message .= '🛒 *Tu carrito:* Escribe *carrito* para ver tus productos seleccionados';
+
+            $this->sendWhatsApp($phoneNumber, $message);
+
+        } catch (\Exception $e) {
+            \Log::error('Error sending product catalog: '.$e->getMessage());
+
+            // Fallback message
+            $fallbackMessage = "📦 *Catálogo de Productos*\n\n";
+            $fallbackMessage .= "Tenemos una amplia variedad de servicios:\n";
+            $fallbackMessage .= "• Hosting y dominios\n";
+            $fallbackMessage .= "• Desarrollo web y apps\n";
+            $fallbackMessage .= "• Consultoría IT\n";
+            $fallbackMessage .= "• Soporte técnico\n\n";
+            $fallbackMessage .= '📞 Contacta a soporte: https://revisionalpha.com/contactenos';
+
+            $this->sendWhatsApp($phoneNumber, $fallbackMessage);
         }
     }
 
