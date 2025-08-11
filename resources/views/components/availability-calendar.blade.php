@@ -4,8 +4,10 @@
     .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 2px;
+        gap: 1px;
         text-align: center;
+        max-width: 240px;
+        margin: 0 auto;
     }
 
     .calendar-day {
@@ -16,8 +18,10 @@
         cursor: pointer;
         border-radius: 50%;
         margin: 1px;
-        font-size: 0.9rem;
+        font-size: 0.7rem;
         transition: all 0.2s;
+        min-height: 28px;
+        width: 28px;
     }
 
     .calendar-day:hover:not(.day-disabled):not(.weekly-unavailable) {
@@ -26,9 +30,14 @@
 
     .calendar-header {
         font-weight: bold;
-        padding: 8px 0;
+        padding: 6px 0;
         background-color: #f9f9f9;
         border-radius: 5px;
+        font-size: 0.7rem;
+        min-height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .day-disabled {
@@ -96,7 +105,7 @@
             <div class="col-md-6 col-lg-4 mb-4">
                 <div class="card h-100">
                     <div class="card-body">
-                        <h5 class="text-center mb-4">{{ $month['name'] }}</h5>
+                        <h6 class="text-center mb-3">{{ $month['name'] }}</h6>
                         <div class="calendar-grid">
                             <div class="calendar-header">Lu</div>
                             <div class="calendar-header">Ma</div>
