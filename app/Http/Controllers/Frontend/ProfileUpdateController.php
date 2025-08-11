@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Contact;
+use App\Models\ContactLanguageVariant;
 use App\Models\User;
 use App\Models\LanguageVariant;
 use App\Models\Fare;
@@ -111,7 +112,7 @@ class ProfileUpdateController extends Controller
 		// Get all languages for the team
 		$allLanguages = Language::whereIn('code', $allLanguageVariants->pluck('base_language')->unique())->get();
 
-		// Get collaborator's language variants
+				// Get collaborator's language variants
 		$collaboratorLanguageVariants = $contact->languageVariants()->with(['sourceLanguage', 'targetLanguage'])->get();
 
 		// Software is handled by the x-software-select component
@@ -221,16 +222,16 @@ class ProfileUpdateController extends Controller
 			return redirect()->route('dashboard')->with('error', 'Access denied. Collaborator role required.');
 		}
 
-		// Validate the request
+				// Validate the request
 		$validator = Validator::make($request->all(), [
 			'first_name' => 'required|string|max:255',
-			'last_name' => 'required|string|max:255',
+			'last_name' => 'nullable|string|max:255',
 			'email' => 'required|email|max:255',
-			'phone' => 'required|string|max:255',
-			'country' => 'required|string|max:255',
+			'phone' => 'nullable|string|max:255',
+			'country' => 'nullable|string|max:255',
 			'timezone' => 'required|string|max:255',
-			'freelance_certificate' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
-			'resume' => 'required|file|mimes:pdf,doc,docx|max:10240',
+			'freelance_certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+			'resume' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
 			'password' => 'nullable|string|min:6|confirmed',
 		]);
 
@@ -377,6 +378,53 @@ class ProfileUpdateController extends Controller
 			'email' => $request->email,
 			'phone' => $request->phone,
 		]);
+
+		// Process and save language pairs to ContactLanguageVariant table
+		if ($request->has('language_pairs') && is_array($request->language_pairs) && count($request->language_pairs) > 0) {
+			// Delete existing language pairs for this contact
+			$contact->languageVariants()->delete();
+
+			$processedPairs = []; // To avoid duplicates
+
+			// Add new language pairs
+			foreach ($request->language_pairs as $pair) {
+				if (empty($pair)) {
+					continue;
+				}
+
+				$parts = explode('|', $pair);
+				if (count($parts) !== 2) continue;
+
+				[$sourceLanguage, $targetLanguage] = $parts;
+
+				// Avoid duplicates in the same request
+				$pairKey = $sourceLanguage.'-'.$targetLanguage;
+				if (in_array($pairKey, $processedPairs)) {
+					continue;
+				}
+
+				$processedPairs[] = $pairKey;
+
+				try {
+					ContactLanguageVariant::create([
+						'contact_id' => $contact->id,
+						'source_language_code' => $sourceLanguage,
+						'target_language_code' => $targetLanguage,
+						'proficiency_level' => 3, // Default proficiency level
+						'is_certified' => false, // Default to not certified
+					]);
+				} catch (\Illuminate\Database\QueryException $e) {
+					// If it's a duplicate error, simply ignore it
+					if ($e->errorInfo[1] == 1062) {
+						continue;
+					}
+					throw $e; // If it's another type of error, throw it
+				}
+			}
+		} else {
+			// If there are no language pairs, delete all existing ones
+			$contact->languageVariants()->delete();
+		}
 
 		// Update user password if provided
 		if ($request->password) {
