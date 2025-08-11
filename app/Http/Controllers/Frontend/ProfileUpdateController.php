@@ -24,12 +24,7 @@ class ProfileUpdateController extends Controller
 {
 	public function index()
 	{
-		// Debug information
-		\Log::info('ProfileUpdateController@index accessed', [
-			'auth_check' => Auth::check(),
-			'user_id' => Auth::id(),
-			'user_roles' => Auth::check() ? Auth::user()->getRoleNames() : 'not authenticated'
-		]);
+
 
 		// Check if user is authenticated
 		if (!Auth::check()) {
@@ -55,7 +50,7 @@ class ProfileUpdateController extends Controller
 				'email' => Auth::user()->email,
 				'data' => json_encode([])
 			]);
-			\Log::info('Created temporary contact record for testing', ['contact_id' => $contact->id]);
+
 		}
 
 		// Get existing data from JSON field
@@ -117,10 +112,7 @@ class ProfileUpdateController extends Controller
 
 		// Software is handled by the x-software-select component
 
-		\Log::info('Languages loaded, about to start availability data preparation');
-
 		// Get collaborator availability data
-		\Log::info('Starting availability data preparation');
 		$startDate = Carbon::now()->startOfMonth();
 		$endDate = Carbon::now()->addMonths(5)->endOfMonth();
 
@@ -164,32 +156,7 @@ class ProfileUpdateController extends Controller
 			];
 		}
 
-		\Log::info('ProfileUpdateController@index data prepared', [
-			'fares_count' => $fares->count(),
-			'fare_types_count' => $fareTypes->count(),
-			'units_count' => $units->count(),
-			'languages_count' => $languages->count(),
-			'base_languages_count' => $baseLanguages->count(),
-			'all_language_variants_count' => $allLanguageVariants->count(),
-			'all_languages_count' => $allLanguages->count(),
-			'softwares_count' => 'handled by component',
-			'contact_id' => $contact->id,
-			'contact_name' => $contact->name . ' ' . $contact->surname,
-			'weekly_availability_exists' => isset($weeklyAvailability),
-			'weekly_availability_id' => $weeklyAvailability->id ?? 'null',
-			'weekly_availability_data' => [
-				'monday' => $weeklyAvailability->monday ?? false,
-				'tuesday' => $weeklyAvailability->tuesday ?? false,
-				'wednesday' => $weeklyAvailability->wednesday ?? false,
-				'thursday' => $weeklyAvailability->thursday ?? false,
-				'friday' => $weeklyAvailability->friday ?? false,
-				'saturday' => $weeklyAvailability->saturday ?? false,
-				'sunday' => $weeklyAvailability->sunday ?? false,
-			],
-			'absences_count' => count($absences),
-			'absences_dates' => $absences,
-			'months_count' => count($months)
-		]);
+
 
 		return view('frontend.profile-update.index', compact(
 			'contact',
