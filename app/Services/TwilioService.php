@@ -9,6 +9,8 @@ use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use chillerlan\QRCode\QROptions;
+use chillerlan\QRCode\Output\QROutputInterface;
 use Illuminate\Support\Facades\Mail;
 use Twilio\Rest\Client;
 
@@ -241,7 +243,7 @@ class TwilioService
             }
 
             // Log the incoming message
-            \Log::info("Incoming {$channel} message from {$cleanFrom}: {$body}");
+            Log::info("Incoming {$channel} message from {$cleanFrom}: {$body}");
 
             // Process media if present
             $media = [];
@@ -278,7 +280,7 @@ class TwilioService
             $notificationEmail = config('services.notifications.email');
             if ($notificationEmail) {
                 Mail::to($notificationEmail)->send(new IncomingMessageNotification($conversation));
-                \Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
+                Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
             }
 
             // Check if this is part of a registration process
@@ -343,22 +345,22 @@ class TwilioService
                         // Send the AI message
                         $this->sendWhatsApp($cleanFrom, $aiMessage);
 
-                        \Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
+                        Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
                     } else {
-                        \Log::warning('Failed to get AI response: '.($claudeResponse['message'] ?? 'Unknown error'));
+                        Log::warning('Failed to get AI response: '.($claudeResponse['message'] ?? 'Unknown error'));
                     }
 
                     // Analyze sentiment of the incoming message
                     $this->analyzeSentiment($cleanFrom, $body);
 
                 } catch (\Exception $e) {
-                    \Log::error('Error in auto AI response: '.$e->getMessage());
+                    Log::error('Error in auto AI response: '.$e->getMessage());
                 }
             }
 
             return response()->json(['status' => 'success', 'conversation_id' => $conversation->id]);
         } catch (\Exception $e) {
-            \Log::error('Error processing incoming message: '.$e->getMessage());
+            Log::error('Error processing incoming message: '.$e->getMessage());
 
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
@@ -449,7 +451,7 @@ class TwilioService
             }
 
             if (! $user) {
-                \Log::info('No user found for sentiment analysis', ['phone' => $phoneNumber]);
+                Log::info('No user found for sentiment analysis', ['phone' => $phoneNumber]);
 
                 return;
             }
@@ -457,7 +459,7 @@ class TwilioService
             // Find associated contact
             $contact = \App\Models\Contact::where('user_id', $user->id)->first();
             if (! $contact) {
-                \Log::info('No contact found for sentiment analysis', ['user_id' => $user->id]);
+                Log::info('No contact found for sentiment analysis', ['user_id' => $user->id]);
 
                 return;
             }
@@ -473,7 +475,7 @@ class TwilioService
                     'notes' => 'Análisis automático de WhatsApp: '.$sentiment['reason'],
                 ]);
 
-                \Log::info('Sentiment detected and recorded', [
+                Log::info('Sentiment detected and recorded', [
                     'contact_id' => $contact->id,
                     'sentiment' => $sentiment['name'],
                     'message' => substr($messageBody, 0, 100),
@@ -481,7 +483,7 @@ class TwilioService
             }
 
         } catch (\Exception $e) {
-            \Log::error('Error in sentiment analysis: '.$e->getMessage());
+            Log::error('Error in sentiment analysis: '.$e->getMessage());
         }
     }
 
@@ -709,7 +711,7 @@ class TwilioService
             $this->sendWhatsApp($phoneNumber, $responseMessage);
 
             // Log the service inquiry
-            \Log::info('Service inquiry processed for user', [
+            Log::info('Service inquiry processed for user', [
                 'phone' => $phoneNumber,
                 'user_id' => $user->id,
                 'enterprises_count' => $enterprises->count(),
@@ -719,7 +721,7 @@ class TwilioService
             return ['success' => true, 'message' => 'Service information sent'];
 
         } catch (\Exception $e) {
-            \Log::error('Error processing service commands: '.$e->getMessage());
+            Log::error('Error processing service commands: '.$e->getMessage());
 
             return null;
         }
@@ -764,7 +766,7 @@ class TwilioService
             $this->sendProductCatalog($phoneNumber);
 
             // Log the product inquiry
-            \Log::info('Product inquiry processed', [
+            Log::info('Product inquiry processed', [
                 'phone' => $phoneNumber,
                 'message_preview' => substr($message, 0, 50),
             ]);
@@ -772,7 +774,7 @@ class TwilioService
             return ['success' => true, 'message' => 'Product catalog sent'];
 
         } catch (\Exception $e) {
-            \Log::error('Error processing product commands: '.$e->getMessage());
+            Log::error('Error processing product commands: '.$e->getMessage());
 
             return null;
         }
@@ -835,7 +837,7 @@ class TwilioService
             $this->sendWhatsApp($phoneNumber, $message);
 
         } catch (\Exception $e) {
-            \Log::error('Error sending product catalog: '.$e->getMessage());
+            Log::error('Error sending product catalog: '.$e->getMessage());
 
             // Fallback message
             $fallbackMessage = "📦 *Catálogo de Productos*\n\n";
@@ -886,7 +888,7 @@ class TwilioService
             return null;
 
         } catch (\Exception $e) {
-            \Log::error('Error processing demo command: '.$e->getMessage());
+            Log::error('Error processing demo command: '.$e->getMessage());
 
             return null;
         }
@@ -946,7 +948,7 @@ class TwilioService
             }
 
         } catch (\Exception $e) {
-            \Log::error('Error handling demo registration step: '.$e->getMessage());
+            Log::error('Error handling demo registration step: '.$e->getMessage());
             $this->clearDemoState($phoneNumber);
 
             return null;
@@ -1013,7 +1015,7 @@ class TwilioService
             // Clear demo data
             $this->clearDemoData($phoneNumber);
 
-            \Log::info('Demo user created successfully', [
+            Log::info('Demo user created successfully', [
                 'user_id' => $user->id,
                 'contact_id' => $contact->id,
                 'email' => $email,
@@ -1023,7 +1025,7 @@ class TwilioService
             return ['success' => true, 'message' => 'Demo user created'];
 
         } catch (\Exception $e) {
-            \Log::error('Error creating demo user: '.$e->getMessage());
+            Log::error('Error creating demo user: '.$e->getMessage());
             $this->sendWhatsApp($phoneNumber, '❌ Hubo un error creando tu cuenta demo. Por favor, intenta más tarde o contacta soporte.');
             $this->clearDemoData($phoneNumber);
 
@@ -1110,7 +1112,7 @@ class TwilioService
             return true;
 
         } catch (\Exception $e) {
-            \Log::error('Error processing QR command: ' . $e->getMessage());
+            Log::error('Error processing QR command: ' . $e->getMessage());
             $this->sendWhatsApp($phoneNumber, '❌ Hubo un error generando tu código QR. Por favor, intenta más tarde.');
             return true;
         }
@@ -1149,7 +1151,7 @@ class TwilioService
             }
 
         } catch (\Exception $e) {
-            \Log::error('Error generating generic QR: ' . $e->getMessage());
+            Log::error('Error generating generic QR: ' . $e->getMessage());
             $this->sendGenericQrTextOnly($phoneNumber);
         }
     }
@@ -1205,7 +1207,7 @@ class TwilioService
             }
 
         } catch (\Exception $e) {
-            \Log::error('Error generating personalized QR: ' . $e->getMessage());
+            Log::error('Error generating personalized QR: ' . $e->getMessage());
             $this->sendPersonalizedQrTextOnly($phoneNumber, $user);
         }
     }
@@ -1216,11 +1218,17 @@ class TwilioService
     private function generateQrCodeImage($data, $filename)
     {
         try {
-            // Create QR code instance
-            $qrcode = new \chillerlan\QRCode\QRCode();
+            // Create QR code instance with PNG output
+            $qrcode = new \chillerlan\QRCode\QRCode(new QROptions([
+                'outputType' => QROutputInterface::GDIMAGE_PNG,
+            ]));
 
-            // Generate QR code as PNG image
-            $qrImageData = $qrcode->render($data);
+            // Generate QR code as data URI (PNG)
+            $qrImageDataUri = $qrcode->render($data);
+
+            // Extract binary PNG data from data URI
+            $pngBase64 = str_replace('data:image/png;base64,', '', $qrImageDataUri);
+            $pngBinary = base64_decode($pngBase64);
 
             // Create storage directory if it doesn't exist
             $storagePath = storage_path('app/public/qr-codes');
@@ -1232,14 +1240,14 @@ class TwilioService
             $uniqueFilename = $filename . '_' . time() . '_' . uniqid() . '.png';
             $fullPath = $storagePath . '/' . $uniqueFilename;
 
-            // Save image to file
-            file_put_contents($fullPath, $qrImageData);
+            // Save binary PNG to file
+            file_put_contents($fullPath, $pngBinary);
 
             // Return the public URL path
             return 'storage/qr-codes/' . $uniqueFilename;
 
         } catch (\Exception $e) {
-            \Log::error('Error generating QR code image: ' . $e->getMessage());
+            Log::error('Error generating QR code image: ' . $e->getMessage());
             return false;
         }
     }
@@ -1253,7 +1261,7 @@ class TwilioService
             $fullMediaPath = public_path($mediaPath);
 
             if (!file_exists($fullMediaPath)) {
-                \Log::error("Media file not found: {$fullMediaPath}");
+                Log::error("Media file not found: {$fullMediaPath}");
                 return false;
             }
 
@@ -1268,7 +1276,7 @@ class TwilioService
 
             // Check file size (Twilio limit: 16MB for media)
             if ($fileSize > 16 * 1024 * 1024) {
-                \Log::error("File too large for Twilio: {$fileSize} bytes");
+                Log::error("File too large for Twilio: {$fileSize} bytes");
                 return false;
             }
 
@@ -1277,7 +1285,7 @@ class TwilioService
 
             // For local development, we'll use a placeholder or skip media
             if (strpos($publicUrl, 'localhost') !== false || strpos($publicUrl, '.test') !== false) {
-                \Log::info("Local environment detected, skipping media send for: {$publicUrl}");
+                Log::info("Local environment detected, skipping media send for: {$publicUrl}");
                 // In local environment, we'll just send the text message
                 $message = $this->client->messages->create(
                     $whatsappTo,
@@ -1299,7 +1307,7 @@ class TwilioService
             }
 
             if ($message->sid) {
-                \Log::info("WhatsApp media message sent successfully", [
+                Log::info("WhatsApp media message sent successfully", [
                     'message_sid' => $message->sid,
                     'to' => $phoneNumber,
                     'media_path' => $mediaPath,
@@ -1312,12 +1320,12 @@ class TwilioService
 
                 return true;
             } else {
-                \Log::error("Failed to send WhatsApp media message: No message SID returned");
+                Log::error("Failed to send WhatsApp media message: No message SID returned");
                 return false;
             }
 
         } catch (\Exception $e) {
-            \Log::error('Error sending WhatsApp media: ' . $e->getMessage(), [
+            Log::error('Error sending WhatsApp media: ' . $e->getMessage(), [
                 'phone_number' => $phoneNumber,
                 'media_path' => $mediaPath,
                 'type' => $type,
@@ -1396,14 +1404,14 @@ class TwilioService
                 ],
             ]);
 
-            \Log::info("Media message saved to conversation history", [
+            Log::info("Media message saved to conversation history", [
                 'conversation_id' => $conversation->id,
                 'message_sid' => $twilioMessage->sid,
                 'phone_number' => $phoneNumber
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error saving media message to history: ' . $e->getMessage());
+            Log::error('Error saving media message to history: ' . $e->getMessage());
         }
     }
 
