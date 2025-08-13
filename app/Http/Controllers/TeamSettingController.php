@@ -206,15 +206,19 @@ class TeamSettingController extends Controller
                     ],
                     'twilio_webhook_url' => [
                         'label' => 'Webhook URL',
-                        'type' => 'text',
-                        'value' => $team->getSetting('twilio_webhook_url'),
+                        'type' => 'readonly',
+                        'value' => $team->getTwilioWebhookUrl(),
                         'is_encrypted' => false,
+                        'help' => 'This URL is automatically generated for your team. Use this in your Twilio Console.',
+                        'readonly' => true,
                     ],
                     'twilio_status_callback_url' => [
                         'label' => 'Status Callback URL',
-                        'type' => 'text',
-                        'value' => $team->getSetting('twilio_status_callback_url'),
+                        'type' => 'readonly',
+                        'value' => $team->getTwilioStatusCallbackUrl(),
                         'is_encrypted' => false,
+                        'help' => 'This URL is automatically generated for your team. Use this in your Twilio Console.',
+                        'readonly' => true,
                     ],
                 ],
             ],
@@ -436,9 +440,9 @@ class TeamSettingController extends Controller
 
         // Check if translation already exists
         $existing = CustomTranslation::where('team_id', $team->id)
-            ->where('key', $request->key)
-            ->where('group', $request->group)
-            ->where('locale', $request->locale)
+            ->where('key', $request->input('key'))
+            ->where('group', $request->input('group'))
+            ->where('locale', $request->input('locale'))
             ->first();
 
         if ($existing) {
@@ -447,14 +451,14 @@ class TeamSettingController extends Controller
 
         CustomTranslation::create([
             'team_id' => $team->id,
-            'key' => $request->key,
-            'value' => $request->value,
-            'group' => $request->group,
-            'locale' => $request->locale,
+            'key' => $request->input('key'),
+            'value' => $request->input('value'),
+            'group' => $request->input('group'),
+            'locale' => $request->input('locale'),
         ]);
 
         // Clear cache for this translation
-        app(\App\Services\CustomTranslationService::class)->clearCache($request->key, $request->group, $request->locale);
+        app(\App\Services\CustomTranslationService::class)->clearCache($request->input('key'), $request->input('group'), $request->input('locale'));
 
         return redirect()->back()->with('success', 'Traducción personalizada creada exitosamente');
     }
@@ -479,14 +483,14 @@ class TeamSettingController extends Controller
         ]);
 
         $translation->update([
-            'key' => $request->key,
-            'value' => $request->value,
-            'group' => $request->group,
-            'locale' => $request->locale,
+            'key' => $request->input('key'),
+            'value' => $request->input('value'),
+            'group' => $request->input('group'),
+            'locale' => $request->input('locale'),
         ]);
 
         // Clear cache for this translation
-        app(\App\Services\CustomTranslationService::class)->clearCache($request->key, $request->group, $request->locale);
+        app(\App\Services\CustomTranslationService::class)->clearCache($request->input('key'), $request->input('group'), $request->input('locale'));
 
         return redirect()->back()->with('success', 'Traducción personalizada actualizada exitosamente');
     }

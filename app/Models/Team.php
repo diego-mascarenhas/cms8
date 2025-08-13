@@ -157,6 +157,23 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Generate a secure hash for the team ID (same as TeamAssetRepository)
+     */
+    public function getTeamHash($teamId = null)
+    {
+        $teamId = $teamId ?? $this->id;
+        return static::generateTeamHash($teamId);
+    }
+
+    /**
+     * Generate a secure hash for any team ID (static version)
+     */
+    public static function generateTeamHash($teamId)
+    {
+        return substr(md5('team_salt_' . $teamId . '_' . config('app.key')), 0, 12);
+    }
+
+    /**
      * Get Twilio configuration for this team.
      */
     public function getTwilioConfig()
@@ -166,9 +183,53 @@ class Team extends JetstreamTeam
             'token' => $this->getSetting('twilio_token'),
             'sms_from' => $this->getSetting('twilio_sms_from'),
             'whatsapp_from' => $this->getSetting('twilio_whatsapp_from'),
-            'webhook_url' => $this->getSetting('twilio_webhook_url'),
-            'status_callback_url' => $this->getSetting('twilio_status_callback_url'),
+            'webhook_url' => $this->getTwilioWebhookUrl(),
+            'status_callback_url' => $this->getTwilioStatusCallbackUrl(),
         ];
+    }
+
+    /**
+     * Get the webhook URL for this team.
+     */
+    public function getTwilioWebhookUrl()
+    {
+        $customUrl = $this->getSetting('twilio_webhook_url');
+
+        if (!empty($customUrl)) {
+            return $customUrl;
+        }
+
+        // Generate team-specific webhook URL using deterministic hash
+        $hash = $this->getTeamHash();
+        return url("/twilio/webhook/{$hash}");
+    }
+
+    /**
+     * Get the status callback URL for this team.
+     */
+    public function getTwilioStatusCallbackUrl()
+    {
+        $customUrl = $this->getSetting('twilio_status_callback_url');
+
+        if (!empty($customUrl)) {
+            return $customUrl;
+        }
+
+        // Generate team-specific status callback URL using deterministic hash
+        $hash = $this->getTeamHash();
+        return url("/twilio/status/{$hash}");
+    }
+
+    /**
+     * Find a team by webhook hash.
+     */
+    public static function findByWebhookHash($hash)
+    {
+        // Since the hash is deterministic, we need to check all teams
+        // In practice, this is efficient because most apps don't have thousands of teams
+        return static::get()->first(function ($team) use ($hash) {
+            return static::generateTeamHash($team->id) === $hash;
+        });
     }
 
     /**

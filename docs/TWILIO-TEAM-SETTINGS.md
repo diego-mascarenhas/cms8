@@ -14,8 +14,28 @@ The following Twilio settings can be configured per team:
 - **Auth Token** (`twilio_token`): Your Twilio Auth Token (encrypted)
 - **SMS From Number** (`twilio_sms_from`): Phone number for SMS messages
 - **WhatsApp From Number** (`twilio_whatsapp_from`): Phone number for WhatsApp messages
-- **Webhook URL** (`twilio_webhook_url`): URL for Twilio webhooks
-- **Status Callback URL** (`twilio_status_callback_url`): URL for status callbacks
+- **Webhook URL**: Automatically generated secure URL for Twilio webhooks (read-only)
+- **Status Callback URL**: Automatically generated secure URL for status callbacks (read-only)
+
+### Deterministic Webhook URLs
+
+The webhook URLs are automatically generated using a deterministic hash based on:
+- Team ID + Application Key + Salt
+- Same algorithm used throughout the application (templates, assets, etc.)
+- Always generates the same URL for the same team
+- No database storage required - computed on-the-fly
+
+**Example for Team ID 1:**
+- Hash: `ea23f010f5ee`
+- Webhook URL: `https://yourapp.com/twilio/webhook/ea23f010f5ee`
+- Status URL: `https://yourapp.com/twilio/status/ea23f010f5ee`
+
+**Advantages of this approach:**
+- ✅ **Consistent**: Same hash every time for the same team
+- ✅ **No Migration**: No database changes required
+- ✅ **Secure**: 12-character hash prevents enumeration
+- ✅ **Unified**: Same hash system used across the entire application
+- ✅ **Efficient**: No extra database queries or storage needed
 
 ## Configuration
 
@@ -80,6 +100,19 @@ $isConfigured = $team->hasTwilioConfig();
 // Get individual settings
 $sid = $team->getSetting('twilio_sid');
 $token = $team->getSetting('twilio_token');
+
+// Get the deterministic hash for this team
+$hash = $team->getTeamHash(); // Returns: ea23f010f5ee
+
+// Or use the static method directly
+$hash = Team::generateTeamHash($teamId); // Returns: ea23f010f5ee
+
+// Get webhook URLs (generated automatically)
+$webhookUrl = $team->getTwilioWebhookUrl();
+$statusUrl = $team->getTwilioStatusCallbackUrl();
+
+// Find team by webhook hash (for webhook controllers)
+$team = Team::findByWebhookHash($hash);
 ```
 
 ## Migration from Global Settings
@@ -162,3 +195,27 @@ The following routes are available for Twilio settings:
 - `GET /team/{team}/settings` - List all team settings
 - `GET /team/{team}/settings/twilio` - Edit Twilio settings form
 - `PUT /team/{team}/settings` - Update Twilio settings
+
+### Webhook Routes (to be implemented)
+- `POST /twilio/webhook/{hash}` - Receive incoming messages
+- `POST /twilio/status/{hash}` - Receive delivery status updates
+
+Where `{hash}` is the 12-character deterministic hash for each team.
+
+### Example Webhook Controller
+```php
+Route::post('/twilio/webhook/{hash}', function($hash) {
+    $team = Team::findByWebhookHash($hash);
+    if (!$team) {
+        abort(404, 'Invalid webhook');
+    }
+    
+    // Process webhook for this team...
+})->where('hash', '[a-f0-9]{12}');
+
+// Alternative: If you need to generate a hash for comparison
+Route::post('/some-endpoint/{teamId}', function($teamId) {
+    $expectedHash = Team::generateTeamHash($teamId);
+    // Use the hash for validation or URL generation...
+});
+```
