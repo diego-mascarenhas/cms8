@@ -769,8 +769,8 @@ class TwilioService
                 return null;
             }
 
-            // Send product catalog
-            $this->sendProductCatalog($phoneNumber);
+            // Send product catalog and get the message content
+            $catalogMessage = $this->sendProductCatalog($phoneNumber);
 
             // Log the product inquiry
             Log::info('Product inquiry processed', [
@@ -778,7 +778,7 @@ class TwilioService
                 'message_preview' => substr($message, 0, 50),
             ]);
 
-            return ['success' => true, 'message' => 'Product catalog sent'];
+            return ['success' => true, 'message' => $catalogMessage];
 
         } catch (\Exception $e) {
             Log::error('Error processing product commands: '.$e->getMessage());
@@ -817,7 +817,7 @@ class TwilioService
 
                 $this->sendWhatsApp($phoneNumber, $message);
 
-                return;
+                return $message;
             }
 
             $message = "🛍️ *Catálogo de Productos y Servicios*\n\n";
@@ -837,11 +837,13 @@ class TwilioService
             }
 
             $message .= "💡 *Para contratar:*\n";
-            $message .= "• Escribe: *contratar [nombre del producto]*\n";
+            $message .= "• Escribe: *comprar [nombre del producto]*\n";
             $message .= "• O contacta soporte: https://revisionalpha.com/contactenos\n\n";
             $message .= '🛒 *Tu carrito:* Escribe *carrito* para ver tus productos seleccionados';
 
             $this->sendWhatsApp($phoneNumber, $message);
+
+            return $message;
 
         } catch (\Exception $e) {
             Log::error('Error sending product catalog: '.$e->getMessage());
@@ -856,6 +858,8 @@ class TwilioService
             $fallbackMessage .= '📞 Contacta a soporte: https://revisionalpha.com/contactenos';
 
             $this->sendWhatsApp($phoneNumber, $fallbackMessage);
+
+            return $fallbackMessage;
         }
     }
 
@@ -1622,7 +1626,7 @@ class TwilioService
                 $response .= "💡 **Tip**: Usa 'comprar [producto]' para agregar items";
 
                 $this->sendWhatsApp($phoneNumber, $response);
-                return ['success' => true, 'message' => 'Empty cart displayed'];
+                return ['success' => true, 'message' => $response];
             }
 
             $response = "🛒 **Tu Carrito de Compras**\n\n";
@@ -1654,7 +1658,7 @@ class TwilioService
                 'total' => Cart::getTotal()
             ]);
 
-            return ['success' => true, 'message' => 'Cart displayed'];
+            return ['success' => true, 'message' => $response];
 
         } catch (\Exception $e) {
             Log::error('Error viewing cart: ' . $e->getMessage());

@@ -40,19 +40,19 @@ class TestCartController extends Controller
         // Set cart session for this phone
         Cart::session($phone);
 
-        // Test product commands
-        $productResult = $this->twilioService->processProductCommands($phone, $message);
-        if ($productResult) {
+        // Test cart commands FIRST (higher priority)
+        $cartResult = $this->twilioService->processCartCommands($phone, $message);
+        if ($cartResult) {
             $response['processed'] = true;
-            $response['type'] = 'product';
-            $response['result'] = $productResult;
+            $response['type'] = 'cart';
+            $response['result'] = $cartResult;
         } else {
-            // Test cart commands
-            $cartResult = $this->twilioService->processCartCommands($phone, $message);
-            if ($cartResult) {
+            // Test product commands
+            $productResult = $this->twilioService->processProductCommands($phone, $message);
+            if ($productResult) {
                 $response['processed'] = true;
-                $response['type'] = 'cart';
-                $response['result'] = $cartResult;
+                $response['type'] = 'product';
+                $response['result'] = $productResult;
             }
         }
 

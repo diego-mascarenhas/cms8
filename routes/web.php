@@ -582,12 +582,10 @@ Route::get('/collaborator/debug/availability', [CollaboratorController::class, '
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
 Route::get('message/track/click/{token}', [MessageTrackingController::class, 'trackClick'])->name('message.track.click');
 
-// WhatsApp Cart Testing Routes (for local development)
-if (app()->environment(['local', 'testing'])) {
-    Route::prefix('test-cart')->group(function () {
-        Route::get('/', [App\Http\Controllers\TestCartController::class, 'index'])->name('test.cart.index');
-        Route::post('/process', [App\Http\Controllers\TestCartController::class, 'processMessage'])->name('test.cart.process');
-        Route::get('/status', [App\Http\Controllers\TestCartController::class, 'cartStatus'])->name('test.cart.status');
-        Route::post('/clear', [App\Http\Controllers\TestCartController::class, 'clearCart'])->name('test.cart.clear');
-    });
-}
+// WhatsApp Cart Testing Routes (available in all environments)
+Route::prefix('test-cart')->group(function () {
+    Route::get('/', [App\Http\Controllers\TestCartController::class, 'index'])->name('test.cart.index');
+    Route::post('/process', [App\Http\Controllers\TestCartController::class, 'processMessage'])->name('test.cart.process');
+    Route::get('/status', [App\Http\Controllers\TestCartController::class, 'cartStatus'])->name('test.cart.status');
+    Route::post('/clear', [App\Http\Controllers\TestCartController::class, 'clearCart'])->name('test.cart.clear');
+});
