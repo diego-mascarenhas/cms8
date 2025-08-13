@@ -38,7 +38,7 @@
                                 @foreach ($group['settings'] as $key => $setting)
                                     <div class="mb-3 col-md-6">
                                         <label for="{{ $key }}" class="form-label">{{ $setting['label'] }}</label>
-                                        
+
                                         @if($setting['type'] === 'select' && isset($setting['options']))
                                             <select class="form-select @error("{$groupKey}.{$key}") is-invalid @enderror"
                                                 id="{{ $key }}"
@@ -67,6 +67,17 @@
                                                 rows="3"
                                                 placeholder="Enter {{ strtolower($setting['label']) }}"
                                             >{{ old("{$groupKey}.{$key}", $setting['value']) }}</textarea>
+                                        @elseif($setting['type'] === 'readonly')
+                                            <div class="input-group">
+                                                <input class="form-control bg-light"
+                                                    type="text"
+                                                    id="{{ $key }}"
+                                                    value="{{ $setting['value'] }}"
+                                                    readonly />
+                                                <span class="input-group-text cursor-pointer" onclick="copyToClipboard('{{ $setting['value'] }}', this)">
+                                                    <i class="ti ti-copy"></i>
+                                                </span>
+                                            </div>
                                         @else
                                             <div class="input-group input-group-merge">
                                                 <input class="form-control @error("{$groupKey}.{$key}") is-invalid @enderror"
@@ -80,7 +91,7 @@
                                                 @endif
                                             </div>
                                         @endif
-                                        
+
                                         @error("{$groupKey}.{$key}")
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -120,5 +131,23 @@
                 });
             });
         });
+
+        // Copy to clipboard function
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(function() {
+                // Show success state
+                const icon = button.querySelector('i');
+                icon.classList.remove('ti-copy');
+                icon.classList.add('ti-check', 'text-success');
+
+                // Reset to original state after 2 seconds
+                setTimeout(() => {
+                    icon.classList.remove('ti-check', 'text-success');
+                    icon.classList.add('ti-copy');
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Error copying to clipboard: ', err);
+            });
+        }
     </script>
 @endsection
