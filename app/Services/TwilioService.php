@@ -233,9 +233,24 @@ class TwilioService
             $body = $request->input('Body');
             $numMedia = (int) $request->input('NumMedia', 0);
 
+            // DEBUG: Log original numbers for troubleshooting
+            Log::info('Raw phone numbers from Twilio', [
+                'original_from' => $from,
+                'original_to' => $to,
+                'body' => $body
+            ]);
+
             // Clean phone numbers by removing whatsapp: prefix and non-numeric characters
             $cleanFrom = preg_replace('/[^0-9]/', '', $from);
             $cleanTo = preg_replace('/[^0-9]/', '', $to);
+
+            // DEBUG: Log cleaned numbers
+            Log::info('Cleaned phone numbers', [
+                'clean_from' => $cleanFrom,
+                'clean_to' => $cleanTo,
+                'from_length' => strlen($cleanFrom),
+                'to_length' => strlen($cleanTo)
+            ]);
 
             // Determine the channel type
             $channel = 'sms';
@@ -1541,6 +1556,14 @@ class TwilioService
 public function processCartCommands($phoneNumber, $message)
     {
         try {
+            // DEBUG: Log phone number and message for troubleshooting
+            Log::info('Cart command received', [
+                'phone_number' => $phoneNumber,
+                'message' => $message,
+                'phone_length' => strlen($phoneNumber),
+                'phone_format' => 'Raw from WhatsApp'
+            ]);
+
             // Clean and normalize the message
             $normalizedMessage = strtolower(trim($message));
 
@@ -1554,6 +1577,15 @@ public function processCartCommands($phoneNumber, $message)
 
             // Set cart session for this phone number
             Cart::session($phoneNumber);
+
+            // DEBUG: Log cart session and current contents
+            $currentCartItems = Cart::getContent();
+            Log::info('Cart session set', [
+                'phone_number' => $phoneNumber,
+                'cart_items_count' => $currentCartItems->count(),
+                'cart_total' => Cart::getTotal(),
+                'storage_key' => 'cart_' . $phoneNumber
+            ]);
 
             // Check for checkout confirmation commands
             if (in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder'])) {
