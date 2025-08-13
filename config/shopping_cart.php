@@ -1,97 +1,36 @@
 <?php
 
 return [
+    /*
+     * ---------------------------------------------------------------
+     * formatting
+     * ---------------------------------------------------------------
+     *
+     * the formatting of shopping cart values
+     */
+    'format_numbers' => env('SHOPPING_FORMAT_VALUES', false),
+
+    'decimals' => env('SHOPPING_DECIMALS', 0),
+
+    'dec_point' => env('SHOPPING_DEC_POINT', '.'),
+
+    'thousands_sep' => env('SHOPPING_THOUSANDS_SEP', ','),
 
     /*
-    |--------------------------------------------------------------------------
-    | Default cart instance
-    |--------------------------------------------------------------------------
-    |
-    | This option controls the default cart connection that gets used while
-    | using this cart library. This connection is used when another is
-    | not explicitly specified when executing a given cart function.
-    |
-    */
-
-    'default' => env('CART_INSTANCE', 'default'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cart instances
-    |--------------------------------------------------------------------------
-    |
-    | Here you may configure the cart instances for your application.
-    | Of course, a great default configuration has been defined for you
-    | here which uses database storage to persist your cart data.
-    |
-    | Supported: "session", "database", "cache"
-    |
-    */
-
-    'instances' => [
-
-        'default' => [
-            'storage' => null,
-            'events' => true,
-            'instance_name' => 'default',
-            'session_key' => '88uuiioo99888',
-        ],
-
-        'wishlist' => [
-            'storage' => null,
-            'events' => true,
-            'instance_name' => 'wishlist',
-            'session_key' => '88uuiioo99888',
-        ],
-
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cart storage
-    |--------------------------------------------------------------------------
-    |
-    | Configure the storage driver for your cart. You can use session,
-    | database, or cache. Session is the default and most common choice.
-    |
-    */
-
+     * ---------------------------------------------------------------
+     * persistence
+     * ---------------------------------------------------------------
+     *
+     * the configuration for persisting cart
+     */
     'storage' => null,
 
     /*
-    |--------------------------------------------------------------------------
-    | Cart events
-    |--------------------------------------------------------------------------
-    |
-    | Enable cart events to track cart changes. This will fire events
-    | when items are added, updated, or removed from the cart.
-    |
-    */
-
-    'events' => true,
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cart instance name
-    |--------------------------------------------------------------------------
-    |
-    | The default name for your cart instance. You can change this to
-    | whatever you prefer.
-    |
-    */
-
-    'instance_name' => 'default',
-
-    /*
-    |--------------------------------------------------------------------------
-    | Cart session key
-    |--------------------------------------------------------------------------
-    |
-    | The session key used to store cart data. This should be unique
-    | to avoid conflicts with other applications.
-    |
-    */
-
-    'session_key' => '88uuiioo99888',
-
+     * ---------------------------------------------------------------
+     * events
+     * ---------------------------------------------------------------
+     *
+     * the configuration for cart events
+     */
+    'events' => null,
 ];

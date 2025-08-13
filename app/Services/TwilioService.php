@@ -13,6 +13,7 @@ use chillerlan\QRCode\QROptions;
 use chillerlan\QRCode\Output\QROutputInterface;
 use Illuminate\Support\Facades\Mail;
 use Twilio\Rest\Client;
+use Darryldecode\Cart\Facades\CartFacade as Cart;
 
 class TwilioService
 {
@@ -303,6 +304,12 @@ class TwilioService
                 $productResponse = $this->processProductCommands($cleanFrom, $body);
                 if ($productResponse) {
                     return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'product_processed' => true]);
+                }
+
+                // Check if user is using cart commands
+                $cartResponse = $this->processCartCommands($cleanFrom, $body);
+                if ($cartResponse) {
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
                 }
 
                 // Check if user sent "DEMO" command
@@ -1467,5 +1474,272 @@ class TwilioService
         $message .= "🎯 *¿Necesitas modificar algo?* Responde con 'modificar' para cambiar los datos.";
 
         $this->sendWhatsApp($phoneNumber, $message);
+    }
+
+    /**
+     * Process cart-related commands from WhatsApp messages
+     */
+    public function processCartCommands($phoneNumber, $message)
+    {
+        try {
+            // Clean and normalize the message
+            $normalizedMessage = strtolower(trim($message));
+
+            // Find user and their team for product filtering
+            $user = $this->getUserByPhone($phoneNumber);
+            $teamId = 1; // Default to team 1 for demo
+
+            if ($user && !isset($user->is_contact) && $user->currentTeam) {
+                $teamId = $user->currentTeam->id;
+            }
+
+            // Set cart session for this phone number
+            Cart::session($phoneNumber);
+
+            // Check for add to cart commands (comprar, contratar)
+            if (preg_match('/^(comprar|contratar|compra|contrata)\s+(.+)/i', $normalizedMessage, $matches)) {
+                $productName = trim($matches[2]);
+                return $this->addToCart($phoneNumber, $productName, $teamId);
+            }
+
+            // Check for cart view commands
+            if (in_array($normalizedMessage, ['carrito', 'ver carrito', 'mi carrito', 'cart'])) {
+                return $this->viewCart($phoneNumber, $teamId);
+            }
+
+            // Check for clear cart commands
+            if (in_array($normalizedMessage, ['vaciar carrito', 'limpiar carrito', 'borrar carrito', 'clear cart'])) {
+                return $this->clearCart($phoneNumber);
+            }
+
+            // Check for checkout commands
+            if (in_array($normalizedMessage, ['checkout', 'finalizar', 'finalizar compra', 'pagar', 'comprar todo'])) {
+                return $this->initiateCheckout($phoneNumber, $teamId);
+            }
+
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('Error processing cart commands: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Add product to cart
+     */
+    private function addToCart($phoneNumber, $productName, $teamId)
+    {
+        try {
+            // Search for product by name
+            $product = \App\Models\Product::where('team_id', $teamId)
+                ->where('name', 'LIKE', "%{$productName}%")
+                ->where('status', true)
+                ->where('whatsapp_enabled', true)
+                ->first();
+
+            if (!$product) {
+                $response = "❌ **Producto no encontrado**: '{$productName}'\n\n";
+                $response .= "📋 Escribe 'productos' para ver nuestro catálogo completo\n";
+                $response .= "💡 **Tip**: Usa el nombre exacto del producto";
+
+                $this->sendWhatsApp($phoneNumber, $response);
+                return ['success' => false, 'message' => 'Product not found'];
+            }
+
+            // Check if product is already in cart
+            $cartItems = Cart::getContent();
+            $existingItem = $cartItems->where('id', $product->id)->first();
+
+            if ($existingItem) {
+                // Update quantity
+                Cart::update($product->id, [
+                    'quantity' => [
+                        'relative' => false,
+                        'value' => $existingItem->quantity + 1
+                    ]
+                ]);
+                $quantity = $existingItem->quantity + 1;
+            } else {
+                // Add new item
+                Cart::add([
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $product->price,
+                    'quantity' => 1,
+                    'attributes' => [
+                        'team_id' => $teamId,
+                        'currency_id' => $product->currency_id,
+                        'description' => $product->description,
+                        'category_name' => $product->category->name ?? '',
+                    ]
+                ]);
+                $quantity = 1;
+            }
+
+            $currency = $product->currency ? $product->currency->symbol : '$';
+
+            $response = "✅ **{$product->name}** agregado al carrito!\n\n";
+            $response .= "💰 **Precio**: {$currency}" . number_format($product->price, 2) . "\n";
+            $response .= "📦 **Cantidad**: {$quantity}\n";
+            $response .= "🏷️ **Categoría**: " . ($product->category->name ?? 'General') . "\n\n";
+            $response .= "🛒 **Total del carrito**: {$currency}" . number_format(Cart::getTotal(), 2) . "\n\n";
+            $response .= "**Opciones:**\n";
+            $response .= "• Escribe 'carrito' para ver todos tus productos\n";
+            $response .= "• Escribe 'comprar [producto]' para agregar más\n";
+            $response .= "• Escribe 'checkout' para finalizar tu compra";
+
+            $this->sendWhatsApp($phoneNumber, $response);
+
+            Log::info('Product added to cart', [
+                'phone' => $phoneNumber,
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'quantity' => $quantity,
+                'cart_total' => Cart::getTotal()
+            ]);
+
+            return ['success' => true, 'message' => 'Product added to cart'];
+
+        } catch (\Exception $e) {
+            Log::error('Error adding to cart: ' . $e->getMessage());
+            $this->sendWhatsApp($phoneNumber, "❌ Error al agregar producto. Inténtalo nuevamente.");
+            return ['success' => false, 'message' => 'Error adding to cart'];
+        }
+    }
+
+    /**
+     * View cart contents
+     */
+    private function viewCart($phoneNumber, $teamId)
+    {
+        try {
+            $cartItems = Cart::getContent();
+
+            if ($cartItems->isEmpty()) {
+                $response = "🛒 **Tu carrito está vacío**\n\n";
+                $response .= "📋 Escribe 'productos' para ver nuestro catálogo\n";
+                $response .= "💡 **Tip**: Usa 'comprar [producto]' para agregar items";
+
+                $this->sendWhatsApp($phoneNumber, $response);
+                return ['success' => true, 'message' => 'Empty cart displayed'];
+            }
+
+            $response = "🛒 **Tu Carrito de Compras**\n\n";
+
+            foreach ($cartItems as $item) {
+                $response .= "• **{$item->name}**\n";
+                $response .= "  💰 $" . number_format($item->price, 2) . " x {$item->quantity}\n";
+                $response .= "  💵 Subtotal: $" . number_format($item->price * $item->quantity, 2) . "\n";
+
+                if (!empty($item->attributes->category_name)) {
+                    $response .= "  🏷️ {$item->attributes->category_name}\n";
+                }
+                $response .= "\n";
+            }
+
+            $response .= "💰 **TOTAL: $" . number_format(Cart::getTotal(), 2) . "**\n";
+            $response .= "📦 **Items**: " . Cart::getTotalQuantity() . "\n\n";
+
+            $response .= "**Opciones:**\n";
+            $response .= "• Escribe 'checkout' para finalizar tu compra\n";
+            $response .= "• Escribe 'comprar [producto]' para agregar más\n";
+            $response .= "• Escribe 'vaciar carrito' para empezar de nuevo";
+
+            $this->sendWhatsApp($phoneNumber, $response);
+
+            Log::info('Cart viewed', [
+                'phone' => $phoneNumber,
+                'items_count' => $cartItems->count(),
+                'total' => Cart::getTotal()
+            ]);
+
+            return ['success' => true, 'message' => 'Cart displayed'];
+
+        } catch (\Exception $e) {
+            Log::error('Error viewing cart: ' . $e->getMessage());
+            $this->sendWhatsApp($phoneNumber, "❌ Error al mostrar carrito. Inténtalo nuevamente.");
+            return ['success' => false, 'message' => 'Error viewing cart'];
+        }
+    }
+
+    /**
+     * Clear cart
+     */
+    private function clearCart($phoneNumber)
+    {
+        try {
+            Cart::clear();
+
+            $response = "🗑️ **Carrito vaciado exitosamente**\n\n";
+            $response .= "📋 Escribe 'productos' para ver nuestro catálogo\n";
+            $response .= "💡 Usa 'comprar [producto]' para agregar nuevos items";
+
+            $this->sendWhatsApp($phoneNumber, $response);
+
+            Log::info('Cart cleared', ['phone' => $phoneNumber]);
+
+            return ['success' => true, 'message' => 'Cart cleared'];
+
+        } catch (\Exception $e) {
+            Log::error('Error clearing cart: ' . $e->getMessage());
+            $this->sendWhatsApp($phoneNumber, "❌ Error al vaciar carrito. Inténtalo nuevamente.");
+            return ['success' => false, 'message' => 'Error clearing cart'];
+        }
+    }
+
+    /**
+     * Initiate checkout process
+     */
+    private function initiateCheckout($phoneNumber, $teamId)
+    {
+        try {
+            $cartItems = Cart::getContent();
+
+            if ($cartItems->isEmpty()) {
+                $response = "❌ **Tu carrito está vacío**\n\n";
+                $response .= "📋 Escribe 'productos' para ver nuestro catálogo";
+
+                $this->sendWhatsApp($phoneNumber, $response);
+                return ['success' => false, 'message' => 'Empty cart for checkout'];
+            }
+
+            $total = Cart::getTotal();
+
+            $response = "🛒 **Resumen de tu compra**\n\n";
+
+            foreach ($cartItems as $item) {
+                $response .= "• {$item->name} x{$item->quantity} - $" . number_format($item->price * $item->quantity, 2) . "\n";
+            }
+
+            $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n\n";
+
+            $response .= "💳 **Para finalizar tu compra:**\n";
+            $response .= "• Contacta a nuestro equipo de ventas\n";
+            $response .= "• Enlace: https://revisionalpha.com/contactenos\n";
+            $response .= "• O responde aquí con tus datos de contacto\n\n";
+
+            $response .= "📋 **Información del pedido guardada**\n";
+            $response .= "Nuestro equipo te contactará pronto para procesar tu compra.\n\n";
+
+            $response .= "❓ **¿Necesitas ayuda?** Responde 'soporte' para asistencia inmediata";
+
+            $this->sendWhatsApp($phoneNumber, $response);
+
+            // Log checkout attempt
+            Log::info('Checkout initiated', [
+                'phone' => $phoneNumber,
+                'items_count' => $cartItems->count(),
+                'total' => $total,
+                'items' => $cartItems->toArray()
+            ]);
+
+            return ['success' => true, 'message' => 'Checkout initiated'];
+
+        } catch (\Exception $e) {
+            Log::error('Error initiating checkout: ' . $e->getMessage());
+            $this->sendWhatsApp($phoneNumber, "❌ Error al procesar checkout. Contacta soporte.");
+            return ['success' => false, 'message' => 'Error in checkout'];
+        }
     }
 }
