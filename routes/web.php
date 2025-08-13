@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AcademyController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\apps\Calendar;
@@ -74,8 +75,8 @@ Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
-// Auto-login with token route
-Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
+// Auto-login with token route (AuthController not implemented yet)
+// Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
 
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
@@ -426,6 +427,10 @@ Route::post('/team/{team}/custom-translations/import', [TeamSettingController::c
 	Route::get('/user-fare/{userFare}/edit', [UserFareController::class, 'edit'])->name('user-fare.edit');
 	Route::put('/user-fare/{userFare}', [UserFareController::class, 'update'])->name('user-fare.update');
 	Route::delete('/user-fare/{userFare}', [UserFareController::class, 'destroy'])->name('user-fare.destroy');
+
+	// Academy
+	Route::get('/academy/list', [AcademyController::class, 'index'])->name('academy-list');
+	Route::get('/academy/{id}', [AcademyController::class, 'show'])->name('academy.show');
 });
 
 // Testing

@@ -324,6 +324,16 @@ class RolesAndPermissionsSeeder extends Seeder
 		Permission::firstOrCreate(['name' => 'ecommerce.dashboard']);
 		Permission::firstOrCreate(['name' => 'ecommerce.settings']);
 
+		// Academy permissions
+		Permission::firstOrCreate(['name' => 'academy.index']);
+		Permission::firstOrCreate(['name' => 'academy.list']);
+		Permission::firstOrCreate(['name' => 'academy.create']);
+		Permission::firstOrCreate(['name' => 'academy.show']);
+		Permission::firstOrCreate(['name' => 'academy.edit']);
+		Permission::firstOrCreate(['name' => 'academy.store']);
+		Permission::firstOrCreate(['name' => 'academy.update']);
+		Permission::firstOrCreate(['name' => 'academy.destroy']);
+
 		$rootRole = Role::firstOrCreate(['name' => 'root']);
 		$rootRole->syncPermissions([
 			'user.management',
@@ -441,6 +451,14 @@ class RolesAndPermissionsSeeder extends Seeder
 			'payment.store',
 			'payment.update',
 			'payment.destroy',
+			'academy.index',
+			'academy.list',
+			'academy.create',
+			'academy.show',
+			'academy.edit',
+			'academy.store',
+			'academy.update',
+			'academy.destroy',
 		]);
 
 		$collaboratorRole = Role::firstOrCreate(['name' => 'collaborator']);
@@ -464,6 +482,7 @@ class RolesAndPermissionsSeeder extends Seeder
 			'automation.list',
 			'integration.list',
 			'campaign.list',
+			'academy.list',
 			'profile.show',
 			'profile.edit',
 			'profile.update',
@@ -771,6 +790,14 @@ class RolesAndPermissionsSeeder extends Seeder
 			'stylebook.store',
 			'stylebook.update',
 			'stylebook.destroy',
+			'academy.index',
+			'academy.list',
+			'academy.create',
+			'academy.show',
+			'academy.edit',
+			'academy.store',
+			'academy.update',
+			'academy.destroy',
 		]);
 	}
 }

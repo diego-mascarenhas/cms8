@@ -242,10 +242,15 @@ class ModuleSeeder extends Seeder
             'icon' => 'bell',
             'description' => 'Notifications and alerts module',
         ],
+        'academy' => [
+            'name' => 'Academy',
+            'icon' => 'school',
+            'description' => 'Academy courses management module',
+        ],
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'templates', 'contacts', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'campaigns', 'products', 'orders'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'templates', 'contacts', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'campaigns', 'products', 'orders', 'academy'],
     ];
 
     public function run()

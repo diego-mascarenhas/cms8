@@ -273,6 +273,14 @@
 			"slug": "hosting.index",
 			"permission": "hosting.index",
 			"module_key": "hosting"
+		},
+		{
+			"url": "academy/list",
+			"name": "Academy",
+			"icon": "menu-icon tf-icons ti ti-school",
+			"slug": "academy-list",
+			"permission": "academy.list",
+			"module_key": "academy"
 		}
 	]
 }
