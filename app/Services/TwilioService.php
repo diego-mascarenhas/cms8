@@ -309,10 +309,10 @@ class TwilioService
                     return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'registration' => true]);
                 }
 
-                // Check if user is trying to report service information
-                $serviceResponse = $this->processServiceCommands($cleanFrom, $body);
-                if ($serviceResponse) {
-                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
+                // Check if user is using cart commands (HIGHEST PRIORITY)
+                $cartResponse = $this->processCartCommands($cleanFrom, $body);
+                if ($cartResponse) {
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
                 }
 
                 // Check if user is asking about products
@@ -321,10 +321,10 @@ class TwilioService
                     return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'product_processed' => true]);
                 }
 
-                // Check if user is using cart commands
-                $cartResponse = $this->processCartCommands($cleanFrom, $body);
-                if ($cartResponse) {
-                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
+                // Check if user is trying to report service information
+                $serviceResponse = $this->processServiceCommands($cleanFrom, $body);
+                if ($serviceResponse) {
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
                 }
 
                 // Check if user sent "DEMO" command
@@ -619,6 +619,11 @@ class TwilioService
         try {
             // Clean and normalize the message
             $normalizedMessage = strtolower(trim($message));
+
+            // Skip if this is a cart command (comprar, contratar, etc.)
+            if (preg_match('/^(comprar|contratar|compra|contrata|carrito|checkout|finalizar|vaciar)/i', $normalizedMessage)) {
+                return null;
+            }
 
             // Find user by phone number
             $user = $this->getUserByPhone($phoneNumber);
