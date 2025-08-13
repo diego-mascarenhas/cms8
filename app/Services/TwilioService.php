@@ -1623,13 +1623,13 @@ public function processCartCommands($phoneNumber, $message)
                 'storage_key' => 'cart_' . $phoneNumber
             ]);
 
-                        // Check for checkout confirmation commands
-            if (in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder', '1'])) {
+                        // Check for checkout confirmation commands (YES responses)
+            if (in_array($normalizedMessage, ['si', 'sí', 'yes', 'confirmar', 'aceptar', 'proceder'])) {
                 return $this->confirmCheckout($phoneNumber, $teamId);
             }
 
-            // Check for continue shopping commands
-            if (in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar', '2'])) {
+            // Check for continue shopping commands (NO responses)
+            if (in_array($normalizedMessage, ['no', 'nah', 'seguir comprando', 'continuar', 'agregar mas', 'cancelar'])) {
                 return $this->continueShoppingFromCheckout($phoneNumber);
             }
 
@@ -1851,40 +1851,10 @@ public function processCartCommands($phoneNumber, $message)
 
             $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n";
             $response .= "📦 **Items**: " . Cart::getTotalQuantity() . "\n\n";
-            $response .= "❓ **¿Los datos son correctos?**\n";
-            $response .= "Por favor confirma tu compra para proceder:";
+            $response .= "❓ **¿Quieres confirmar tu compra?**\n\n";
+            $response .= "Responde *SÍ* para proceder o *NO* para seguir comprando.";
 
-                        // Create interactive buttons (max 20 chars per title)
-            $buttons = [
-                [
-                    'type' => 'reply',
-                    'reply' => [
-                        'id' => 'confirm_checkout',
-                        'title' => '✅ Confirmar'
-                    ]
-                ],
-                [
-                    'type' => 'reply',
-                    'reply' => [
-                        'id' => 'continue_shopping',
-                        'title' => '🛍️ Seguir'
-                    ]
-                ]
-            ];
-
-            // Try to send with buttons, fallback to text if it fails
-            try {
-                $this->sendWhatsAppWithButtons($phoneNumber, $response, $buttons);
-            } catch (\Exception $buttonError) {
-                Log::warning('Failed to send buttons, using text fallback: ' . $buttonError->getMessage());
-
-                $response .= "\n\n**Opciones:**";
-                $response .= "\n1. Confirmar compra";
-                $response .= "\n2. Seguir comprando";
-                $response .= "\n\nResponde con el número de tu opción.";
-
-                $this->sendWhatsApp($phoneNumber, $response);
-            }
+            $this->sendWhatsApp($phoneNumber, $response);
 
             // Log checkout initiation
             Log::info('Checkout initiated - awaiting confirmation', [
@@ -1931,21 +1901,22 @@ public function processCartCommands($phoneNumber, $message)
             $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n";
             $response .= "📦 **Items**: " . Cart::getTotalQuantity() . "\n\n";
 
-            $response .= "📞 **Próximos pasos:**\n";
-            $response .= "• Nuestro equipo te contactará en las próximas 2 horas\n";
-            $response .= "• Te enviaremos los detalles de pago y entrega\n";
+            $response .= "📧 **Próximos pasos:**\n";
+            $response .= "• Te enviaremos un email con los detalles completos\n";
+            $response .= "• Incluirá enlaces de pago seguros y opciones de entrega\n";
             $response .= "• Número de orden: #" . strtoupper(substr(md5($phoneNumber . time()), 0, 8)) . "\n\n";
 
-            $response .= "💳 **Métodos de pago disponibles:**\n";
-            $response .= "• Transferencia bancaria\n";
-            $response .= "• Tarjeta de crédito/débito\n";
-            $response .= "• Pago móvil\n\n";
+            $response .= "💳 **El proceso continúa por email:**\n";
+            $response .= "• Enlaces de pago seguros\n";
+            $response .= "• Instrucciones detalladas\n";
+            $response .= "• Confirmación de entrega\n\n";
 
-            $response .= "📞 **¿Necesitas ayuda inmediata?**\n";
-            $response .= "• Contacto: https://revisionalpha.com/contactenos\n";
-            $response .= "• O responde aquí para asistencia directa\n\n";
+            $response .= "📞 **¿Dudas? Contáctanos:**\n";
+            $response .= "• WhatsApp: Responde aquí directamente\n";
+            $response .= "• Web: https://revisionalpha.com/contactenos\n\n";
 
-            $response .= "¡Gracias por confiar en nosotros! 🎉";
+            $response .= "¡Gracias por confiar en nosotros! 🎉\n";
+            $response .= "📬 Revisa tu email en los próximos minutos.";
 
             $this->sendWhatsApp($phoneNumber, $response);
 

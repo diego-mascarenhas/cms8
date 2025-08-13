@@ -138,8 +138,8 @@ class TestWhatsAppCart extends Command
                in_array($normalizedMessage, ['carrito', 'ver carrito', 'mi carrito', 'cart']) ||
                in_array($normalizedMessage, ['vaciar carrito', 'limpiar carrito', 'borrar carrito', 'clear cart']) ||
                in_array($normalizedMessage, ['checkout', 'finalizar', 'finalizar compra', 'pagar', 'comprar todo']) ||
-               in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder', '1']) ||
-               in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar', '2']);
+               in_array($normalizedMessage, ['si', 'sí', 'yes', 'confirmar', 'aceptar', 'proceder']) ||
+               in_array($normalizedMessage, ['no', 'nah', 'seguir comprando', 'continuar', 'agregar mas', 'cancelar']);
     }
 
     private function simulateProductResponse($phone, $message)
@@ -213,13 +213,13 @@ class TestWhatsAppCart extends Command
             return $this->simulateCheckout($phone);
         }
 
-        // Handle checkout confirmation
-        if (in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder', '1'])) {
+        // Handle checkout confirmation (YES responses)
+        if (in_array($normalizedMessage, ['si', 'sí', 'yes', 'confirmar', 'aceptar', 'proceder'])) {
             return $this->simulateConfirmCheckout($phone);
         }
 
-        // Handle continue shopping from checkout
-        if (in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar', '2'])) {
+        // Handle continue shopping from checkout (NO responses)
+        if (in_array($normalizedMessage, ['no', 'nah', 'seguir comprando', 'continuar', 'agregar mas', 'cancelar'])) {
             return $this->simulateContinueShopping($phone);
         }
 
@@ -330,13 +330,8 @@ class TestWhatsAppCart extends Command
 
         $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n";
         $response .= "📦 **Items**: " . $cartItems->sum('quantity') . "\n\n";
-        $response .= "❓ **¿Los datos son correctos?**\n";
-        $response .= "Por favor confirma tu compra para proceder:";
-
-        $response .= "\n\n**Opciones:**";
-        $response .= "\n1. Confirmar compra";
-        $response .= "\n2. Seguir comprando";
-        $response .= "\n\nResponde con el número de tu opción o escribe el comando completo.";
+        $response .= "❓ **¿Quieres confirmar tu compra?**\n\n";
+        $response .= "Responde *SÍ* para proceder o *NO* para seguir comprando.";
 
         return $response;
     }
@@ -361,21 +356,22 @@ class TestWhatsAppCart extends Command
         $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n";
         $response .= "📦 **Items**: " . $cartItems->sum('quantity') . "\n\n";
 
-        $response .= "📞 **Próximos pasos:**\n";
-        $response .= "• Nuestro equipo te contactará en las próximas 2 horas\n";
-        $response .= "• Te enviaremos los detalles de pago y entrega\n";
+        $response .= "📧 **Próximos pasos:**\n";
+        $response .= "• Te enviaremos un email con los detalles completos\n";
+        $response .= "• Incluirá enlaces de pago seguros y opciones de entrega\n";
         $response .= "• Número de orden: #" . strtoupper(substr(md5($phone . time()), 0, 8)) . "\n\n";
 
-        $response .= "💳 **Métodos de pago disponibles:**\n";
-        $response .= "• Transferencia bancaria\n";
-        $response .= "• Tarjeta de crédito/débito\n";
-        $response .= "• Pago móvil\n\n";
+        $response .= "💳 **El proceso continúa por email:**\n";
+        $response .= "• Enlaces de pago seguros\n";
+        $response .= "• Instrucciones detalladas\n";
+        $response .= "• Confirmación de entrega\n\n";
 
-        $response .= "📞 **¿Necesitas ayuda inmediata?**\n";
-        $response .= "• Contacto: https://revisionalpha.com/contactenos\n";
-        $response .= "• O responde aquí para asistencia directa\n\n";
+        $response .= "📞 **¿Dudas? Contáctanos:**\n";
+        $response .= "• WhatsApp: Responde aquí directamente\n";
+        $response .= "• Web: https://revisionalpha.com/contactenos\n\n";
 
-        $response .= "¡Gracias por confiar en nosotros! 🎉";
+        $response .= "¡Gracias por confiar en nosotros! 🎉\n";
+        $response .= "📬 Revisa tu email en los próximos minutos.";
 
         // Clear the cart after successful checkout
         \Darryldecode\Cart\Facades\CartFacade::clear();
