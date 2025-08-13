@@ -29,6 +29,14 @@ class UpdateTeamSettingsRequest extends FormRequest
             // Notification settings
             'notifications.notifications_email' => 'nullable|in:0,1',
             'notifications.notifications_sms' => 'nullable|in:0,1',
+
+            // Twilio settings
+            'twilio.twilio_sid' => 'nullable|string|max:255',
+            'twilio.twilio_token' => 'nullable|string|max:255',
+            'twilio.twilio_sms_from' => 'nullable|string|max:255',
+            'twilio.twilio_whatsapp_from' => 'nullable|string|max:255',
+            'twilio.twilio_webhook_url' => 'nullable|url|max:255',
+            'twilio.twilio_status_callback_url' => 'nullable|url|max:255',
         ];
     }
 }

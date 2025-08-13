@@ -87,6 +87,17 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-phone mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Twilio Integration</h5>
+                            <p class="card-text">Configure Twilio API settings for SMS and WhatsApp</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'twilio']) }}" class="btn btn-primary">Configure</a>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             @if($groupedSettings->count() > 0)

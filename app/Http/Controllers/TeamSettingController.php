@@ -41,7 +41,7 @@ class TeamSettingController extends Controller
                 if (! empty($value) || $value === '0') {
                     $team->setSetting($key, $value, [
                         'group' => $group,
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash']),
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'twilio_token']),
                     ]);
                 }
             }
@@ -172,6 +172,48 @@ class TeamSettingController extends Controller
                             'read,write' => 'Read & Write',
                         ],
                         'value' => $team->getSetting('api_token_abilities', '*'),
+                        'is_encrypted' => false,
+                    ],
+                ],
+            ],
+            'twilio' => [
+                'title' => 'Twilio Configuration',
+                'icon' => 'ti ti-phone',
+                'settings' => [
+                    'twilio_sid' => [
+                        'label' => 'Account SID',
+                        'type' => 'text',
+                        'value' => $team->getSetting('twilio_sid'),
+                        'is_encrypted' => false,
+                    ],
+                    'twilio_token' => [
+                        'label' => 'Auth Token',
+                        'type' => 'password',
+                        'value' => $team->getSetting('twilio_token'),
+                        'is_encrypted' => true,
+                    ],
+                    'twilio_sms_from' => [
+                        'label' => 'SMS From Number',
+                        'type' => 'text',
+                        'value' => $team->getSetting('twilio_sms_from'),
+                        'is_encrypted' => false,
+                    ],
+                    'twilio_whatsapp_from' => [
+                        'label' => 'WhatsApp From Number',
+                        'type' => 'text',
+                        'value' => $team->getSetting('twilio_whatsapp_from'),
+                        'is_encrypted' => false,
+                    ],
+                    'twilio_webhook_url' => [
+                        'label' => 'Webhook URL',
+                        'type' => 'text',
+                        'value' => $team->getSetting('twilio_webhook_url'),
+                        'is_encrypted' => false,
+                    ],
+                    'twilio_status_callback_url' => [
+                        'label' => 'Status Callback URL',
+                        'type' => 'text',
+                        'value' => $team->getSetting('twilio_status_callback_url'),
                         'is_encrypted' => false,
                     ],
                 ],

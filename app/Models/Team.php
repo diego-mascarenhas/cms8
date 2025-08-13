@@ -155,4 +155,27 @@ class Team extends JetstreamTeam
 
         return true;
     }
+
+    /**
+     * Get Twilio configuration for this team.
+     */
+    public function getTwilioConfig()
+    {
+        return [
+            'sid' => $this->getSetting('twilio_sid'),
+            'token' => $this->getSetting('twilio_token'),
+            'sms_from' => $this->getSetting('twilio_sms_from'),
+            'whatsapp_from' => $this->getSetting('twilio_whatsapp_from'),
+            'webhook_url' => $this->getSetting('twilio_webhook_url'),
+            'status_callback_url' => $this->getSetting('twilio_status_callback_url'),
+        ];
+    }
+
+    /**
+     * Check if Twilio is configured for this team.
+     */
+    public function hasTwilioConfig()
+    {
+        return !empty($this->getSetting('twilio_sid')) && !empty($this->getSetting('twilio_token'));
+    }
 }
