@@ -137,7 +137,9 @@ class TestWhatsAppCart extends Command
         return preg_match('/^(comprar|contratar|compra|contrata)\s+(.+)/i', $normalizedMessage) ||
                in_array($normalizedMessage, ['carrito', 'ver carrito', 'mi carrito', 'cart']) ||
                in_array($normalizedMessage, ['vaciar carrito', 'limpiar carrito', 'borrar carrito', 'clear cart']) ||
-               in_array($normalizedMessage, ['checkout', 'finalizar', 'finalizar compra', 'pagar', 'comprar todo']);
+               in_array($normalizedMessage, ['checkout', 'finalizar', 'finalizar compra', 'pagar', 'comprar todo']) ||
+               in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder']) ||
+               in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar']);
     }
 
     private function simulateProductResponse($phone, $message)
@@ -209,6 +211,16 @@ class TestWhatsAppCart extends Command
         // Handle checkout
         if (in_array($normalizedMessage, ['checkout', 'finalizar', 'finalizar compra', 'pagar', 'comprar todo'])) {
             return $this->simulateCheckout($phone);
+        }
+
+        // Handle checkout confirmation
+        if (in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder'])) {
+            return $this->simulateConfirmCheckout($phone);
+        }
+
+        // Handle continue shopping from checkout
+        if (in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar'])) {
+            return $this->simulateContinueShopping($phone);
         }
 
         return null;
@@ -316,17 +328,70 @@ class TestWhatsAppCart extends Command
             $response .= "• {$item->name} x{$item->quantity} - $" . number_format($item->price * $item->quantity, 2) . "\n";
         }
 
-        $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n\n";
+        $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n";
+        $response .= "📦 **Items**: " . $cartItems->sum('quantity') . "\n\n";
+        $response .= "❓ **¿Los datos son correctos?**\n";
+        $response .= "Por favor confirma tu compra para proceder:";
 
-        $response .= "💳 **Para finalizar tu compra:**\n";
-        $response .= "• Contacta a nuestro equipo de ventas\n";
-        $response .= "• Enlace: https://revisionalpha.com/contactenos\n";
-        $response .= "• O responde aquí con tus datos de contacto\n\n";
+        $response .= "\n\n**Opciones:**";
+        $response .= "\n• Escribe '*confirmar*' para proceder con la compra";
+        $response .= "\n• Escribe '*seguir comprando*' para agregar más productos";
 
-        $response .= "📋 **Información del pedido guardada**\n";
-        $response .= "Nuestro equipo te contactará pronto para procesar tu compra.\n\n";
+        return $response;
+    }
 
-        $response .= "❓ **¿Necesitas ayuda?** Responde 'soporte' para asistencia inmediata";
+    private function simulateConfirmCheckout($phone)
+    {
+        $cartItems = \Darryldecode\Cart\Facades\CartFacade::getContent();
+
+        if ($cartItems->isEmpty()) {
+            return "❌ **Tu carrito está vacío**\n\n📋 Escribe 'productos' para ver nuestro catálogo";
+        }
+
+        $total = \Darryldecode\Cart\Facades\CartFacade::getTotal();
+
+        $response = "✅ **¡Compra Confirmada!**\n\n";
+        $response .= "📋 **Resumen del pedido:**\n";
+
+        foreach ($cartItems as $item) {
+            $response .= "• {$item->name} x{$item->quantity} - $" . number_format($item->price * $item->quantity, 2) . "\n";
+        }
+
+        $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n";
+        $response .= "📦 **Items**: " . $cartItems->sum('quantity') . "\n\n";
+
+        $response .= "📞 **Próximos pasos:**\n";
+        $response .= "• Nuestro equipo te contactará en las próximas 2 horas\n";
+        $response .= "• Te enviaremos los detalles de pago y entrega\n";
+        $response .= "• Número de orden: #" . strtoupper(substr(md5($phone . time()), 0, 8)) . "\n\n";
+
+        $response .= "💳 **Métodos de pago disponibles:**\n";
+        $response .= "• Transferencia bancaria\n";
+        $response .= "• Tarjeta de crédito/débito\n";
+        $response .= "• Pago móvil\n\n";
+
+        $response .= "📞 **¿Necesitas ayuda inmediata?**\n";
+        $response .= "• Contacto: https://revisionalpha.com/contactenos\n";
+        $response .= "• O responde aquí para asistencia directa\n\n";
+
+        $response .= "¡Gracias por confiar en nosotros! 🎉";
+
+        // Clear the cart after successful checkout
+        \Darryldecode\Cart\Facades\CartFacade::clear();
+
+        return $response;
+    }
+
+    private function simulateContinueShopping($phone)
+    {
+        $response = "🛍️ **¡Perfecto!**\n\n";
+        $response .= "Puedes seguir agregando productos a tu carrito.\n\n";
+        $response .= "📋 **Opciones disponibles:**\n";
+        $response .= "• Escribe '*productos*' para ver el catálogo completo\n";
+        $response .= "• Usa '*comprar [producto]*' para agregar items\n";
+        $response .= "• Escribe '*carrito*' para ver tu carrito actual\n";
+        $response .= "• Usa '*checkout*' cuando estés listo para finalizar\n\n";
+        $response .= "💡 **Tip:** Tu carrito actual se mantiene guardado";
 
         return $response;
     }

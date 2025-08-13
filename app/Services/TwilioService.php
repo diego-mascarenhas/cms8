@@ -1480,10 +1480,65 @@ class TwilioService
         $this->sendWhatsApp($phoneNumber, $message);
     }
 
+        /**
+     * Send WhatsApp message with interactive buttons
+     */
+    private function sendWhatsAppWithButtons($phoneNumber, $message, $buttons)
+    {
+        try {
+            $formattedTo = 'whatsapp:' . $phoneNumber;
+            $statusCallbackUrl = url(route('twilio.status'));
+
+            // Prepare interactive message with buttons
+            $twilioMessage = $this->client->messages->create(
+                $formattedTo,
+                [
+                    'from' => $this->whatsappFromNumber,
+                    'statusCallback' => $statusCallbackUrl,
+                    'body' => $message,
+                    'contentSid' => null,
+                    'contentVariables' => json_encode([
+                        'type' => 'button',
+                        'body' => ['text' => $message],
+                        'action' => [
+                            'buttons' => $buttons
+                        ]
+                    ])
+                ]
+            );
+
+            // Save outbound message to database
+            Conversation::create([
+                'message_sid' => $twilioMessage->sid,
+                'from_number' => $this->formatPhoneNumber($this->whatsappFromNumber),
+                'to_number' => $this->formatPhoneNumber($phoneNumber),
+                'direction' => 'outbound',
+                'status' => $twilioMessage->status,
+                'body' => $message,
+                'channel' => 'whatsapp',
+                'metadata' => json_encode(['buttons' => $buttons]),
+            ]);
+
+            Log::info('WhatsApp message with buttons sent', [
+                'to' => $phoneNumber,
+                'sid' => $twilioMessage->sid,
+                'buttons_count' => count($buttons)
+            ]);
+
+            return $twilioMessage;
+
+        } catch (\Exception $e) {
+            Log::error('Error sending WhatsApp with buttons: ' . $e->getMessage());
+
+            // Fallback to regular message
+            return $this->sendWhatsApp($phoneNumber, $message);
+        }
+    }
+
     /**
      * Process cart-related commands from WhatsApp messages
      */
-    public function processCartCommands($phoneNumber, $message)
+public function processCartCommands($phoneNumber, $message)
     {
         try {
             // Clean and normalize the message
@@ -1499,6 +1554,16 @@ class TwilioService
 
             // Set cart session for this phone number
             Cart::session($phoneNumber);
+
+            // Check for checkout confirmation commands
+            if (in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder'])) {
+                return $this->confirmCheckout($phoneNumber, $teamId);
+            }
+
+            // Check for continue shopping commands
+            if (in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar'])) {
+                return $this->continueShoppingFromCheckout($phoneNumber);
+            }
 
             // Check for add to cart commands (comprar, contratar)
             if (preg_match('/^(comprar|contratar|compra|contrata)\s+(.+)/i', $normalizedMessage, $matches)) {
@@ -1693,7 +1758,7 @@ class TwilioService
     }
 
     /**
-     * Initiate checkout process
+     * Initiate checkout process with confirmation
      */
     private function initiateCheckout($phoneNumber, $teamId)
     {
@@ -1705,7 +1770,7 @@ class TwilioService
                 $response .= "📋 Escribe 'productos' para ver nuestro catálogo";
 
                 $this->sendWhatsApp($phoneNumber, $response);
-                return ['success' => false, 'message' => 'Empty cart for checkout'];
+                return ['success' => false, 'message' => $response];
             }
 
             $total = Cart::getTotal();
@@ -1716,34 +1781,154 @@ class TwilioService
                 $response .= "• {$item->name} x{$item->quantity} - $" . number_format($item->price * $item->quantity, 2) . "\n";
             }
 
-            $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n\n";
+            $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n";
+            $response .= "📦 **Items**: " . Cart::getTotalQuantity() . "\n\n";
+            $response .= "❓ **¿Los datos son correctos?**\n";
+            $response .= "Por favor confirma tu compra para proceder:";
 
-            $response .= "💳 **Para finalizar tu compra:**\n";
-            $response .= "• Contacta a nuestro equipo de ventas\n";
-            $response .= "• Enlace: https://revisionalpha.com/contactenos\n";
-            $response .= "• O responde aquí con tus datos de contacto\n\n";
+            // Create interactive buttons
+            $buttons = [
+                [
+                    'type' => 'reply',
+                    'reply' => [
+                        'id' => 'confirm_checkout',
+                        'title' => '✅ Confirmar Compra'
+                    ]
+                ],
+                [
+                    'type' => 'reply',
+                    'reply' => [
+                        'id' => 'continue_shopping',
+                        'title' => '🛍️ Seguir Comprando'
+                    ]
+                ]
+            ];
 
-            $response .= "📋 **Información del pedido guardada**\n";
-            $response .= "Nuestro equipo te contactará pronto para procesar tu compra.\n\n";
+            // Try to send with buttons, fallback to text if it fails
+            try {
+                $this->sendWhatsAppWithButtons($phoneNumber, $response, $buttons);
+            } catch (\Exception $buttonError) {
+                Log::warning('Failed to send buttons, using text fallback: ' . $buttonError->getMessage());
 
-            $response .= "❓ **¿Necesitas ayuda?** Responde 'soporte' para asistencia inmediata";
+                $response .= "\n\n**Opciones:**";
+                $response .= "\n• Escribe '*confirmar*' para proceder con la compra";
+                $response .= "\n• Escribe '*seguir comprando*' para agregar más productos";
 
-            $this->sendWhatsApp($phoneNumber, $response);
+                $this->sendWhatsApp($phoneNumber, $response);
+            }
 
-            // Log checkout attempt
-            Log::info('Checkout initiated', [
+            // Log checkout initiation
+            Log::info('Checkout initiated - awaiting confirmation', [
                 'phone' => $phoneNumber,
                 'items_count' => $cartItems->count(),
                 'total' => $total,
                 'items' => $cartItems->toArray()
             ]);
 
-            return ['success' => true, 'message' => 'Checkout initiated'];
+            return ['success' => true, 'message' => $response];
 
         } catch (\Exception $e) {
             Log::error('Error initiating checkout: ' . $e->getMessage());
             $this->sendWhatsApp($phoneNumber, "❌ Error al procesar checkout. Contacta soporte.");
             return ['success' => false, 'message' => 'Error in checkout'];
+        }
+    }
+
+    /**
+     * Confirm checkout and process final purchase
+     */
+    private function confirmCheckout($phoneNumber, $teamId)
+    {
+        try {
+            $cartItems = Cart::getContent();
+
+            if ($cartItems->isEmpty()) {
+                $response = "❌ **Tu carrito está vacío**\n\n";
+                $response .= "📋 Escribe 'productos' para ver nuestro catálogo";
+
+                $this->sendWhatsApp($phoneNumber, $response);
+                return ['success' => false, 'message' => $response];
+            }
+
+            $total = Cart::getTotal();
+
+            $response = "✅ **¡Compra Confirmada!**\n\n";
+            $response .= "📋 **Resumen del pedido:**\n";
+
+            foreach ($cartItems as $item) {
+                $response .= "• {$item->name} x{$item->quantity} - $" . number_format($item->price * $item->quantity, 2) . "\n";
+            }
+
+            $response .= "\n💰 **TOTAL: $" . number_format($total, 2) . "**\n";
+            $response .= "📦 **Items**: " . Cart::getTotalQuantity() . "\n\n";
+
+            $response .= "📞 **Próximos pasos:**\n";
+            $response .= "• Nuestro equipo te contactará en las próximas 2 horas\n";
+            $response .= "• Te enviaremos los detalles de pago y entrega\n";
+            $response .= "• Número de orden: #" . strtoupper(substr(md5($phoneNumber . time()), 0, 8)) . "\n\n";
+
+            $response .= "💳 **Métodos de pago disponibles:**\n";
+            $response .= "• Transferencia bancaria\n";
+            $response .= "• Tarjeta de crédito/débito\n";
+            $response .= "• Pago móvil\n\n";
+
+            $response .= "📞 **¿Necesitas ayuda inmediata?**\n";
+            $response .= "• Contacto: https://revisionalpha.com/contactenos\n";
+            $response .= "• O responde aquí para asistencia directa\n\n";
+
+            $response .= "¡Gracias por confiar en nosotros! 🎉";
+
+            $this->sendWhatsApp($phoneNumber, $response);
+
+            // Log successful checkout
+            Log::info('Checkout confirmed and processed', [
+                'phone' => $phoneNumber,
+                'items_count' => $cartItems->count(),
+                'total' => $total,
+                'items' => $cartItems->toArray(),
+                'order_id' => strtoupper(substr(md5($phoneNumber . time()), 0, 8))
+            ]);
+
+            // Clear the cart after successful checkout
+            Cart::clear();
+
+            return ['success' => true, 'message' => $response];
+
+        } catch (\Exception $e) {
+            Log::error('Error confirming checkout: ' . $e->getMessage());
+            $this->sendWhatsApp($phoneNumber, "❌ Error al confirmar compra. Por favor inténtalo nuevamente.");
+            return ['success' => false, 'message' => 'Error confirming checkout'];
+        }
+    }
+
+    /**
+     * Continue shopping from checkout
+     */
+    private function continueShoppingFromCheckout($phoneNumber)
+    {
+        try {
+            $response = "🛍️ **¡Perfecto!**\n\n";
+            $response .= "Puedes seguir agregando productos a tu carrito.\n\n";
+            $response .= "📋 **Opciones disponibles:**\n";
+            $response .= "• Escribe '*productos*' para ver el catálogo completo\n";
+            $response .= "• Usa '*comprar [producto]*' para agregar items\n";
+            $response .= "• Escribe '*carrito*' para ver tu carrito actual\n";
+            $response .= "• Usa '*checkout*' cuando estés listo para finalizar\n\n";
+            $response .= "💡 **Tip:** Tu carrito actual se mantiene guardado";
+
+            $this->sendWhatsApp($phoneNumber, $response);
+
+            Log::info('User chose to continue shopping', [
+                'phone' => $phoneNumber,
+                'cart_items_count' => Cart::getContent()->count()
+            ]);
+
+            return ['success' => true, 'message' => $response];
+
+        } catch (\Exception $e) {
+            Log::error('Error processing continue shopping: ' . $e->getMessage());
+            $this->sendWhatsApp($phoneNumber, "❌ Error al procesar solicitud. Inténtalo nuevamente.");
+            return ['success' => false, 'message' => 'Error processing continue shopping'];
         }
     }
 }
