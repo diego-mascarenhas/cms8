@@ -1496,7 +1496,7 @@ class TwilioService
     }
 
         /**
-     * Send WhatsApp message with interactive buttons
+     * Send WhatsApp message with interactive quick reply buttons
      */
     private function sendWhatsAppWithButtons($phoneNumber, $message, $buttons)
     {
@@ -1504,23 +1504,54 @@ class TwilioService
             $formattedTo = 'whatsapp:' . $phoneNumber;
             $statusCallbackUrl = url(route('twilio.status'));
 
-            // Prepare interactive message with buttons
-            $twilioMessage = $this->client->messages->create(
-                $formattedTo,
-                [
-                    'from' => $this->whatsappFromNumber,
-                    'statusCallback' => $statusCallbackUrl,
-                    'body' => $message,
-                    'contentSid' => null,
-                    'contentVariables' => json_encode([
-                        'type' => 'button',
-                        'body' => ['text' => $message],
-                        'action' => [
-                            'buttons' => $buttons
-                        ]
-                    ])
+            // Format buttons for Twilio WhatsApp Interactive Messages
+            $interactiveData = [
+                'type' => 'button',
+                'body' => [
+                    'text' => $message
+                ],
+                'action' => [
+                    'buttons' => array_map(function($button) {
+                        return [
+                            'type' => 'reply',
+                            'reply' => [
+                                'id' => $button['reply']['id'],
+                                'title' => substr($button['reply']['title'], 0, 20) // WhatsApp limit: 20 chars
+                            ]
+                        ];
+                    }, $buttons)
                 ]
-            );
+            ];
+
+            // Try to send interactive message (requires Twilio configuration)
+            try {
+                $twilioMessage = $this->client->messages->create(
+                    $formattedTo,
+                    [
+                        'from' => $this->whatsappFromNumber,
+                        'statusCallback' => $statusCallbackUrl,
+                        'body' => json_encode($interactiveData) // Send as JSON for now
+                    ]
+                );
+            } catch (\Exception $interactiveError) {
+                // Fallback: Send as regular message with numbered options
+                Log::warning('Interactive buttons not supported, using text fallback');
+
+                $fallbackMessage = $message . "\n\n";
+                foreach ($buttons as $index => $button) {
+                    $fallbackMessage .= ($index + 1) . ". " . $button['reply']['title'] . "\n";
+                }
+                $fallbackMessage .= "\nResponde con el número de tu opción.";
+
+                $twilioMessage = $this->client->messages->create(
+                    $formattedTo,
+                    [
+                        'from' => $this->whatsappFromNumber,
+                        'statusCallback' => $statusCallbackUrl,
+                        'body' => $fallbackMessage
+                    ]
+                );
+            }
 
             // Save outbound message to database
             Conversation::create([
@@ -1587,13 +1618,13 @@ public function processCartCommands($phoneNumber, $message)
                 'storage_key' => 'cart_' . $phoneNumber
             ]);
 
-            // Check for checkout confirmation commands
-            if (in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder'])) {
+                        // Check for checkout confirmation commands
+            if (in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder', '1'])) {
                 return $this->confirmCheckout($phoneNumber, $teamId);
             }
 
             // Check for continue shopping commands
-            if (in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar'])) {
+            if (in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar', '2'])) {
                 return $this->continueShoppingFromCheckout($phoneNumber);
             }
 
@@ -1818,20 +1849,20 @@ public function processCartCommands($phoneNumber, $message)
             $response .= "❓ **¿Los datos son correctos?**\n";
             $response .= "Por favor confirma tu compra para proceder:";
 
-            // Create interactive buttons
+                        // Create interactive buttons (max 20 chars per title)
             $buttons = [
                 [
                     'type' => 'reply',
                     'reply' => [
                         'id' => 'confirm_checkout',
-                        'title' => '✅ Confirmar Compra'
+                        'title' => '✅ Confirmar'
                     ]
                 ],
                 [
                     'type' => 'reply',
                     'reply' => [
                         'id' => 'continue_shopping',
-                        'title' => '🛍️ Seguir Comprando'
+                        'title' => '🛍️ Seguir'
                     ]
                 ]
             ];
@@ -1843,8 +1874,9 @@ public function processCartCommands($phoneNumber, $message)
                 Log::warning('Failed to send buttons, using text fallback: ' . $buttonError->getMessage());
 
                 $response .= "\n\n**Opciones:**";
-                $response .= "\n• Escribe '*confirmar*' para proceder con la compra";
-                $response .= "\n• Escribe '*seguir comprando*' para agregar más productos";
+                $response .= "\n1. Confirmar compra";
+                $response .= "\n2. Seguir comprando";
+                $response .= "\n\nResponde con el número de tu opción.";
 
                 $this->sendWhatsApp($phoneNumber, $response);
             }

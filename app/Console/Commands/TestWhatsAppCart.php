@@ -138,8 +138,8 @@ class TestWhatsAppCart extends Command
                in_array($normalizedMessage, ['carrito', 'ver carrito', 'mi carrito', 'cart']) ||
                in_array($normalizedMessage, ['vaciar carrito', 'limpiar carrito', 'borrar carrito', 'clear cart']) ||
                in_array($normalizedMessage, ['checkout', 'finalizar', 'finalizar compra', 'pagar', 'comprar todo']) ||
-               in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder']) ||
-               in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar']);
+               in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder', '1']) ||
+               in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar', '2']);
     }
 
     private function simulateProductResponse($phone, $message)
@@ -214,12 +214,12 @@ class TestWhatsAppCart extends Command
         }
 
         // Handle checkout confirmation
-        if (in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder'])) {
+        if (in_array($normalizedMessage, ['confirmar compra', 'confirmar', 'aceptar', 'si confirmo', 'proceder', '1'])) {
             return $this->simulateConfirmCheckout($phone);
         }
 
         // Handle continue shopping from checkout
-        if (in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar'])) {
+        if (in_array($normalizedMessage, ['seguir comprando', 'continuar', 'agregar mas', 'no confirmo', 'cancelar', '2'])) {
             return $this->simulateContinueShopping($phone);
         }
 
@@ -334,8 +334,9 @@ class TestWhatsAppCart extends Command
         $response .= "Por favor confirma tu compra para proceder:";
 
         $response .= "\n\n**Opciones:**";
-        $response .= "\n• Escribe '*confirmar*' para proceder con la compra";
-        $response .= "\n• Escribe '*seguir comprando*' para agregar más productos";
+        $response .= "\n1. Confirmar compra";
+        $response .= "\n2. Seguir comprando";
+        $response .= "\n\nResponde con el número de tu opción o escribe el comando completo.";
 
         return $response;
     }
