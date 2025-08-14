@@ -251,6 +251,14 @@
 			"module_key": "website"
 		},
 		{
+			"url": "academy/list",
+			"name": "Academy",
+			"icon": "menu-icon tf-icons ti ti-book",
+			"slug": "academy-list",
+			"permission": "academy.list",
+			"module_key": "academy"
+		},
+		{
 			"url": "template/list",
 			"name": "Templates",
 			"icon": "menu-icon tf-icons ti ti-template",
@@ -273,14 +281,6 @@
 			"slug": "hosting.index",
 			"permission": "hosting.index",
 			"module_key": "hosting"
-		},
-		{
-			"url": "academy/list",
-			"name": "Academy",
-			"icon": "menu-icon tf-icons ti ti-school",
-			"slug": "academy-list",
-			"permission": "academy.list",
-			"module_key": "academy"
 		}
 	]
 }

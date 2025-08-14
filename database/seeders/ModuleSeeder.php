@@ -244,7 +244,7 @@ class ModuleSeeder extends Seeder
         ],
         'academy' => [
             'name' => 'Academy',
-            'icon' => 'school',
+            'icon' => 'book',
             'description' => 'Academy courses management module',
         ],
     ];
