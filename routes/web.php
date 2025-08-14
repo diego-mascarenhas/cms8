@@ -479,13 +479,21 @@ Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 
-// Twilio Webhook Routes
+// Twilio Webhook Routes (legacy - without hash)
 Route::post('/twilio/webhook', [TwilioWebhookController::class, 'handleIncomingMessage'])
 	->name('twilio.webhook');
 Route::post('/twilio/status', [TwilioWebhookController::class, 'handleMessageStatus'])
 	->name('twilio.status');
 Route::post('/twilio/fallback', [TwilioWebhookController::class, 'handleFallback'])
 	->name('twilio.fallback');
+
+// Twilio Webhook Routes (team-specific with hash)
+Route::post('/twilio/webhook/{hash}', [TwilioWebhookController::class, 'handleIncomingMessage'])
+	->name('twilio.webhook.team');
+Route::post('/twilio/status/{hash}', [TwilioWebhookController::class, 'handleMessageStatus'])
+	->name('twilio.status.team');
+Route::post('/twilio/fallback/{hash}', [TwilioWebhookController::class, 'handleFallback'])
+	->name('twilio.fallback.team');
 
 // Debug route for testing JSON response (no auth required)
 Route::get('/debug-units', function() {
