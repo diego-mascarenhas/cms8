@@ -1,12 +1,9 @@
 <div wire:poll.5s>
     <div class="card mb-4">
-        <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="mb-0">Delivery Stats</h5>
             <div class="d-flex align-items-center">
-                <span class="badge bg-primary me-2" data-bs-toggle="tooltip" data-bs-placement="top"
-                      title="Auto-updates every 5 seconds">
-                    <i class="ti ti-info-circle"></i>
-                </span>
+                <small class="text-muted me-2">last updated: {{ now()->format('H:i:s') }}</small>
                 <div wire:loading.delay>
                     <span class="spinner-border spinner-border-sm text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
@@ -133,13 +130,7 @@
                 </div>
             @endif
 
-            <!-- Last updated indicator -->
-            <div class="mt-3 text-center">
-                <small class="text-muted">
-                    <i class="ti ti-clock-hour-4 me-1"></i>
-                    Last updated: {{ now()->format('H:i:s') }}
-                </small>
-            </div>
+
         </div>
     </div>
 </div>
