@@ -63,9 +63,9 @@
 </div>
 
 <div class="row">
-	<!-- Delivery Stats Component -->
+	<!-- Delivery Stats Component (Auto-updating) -->
 	<div class="col-md-4">
-		<x-delivery-stats :stats="$stats_db" />
+		@livewire('delivery-stats', ['messageId' => $message->id])
 	</div>
 	<!-- Deliveries Table wider -->
 	<div class="col-md-8">
