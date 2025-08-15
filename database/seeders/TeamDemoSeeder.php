@@ -21,6 +21,9 @@ use App\Models\PaymentType;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\Software;
+use App\Models\Template;
+use App\Models\Team;
+use App\Models\User;
 use Database\Factories\ClientFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +36,9 @@ class TeamDemoSeeder extends Seeder
     public function run(): void
     {
         $this->command->info('Seeding Team Demo data...');
+
+        // Ensure team 1 exists first
+        $this->ensureDemoTeamExists();
 
         // Create demo clients (enterprises)
         $this->command->info('Creating demo clients...');
@@ -1927,5 +1933,137 @@ class TeamDemoSeeder extends Seeder
         $this->command->info("   - New products created: {$created}");
         $this->command->info("   - Total products for Team 1: {$total}");
         $this->command->info('✅ Demo products creation completed successfully!');
+    }
+
+    /**
+     * Ensure demo team exists before creating any data
+     */
+    private function ensureDemoTeamExists(): void
+    {
+        $team = \App\Models\Team::find(1);
+        if (!$team) {
+            $this->command->info('🏢 Creating Demo team...');
+            
+            // Create a user first for team ownership
+            $user = \App\Models\User::firstOrCreate(
+                ['email' => 'admin@example.com'],
+                [
+                    'name' => 'Admin',
+                    'password' => bcrypt('password'),
+                    'email_verified_at' => now(),
+                ]
+            );
+
+            // Create the team
+            $team = \App\Models\Team::create([
+                'user_id' => $user->id,
+                'name' => "Demo's Team",
+                'personal_team' => false,
+            ]);
+
+            // Ensure the team has ID 1 (if not, update the user's current team)
+            $user->update(['current_team_id' => $team->id]);
+        }
+    }
+
+    /**
+     * Create demo template for team 1
+     */
+    private function createDemoTemplate(): void
+    {
+        $this->command->info('📧 Creating demo template...');
+
+        \App\Models\Template::firstOrCreate(
+            [
+                'name' => 'Demo',
+                'team_id' => 1,
+            ],
+            [
+                'status_id' => 1,
+                'gjs_data' => [
+                    'css' => '* { box-sizing: border-box; } body {margin: 0;}.gjs-row{display:table;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;width:100%;}.gjs-cell{width:8%;display:table-cell;height:75px;}#ix12{padding:10px;}@media (max-width: 768px){.gjs-cell{width:100%;display:block;}}',
+                    
+                    'html' => '<body><div class="gjs-row"><div class="gjs-cell"><div id="ix12">Bienvenido <b>{{name}}</b>, esta es un envío de prueba.</div></div></div></body>',
+                    
+                    'styles' => [
+                        [
+                            'selectors' => [['name' => 'gjs-row', 'private' => 1]],
+                            'style' => [
+                                'display' => 'table',
+                                'padding-top' => '10px',
+                                'padding-right' => '10px',
+                                'padding-bottom' => '10px',
+                                'padding-left' => '10px',
+                                'width' => '100%'
+                            ]
+                        ],
+                        [
+                            'selectors' => [['name' => 'gjs-cell', 'private' => 1]],
+                            'style' => [
+                                'width' => '100%',
+                                'display' => 'block'
+                            ],
+                            'mediaText' => '(max-width: 768px)',
+                            'atRuleType' => 'media'
+                        ],
+                        [
+                            'selectors' => [['name' => 'gjs-cell', 'private' => 1]],
+                            'style' => [
+                                'width' => '8%',
+                                'display' => 'table-cell',
+                                'height' => '75px'
+                            ]
+                        ],
+                        [
+                            'selectors' => ['#ix12'],
+                            'style' => [
+                                'padding' => '10px'
+                            ]
+                        ]
+                    ],
+                    
+                    'components' => [
+                        [
+                            'name' => 'Row',
+                            'droppable' => '.gjs-cell',
+                            'resizable' => [
+                                'tl' => 0, 'tc' => 0, 'tr' => 0, 'cl' => 0, 'cr' => 0,
+                                'bl' => 0, 'br' => 0, 'minDim' => 1
+                            ],
+                            'classes' => [['name' => 'gjs-row', 'private' => 1]],
+                            'components' => [
+                                [
+                                    'name' => 'Cell',
+                                    'draggable' => '.gjs-row',
+                                    'resizable' => [
+                                        'tl' => 0, 'tc' => 0, 'tr' => 0, 'cl' => 0, 'cr' => 1,
+                                        'bl' => 0, 'br' => 0, 'minDim' => 1, 'bc' => 0,
+                                        'currentUnit' => 1, 'step' => 0.2
+                                    ],
+                                    'classes' => [['name' => 'gjs-cell', 'private' => 1]],
+                                    'components' => [
+                                        [
+                                            'type' => 'text',
+                                            'attributes' => ['id' => 'ix12'],
+                                            'components' => [
+                                                ['type' => 'textnode', 'content' => 'Bienvenido '],
+                                                [
+                                                    'tagName' => 'b',
+                                                    'type' => 'text',
+                                                    'components' => [
+                                                        ['type' => 'textnode', 'content' => '{{name}}']
+                                                    ]
+                                                ],
+                                                ['type' => 'textnode', 'content' => ', esta es un envío de prueba.']
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        );
     }
 }
