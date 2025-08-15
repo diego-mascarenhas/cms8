@@ -19,7 +19,7 @@ class DeliveryStats extends Component
     public function loadStats()
     {
         $this->stats = MessageDeliveryStat::where('message_id', $this->messageId)->first();
-        
+
         // Si no hay stats, crear un objeto vacío con valores por defecto
         if (!$this->stats) {
             $this->stats = (object) [
@@ -42,7 +42,7 @@ class DeliveryStats extends Component
     {
         // Recargar stats en cada render (para el polling)
         $this->loadStats();
-        
+
         return view('livewire.delivery-stats');
     }
 }

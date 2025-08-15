@@ -3,7 +3,7 @@
         <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="mb-0">Delivery Stats</h5>
             <div class="d-flex align-items-center">
-                <span class="badge bg-primary me-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                <span class="badge bg-primary me-2" data-bs-toggle="tooltip" data-bs-placement="top"
                       title="Auto-updates every 5 seconds">
                     <i class="ti ti-info-circle"></i>
                 </span>
@@ -114,7 +114,7 @@
                     $deliveredPercent = round((($stats->delivered ?? 0) / $stats->subscribers) * 100, 1);
                     $openedPercent = round((($stats->opened ?? 0) / $stats->subscribers) * 100, 1);
                 @endphp
-                
+
                 <div class="mt-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <small class="text-muted">Campaign Progress</small>
