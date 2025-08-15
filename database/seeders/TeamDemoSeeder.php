@@ -120,6 +120,10 @@ class TeamDemoSeeder extends Seeder
 
         // Seed demo contacts
         $this->seedDemoContacts();
+
+        // Create demo template and messages for team 1
+        $this->createSimpleDemoTemplate();
+        $this->createDemoMessages();
     }
 
     private function seedDemoServices(): void
@@ -1967,14 +1971,14 @@ class TeamDemoSeeder extends Seeder
         }
     }
 
-    /**
-     * Create demo template for team 1
+        /**
+     * Create simple demo template for team 1 (moved from SimpleTemplateSeeder)
      */
-    private function createDemoTemplate(): void
+    private function createSimpleDemoTemplate(): void
     {
-        $this->command->info('📧 Creating demo template...');
+        $this->command->info('📧 Creating simple demo template...');
 
-        \App\Models\Template::firstOrCreate(
+        $template = \App\Models\Template::firstOrCreate(
             [
                 'name' => 'Demo',
                 'team_id' => 1,
@@ -1983,10 +1987,8 @@ class TeamDemoSeeder extends Seeder
                 'status_id' => 1,
                 'gjs_data' => [
                     'css' => '* { box-sizing: border-box; } body {margin: 0;}.gjs-row{display:table;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;width:100%;}.gjs-cell{width:8%;display:table-cell;height:75px;}#ix12{padding:10px;}@media (max-width: 768px){.gjs-cell{width:100%;display:block;}}',
-
                     'html' => '<body><div class="gjs-row"><div class="gjs-cell"><div id="ix12">Bienvenido <b>{{name}}</b>, esta es un envío de prueba.</div></div></div></body>',
-
-                    'styles' => [
+                    'styles' => json_encode([
                         [
                             'selectors' => [['name' => 'gjs-row', 'private' => 1]],
                             'style' => [
@@ -2021,9 +2023,8 @@ class TeamDemoSeeder extends Seeder
                                 'padding' => '10px'
                             ]
                         ]
-                    ],
-
-                    'components' => [
+                    ]),
+                    'components' => json_encode([
                         [
                             'name' => 'Row',
                             'droppable' => '.gjs-cell',
@@ -2045,27 +2046,23 @@ class TeamDemoSeeder extends Seeder
                                     'components' => [
                                         [
                                             'type' => 'text',
-                                            'attributes' => ['id' => 'ix12'],
-                                            'components' => [
-                                                ['type' => 'textnode', 'content' => 'Bienvenido '],
-                                                [
-                                                    'tagName' => 'b',
-                                                    'type' => 'text',
-                                                    'components' => [
-                                                        ['type' => 'textnode', 'content' => '{{name}}']
-                                                    ]
-                                                ],
-                                                ['type' => 'textnode', 'content' => ', esta es un envío de prueba.']
-                                            ]
+                                            'content' => 'Bienvenido <b>{{name}}</b>, esta es un envío de prueba.',
+                                            'attributes' => ['id' => 'ix12']
                                         ]
                                     ]
                                 ]
                             ]
                         ]
-                    ]
+                    ])
                 ]
             ]
         );
+
+        $this->command->info("✅ Simple template created: {$template->name} (ID: {$template->id})");
+
+        // Show editor URL for reference
+        $editorUrl = route('template.editor', $template->getHashedId());
+        $this->command->info("🔗 Editor URL: {$editorUrl}");
     }
 
     /**
