@@ -89,6 +89,19 @@ class MessageDelivery extends Model
         ]);
     }
 
+
+
+    /**
+     * Mark as delivered (status_id = 2)
+     */
+    public function markAsDelivered()
+    {
+        $this->update([
+            'delivered_at' => now(),
+            'status_id' => 2, // 2 = delivered
+        ]);
+    }
+
     /**
      * Mark as opened (status_id = 2)
      */

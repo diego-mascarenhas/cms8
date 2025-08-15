@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
+use App\Jobs\SendMessageCampaignJob;
 use App\Mail\MySendGridMail;
 use App\Models\Message;
 use App\Models\MessageType;
@@ -242,7 +243,7 @@ class MessageController extends Controller
 		return view('message.unsubscribe', ['email' => $email]);
 	}
 
-	/**
+		/**
 	 * Start a message campaign
 	 */
 	public function startCampaign(Request $request, $id)
@@ -253,19 +254,64 @@ class MessageController extends Controller
 			// Update message status to active
 			$message->update(['status_id' => 1]);
 
-			// Here you could trigger the actual sending process
-			// For example: dispatch a job to send emails
-			// dispatch(new SendMessageCampaign($message));
+			// Create deliveries if they don't exist
+			$this->populateMessageDeliveries($message);
+
+			// Dispatch jobs for pending deliveries
+			$pendingDeliveries = MessageDelivery::where('message_id', $message->id)
+				->whereNull('sent_at')
+				->where('status_id', 1) // 1 = pending
+				->get();
+
+			foreach ($pendingDeliveries as $delivery) {
+				SendMessageCampaignJob::dispatch($delivery)
+					->delay(rand(1, 30)); // Random delay between 1-30 seconds to spread load
+			}
 
 			return response()->json([
 				'success' => true,
-				'message' => 'Campaign started successfully'
+				'message' => 'Campaign started successfully. ' . $pendingDeliveries->count() . ' emails queued for sending.'
 			]);
 		} catch (\Exception $e) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Error starting campaign: ' . $e->getMessage()
 			], 500);
+		}
+	}
+
+	/**
+	 * Populate message deliveries for a campaign
+	 */
+	private function populateMessageDeliveries(Message $message)
+	{
+		// Get contacts from the message's category
+		$contacts = collect();
+
+		if ($message->category) {
+			$contacts = $message->category->contacts()->where('status_id', 1)->get();
+		} else {
+			// If no category, get all active contacts from the team
+			$contacts = \App\Models\Contact::where('team_id', $message->team_id)
+				->where('status_id', 1)
+				->whereNotNull('email')
+				->get();
+		}
+
+		foreach ($contacts as $contact) {
+			// Check if delivery already exists
+			$existingDelivery = MessageDelivery::where('message_id', $message->id)
+				->where('contact_id', $contact->id)
+				->first();
+
+			if (!$existingDelivery) {
+				MessageDelivery::create([
+					'team_id' => $message->team_id,
+					'message_id' => $message->id,
+					'contact_id' => $contact->id,
+					'status_id' => 1, // 1 = pending
+				]);
+			}
 		}
 	}
 

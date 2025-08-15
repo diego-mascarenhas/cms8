@@ -56,4 +56,9 @@ class Message extends Model
     {
         return $this->belongsTo(Template::class);
     }
+
+    public function deliveries()
+    {
+        return $this->hasMany(MessageDelivery::class);
+    }
 }

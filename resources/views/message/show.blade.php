@@ -34,15 +34,19 @@
 </div>
 
 <div class="row">
-	<!-- General Info -->
-	<div class="col-md-4">
+	<!-- Left Column: Stats + General Info -->
+	<div class="col-lg-4 col-md-5">
+		<!-- Delivery Stats Component (Auto-updating) -->
+		@livewire('delivery-stats', ['messageId' => $message->id])
+
+		<!-- General Info -->
 		<div class="card mb-4">
 			<div class="card-header">General Information</div>
 			<div class="card-body">
 				<div class="mb-2"><strong>Subject:</strong> {{ $message->name }}</div>
 				<div class="mb-2"><strong>Sender:</strong> {{ $emailConfig['from_name'] ?? 'Not configured' }}</div>
 				<div class="mb-2"><strong>Sender Email:</strong> {{ $emailConfig['from_address'] ?? 'Not configured' }}</div>
-								<div class="mb-2"><strong>Category:</strong>
+				<div class="mb-2"><strong>Category:</strong>
 					@if($message->category)
 						{{ $message->category->name }}
 					@else
@@ -53,56 +57,9 @@
 		</div>
 	</div>
 
-</div>
-
-<div class="row">
-	<!-- Delivery Stats Component (Auto-updating) -->
-	<div class="col-md-4">
-		@livewire('delivery-stats', ['messageId' => $message->id])
-	</div>
-	<!-- Deliveries Table wider -->
-	<div class="col-md-8">
-		<div class="card mb-4">
-			<div class="card-header">Deliveries</div>
-			<div class="card-body table-responsive">
-				<table class="table table-sm">
-					<thead>
-						<tr>
-							<th>Contact</th>
-							<th>SMTP ID</th>
-							<th>Sent At</th>
-							<th>Delivered At</th>
-							<th>Removed At</th>
-							<th>Status</th>
-						</tr>
-					</thead>
-					<tbody>
-						@foreach($deliveries as $delivery)
-							<tr>
-								<td>{{ $delivery->contact ? $delivery->contact->name : '-' }}</td>
-								<td>{{ $delivery->smtp_id ?? '-' }}</td>
-								<td>
-									{{ $delivery->sent_at ? $delivery->sent_at : 'Pending' }}
-								</td>
-								<td>
-									{{ $delivery->delivered_at ?? '-' }}
-								</td>
-								<td>
-									{{ $delivery->removed_at ?? '-' }}
-								</td>
-								<td>
-									@if(is_null($delivery->sent_at))
-										<span class="badge bg-warning">Pending</span>
-									@else
-										<span class="badge bg-success">{{ ucfirst($delivery->status) }}</span>
-									@endif
-								</td>
-							</tr>
-						@endforeach
-					</tbody>
-				</table>
-			</div>
-		</div>
+	<!-- Right Column: Deliveries Table -->
+	<div class="col-lg-8 col-md-7">
+		@livewire('message-deliveries', ['messageId' => $message->id])
 	</div>
 </div>
 

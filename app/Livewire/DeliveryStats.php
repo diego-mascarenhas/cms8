@@ -16,10 +16,13 @@ class DeliveryStats extends Component
         $this->loadStats();
     }
 
-    public function loadStats()
+        public function loadStats()
     {
+        // Always calculate real-time stats from actual deliveries
+        $this->updateRealTimeStats();
+        
         $this->stats = MessageDeliveryStat::where('message_id', $this->messageId)->first();
-
+        
         // Si no hay stats, crear un objeto vacío con valores por defecto
         if (!$this->stats) {
             $this->stats = (object) [
@@ -36,6 +39,44 @@ class DeliveryStats extends Component
                 'ratio' => 0,
             ];
         }
+    }
+
+    private function updateRealTimeStats()
+    {
+        $message = \App\Models\Message::with('deliveries')->find($this->messageId);
+        
+        if (!$message) {
+            return;
+        }
+        
+        $deliveries = $message->deliveries;
+        
+        $subscribers = $deliveries->count();
+        $sent = $deliveries->whereNotNull('sent_at')->count();
+        $delivered = $deliveries->whereNotNull('delivered_at')->count();
+        $opened = $deliveries->whereNotNull('opened_at')->count();
+        $failed = $deliveries->where('status_id', 4)->count();
+        $pending = $deliveries->whereNull('sent_at')->count();
+        $clicks = 0; // Will be implemented with tracking
+        
+        $ratio = $subscribers > 0 ? round(($opened / $subscribers) * 100, 2) : 0;
+        
+        \App\Models\MessageDeliveryStat::updateOrCreate(
+            ['message_id' => $this->messageId],
+            [
+                'subscribers' => $subscribers,
+                'sent' => $sent,
+                'delivered' => $delivered,
+                'opened' => $opened,
+                'clicks' => $clicks,
+                'failed' => $failed,
+                'remaining' => $pending,
+                'rejected' => 0,
+                'unsubscribed' => 0,
+                'unique_opens' => $opened,
+                'ratio' => $ratio,
+            ]
+        );
     }
 
     public function render()
