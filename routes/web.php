@@ -136,6 +136,7 @@ Route::middleware(['auth'])->group(function ()
 	Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
 	Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
 	Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
+	Route::post('/team/{team}/test-twilio', [TeamSettingController::class, 'testTwilioConnection'])->name('team-settings.test-twilio');
 
 	// Team Valorations
 	Route::get('/team/{team}/valorations', [TeamSettingController::class, 'valorations'])->name('team-settings.valorations');

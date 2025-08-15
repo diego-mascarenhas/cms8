@@ -906,4 +906,69 @@ class TeamSettingController extends Controller
             ]);
         }
     }
+
+    /**
+     * Test Twilio connection
+     */
+    public function testTwilioConnection(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        try {
+            $config = $team->getTwilioConfig();
+
+            if (empty($config['sid']) || empty($config['token'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Twilio configuration is incomplete. Please configure SID and Token.'
+                ]);
+            }
+
+            // Validate SID format
+            if (!str_starts_with($config['sid'], 'AC')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid Account SID format. Must start with AC'
+                ]);
+            }
+
+            // Test Twilio API connection
+            $twilio = new \Twilio\Rest\Client($config['sid'], $config['token']);
+
+            // Retrieve account information to test credentials
+            $account = $twilio->api->v2010->account->fetch();
+
+            // Additional test - try to list incoming phone numbers (safe read operation)
+            $phoneNumbers = $twilio->incomingPhoneNumbers->read(['limit' => 1]);
+
+            // Check if account is active
+            if ($account->status !== 'active') {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Twilio account status: {$account->status}. Account must be active."
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Twilio connection successful! Account: {$account->friendlyName} ({$account->status})"
+            ]);
+
+        } catch (\Twilio\Exceptions\RestException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Twilio API error: ' . $e->getMessage()
+            ]);
+        } catch (\Twilio\Exceptions\TwilioException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Twilio connection failed: ' . $e->getMessage()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Twilio test failed: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

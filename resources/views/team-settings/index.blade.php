@@ -250,7 +250,9 @@
                                 </td>
                                 <td class="text-center">
                                     @if($hasTwilio)
-                                        <span class="text-muted">Coming soon</span>
+                                        <button type="button" class="btn btn-sm btn-info" onclick="testTwilioConnection({{ $team->id }})">
+                                            <i class="ti ti-phone me-1"></i>Test Twilio
+                                        </button>
                                     @endif
                                 </td>
                             </tr>
@@ -376,6 +378,56 @@
 
         // Make AJAX request
         fetch(`/team/${teamId}/test-stripe`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Show result
+            if (data.success) {
+                button.classList.remove('btn-info');
+                button.classList.add('btn-success');
+                button.innerHTML = '<i class="ti ti-check me-1"></i>Success!';
+            } else {
+                button.classList.remove('btn-info');
+                button.classList.add('btn-danger');
+                button.innerHTML = '<i class="ti ti-x me-1"></i>Failed';
+            }
+
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                button.disabled = false;
+                button.className = 'btn btn-sm btn-info';
+                button.innerHTML = originalText;
+            }, 3000);
+        })
+        .catch(error => {
+            console.error('Test connection error:', error);
+            button.classList.remove('btn-info');
+            button.classList.add('btn-danger');
+            button.innerHTML = '<i class="ti ti-x me-1"></i>Error';
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.className = 'btn btn-sm btn-info';
+                button.innerHTML = originalText;
+            }, 3000);
+        });
+    }
+
+    function testTwilioConnection(teamId) {
+        const button = event.target;
+        const originalText = button.innerHTML;
+
+        // Show loading state
+        button.disabled = true;
+        button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Testing...';
+
+        // Make AJAX request
+        fetch(`/team/${teamId}/test-twilio`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
