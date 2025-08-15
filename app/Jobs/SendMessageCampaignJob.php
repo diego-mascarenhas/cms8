@@ -43,7 +43,7 @@ class SendMessageCampaignJob implements ShouldQueue
     public function __construct(MessageDelivery $messageDelivery)
     {
         $this->messageDelivery = $messageDelivery;
-        $this->onQueue('message-campaigns');
+        $this->onQueue('mailer');
     }
 
     /**
