@@ -63,26 +63,9 @@
 </div>
 
 <div class="row">
-	<!-- Delivery Stats Only -->
+	<!-- Delivery Stats Component -->
 	<div class="col-md-4">
-		<div class="card mb-4">
-			<div class="card-header">Delivery Stats</div>
-			<div class="card-body">
-				<ul class="list-group">
-					<li class="list-group-item">Subscribers: {{ $stats_db->subscribers }}</li>
-					<li class="list-group-item">Remaining: {{ $stats_db->remaining }}</li>
-					<li class="list-group-item">Failed: {{ $stats_db->failed }}</li>
-					<li class="list-group-item">Sent: {{ $stats_db->sent }}</li>
-					<li class="list-group-item">Rejected: {{ $stats_db->rejected }}</li>
-					<li class="list-group-item">Delivered: {{ $stats_db->delivered }}</li>
-					<li class="list-group-item">Opened: {{ $stats_db->opened }}</li>
-					<li class="list-group-item">Unique Opens: {{ $stats_db->unique_opens }}</li>
-					<li class="list-group-item">Unsubscribed: {{ $stats_db->unsubscribed }}</li>
-					<li class="list-group-item">Clicks: {{ $stats_db->clicks }}</li>
-					<li class="list-group-item">Open Ratio: {{ $stats_db->ratio }}%</li>
-				</ul>
-			</div>
-		</div>
+		<x-delivery-stats :stats="$stats_db" />
 	</div>
 	<!-- Deliveries Table wider -->
 	<div class="col-md-8">
