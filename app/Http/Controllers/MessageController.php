@@ -249,14 +249,14 @@ class MessageController extends Controller
 	{
 		try {
 			$message = Message::findOrFail($id);
-			
+
 			// Update message status to active
 			$message->update(['status_id' => 1]);
-			
+
 			// Here you could trigger the actual sending process
 			// For example: dispatch a job to send emails
 			// dispatch(new SendMessageCampaign($message));
-			
+
 			return response()->json([
 				'success' => true,
 				'message' => 'Campaign started successfully'
@@ -276,10 +276,10 @@ class MessageController extends Controller
 	{
 		try {
 			$message = Message::findOrFail($id);
-			
+
 			// Update message status to inactive/paused
 			$message->update(['status_id' => 0]);
-			
+
 			return response()->json([
 				'success' => true,
 				'message' => 'Campaign paused successfully'
@@ -299,13 +299,13 @@ class MessageController extends Controller
 	{
 		try {
 			$message = Message::with('template')->findOrFail($id);
-			
+
 			// Get a sample contact for variable replacement
 			$sampleContact = null;
 			if ($message->category) {
 				$sampleContact = $message->category->contacts()->first();
 			}
-			
+
 			if (!$sampleContact) {
 				// Create a sample contact for preview
 				$sampleContact = (object) [
@@ -314,16 +314,16 @@ class MessageController extends Controller
 					'email' => 'john.doe@example.com'
 				];
 			}
-			
+
 			// Get template HTML
 			$htmlContent = '';
 			if ($message->template && $message->template->gjs_data) {
-				$gjsData = is_array($message->template->gjs_data) 
-					? $message->template->gjs_data 
+				$gjsData = is_array($message->template->gjs_data)
+					? $message->template->gjs_data
 					: json_decode($message->template->gjs_data, true);
-				
+
 				$htmlContent = $gjsData['html'] ?? '';
-				
+
 				// Replace variables
 				$htmlContent = str_replace('{{name}}', $sampleContact->name ?? 'John', $htmlContent);
 				$htmlContent = str_replace('{{contact_name}}', ($sampleContact->name ?? 'John') . ' ' . ($sampleContact->surname ?? 'Doe'), $htmlContent);
@@ -331,7 +331,7 @@ class MessageController extends Controller
 			} else {
 				$htmlContent = '<p>' . $message->text . '</p>';
 			}
-			
+
 			return view('message.preview', [
 				'message' => $message,
 				'htmlContent' => $htmlContent,

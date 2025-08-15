@@ -66,24 +66,24 @@
 </head>
 <body>
     <button class="close-btn" onclick="window.close()" title="Close Preview">&times;</button>
-    
+
     <div class="preview-container">
         <div class="preview-header">
             📧 Email Preview: {{ $message ? $message->name : 'Message Preview' }}
         </div>
-        
+
         @if($message && $sampleContact)
         <div class="preview-info">
-            <strong>To:</strong> {{ $sampleContact->email ?? 'sample@example.com' }} | 
+            <strong>To:</strong> {{ $sampleContact->email ?? 'sample@example.com' }} |
             <strong>From:</strong> {{ auth()->user()->currentTeam->getOutgoingEmailConfig()['from_name'] ?? 'Sender' }} &lt;{{ auth()->user()->currentTeam->getOutgoingEmailConfig()['from_address'] ?? 'sender@example.com' }}&gt; |
             <strong>Subject:</strong> {{ $message->name }}
         </div>
         @endif
-        
+
         <div class="preview-content">
             {!! $htmlContent !!}
         </div>
-        
+
         <div class="preview-footer">
             This is a preview of how the email will appear to recipients.
             <br>Variables have been replaced with sample data.

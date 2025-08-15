@@ -15,7 +15,7 @@
 		<button class="btn btn-primary me-2" onclick="previewMessage()">
 			<i class="ti ti-eye me-1"></i>Preview
 		</button>
-		
+
 		<!-- Send/Pause Toggle Button -->
 		@if($message->status_id == 1 && ($stats_db->sent ?? 0) < ($stats_db->subscribers ?? 0))
 			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
@@ -26,7 +26,7 @@
 				<i class="ti ti-send me-1"></i>Send Now
 			</button>
 		@endif
-		
+
 		<a href="{{ route('message-list') }}" class="btn btn-label-secondary">
 			<i class="ti ti-arrow-left me-1"></i>Back to list
 		</a>
@@ -137,7 +137,24 @@
 </div>
 @endsection
 
+@section('vendor-style')
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}">
+@endsection
+
+@section('vendor-script')
+<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+@endsection
+
 @section('page-script')
+<style>
+/* Fix SweetAlert2 z-index issues */
+.swal2-container {
+    z-index: 999999 !important;
+}
+.swal2-popup {
+    z-index: 999999 !important;
+}
+</style>
 <script>
 function previewMessage() {
     // Open preview in new window/tab
@@ -146,78 +163,157 @@ function previewMessage() {
 }
 
 function startCampaign(messageId) {
-    if (confirm('¿Estás seguro de que quieres iniciar el envío de esta campaña?')) {
-        fetch(`/message/${messageId}/start`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Show success notification
-                showNotification('Campaña iniciada exitosamente', 'success');
-                // Reload page to update button state
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showNotification(data.message || 'Error al iniciar la campaña', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error de conexión', 'error');
-        });
-    }
+    Swal.fire({
+        title: '🚀 Iniciar Campaña',
+        text: '¿Estás seguro de que quieres iniciar el envío de esta campaña?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, iniciar campaña',
+        cancelButtonText: 'Cancelar',
+        customClass: {
+            confirmButton: 'btn btn-success me-3 waves-effect waves-light',
+            cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+        },
+        buttonsStyling: false
+    }).then(function (result) {
+        if (result.isConfirmed) {
+            // Show loading in the current modal
+            Swal.update({
+                title: 'Iniciando campaña...',
+                text: 'Por favor espera mientras se procesa la solicitud',
+                icon: 'info',
+                showConfirmButton: false,
+                showCancelButton: false,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch(`/message/${messageId}/start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: '¡Éxito!',
+                        text: 'La campaña ha sido iniciada exitosamente',
+                        icon: 'success',
+                        customClass: {
+                            confirmButton: 'btn btn-success waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'Error al iniciar la campaña',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error de conexión',
+                    text: 'No se pudo conectar con el servidor',
+                    icon: 'error',
+                    customClass: {
+                        confirmButton: 'btn btn-danger waves-effect waves-light'
+                    },
+                    buttonsStyling: false
+                });
+            });
+        }
+    });
 }
 
 function pauseCampaign(messageId) {
-    if (confirm('¿Estás seguro de que quieres pausar esta campaña?')) {
-        fetch(`/message/${messageId}/pause`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Show success notification
-                showNotification('Campaña pausada exitosamente', 'success');
-                // Reload page to update button state
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showNotification(data.message || 'Error al pausar la campaña', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error de conexión', 'error');
-        });
-    }
-}
+    Swal.fire({
+        title: '⏸️ Pausar Campaña',
+        text: '¿Estás seguro de que quieres pausar esta campaña?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, pausar campaña',
+        cancelButtonText: 'Cancelar',
+        customClass: {
+            confirmButton: 'btn btn-warning me-3 waves-effect waves-light',
+            cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+        },
+        buttonsStyling: false
+    }).then(function (result) {
+        if (result.isConfirmed) {
+            // Show loading in the current modal
+            Swal.update({
+                title: 'Pausando campaña...',
+                text: 'Por favor espera mientras se procesa la solicitud',
+                icon: 'info',
+                showConfirmButton: false,
+                showCancelButton: false,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
 
-function showNotification(message, type) {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
-    `;
-    
-    // Add to page
-    document.body.appendChild(notification);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        if (notification.parentElement) {
-            notification.remove();
+            fetch(`/message/${messageId}/pause`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: '¡Éxito!',
+                        text: 'La campaña ha sido pausada exitosamente',
+                        icon: 'success',
+                        customClass: {
+                            confirmButton: 'btn btn-success waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'Error al pausar la campaña',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Error de conexión',
+                    text: 'No se pudo conectar con el servidor',
+                    icon: 'error',
+                    customClass: {
+                        confirmButton: 'btn btn-danger waves-effect waves-light'
+                    },
+                    buttonsStyling: false
+                });
+            });
         }
-    }, 5000);
+    });
 }
 </script>
 @endsection
