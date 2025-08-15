@@ -11,6 +11,22 @@
 		<p class="text-muted">Detailed view of the message and its statistics</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
+		<!-- Preview Button -->
+		<button class="btn btn-primary me-2" onclick="previewMessage()">
+			<i class="ti ti-eye me-1"></i>Preview
+		</button>
+		
+		<!-- Send/Pause Toggle Button -->
+		@if($message->status_id == 1 && ($stats_db->sent ?? 0) < ($stats_db->subscribers ?? 0))
+			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
+				<i class="ti ti-player-pause me-1"></i>Pause
+			</button>
+		@else
+			<button class="btn btn-success me-2" onclick="startCampaign({{ $message->id }})">
+				<i class="ti ti-send me-1"></i>Send Now
+			</button>
+		@endif
+		
 		<a href="{{ route('message-list') }}" class="btn btn-label-secondary">
 			<i class="ti ti-arrow-left me-1"></i>Back to list
 		</a>
@@ -36,30 +52,7 @@
 			</div>
 		</div>
 	</div>
-	<!-- Progress & Status -->
-	<div class="col-md-8">
-		<div class="card mb-4">
-			<div class="card-header">Message Progress</div>
-			<div class="card-body">
-				<div class="d-flex justify-content-between align-items-center mb-2">
-					<div>
-						<span class="fw-bold">Sent:</span> {{ $stats['sent'] }}
-						<span class="ms-3 fw-bold">Delivered:</span> {{ $stats['delivered'] }}
-						<span class="ms-3 fw-bold">Failed:</span> {{ $stats['failed'] }}
-					</div>
-					<span class="badge bg-success">Completed</span>
-				</div>
-				<div class="progress mb-2" style="height: 20px;">
-					<div class="progress-bar bg-success" style="width: 100%;">100%</div>
-				</div>
-				<div>
-					<button class="btn btn-label-primary me-2"><i class="ti ti-eye"></i> Preview</button>
-					<button class="btn btn-label-secondary me-2"><i class="ti ti-copy"></i> Duplicate</button>
-					<button class="btn btn-label-success"><i class="ti ti-send"></i> Send Now</button>
-				</div>
-			</div>
-		</div>
-	</div>
+
 </div>
 
 <div class="row">
@@ -142,4 +135,89 @@
 		</div>
 	</div>
 </div>
+@endsection
+
+@section('page-script')
+<script>
+function previewMessage() {
+    // Open preview in new window/tab
+    const previewUrl = `{{ route('message.preview', $message->id ?? 0) }}`;
+    window.open(previewUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+}
+
+function startCampaign(messageId) {
+    if (confirm('¿Estás seguro de que quieres iniciar el envío de esta campaña?')) {
+        fetch(`/message/${messageId}/start`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success notification
+                showNotification('Campaña iniciada exitosamente', 'success');
+                // Reload page to update button state
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotification(data.message || 'Error al iniciar la campaña', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error de conexión', 'error');
+        });
+    }
+}
+
+function pauseCampaign(messageId) {
+    if (confirm('¿Estás seguro de que quieres pausar esta campaña?')) {
+        fetch(`/message/${messageId}/pause`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success notification
+                showNotification('Campaña pausada exitosamente', 'success');
+                // Reload page to update button state
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotification(data.message || 'Error al pausar la campaña', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error de conexión', 'error');
+        });
+    }
+}
+
+function showNotification(message, type) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
 @endsection
