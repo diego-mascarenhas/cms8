@@ -133,6 +133,8 @@ Route::middleware(['auth'])->group(function ()
 	Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
 	Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
 	Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
+	Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
+	Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
 
 	// Team Valorations
 	Route::get('/team/{team}/valorations', [TeamSettingController::class, 'valorations'])->name('team-settings.valorations');

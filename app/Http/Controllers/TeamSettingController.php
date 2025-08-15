@@ -699,4 +699,132 @@ class TeamSettingController extends Controller
         $message = "Importación completada: {$imported} nuevas traducciones, {$updated} actualizadas";
         return redirect()->back()->with('success', $message);
     }
+
+        /**
+     * Test SMTP connection
+     */
+    public function testSmtpConnection(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        try {
+            $config = $team->getOutgoingEmailConfig();
+
+            if (empty($config['host']) || empty($config['username'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'SMTP configuration is incomplete. Please configure host and username.'
+                ]);
+            }
+
+            // Test with simple socket connection first
+            $host = $config['host'];
+            $port = $config['port'] ?? 587;
+            $timeout = 10;
+
+            // Test basic connectivity
+            $socket = @fsockopen($host, $port, $errno, $errstr, $timeout);
+            if (!$socket) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cannot connect to {$host}:{$port} - {$errstr} ({$errno})"
+                ]);
+            }
+            fclose($socket);
+
+            // Test with Laravel's Mail facade using temporary config
+            $originalConfig = config('mail.mailers.smtp');
+
+            config([
+                'mail.mailers.smtp.host' => $config['host'],
+                'mail.mailers.smtp.port' => $config['port'] ?? 587,
+                'mail.mailers.smtp.encryption' => $config['encryption'] ?? 'tls',
+                'mail.mailers.smtp.username' => $config['username'],
+                'mail.mailers.smtp.password' => $config['password'] ?? '',
+            ]);
+
+            // Create test transport
+            $transport = app('mail.manager')->createSymfonyTransport([
+                'transport' => 'smtp',
+                'host' => $config['host'],
+                'port' => $config['port'] ?? 587,
+                'encryption' => $config['encryption'] ?? 'tls',
+                'username' => $config['username'],
+                'password' => $config['password'] ?? '',
+            ]);
+
+            // Test the connection
+            $transport->start();
+
+            // Restore original config
+            config(['mail.mailers.smtp' => $originalConfig]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'SMTP connection successful!'
+            ]);
+
+        } catch (\Exception $e) {
+            // Restore original config on error
+            if (isset($originalConfig)) {
+                config(['mail.mailers.smtp' => $originalConfig]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'SMTP connection failed: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Test IMAP connection
+     */
+    public function testImapConnection(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        try {
+            $config = $team->getIncomingEmailConfig();
+
+            if (empty($config['host']) || empty($config['username'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'IMAP configuration is incomplete. Please configure host and username.'
+                ]);
+            }
+
+            $connectionString = "{{$config['host']}:{$config['port']}/imap";
+
+            if ($config['encryption'] === 'ssl') {
+                $connectionString .= '/ssl';
+            } elseif ($config['encryption'] === 'tls') {
+                $connectionString .= '/tls';
+            }
+
+            $connectionString .= '/novalidate-cert}';
+
+            // Test IMAP connection
+            $connection = @imap_open($connectionString, $config['username'], $config['password'] ?? '');
+
+            if ($connection) {
+                imap_close($connection);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'IMAP connection successful!'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'IMAP connection failed: ' . imap_last_error()
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'IMAP connection failed: ' . $e->getMessage()
+            ]);
+        }
+    }
 }
