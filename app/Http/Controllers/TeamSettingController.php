@@ -879,9 +879,10 @@ class TeamSettingController extends Controller
             // Clean up test product
             \Stripe\Product::update($testProduct->id, ['active' => false]);
 
+            $accountName = $account->display_name ?? $account->business_profile->name ?? 'Account';
             return response()->json([
                 'success' => true,
-                'message' => "Stripe connection successful! Account: {$account->display_name} ({$account->country})"
+                'message' => "Stripe connection successful! Account: {$accountName} ({$account->country})"
             ]);
 
         } catch (\Stripe\Exception\AuthenticationException $e) {

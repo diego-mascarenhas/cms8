@@ -20,6 +20,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Notification Email
+    |--------------------------------------------------------------------------
+    |
+    | This email address will receive system reports and monitoring alerts.
+    |
+    */
+
+    'notification_email' => env('NOTIFICATION_EMAIL', 'diego.mascarenhas@icloud.com'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |
