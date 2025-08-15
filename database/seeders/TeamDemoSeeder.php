@@ -124,10 +124,12 @@ class TeamDemoSeeder extends Seeder
 
         // Create demo template and messages for team 1
         $this->createSimpleDemoTemplate();
-        $this->createDemoMessages();
 
-        // Create Staff category and contacts
+        // Create Staff category and contacts FIRST
         $this->createStaffCategoryAndContacts();
+
+        // Create demo messages WITH Staff category assigned
+        $this->createDemoMessages();
     }
 
     private function seedDemoServices(): void
@@ -2079,6 +2081,11 @@ class TeamDemoSeeder extends Seeder
         // Get the demo template we just created
         $demoTemplate = \App\Models\Template::where('name', 'Demo')->first();
 
+        // Get Staff category that was just created
+        $staffCategory = Category::where('name', 'Staff')
+            ->where('team_id', 1)
+            ->first();
+
         if ($demoTemplate) {
             \App\Models\Message::firstOrCreate(
                 [
@@ -2102,9 +2109,16 @@ class TeamDemoSeeder extends Seeder
                     'text' => 'Demo Newsletter Campaign using simple template with {{name}} variable',
                     'type_id' => 1,
                     'template_id' => $demoTemplate->id,
+                    'category_id' => $staffCategory?->id, // ✅ Asignar categoría Staff
                     'status_id' => 2,
                 ]
             );
+
+            if ($staffCategory) {
+                $this->command->info("✅ Newsletter Demo assigned to Staff category (ID: {$staffCategory->id})");
+            } else {
+                $this->command->warn('⚠️  Staff category not found for Newsletter Demo');
+            }
         } else {
             $this->command->warn('⚠️  Demo template not found, skipping message creation');
         }
