@@ -76,6 +76,16 @@ class MessageController extends Controller
 		// Obtener el mensaje
 		$message = Message::findOrFail($id);
 
+		// Obtener configuración de correo saliente del team
+		$team = auth()->user()->currentTeam;
+		$emailConfig = $team->getOutgoingEmailConfig();
+
+		// Contar contactos que coinciden con la categoría del mensaje
+		$contactsInCategory = 0;
+		if ($message->category) {
+			$contactsInCategory = $message->category->contacts()->count();
+		}
+
 		// Obtener estadísticas reales (ejemplo: sumarización de deliveries)
 		$stats = [
 			'subscribers' => MessageDelivery::where('message_id', $message->id)->count(),
@@ -121,6 +131,8 @@ class MessageController extends Controller
 			'stats_db' => $stats_db,
 			'deliveries' => $deliveries,
 			'links' => $links,
+			'emailConfig' => $emailConfig,
+			'contactsInCategory' => $contactsInCategory,
 		]);
 	}
 

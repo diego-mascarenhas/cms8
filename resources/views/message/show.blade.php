@@ -24,9 +24,15 @@
 			<div class="card-header">General Information</div>
 			<div class="card-body">
 				<div class="mb-2"><strong>Subject:</strong> {{ $message->name }}</div>
-				<div class="mb-2"><strong>Sender:</strong> revision alpha</div>
-				<div class="mb-2"><strong>Sender Email:</strong> info@revisionalpha.com</div>
-				<div class="mb-2"><strong>List:</strong> Confirmed Contacts</div>
+				<div class="mb-2"><strong>Sender:</strong> {{ $emailConfig['from_name'] ?? 'Not configured' }}</div>
+				<div class="mb-2"><strong>Sender Email:</strong> {{ $emailConfig['from_address'] ?? 'Not configured' }}</div>
+								<div class="mb-2"><strong>Category:</strong>
+					@if($message->category)
+						{{ $message->category->name }}
+					@else
+						All contacts
+					@endif
+				</div>
 			</div>
 		</div>
 	</div>
