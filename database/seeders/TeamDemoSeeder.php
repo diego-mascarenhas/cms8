@@ -20,6 +20,7 @@ use App\Models\PaymentAccount;
 use App\Models\PaymentType;
 use App\Models\Project;
 use App\Models\Service;
+use App\Models\Message;
 use App\Models\Software;
 use App\Models\Template;
 use App\Models\Team;
@@ -1943,7 +1944,7 @@ class TeamDemoSeeder extends Seeder
         $team = \App\Models\Team::find(1);
         if (!$team) {
             $this->command->info('🏢 Creating Demo team...');
-            
+
             // Create a user first for team ownership
             $user = \App\Models\User::firstOrCreate(
                 ['email' => 'admin@example.com'],
@@ -1982,9 +1983,9 @@ class TeamDemoSeeder extends Seeder
                 'status_id' => 1,
                 'gjs_data' => [
                     'css' => '* { box-sizing: border-box; } body {margin: 0;}.gjs-row{display:table;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;width:100%;}.gjs-cell{width:8%;display:table-cell;height:75px;}#ix12{padding:10px;}@media (max-width: 768px){.gjs-cell{width:100%;display:block;}}',
-                    
+
                     'html' => '<body><div class="gjs-row"><div class="gjs-cell"><div id="ix12">Bienvenido <b>{{name}}</b>, esta es un envío de prueba.</div></div></div></body>',
-                    
+
                     'styles' => [
                         [
                             'selectors' => [['name' => 'gjs-row', 'private' => 1]],
@@ -2021,7 +2022,7 @@ class TeamDemoSeeder extends Seeder
                             ]
                         ]
                     ],
-                    
+
                     'components' => [
                         [
                             'name' => 'Row',
@@ -2065,5 +2066,46 @@ class TeamDemoSeeder extends Seeder
                 ]
             ]
         );
+    }
+
+    /**
+     * Create demo messages for team 1
+     */
+    private function createDemoMessages(): void
+    {
+        $this->command->info('📧 Creating demo messages...');
+
+        // Get the demo template we just created
+        $demoTemplate = \App\Models\Template::where('name', 'Demo')->first();
+
+        if ($demoTemplate) {
+            \App\Models\Message::firstOrCreate(
+                [
+                    'name' => 'Test Message',
+                    'team_id' => 1,
+                ],
+                [
+                    'text' => 'Test Message with Demo Template',
+                    'type_id' => 2,
+                    'template_id' => $demoTemplate->id,
+                    'status_id' => 1,
+                ]
+            );
+
+            \App\Models\Message::firstOrCreate(
+                [
+                    'name' => 'Newsletter Demo',
+                    'team_id' => 1,
+                ],
+                [
+                    'text' => 'Demo Newsletter Campaign using simple template with {{name}} variable',
+                    'type_id' => 1,
+                    'template_id' => $demoTemplate->id,
+                    'status_id' => 2,
+                ]
+            );
+        } else {
+            $this->command->warn('⚠️  Demo template not found, skipping message creation');
+        }
     }
 }

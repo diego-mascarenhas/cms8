@@ -18,8 +18,6 @@ class DatabaseSeeder extends Seeder
 		$this->call([
 			CurrencySeeder::class,
 			MessageTypeSeeder::class,
-			TemplateSeeder::class,
-			MessageSeeder::class,
 			PageSeeder::class,
 			RolesAndPermissionsSeeder::class,
 			PolicySeeder::class,
