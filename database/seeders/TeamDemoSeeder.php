@@ -21,6 +21,7 @@ use App\Models\PaymentType;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\Message;
+use App\Models\Module;
 use App\Models\Software;
 use App\Models\Template;
 use App\Models\Team;
@@ -124,6 +125,9 @@ class TeamDemoSeeder extends Seeder
         // Create demo template and messages for team 1
         $this->createSimpleDemoTemplate();
         $this->createDemoMessages();
+
+        // Create Staff category and contacts
+        $this->createStaffCategoryAndContacts();
     }
 
     private function seedDemoServices(): void
@@ -2104,5 +2108,112 @@ class TeamDemoSeeder extends Seeder
         } else {
             $this->command->warn('⚠️  Demo template not found, skipping message creation');
         }
+    }
+
+    /**
+     * Create Staff category and contacts for team 1
+     */
+    private function createStaffCategoryAndContacts(): void
+    {
+        $this->command->info('👥 Creating contact categories and staff contacts...');
+
+        // Get contacts module
+        $contactsModule = Module::where('key', 'contacts')->first();
+        if (!$contactsModule) {
+            $this->command->warn('⚠️  Contacts module not found, skipping staff creation');
+            return;
+        }
+
+        // 1. Create main contact category
+        $mainContactCategory = Category::updateOrCreate(
+            [
+                'name' => 'Contactos',
+                'module_id' => $contactsModule->id,
+                'team_id' => 1,
+                'parent_id' => null,
+            ],
+            [
+                'description' => 'Categoría principal para contactos',
+                'status' => 1,
+            ]
+        );
+
+        $this->command->info("✅ Main category created: {$mainContactCategory->name} (ID: {$mainContactCategory->id})");
+
+        // 2. Create Staff subcategory with parent_id pointing to main category
+        $staffCategory = Category::updateOrCreate(
+            [
+                'name' => 'Staff',
+                'module_id' => $contactsModule->id,
+                'team_id' => 1,
+            ],
+            [
+                'description' => 'Contactos internos del equipo',
+                'parent_id' => $mainContactCategory->id,
+                'status' => 1,
+            ]
+        );
+
+        $this->command->info("✅ Staff subcategory created: {$staffCategory->name} (ID: {$staffCategory->id}) -> Parent: {$mainContactCategory->name}");
+
+        // Staff contacts to create
+        $staffContacts = [
+            [
+                'name' => 'REVISION ALPHA',
+                'surname' => 'Hotmail',
+                'email' => 'revisionalpha@hotmail.com',
+            ],
+            [
+                'name' => 'REVISION ALPHA',
+                'surname' => 'Gmail',
+                'email' => 'revisionalpha@gmail.com',
+            ],
+            [
+                'name' => 'REVISION ALPHA',
+                'surname' => 'Info',
+                'email' => 'info@revisionalpha.com',
+            ],
+            [
+                'name' => 'REVISION ALPHA',
+                'surname' => 'Webmaster',
+                'email' => 'webmaster@revisionalpha.cloud',
+            ],
+            [
+                'name' => 'REVISION ALPHA',
+                'surname' => 'Admin',
+                'email' => 'administracion@revisionalpha.es',
+            ],
+        ];
+
+        $created = 0;
+        foreach ($staffContacts as $contactData) {
+            // Create or find contact
+            $contact = Contact::firstOrCreate(
+                [
+                    'email' => $contactData['email'],
+                    'team_id' => 1,
+                ],
+                [
+                    'name' => $contactData['name'],
+                    'surname' => $contactData['surname'],
+                    'creator_id' => 1,
+                    'responsible_id' => 1,
+                    'status_id' => 1,
+                ]
+            );
+
+            // Assign Staff category to contact
+            if (!$contact->categories()->where('category_id', $staffCategory->id)->exists()) {
+                $contact->categories()->attach($staffCategory->id);
+                $this->command->info("  ✅ Assigned Staff category to: {$contact->email}");
+            } else {
+                $this->command->info("  ⏭️  Contact already has Staff category: {$contact->email}");
+            }
+
+            $created++;
+        }
+
+        $this->command->info("✅ Staff contacts processed: {$created} total");
+        $this->command->info("📧 Staff emails ready for newsletter campaigns!");
     }
 }
