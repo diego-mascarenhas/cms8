@@ -827,4 +827,83 @@ class TeamSettingController extends Controller
             ]);
         }
     }
+
+        /**
+     * Test Stripe connection
+     */
+    public function testStripeConnection(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        try {
+            $publicKey = $team->getSetting('stripe_public');
+            $secretKey = $team->getSetting('stripe_secret');
+
+            if (empty($publicKey) || empty($secretKey)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Stripe configuration is incomplete. Please configure both public and secret keys.'
+                ]);
+            }
+
+            // Validate key format first
+            if (!str_starts_with($publicKey, 'pk_')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid public key format. Must start with pk_'
+                ]);
+            }
+
+            if (!str_starts_with($secretKey, 'sk_')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid secret key format. Must start with sk_'
+                ]);
+            }
+
+            // Test Stripe API with more comprehensive checks
+            \Stripe\Stripe::setApiKey($secretKey);
+
+            // Try multiple API calls to ensure credentials are valid
+            $account = \Stripe\Account::retrieve();
+
+            // Additional validation - try to list payment methods (requires valid keys)
+            $paymentMethods = \Stripe\PaymentMethod::all(['limit' => 1]);
+
+            // Try to create a test product (and immediately delete it)
+            $testProduct = \Stripe\Product::create([
+                'name' => 'Test Connection Product - Delete Me',
+                'type' => 'service',
+            ]);
+
+            // Clean up test product
+            \Stripe\Product::update($testProduct->id, ['active' => false]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Stripe connection successful! Account: {$account->display_name} ({$account->country})"
+            ]);
+
+        } catch (\Stripe\Exception\AuthenticationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe authentication failed: Invalid API keys'
+            ]);
+        } catch (\Stripe\Exception\InvalidRequestException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe request failed: ' . $e->getMessage()
+            ]);
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe API error: ' . $e->getMessage()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe connection failed: ' . $e->getMessage()
+            ]);
+        }
+    }
 }
