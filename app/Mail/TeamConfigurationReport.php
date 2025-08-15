@@ -28,9 +28,9 @@ class TeamConfigurationReport extends Mailable
     /**
      * Get the message envelope.
      */
-    public function envelope(): Envelope
+        public function envelope(): Envelope
     {
-        $teamName = $this->teamResult['team_name'];
+        $teamName = html_entity_decode($this->teamResult['team_name'], ENT_QUOTES, 'UTF-8');
         $failedCount = $this->teamResult['summary']['failed'];
 
         if ($failedCount > 0) {
@@ -50,7 +50,7 @@ class TeamConfigurationReport extends Mailable
     public function content(): Content
     {
         return new Content(
-            text: 'emails.team-configuration-report-text',
+            view: 'emails.team-configuration-report',
         );
     }
 

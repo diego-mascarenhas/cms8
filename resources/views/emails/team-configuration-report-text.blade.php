@@ -1,4 +1,4 @@
-# {{ $teamResult['team_name'] }} - Configuration Report
+# {{ html_entity_decode($teamResult['team_name'], ENT_QUOTES, 'UTF-8') }} - Configuration Report
 
 Generated on: {{ now()->format('Y-m-d H:i:s') }}
 
