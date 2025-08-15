@@ -27,8 +27,10 @@ class MessageDeliveries extends Component
                     'id' => $delivery->id,
                     'contact_name' => $delivery->contact ? $delivery->contact->name : '-',
                     'contact_email' => $delivery->contact ? $delivery->contact->email : '-',
-                    'sent_at' => $delivery->sent_at ? $delivery->sent_at->format('Y-m-d H:i:s') : null,
-                    'delivered_at' => $delivery->delivered_at ? $delivery->delivered_at->format('Y-m-d H:i:s') : null,
+                    'sent_at' => $delivery->sent_at ?
+                        (is_string($delivery->sent_at) ? $delivery->sent_at : $delivery->sent_at->format('Y-m-d H:i:s')) : null,
+                    'delivered_at' => $delivery->delivered_at ?
+                        (is_string($delivery->delivered_at) ? $delivery->delivered_at : $delivery->delivered_at->format('Y-m-d H:i:s')) : null,
                     'status' => $this->getStatusBadge($delivery),
                     'status_text' => $this->getStatusText($delivery)
                 ];

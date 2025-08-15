@@ -17,13 +17,13 @@ class MessageDelivery extends Model
 		'sent_at',
 		'delivered_at',
 		'removed_at',
-		'status',
+		'status_id',
 	];
 
-	protected $dates = [
-		'sent_at',
-		'delivered_at',
-		'removed_at',
+	protected $casts = [
+		'sent_at' => 'datetime',
+		'delivered_at' => 'datetime',
+		'removed_at' => 'datetime',
 	];
 
 	public function team()
