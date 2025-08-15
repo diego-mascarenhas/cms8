@@ -34,9 +34,60 @@
                             {{ $group['title'] }}
                         </h5>
                         <div class="card-body">
+                            @php
+                                // Group fields by section and row to determine column classes
+                                $fieldsByRow = [];
+                                foreach ($group['settings'] as $key => $setting) {
+                                    $section = $setting['section'] ?? 'default';
+                                    $row = $setting['row'] ?? 1;
+                                    $fieldsByRow[$section][$row][] = $key;
+                                }
+                            @endphp
+
                             <div class="row">
+                                @php $currentSection = null; @endphp
                                 @foreach ($group['settings'] as $key => $setting)
-                                    <div class="mb-3 col-md-6">
+                                    @if(isset($setting['section']) && $setting['section'] !== $currentSection)
+                                        @if($currentSection !== null)
+                                            {{-- Close previous row and add separator --}}
+                                            </div>
+                                            <hr class="my-4">
+                                            <div class="row">
+                                        @endif
+                                        @php $currentSection = $setting['section']; @endphp
+
+                                        {{-- Add section title --}}
+                                        @if($setting['section'] === 'outgoing')
+                                            <div class="col-12 mb-3">
+                                                <h6 class="text-muted mb-0">📤 Outgoing Email (SMTP)</h6>
+                                            </div>
+                                        @elseif($setting['section'] === 'incoming')
+                                            <div class="col-12 mb-3">
+                                                <h6 class="text-muted mb-0">📥 Incoming Email (IMAP)</h6>
+                                            </div>
+                                        @endif
+                                    @endif
+
+                                    @php
+                                        // Determine column class based on field type and position in row
+                                        $section = $setting['section'] ?? 'default';
+                                        $row = $setting['row'] ?? 1;
+                                        $fieldsInRow = count($fieldsByRow[$section][$row] ?? []);
+
+                                        // Special layout for server configuration rows (host, port, encryption)
+                                        if ($fieldsInRow === 3 && (str_contains($key, 'host') || str_contains($key, 'port') || str_contains($key, 'encryption'))) {
+                                            if (str_contains($key, 'host')) {
+                                                $colClass = 'col-md-6'; // Host gets 50%
+                                            } else {
+                                                $colClass = 'col-md-3'; // Port and Encryption get 25% each
+                                            }
+                                        } else {
+                                            // Standard layout: 2 fields = 50% each, 3 fields = 33% each
+                                            $colClass = $fieldsInRow === 3 ? 'col-md-4' : 'col-md-6';
+                                        }
+                                    @endphp
+
+                                    <div class="mb-3 {{ $colClass }}">
                                         <label for="{{ $key }}" class="form-label">{{ $setting['label'] }}</label>
 
                                         @if($setting['type'] === 'select' && isset($setting['options']))

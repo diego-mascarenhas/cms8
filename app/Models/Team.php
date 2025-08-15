@@ -239,4 +239,85 @@ class Team extends JetstreamTeam
     {
         return !empty($this->getSetting('twilio_sid')) && !empty($this->getSetting('twilio_token'));
     }
+
+    /**
+     * Get outgoing email configuration for this team (with fallbacks to .env).
+     */
+    public function getOutgoingEmailConfig()
+    {
+        return [
+            'host' => $this->getSetting('mail_host', env('MAIL_HOST')),
+            'port' => $this->getSetting('mail_port', env('MAIL_PORT')),
+            'username' => $this->getSetting('mail_username', env('MAIL_USERNAME')),
+            'password' => $this->getSetting('mail_password', env('MAIL_PASSWORD')),
+            'encryption' => $this->getSetting('mail_encryption', env('MAIL_ENCRYPTION')),
+            'from_address' => $this->getSetting('mail_from_address', env('MAIL_FROM_ADDRESS')),
+            'from_name' => $this->getSetting('mail_from_name', env('MAIL_FROM_NAME')),
+        ];
+    }
+
+    /**
+     * Get incoming email configuration for this team.
+     */
+    public function getIncomingEmailConfig()
+    {
+        return [
+            'host' => $this->getSetting('imap_host'),
+            'port' => $this->getSetting('imap_port', '993'),
+            'username' => $this->getSetting('imap_username'),
+            'password' => $this->getSetting('imap_password'),
+            'encryption' => $this->getSetting('imap_encryption', 'ssl'),
+        ];
+    }
+
+    /**
+     * Check if outgoing email is configured for this team.
+     */
+    public function hasOutgoingEmailConfig()
+    {
+        $config = $this->getOutgoingEmailConfig();
+        return !empty($config['host']) && !empty($config['username']);
+    }
+
+    /**
+     * Check if incoming email is configured for this team.
+     */
+    public function hasIncomingEmailConfig()
+    {
+        return !empty($this->getSetting('imap_host')) && !empty($this->getSetting('imap_username'));
+    }
+
+    // Backwards compatibility methods (deprecated)
+
+    /**
+     * @deprecated Use getOutgoingEmailConfig() instead
+     */
+    public function getEmailConfig()
+    {
+        return $this->getOutgoingEmailConfig();
+    }
+
+    /**
+     * @deprecated Use getIncomingEmailConfig() instead
+     */
+    public function getImapConfig()
+    {
+        return $this->getIncomingEmailConfig();
+    }
+
+    /**
+     * @deprecated Use hasOutgoingEmailConfig() instead
+     */
+    public function hasEmailConfig()
+    {
+        return $this->hasOutgoingEmailConfig();
+    }
+
+    /**
+     * @deprecated Use hasIncomingEmailConfig() instead
+     */
+    public function hasImapConfig()
+    {
+        return $this->hasIncomingEmailConfig();
+    }
 }
