@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
+use App\Models\Team;
 use App\Models\Category;
 use App\Models\Certification;
 use App\Models\Contact;
@@ -18,14 +20,19 @@ use App\Models\InvoiceType;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
+use App\Models\Currency;
+use App\Models\Product;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\Message;
 use App\Models\Module;
 use App\Models\Software;
 use App\Models\Template;
-use App\Models\Team;
-use App\Models\User;
+use App\Models\LanguageVariant;
+use App\Models\ContactLanguageVariant;
+use App\Models\ProjectFare;
+use App\Models\Unit;
+use App\Models\ContactProject;
 use Database\Factories\ClientFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -137,7 +144,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('🛠️ Creating demo services for Team 1...');
 
         // Hosting services (annual, active)
-        \App\Models\Service::factory()
+        Service::factory()
             ->forTeam1()
             ->active()
             ->hosting()
@@ -145,19 +152,19 @@ class TeamDemoSeeder extends Seeder
             ->create();
 
         // Generic active services
-        \App\Models\Service::factory()
+        Service::factory()
             ->forTeam1()
             ->active()
             ->count(15)
             ->create();
 
         // Mixed operation services (buy/sell)
-        \App\Models\Service::factory()
+        Service::factory()
             ->forTeam1()
             ->count(10)
             ->create();
 
-        $total = \App\Models\Service::whereHas('enterprise', function ($q) {
+        $total = Service::whereHas('enterprise', function ($q) {
             $q->where('team_id', 1);
         })->count();
         $this->command->info("✅ Demo services created for Team 1. Total services: {$total}");
@@ -168,16 +175,16 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('🏷️ Creating demo billing addresses and invoices...');
 
         // Ensure we have a tax status type to reference
-        $taxStatuses = \App\Models\EnterpriseTaxStatusType::pluck('id')->all();
+        $taxStatuses = EnterpriseTaxStatusType::pluck('id')->all();
         if (empty($taxStatuses)) {
             $this->call(EnterpriseTaxStatusTypeSeeder::class);
-            $taxStatuses = \App\Models\EnterpriseTaxStatusType::pluck('id')->all();
+            $taxStatuses = EnterpriseTaxStatusType::pluck('id')->all();
         }
 
         // Create one billing address per enterprise (team 1)
-        $enterprises = \App\Models\Enterprise::where('team_id', 1)->get();
+        $enterprises = Enterprise::where('team_id', 1)->get();
         foreach ($enterprises as $enterprise) {
-            \App\Models\EnterpriseBillingAddress::firstOrCreate(
+            EnterpriseBillingAddress::firstOrCreate(
                 [
                     'enterprise_id' => $enterprise->id,
                     'name' => $enterprise->name.' Billing',
@@ -196,13 +203,13 @@ class TeamDemoSeeder extends Seeder
         }
 
         // Create invoices with items for 10 random enterprises
-        $invoiceType = \App\Models\InvoiceType::first();
+        $invoiceType = InvoiceType::first();
         $targets = $enterprises->random(min(10, max(1, $enterprises->count())));
         foreach ($targets as $enterprise) {
-            $billing = \App\Models\EnterpriseBillingAddress::where('enterprise_id', $enterprise->id)->first();
+            $billing = EnterpriseBillingAddress::where('enterprise_id', $enterprise->id)->first();
 
             // Build diverse items from fares (services) of the team when possible
-            $fares = \App\Models\Fare::where('team_id', 1)->inRandomOrder()->take(3)->get();
+            $fares = Fare::where('team_id', 1)->inRandomOrder()->take(3)->get();
             $items = [];
             foreach ($fares as $fare) {
                 $items[] = [
@@ -228,7 +235,7 @@ class TeamDemoSeeder extends Seeder
             $discount = 0;
             $total = $gross; // taxes not included in this simple example
 
-            $invoice = \App\Models\Invoice::create([
+            $invoice = Invoice::create([
                 'enterprise_id' => $enterprise->id,
                 'billing_id' => $billing?->id,
                 'type_id' => $invoiceType?->id ?? 1,
@@ -244,13 +251,13 @@ class TeamDemoSeeder extends Seeder
             ]);
 
             foreach ($items as $it) {
-                \App\Models\InvoiceItem::create(array_merge($it, [
+                InvoiceItem::create(array_merge($it, [
                     'invoice_id' => $invoice->id,
                 ]));
             }
         }
 
-        $count = \App\Models\Invoice::count();
+        $count = Invoice::count();
         $this->command->info("✅ Demo invoices created. Total invoices: {$count}");
     }
 
@@ -262,7 +269,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('💳 Creating demo payment accounts and payments for Team 1...');
 
         // Ensure payment accounts exist for Team 1
-        $accountsBefore = \App\Models\PaymentAccount::where('team_id', 1)->count();
+        $accountsBefore = PaymentAccount::where('team_id', 1)->count();
         if ($accountsBefore === 0) {
             $this->call(PaymentAccountSeeder::class);
         }
@@ -270,8 +277,8 @@ class TeamDemoSeeder extends Seeder
         // Create sample payments for Team 1
         $this->call(PaymentSeeder::class);
 
-        $accountsAfter = \App\Models\PaymentAccount::where('team_id', 1)->count();
-        $payments = \App\Models\Payment::where('team_id', 1)->count();
+        $accountsAfter = PaymentAccount::where('team_id', 1)->count();
+        $payments = Payment::where('team_id', 1)->count();
 
         $this->command->info("✅ Demo payments ready. Accounts: {$accountsAfter}, Payments: {$payments}");
     }
@@ -284,7 +291,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('🌍 Creating demo language variants...');
 
         // Check if team 1 already has language variants
-        $existingVariants = \App\Models\LanguageVariant::where('team_id', 1)->count();
+        $existingVariants = LanguageVariant::where('team_id', 1)->count();
         if ($existingVariants > 0) {
             $this->command->warn("⚠️ Team 1 already has {$existingVariants} language variants. Skipping creation.");
 
@@ -315,7 +322,7 @@ class TeamDemoSeeder extends Seeder
 
         foreach ($demoVariants as $variant) {
             // Check if variant already exists for team 1
-            $existingVariant = \App\Models\LanguageVariant::where('code', $variant['code'])
+            $existingVariant = LanguageVariant::where('code', $variant['code'])
                 ->where('team_id', 1)
                 ->first();
 
@@ -324,7 +331,7 @@ class TeamDemoSeeder extends Seeder
                 $this->command->info("⏭️ Skipped existing variant: {$variant['code']}");
             } else {
                 // Create new variant for team 1
-                \App\Models\LanguageVariant::create([
+                LanguageVariant::create([
                     'code' => $variant['code'],
                     'name' => $variant['name'],
                     'country_code' => $variant['country_code'],
@@ -340,7 +347,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('📊 Demo language variants creation summary:');
         $this->command->info("   - New variants created: {$created}");
         $this->command->info("   - Variants skipped: {$skipped}");
-        $this->command->info('   - Total variants for team 1: '.\App\Models\LanguageVariant::where('team_id', 1)->count());
+        $this->command->info('   - Total variants for team 1: '.LanguageVariant::where('team_id', 1)->count());
         $this->command->info('✅ Demo language variants creation completed successfully!');
     }
 
@@ -352,12 +359,12 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('🔗 Assigning language variants to project services...');
 
         // Get common language variants for team 1
-        $enUS = \App\Models\LanguageVariant::where('code', 'en-US')->where('team_id', 1)->first();
-        $enGB = \App\Models\LanguageVariant::where('code', 'en-GB')->where('team_id', 1)->first();
-        $esES = \App\Models\LanguageVariant::where('code', 'es-ES')->where('team_id', 1)->first();
-        $esMX = \App\Models\LanguageVariant::where('code', 'es-MX')->where('team_id', 1)->first();
-        $frFR = \App\Models\LanguageVariant::where('code', 'fr-FR')->where('team_id', 1)->first();
-        $deDE = \App\Models\LanguageVariant::where('code', 'de-DE')->where('team_id', 1)->first();
+        $enUS = LanguageVariant::where('code', 'en-US')->where('team_id', 1)->first();
+        $enGB = LanguageVariant::where('code', 'en-GB')->where('team_id', 1)->first();
+        $esES = LanguageVariant::where('code', 'es-ES')->where('team_id', 1)->first();
+        $esMX = LanguageVariant::where('code', 'es-MX')->where('team_id', 1)->first();
+        $frFR = LanguageVariant::where('code', 'fr-FR')->where('team_id', 1)->first();
+        $deDE = LanguageVariant::where('code', 'de-DE')->where('team_id', 1)->first();
 
         // Check if variants exist
         if (! $enUS || ! $esES) {
@@ -367,7 +374,7 @@ class TeamDemoSeeder extends Seeder
         }
 
         // Get all project fares (services) for team 1 that don't have language variants
-        $projectFares = \App\Models\ProjectFare::whereHas('project', function ($query) {
+        $projectFares = ProjectFare::whereHas('project', function ($query) {
             $query->where('team_id', 1);
         })->whereNull('source_language_code')
             ->whereNull('target_language_code')
@@ -409,7 +416,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('📊 Language variants assignment summary:');
         $this->command->info("   - Services updated: {$updated}");
         $this->command->info("   - Services skipped: {$skipped}");
-        $this->command->info('   - Total project services with variants: '.\App\Models\ProjectFare::whereHas('project', function ($query) {
+        $this->command->info('   - Total project services with variants: '.ProjectFare::whereHas('project', function ($query) {
             $query->where('team_id', 1);
         })->whereNotNull('source_language_code')->whereNotNull('target_language_code')->count());
         $this->command->info('✅ Language variants assignment completed successfully!');
@@ -448,7 +455,7 @@ class TeamDemoSeeder extends Seeder
         $skipped = 0;
 
         // Get all project fares for team 1
-        $projectFares = \App\Models\ProjectFare::whereHas('project', function ($query) {
+        $projectFares = ProjectFare::whereHas('project', function ($query) {
             $query->where('team_id', 1);
         })->get();
 
@@ -460,7 +467,7 @@ class TeamDemoSeeder extends Seeder
             if (isset($languageMapping[$projectFare->source_language_code])) {
                 $newSourceCode = $languageMapping[$projectFare->source_language_code];
                 // Verify the variant exists for team 1
-                $variantExists = \App\Models\LanguageVariant::where('code', $newSourceCode)
+                $variantExists = LanguageVariant::where('code', $newSourceCode)
                     ->where('team_id', 1)
                     ->exists();
 
@@ -474,7 +481,7 @@ class TeamDemoSeeder extends Seeder
             if (isset($languageMapping[$projectFare->target_language_code])) {
                 $newTargetCode = $languageMapping[$projectFare->target_language_code];
                 // Verify the variant exists for team 1
-                $variantExists = \App\Models\LanguageVariant::where('code', $newTargetCode)
+                $variantExists = LanguageVariant::where('code', $newTargetCode)
                     ->where('team_id', 1)
                     ->exists();
 
@@ -508,7 +515,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('👥 Creating demo collaborators with language variants...');
 
         // Get language variants for team 1
-        $languageVariants = \App\Models\LanguageVariant::where('team_id', 1)->get();
+        $languageVariants = LanguageVariant::where('team_id', 1)->get();
         if ($languageVariants->isEmpty()) {
             $this->command->warn('⚠️ No language variants found for team 1. Skipping collaborators creation.');
 
@@ -629,7 +636,7 @@ class TeamDemoSeeder extends Seeder
 
         foreach ($demoCollaborators as $collaboratorData) {
             // Check if collaborator already exists
-            $existingCollaborator = \App\Models\Contact::where('email', $collaboratorData['email'])
+            $existingCollaborator = Contact::where('email', $collaboratorData['email'])
                 ->where('team_id', 1)
                 ->first();
 
@@ -641,7 +648,7 @@ class TeamDemoSeeder extends Seeder
             }
 
             // Create collaborator
-            $collaborator = \App\Models\Contact::create([
+            $collaborator = Contact::create([
                 'name' => $collaboratorData['name'],
                 'email' => $collaboratorData['email'],
                 'phone' => $collaboratorData['phone'],
@@ -668,7 +675,7 @@ class TeamDemoSeeder extends Seeder
                         $targetVariant = $languageVariants->where('code', $targetCode)->first();
 
                         if ($sourceVariant && $targetVariant) {
-                            \App\Models\ContactLanguageVariant::create([
+                            ContactLanguageVariant::create([
                                 'contact_id' => $collaborator->id,
                                 'source_language_code' => $sourceCode,
                                 'target_language_code' => $targetCode,
@@ -689,7 +696,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('📊 Demo collaborators creation summary:');
         $this->command->info("   - New collaborators created: {$created}");
         $this->command->info("   - Collaborators skipped: {$skipped}");
-        $this->command->info('   - Total collaborators for team 1: '.\App\Models\Contact::where('team_id', 1)->whereHas('languageVariants')->count());
+        $this->command->info('   - Total collaborators for team 1: '.Contact::where('team_id', 1)->whereHas('languageVariants')->count());
         $this->command->info('✅ Demo collaborators creation completed successfully!');
     }
 
@@ -701,14 +708,14 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('🔍 Ensuring service language coverage...');
 
         // Get all project services for team 1
-        $projectServices = \App\Models\ProjectFare::whereHas('project', function ($query) {
+        $projectServices = ProjectFare::whereHas('project', function ($query) {
             $query->where('team_id', 1);
         })->whereNotNull('source_language_code')
             ->whereNotNull('target_language_code')
             ->get();
 
         // Get all collaborators with their language variants
-        $collaborators = \App\Models\Contact::with(['languageVariants'])
+        $collaborators = Contact::with(['languageVariants'])
             ->where('team_id', 1)
             ->whereHas('languageVariants')
             ->get();
@@ -769,10 +776,10 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('📋 Assigning collaborators to projects (95% acceptance rate)...');
 
         // Get all projects for team 1
-        $projects = \App\Models\Project::where('team_id', 1)->get();
+        $projects = Project::where('team_id', 1)->get();
 
         // Get all collaborators
-        $collaborators = \App\Models\Contact::where('team_id', 1)
+        $collaborators = Contact::where('team_id', 1)
             ->whereHas('languageVariants')
             ->get();
 
@@ -793,7 +800,7 @@ class TeamDemoSeeder extends Seeder
 
             foreach ($selectedCollaborators as $collaborator) {
                 // Check if assignment already exists
-                $existingAssignment = \App\Models\ContactProject::where('contact_id', $collaborator->id)
+                $existingAssignment = ContactProject::where('contact_id', $collaborator->id)
                     ->where('project_id', $project->id)
                     ->first();
 
@@ -806,7 +813,7 @@ class TeamDemoSeeder extends Seeder
                 $status = $isAccepted ? 'accepted' : 'rejected';
 
                 // Create project assignment
-                \App\Models\ContactProject::create([
+                ContactProject::create([
                     'contact_id' => $collaborator->id,
                     'project_id' => $project->id,
                     'status' => $status,
@@ -845,7 +852,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('👥 Creating additional collaborators for missing language combinations...');
 
         // Get language variants for team 1
-        $languageVariants = \App\Models\LanguageVariant::where('team_id', 1)->get();
+        $languageVariants = LanguageVariant::where('team_id', 1)->get();
 
         // Analyze uncovered combinations to find the most common ones
         $combinationCounts = [];
@@ -884,7 +891,7 @@ class TeamDemoSeeder extends Seeder
             $email = strtolower(str_replace(' ', '.', $collaboratorName)).'.specialist@demo.com';
 
             // Check if collaborator already exists
-            $existingCollaborator = \App\Models\Contact::where('email', $email)
+            $existingCollaborator = Contact::where('email', $email)
                 ->where('team_id', 1)
                 ->first();
 
@@ -893,7 +900,7 @@ class TeamDemoSeeder extends Seeder
             }
 
             // Create collaborator
-            $collaborator = \App\Models\Contact::create([
+            $collaborator = Contact::create([
                 'name' => $collaboratorName,
                 'email' => $email,
                 'phone' => '34600000000', // Generic Spanish number
@@ -908,7 +915,7 @@ class TeamDemoSeeder extends Seeder
             ]);
 
             // Create the specific language combination
-            \App\Models\ContactLanguageVariant::create([
+            ContactLanguageVariant::create([
                 'contact_id' => $collaborator->id,
                 'source_language_code' => $sourceCode,
                 'target_language_code' => $targetCode,
@@ -979,12 +986,12 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('⭐ Creating collaborator ratings and services...');
 
         // Get all collaborators
-        $collaborators = \App\Models\Contact::where('team_id', 1)
+        $collaborators = Contact::where('team_id', 1)
             ->whereHas('languageVariants')
             ->get();
 
         // Get all fares (services) for team 1
-        $fares = \App\Models\Fare::where('team_id', 1)->get();
+        $fares = Fare::where('team_id', 1)->get();
 
         if ($collaborators->isEmpty() || $fares->isEmpty()) {
             $this->command->warn('⚠️ No collaborators or fares found. Skipping ratings and services creation.');
@@ -1056,12 +1063,12 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('🔗 Creating demo fare-unit relationships...');
 
         // Get all units
-        $minuteUnit = \App\Models\Unit::where('type', 'min')->first();
-        $tenMinutesUnit = \App\Models\Unit::where('type', '10 min')->first();
-        $hourUnit = \App\Models\Unit::where('type', 'h')->first();
-        $wordUnit = \App\Models\Unit::where('type', 'pal')->first();
-        $pageUnit = \App\Models\Unit::where('type', 'pág')->first();
-        $rollUnit = \App\Models\Unit::where('type', 'rollo')->first();
+        $minuteUnit = Unit::where('type', 'min')->first();
+        $tenMinutesUnit = Unit::where('type', '10 min')->first();
+        $hourUnit = Unit::where('type', 'h')->first();
+        $wordUnit = Unit::where('type', 'pal')->first();
+        $pageUnit = Unit::where('type', 'pág')->first();
+        $rollUnit = Unit::where('type', 'rollo')->first();
 
         // Check if units exist
         if (! $minuteUnit || ! $tenMinutesUnit || ! $hourUnit || ! $wordUnit || ! $pageUnit || ! $rollUnit) {
@@ -1078,7 +1085,7 @@ class TeamDemoSeeder extends Seeder
         $rollId = $rollUnit->id;
 
         // Get all demo fares (team 1)
-        $demoFares = \App\Models\Fare::where('team_id', 1)->get();
+        $demoFares = Fare::where('team_id', 1)->get();
 
         if ($demoFares->isEmpty()) {
             $this->command->warn('No demo fares found. Skipping fare-unit relationships.');
@@ -1836,7 +1843,7 @@ class TeamDemoSeeder extends Seeder
 
         // Ensure we have categories and currencies
         $categories = Category::where('team_id', 1)->get();
-        $currencies = \App\Models\Currency::all();
+        $currencies = Currency::all();
 
         if ($categories->isEmpty()) {
             $this->command->warn('⚠️ No categories found for Team 1. Creating default category...');
@@ -1851,7 +1858,7 @@ class TeamDemoSeeder extends Seeder
         if ($currencies->isEmpty()) {
             $this->command->warn('⚠️ No currencies found. Creating default currencies...');
             $this->call(\Database\Seeders\CurrencySeeder::class);
-            $currencies = \App\Models\Currency::all();
+            $currencies = Currency::all();
         }
 
         // Get USD currency (or first available)
@@ -1921,12 +1928,12 @@ class TeamDemoSeeder extends Seeder
         $created = 0;
         foreach ($products as $productData) {
             // Check if product already exists
-            $existingProduct = \App\Models\Product::where('name', $productData['name'])
+            $existingProduct = Product::where('name', $productData['name'])
                 ->where('team_id', 1)
                 ->first();
 
             if (! $existingProduct) {
-                \App\Models\Product::create([
+                Product::create([
                     ...$productData,
                     'team_id' => 1,
                     'status' => true,
@@ -1939,7 +1946,7 @@ class TeamDemoSeeder extends Seeder
             }
         }
 
-        $total = \App\Models\Product::where('team_id', 1)->count();
+        $total = Product::where('team_id', 1)->count();
         $this->command->info('📊 Demo products summary:');
         $this->command->info("   - New products created: {$created}");
         $this->command->info("   - Total products for Team 1: {$total}");
@@ -1951,12 +1958,12 @@ class TeamDemoSeeder extends Seeder
      */
     private function ensureDemoTeamExists(): void
     {
-        $team = \App\Models\Team::find(1);
+        $team = Team::find(1);
         if (!$team) {
             $this->command->info('🏢 Creating Demo team...');
 
             // Create a user first for team ownership
-            $user = \App\Models\User::firstOrCreate(
+            $user = User::firstOrCreate(
                 ['email' => 'admin@example.com'],
                 [
                     'name' => 'Admin',
@@ -1966,7 +1973,7 @@ class TeamDemoSeeder extends Seeder
             );
 
             // Create the team
-            $team = \App\Models\Team::create([
+            $team = Team::create([
                 'user_id' => $user->id,
                 'name' => "Demo's Team",
                 'personal_team' => false,
@@ -1984,7 +1991,7 @@ class TeamDemoSeeder extends Seeder
     {
         $this->command->info('📧 Creating simple demo template...');
 
-        $template = \App\Models\Template::firstOrCreate(
+        $template = Template::firstOrCreate(
             [
                 'name' => 'Demo',
                 'team_id' => 1,
@@ -2079,7 +2086,7 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('📧 Creating demo messages...');
 
         // Get the demo template we just created
-        $demoTemplate = \App\Models\Template::where('name', 'Demo')->first();
+        $demoTemplate = Template::where('name', 'Demo')->first();
 
         // Get Staff category that was just created
         $staffCategory = Category::where('name', 'Staff')
@@ -2087,7 +2094,7 @@ class TeamDemoSeeder extends Seeder
             ->first();
 
         if ($demoTemplate) {
-            \App\Models\Message::firstOrCreate(
+            Message::firstOrCreate(
                 [
                     'name' => 'Test Message',
                     'team_id' => 1,
@@ -2100,7 +2107,7 @@ class TeamDemoSeeder extends Seeder
                 ]
             );
 
-            \App\Models\Message::firstOrCreate(
+            Message::firstOrCreate(
                 [
                     'name' => 'Newsletter Demo',
                     'team_id' => 1,
@@ -2109,8 +2116,8 @@ class TeamDemoSeeder extends Seeder
                     'text' => 'Demo Newsletter Campaign using simple template with {{name}} variable',
                     'type_id' => 1,
                     'template_id' => $demoTemplate->id,
-                    'category_id' => $staffCategory?->id, // ✅ Asignar categoría Staff
-                    'status_id' => 2,
+                    'category_id' => $staffCategory?->id,
+                    'status_id' => 0,
                 ]
             );
 
