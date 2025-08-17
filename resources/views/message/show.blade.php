@@ -16,15 +16,22 @@
 			<i class="ti ti-eye me-1"></i>Preview
 		</button>
 
-		<!-- Send/Pause Toggle Button -->
-		@if($message->status_id == 1 && ($stats_db->sent ?? 0) < ($stats_db->subscribers ?? 0))
-			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
-				<i class="ti ti-player-pause me-1"></i>Pause
-			</button>
+		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
+		@if(($emailConfig['from_name'] ?? '') !== 'Not configured' && ($emailConfig['from_address'] ?? '') !== 'Not configured' && !empty($emailConfig['from_name']) && !empty($emailConfig['from_address']))
+			@if($message->status_id == 1 && ($stats_db->sent ?? 0) < ($stats_db->subscribers ?? 0))
+				<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
+					<i class="ti ti-player-pause me-1"></i>Pause
+				</button>
+			@else
+				<button class="btn btn-success me-2" onclick="startCampaign({{ $message->id }})">
+					<i class="ti ti-send me-1"></i>Send Now
+				</button>
+			@endif
 		@else
-			<button class="btn btn-success me-2" onclick="startCampaign({{ $message->id }})">
-				<i class="ti ti-send me-1"></i>Send Now
-			</button>
+			<!-- Show configuration message when sender is not configured -->
+			<span class="text-muted fst-italic me-2">
+				<i class="ti ti-alert-triangle me-1"></i>Configure sender to enable sending
+			</span>
 		@endif
 
 		<a href="{{ route('message-list') }}" class="btn btn-label-secondary">
@@ -41,11 +48,26 @@
 
 		<!-- General Info -->
 		<div class="card mb-4">
-			<div class="card-header">General Information</div>
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<span>General Information</span>
+				@if(($emailConfig['from_name'] ?? '') !== 'Not configured' && ($emailConfig['from_address'] ?? '') !== 'Not configured' && !empty($emailConfig['from_name']) && !empty($emailConfig['from_address']))
+					<button class="btn btn-sm btn-outline-info" onclick="testSend({{ $message->id }})">
+						<i class="ti ti-send-2 me-1"></i>Test Send
+					</button>
+				@endif
+			</div>
 			<div class="card-body">
 				<div class="mb-2"><strong>Subject:</strong> {{ $message->name }}</div>
-				<div class="mb-2"><strong>Sender:</strong> {{ $emailConfig['from_name'] ?? 'Not configured' }}</div>
-				<div class="mb-2"><strong>Sender Email:</strong> {{ $emailConfig['from_address'] ?? 'Not configured' }}</div>
+				<div class="mb-2"><strong>Sender:</strong>
+					<span class="{{ ($emailConfig['from_name'] ?? '') === 'Not configured' ? 'text-danger' : 'text-success' }}">
+						{{ $emailConfig['from_name'] ?? 'Not configured' }}
+					</span>
+				</div>
+				<div class="mb-2"><strong>Sender Email:</strong>
+					<span class="{{ ($emailConfig['from_address'] ?? '') === 'Not configured' ? 'text-danger' : 'text-success' }}">
+						{{ $emailConfig['from_address'] ?? 'Not configured' }}
+					</span>
+				</div>
 				<div class="mb-2"><strong>Category:</strong>
 					@if($message->category)
 						{{ $message->category->name }}
@@ -262,6 +284,81 @@ function pauseCampaign(messageId) {
                 Swal.fire({
                     title: 'Error de conexión',
                     text: 'No se pudo conectar con el servidor',
+                    icon: 'error',
+                    customClass: {
+                        confirmButton: 'btn btn-danger waves-effect waves-light'
+                    },
+                    buttonsStyling: false
+                });
+            });
+        }
+    });
+}
+
+function testSend(messageId) {
+    Swal.fire({
+        title: '🧪 Test Send',
+        text: 'This will send a test email to your current email address',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Send Test Email',
+        cancelButtonText: 'Cancel',
+        customClass: {
+            confirmButton: 'btn btn-info me-3 waves-effect waves-light',
+            cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+        },
+        buttonsStyling: false
+    }).then(function (result) {
+        if (result.isConfirmed) {
+            // Show loading in the current modal
+            Swal.update({
+                title: 'Sending test email...',
+                text: 'Please wait while we process your request',
+                icon: 'info',
+                showConfirmButton: false,
+                showCancelButton: false,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch(`/message/${messageId}/test`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: '✅ Test Email Sent!',
+                        text: `Test email sent successfully to ${data.email}`,
+                        icon: 'success',
+                        customClass: {
+                            confirmButton: 'btn btn-success waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'Error sending test email',
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'Connection Error',
+                    text: 'Could not connect to server',
                     icon: 'error',
                     customClass: {
                         confirmButton: 'btn btn-danger waves-effect waves-light'

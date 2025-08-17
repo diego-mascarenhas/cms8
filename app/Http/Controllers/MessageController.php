@@ -17,6 +17,7 @@ use App\Helpers\TemplateImportHelper;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
+use App\Mail\MessageDeliveryMail;
 
 class MessageController extends Controller
 {
@@ -336,6 +337,71 @@ class MessageController extends Controller
 				'message' => 'Error pausing campaign: ' . $e->getMessage()
 			], 500);
 		}
+	}
+
+	/**
+	 * Send a test email to the current user
+	 */
+	public function testSend(Request $request, $id)
+	{
+		try {
+			$message = Message::findOrFail($id);
+			$user = auth()->user();
+			$team = $user->currentTeam;
+
+			// Verify sender is configured
+			$emailConfig = $team->getOutgoingEmailConfig();
+			if (empty($emailConfig['from_name']) || empty($emailConfig['from_address']) ||
+				$emailConfig['from_name'] === 'Not configured' ||
+				$emailConfig['from_address'] === 'Not configured') {
+				return response()->json([
+					'success' => false,
+					'message' => 'Sender configuration is missing. Please configure your outgoing email settings.'
+				]);
+			}
+
+						// Create test contact data
+			$testContact = new stdClass();
+			$testContact->name = $user->name;
+			$testContact->surname = '';
+			$testContact->email = $user->email;
+			$testContact->id = 'test';
+
+			// Get HTML content for the test (simplified without tracking)
+			$htmlContent = $this->getTestHtmlForContact($message, $testContact);
+
+			// Send test email directly using Mail facade
+			Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+
+			return response()->json([
+				'success' => true,
+				'message' => 'Test email sent successfully',
+				'email' => $user->email
+			]);
+
+		} catch (\Exception $e) {
+			return response()->json([
+				'success' => false,
+				'message' => 'Error sending test email: ' . $e->getMessage()
+			]);
+		}
+	}
+
+	/**
+	 * Generate HTML content for test send (without tracking)
+	 */
+	private function getTestHtmlForContact($message, $testContact)
+	{
+		$templateHtml = $message && $message->template && isset($message->template->gjs_data['html'])
+			? $message->template->gjs_data['html']
+			: '';
+
+		// Replace variables
+		$html = str_replace('{{name}}', $testContact->name ?? '', $templateHtml);
+		$html = str_replace('{{contact_name}}', $testContact->name ?? '', $html);
+		$html = str_replace('{{email}}', $testContact->email ?? '', $html);
+
+		return $html;
 	}
 
 	/**

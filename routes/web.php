@@ -358,6 +358,7 @@ Route::post('/team/{team}/custom-translations/import', [TeamSettingController::c
 	Route::get('message/{id}/preview', [MessageController::class, 'preview'])->name('message.preview');
 	Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
 	Route::post('message/{id}/pause', [MessageController::class, 'pauseCampaign'])->name('message.pause');
+	Route::post('message/{id}/test', [MessageController::class, 'testSend'])->name('message.test');
 	Route::post('message', [MessageController::class, 'store'])->name('message.store');
 	Route::put('message/{id}', [MessageController::class, 'update'])->name('message.update');
 	Route::delete('message/{id}', [MessageController::class, 'destroy'])->name('message.destroy');
