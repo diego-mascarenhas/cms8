@@ -79,6 +79,15 @@ class RolesAndPermissionsSeeder extends Seeder
 		Permission::firstOrCreate(['name' => 'collaborator.update']);
 		Permission::firstOrCreate(['name' => 'collaborator.destroy']);
 
+		Permission::firstOrCreate(['name' => 'employee.index']);
+		Permission::firstOrCreate(['name' => 'employee.list']);
+		Permission::firstOrCreate(['name' => 'employee.create']);
+		Permission::firstOrCreate(['name' => 'employee.show']);
+		Permission::firstOrCreate(['name' => 'employee.edit']);
+		Permission::firstOrCreate(['name' => 'employee.store']);
+		Permission::firstOrCreate(['name' => 'employee.update']);
+		Permission::firstOrCreate(['name' => 'employee.destroy']);
+
 		Permission::firstOrCreate(['name' => 'client.index']);
 		Permission::firstOrCreate(['name' => 'client.list']);
 		Permission::firstOrCreate(['name' => 'client.create']);
@@ -335,7 +344,7 @@ class RolesAndPermissionsSeeder extends Seeder
 		Permission::firstOrCreate(['name' => 'academy.destroy']);
 
 		$rootRole = Role::firstOrCreate(['name' => 'root']);
-    
+
 		$rootRole->syncPermissions([
 			'user.management',
 		]);
