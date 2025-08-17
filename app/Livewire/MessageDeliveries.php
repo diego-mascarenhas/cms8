@@ -42,7 +42,7 @@ class MessageDeliveries extends Component
         if ($delivery->status_id == 4) { // Error
             return 'danger';
         } elseif ($delivery->delivered_at) {
-            return 'success';
+            return 'success'; // Delivered
         } elseif ($delivery->status_id == 3) { // Sending
             return 'warning';
         } elseif ($delivery->sent_at && $delivery->sent_at->isFuture()) {
@@ -59,6 +59,8 @@ class MessageDeliveries extends Component
         if ($delivery->status_id == 4) {
             return 'Failed';
         } elseif ($delivery->delivered_at) {
+            return 'Delivered';
+        } elseif ($delivery->status_id == 3 && $delivery->delivered_at) {
             return 'Delivered';
         } elseif ($delivery->status_id == 3) {
             return 'Sending';

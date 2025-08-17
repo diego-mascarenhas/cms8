@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\SimulateEmailDeliveryJob;
 use App\Mail\MessageDeliveryMail;
 use App\Models\MessageDelivery;
 use Illuminate\Bus\Queueable;
@@ -112,12 +113,17 @@ class SendMessageCampaignJob implements ShouldQueue
             Mail::to($this->messageDelivery->contact->email)
                 ->send(new MessageDeliveryMail($this->messageDelivery));
 
-            // Mark as delivered (update both sent_at and delivered_at)
+            // Mark as sent (NOT delivered yet - we need webhook confirmation for that)
             $this->messageDelivery->update([
                 'sent_at' => now(), // Actual send time
-                'delivered_at' => now(),
-                'status_id' => 2, // 2 = delivered
+                'status_id' => 2, // 2 = sent (not delivered)
             ]);
+
+            // Schedule a job to simulate delivery confirmation (5-10 minutes later)
+            // In production, this would be replaced by actual webhook handling
+            $deliveryDelayMinutes = rand(5, 10);
+            SimulateEmailDeliveryJob::dispatch($this->messageDelivery)
+                ->delay(now()->addMinutes($deliveryDelayMinutes));
 
             Log::info('Message delivery sent successfully', [
                 'delivery_id' => $this->messageDelivery->id,
@@ -125,6 +131,7 @@ class SendMessageCampaignJob implements ShouldQueue
                 'message_id' => $this->messageDelivery->message_id,
                 'scheduled_time' => $this->messageDelivery->sent_at,
                 'actual_send_time' => now(),
+                'simulated_delivery_in_minutes' => $deliveryDelayMinutes,
             ]);
 
         } catch (\Exception $e) {
