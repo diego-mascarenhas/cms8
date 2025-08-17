@@ -16,8 +16,8 @@ class ContactValorationSeeder extends Seeder
             ['id' => 1, 'name' => 'Top', 'icon' => '⭐'],
             ['id' => 2, 'name' => 'Validada', 'icon' => '✅'],
             ['id' => 3, 'name' => 'Interesante', 'icon' => '🕐'],
-            ['id' => 4, 'name' => 'Lista negra', 'icon' => '❌'],
-            ['id' => 5, 'name' => 'Ojo', 'icon' => '👁️'],
+            ['id' => 4, 'name' => 'Ojo', 'icon' => '👁️'],
+            ['id' => 5, 'name' => 'Lista negra', 'icon' => '❌'],
         ];
 
         // Get all teams

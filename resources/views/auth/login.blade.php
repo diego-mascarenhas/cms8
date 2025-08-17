@@ -33,7 +33,9 @@ $configData = Helper::appClasses();
             <span id="logo" class="app-brand-logo demo">@include('_partials.macros',["height"=>20,"withbg"=>'fill: #fff;'])</span>
         </div>
         <!-- /Logo -->
-        <h3 class="mb-1">{{ __('auth.login.welcome', ['name' => config('variables.templateName')]) }}</h3>
+        <h3 class="mb-1">
+            {{ \App\Helpers\TranslationHelper::transGroup('welcome', 'auth', ['name' => config('variables.templateName')]) }}
+        </h3>
         <p class="mb-4">{{ __('auth.login.description') }}</p>
 
         @if (session('status'))

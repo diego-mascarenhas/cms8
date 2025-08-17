@@ -102,6 +102,16 @@ class Enterprise extends Model
         return $this->hasMany(Project::class, 'enterprise_id');
     }
 
+    public function services()
+    {
+        return $this->hasMany(Service::class, 'enterprise_id');
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'enterprise_id');
+    }
+
     public function getStatusLabelAttribute()
     {
         if ($this->status) {

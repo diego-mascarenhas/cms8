@@ -19,12 +19,7 @@ class InvoiceItem extends Model
         'tax_percentage',
     ];
 
-    protected static function booted()
-    {
-        static::addGlobalScope('itemsFromJuly2024', function ($builder) {
-            $builder->where('created_at', '>=', '2024-07-01 00:00:00');
-        });
-    }
+    // No global scopes; invoice items should not be artificially limited
 
     public function invoice()
     {

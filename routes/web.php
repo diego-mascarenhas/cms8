@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AcademyController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\apps\Calendar;
@@ -18,6 +19,7 @@ use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\FareController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostingController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\language\LanguageController;
 use App\Http\Controllers\laravel_example\UserManagement;
@@ -30,6 +32,7 @@ use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
 use App\Http\Controllers\OvhApiController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\ProjectController;
@@ -60,6 +63,10 @@ Route::middleware([
 // locale
 Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 
+
+
+
+
 // Public API routes (must be before auth group)
 Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
 	->name('project.get-fare-units');
@@ -67,6 +74,10 @@ Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
 // main
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/home', [PageController::class, 'home'])->name('home');
+
+// Auto-login with token route (AuthController not implemented yet)
+// Route::get('/login/token/{token}', [AuthController::class, 'loginWithToken'])->name('login.token');
+
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
 
@@ -122,6 +133,10 @@ Route::middleware(['auth'])->group(function ()
 	Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
 	Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
 	Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
+	Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
+	Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
+	Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
+	Route::post('/team/{team}/test-twilio', [TeamSettingController::class, 'testTwilioConnection'])->name('team-settings.test-twilio');
 
 	// Team Valorations
 	Route::get('/team/{team}/valorations', [TeamSettingController::class, 'valorations'])->name('team-settings.valorations');
@@ -131,8 +146,15 @@ Route::middleware(['auth'])->group(function ()
 
 	// Team API Tokens
 	Route::get('/team/{team}/api-tokens', [TeamSettingController::class, 'apiTokens'])->name('team-settings.api-tokens');
-	Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
-	Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
+Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
+Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
+
+// Custom Translations
+Route::get('/team/{team}/custom-translations', [TeamSettingController::class, 'customTranslations'])->name('team-settings.custom-translations');
+Route::post('/team/{team}/custom-translations', [TeamSettingController::class, 'storeCustomTranslation'])->name('team-settings.custom-translations.store');
+Route::put('/team/{team}/custom-translations/{translation}', [TeamSettingController::class, 'updateCustomTranslation'])->name('team-settings.custom-translations.update');
+Route::delete('/team/{team}/custom-translations/{translation}', [TeamSettingController::class, 'destroyCustomTranslation'])->name('team-settings.custom-translations.destroy');
+Route::post('/team/{team}/custom-translations/import', [TeamSettingController::class, 'importCustomTranslations'])->name('team-settings.custom-translations.import');
 
 	// Categories Management
 	Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
@@ -299,6 +321,24 @@ Route::middleware(['auth'])->group(function ()
 	Route::put('/task/{id}', [TaskController::class, 'update'])->name('task.update');
 	Route::delete('/task/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
 
+	// Invoice Routes
+	Route::get('/invoice/list', [InvoiceController::class, 'index'])->name('invoice.index');
+	Route::get('/invoice/create', [InvoiceController::class, 'create'])->name('invoice.create');
+	Route::get('/invoice/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
+	Route::get('/invoice/{id}/edit', [InvoiceController::class, 'edit'])->name('invoice.edit');
+	Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
+	Route::put('/invoice/{id}', [InvoiceController::class, 'update'])->name('invoice.update');
+	Route::delete('/invoice/{id}', [InvoiceController::class, 'destroy'])->name('invoice.destroy');
+
+	// Payment Routes
+	Route::get('/payment/list', [PaymentController::class, 'index'])->name('payment.index');
+	Route::get('/payment/create', [PaymentController::class, 'create'])->name('payment.create');
+	Route::get('/payment/{id}', [PaymentController::class, 'show'])->name('payment.show');
+	Route::get('/payment/{id}/edit', [PaymentController::class, 'edit'])->name('payment.edit');
+	Route::post('/payment', [PaymentController::class, 'store'])->name('payment.store');
+	Route::put('/payment/{id}', [PaymentController::class, 'update'])->name('payment.update');
+	Route::delete('/payment/{id}', [PaymentController::class, 'destroy'])->name('payment.destroy');
+
 	// Hosting
 	Route::resource('hosting', HostingController::class);
 	Route::get('/hosting/data', [HostingController::class, 'data'])->name('hosting.data');
@@ -311,7 +351,9 @@ Route::middleware(['auth'])->group(function ()
 	// Servers
 	Route::resource('server', ServerController::class);
 	Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
-	Route::post('/server/{server}/sync-domains', [ServerController::class, 'syncDomains'])->name('server.syncDomains');
+
+	// Custom Translations
+
 
 	// Accounting
 	Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
@@ -326,6 +368,10 @@ Route::middleware(['auth'])->group(function ()
 	Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
 	Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
 	Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
+	Route::get('message/{id}/preview', [MessageController::class, 'preview'])->name('message.preview');
+	Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
+	Route::post('message/{id}/pause', [MessageController::class, 'pauseCampaign'])->name('message.pause');
+	Route::post('message/{id}/test', [MessageController::class, 'testSend'])->name('message.test');
 	Route::post('message', [MessageController::class, 'store'])->name('message.store');
 	Route::put('message/{id}', [MessageController::class, 'update'])->name('message.update');
 	Route::delete('message/{id}', [MessageController::class, 'destroy'])->name('message.destroy');
@@ -402,6 +448,10 @@ Route::middleware(['auth'])->group(function ()
 	Route::get('/user-fare/{userFare}/edit', [UserFareController::class, 'edit'])->name('user-fare.edit');
 	Route::put('/user-fare/{userFare}', [UserFareController::class, 'update'])->name('user-fare.update');
 	Route::delete('/user-fare/{userFare}', [UserFareController::class, 'destroy'])->name('user-fare.destroy');
+
+	// Academy
+	Route::get('/academy/list', [AcademyController::class, 'index'])->name('academy-list');
+	Route::get('/academy/{id}', [AcademyController::class, 'show'])->name('academy.show');
 });
 
 // Testing
@@ -450,13 +500,21 @@ Route::post('/lead', [LeadController::class, 'store'])->name('lead.store');
 Route::get('pages/{page}/editor', [PageController::class, 'editor'])->name('page.edit');
 Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 
-// Twilio Webhook Routes
+// Twilio Webhook Routes (legacy - without hash)
 Route::post('/twilio/webhook', [TwilioWebhookController::class, 'handleIncomingMessage'])
 	->name('twilio.webhook');
 Route::post('/twilio/status', [TwilioWebhookController::class, 'handleMessageStatus'])
 	->name('twilio.status');
 Route::post('/twilio/fallback', [TwilioWebhookController::class, 'handleFallback'])
 	->name('twilio.fallback');
+
+// Twilio Webhook Routes (team-specific with hash)
+Route::post('/twilio/webhook/{hash}', [TwilioWebhookController::class, 'handleIncomingMessage'])
+	->name('twilio.webhook.team');
+Route::post('/twilio/status/{hash}', [TwilioWebhookController::class, 'handleMessageStatus'])
+	->name('twilio.status.team');
+Route::post('/twilio/fallback/{hash}', [TwilioWebhookController::class, 'handleFallback'])
+	->name('twilio.fallback.team');
 
 // Debug route for testing JSON response (no auth required)
 Route::get('/debug-units', function() {
@@ -555,5 +613,20 @@ Route::delete('/collaborator/{id}/documents/{media}', [CollaboratorController::c
 // Debug route for availability filtering
 Route::get('/collaborator/debug/availability', [CollaboratorController::class, 'debugAvailability'])->name('collaborator.debug.availability');
 
+// Profile Update Routes
+Route::prefix('profile-update')->name('profile-update.')->middleware(['auth', 'verified'])->group(function () {
+	Route::get('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'index'])->name('index');
+	Route::post('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'store'])->name('store');
+	Route::post('/get-rates', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'getRatesForLanguagePair'])->name('get-rates');
+});
+
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
 Route::get('message/track/click/{token}', [MessageTrackingController::class, 'trackClick'])->name('message.track.click');
+
+// WhatsApp Cart Testing Routes (available in all environments)
+Route::prefix('test-cart')->group(function () {
+    Route::get('/', [App\Http\Controllers\TestCartController::class, 'index'])->name('test.cart.index');
+    Route::post('/process', [App\Http\Controllers\TestCartController::class, 'processMessage'])->name('test.cart.process');
+    Route::get('/status', [App\Http\Controllers\TestCartController::class, 'cartStatus'])->name('test.cart.status');
+    Route::post('/clear', [App\Http\Controllers\TestCartController::class, 'clearCart'])->name('test.cart.clear');
+});

@@ -130,6 +130,25 @@ class Kernel extends ConsoleKernel
                     Log::info('Finished CMS7 import (enterprises & contacts)');
                 });
         }
+
+        // Team configuration monitoring - daily at 8:00 AM
+        // Sends individual reports to team owners only for failures
+        $schedule->command('team:test-configurations --failures-only')
+            ->dailyAt('08:00')
+            ->name('team-config-monitoring')
+            ->description('Monitor team configurations and send individual failure reports to owners')
+            ->onFailure(function () {
+                Log::error('Team configuration monitoring command failed');
+            })
+            ->runInBackground();
+
+        // Weekly comprehensive report - Mondays at 9:00 AM
+        // Sends individual reports to team owners + admin summary
+        $schedule->command('team:test-configurations --admin-summary')
+            ->weeklyOn(1, '09:00') // Monday at 9:00 AM
+            ->name('team-config-weekly-report')
+            ->description('Weekly team configuration report with admin summary')
+            ->runInBackground();
     }
 
     /**

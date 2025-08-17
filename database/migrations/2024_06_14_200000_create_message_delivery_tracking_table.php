@@ -12,8 +12,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('message_delivery_id')->constrained('message_deliveries')->onDelete('cascade');
             $table->string('event'); // opened, clicked, error, etc.
+            $table->timestamp('tracked_at')->nullable();
             $table->string('ip_address')->nullable();
             $table->string('user_agent')->nullable();
+            $table->string('country')->nullable();
+            $table->string('city')->nullable();
+            $table->json('metadata')->nullable();
             $table->timestamps();
         });
     }

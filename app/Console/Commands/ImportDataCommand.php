@@ -2,10 +2,16 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Module;
+use App\Helpers\PhoneHelper;
+use App\Models\Category;
+use App\Models\Currency;
+use App\Models\Product;
+use App\Models\Team;
+use App\Models\User;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class ImportDataCommand extends Command
 {
@@ -66,8 +72,9 @@ class ImportDataCommand extends Command
             8 => '8. Invoices',
             9 => '9. Payments',
             10 => '10. Communications',
-            11 => '11. Import All',
-            12 => '12. Exit',
+            11 => '11. Products (CMS7)',
+            12 => '12. Import All',
+            13 => '13. Exit',
         ]);
     }
 
@@ -206,6 +213,12 @@ class ImportDataCommand extends Command
                 ->where('grupo', env('CMS_GROUP'))
                 ->select('id', 'id_empresa', 'id_comunicacion_tipo', 'estado'),
 
+            '11. Products (CMS7)' => DB::connection('mysql_tmp')->table('categorias_generales')
+                ->where('grupo', env('CMS_GROUP'))
+                ->whereNull('padre')
+                ->where('estado', 1)
+                ->select('id', 'categoria', 'descripcion', 'caracteristicas', 'valor', 'id_moneda', 'estado', 'fecha_alta'),
+
             default => throw new \Exception('Invalid type selected'),
         };
 
@@ -229,6 +242,7 @@ class ImportDataCommand extends Command
         // Test database connection first
         if (! $this->testDatabaseConnection()) {
             $this->error('Exiting due to database connection failure.');
+
             return 1;
         }
 
@@ -237,21 +251,23 @@ class ImportDataCommand extends Command
             $this->processImport('5. Enterprises');
             $this->processImport('1. Users');
             $this->info('Automatic import completed.');
+
             return 0;
         }
 
         while (true) {
             $choice = $this->showMainMenu();
 
-            if ($choice === '12. Exit') {
+            if ($choice === '13. Exit') {
                 $this->info('Goodbye!');
                 break;
             }
 
-            if ($choice === '11. Import All') {
+            if ($choice === '12. Import All') {
                 if ($this->confirm('Are you sure you want to import ALL data?')) {
                     $this->importAll();
                 }
+
                 continue;
             }
 
@@ -273,6 +289,7 @@ class ImportDataCommand extends Command
                 '8. Invoices' => $this->importInvoices($id),
                 '9. Payments' => $this->importPayments($id),
                 '10. Communications' => $this->importCommunications($id),
+                '11. Products (CMS7)' => $this->importProductsWithTeam($id),
                 default => throw new \Exception('Invalid type selected'),
             };
 
@@ -286,6 +303,13 @@ class ImportDataCommand extends Command
                 if (isset($result['updated'])) {
                     $this->info("Updated {$result['updated']} existing records.");
                 }
+
+                // Mostrar estadísticas de usuarios si están disponibles
+                if (isset($result['users_created'])) {
+                    $this->info("Users created: {$result['users_created']}");
+                    $this->info("Users existing: {$result['users_existing']}");
+                    $this->info("Users skipped: {$result['users_skipped']}");
+                }
             }
         } catch (\Exception $e) {
             $this->error('Error during import: '.$e->getMessage());
@@ -297,6 +321,9 @@ class ImportDataCommand extends Command
         $stats = [
             'imported' => 0,
             'updated' => 0,
+            'users_created' => 0,
+            'users_existing' => 0,
+            'users_skipped' => 0,
             'message' => null,
         ];
 
@@ -340,28 +367,82 @@ class ImportDataCommand extends Command
                 $existingContact = DB::table('contacts')->where('id', $data->id)->first();
 
                 $phone = $data->celular ?? $data->telefono ?? null;
-                $cleaned_phone = $phone ? preg_replace('/\D/', '', $phone) : null;
-                if (! empty($cleaned_phone) && strpos($cleaned_phone, '54') !== 0) {
-                    $cleaned_phone = '54'.$cleaned_phone;
-                }
-                // Si cleaned_phone está vacío o solo espacios, setear a null
-                if (empty($cleaned_phone) || trim($cleaned_phone) === '') {
-                    $cleaned_phone = null;
-                }
+                $cleaned_phone = PhoneHelper::clean($phone, '54', true);
 
                 // Determinar status_id según el estado de la empresa
                 $statusId = 5;
-                if (!empty($data->id_empresa)) {
+                if (! empty($data->id_empresa)) {
                     $enterprise = DB::table('enterprises')->where('id', $data->id_empresa)->first();
                     if ($enterprise && $enterprise->status_id == 1) {
                         $statusId = 6;
                     }
                 }
 
+                // Crear usuario si corresponde según area_privada
+                $userId = null;
+                $shouldCreateUser = in_array($data->area_privada, [2, 3, 4]); // 2=admin, 3=client, 4=user
+
+                if ($shouldCreateUser && $data->email) {
+                    // Mapear area_privada a roles
+                    $roleMapping = [
+                        2 => 'admin',
+                        3 => 'client',
+                        4 => 'user',
+                    ];
+
+                    $roleName = $roleMapping[$data->area_privada];
+
+                    // Verificar si ya existe un usuario con este email
+                    $existingUser = User::where('email', $data->email)->first();
+
+                    if (! $existingUser) {
+                        try {
+                            // Crear nuevo usuario
+                            $user = User::create([
+                                'name' => trim($data->nombre.' '.($data->apellido ?? '')),
+                                'email' => $data->email,
+                                'phone' => $cleaned_phone,
+                                'password' => Hash::make('Simplicity!'), // Password temporal
+                                'email_verified_at' => now(),
+                                'created_at' => $data->fecha_alta,
+                                'updated_at' => $data->fecha_modificacion,
+                            ]);
+
+                            // Asignar rol
+                            $user->assignRole($roleName);
+
+                            // Asignar al equipo CMS
+                            $teamId = env('CMS_TEAM_ID');
+                            if ($teamId) {
+                                $user->teams()->attach($teamId, ['role' => $roleName]);
+                            }
+
+                            $userId = $user->id;
+                            $stats['users_created']++;
+                            $this->info("Usuario creado: {$data->email} con rol {$roleName} (ID: {$userId})");
+
+                        } catch (\Exception $e) {
+                            $stats['users_skipped']++;
+                            $this->error("Error creando usuario {$data->email}: ".$e->getMessage());
+                        }
+                    } else {
+                        $userId = $existingUser->id;
+                        $stats['users_existing']++;
+                        $this->info("Usuario existente encontrado: {$data->email} (ID: {$userId})");
+                    }
+                } else {
+                    $stats['users_skipped']++;
+                    if (! $shouldCreateUser) {
+                        $this->info("Contacto {$data->id} - area_privada={$data->area_privada} no requiere usuario");
+                    } else {
+                        $this->warn("Contacto {$data->id} - sin email, no se puede crear usuario");
+                    }
+                }
+
                 $contactData = [
                     'id' => $data->id,
                     'team_id' => env('CMS_TEAM_ID'),
-                    'user_id' => null,
+                    'user_id' => $userId,
                     'name' => $data->nombre,
                     'surname' => $data->apellido,
                     'email' => $data->email,
@@ -375,6 +456,8 @@ class ImportDataCommand extends Command
                     'responsible_id' => null,
                     'data' => json_encode([
                         'imported_from_cms7' => true,
+                        'area_privada' => $data->area_privada,
+                        'original_id' => $data->id,
                     ]),
                     'status_id' => $statusId,
                     'created_at' => $data->fecha_alta,
@@ -387,7 +470,7 @@ class ImportDataCommand extends Command
                 } else {
                     // Merge existing data with new imported_from_cms7 flag
                     $existingData = json_decode($existingContact->data ?? '{}', true);
-                    if (!is_array($existingData)) {
+                    if (! is_array($existingData)) {
                         $existingData = [];
                     }
                     $existingData['imported_from_cms7'] = true;
@@ -1015,6 +1098,395 @@ class ImportDataCommand extends Command
         }
 
         return $stats;
+    }
+
+    /**
+     * Import products with team selection
+     */
+    protected function importProductsWithTeam($id = null)
+    {
+        // Ask for team ID
+        $teamId = $this->ask('Enter the Team ID for the products (default: 1)', '1');
+
+        if (! is_numeric($teamId) || $teamId < 1) {
+            $this->error('❌ Invalid Team ID. Must be a positive number.');
+
+            return ['imported' => 0, 'updated' => 0, 'message' => 'Invalid Team ID'];
+        }
+
+        // Verify team exists
+        $team = \App\Models\Team::find($teamId);
+        if (! $team) {
+            $this->error("❌ Team with ID {$teamId} not found.");
+
+            return ['imported' => 0, 'updated' => 0, 'message' => 'Team not found'];
+        }
+
+        $this->info("📋 Importing products for Team: {$team->name} (ID: {$teamId})");
+
+        return $this->importProducts($id, $teamId);
+    }
+
+    /**
+     * Import products from CMS7 categorias_generales table
+     */
+    protected function importProducts($id = null, $teamId = 1)
+    {
+        $stats = [
+            'categories_imported' => 0,
+            'categories_updated' => 0,
+            'products_imported' => 0,
+            'products_updated' => 0,
+            'imported' => 0,
+            'updated' => 0,
+            'message' => null,
+        ];
+
+        try {
+            $this->info('🛍️ Starting products and categories import from CMS7...');
+
+            // Step 1: Import parent categories (padre IS NULL)
+            $this->info('📂 Step 1: Importing categories...');
+            $categoryStats = $this->importCategoriesFromCMS7($id, $teamId);
+            $stats['categories_imported'] = $categoryStats['imported'];
+            $stats['categories_updated'] = $categoryStats['updated'];
+
+            // Step 2: Import child products (padre IS NOT NULL)
+            $this->info('📦 Step 2: Importing products...');
+            $productStats = $this->importProductsFromCMS7($id, $teamId);
+            $stats['products_imported'] = $productStats['imported'];
+            $stats['products_updated'] = $productStats['updated'];
+
+            // Total stats for compatibility
+            $stats['imported'] = $stats['categories_imported'] + $stats['products_imported'];
+            $stats['updated'] = $stats['categories_updated'] + $stats['products_updated'];
+
+            $this->info('✅ Import completed:');
+            $this->info("   📂 Categories: {$stats['categories_imported']} imported, {$stats['categories_updated']} updated");
+            $this->info("   📦 Products: {$stats['products_imported']} imported, {$stats['products_updated']} updated");
+
+        } catch (\Exception $e) {
+            $this->newLine();
+            throw new \Exception('Error importing products: '.$e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Import categories from CMS7 (parent items where padre IS NULL)
+     */
+    private function importCategoriesFromCMS7($id = null, $teamId = 1)
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+        ];
+
+        $query = DB::connection('mysql_tmp')->table('categorias_generales')
+            ->where('grupo', env('CMS_GROUP'))
+            ->whereNull('padre') // Only parent categories
+            ->whereIn('estado', [1, 2]) // Include active states 1 and 2
+            ->select('id', 'categoria', 'descripcion', 'caracteristicas', 'fecha_alta', 'fecha_modificacion');
+
+        if ($id) {
+            $query->where('id', $id);
+        }
+
+        $categories = $query->get();
+
+        if ($categories->isEmpty()) {
+            return $stats;
+        }
+
+        $this->info('📂 Found '.count($categories).' categories to import');
+
+        $bar = $this->output->createProgressBar(count($categories));
+        $bar->start();
+
+        foreach ($categories as $cms7Category) {
+            try {
+                // Check if category already exists
+                $existingCategory = Category::where('team_id', $teamId)
+                    ->where('name', $cms7Category->categoria)
+                    ->first();
+
+                $categoryData = [
+                    'team_id' => $teamId,
+                    'name' => $cms7Category->categoria,
+                    'description' => $this->buildCategoryDescription($cms7Category),
+                    'status' => true,
+                    'created_at' => $cms7Category->fecha_alta ?? now(),
+                    'updated_at' => $cms7Category->fecha_modificacion ?? now(),
+                ];
+
+                if (! $existingCategory) {
+                    Category::create($categoryData);
+                    $stats['imported']++;
+                    $this->info("✅ Imported category: {$cms7Category->categoria}");
+                } else {
+                    $existingCategory->update($categoryData);
+                    $stats['updated']++;
+                    $this->info("🔄 Updated category: {$cms7Category->categoria}");
+                }
+
+            } catch (\Exception $e) {
+                $this->error("❌ Error importing category {$cms7Category->categoria}: ".$e->getMessage());
+            }
+
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+
+        return $stats;
+    }
+
+    /**
+     * Import products from CMS7 (child items where padre IS NOT NULL)
+     */
+    private function importProductsFromCMS7($id = null, $teamId = 1)
+    {
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+        ];
+
+        $query = DB::connection('mysql_tmp')->table('categorias_generales')
+            ->where('grupo', env('CMS_GROUP'))
+            ->whereNotNull('padre') // Only child products
+            ->whereIn('estado', [1, 2]) // Include active states 1 and 2
+            ->select('id', 'categoria', 'descripcion', 'caracteristicas', 'valor', 'id_moneda', 'padre', 'estado', 'fecha_alta', 'fecha_modificacion', 'username_alta');
+
+        if ($id) {
+            $query->where('id', $id);
+        }
+
+        $products = $query->get();
+
+        if ($products->isEmpty()) {
+            return $stats;
+        }
+
+        $this->info('📦 Found '.count($products).' products to import');
+
+        $bar = $this->output->createProgressBar(count($products));
+        $bar->start();
+
+        foreach ($products as $cms7Product) {
+            try {
+                $result = $this->importSingleProduct($cms7Product, $teamId);
+
+                if ($result === 'imported') {
+                    $stats['imported']++;
+                    $this->info("✅ Imported: {$cms7Product->categoria}");
+                } elseif ($result === 'updated') {
+                    $stats['updated']++;
+                    $this->info("🔄 Updated: {$cms7Product->categoria}");
+                }
+            } catch (\Exception $e) {
+                $this->error("❌ Error importing {$cms7Product->categoria}: ".$e->getMessage());
+            }
+
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+
+        return $stats;
+    }
+
+    /**
+     * Build category description from CMS7 data
+     */
+    private function buildCategoryDescription($cms7Category)
+    {
+        $description = $cms7Category->descripcion ?: '';
+
+        if ($cms7Category->caracteristicas) {
+            if ($description) {
+                $description .= "\n\n".$cms7Category->caracteristicas;
+            } else {
+                $description = $cms7Category->caracteristicas;
+            }
+        }
+
+        return $description ?: "Categoría importada desde CMS7 - ID: {$cms7Category->id}";
+    }
+
+    /**
+     * Import a single product
+     */
+    private function importSingleProduct($cms7Product, $teamId = 1)
+    {
+
+        // Check if product already exists
+        $existingProduct = Product::where('team_id', $teamId)
+            ->where('name', $cms7Product->categoria)
+            ->first();
+
+        // Get or create currency
+        $currency = $this->getCurrencyForProduct($cms7Product);
+
+        // Get category based on parent (padre) from CMS7
+        $category = $this->getCategoryForProduct($teamId, $cms7Product);
+
+        // Create the product data
+        $productData = [
+            'team_id' => $teamId,
+            'name' => $cms7Product->categoria,
+            'description' => $this->buildProductDescription($cms7Product),
+            'price' => $cms7Product->valor ?? 0.00,
+            'currency_id' => $currency->id,
+            'category_id' => $category->id,
+            'status' => $cms7Product->estado == 1,
+            'whatsapp_enabled' => true, // Enable for WhatsApp by default
+            'created_at' => $cms7Product->fecha_alta ?? now(),
+            'updated_at' => $cms7Product->fecha_modificacion ?? now(),
+        ];
+
+        if (! $existingProduct) {
+            Product::create($productData);
+
+            return 'imported';
+        } else {
+            $existingProduct->update($productData);
+
+            return 'updated';
+        }
+    }
+
+    /**
+     * Get currency for product based on CMS7 id_moneda
+     */
+    private function getCurrencyForProduct($cms7Product)
+    {
+        // Map CMS7 currency IDs to our currency codes
+        $currencyMap = [
+            1 => 'USD', // Assuming 1 = USD
+            2 => 'EUR', // Assuming 2 = EUR
+            3 => 'ARS', // Assuming 3 = ARS
+            // Add more mappings as needed
+        ];
+
+        $currencyCode = $currencyMap[$cms7Product->id_moneda] ?? 'USD';
+
+        $currency = Currency::where('code', $currencyCode)->first();
+
+        if (! $currency) {
+            // Fallback to USD if currency not found
+            $currency = Currency::where('code', 'USD')->first();
+
+            if (! $currency) {
+                // Create USD if it doesn't exist
+                $currency = Currency::create([
+                    'id' => 840, // ISO code for USD
+                    'code' => 'USD',
+                    'name' => 'US Dollar',
+                    'symbol' => '$',
+                    'status' => true,
+                ]);
+            }
+        }
+
+        return $currency;
+    }
+
+    /**
+     * Get category for imported products based on CMS7 parent (padre)
+     */
+    private function getCategoryForProduct($teamId, $cms7Product)
+    {
+        // If product has a parent, find the parent category
+        if (isset($cms7Product->padre) && $cms7Product->padre) {
+            // Get parent category from CMS7
+            $parentCategory = DB::connection('mysql_tmp')->table('categorias_generales')
+                ->where('id', $cms7Product->padre)
+                ->first();
+
+            if ($parentCategory) {
+                // Find the corresponding category in our system
+                $category = Category::where('team_id', $teamId)
+                    ->where('name', $parentCategory->categoria)
+                    ->first();
+
+                if ($category) {
+                    return $category;
+                }
+            }
+        }
+
+        // Fallback: Create or get default category
+        $category = Category::where('team_id', $teamId)
+            ->where('name', 'Productos CMS7')
+            ->first();
+
+        if (! $category) {
+            $category = Category::create([
+                'team_id' => $teamId,
+                'name' => 'Productos CMS7',
+                'description' => 'Productos importados desde CMS7 sin categoría padre específica',
+                'status' => true,
+            ]);
+        }
+
+        return $category;
+    }
+
+    /**
+     * Build product description from CMS7 data
+     */
+    private function buildProductDescription($cms7Product)
+    {
+        $description = $cms7Product->descripcion ?? '';
+
+        if (! empty($cms7Product->caracteristicas)) {
+            if (! empty($description)) {
+                $description .= "\n\n";
+            }
+            $description .= "Características:\n".$cms7Product->caracteristicas;
+        }
+
+        // Add import metadata
+        $description .= "\n\n[Importado desde CMS7 - ID: {$cms7Product->id}]";
+
+        return $description ?: $cms7Product->categoria;
+    }
+
+    /**
+     * Ensure product categories exist
+     */
+    private function ensureProductCategories($teamId = 1)
+    {
+
+        $categories = [
+            [
+                'name' => 'Productos CMS7',
+                'description' => 'Productos importados desde CMS7',
+            ],
+            [
+                'name' => 'E-commerce',
+                'description' => 'Productos para e-commerce',
+            ],
+        ];
+
+        foreach ($categories as $categoryData) {
+            $existing = Category::where('team_id', $teamId)
+                ->where('name', $categoryData['name'])
+                ->first();
+
+            if (! $existing) {
+                Category::create([
+                    'team_id' => $teamId,
+                    'name' => $categoryData['name'],
+                    'description' => $categoryData['description'],
+                    'status' => true,
+                ]);
+                $this->info("✅ Created category: {$categoryData['name']}");
+            }
+        }
     }
 
     // Add other import methods...

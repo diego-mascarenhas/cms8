@@ -44,11 +44,6 @@
                                 <span class="input-group-text"><i class="ti ti-search"></i></span>
                                 <input type="text" class="form-control" placeholder="Buscar" id="projects-search">
                             </div>
-                            @can('project.create')
-                            <a href="{{ route('project.create') }}" class="btn btn-icon btn-primary" title="Crear nuevo proyecto">
-                                <i class="ti ti-plus"></i>
-                            </a>
-                            @endcan
                         </div>
                     </div>
                 </div>
@@ -60,39 +55,34 @@
                                 <th>PROYECTO</th>
                                 <th>PM</th>
                                 <th>CLIENTE</th>
-                                <th>ESTADO</th>
-                                <th>FECHA</th>
-                                <th>ACCIÓN</th>
+                                <th class="text-center">ESTADO</th>
+                                <th class="text-center">FECHA</th>
+                                <th class="text-center">ACCIÓN</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($collaborator->projects as $project)
                             <tr>
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][array_rand(['primary', 'success', 'info', 'warning', 'danger'])] }} me-2">
-                                            <span class="avatar-initial rounded-circle">{{ strtoupper(substr($project->name, 0, 1)) }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="fw-medium">{{ $project->name }}</span>
-                                            @if($project->real_name && $project->real_name !== $project->name)
-                                                <small class="d-block text-muted">{{ $project->real_name }}</small>
-                                            @endif
-                                        </div>
+                                    <div>
+                                        <span class="fw-medium">{{ $project->name }}</span>
+                                        @if($project->real_name && $project->real_name !== $project->name)
+                                            <small class="d-block text-muted">{{ $project->real_name }}</small>
+                                        @endif
                                     </div>
                                 </td>
                                 <td>{{ $project->responsible ? $project->responsible->name : '-' }}</td>
                                 <td>{{ $project->enterprise ? $project->enterprise->name : '-' }}</td>
-                                <td>
+                                <td class="text-center">
                                     @if($project->status)
-                                        <span class="badge {{ $project->status->label_class ?? 'bg-label-secondary' }}">
-                                            {{ $project->status->name }}
+                                        <span class="badge rounded-pill {{ $project->status->label_class ?? 'bg-label-secondary' }}">
+                                            {{ $project->status->translated_name }}
                                         </span>
                                     @else
-                                        <span class="badge bg-label-secondary">Sin estado</span>
+                                        <span class="badge rounded-pill bg-label-secondary">Sin estado</span>
                                     @endif
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     @if($project->date_end)
                                         {{ \Carbon\Carbon::parse($project->date_end)->format('d-m-Y') }}
                                     @elseif($project->date_material)
@@ -101,7 +91,7 @@
                                         {{ \Carbon\Carbon::parse($project->created_at)->format('d-m-Y') }}
                                     @endif
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     <div class="dropdown">
                                         <button class="btn p-0" data-bs-toggle="dropdown" aria-expanded="false">
                                             <i class="ti ti-dots-vertical ti-sm text-muted"></i>
@@ -199,10 +189,10 @@
                             <tr>
                                 <th>PROYECTO</th>
                                 <th>PUESTO</th>
-                                <th>AÑO</th>
+                                <th class="text-center">AÑO</th>
                                 <th>IDIOMAS</th>
                                 <th>NOTAS</th>
-                                <th>ACCIÓN</th>
+                                <th class="text-center">ACCIÓN</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -215,25 +205,44 @@
                                 data-notes="{{ $portfolio->notes }}"
                                 data-languages="{{ json_encode($portfolio->languages) }}">
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm bg-label-{{ ['primary', 'success', 'info', 'warning', 'danger'][array_rand(['primary', 'success', 'info', 'warning', 'danger'])] }} me-2">
-                                            <span class="avatar-initial rounded-circle">{{ strtoupper(substr($portfolio->title, 0, 1)) }}</span>
-                                        </div>
-                                        <div>
-                                            <span class="fw-medium">{{ $portfolio->title }}</span>
-                                            @if($portfolio->description)
-                                                <small class="d-block text-muted">{{ Str::limit($portfolio->description, 50) }}</small>
-                                            @endif
-                                        </div>
+                                    <div>
+                                        <span class="fw-medium">{{ $portfolio->title }}</span>
+                                        @if($portfolio->description)
+                                            <small class="d-block text-muted">{{ Str::limit($portfolio->description, 50) }}</small>
+                                        @endif
                                     </div>
                                 </td>
                                 <td>{{ $portfolio->position ?? '-' }}</td>
-                                <td>{{ $portfolio->year ?? '-' }}</td>
+                                <td class="text-center">{{ $portfolio->year ?? '-' }}</td>
                                 <td>
                                     @if($portfolio->languages && is_array($portfolio->languages))
                                         @foreach($portfolio->languages as $language)
                                             @if(is_array($language) && isset($language['source']) && isset($language['target']))
-                                                {{ strtoupper(explode('-', $language['source'])[0]) }} → {{ strtoupper(explode('-', $language['target'])[0]) }}@if(!$loop->last)<br>@endif
+                                                @php
+                                                    $sourceLang = $language['source'];
+                                                    $targetLang = $language['target'];
+
+                                                    // Language name mapping
+                                                    $languageNames = [
+                                                        'es-ES' => 'Español (España)',
+                                                        'es-MX' => 'Español (México)',
+                                                        'es-AR' => 'Español (Argentina)',
+                                                        'en-US' => 'English (US)',
+                                                        'en-GB' => 'English (UK)',
+                                                        'fr-FR' => 'Français',
+                                                        'de-DE' => 'Deutsch',
+                                                        'it-IT' => 'Italiano',
+                                                        'pt-BR' => 'Português (Brasil)',
+                                                        'pt-PT' => 'Português (Portugal)',
+                                                        'zh-CN' => '中文 (简体)',
+                                                        'ja-JP' => '日本語',
+                                                        'ko-KR' => '한국어'
+                                                    ];
+
+                                                    $sourceName = $languageNames[$sourceLang] ?? $sourceLang;
+                                                    $targetName = $languageNames[$targetLang] ?? $targetLang;
+                                                @endphp
+                                                {{ $sourceName }} → {{ $targetName }}@if(!$loop->last)<br>@endif
                                             @else
                                                 {{ strtoupper($language) }}@if(!$loop->last)<br>@endif
                                             @endif
@@ -243,7 +252,7 @@
                                     @endif
                                 </td>
                                 <td>{{ $portfolio->notes ? Str::limit($portfolio->notes, 50) : '-' }}</td>
-                                <td>
+                                <td class="text-center">
                                     <div class="dropdown">
                                         <button class="btn p-0" data-bs-toggle="dropdown" aria-expanded="false">
                                             <i class="ti ti-dots-vertical ti-sm text-muted"></i>
@@ -270,10 +279,10 @@
                 </div>
                 <div class="card-footer">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span>Mostrando {{ $collaborator->portfolios->count() }} proyecto{{ $collaborator->portfolios->count() !== 1 ? 's' : '' }}</span>
+                        <span>Mostrando {{ $collaborator->portfolios->count() }} experiencia{{ $collaborator->portfolios->count() !== 1 ? 's' : '' }}</span>
                         @if($collaborator->portfolios->count() > 0)
                         <small class="text-muted">
-                            Último proyecto: {{ $collaborator->portfolios->first()->created_at->format('d/m/Y') }}
+                            Última experiencia: {{ $collaborator->portfolios->first()->created_at->format('d/m/Y') }}
                         </small>
                         @endif
                     </div>
@@ -787,7 +796,7 @@
                 <form id="portfolio-form">
                     <div class="row g-3">
                         <div class="col-12">
-                            <label class="form-label">Proyecto *</label>
+                            <label class="form-label">Proyecto (*)</label>
                             <input type="text" class="form-control" name="title" placeholder="Nombre del proyecto" value="${portfolioData.title || ''}" required>
                         </div>
                         <div class="col-12">

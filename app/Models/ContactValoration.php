@@ -64,8 +64,8 @@ class ContactValoration extends Model
             'Top',
             'Validada',
             'Interesante',
-            'Lista negra',
             'Ojo',
+            'Lista negra',
         ];
     }
 
@@ -78,8 +78,8 @@ class ContactValoration extends Model
             '⭐' => 'Top/Estrella',
             '✅' => 'Validada/Check',
             '🕐' => 'Interesante/Reloj',
-            '❌' => 'Lista negra/X',
             '👁️' => 'En espera/Ojo',
+            '❌' => 'Lista negra/X',
             '🔘' => 'Neutro/Círculo',
             '🎯' => 'Objetivo/Target',
             '💎' => 'Premium/Diamante',

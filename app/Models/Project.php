@@ -91,16 +91,18 @@ class Project extends Model
             ->using(ContactProject::class)
             ->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message', 'deleted_at')
             ->withTimestamps()
-            ->wherePivotNull('deleted_at'); // Only get non-deleted relationships
+            ->wherePivotNull('deleted_at') // Only get non-deleted relationships
+            ->orderByRaw('valoration_id IS NULL, valoration_id ASC'); // Order by valoration (lower ID = higher priority, NULL values last)
     }
 
-    public function allCollaborators()
-    {
-        return $this->belongsToMany(Contact::class, 'contact_project')
-            ->using(ContactProject::class)
-            ->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message', 'deleted_at')
-            ->withTimestamps(); // Include all relationships including deleted ones
-    }
+    	public function allCollaborators()
+	{
+		return $this->belongsToMany(Contact::class, 'contact_project')
+			->using(ContactProject::class)
+			->withPivot('message_sent', 'status', 'sent_at', 'viewed_at', 'responded_at', 'response_message', 'deleted_at')
+			->withTimestamps()
+			->orderByRaw('valoration_id IS NULL, valoration_id ASC'); // Order by valoration (lower ID = higher priority, NULL values last)
+	}
 
     public function projectFares()
     {

@@ -19,7 +19,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">
-                <span class="text-muted fw-light">{{ __('Collaborators') }}/</span> 
+                <span class="text-muted fw-light">{{ __('Collaborators') }}/</span>
                 {{ isset($collaborator) ? __('Edit') : __('Create') }}
             </h4>
             <p class="text-muted">{{ isset($collaborator) ? __('Update collaborator information') : __('Add a new collaborator') }}</p>
@@ -48,7 +48,7 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="name" class="form-label">{{ __('Name') }} (*)</label>
-                        <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $collaborator->name ?? '') }}" required>
+                        <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $collaborator->name ?? '') }}">
                         @error('name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -64,7 +64,7 @@
 
                     <div class="col-md-6 mb-3">
                         <label for="email" class="form-label">{{ __('Email') }} (*)</label>
-                        <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $collaborator->email ?? '') }}" required>
+                        <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $collaborator->email ?? '') }}">
                         @error('email')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -79,21 +79,20 @@
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <x-input-date 
-                            id="birthday" 
+                        <x-input-date
+                            id="birthday"
                             label="{{ __('Birthday') }}"
                             name="birthday"
-                            value="{{ old('birthday', $collaborator->birthday ?? '') }}" 
+                            value="{{ old('birthday', $collaborator->birthday ?? '') }}"
                         />
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <x-language-select 
-                            name="language" 
-                            id="language" 
-                            label="{{ __('Language') }} (*)" 
-                            :value="old('language', $collaborator->language ?? '')" 
-                            :required="true"
+                        <x-language-select
+                            name="language"
+                            id="language"
+                            label="{{ __('Language') }} (*)"
+                            :value="old('language', $collaborator->language ?? '')"
                         />
                         @error('language')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -109,14 +108,58 @@
             <div class="card-body">
                 <div class="mb-3">
                     <label for="profile" class="form-label">{{ __('Profile Description') }}</label>
-                    <textarea class="form-control @error('profile') is-invalid @enderror" 
-                              id="profile" 
-                              name="profile" 
-                              rows="4" 
+                    <textarea class="form-control @error('profile') is-invalid @enderror"
+                              id="profile"
+                              name="profile"
+                              rows="4"
                               placeholder="{{ __('Describe the collaborator\'s professional profile, experience, and specialties...') }}">{{ old('profile', $collaborator->profile ?? '') }}</textarea>
                     @error('profile')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
+                </div>
+            </div>
+        </div>
+
+        <!-- Extras Card -->
+        <div class="card mb-4">
+            <h5 class="card-header">{{ __('Extras') }}</h5>
+            <div class="card-body">
+                <div class="row">
+                                                            <div class="col-md-6 mb-3">
+                        <label for="nif_cif" class="form-label">{{ __('NIF/CIF') }}</label>
+                        <input type="text" class="form-control"
+                               id="nif_cif"
+                               name="nif_cif"
+                               value="{{ old('nif_cif', $collaborator->data->extras->nif_cif ?? '') }}"
+                               placeholder="{{ __('Enter NIF or CIF number') }}">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="codigo_postal" class="form-label">{{ __('Postal Code') }}</label>
+                        <input type="text" class="form-control"
+                               id="codigo_postal"
+                               name="codigo_postal"
+                               value="{{ old('codigo_postal', $collaborator->data->extras->codigo_postal ?? '') }}"
+                               placeholder="{{ __('Enter postal code') }}">
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label for="domicilio" class="form-label">{{ __('Address') }}</label>
+                        <input type="text" class="form-control"
+                               id="domicilio"
+                               name="domicilio"
+                               value="{{ old('domicilio', $collaborator->data->extras->domicilio ?? '') }}"
+                               placeholder="{{ __('Enter full address') }}">
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label for="poblacion" class="form-label">{{ __('City') }}</label>
+                        <input type="text" class="form-control"
+                               id="poblacion"
+                               name="poblacion"
+                               value="{{ old('poblacion', $collaborator->data->extras->poblacion ?? '') }}"
+                               placeholder="{{ __('Enter city name') }}">
+                    </div>
                 </div>
             </div>
         </div>
@@ -127,29 +170,29 @@
             <div class="card-body">
                 <div class="row mb-4">
                     <div class="col-md-6 mb-3 mb-md-0">
-                        <x-variant-language-select 
-                            name="source_language" 
-                            id="source_language" 
-                            label="{{ __('Source language') }}" 
+                        <x-variant-language-select
+                            name="source_language"
+                            id="source_language"
+                            label="{{ __('Source language') }}"
                             :required="false"
                         />
                     </div>
                     <div class="col-md-6">
-                        <x-variant-language-select 
-                            name="target_language" 
-                            id="target_language" 
-                            label="{{ __('Target language') }}" 
+                        <x-variant-language-select
+                            name="target_language"
+                            id="target_language"
+                            label="{{ __('Target language') }}"
                             :required="false"
                         />
                     </div>
                 </div>
-                
+
                 <div class="language-pairs-container mb-4">
                     <div class="row g-3 language-pairs-list">
                         <!-- Language pairs will be loaded here -->
                     </div>
                 </div>
-                
+
                 <div class="d-flex align-items-center">
                     <button type="button" class="btn btn-primary" id="add_language_pair">
                         <i class="ti ti-plus me-1"></i>{{ __('Add language pair') }}
@@ -172,18 +215,18 @@
         $(document).ready(function() {
             // Initialize Select2 for basic fields (excluding language which uses x-language-select component)
             $('#enterprise_id, #responsible_id').select2();
-            
+
             // Initialize Select2 for language selectors with custom template
             $('.select2').select2({
                 templateResult: formatLanguageOption,
                 templateSelection: formatLanguageOption
             });
-            
+
             // Add language pair button handler
             $('#add_language_pair').on('click', function() {
                 const sourceLanguage = $('#source_language').select2('data')[0];
                 const targetLanguage = $('#target_language').select2('data')[0];
-                
+
                 // Validate source language
                 if (!sourceLanguage || !$('#source_language').val()) {
                     Swal.fire({
@@ -197,7 +240,7 @@
                     });
                     return;
                 }
-                
+
                 // Validate target language
                 if (!targetLanguage || !$('#target_language').val()) {
                     Swal.fire({
@@ -211,7 +254,7 @@
                     });
                     return;
                 }
-                
+
                 // Get text and values
                 const sourceText = sourceLanguage.text;
                 const targetText = targetLanguage.text;
@@ -219,7 +262,7 @@
                 const targetValue = $('#target_language').val();
                 const sourceFlag = $('#source_language option:selected').data('flag');
                 const targetFlag = $('#target_language option:selected').data('flag');
-                
+
                 // Check if source and target are the same
                 if (sourceValue === targetValue) {
                     Swal.fire({
@@ -233,7 +276,7 @@
                     });
                     return;
                 }
-                
+
                 // Check if this pair already exists
                 const pairExists = checkIfPairExists(sourceValue, targetValue);
                 if (pairExists) {
@@ -249,16 +292,16 @@
                     });
                     return;
                 }
-                
+
                 // Get flag codes safely
-                const sourceFlagCode = sourceFlag || (sourceValue.split('-').length > 1 ? 
-                    sourceValue.split('-')[1].toLowerCase() : 
+                const sourceFlagCode = sourceFlag || (sourceValue.split('-').length > 1 ?
+                    sourceValue.split('-')[1].toLowerCase() :
                     sourceValue.split('-')[0].toLowerCase());
-                
-                const targetFlagCode = targetFlag || (targetValue.split('-').length > 1 ? 
-                    targetValue.split('-')[1].toLowerCase() : 
+
+                const targetFlagCode = targetFlag || (targetValue.split('-').length > 1 ?
+                    targetValue.split('-')[1].toLowerCase() :
                     targetValue.split('-')[0].toLowerCase());
-                
+
                 // Create new pair badge
                 const newPair = $(`
                     <div class="col-md-6 col-lg-4">
@@ -281,54 +324,54 @@
                                     </div>
                     </div>
                 `);
-                
+
                 // Add to container
                 $('.language-pairs-list').append(newPair);
-                
+
                 // Reset selections
                 $('#source_language').val(null).trigger('change');
                 $('#target_language').val(null).trigger('change');
             });
-            
+
             // Remove language pair
             $(document).on('click', '.remove-pair', function() {
                 $(this).closest('.col-md-6').remove();
             });
-            
+
             // Format language options with flags
             function formatLanguageOption(option) {
                 if (!option.id) {
                     return option.text;
                 }
-                
+
                 const flag = $(option.element).data('flag');
                 return $(`<span><i class="fi fi-${flag} me-2"></i>${option.text}</span>`);
             }
-            
+
             // Check if language pair already exists
             function checkIfPairExists(source, target) {
                 let exists = false;
                 $('input[name="language_pairs[]"]').each(function() {
                     const value = $(this).val();
                     if (!value) return;
-                    
+
                     const parts = value.split('|');
                     if (parts.length !== 2) return;
-                    
+
                     const [existingSource, existingTarget] = parts;
-                    
+
                     if (existingSource === source && existingTarget === target) {
                         exists = true;
                         return false; // break the loop
                     }
                 });
-                
+
                 return exists;
             }
-            
+
             // Clear example pairs on load
             $('.language-pairs-list').empty();
-            
+
             // If editing, load existing pairs
             // This would be populated from the backend with actual data
             @if(isset($collaborator) && isset($collaborator->languagePairs) && count($collaborator->languagePairs) > 0)
@@ -339,13 +382,13 @@
                         const pairTarget = "{{ $pair['target_language'] }}";
                         const pairSourceText = "{{ $pair['source_language_text'] }}";
                                                 const pairTargetText = "{{ $pair['target_language_text'] }}";
-                        
+
                         // Extract flag codes safely
                         const sourceParts = pairSource.split('-');
                         const targetParts = pairTarget.split('-');
                         const sourceFlag = sourceParts.length > 1 ? sourceParts[1].toLowerCase() : sourceParts[0].toLowerCase();
                         const targetFlag = targetParts.length > 1 ? targetParts[1].toLowerCase() : targetParts[0].toLowerCase();
-                        
+
                         // Create new pair badge
                         const savedPair = $(`
                             <div class="col-md-6 col-lg-4">
@@ -368,7 +411,7 @@
                                     </div>
                             </div>
                         `);
-                        
+
                         $('.language-pairs-list').append(savedPair);
                     } catch (e) {
                         console.error('Error adding language pair:', e);
@@ -376,69 +419,11 @@
                 @endforeach
             @endif
 
-            // Form submit handler for validation
+            // Form submit handler - removed client-side validation to rely on Laravel validation
             $('form').on('submit', function(e) {
-                // Validate required language field
-                const language = $('#language').val();
-                if (!language) {
-                    e.preventDefault();
-                    Swal.fire({
-                        title: '{{ __("Validation Error") }}',
-                        text: '{{ __("Language field is required") }}',
-                        icon: 'error',
-                        customClass: {
-                            confirmButton: 'btn btn-primary'
-                        },
-                        buttonsStyling: false
-                    });
-                    return false;
-                }
-
-                // Validate language pairs if any exist
-                const languagePairs = [];
-                $('input[name="language_pairs[]"]').each(function() {
-                    const value = $(this).val();
-                    if (value) {
-                        const parts = value.split('|');
-                        if (parts.length === 2 && parts[0] && parts[1]) {
-                            languagePairs.push(value);
-                        }
-                    }
-                });
-                
-                // Check for invalid pairs only if there are any pairs
-                if ($('input[name="language_pairs[]"]').length > 0) {
-                    let hasInvalidPairs = false;
-                    $('input[name="language_pairs[]"]').each(function() {
-                        const value = $(this).val();
-                        if (value) {
-                            const parts = value.split('|');
-                            if (parts.length !== 2 || !parts[0] || !parts[1]) {
-                                hasInvalidPairs = true;
-                                return false; // break the loop
-                            }
-                        }
-                    });
-                    
-                    if (hasInvalidPairs) {
-                        // Show error message
-                        e.preventDefault();
-                        Swal.fire({
-                            title: '{{ __("Validation Error") }}',
-                            text: '{{ __("Some language pairs are invalid") }}',
-                            icon: 'error',
-                            customClass: {
-                                confirmButton: 'btn btn-primary'
-                            },
-                            buttonsStyling: false
-                        });
-                        return false;
-                    }
-                }
-                
-                // If all checks pass, allow the form to submit
+                // Allow form to submit - Laravel will handle validation
                 return true;
             });
         });
     </script>
-@endsection 
+@endsection

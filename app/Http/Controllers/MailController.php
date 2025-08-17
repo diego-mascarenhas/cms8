@@ -12,7 +12,13 @@ class MailController extends Controller
     public function index()
     {
         $sources = Source::all();
-        $emails = $this->mailbox();
+
+        try {
+            $emails = $this->mailbox();
+        } catch (\Exception $e) {
+            Log::error('Error getting emails: ' . $e->getMessage());
+            $emails = collect(); // Return empty collection on error
+        }
 
         return view('mail.index', compact('sources', 'emails'));
     }
@@ -20,16 +26,47 @@ class MailController extends Controller
     public function mailbox()
     {
         try {
-            // IMAP configuration
+            // Get current team
+            $team = auth()->user()->currentTeam;
+            if (!$team) {
+                Log::warning('No current team found for user');
+                return collect();
+            }
+
+            // Get IMAP configuration from team settings with fallback to .env
+            $imapHost = $team->getSetting('imap_host') ?: env('MAILBOX_HOST');
+            $imapUsername = $team->getSetting('imap_username') ?: env('MAILBOX_USERNAME');
+            $imapPassword = $team->getSetting('imap_password') ?: env('MAILBOX_PASSWORD');
+            $imapPort = $team->getSetting('imap_port') ?: env('MAILBOX_PORT', 993);
+            $imapEncryption = $team->getSetting('imap_encryption') ?: env('MAILBOX_ENCRYPTION', 'ssl');
+
+            if (!$imapHost || !$imapUsername || !$imapPassword) {
+                Log::warning('IMAP configuration incomplete (team and .env)', [
+                    'team_id' => $team->id,
+                    'has_host' => !empty($imapHost),
+                    'has_username' => !empty($imapUsername),
+                    'has_password' => !empty($imapPassword),
+                ]);
+                return collect();
+            }
+
+            // IMAP configuration from team settings with .env fallback
             $config = [
-                'host' => env('MAILBOX_HOST'),
-                'port' => env('MAILBOX_PORT', 993),
-                'encryption' => env('MAILBOX_ENCRYPTION', 'ssl'),
+                'host' => $imapHost,
+                'port' => $imapPort,
+                'encryption' => $imapEncryption,
                 'validate_cert' => env('MAILBOX_VALIDATE_CERT', true),
-                'username' => env('MAILBOX_USERNAME'),
-                'password' => env('MAILBOX_PASSWORD'),
+                'username' => $imapUsername,
+                'password' => $imapPassword,
                 'protocol' => 'imap',
             ];
+
+            Log::info('Connecting to IMAP with team configuration', [
+                'team_id' => $team->id,
+                'host' => $config['host'],
+                'port' => $config['port'],
+                'encryption' => $config['encryption'],
+            ]);
 
             $cm = new ClientManager;
             $client = $cm->make($config);
@@ -55,10 +92,16 @@ class MailController extends Controller
                 }
             }
 
+            Log::info('Successfully retrieved emails', [
+                'team_id' => $team->id,
+                'count' => $emailCollection->count(),
+            ]);
+
             return $emailCollection;
         } catch (\Exception $e) {
             Log::error('Error in mailbox method', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return collect();

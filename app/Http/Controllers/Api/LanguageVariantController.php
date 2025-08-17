@@ -44,7 +44,7 @@ class LanguageVariantController extends Controller
 
         // Validate the request
         $request->validate([
-            'code' => 'required|string|max:10|unique:language_variants,code',
+            'code' => 'required|string|max:10|unique:language_variants,code,NULL,id,team_id,' . auth()->user()->currentTeam->id,
             'name' => 'required|string|max:255',
             'base_language' => 'required|string|max:10',
             'country_code' => 'nullable|string|max:2',
@@ -52,7 +52,9 @@ class LanguageVariantController extends Controller
 
         try {
             // Create the language variant
-            $languageVariant = LanguageVariant::create($request->all());
+            $data = $request->all();
+            $data['team_id'] = auth()->user()->currentTeam->id;
+            $languageVariant = LanguageVariant::create($data);
 
             // Load the base language relationship
             $languageVariant->load('baseLanguage');
@@ -112,7 +114,7 @@ class LanguageVariantController extends Controller
 
         // Validate the request
         $request->validate([
-            'code' => 'sometimes|required|string|max:10|unique:language_variants,code,' . $languageVariant->id,
+            'code' => 'sometimes|required|string|max:10|unique:language_variants,code,' . $languageVariant->id . ',id,team_id,' . auth()->user()->currentTeam->id,
             'name' => 'sometimes|required|string|max:255',
             'base_language' => 'sometimes|required|string|max:10',
             'country_code' => 'nullable|string|max:2',
@@ -205,4 +207,4 @@ class LanguageVariantController extends Controller
             ],
         ]);
     }
-} 
+}

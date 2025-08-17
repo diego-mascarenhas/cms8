@@ -16,6 +16,9 @@ class CollaboratorController extends Controller
 {
     public function index(CollaboratorDataTable $dataTable)
     {
+        // Use the Contact Policy for authorization
+        $this->authorize('viewAny', Contact::class);
+
         // Get real statistics for the dashboard cards
         $dashboardStats = [
             'pendingAcceptance' => Contact::getPendingAcceptanceCount(),
@@ -51,6 +54,16 @@ class CollaboratorController extends Controller
         $validated['creator_id'] = auth()->user()->id;
         $validated['team_id'] = auth()->user()->currentTeam->id;
 
+        // Prepare initial data with extras
+        $initialData = (object)[
+            'extras' => (object)[
+                'nif_cif' => $request->nif_cif ?: null,
+                'domicilio' => $request->domicilio ?: null,
+                'poblacion' => $request->poblacion ?: null,
+                'codigo_postal' => $request->codigo_postal ?: null,
+            ]
+        ];
+
         $contact = Contact::create([
             'name' => $validated['name'],
             'surname' => $validated['surname'] ?? null,
@@ -61,6 +74,7 @@ class CollaboratorController extends Controller
             'profile' => $validated['profile'] ?? null,
             'creator_id' => $validated['creator_id'],
             'team_id' => $validated['team_id'],
+            'data' => $initialData,
         ]);
 
         // Process language pairs if they exist
@@ -140,6 +154,9 @@ class CollaboratorController extends Controller
             },
         ])->findOrFail($id);
 
+        // Use the Contact Policy for authorization
+        $this->authorize('view', $collaborator);
+
         return view('collaborator.show', compact('collaborator'));
     }
 
@@ -150,6 +167,9 @@ class CollaboratorController extends Controller
             'languageVariants.targetLanguage',
             'fares',
         ])->findOrFail($id);
+
+        // Use the Contact Policy for authorization
+        $this->authorize('update', $collaborator);
 
         // Force language loading
         $languagePairs = [];
@@ -176,6 +196,9 @@ class CollaboratorController extends Controller
     {
         $collaborator = Contact::findOrFail($id);
 
+        // Use the Contact Policy for authorization
+        $this->authorize('update', $collaborator);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
@@ -189,6 +212,28 @@ class CollaboratorController extends Controller
             'fare_ids' => 'nullable|array',
         ]);
 
+        // Prepare extras data
+        $currentData = $collaborator->data ?? (object)[];
+
+        // Ensure extras object exists
+        if (!isset($currentData->extras)) {
+            $currentData->extras = (object)[];
+        }
+
+        // Update extras fields if provided
+        if ($request->has('nif_cif')) {
+            $currentData->extras->nif_cif = $request->nif_cif ?: null;
+        }
+        if ($request->has('domicilio')) {
+            $currentData->extras->domicilio = $request->domicilio ?: null;
+        }
+        if ($request->has('poblacion')) {
+            $currentData->extras->poblacion = $request->poblacion ?: null;
+        }
+        if ($request->has('codigo_postal')) {
+            $currentData->extras->codigo_postal = $request->codigo_postal ?: null;
+        }
+
         $collaborator->update([
             'name' => $validated['name'],
             'surname' => $validated['surname'] ?? null,
@@ -197,6 +242,7 @@ class CollaboratorController extends Controller
             'birthday' => $validated['birthday'] ?? null,
             'language' => $validated['language'],
             'profile' => $validated['profile'] ?? null,
+            'data' => $currentData,
         ]);
 
         // Process language pairs if they exist

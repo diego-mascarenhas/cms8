@@ -17,13 +17,13 @@ class MessageDelivery extends Model
 		'sent_at',
 		'delivered_at',
 		'removed_at',
-		'status',
+		'status_id',
 	];
 
-	protected $dates = [
-		'sent_at',
-		'delivered_at',
-		'removed_at',
+	protected $casts = [
+		'sent_at' => 'datetime',
+		'delivered_at' => 'datetime',
+		'removed_at' => 'datetime',
 	];
 
 	public function team()
@@ -89,8 +89,22 @@ class MessageDelivery extends Model
         ]);
     }
 
+
+
+    /**
+     * Mark as delivered (status_id = 2)
+     */
+    public function markAsDelivered()
+    {
+        $this->update([
+            'delivered_at' => now(),
+            'status_id' => 2, // 2 = delivered
+        ]);
+    }
+
     /**
      * Mark as opened (status_id = 2)
+     * Note: Tracking events are now handled in MessageTrackingController to avoid duplication
      */
     public function markAsOpened()
     {
@@ -104,12 +118,6 @@ class MessageDelivery extends Model
         } else {
             \Log::info('Already opened', ['id' => $this->id, 'opened_at' => $this->opened_at]);
         }
-        $this->trackingEvents()->create([
-            'event' => 'opened',
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
-        \Log::info('Tracking event created', ['id' => $this->id]);
     }
 
     /**
@@ -155,15 +163,26 @@ class MessageDelivery extends Model
             ? $this->message->template->gjs_data['html']
             : '';
         $contactName = $this->contact ? $this->contact->name : '';
+
         // Simple variable replacement for {{name}}
         $html = str_replace('{{name}}', $contactName, $templateHtml);
-        // Insert open tracking image before </body> or at the end
+
+        // Get team to check if advertising footer should be added
+        $team = $this->message && $this->message->team ? $this->message->team : auth()->user()->currentTeam;
+
+        // Add advertising footer if using system SMTP
+        $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
+
+        // Insert tracking image and advertising footer before </body> or at the end
         $trackingImg = '<img src="' . $this->getTrackingUrl() . '" width="1" height="1" style="display:none;" alt="" />';
+        $insertContent = $advertisingFooter . $trackingImg;
+
         if (stripos($html, '</body>') !== false) {
-            $html = str_ireplace('</body>', $trackingImg . '</body>', $html);
+            $html = str_ireplace('</body>', $insertContent . '</body>', $html);
         } else {
-            $html .= $trackingImg;
+            $html .= $insertContent;
         }
+
         return $html;
     }
 }

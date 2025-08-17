@@ -9,17 +9,28 @@ class PaymentAccount extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $table = 'payment_accounts';
 
-    protected $fillable = ['code', 'name', 'symbol', 'status'];
+    protected $fillable = ['team_id', 'code', 'name', 'symbol', 'currency_id', 'status'];
 
     protected static function booted()
     {
+        static::addGlobalScope('team', function ($builder) {
+            if (auth()->check()) {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+
         static::addGlobalScope('activeStatus', function ($builder) {
             $builder->where('status', 1);
         });
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
     }
 
     public function currency()

@@ -12,6 +12,7 @@ class LanguageVariant extends Model
         'name',
         'base_language',
         'country_code',
+        'team_id',
     ];
 
     protected $appends = ['flag'];

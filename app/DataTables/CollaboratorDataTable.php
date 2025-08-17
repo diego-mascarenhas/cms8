@@ -44,6 +44,11 @@ class CollaboratorDataTable extends DataTable
                         return ''; // Return empty string for unknown valorations
                 }
             })
+            ->orderColumn('rating', function ($query, $order)
+            {
+                // Order by valoration_id (lower ID = higher priority, NULL values last)
+                $query->orderByRaw("valoration_id IS NULL, valoration_id $order");
+            })
                                                                                     ->addColumn('language_combinations', function ($contact)
             {
                 // Get language combinations from the contact's language variants
@@ -146,6 +151,13 @@ class CollaboratorDataTable extends DataTable
                     $q->selectRaw('COUNT(DISTINCT fare_id)');
                 },
             ]);
+
+        // Apply Contact Policy filter
+        $user = auth()->user();
+        if ($user) {
+            $policyFilter = \App\Policies\ContactPolicy::getQueryFilter($user);
+            $policyFilter($query);
+        }
 
         // Handle custom filters from request
         $request = request();
@@ -351,6 +363,9 @@ class CollaboratorDataTable extends DataTable
                 break;
         }
 
+        // Default ordering: collaborators with valoration first, then without valoration
+        $query->orderByRaw('valoration_id IS NULL, valoration_id ASC');
+
         return $query;
     }
 
@@ -476,7 +491,7 @@ class CollaboratorDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('Brtip')
-            ->orderBy(1, 'asc')
+            ->orderBy(2, 'asc')
             ->responsive(true)
             ->processing(false)
             ->serverSide(true)
@@ -538,7 +553,7 @@ class CollaboratorDataTable extends DataTable
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->searchable(false)
-                ->orderable(false)
+                ->orderable(true)
                 ->width(120),
             Column::make('language_combinations')
                 ->title(__('Combination'))
