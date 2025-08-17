@@ -68,6 +68,14 @@
 			"module_key": "services"
 		},
 		{
+			"url": "project/list",
+			"name": "Projects",
+			"icon": "menu-icon tf-icons ti ti-folder",
+			"slug": "project-list",
+			"permission": "project.list",
+			"module_key": "projects"
+		},
+		{
 			"url": "task/list",
 			"name": "Tasks",
 			"icon": "menu-icon tf-icons ti ti-checklist",
@@ -92,7 +100,42 @@
 			"module_key": "documentation"
 		},
 		{
+			"menuHeader": "E-commerce"
+		},
+		{
+			"url": "product/list",
+			"name": "Products",
+			"icon": "menu-icon tf-icons ti ti-package",
+			"slug": "product-list",
+			"permission": "product.list",
+			"module_key": "products"
+		},
+		{
+			"url": "order/list",
+			"name": "Orders",
+			"icon": "menu-icon tf-icons ti ti-shopping-bag",
+			"slug": "order-list",
+			"permission": "order.list",
+			"module_key": "orders"
+		},
+		{
 			"menuHeader": "Billing"
+		},
+		{
+			"url": "invoice/list",
+			"name": "Invoices",
+			"icon": "menu-icon tf-icons ti ti-file-invoice",
+			"slug": "invoice-list",
+			"permission": "invoice.list",
+			"module_key": "invoices"
+		},
+		{
+			"url": "payment/list",
+			"name": "Payments",
+			"icon": "menu-icon tf-icons ti ti-credit-card",
+			"slug": "payment-list",
+			"permission": "payment.list",
+			"module_key": "payments"
 		},
 		{
 			"url": "earning/list",
@@ -196,41 +239,6 @@
 			"module_key": "campaigns"
 		},
 		{
-			"menuHeader": "Projects"
-		},
-		{
-			"url": "project/list",
-			"name": "All Projects",
-			"icon": "menu-icon tf-icons ti ti-folder",
-			"slug": "project-list",
-			"permission": "project.list",
-			"module_key": "projects"
-		},
-		{
-			"url": "project/create",
-			"name": "New Project",
-			"icon": "menu-icon tf-icons ti ti-folder-plus",
-			"slug": "project-create",
-			"permission": "project.create",
-			"module_key": "projects"
-		},
-		{
-			"url": "project/tasks",
-			"name": "Tasks",
-			"icon": "menu-icon tf-icons ti ti-checklist",
-			"slug": "project-tasks",
-			"permission": "project.tasks",
-			"module_key": "projects"
-		},
-		{
-			"url": "projects/calendar",
-			"name": "Calendar",
-			"icon": "menu-icon tf-icons ti ti-calendar",
-			"slug": "project-calendar",
-			"permission": "project.calendar",
-			"module_key": "projects"
-		},
-		{
 			"menuHeader": "Web Site"
 		},
 		{
@@ -241,6 +249,14 @@
 			"target": "blank",
 			"permission": "hosting.edit",
 			"module_key": "website"
+		},
+		{
+			"url": "academy/list",
+			"name": "Academy",
+			"icon": "menu-icon tf-icons ti ti-book",
+			"slug": "academy-list",
+			"permission": "academy.list",
+			"module_key": "academy"
 		},
 		{
 			"url": "template/list",

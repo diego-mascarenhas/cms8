@@ -34,6 +34,16 @@ class Invoice extends Model
         return $this->belongsTo(InvoiceType::class);
     }
 
+    public function billingAddress()
+    {
+        return $this->belongsTo(EnterpriseBillingAddress::class, 'billing_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
+
     public function getStatusLabelAttribute()
     {
         switch ($this->status) {

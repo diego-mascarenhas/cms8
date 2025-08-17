@@ -41,7 +41,7 @@ class TeamSettingController extends Controller
                 if (! empty($value) || $value === '0') {
                     $team->setSetting($key, $value, [
                         'group' => $group,
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash']),
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'twilio_token', 'mail_password', 'imap_password']),
                     ]);
                 }
             }
@@ -173,6 +173,187 @@ class TeamSettingController extends Controller
                         ],
                         'value' => $team->getSetting('api_token_abilities', '*'),
                         'is_encrypted' => false,
+                    ],
+                ],
+            ],
+            'twilio' => [
+                'title' => 'Twilio Configuration',
+                'icon' => 'ti ti-phone',
+                'settings' => [
+                    'twilio_sid' => [
+                        'label' => 'Account SID',
+                        'type' => 'text',
+                        'value' => $team->getSetting('twilio_sid'),
+                        'is_encrypted' => false,
+                    ],
+                    'twilio_token' => [
+                        'label' => 'Auth Token',
+                        'type' => 'password',
+                        'value' => $team->getSetting('twilio_token'),
+                        'is_encrypted' => true,
+                    ],
+                    'twilio_sms_from' => [
+                        'label' => 'SMS From Number',
+                        'type' => 'text',
+                        'value' => $team->getSetting('twilio_sms_from'),
+                        'is_encrypted' => false,
+                    ],
+                    'twilio_whatsapp_from' => [
+                        'label' => 'WhatsApp From Number',
+                        'type' => 'text',
+                        'value' => $team->getSetting('twilio_whatsapp_from'),
+                        'is_encrypted' => false,
+                    ],
+                    'twilio_webhook_url' => [
+                        'label' => 'Webhook URL',
+                        'type' => 'readonly',
+                        'value' => $team->getTwilioWebhookUrl(),
+                        'is_encrypted' => false,
+                        'help' => 'This URL is automatically generated for your team. Use this in your Twilio Console.',
+                        'readonly' => true,
+                    ],
+                    'twilio_status_callback_url' => [
+                        'label' => 'Status Callback URL',
+                        'type' => 'readonly',
+                        'value' => $team->getTwilioStatusCallbackUrl(),
+                        'is_encrypted' => false,
+                        'help' => 'This URL is automatically generated for your team. Use this in your Twilio Console.',
+                        'readonly' => true,
+                    ],
+                ],
+            ],
+            'email' => [
+                'title' => 'Email Configuration',
+                'icon' => 'ti ti-mail',
+                'settings' => [
+                    // Outgoing Email (SMTP) - Row 1 (Server Configuration)
+                    'mail_host' => [
+                        'label' => 'SMTP Host',
+                        'type' => 'text',
+                        'value' => $team->getSetting('mail_host'),
+                        'is_encrypted' => false,
+                        'placeholder' => env('MAIL_HOST'),
+                        'help' => 'Leave empty to use: ' . env('MAIL_HOST'),
+                        'section' => 'outgoing',
+                        'row' => 1,
+                    ],
+                    'mail_port' => [
+                        'label' => 'SMTP Port',
+                        'type' => 'number',
+                        'value' => $team->getSetting('mail_port', '587'),
+                        'is_encrypted' => false,
+                        'placeholder' => '587',
+                        'help' => 'Default: 587 (TLS), 465 (SSL), 25 (unencrypted)',
+                        'section' => 'outgoing',
+                        'row' => 1,
+                    ],
+                    'mail_encryption' => [
+                        'label' => 'Encryption',
+                        'type' => 'select',
+                        'options' => [
+                            'tls' => 'TLS',
+                            'ssl' => 'SSL',
+                            'none' => 'None',
+                        ],
+                        'value' => $team->getSetting('mail_encryption'),
+                        'is_encrypted' => false,
+                        'placeholder' => env('MAIL_ENCRYPTION'),
+                        'help' => 'Leave empty to use: ' . env('MAIL_ENCRYPTION'),
+                        'section' => 'outgoing',
+                        'row' => 1,
+                    ],
+                    // Outgoing Email (SMTP) - Row 2 (Sender Information)
+                    'mail_from_name' => [
+                        'label' => 'From Name',
+                        'type' => 'text',
+                        'value' => $team->getSetting('mail_from_name'),
+                        'is_encrypted' => false,
+                        'placeholder' => env('MAIL_FROM_NAME'),
+                        'help' => 'Leave empty to use: ' . env('MAIL_FROM_NAME'),
+                        'section' => 'outgoing',
+                        'row' => 2,
+                    ],
+                    'mail_from_address' => [
+                        'label' => 'From Email Address',
+                        'type' => 'email',
+                        'value' => $team->getSetting('mail_from_address'),
+                        'is_encrypted' => false,
+                        'placeholder' => env('MAIL_FROM_ADDRESS'),
+                        'help' => 'Leave empty to use: ' . env('MAIL_FROM_ADDRESS'),
+                        'section' => 'outgoing',
+                        'row' => 2,
+                    ],
+                    // Outgoing Email (SMTP) - Row 3 (Authentication)
+                    'mail_username' => [
+                        'label' => 'SMTP Username',
+                        'type' => 'email',
+                        'value' => $team->getSetting('mail_username'),
+                        'is_encrypted' => false,
+                        'placeholder' => env('MAIL_USERNAME'),
+                        'help' => 'Leave empty to use: ' . env('MAIL_USERNAME'),
+                        'section' => 'outgoing',
+                        'row' => 3,
+                    ],
+                    'mail_password' => [
+                        'label' => 'SMTP Password',
+                        'type' => 'password',
+                        'value' => $team->getSetting('mail_password'),
+                        'is_encrypted' => true,
+                        'help' => 'Leave empty to use global configuration',
+                        'section' => 'outgoing',
+                        'row' => 3,
+                    ],
+                    // Incoming Email (IMAP) - Row 1
+                    'imap_host' => [
+                        'label' => 'IMAP Host',
+                        'type' => 'text',
+                        'value' => $team->getSetting('imap_host'),
+                        'is_encrypted' => false,
+                        'help' => 'For incoming email processing (optional)',
+                        'section' => 'incoming',
+                        'row' => 1,
+                    ],
+                    'imap_port' => [
+                        'label' => 'IMAP Port',
+                        'type' => 'number',
+                        'value' => $team->getSetting('imap_port', '993'),
+                        'is_encrypted' => false,
+                        'help' => 'Usually 993 for IMAP SSL or 143 for IMAP',
+                        'section' => 'incoming',
+                        'row' => 1,
+                    ],
+                    'imap_encryption' => [
+                        'label' => 'IMAP Encryption',
+                        'type' => 'select',
+                        'options' => [
+                            'tls' => 'TLS',
+                            'ssl' => 'SSL',
+                            'none' => 'None',
+                        ],
+                        'value' => $team->getSetting('imap_encryption', 'ssl'),
+                        'is_encrypted' => false,
+                        'help' => 'Usually SSL for port 993',
+                        'section' => 'incoming',
+                        'row' => 1,
+                    ],
+                    // Incoming Email (IMAP) - Row 2
+                    'imap_username' => [
+                        'label' => 'IMAP Username',
+                        'type' => 'email',
+                        'value' => $team->getSetting('imap_username'),
+                        'is_encrypted' => false,
+                        'help' => 'Usually same as SMTP username',
+                        'section' => 'incoming',
+                        'row' => 2,
+                    ],
+                    'imap_password' => [
+                        'label' => 'IMAP Password',
+                        'type' => 'password',
+                        'value' => $team->getSetting('imap_password'),
+                        'is_encrypted' => true,
+                        'help' => 'Usually same as SMTP password',
+                        'section' => 'incoming',
+                        'row' => 2,
                     ],
                 ],
             ],
@@ -394,9 +575,9 @@ class TeamSettingController extends Controller
 
         // Check if translation already exists
         $existing = CustomTranslation::where('team_id', $team->id)
-            ->where('key', $request->key)
-            ->where('group', $request->group)
-            ->where('locale', $request->locale)
+            ->where('key', $request->input('key'))
+            ->where('group', $request->input('group'))
+            ->where('locale', $request->input('locale'))
             ->first();
 
         if ($existing) {
@@ -405,14 +586,14 @@ class TeamSettingController extends Controller
 
         CustomTranslation::create([
             'team_id' => $team->id,
-            'key' => $request->key,
-            'value' => $request->value,
-            'group' => $request->group,
-            'locale' => $request->locale,
+            'key' => $request->input('key'),
+            'value' => $request->input('value'),
+            'group' => $request->input('group'),
+            'locale' => $request->input('locale'),
         ]);
 
         // Clear cache for this translation
-        app(\App\Services\CustomTranslationService::class)->clearCache($request->key, $request->group, $request->locale);
+        app(\App\Services\CustomTranslationService::class)->clearCache($request->input('key'), $request->input('group'), $request->input('locale'));
 
         return redirect()->back()->with('success', 'Traducción personalizada creada exitosamente');
     }
@@ -437,14 +618,14 @@ class TeamSettingController extends Controller
         ]);
 
         $translation->update([
-            'key' => $request->key,
-            'value' => $request->value,
-            'group' => $request->group,
-            'locale' => $request->locale,
+            'key' => $request->input('key'),
+            'value' => $request->input('value'),
+            'group' => $request->input('group'),
+            'locale' => $request->input('locale'),
         ]);
 
         // Clear cache for this translation
-        app(\App\Services\CustomTranslationService::class)->clearCache($request->key, $request->group, $request->locale);
+        app(\App\Services\CustomTranslationService::class)->clearCache($request->input('key'), $request->input('group'), $request->input('locale'));
 
         return redirect()->back()->with('success', 'Traducción personalizada actualizada exitosamente');
     }
@@ -517,5 +698,278 @@ class TeamSettingController extends Controller
 
         $message = "Importación completada: {$imported} nuevas traducciones, {$updated} actualizadas";
         return redirect()->back()->with('success', $message);
+    }
+
+        /**
+     * Test SMTP connection
+     */
+    public function testSmtpConnection(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        try {
+            $config = $team->getOutgoingEmailConfig();
+
+            if (empty($config['host']) || empty($config['username'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'SMTP configuration is incomplete. Please configure host and username.'
+                ]);
+            }
+
+            // Test with simple socket connection first
+            $host = $config['host'];
+            $port = $config['port'] ?? 587;
+            $timeout = 10;
+
+            // Test basic connectivity
+            $socket = @fsockopen($host, $port, $errno, $errstr, $timeout);
+            if (!$socket) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cannot connect to {$host}:{$port} - {$errstr} ({$errno})"
+                ]);
+            }
+            fclose($socket);
+
+            // Test with Laravel's Mail facade using temporary config
+            $originalConfig = config('mail.mailers.smtp');
+
+            config([
+                'mail.mailers.smtp.host' => $config['host'],
+                'mail.mailers.smtp.port' => $config['port'] ?? 587,
+                'mail.mailers.smtp.encryption' => $config['encryption'] ?? 'tls',
+                'mail.mailers.smtp.username' => $config['username'],
+                'mail.mailers.smtp.password' => $config['password'] ?? '',
+            ]);
+
+            // Create test transport
+            $transport = app('mail.manager')->createSymfonyTransport([
+                'transport' => 'smtp',
+                'host' => $config['host'],
+                'port' => $config['port'] ?? 587,
+                'encryption' => $config['encryption'] ?? 'tls',
+                'username' => $config['username'],
+                'password' => $config['password'] ?? '',
+            ]);
+
+            // Test the connection
+            $transport->start();
+
+            // Restore original config
+            config(['mail.mailers.smtp' => $originalConfig]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'SMTP connection successful!'
+            ]);
+
+        } catch (\Exception $e) {
+            // Restore original config on error
+            if (isset($originalConfig)) {
+                config(['mail.mailers.smtp' => $originalConfig]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'SMTP connection failed: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Test IMAP connection
+     */
+    public function testImapConnection(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        try {
+            $config = $team->getIncomingEmailConfig();
+
+            if (empty($config['host']) || empty($config['username'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'IMAP configuration is incomplete. Please configure host and username.'
+                ]);
+            }
+
+            $connectionString = "{{$config['host']}:{$config['port']}/imap";
+
+            if ($config['encryption'] === 'ssl') {
+                $connectionString .= '/ssl';
+            } elseif ($config['encryption'] === 'tls') {
+                $connectionString .= '/tls';
+            }
+
+            $connectionString .= '/novalidate-cert}';
+
+            // Test IMAP connection
+            $connection = @imap_open($connectionString, $config['username'], $config['password'] ?? '');
+
+            if ($connection) {
+                imap_close($connection);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'IMAP connection successful!'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'IMAP connection failed: ' . imap_last_error()
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'IMAP connection failed: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+        /**
+     * Test Stripe connection
+     */
+    public function testStripeConnection(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        try {
+            $publicKey = $team->getSetting('stripe_public');
+            $secretKey = $team->getSetting('stripe_secret');
+
+            if (empty($publicKey) || empty($secretKey)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Stripe configuration is incomplete. Please configure both public and secret keys.'
+                ]);
+            }
+
+            // Validate key format first
+            if (!str_starts_with($publicKey, 'pk_')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid public key format. Must start with pk_'
+                ]);
+            }
+
+            if (!str_starts_with($secretKey, 'sk_')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid secret key format. Must start with sk_'
+                ]);
+            }
+
+            // Test Stripe API with more comprehensive checks
+            \Stripe\Stripe::setApiKey($secretKey);
+
+            // Try multiple API calls to ensure credentials are valid
+            $account = \Stripe\Account::retrieve();
+
+            // Additional validation - try to list payment methods (requires valid keys)
+            $paymentMethods = \Stripe\PaymentMethod::all(['limit' => 1]);
+
+            // Try to create a test product (and immediately delete it)
+            $testProduct = \Stripe\Product::create([
+                'name' => 'Test Connection Product - Delete Me',
+                'type' => 'service',
+            ]);
+
+            // Clean up test product
+            \Stripe\Product::update($testProduct->id, ['active' => false]);
+
+            $accountName = $account->display_name ?? $account->business_profile->name ?? 'Account';
+            return response()->json([
+                'success' => true,
+                'message' => "Stripe connection successful! Account: {$accountName} ({$account->country})"
+            ]);
+
+        } catch (\Stripe\Exception\AuthenticationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe authentication failed: Invalid API keys'
+            ]);
+        } catch (\Stripe\Exception\InvalidRequestException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe request failed: ' . $e->getMessage()
+            ]);
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe API error: ' . $e->getMessage()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe connection failed: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Test Twilio connection
+     */
+    public function testTwilioConnection(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        try {
+            $config = $team->getTwilioConfig();
+
+            if (empty($config['sid']) || empty($config['token'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Twilio configuration is incomplete. Please configure SID and Token.'
+                ]);
+            }
+
+            // Validate SID format
+            if (!str_starts_with($config['sid'], 'AC')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid Account SID format. Must start with AC'
+                ]);
+            }
+
+            // Test Twilio API connection
+            $twilio = new \Twilio\Rest\Client($config['sid'], $config['token']);
+
+            // Retrieve account information to test credentials
+            $account = $twilio->api->v2010->account->fetch();
+
+            // Additional test - try to list incoming phone numbers (safe read operation)
+            $phoneNumbers = $twilio->incomingPhoneNumbers->read(['limit' => 1]);
+
+            // Check if account is active
+            if ($account->status !== 'active') {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Twilio account status: {$account->status}. Account must be active."
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Twilio connection successful! Account: {$account->friendlyName} ({$account->status})"
+            ]);
+
+        } catch (\Twilio\Exceptions\RestException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Twilio API error: ' . $e->getMessage()
+            ]);
+        } catch (\Twilio\Exceptions\TwilioException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Twilio connection failed: ' . $e->getMessage()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Twilio test failed: ' . $e->getMessage()
+            ]);
+        }
     }
 }

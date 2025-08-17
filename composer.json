@@ -11,6 +11,8 @@
     "php": "^8.1",
     "barryvdh/laravel-debugbar": "^3.14",
     "beyondcode/laravel-mailbox": "*",
+    "chillerlan/php-qrcode": "^5.0",
+    "darryldecode/cart": "^4.2",
     "doctrine/dbal": "^3.5.1",
     "fakerphp/faker": "^1.23",
     "guzzlehttp/guzzle": "^7.9",
@@ -26,7 +28,6 @@
     "spatie/laravel-activitylog": "^4.10",
     "spatie/laravel-medialibrary": "^11.13",
     "spatie/laravel-permission": "^6.20",
-
     "spatie/simple-excel": "^3.6",
     "tijsverkoyen/css-to-inline-styles": "^2.3",
     "twilio/sdk": "^8.2",

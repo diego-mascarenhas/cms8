@@ -9,8 +9,8 @@ use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class TeamRevisionAlphaSeeder extends Seeder
 {
@@ -37,16 +37,43 @@ class TeamRevisionAlphaSeeder extends Seeder
         $this->createRevisionAlphaCategories();
 
         // Asignar módulos por defecto al equipo Revision Alpha
-        $defaultModules = [34, 9, 15, 20, 21, 22, 35, 42];
-        foreach ($defaultModules as $moduleId) {
-            DB::table('module_team')->updateOrInsert([
-                'module_id' => $moduleId,
-                'team_id' => $team->id,
-            ], [
-                'status' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        $defaultModuleKeys = [
+            'contacts',
+            'enterprises',
+            'projects',
+            'services',
+            'products',
+            'orders',
+            'ecommerce',
+            'invoices',
+            'payments',
+            'notes',
+            'tickets',
+            'website',
+            'hosting',
+            'mail',
+            'chat',
+            'campaigns',
+            'templates',
+            'stylebooks',
+            'notifications',
+        ];
+
+        foreach ($defaultModuleKeys as $moduleKey) {
+            $module = Module::where('key', $moduleKey)->first();
+            if ($module) {
+                DB::table('module_team')->updateOrInsert([
+                    'module_id' => $module->id,
+                    'team_id' => $team->id,
+                ], [
+                    'status' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $this->command->info("✅ Enabled module: {$module->name} ({$moduleKey})");
+            } else {
+                $this->command->warn("⚠️  Module not found: {$moduleKey}");
+            }
         }
 
         $this->command->info('✅ REVISION ALPHA setup completed successfully');
@@ -59,8 +86,9 @@ class TeamRevisionAlphaSeeder extends Seeder
     {
         $revisionUser = User::where('email', 'diego.mascarenhas@icloud.com')->first();
 
-        if (!$revisionUser) {
+        if (! $revisionUser) {
             $this->command->error('Revision user not found. Please run UserSeeder first.');
+
             return null;
         }
 
@@ -70,11 +98,11 @@ class TeamRevisionAlphaSeeder extends Seeder
                 'user_id' => $revisionUser->id,
                 'name' => "revision alpha's Team",
                 'personal_team' => false,
-            ]
+            ],
         );
 
         // Ensure the user is in the team
-        if (!$team->users()->where('user_id', $revisionUser->id)->exists()) {
+        if (! $team->users()->where('user_id', $revisionUser->id)->exists()) {
             $team->users()->attach($revisionUser->id, ['role' => 'admin']);
         }
 
@@ -306,6 +334,6 @@ class TeamRevisionAlphaSeeder extends Seeder
             'status' => 1,
         ]);
 
-        $this->command->info("✅ Created Revision Alpha categories");
+        $this->command->info('✅ Created Revision Alpha categories');
     }
 }

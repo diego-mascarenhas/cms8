@@ -131,13 +131,13 @@
 
             <!-- Social Networks -->
             @if($client->data && (
-                $client->data->facebook ?? 
-                $client->data->instagram ?? 
-                $client->data->twitter ?? 
-                $client->data->linkedin ?? 
-                $client->data->youtube ?? 
-                $client->data->tiktok ?? 
-                $client->data->pinterest ?? 
+                $client->data->facebook ??
+                $client->data->instagram ??
+                $client->data->twitter ??
+                $client->data->linkedin ??
+                $client->data->youtube ??
+                $client->data->tiktok ??
+                $client->data->pinterest ??
                 $client->data->snapchat ?? null
             ))
             <div class="card mb-4">
@@ -186,7 +186,7 @@
             @endif
         </div>
 
-        <!-- Projects Section -->
+        <!-- Projects & Services Section -->
         <div class="col-xl-8 col-lg-7 col-md-7">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -216,7 +216,7 @@
                                                 </span>
                                             @endif
                                         </div>
-                                        
+
                                         @if($project->description)
                                         <p class="card-text small text-muted mb-2">
                                             {{ Str::limit($project->description, 80) }}
@@ -270,6 +270,99 @@
                     @endif
                 </div>
             </div>
+
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ __('Services') }} ({{ $client->services->count() }})</h5>
+                    @can('service.create')
+                    <a href="{{ route('service.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
+                        <i class="ti ti-plus me-1"></i>{{ __('New Service') }}
+                    </a>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    @if($client->services->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>{{ __('Description') }}</th>
+                                        <th>{{ __('Operation') }}</th>
+                                        <th>{{ __('Price') }}</th>
+                                        <th>{{ __('Frequency') }}</th>
+                                        <th>{{ __('Next Billing') }}</th>
+                                        <th>{{ __('Status') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($client->services as $service)
+                                    <tr>
+                                        <td>{{ Str::limit($service->description, 60) }}</td>
+                                        <td><span class="badge bg-label-info">{{ strtoupper($service->operation) }}</span></td>
+                                        <td>{{ $service->currency?->code ?? 'EUR' }} {{ number_format($service->price, 2) }}</td>
+                                        <td>{{ $service->frequency }} {{ __('months') }}</td>
+                                        <td>{{ optional($service->next_billing)->format('Y-m-d') }}</td>
+                                        <td>{!! $service->status_label !!}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <p class="text-muted mb-0">{{ __('This client has no services yet.') }}</p>
+                    @endif
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{{ __('Invoices') }} ({{ $client->invoices->count() }})</h5>
+                    @can('invoice.create')
+                    <a href="{{ route('invoice.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
+                        <i class="ti ti-plus me-1"></i>{{ __('New Invoice') }}
+                    </a>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    @if($client->invoices->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>{{ __('Date') }}</th>
+                                        <th>{{ __('Billing Address') }}</th>
+                                        <th class="text-end">{{ __('Total') }}</th>
+                                        <th class="text-end">{{ __('Balance') }}</th>
+                                        <th>{{ __('Status') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($client->invoices as $invoice)
+                                    <tr>
+                                        <td><a href="{{ route('invoice.show', $invoice->id) }}">{{ $invoice->number }}</a></td>
+                                        <td>{{ \Carbon\Carbon::parse($invoice->date)->format('Y-m-d') }}</td>
+                                        <td>
+                                            @if($invoice->billingAddress)
+                                                {{ $invoice->billingAddress->name }}<br>
+                                                <small class="text-muted">{{ $invoice->billingAddress->address }}, {{ $invoice->billingAddress->locality }}</small>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-end">{{ number_format($invoice->total_amount, 2) }}</td>
+                                        <td class="text-end">{{ number_format($invoice->balance, 2) }}</td>
+                                        <td>{!! $invoice->status_label !!}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <p class="text-muted mb-0">{{ __('This client has no invoices yet.') }}</p>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
-@endsection 
+@endsection

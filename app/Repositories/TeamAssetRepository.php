@@ -9,14 +9,13 @@ use Illuminate\Support\Str;
 
 class TeamAssetRepository extends AssetRepository
 {
-	/**
+		/**
 	 * Generate a secure hash for the team ID
 	 */
 	protected function getTeamHash($teamId)
 	{
-		// Using md5 truncated to 12 characters for a good balance
-		// between brevity and security
-		return substr(md5('team_salt_' . $teamId . '_' . config('app.key')), 0, 12);
+		// Use the Team model's static hash generation method
+		return \App\Models\Team::generateTeamHash($teamId);
 	}
 
 	/**

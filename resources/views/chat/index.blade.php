@@ -33,29 +33,29 @@
         const recipientInput = document.getElementById('recipient');
         const previewModal = new bootstrap.Modal(document.getElementById('claudePreviewModal'));
         const sendAiResponseBtn = document.getElementById('sendAiResponseBtn');
-        
+
         let currentUserMessage = '';
         let currentAiResponse = '';
-        
+
         // Override the default form submission when AI is toggled on
         formSendMessage.addEventListener('submit', function(e) {
             if (useAiToggle && useAiToggle.checked && messageInput.value.trim()) {
                 e.preventDefault();
                 currentUserMessage = messageInput.value.trim();
-                
+
                 // Show the user's message in the preview modal
                 document.getElementById('userMessagePreview').textContent = currentUserMessage;
-                
+
                 // Reset and show the preview modal
                 document.getElementById('aiPreviewLoader').classList.remove('d-none');
                 document.getElementById('aiPreviewContent').classList.add('d-none');
                 document.getElementById('aiResponsePreview').textContent = '';
                 previewModal.show();
-                
+
                 // Get AI response preview
                 const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 const cleanTo = recipientInput.value.replace('whatsapp:', '');
-                
+
                 fetch('{{ route("claude.prompts.preview") }}', {
                     method: 'POST',
                     headers: {
@@ -71,12 +71,12 @@
                 .then(data => {
                     document.getElementById('aiPreviewLoader').classList.add('d-none');
                     document.getElementById('aiPreviewContent').classList.remove('d-none');
-                    
+
                     if (data.success) {
                         currentAiResponse = data.response;
                         document.getElementById('aiResponsePreview').textContent = data.response;
                     } else {
-                        document.getElementById('aiResponsePreview').innerHTML = 
+                        document.getElementById('aiResponsePreview').innerHTML =
                             '<div class="alert alert-danger">Error: ' + (data.message || 'Failed to get response') + '</div>';
                         currentAiResponse = '';
                     }
@@ -84,24 +84,24 @@
                 .catch(error => {
                     document.getElementById('aiPreviewLoader').classList.add('d-none');
                     document.getElementById('aiPreviewContent').classList.remove('d-none');
-                    document.getElementById('aiResponsePreview').innerHTML = 
+                    document.getElementById('aiResponsePreview').innerHTML =
                         '<div class="alert alert-danger">Error connecting to server: ' + error.message + '</div>';
                     currentAiResponse = '';
                 });
-                
+
                 return false;
             }
         });
-        
+
         // Send the previewed AI response when confirmed
         sendAiResponseBtn.addEventListener('click', function() {
             if (currentUserMessage && currentAiResponse) {
                 previewModal.hide();
-                
+
                 // Send the user message first
                 const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 const cleanTo = recipientInput.value.replace('whatsapp:', '');
-                
+
                 // Add the original message to the UI
                 let renderMsg = document.createElement('li');
                 renderMsg.className = 'chat-message chat-message-right';
@@ -126,7 +126,7 @@
                     </div>
                 `;
                 document.querySelector('.chat-history').appendChild(renderMsg);
-                
+
                 // Send the user message to the server
                 fetch('/chat/send', {
                     method: 'POST',
@@ -141,7 +141,7 @@
                     })
                 }).then(response => response.json())
                   .catch(error => console.error('Error sending user message:', error));
-                
+
                 // Create a new message for AI response
                 let aiMsg = document.createElement('li');
                 aiMsg.className = 'chat-message chat-message-right';
@@ -164,11 +164,11 @@
                     </div>
                 `;
                 document.querySelector('.chat-history').appendChild(aiMsg);
-                
+
                 // Scroll to bottom
                 const chatHistory = document.querySelector('.chat-history-body');
                 if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
-                
+
                 // Send the AI message to the server
                 fetch('/chat/send', {
                     method: 'POST',
@@ -183,7 +183,7 @@
                     })
                 }).then(response => response.json())
                   .catch(error => console.error('Error sending AI message:', error));
-                
+
                 // Clear the input
                 messageInput.value = '';
                 currentUserMessage = '';
@@ -512,8 +512,8 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
-                                @if(isset($selectedUser) && $selectedUser->id && $hasContact)
-                                    <a href="{{ route('contact.show', $selectedUser->id) }}" class="me-2">
+                                @if(isset($selectedContact) && $selectedContact->id)
+                                    <a href="{{ route('contact.show', $selectedContact->id) }}" class="me-2">
                                         <i class="ti ti-eye"></i>
                                     </a>
                                 @elseif(isset($selectedUser) && $selectedUser->id)
@@ -521,9 +521,6 @@
                                         <i class="ti ti-users ti-xs me-1"></i>Vincular con contacto
                                     </a>
                                 @endif
-                                <a href="{{ route('claude.prompts.index') }}" class="btn btn-sm btn-primary me-2" title="Gestionar prompts de Claude">
-                                    <i class="ti ti-robot me-1"></i>Prompts
-                                </a>
                             </div>
                         </div>
                         @endif
@@ -628,7 +625,7 @@
                             <div class="d-flex align-items-center w-100">
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"
                                     placeholder="Type your message here..." style="resize: none;"></textarea>
-                                
+
                                 <div class="d-flex align-items-center me-3">
                                     <div class="form-check form-switch mb-0">
                                         <input type="checkbox" class="form-check-input" id="use-ai-toggle">
@@ -638,7 +635,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="message-actions d-flex align-items-center">
                                 {{-- <i class="speech-to-text ti ti-microphone ti-sm cursor-pointer"></i>
                                 <label for="attach-doc" class="form-label mb-0">

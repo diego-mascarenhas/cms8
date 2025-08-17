@@ -273,29 +273,29 @@
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise[name]" name="enterprise[name]"
                                         label="Nombre de la empresa"
-                                        value="{{ old('enterprise.name', $data->enterprise->name ?? '') }}" />
+                                        value="{{ old('enterprise.name', $data->currentEnterprise->name ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise[code]" name="enterprise[code]"
                                         label="Código de Stripe"
-                                        value="{{ old('enterprise.code', $data->enterprise->code ?? '') }}" />
+                                        value="{{ old('enterprise.code', $data->currentEnterprise->code ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise[website]" name="enterprise[website]" label="Website"
-                                        value="{{ old('enterprise.website', $data->enterprise->website ?? '') }}" />
+                                        value="{{ old('enterprise.website', $data->currentEnterprise->website ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise[email]" name="enterprise[email]" label="Email"
-                                        value="{{ old('enterprise.email', $data->enterprise->email ?? '') }}" />
+                                        value="{{ old('enterprise.email', $data->currentEnterprise->email ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise[phone]" name="enterprise[phone]" label="Teléfono"
-                                        value="{{ old('enterprise.phone', $data->enterprise->phone ?? '') }}" />
+                                        value="{{ old('enterprise.phone', $data->currentEnterprise->phone ?? '') }}" />
                                 </div>
                                 <div class="col-sm-6">
                                     <x-input-general id="enterprise[whatsapp]" name="enterprise[whatsapp]"
                                         label="WhatsApp"
-                                        value="{{ old('enterprise.whatsapp', $data->enterprise->whatsapp ?? '') }}" />
+                                        value="{{ old('enterprise.whatsapp', $data->currentEnterprise->whatsapp ?? '') }}" />
                                 </div>
                                 <div class="col-12 d-flex">
                                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>

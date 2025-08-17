@@ -17,6 +17,16 @@ class MessageTrackingController extends Controller
         if ($delivery) {
             \Log::info('Tracking: delivery encontrado', ['id' => $delivery->id]);
             if (!$delivery->opened_at) {
+                // Create tracking event using the new method
+                \App\Models\MessageDeliveryTracking::createEvent(
+                    $delivery->id,
+                    'opened',
+                    [
+                        'source' => 'email_tracking_pixel',
+                        'timestamp' => now(),
+                    ]
+                );
+
                 $delivery->markAsOpened();
             }
         } else {
@@ -34,11 +44,17 @@ class MessageTrackingController extends Controller
             return hash_equals($d->getTrackingToken(), $token);
         });
         if ($delivery) {
-            $delivery->trackingEvents()->create([
-                'event' => 'clicked',
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
+            // Create tracking event using the new method
+            \App\Models\MessageDeliveryTracking::createEvent(
+                $delivery->id,
+                'clicked',
+                [
+                    'source' => 'email_link_click',
+                    'original_url' => $request->query('url', '/'),
+                    'timestamp' => now(),
+                ]
+            );
+
             $delivery->markAsClicked();
         }
         $url = $request->query('url', '/');

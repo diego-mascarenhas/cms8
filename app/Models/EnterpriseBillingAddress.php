@@ -17,11 +17,11 @@ class EnterpriseBillingAddress extends Model
         'enterprise_id',
         'name',
         'identification_number',
-        'fiscal_condition_type_id',
+        'tax_status_type_id',
         'address',
         'postal_code',
-        'city',
-        'state',
+        'locality',
+        'province',
         'country',
         'status',
     ];
@@ -31,8 +31,14 @@ class EnterpriseBillingAddress extends Model
         return $this->belongsTo(Enterprise::class);
     }
 
+    public function taxStatusType()
+    {
+        return $this->belongsTo(EnterpriseTaxStatusType::class, 'tax_status_type_id');
+    }
+
+    // Deprecated: Use taxStatusType() instead
     public function fiscalConditionType()
     {
-        return $this->belongsTo(EnterpriseFiscalConditionType::class);
+        return $this->taxStatusType();
     }
 }

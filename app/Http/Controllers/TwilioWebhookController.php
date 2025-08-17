@@ -3,122 +3,158 @@
 namespace App\Http\Controllers;
 
 use App\Models\Conversation;
+use App\Models\Team;
 use App\Services\TwilioService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class TwilioWebhookController extends Controller
 {
-    protected $twilioService;
+	public function handleIncomingMessage(Request $request, $hash = null)
+	{
+		// Find team by webhook hash if provided
+		$team = null;
+		if ($hash) {
+			$team = Team::findByWebhookHash($hash);
+			if (!$team) {
+				Log::warning("Invalid webhook hash: {$hash}");
+				return response('Invalid webhook hash', 404);
+			}
+		}
+		// If no hash provided, leave $team as null to use global .env configuration
 
-    public function __construct(TwilioService $twilioService)
-    {
-        $this->twilioService = $twilioService;
-    }
+		// Create TwilioService instance with the correct team (or null for global config)
+		$twilioService = new TwilioService($team);
 
-    public function handleIncomingMessage(Request $request)
-    {
-        return $this->twilioService->processIncomingMessage($request);
-    }
+		if (!$twilioService->isConfigured()) {
+			$teamInfo = $team ? "team: {$team->name}" : 'global .env configuration';
+			Log::error("Twilio not configured for {$teamInfo}");
+			return response('Twilio not configured', 500);
+		}
 
-    /**
-     * Handle status callbacks for outbound messages
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function handleMessageStatus(Request $request)
-    {
-        // Log the status callback for debugging
-        Log::info('Message status callback received', $request->all());
+		return $twilioService->processIncomingMessage($request);
+	}
 
-        // Get important data from the callback
-        $messageSid = $request->input('MessageSid');
-        $messageStatus = $request->input('MessageStatus');
+	/**
+	 * Handle status callbacks for outbound messages
+	 *
+	 * @return \Illuminate\Http\Response
+	 */
+	public function handleMessageStatus(Request $request, $hash = null)
+	{
+		// Find team by hash if provided (for logging purposes)
+		$team = null;
+		if ($hash) {
+			$team = Team::findByWebhookHash($hash);
+		}
+		// If no hash provided, leave $team as null (using global .env configuration)
 
-        // Find the corresponding message in our database
-        $message = Conversation::where('message_sid', $messageSid)->first();
+		// Log the status callback for debugging
+		Log::info('Message status callback received', array_merge($request->all(), [
+			'team_id' => $team ? $team->id : 'global',
+			'team_name' => $team ? $team->name : 'Global .env config'
+		]));
 
-        if ($message) {
-            // Update the message status
-            $message->status = $messageStatus;
-            $message->save();
+		// Get important data from the callback
+		$messageSid = $request->input('MessageSid');
+		$messageStatus = $request->input('MessageStatus');
 
-            Log::info("Message status updated: {$messageSid} to {$messageStatus}");
-        } else {
-            Log::warning("Message not found for SID: {$messageSid}");
-        }
+		// Find the corresponding message in our database
+		$message = Conversation::where('message_sid', $messageSid)->first();
 
-        return response('Status callback processed', 200);
-    }
+		if ($message) {
+			// Update the message status
+			$message->status = $messageStatus;
+			$message->save();
 
-    /**
-     * Handle fallback for when the primary webhook fails
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function handleFallback(Request $request)
-    {
-        // Log that the fallback was triggered
-        Log::warning('Fallback webhook triggered', $request->all());
+			Log::info("Message status updated: {$messageSid} to {$messageStatus}", [
+				'team_id' => $team ? $team->id : 'global'
+			]);
+		} else {
+			Log::warning("Message not found for SID: {$messageSid}", [
+				'team_id' => $team ? $team->id : 'global'
+			]);
+		}
 
-        try {
-            // Process the message as a normal incoming message
-            // but mark it as coming through the fallback
-            $messageSid = $request->input('MessageSid');
-            $from = $request->input('From');
-            $to = $request->input('To');
-            $body = $request->input('Body');
-            $numMedia = (int) $request->input('NumMedia', 0);
+		return response('Status callback processed', 200);
+	}
 
-            // Determine the channel type
-            $channel = 'sms';
-            if (strpos($from, 'whatsapp:') !== false || strpos($to, 'whatsapp:') !== false) {
-                $channel = 'whatsapp';
-            }
+	/**
+	 * Handle fallback for when the primary webhook fails
+	 *
+	 * @return \Illuminate\Http\Response
+	 */
+	public function handleFallback(Request $request, $hash = null)
+	{
+		// Find team by hash if provided
+		$team = null;
+		if ($hash) {
+			$team = Team::findByWebhookHash($hash);
+		}
+		// If no hash provided, leave $team as null (using global .env configuration)
 
-            // Log the incoming message
-            Log::info("Fallback: Incoming {$channel} message from {$from}: {$body}");
+		$teamInfo = $team ? "team: {$team->name}" : 'global .env configuration';
 
-            // Process media if present
-            $media = [];
-            if ($numMedia > 0) {
-                for ($i = 0; $i < $numMedia; $i++) {
-                    $mediaUrl = $request->input("MediaUrl{$i}");
-                    $contentType = $request->input("MediaContentType{$i}");
-                    $media[] = [
-                        'url' => $mediaUrl,
-                        'content_type' => $contentType,
-                    ];
-                }
-            }
+		// Log that the fallback was triggered
+		Log::warning('Fallback webhook triggered', $request->all());
 
-            // Save incoming message to database
-            $conversation = Conversation::create([
-                'message_sid' => $messageSid,
-                'channel' => $channel,
-                'from' => $from,
-                'to' => $to,
-                'body' => $body,
-                'status' => 'received',
-                'direction' => 'inbound',
-                'media' => ! empty($media) ? $media : null,
-                'metadata' => array_merge($request->except(['_token']), ['via_fallback' => true]),
-            ]);
+		try {
+			// Process the message as a normal incoming message
+			// but mark it as coming through the fallback
+			$messageSid = $request->input('MessageSid');
+			$from = $request->input('From');
+			$to = $request->input('To');
+			$body = $request->input('Body');
+			$numMedia = (int) $request->input('NumMedia', 0);
 
-            // Send an automatic response letting the user know the system received their message
-            // but might be experiencing technical difficulties
-            $responseMessage = 'Hemos recibido tu mensaje. Nuestro equipo lo revisará lo antes posible.';
+			// Determine the channel type
+			$channel = 'sms';
+			if (strpos($from, 'whatsapp:') !== false || strpos($to, 'whatsapp:') !== false) {
+				$channel = 'whatsapp';
+			}
 
-            return response()->json([
-                'status' => 'success',
-                'conversation_id' => $conversation->id,
-                'via_fallback' => true,
-            ]);
+			// Log the incoming message
+			Log::info("Fallback: Incoming {$channel} message from {$from}: {$body}");
 
-        } catch (\Exception $e) {
-            Log::error('Error processing fallback message: '.$e->getMessage());
+			// Process media if present
+			$media = [];
+			if ($numMedia > 0) {
+				for ($i = 0; $i < $numMedia; $i++) {
+					$mediaUrl = $request->input("MediaUrl{$i}");
+					$contentType = $request->input("MediaContentType{$i}");
+					$media[] = [
+						'url' => $mediaUrl,
+						'content_type' => $contentType,
+					];
+				}
+			}
 
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-        }
-    }
+			// Save incoming message to database
+			$conversation = Conversation::create([
+				'message_sid' => $messageSid,
+				'channel' => $channel,
+				'from' => $from,
+				'to' => $to,
+				'body' => $body,
+				'status' => 'received',
+				'direction' => 'inbound',
+				'media' => !empty($media) ? $media : null,
+				'metadata' => array_merge($request->except(['_token']), ['via_fallback' => true]),
+			]);
+
+			// Send an automatic response letting the user know the system received their message
+			// but might be experiencing technical difficulties
+			$responseMessage = 'Hemos recibido tu mensaje. Nuestro equipo lo revisará lo antes posible.';
+
+			return response()->json([
+				'status' => 'success',
+				'conversation_id' => $conversation->id,
+				'via_fallback' => true,
+			]);
+		} catch (\Exception $e) {
+			Log::error('Error processing fallback message: ' . $e->getMessage());
+
+			return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+		}
+	}
 }

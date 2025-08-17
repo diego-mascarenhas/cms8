@@ -18,8 +18,6 @@ class DatabaseSeeder extends Seeder
 		$this->call([
 			CurrencySeeder::class,
 			MessageTypeSeeder::class,
-			TemplateSeeder::class,
-			MessageSeeder::class,
 			PageSeeder::class,
 			RolesAndPermissionsSeeder::class,
 			PolicySeeder::class,
@@ -28,6 +26,7 @@ class DatabaseSeeder extends Seeder
 			SourceSeeder::class,
 			UserSeeder::class,
 			PaymentTypeSeeder::class,
+			EnterpriseTaxStatusTypeSeeder::class,
 			InvoiceTypeSeeder::class,
 			ProjectStatusSeeder::class,
 			EnterpriseTypeSeeder::class,
@@ -45,19 +44,13 @@ class DatabaseSeeder extends Seeder
 			ContactSkillsSeeder::class,
 			List60StatusesSeeder::class,
 
-			// Client-specific seeders (must run first to create teams)
-			//EnterpriseSeeder::class,
-			//ContactSeeder::class,
-			//TeamRevisionAlphaSeeder::class, // Revision Alpha client data for Team 2
-			//TeamHumanoSeeder::class,        // Humano client data for Team 3
-			//TeamBboSeeder::class,           // BBO client data for Team 4
+			// Module and category seeders (must run first to create modules before team-specific seeders)
+			ModuleSeeder::class,
+			CategorySeeder::class,
+
 			LanguageVariantSeeder::class, // Language variants for Team 1
 			CollaboratorsSeeder::class, // Demo collaborators for Team 1
 			TeamDemoSeeder::class, // Demo data for Team 1 (clients, projects, fares, software, certifications, experience)
-
-			// Module and category seeders (run after teams are created)
-			ModuleSeeder::class,
-			CategorySeeder::class,
 			ModuleCategorySeeder::class,
 			CertificationsSeeder::class,
 			StylebooksSeeder::class,

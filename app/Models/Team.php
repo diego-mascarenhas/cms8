@@ -80,6 +80,14 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Get the payment accounts for this team.
+     */
+    public function paymentAccounts()
+    {
+        return $this->hasMany(PaymentAccount::class);
+    }
+
+    /**
      * Get the modules enabled for this team.
      */
     public function modules()
@@ -146,5 +154,205 @@ class Team extends JetstreamTeam
         ]);
 
         return true;
+    }
+
+    /**
+     * Generate a secure hash for the team ID (same as TeamAssetRepository)
+     */
+    public function getTeamHash($teamId = null)
+    {
+        $teamId = $teamId ?? $this->id;
+        return static::generateTeamHash($teamId);
+    }
+
+    /**
+     * Generate a secure hash for any team ID (static version)
+     */
+    public static function generateTeamHash($teamId)
+    {
+        return substr(md5('team_salt_' . $teamId . '_' . config('app.key')), 0, 12);
+    }
+
+    /**
+     * Get Twilio configuration for this team.
+     */
+    public function getTwilioConfig()
+    {
+        return [
+            'sid' => $this->getSetting('twilio_sid'),
+            'token' => $this->getSetting('twilio_token'),
+            'sms_from' => $this->getSetting('twilio_sms_from'),
+            'whatsapp_from' => $this->getSetting('twilio_whatsapp_from'),
+            'webhook_url' => $this->getTwilioWebhookUrl(),
+            'status_callback_url' => $this->getTwilioStatusCallbackUrl(),
+        ];
+    }
+
+    /**
+     * Get the webhook URL for this team.
+     */
+    public function getTwilioWebhookUrl()
+    {
+        $customUrl = $this->getSetting('twilio_webhook_url');
+
+        if (!empty($customUrl)) {
+            return $customUrl;
+        }
+
+        // Generate team-specific webhook URL using deterministic hash
+        $hash = $this->getTeamHash();
+        return url("/twilio/webhook/{$hash}");
+    }
+
+    /**
+     * Get the status callback URL for this team.
+     */
+    public function getTwilioStatusCallbackUrl()
+    {
+        $customUrl = $this->getSetting('twilio_status_callback_url');
+
+        if (!empty($customUrl)) {
+            return $customUrl;
+        }
+
+        // Generate team-specific status callback URL using deterministic hash
+        $hash = $this->getTeamHash();
+        return url("/twilio/status/{$hash}");
+    }
+
+    /**
+     * Find a team by webhook hash.
+     */
+    public static function findByWebhookHash($hash)
+    {
+        // Since the hash is deterministic, we need to check all teams
+        // In practice, this is efficient because most apps don't have thousands of teams
+        return static::get()->first(function ($team) use ($hash) {
+            return static::generateTeamHash($team->id) === $hash;
+        });
+    }
+
+    /**
+     * Check if Twilio is configured for this team.
+     */
+    public function hasTwilioConfig()
+    {
+        return !empty($this->getSetting('twilio_sid')) && !empty($this->getSetting('twilio_token'));
+    }
+
+    /**
+     * Get outgoing email configuration for this team (with fallbacks to .env).
+     */
+    public function getOutgoingEmailConfig()
+    {
+        return [
+            'host' => $this->getSetting('mail_host', env('MAIL_HOST', 'smtp.gmail.com')),
+            'port' => $this->getSetting('mail_port', env('MAIL_PORT', '587')),
+            'username' => $this->getSetting('mail_username', env('MAIL_USERNAME', 'system@revisionalpha.com')),
+            'password' => $this->getSetting('mail_password', env('MAIL_PASSWORD', 'system-password')),
+            'encryption' => $this->getSetting('mail_encryption', env('MAIL_ENCRYPTION', 'tls')),
+            'from_address' => $this->getSetting('mail_from_address', env('MAIL_FROM_ADDRESS', 'noreply@revisionalpha.com')),
+            'from_name' => $this->getSetting('mail_from_name', env('MAIL_FROM_NAME', 'REVISION ALPHA Emailer')),
+        ];
+    }
+
+    /**
+     * Get incoming email configuration for this team.
+     */
+    public function getIncomingEmailConfig()
+    {
+        return [
+            'host' => $this->getSetting('imap_host'),
+            'port' => $this->getSetting('imap_port', '993'),
+            'username' => $this->getSetting('imap_username'),
+            'password' => $this->getSetting('imap_password'),
+            'encryption' => $this->getSetting('imap_encryption', 'ssl'),
+        ];
+    }
+
+    /**
+     * Check if outgoing email is configured for this team.
+     */
+    public function hasOutgoingEmailConfig()
+    {
+        $config = $this->getOutgoingEmailConfig();
+        return !empty($config['host']) && !empty($config['username']);
+    }
+
+    /**
+     * Check if this team is using the system's SMTP (should show advertising).
+     */
+    public function isUsingSystemSmtp()
+    {
+        return !$this->hasOutgoingEmailConfig();
+    }
+
+    /**
+     * Get the advertising footer HTML for teams using system SMTP.
+     */
+    public function getAdvertisingFooter()
+    {
+        if (!$this->isUsingSystemSmtp()) {
+            return '';
+        }
+
+        return '
+        <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-top: 1px solid #e9ecef; text-align: center; font-family: Arial, sans-serif;">
+            <p style="margin: 0 0 10px 0; color: #6c757d; font-size: 12px;">
+                Este email fue enviado con
+                <a href="https://revisionalpha.com/emailer" style="color: #007bff; text-decoration: none; font-weight: bold;">REVISION ALPHA Emailer</a>
+            </p>
+            <p style="margin: 0; color: #6c757d; font-size: 11px;">
+                Email Marketing fácil, rápido y seguro -
+                <a href="https://revisionalpha.com/emailer" style="color: #007bff; text-decoration: none;">¡Empieza ahora!</a>
+            </p>
+            <div style="margin-top: 10px;">
+                <a href="https://revisionalpha.com/emailer" style="display: inline-block; padding: 8px 16px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                    Crear mi cuenta gratis
+                </a>
+            </div>
+        </div>';
+    }
+
+    /**
+     * Check if incoming email is configured for this team.
+     */
+    public function hasIncomingEmailConfig()
+    {
+        return !empty($this->getSetting('imap_host')) && !empty($this->getSetting('imap_username'));
+    }
+
+    // Backwards compatibility methods (deprecated)
+
+    /**
+     * @deprecated Use getOutgoingEmailConfig() instead
+     */
+    public function getEmailConfig()
+    {
+        return $this->getOutgoingEmailConfig();
+    }
+
+    /**
+     * @deprecated Use getIncomingEmailConfig() instead
+     */
+    public function getImapConfig()
+    {
+        return $this->getIncomingEmailConfig();
+    }
+
+    /**
+     * @deprecated Use hasOutgoingEmailConfig() instead
+     */
+    public function hasEmailConfig()
+    {
+        return $this->hasOutgoingEmailConfig();
+    }
+
+    /**
+     * @deprecated Use hasIncomingEmailConfig() instead
+     */
+    public function hasImapConfig()
+    {
+        return $this->hasIncomingEmailConfig();
     }
 }
