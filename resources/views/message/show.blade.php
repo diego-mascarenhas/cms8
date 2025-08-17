@@ -17,21 +17,14 @@
 		</button>
 
 		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
-		@if(($emailConfig['from_name'] ?? '') !== 'Not configured' && ($emailConfig['from_address'] ?? '') !== 'Not configured' && !empty($emailConfig['from_name']) && !empty($emailConfig['from_address']))
-			@if($message->status_id == 1 && ($stats_db->sent ?? 0) < ($stats_db->subscribers ?? 0))
-				<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
-					<i class="ti ti-player-pause me-1"></i>Pause
-				</button>
-			@else
-				<button class="btn btn-success me-2" onclick="startCampaign({{ $message->id }})">
-					<i class="ti ti-send me-1"></i>Send Now
-				</button>
-			@endif
+		@if($message->status_id == 1 && ($stats_db->sent ?? 0) < ($stats_db->subscribers ?? 0))
+			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
+				<i class="ti ti-player-pause me-1"></i>Pause
+			</button>
 		@else
-			<!-- Show configuration message when sender is not configured -->
-			<span class="text-muted fst-italic me-2">
-				<i class="ti ti-alert-triangle me-1"></i>Configure sender to enable sending
-			</span>
+			<button class="btn btn-success me-2" onclick="startCampaign({{ $message->id }})">
+				<i class="ti ti-send me-1"></i>Send Now
+			</button>
 		@endif
 
 		<a href="{{ route('message-list') }}" class="btn btn-label-secondary">
@@ -50,22 +43,26 @@
 		<div class="card mb-4">
 			<div class="card-header d-flex justify-content-between align-items-center">
 				<span>General Information</span>
-				@if(($emailConfig['from_name'] ?? '') !== 'Not configured' && ($emailConfig['from_address'] ?? '') !== 'Not configured' && !empty($emailConfig['from_name']) && !empty($emailConfig['from_address']))
-					<button class="btn btn-sm btn-outline-info" onclick="testSend({{ $message->id }})">
-						<i class="ti ti-send-2 me-1"></i>Test Send
-					</button>
-				@endif
+				<button class="btn btn-sm btn-outline-info" onclick="testSend({{ $message->id }})">
+					<i class="ti ti-send-2 me-1"></i>Test Send
+				</button>
 			</div>
 			<div class="card-body">
 				<div class="mb-2"><strong>Subject:</strong> {{ $message->name }}</div>
 				<div class="mb-2"><strong>Sender:</strong>
-					<span class="{{ ($emailConfig['from_name'] ?? '') === 'Not configured' ? 'text-danger' : 'text-success' }}">
-						{{ $emailConfig['from_name'] ?? 'Not configured' }}
+					@if(auth()->user()->currentTeam->isUsingSystemSmtp())
+						<span class="text-info">{{ $emailConfig['from_name'] }} (System SMTP)</span>
+					@else
+						<span class="text-success">{{ $emailConfig['from_name'] }} (Own SMTP)</span>
+					@endif
 					</span>
 				</div>
 				<div class="mb-2"><strong>Sender Email:</strong>
-					<span class="{{ ($emailConfig['from_address'] ?? '') === 'Not configured' ? 'text-danger' : 'text-success' }}">
-						{{ $emailConfig['from_address'] ?? 'Not configured' }}
+					@if(auth()->user()->currentTeam->isUsingSystemSmtp())
+						<span class="text-info">{{ $emailConfig['from_address'] }} (System SMTP)</span>
+					@else
+						<span class="text-success">{{ $emailConfig['from_address'] }} (Own SMTP)</span>
+					@endif
 					</span>
 				</div>
 				<div class="mb-2"><strong>Category:</strong>

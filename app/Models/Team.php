@@ -246,13 +246,13 @@ class Team extends JetstreamTeam
     public function getOutgoingEmailConfig()
     {
         return [
-            'host' => $this->getSetting('mail_host', env('MAIL_HOST')),
-            'port' => $this->getSetting('mail_port', env('MAIL_PORT')),
-            'username' => $this->getSetting('mail_username', env('MAIL_USERNAME')),
-            'password' => $this->getSetting('mail_password', env('MAIL_PASSWORD')),
-            'encryption' => $this->getSetting('mail_encryption', env('MAIL_ENCRYPTION')),
-            'from_address' => $this->getSetting('mail_from_address', env('MAIL_FROM_ADDRESS')),
-            'from_name' => $this->getSetting('mail_from_name', env('MAIL_FROM_NAME')),
+            'host' => $this->getSetting('mail_host', env('MAIL_HOST', 'smtp.gmail.com')),
+            'port' => $this->getSetting('mail_port', env('MAIL_PORT', '587')),
+            'username' => $this->getSetting('mail_username', env('MAIL_USERNAME', 'system@revisionalpha.com')),
+            'password' => $this->getSetting('mail_password', env('MAIL_PASSWORD', 'system-password')),
+            'encryption' => $this->getSetting('mail_encryption', env('MAIL_ENCRYPTION', 'tls')),
+            'from_address' => $this->getSetting('mail_from_address', env('MAIL_FROM_ADDRESS', 'noreply@revisionalpha.com')),
+            'from_name' => $this->getSetting('mail_from_name', env('MAIL_FROM_NAME', 'REVISION ALPHA Emailer')),
         ];
     }
 

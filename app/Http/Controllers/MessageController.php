@@ -361,16 +361,8 @@ class MessageController extends Controller
 			$user = auth()->user();
 			$team = $user->currentTeam;
 
-			// Verify sender is configured
-			$emailConfig = $team->getOutgoingEmailConfig();
-			if (empty($emailConfig['from_name']) || empty($emailConfig['from_address']) ||
-				$emailConfig['from_name'] === 'Not configured' ||
-				$emailConfig['from_address'] === 'Not configured') {
-				return response()->json([
-					'success' => false,
-					'message' => 'Sender configuration is missing. Please configure your outgoing email settings.'
-				]);
-			}
+					// Get email config (will use system defaults if not configured)
+		$emailConfig = $team->getOutgoingEmailConfig();
 
 						// Create test contact data
 			$testContact = new stdClass();
