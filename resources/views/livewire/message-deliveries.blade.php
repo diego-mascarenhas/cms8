@@ -18,7 +18,7 @@
                         <tr>
                             <th>Contact</th>
                             <th>Email</th>
-                            <th>Sent At</th>
+                            <th>Scheduled/Sent At</th>
                             <th>Delivered At</th>
                             <th>Status</th>
                         </tr>
@@ -31,8 +31,16 @@
                                     <small class="text-muted">{{ $delivery['contact_email'] }}</small>
                                 </td>
                                 <td>
-                                    @if($delivery['sent_at'])
-                                        <small>{{ $delivery['sent_at'] }}</small>
+                                    @if($delivery['delivered_at'])
+                                        <small class="text-success">{{ $delivery['sent_at'] }}</small>
+                                    @elseif($delivery['sent_at'])
+                                        @if($delivery['status_text'] === 'Scheduled')
+                                            <small class="text-warning">
+                                                <i class="ti ti-clock me-1"></i>{{ $delivery['sent_at'] }}
+                                            </small>
+                                        @else
+                                            <small>{{ $delivery['sent_at'] }}</small>
+                                        @endif
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif

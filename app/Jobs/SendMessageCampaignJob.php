@@ -54,6 +54,19 @@ class SendMessageCampaignJob implements ShouldQueue
         try {
             $this->messageDelivery->load(['contact', 'message', 'message.template', 'team']);
 
+            // Check if it's time to send (respect scheduled time)
+            if ($this->messageDelivery->sent_at && $this->messageDelivery->sent_at->isFuture()) {
+                Log::info('Message delivery not yet time to send, rescheduling', [
+                    'delivery_id' => $this->messageDelivery->id,
+                    'scheduled_time' => $this->messageDelivery->sent_at,
+                    'current_time' => now(),
+                ]);
+                // Reschedule for the correct time
+                $delay = $this->messageDelivery->sent_at->diffInSeconds(now());
+                static::dispatch($this->messageDelivery)->delay($delay);
+                return;
+            }
+
             // Check if contact exists and has email
             if (!$this->messageDelivery->contact || !$this->messageDelivery->contact->email) {
                 Log::warning('Message delivery skipped: No contact or email', [
@@ -73,6 +86,25 @@ class SendMessageCampaignJob implements ShouldQueue
                 return;
             }
 
+            // Check if already delivered
+            if ($this->messageDelivery->delivered_at) {
+                Log::info('Message delivery already sent, skipping', [
+                    'delivery_id' => $this->messageDelivery->id,
+                    'delivered_at' => $this->messageDelivery->delivered_at,
+                ]);
+                return;
+            }
+
+            // Validate contact email
+            if (!filter_var($this->messageDelivery->contact->email, FILTER_VALIDATE_EMAIL)) {
+                Log::warning('Message delivery skipped: Invalid email address', [
+                    'delivery_id' => $this->messageDelivery->id,
+                    'email' => $this->messageDelivery->contact->email,
+                ]);
+                $this->messageDelivery->markAsError();
+                return;
+            }
+
             // Mark as sending
             $this->messageDelivery->update(['status_id' => 3]); // 3 = sending
 
@@ -80,13 +112,19 @@ class SendMessageCampaignJob implements ShouldQueue
             Mail::to($this->messageDelivery->contact->email)
                 ->send(new MessageDeliveryMail($this->messageDelivery));
 
-            // Mark as sent
-            $this->messageDelivery->markAsSent();
+            // Mark as delivered (update both sent_at and delivered_at)
+            $this->messageDelivery->update([
+                'sent_at' => now(), // Actual send time
+                'delivered_at' => now(),
+                'status_id' => 2, // 2 = delivered
+            ]);
 
             Log::info('Message delivery sent successfully', [
                 'delivery_id' => $this->messageDelivery->id,
                 'contact_email' => $this->messageDelivery->contact->email,
-                'message_id' => $this->messageDelivery->message_id
+                'message_id' => $this->messageDelivery->message_id,
+                'scheduled_time' => $this->messageDelivery->sent_at,
+                'actual_send_time' => now(),
             ]);
 
         } catch (\Exception $e) {

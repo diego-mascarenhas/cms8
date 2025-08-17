@@ -28,9 +28,9 @@ class MessageDeliveries extends Component
                     'contact_name' => $delivery->contact ? $delivery->contact->name : '-',
                     'contact_email' => $delivery->contact ? $delivery->contact->email : '-',
                     'sent_at' => $delivery->sent_at ?
-                        (is_string($delivery->sent_at) ? $delivery->sent_at : $delivery->sent_at->format('Y-m-d H:i:s')) : null,
+                        (is_string($delivery->sent_at) ? $delivery->sent_at : $delivery->sent_at->format('M j, Y H:i')) : null,
                     'delivered_at' => $delivery->delivered_at ?
-                        (is_string($delivery->delivered_at) ? $delivery->delivered_at : $delivery->delivered_at->format('Y-m-d H:i:s')) : null,
+                        (is_string($delivery->delivered_at) ? $delivery->delivered_at : $delivery->delivered_at->format('M j, Y H:i')) : null,
                     'status' => $this->getStatusBadge($delivery),
                     'status_text' => $this->getStatusText($delivery)
                 ];
@@ -43,12 +43,14 @@ class MessageDeliveries extends Component
             return 'danger';
         } elseif ($delivery->delivered_at) {
             return 'success';
-        } elseif ($delivery->sent_at) {
-            return 'info';
         } elseif ($delivery->status_id == 3) { // Sending
             return 'warning';
+        } elseif ($delivery->sent_at && $delivery->sent_at->isFuture()) {
+            return 'info'; // Scheduled
+        } elseif ($delivery->sent_at && $delivery->sent_at->isPast() && !$delivery->delivered_at) {
+            return 'primary'; // Sent but not delivered
         } else {
-            return 'secondary';
+            return 'secondary'; // Pending
         }
     }
 
@@ -58,10 +60,12 @@ class MessageDeliveries extends Component
             return 'Failed';
         } elseif ($delivery->delivered_at) {
             return 'Delivered';
-        } elseif ($delivery->sent_at) {
-            return 'Sent';
         } elseif ($delivery->status_id == 3) {
             return 'Sending';
+        } elseif ($delivery->sent_at && $delivery->sent_at->isFuture()) {
+            return 'Scheduled';
+        } elseif ($delivery->sent_at && $delivery->sent_at->isPast() && !$delivery->delivered_at) {
+            return 'Sent';
         } else {
             return 'Pending';
         }

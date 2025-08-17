@@ -255,18 +255,21 @@ class MessageController extends Controller
 			// Update message status to active
 			$message->update(['status_id' => 1]);
 
-			// Create deliveries if they don't exist
+			// Create deliveries if they don't exist and schedule them with random intervals
 			$this->populateMessageDeliveries($message);
 
 			// Dispatch jobs for pending deliveries
 			$pendingDeliveries = MessageDelivery::where('message_id', $message->id)
-				->whereNull('sent_at')
+				->whereNull('delivered_at') // Not delivered yet
 				->where('status_id', 1) // 1 = pending
 				->get();
 
 			foreach ($pendingDeliveries as $delivery) {
+				// Calculate delay based on the scheduled sent_at time
+				$delaySeconds = max(0, $delivery->sent_at->diffInSeconds(now()));
+
 				SendMessageCampaignJob::dispatch($delivery)
-					->delay(rand(1, 30)); // Random delay between 1-30 seconds to spread load
+					->delay($delaySeconds); // Delay based on scheduled time
 			}
 
 			return response()->json([
@@ -282,7 +285,7 @@ class MessageController extends Controller
 	}
 
 	/**
-	 * Populate message deliveries for a campaign
+	 * Populate message deliveries for a campaign with scheduled send times
 	 */
 	private function populateMessageDeliveries(Message $message)
 	{
@@ -299,6 +302,7 @@ class MessageController extends Controller
 				->get();
 		}
 
+		$contactIndex = 0;
 		foreach ($contacts as $contact) {
 			// Check if delivery already exists
 			$existingDelivery = MessageDelivery::where('message_id', $message->id)
@@ -306,12 +310,20 @@ class MessageController extends Controller
 				->first();
 
 			if (!$existingDelivery) {
+				// Schedule with random intervals (5 minutes apart + random 0-2 minutes)
+				$baseDelayMinutes = $contactIndex * 5; // 5 minutes between each
+				$randomDelayMinutes = rand(0, 120); // Random 0-2 minutes (in seconds converted to minutes)
+				$scheduledTime = now()->addMinutes($baseDelayMinutes)->addSeconds($randomDelayMinutes);
+
 				MessageDelivery::create([
 					'team_id' => $message->team_id,
 					'message_id' => $message->id,
 					'contact_id' => $contact->id,
 					'status_id' => 1, // 1 = pending
+					'sent_at' => $scheduledTime, // Schedule the send time
 				]);
+
+				$contactIndex++;
 			}
 		}
 	}
