@@ -9,20 +9,25 @@ class DeliveryStats extends Component
 {
     public $messageId;
     public $stats;
+    public $isUsingSystemSmtp = false;
 
     public function mount($messageId)
     {
         $this->messageId = $messageId;
         $this->loadStats();
+
+        // Check if team is using system SMTP
+        $team = auth()->user()->currentTeam;
+        $this->isUsingSystemSmtp = $team ? $team->isUsingSystemSmtp() : false;
     }
 
         public function loadStats()
     {
         // Always calculate real-time stats from actual deliveries
         $this->updateRealTimeStats();
-        
+
         $this->stats = MessageDeliveryStat::where('message_id', $this->messageId)->first();
-        
+
         // Si no hay stats, crear un objeto vacío con valores por defecto
         if (!$this->stats) {
             $this->stats = (object) [
@@ -44,23 +49,33 @@ class DeliveryStats extends Component
     private function updateRealTimeStats()
     {
         $message = \App\Models\Message::with('deliveries')->find($this->messageId);
-        
+
         if (!$message) {
             return;
         }
-        
+
         $deliveries = $message->deliveries;
-        
+
         $subscribers = $deliveries->count();
-        $sent = $deliveries->whereNotNull('sent_at')->count();
+
+        // Only count as "sent" if sent_at is in the past (actually sent)
+        $sent = $deliveries->filter(function($delivery) {
+            return $delivery->sent_at && $delivery->sent_at->isPast();
+        })->count();
+
         $delivered = $deliveries->whereNotNull('delivered_at')->count();
         $opened = $deliveries->whereNotNull('opened_at')->count();
         $failed = $deliveries->where('status_id', 4)->count();
-        $pending = $deliveries->whereNull('sent_at')->count();
+
+        // Pending includes both unsent and scheduled (future sent_at)
+        $pending = $deliveries->filter(function($delivery) {
+            return !$delivery->sent_at || $delivery->sent_at->isFuture();
+        })->count();
+
         $clicks = 0; // Will be implemented with tracking
-        
+
         $ratio = $subscribers > 0 ? round(($opened / $subscribers) * 100, 2) : 0;
-        
+
         \App\Models\MessageDeliveryStat::updateOrCreate(
             ['message_id' => $this->messageId],
             [

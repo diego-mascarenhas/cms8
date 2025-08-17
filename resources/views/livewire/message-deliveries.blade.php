@@ -20,7 +20,7 @@
                             <th>Email</th>
                             <th>Scheduled/Sent At</th>
                             <th>Delivered At</th>
-                            <th>Status</th>
+                            <th class="text-center">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -52,7 +52,7 @@
                                         <span class="text-muted">-</span>
                                     @endif
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     <span class="badge bg-{{ $delivery['status'] }}">
                                         {{ $delivery['status_text'] }}
                                     </span>

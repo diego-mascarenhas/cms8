@@ -456,6 +456,18 @@ class MessageController extends Controller
 				$htmlContent = '<p>' . $message->text . '</p>';
 			}
 
+			// Add advertising footer if team is using system SMTP
+			$team = auth()->user()->currentTeam;
+			$advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
+			
+			if ($advertisingFooter) {
+				if (stripos($htmlContent, '</body>') !== false) {
+					$htmlContent = str_ireplace('</body>', $advertisingFooter . '</body>', $htmlContent);
+				} else {
+					$htmlContent .= $advertisingFooter;
+				}
+			}
+
 			return view('message.preview', [
 				'message' => $message,
 				'htmlContent' => $htmlContent,

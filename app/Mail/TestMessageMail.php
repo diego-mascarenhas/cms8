@@ -35,6 +35,18 @@ class TestMessageMail extends Mailable
         $team = auth()->user()->currentTeam;
         $emailConfig = $team->getOutgoingEmailConfig();
 
+        // Add advertising footer if team is using system SMTP
+        $finalHtml = $this->htmlContent;
+        $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
+        
+        if ($advertisingFooter) {
+            if (stripos($finalHtml, '</body>') !== false) {
+                $finalHtml = str_ireplace('</body>', $advertisingFooter . '</body>', $finalHtml);
+            } else {
+                $finalHtml .= $advertisingFooter;
+            }
+        }
+
         // Get CSS from template if available
         $css = '';
         if ($this->message->template && isset($this->message->template->gjs_data['css'])) {
@@ -43,7 +55,7 @@ class TestMessageMail extends Mailable
 
         // Inline CSS styles
         $cssInliner = new CssToInlineStyles();
-        $inlinedHtml = $cssInliner->convert($this->htmlContent, $css);
+        $inlinedHtml = $cssInliner->convert($finalHtml, $css);
 
         return $this->from($emailConfig['from_address'], $emailConfig['from_name'])
                     ->subject('[TEST] ' . $this->message->name)
