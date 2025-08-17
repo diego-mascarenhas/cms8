@@ -2103,7 +2103,7 @@ class TeamDemoSeeder extends Seeder
                     'text' => 'Test Message with Demo Template',
                     'type_id' => 2,
                     'template_id' => $demoTemplate->id,
-                    'status_id' => 1,
+                    'status_id' => 0,
                 ]
             );
 

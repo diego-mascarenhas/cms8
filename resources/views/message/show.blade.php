@@ -176,12 +176,29 @@ function startCampaign(messageId) {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // Check if response is actually JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response is not JSON');
+                }
+
+                return response.json();
+            })
             .then(data => {
+                console.log('Response data:', data);
+
                 if (data.success) {
                     Swal.fire({
                         title: '¡Éxito!',
-                        text: 'La campaña ha sido iniciada exitosamente',
+                        text: data.message || 'La campaña ha sido iniciada exitosamente',
                         icon: 'success',
                         customClass: {
                             confirmButton: 'btn btn-success waves-effect waves-light'
@@ -202,17 +219,55 @@ function startCampaign(messageId) {
                     });
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    title: 'Error de conexión',
-                    text: 'No se pudo conectar con el servidor',
-                    icon: 'error',
-                    customClass: {
-                        confirmButton: 'btn btn-danger waves-effect waves-light'
-                    },
-                    buttonsStyling: false
-                });
+                        .catch(error => {
+                console.error('Error details:', error);
+                console.error('Error message:', error.message);
+
+                let errorMessage = 'Error desconocido';
+                let showRefreshOption = false;
+
+                if (error.message.includes('HTTP error! status: 419')) {
+                    errorMessage = 'Tu sesión ha expirado. Por favor, recarga la página para continuar.';
+                    showRefreshOption = true;
+                } else if (error.message.includes('HTTP error! status:')) {
+                    errorMessage = `Error del servidor: ${error.message}`;
+                } else if (error.message.includes('Response is not JSON')) {
+                    errorMessage = 'El servidor no devolvió una respuesta válida';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'No se pudo conectar con el servidor';
+                } else {
+                    errorMessage = error.message;
+                }
+
+                if (showRefreshOption) {
+                    Swal.fire({
+                        title: 'Sesión Expirada',
+                        text: errorMessage,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Recargar Página',
+                        cancelButtonText: 'Cancelar',
+                        customClass: {
+                            confirmButton: 'btn btn-warning waves-effect waves-light',
+                            cancelButton: 'btn btn-secondary waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            location.reload();
+                        }
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: errorMessage,
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                }
             });
         }
     });
@@ -253,12 +308,27 @@ function pauseCampaign(messageId) {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Pause - Response status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response is not JSON');
+                }
+
+                return response.json();
+            })
             .then(data => {
+                console.log('Pause - Response data:', data);
+
                 if (data.success) {
                     Swal.fire({
                         title: '¡Éxito!',
-                        text: 'La campaña ha sido pausada exitosamente',
+                        text: data.message || 'La campaña ha sido pausada exitosamente',
                         icon: 'success',
                         customClass: {
                             confirmButton: 'btn btn-success waves-effect waves-light'
@@ -279,17 +349,54 @@ function pauseCampaign(messageId) {
                     });
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    title: 'Error de conexión',
-                    text: 'No se pudo conectar con el servidor',
-                    icon: 'error',
-                    customClass: {
-                        confirmButton: 'btn btn-danger waves-effect waves-light'
-                    },
-                    buttonsStyling: false
-                });
+                        .catch(error => {
+                console.error('Pause - Error details:', error);
+
+                let errorMessage = 'Error desconocido';
+                let showRefreshOption = false;
+
+                if (error.message.includes('HTTP error! status: 419')) {
+                    errorMessage = 'Tu sesión ha expirado. Por favor, recarga la página para continuar.';
+                    showRefreshOption = true;
+                } else if (error.message.includes('HTTP error! status:')) {
+                    errorMessage = `Error del servidor: ${error.message}`;
+                } else if (error.message.includes('Response is not JSON')) {
+                    errorMessage = 'El servidor no devolvió una respuesta válida';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'No se pudo conectar con el servidor';
+                } else {
+                    errorMessage = error.message;
+                }
+
+                if (showRefreshOption) {
+                    Swal.fire({
+                        title: 'Sesión Expirada',
+                        text: errorMessage,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Recargar Página',
+                        cancelButtonText: 'Cancelar',
+                        customClass: {
+                            confirmButton: 'btn btn-warning waves-effect waves-light',
+                            cancelButton: 'btn btn-secondary waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            location.reload();
+                        }
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: errorMessage,
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                }
             });
         }
     });
@@ -330,8 +437,23 @@ function testSend(messageId) {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Test - Response status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response is not JSON');
+                }
+
+                return response.json();
+            })
             .then(data => {
+                console.log('Test - Response data:', data);
+
                 if (data.success) {
                     Swal.fire({
                         title: '✅ Test Email Sent!',
@@ -354,17 +476,54 @@ function testSend(messageId) {
                     });
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    title: 'Connection Error',
-                    text: 'Could not connect to server',
-                    icon: 'error',
-                    customClass: {
-                        confirmButton: 'btn btn-danger waves-effect waves-light'
-                    },
-                    buttonsStyling: false
-                });
+                        .catch(error => {
+                console.error('Test - Error details:', error);
+
+                let errorMessage = 'Error desconocido';
+                let showRefreshOption = false;
+
+                if (error.message.includes('HTTP error! status: 419')) {
+                    errorMessage = 'Tu sesión ha expirado. Por favor, recarga la página para continuar.';
+                    showRefreshOption = true;
+                } else if (error.message.includes('HTTP error! status:')) {
+                    errorMessage = `Error del servidor: ${error.message}`;
+                } else if (error.message.includes('Response is not JSON')) {
+                    errorMessage = 'El servidor no devolvió una respuesta válida';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'No se pudo conectar con el servidor';
+                } else {
+                    errorMessage = error.message;
+                }
+
+                if (showRefreshOption) {
+                    Swal.fire({
+                        title: 'Sesión Expirada',
+                        text: errorMessage,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Recargar Página',
+                        cancelButtonText: 'Cancelar',
+                        customClass: {
+                            confirmButton: 'btn btn-warning waves-effect waves-light',
+                            cancelButton: 'btn btn-secondary waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            location.reload();
+                        }
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Error',
+                        text: errorMessage,
+                        icon: 'error',
+                        customClass: {
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                }
             });
         }
     });

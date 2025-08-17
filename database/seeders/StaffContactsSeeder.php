@@ -66,6 +66,10 @@ class StaffContactsSeeder extends Seeder
 		// Staff contacts to create
 		$staffContacts = [
 			[
+				'email' => 'administracion@revisionalpha.es',
+				'name' => 'REVISION ALPHA Admin',
+			],
+			[
 				'email' => 'revisionalpha@hotmail.com',
 				'name' => 'REVISION ALPHA Hotmail',
 			],
@@ -80,10 +84,6 @@ class StaffContactsSeeder extends Seeder
 			[
 				'email' => 'webmaster@revisionalpha.cloud',
 				'name' => 'REVISION ALPHA Webmaster',
-			],
-			[
-				'email' => 'administracion@revisionalpha.es',
-				'name' => 'REVISION ALPHA Admin',
 			],
 		];
 

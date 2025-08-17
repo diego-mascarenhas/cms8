@@ -104,6 +104,7 @@ class MessageDelivery extends Model
 
     /**
      * Mark as opened (status_id = 2)
+     * Note: Tracking events are now handled in MessageTrackingController to avoid duplication
      */
     public function markAsOpened()
     {
@@ -117,12 +118,6 @@ class MessageDelivery extends Model
         } else {
             \Log::info('Already opened', ['id' => $this->id, 'opened_at' => $this->opened_at]);
         }
-        $this->trackingEvents()->create([
-            'event' => 'opened',
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
-        \Log::info('Tracking event created', ['id' => $this->id]);
     }
 
     /**
