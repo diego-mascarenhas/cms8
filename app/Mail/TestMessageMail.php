@@ -38,7 +38,7 @@ class TestMessageMail extends Mailable
         // Add advertising footer if team is using system SMTP
         $finalHtml = $this->htmlContent;
         $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
-        
+
         if ($advertisingFooter) {
             if (stripos($finalHtml, '</body>') !== false) {
                 $finalHtml = str_ireplace('</body>', $advertisingFooter . '</body>', $finalHtml);

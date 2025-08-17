@@ -139,7 +139,7 @@
                             <small class="fw-medium text-primary">Powered by REVISION ALPHA Emailer</small>
                             <br>
                             <small class="text-muted">
-                                Email Marketing fácil, rápido y seguro - 
+                                Email Marketing fácil, rápido y seguro -
                                 <a href="https://revisionalpha.com/emailer" class="text-decoration-none" target="_blank">¡Empieza ahora!</a>
                             </small>
                         </div>

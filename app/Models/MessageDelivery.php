@@ -163,26 +163,26 @@ class MessageDelivery extends Model
             ? $this->message->template->gjs_data['html']
             : '';
         $contactName = $this->contact ? $this->contact->name : '';
-        
+
         // Simple variable replacement for {{name}}
         $html = str_replace('{{name}}', $contactName, $templateHtml);
-        
+
         // Get team to check if advertising footer should be added
         $team = $this->message && $this->message->team ? $this->message->team : auth()->user()->currentTeam;
-        
+
         // Add advertising footer if using system SMTP
         $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
-        
+
         // Insert tracking image and advertising footer before </body> or at the end
         $trackingImg = '<img src="' . $this->getTrackingUrl() . '" width="1" height="1" style="display:none;" alt="" />';
         $insertContent = $advertisingFooter . $trackingImg;
-        
+
         if (stripos($html, '</body>') !== false) {
             $html = str_ireplace('</body>', $insertContent . '</body>', $html);
         } else {
             $html .= $insertContent;
         }
-        
+
         return $html;
     }
 }
