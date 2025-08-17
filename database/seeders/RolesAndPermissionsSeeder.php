@@ -335,6 +335,7 @@ class RolesAndPermissionsSeeder extends Seeder
 		Permission::firstOrCreate(['name' => 'academy.destroy']);
 
 		$rootRole = Role::firstOrCreate(['name' => 'root']);
+    
 		$rootRole->syncPermissions([
 			'user.management',
 		]);
@@ -365,6 +366,14 @@ class RolesAndPermissionsSeeder extends Seeder
 			'collaborator.store',
 			'collaborator.update',
 			'collaborator.destroy',
+			'employee.index',
+			'employee.list',
+			'employee.create',
+			'employee.show',
+			'employee.edit',
+			'employee.store',
+			'employee.update',
+			'employee.destroy',
 			'list60.list',
 			'mail.index',
 			'mail.list',
@@ -521,6 +530,14 @@ class RolesAndPermissionsSeeder extends Seeder
 			'ecommerce.destroy',
 			'ecommerce.dashboard',
 			'ecommerce.settings',
+		]);
+
+		$employeeRole = Role::firstOrCreate(['name' => 'employee']);
+		$employeeRole->syncPermissions([
+			'profile.show',
+			'profile.edit',
+			'profile.update',
+			'password.update',
 		]);
 
 		$editorRole = Role::firstOrCreate(['name' => 'editor']);

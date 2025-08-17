@@ -50,6 +50,7 @@ class DatabaseSeeder extends Seeder
 
 			LanguageVariantSeeder::class, // Language variants for Team 1
 			CollaboratorsSeeder::class, // Demo collaborators for Team 1
+			EmployeeSeeder::class, // Demo employees for Team 1
 			TeamDemoSeeder::class, // Demo data for Team 1 (clients, projects, fares, software, certifications, experience)
 			ModuleCategorySeeder::class,
 			CertificationsSeeder::class,

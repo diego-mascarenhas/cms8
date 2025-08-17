@@ -11,7 +11,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\ContactController;
-
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\EmailController;
@@ -240,6 +240,19 @@ Route::post('/team/{team}/custom-translations/import', [TeamSettingController::c
 	Route::delete('/collaborator/{id}/media/{mediaId}', [CollaboratorController::class, 'destroyMedia'])->name('collaborator.media.destroy');
 	Route::get('/collaborator/{id}/accept', [CollaboratorController::class, 'showAcceptForm'])->name('collaborator.accept');
 	Route::post('/collaborator/{id}/accept', [CollaboratorController::class, 'processAccept'])->name('collaborator.process-accept');
+
+	// Employees
+	Route::get('/employee/list', [EmployeeController::class, 'index'])->name('employee.index');
+	Route::get('/employee/create', [EmployeeController::class, 'create'])->name('employee.create');
+	Route::post('/employee', [EmployeeController::class, 'store'])->name('employee.store');
+	Route::get('/employee/{id}', [EmployeeController::class, 'show'])->name('employee.show');
+	Route::get('/employee/{id}/edit', [EmployeeController::class, 'edit'])->name('employee.edit');
+	Route::put('/employee/{id}', [EmployeeController::class, 'update'])->name('employee.update');
+	Route::delete('/employee/{id}', [EmployeeController::class, 'destroy'])->name('employee.destroy');
+	Route::get('/employee/{id}/absences', [EmployeeController::class, 'absences'])->name('employee.absences');
+	Route::post('/employee/{id}/absences/toggle-date', [EmployeeController::class, 'toggleAbsenceDate'])->name('employee.absences.toggle-date');
+	Route::post('/employee/{id}/absences/update-weekly', [EmployeeController::class, 'updateWeeklyAvailability'])->name('employee.absences.update-weekly');
+	Route::get('/employee/{id}/activity', [EmployeeController::class, 'activity'])->name('employee.activity');
 
 	// Clients
 	Route::get('/client/list', [ClientController::class, 'index'])->name('client-list');
