@@ -1226,53 +1226,6 @@ class ContactController extends Controller
     }
 
     /**
-     * Resend the last email sent to this contact
-     */
-    public function resendLastEmail(Request $request, $id)
-    {
-        try {
-            $contact = Contact::findOrFail($id);
-
-            // Find the most recent message delivery for this contact
-            $lastDelivery = MessageDelivery::where('contact_id', $contact->id)
-                ->whereNotNull('sent_at')
-                ->orderBy('sent_at', 'desc')
-                ->first();
-
-            if (! $lastDelivery) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se encontró ningún email enviado a este contacto',
-                ], 404);
-            }
-
-            // Reset the existing delivery for resend (immediate sending)
-            $lastDelivery->update([
-                'status_id' => 1, // pending
-                'sent_at' => now(), // Send immediately for resend
-                'delivered_at' => null, // Reset delivery status
-                'delivery_status' => null, // Reset delivery status
-                'email_provider' => null, // Reset provider info
-                'provider_message_id' => null, // Reset provider message ID
-            ]);
-
-            // Dispatch the job to send the email immediately
-            SendMessageCampaignJob::dispatch($lastDelivery);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Email reenviado correctamente a '.$contact->email,
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al reenviar email: '.$e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
      * Resend a specific message delivery
      */
     public function resendDelivery(Request $request, $deliveryId)

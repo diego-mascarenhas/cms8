@@ -186,7 +186,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/contact/{id}/link-user', [ContactController::class, 'linkUser'])->name('contact.link-user');
     Route::post('/contact/{id}/unlink-user', [ContactController::class, 'unlinkUser'])->name('contact.unlink-user');
     Route::post('/contact/{id}/create-and-link-user', [ContactController::class, 'createAndLinkUser'])->name('contact.create-and-link-user');
-    Route::post('/contact/{id}/resend-last-email', [ContactController::class, 'resendLastEmail'])->name('contact.resend-last-email');
+
     Route::post('/delivery/{deliveryId}/resend', [ContactController::class, 'resendDelivery'])->name('delivery.resend');
 
     // Collaborators
