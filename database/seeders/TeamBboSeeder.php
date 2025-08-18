@@ -1937,7 +1937,7 @@ class TeamBboSeeder extends Seeder
 	{
 		$this->command->info('🌐 Creating BBO custom translations...');
 
-		// Only create the welcome translation for team 1 (used for unauthenticated users)
+		// Welcome translation for team 1 (used for unauthenticated users)
 		$welcomeTranslation = [
 			'key' => 'welcome',
 			'value' => '¡Bienvenida a :name! 👋',
@@ -1968,6 +1968,67 @@ class TeamBboSeeder extends Seeder
 			$this->command->info("✅ Created welcome translation for team 1");
 		}
 
+		// BBO Team specific translations - Users to Usuarias and Collaborators to Colaboradoras
+		$bboTranslations = [
+			// Usuario/Usuaria translations
+			['key' => 'User', 'value' => 'Usuaria', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'User Management', 'value' => 'Gestión de usuarias', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'User Profile', 'value' => 'Perfil de usuaria', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'User interface', 'value' => 'Interfaz de usuaria', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'Add User', 'value' => 'Agregar Usuaria', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'Create User', 'value' => 'Crear Usuaria', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'Edit User', 'value' => 'Editar Usuaria', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'User created successfully.', 'value' => 'Usuaria creada exitosamente.', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'User updated successfully.', 'value' => 'Usuaria actualizada exitosamente.', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'User removed from team successfully.', 'value' => 'Usuaria removida del equipo exitosamente.', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'User details and information', 'value' => 'Detalles e información de la usuaria', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'User Information', 'value' => 'Información de la Usuaria', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'Do you want to remove this user from the team?', 'value' => '¿Deseas remover esta usuaria del equipo?', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'Manage team users and their permissions', 'value' => 'Gestionar usuarias del equipo y sus permisos', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'You cannot delete yourself.', 'value' => 'No puedes eliminarte a ti misma.', 'locale' => 'es', 'group' => 'app'],
+
+			// Colaborador/Colaboradora translations
+			['key' => 'New Collaborator', 'value' => 'Nueva colaboradora', 'locale' => 'es', 'group' => 'app'],
+			['key' => 'Add a new collaborator', 'value' => 'Añadir una nueva colaboradora', 'locale' => 'es', 'group' => 'app'],
+
+			// Admin/Administrator - keeping neutral for now, could be changed if needed
+			// ['key' => 'Administrator', 'value' => 'Administradora', 'locale' => 'es', 'group' => 'app'],
+			// ['key' => 'Admin', 'value' => 'Admin', 'locale' => 'es', 'group' => 'app'],
+		];
+
+		$created = 0;
+		$updated = 0;
+
+		foreach ($bboTranslations as $translation) {
+			$existing = \App\Models\CustomTranslation::where('team_id', $team->id)
+				->where('key', $translation['key'])
+				->where('group', $translation['group'])
+				->where('locale', $translation['locale'])
+				->first();
+
+			if ($existing) {
+				$existing->update([
+					'value' => $translation['value'],
+					'updated_at' => now(),
+				]);
+				$updated++;
+				$this->command->info("🔄 Updated translation for BBO team: {$translation['key']} → {$translation['value']}");
+			} else {
+				\App\Models\CustomTranslation::create([
+					'team_id' => $team->id,
+					'key' => $translation['key'],
+					'value' => $translation['value'],
+					'locale' => $translation['locale'],
+					'group' => $translation['group'],
+				]);
+				$created++;
+				$this->command->info("✅ Created translation for BBO team: {$translation['key']} → {$translation['value']}");
+			}
+		}
+
+		$this->command->info("📊 BBO translations summary:");
+		$this->command->info("   - Created: {$created} translations");
+		$this->command->info("   - Updated: {$updated} translations");
 		$this->command->info("✅ BBO custom translations completed");
 	}
 
