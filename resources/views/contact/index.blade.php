@@ -165,8 +165,8 @@
                         placeholder="Selector de estado emocional" />
                 </div>
                 <div class="flex-grow-1">
-                    <x-module-categories-select 
-                        id="CategoryFilter" 
+                    <x-module-categories-select
+                        id="CategoryFilter"
                         label=""
                         moduleKey="contacts"
                         :selected="''"
@@ -324,7 +324,7 @@
                                 row.remove();
                             });
                         }
-                        
+
                         Swal.fire({
                             icon: 'success',
                             title: '¡Éxito!',
@@ -389,13 +389,13 @@
                         } else {
                             const iconElement = element.querySelector('i.ti-list-check');
                             const linkElement = element;
-                            
+
                             if (linkElement && iconElement) {
                                 linkElement.className = 'text-success';
                                 linkElement.removeAttribute('href');
                                 linkElement.removeAttribute('onclick');
                             }
-                            
+
                             Swal.fire({
                                 icon: 'success',
                                 title: '¡Éxito!',
@@ -427,10 +427,13 @@
                 text: 'Se reenviará el último email enviado a este contacto',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#17a2b8',
-                cancelButtonColor: '#d33',
                 confirmButtonText: 'Sí, reenviar',
-                cancelButtonText: 'Cancelar'
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-info me-3 waves-effect waves-light',
+                    cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+                },
+                buttonsStyling: false
             }).then((result) => {
                 if (result.isConfirmed) {
                     // Show loading state
@@ -458,8 +461,9 @@
                                 title: '¡Email reenviado!',
                                 text: data.message,
                                 customClass: {
-                                    confirmButton: 'btn btn-success'
-                                }
+                                    confirmButton: 'btn btn-success waves-effect waves-light'
+                                },
+                                buttonsStyling: false
                             });
                         } else {
                             Swal.fire({
@@ -467,8 +471,9 @@
                                 title: 'Error',
                                 text: data.message || 'Ha ocurrido un error al reenviar el email',
                                 customClass: {
-                                    confirmButton: 'btn btn-primary'
-                                }
+                                    confirmButton: 'btn btn-danger waves-effect waves-light'
+                                },
+                                buttonsStyling: false
                             });
                         }
                     })
@@ -477,14 +482,15 @@
                         // Restore original state
                         element.innerHTML = originalHtml;
                         element.style.pointerEvents = 'auto';
-                        
+
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
                             text: 'Ha ocurrido un error al procesar la solicitud',
                             customClass: {
-                                confirmButton: 'btn btn-primary'
-                            }
+                                confirmButton: 'btn btn-danger waves-effect waves-light'
+                            },
+                            buttonsStyling: false
                         });
                     });
                 }

@@ -1246,17 +1246,18 @@ class ContactController extends Controller
                 ], 404);
             }
 
-            // Create a new delivery record for the resend
-            $newDelivery = MessageDelivery::create([
-                'team_id' => $lastDelivery->team_id,
-                'message_id' => $lastDelivery->message_id,
-                'contact_id' => $contact->id,
+            // Reset the existing delivery for resend
+            $lastDelivery->update([
                 'status_id' => 1, // pending
                 'sent_at' => now(), // Send immediately
+                'delivered_at' => null, // Reset delivery status
+                'delivery_status' => null, // Reset delivery status
+                'email_provider' => null, // Reset provider info
+                'provider_message_id' => null, // Reset provider message ID
             ]);
 
             // Dispatch the job to send the email immediately
-            SendMessageCampaignJob::dispatch($newDelivery);
+            SendMessageCampaignJob::dispatch($lastDelivery);
 
             return response()->json([
                 'success' => true,
@@ -1287,17 +1288,18 @@ class ContactController extends Controller
                 ], 400);
             }
 
-            // Create a new delivery record for the resend
-            $newDelivery = MessageDelivery::create([
-                'team_id' => $delivery->team_id,
-                'message_id' => $delivery->message_id,
-                'contact_id' => $delivery->contact_id,
+            // Reset the existing delivery for resend
+            $delivery->update([
                 'status_id' => 1, // pending
                 'sent_at' => now(), // Send immediately
+                'delivered_at' => null, // Reset delivery status
+                'delivery_status' => null, // Reset delivery status
+                'email_provider' => null, // Reset provider info
+                'provider_message_id' => null, // Reset provider message ID
             ]);
 
             // Dispatch the job to send the email immediately
-            SendMessageCampaignJob::dispatch($newDelivery);
+            SendMessageCampaignJob::dispatch($delivery);
 
             return response()->json([
                 'success' => true,

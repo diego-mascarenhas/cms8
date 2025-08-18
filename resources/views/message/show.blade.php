@@ -154,10 +154,13 @@ function resendDelivery(deliveryId, element) {
         text: 'Se creará una nueva entrega y se enviará inmediatamente',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#17a2b8',
-        cancelButtonColor: '#d33',
         confirmButtonText: 'Sí, reenviar',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        customClass: {
+            confirmButton: 'btn btn-info me-3 waves-effect waves-light',
+            cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+        },
+        buttonsStyling: false
     }).then((result) => {
         if (result.isConfirmed) {
             // Show loading state
@@ -185,8 +188,9 @@ function resendDelivery(deliveryId, element) {
                         title: '¡Email reenviado!',
                         text: data.message,
                         customClass: {
-                            confirmButton: 'btn btn-success'
-                        }
+                            confirmButton: 'btn btn-success waves-effect waves-light'
+                        },
+                        buttonsStyling: false
                     });
 
                     // Refresh the deliveries table (trigger Livewire polling)
@@ -199,8 +203,9 @@ function resendDelivery(deliveryId, element) {
                         title: 'Error',
                         text: data.message || 'Ha ocurrido un error al reenviar el email',
                         customClass: {
-                            confirmButton: 'btn btn-primary'
-                        }
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
                     });
                 }
             })
@@ -215,8 +220,9 @@ function resendDelivery(deliveryId, element) {
                     title: 'Error',
                     text: 'Ha ocurrido un error al procesar la solicitud',
                     customClass: {
-                        confirmButton: 'btn btn-primary'
-                    }
+                        confirmButton: 'btn btn-danger waves-effect waves-light'
+                    },
+                    buttonsStyling: false
                 });
             });
         }
