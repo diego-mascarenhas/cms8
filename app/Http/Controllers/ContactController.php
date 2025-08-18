@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ContactDataTable;
 use App\Http\Requests\UpdateContactRequest;
+use App\Jobs\SendMessageCampaignJob;
 use App\Models\Contact;
 use App\Models\ContactSentiment;
 use App\Models\ContactSentimentHistory;
 use App\Models\ContactSource;
 use App\Models\ContactStatus;
 use App\Models\Country;
+use App\Models\MessageDelivery;
 use App\Models\Source;
 use App\Traits\TracksContactActions;
 use Carbon\Carbon;
@@ -746,8 +748,8 @@ class ContactController extends Controller
         if ($team && $team->hasModule('projects')) {
             $data['projects'] = \App\Models\Project::where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('real_name', 'like', "%{$query}%")
-                  ->orWhere('description', 'like', "%{$query}%");
+                    ->orWhere('real_name', 'like', "%{$query}%")
+                    ->orWhere('description', 'like', "%{$query}%");
             })
                 ->with(['client', 'status'])
                 ->select('id', 'name', 'real_name', 'enterprise_id', 'status_id', 'created_at')
@@ -1221,5 +1223,51 @@ class ContactController extends Controller
         $redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';
 
         return redirect()->route($redirectRoute, $id)->with('success', 'Usuario desvinculado correctamente');
+    }
+
+    /**
+     * Resend the last email sent to this contact
+     */
+    public function resendLastEmail(Request $request, $id)
+    {
+        try {
+            $contact = Contact::findOrFail($id);
+
+            // Find the most recent message delivery for this contact
+            $lastDelivery = MessageDelivery::where('contact_id', $contact->id)
+                ->whereNotNull('sent_at')
+                ->orderBy('sent_at', 'desc')
+                ->first();
+
+            if (! $lastDelivery) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró ningún email enviado a este contacto',
+                ], 404);
+            }
+
+            // Create a new delivery record for the resend
+            $newDelivery = MessageDelivery::create([
+                'team_id' => $lastDelivery->team_id,
+                'message_id' => $lastDelivery->message_id,
+                'contact_id' => $contact->id,
+                'status_id' => 1, // pending
+                'sent_at' => now(), // Send immediately
+            ]);
+
+            // Dispatch the job to send the email immediately
+            SendMessageCampaignJob::dispatch($newDelivery);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email reenviado correctamente a '.$contact->email,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al reenviar email: '.$e->getMessage(),
+            ], 500);
+        }
     }
 }

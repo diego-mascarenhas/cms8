@@ -87,26 +87,36 @@
 		<div class="card mb-4">
 			<div class="card-header">Lead Conversion Links</div>
 			<div class="card-body table-responsive">
-				<table class="table table-sm">
-					<thead>
-						<tr>
-							<th>Delivery</th>
-							<th>Created At</th>
-							<th>Link</th>
-						</tr>
-					</thead>
-					<tbody>
-						@foreach($links as $link)
+				@if($links->count() > 0)
+					<table class="table table-sm">
+						<thead>
 							<tr>
-								<td>{{ $link->message_delivery_id }}</td>
-								<td>{{ $link->created_at }}</td>
-								<td>
-									<a href="{{ $link->link }}" target="_blank">{{ $link->link }}</a>
-								</td>
+								<th>Delivery</th>
+								<th>Created At</th>
+								<th>Link</th>
 							</tr>
-						@endforeach
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							@foreach($links as $link)
+								<tr>
+									<td>{{ $link->message_delivery_id }}</td>
+									<td>{{ $link->created_at }}</td>
+									<td>
+										<a href="{{ $link->link }}" target="_blank">{{ $link->link }}</a>
+									</td>
+								</tr>
+							@endforeach
+						</tbody>
+					</table>
+				@else
+					<div class="text-center py-4">
+						<div class="mb-3">
+							<i class="ti ti-link-off ti-lg text-muted"></i>
+						</div>
+						<h6 class="text-muted">No hay enlaces de conversión</h6>
+						<p class="text-muted small">Los enlaces de conversión aparecerán aquí cuando los contactos interactúen con los emails enviados.</p>
+					</div>
+				@endif
 			</div>
 		</div>
 	</div>

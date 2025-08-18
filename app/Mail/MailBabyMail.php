@@ -15,6 +15,7 @@ class MailBabyMail extends Mailable
     use Queueable, SerializesModels;
 
     public $delivery;
+
     private $mailBabyService;
 
     public function __construct(MessageDelivery $delivery)
@@ -28,7 +29,7 @@ class MailBabyMail extends Mailable
         // This method won't be used for actual sending,
         // but Laravel requires it for the Mailable interface
         return $this->subject('Newsletter')
-                    ->html('<p>This email is sent via MailBaby API</p>');
+            ->html('<p>This email is sent via MailBaby API</p>');
     }
 
     /**
@@ -48,13 +49,19 @@ class MailBabyMail extends Mailable
 
             // Inline CSS
             $css = '';
-            $inliner = new CssToInlineStyles();
+            $inliner = new CssToInlineStyles;
             $htmlInlined = $inliner->convert($html, $css);
+
+            // Get team configuration for proper sender settings
+            $team = $this->delivery->team ?? auth()->user()->currentTeam;
+            $fromAddress = $team->hasOutgoingEmailConfig()
+                ? $team->getOutgoingEmailConfig()['from_address']
+                : config('mail.from.address');
 
             // Prepare email data for MailBaby API
             $emailData = [
                 'to' => $this->delivery->contact->email,
-                'from' => config('mail.from.address'),
+                'from' => $fromAddress,
                 'subject' => $subject,
                 'body' => $htmlInlined,
                 'message_id' => $this->delivery->id, // Use our delivery ID for tracking

@@ -420,6 +420,76 @@
                 }
             });
         }
+
+        function resendLastEmail(contactId, element) {
+            Swal.fire({
+                title: '¿Reenviar último email?',
+                text: 'Se reenviará el último email enviado a este contacto',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#17a2b8',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, reenviar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading state
+                    const originalHtml = element.innerHTML;
+                    element.innerHTML = '<i class="ti ti-loader ti-sm me-2"></i>';
+                    element.style.pointerEvents = 'none';
+
+                    // Send AJAX request to resend email
+                    fetch(`/contact/${contactId}/resend-last-email`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Restore original state
+                        element.innerHTML = originalHtml;
+                        element.style.pointerEvents = 'auto';
+
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Email reenviado!',
+                                text: data.message,
+                                customClass: {
+                                    confirmButton: 'btn btn-success'
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'Ha ocurrido un error al reenviar el email',
+                                customClass: {
+                                    confirmButton: 'btn btn-primary'
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        // Restore original state
+                        element.innerHTML = originalHtml;
+                        element.style.pointerEvents = 'auto';
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Ha ocurrido un error al procesar la solicitud',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            }
+                        });
+                    });
+                }
+            });
+        }
     </script>
 @endpush
 
