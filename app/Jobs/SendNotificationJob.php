@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\NotificationMail;
 use App\Models\Notification;
+use App\Traits\ConfiguresTeamMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Mail;
 
 class SendNotificationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ConfiguresTeamMail;
 
     /**
      * The notification instance.
@@ -65,6 +66,9 @@ class SendNotificationJob implements ShouldQueue
             if (! $this->notification->contact->email) {
                 throw new \Exception('El contacto no tiene email configurado');
             }
+
+            // Configure mail for the team (custom SMTP or system with advertising)
+            $this->configureMailForTeam($this->notification->team);
 
             Log::info('Sending notification email', [
                 'notification_id' => $this->notification->id,

@@ -79,14 +79,14 @@
         <div class="header">
             <h1>{{ $team->name ?? 'Humano' }}</h1>
         </div>
-        
+
         <div class="content">
             <h2>{{ $notification->subject }}</h2>
-            
+
             <div class="message-content">
                 {!! nl2br(e($notification->message)) !!}
             </div>
-            
+
             @if($notification->type && $notification->reference)
                 <div class="metadata">
                     <strong>Tipo:</strong> {{ $notification->type->name }}<br>
@@ -96,7 +96,7 @@
                     <strong>Fecha:</strong> {{ $notification->created_at->format('d/m/Y H:i') }}
                 </div>
             @endif
-            
+
             @if($notification->metadata && isset($notification->metadata['action_url']))
                 <p>
                     <a href="{{ $notification->metadata['action_url'] }}" class="btn">
@@ -105,7 +105,7 @@
                 </p>
             @endif
         </div>
-        
+
         <div class="footer">
             <p>
                 Enviado por <strong>{{ $sender->name }}</strong> desde {{ $team->name ?? 'Humano' }}<br>
@@ -116,10 +116,15 @@
             </p>
         </div>
     </div>
-    
+
+    {{-- Add advertising footer if team is using system SMTP --}}
+    @if(config('app.mail_advertising_footer'))
+        {!! config('app.mail_advertising_footer') !!}
+    @endif
+
     {{-- Tracking pixel --}}
     @if($notification->id)
         <img src="{{ $notification->getTrackingUrl() }}" width="1" height="1" style="display: none;" alt="" />
     @endif
 </body>
-</html> 
+</html>

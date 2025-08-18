@@ -275,8 +275,10 @@ class Team extends JetstreamTeam
      */
     public function hasOutgoingEmailConfig()
     {
-        $config = $this->getOutgoingEmailConfig();
-        return !empty($config['host']) && !empty($config['username']);
+        // Check only team settings, not fallbacks to env
+        $host = $this->getSetting('mail_host');
+        $username = $this->getSetting('mail_username');
+        return !empty($host) && !empty($username);
     }
 
     /**

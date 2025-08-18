@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Jobs\SimulateEmailDeliveryJob;
 use App\Mail\MessageDeliveryMail;
 use App\Models\MessageDelivery;
+use App\Traits\ConfiguresTeamMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Mail;
 
 class SendMessageCampaignJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ConfiguresTeamMail;
 
     /**
      * The message delivery instance.
@@ -105,6 +106,9 @@ class SendMessageCampaignJob implements ShouldQueue
                 $this->messageDelivery->markAsError();
                 return;
             }
+
+            // Configure mail for the team (custom SMTP or system with advertising)
+            $this->configureMailForTeam($this->messageDelivery->team);
 
             // Mark as sending
             $this->messageDelivery->update(['status_id' => 3]); // 3 = sending
