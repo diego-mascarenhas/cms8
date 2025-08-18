@@ -2,14 +2,15 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use App\Models\Team;
 use App\Models\Category;
 use App\Models\Certification;
 use App\Models\Contact;
+use App\Models\ContactLanguageVariant;
 use App\Models\ContactPortfolio;
+use App\Models\ContactProject;
 use App\Models\ContactSentiment;
 use App\Models\ContactSentimentHistory;
+use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\EnterpriseTaxStatusType;
@@ -17,22 +18,21 @@ use App\Models\Fare;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceType;
+use App\Models\LanguageVariant;
+use App\Models\Message;
+use App\Models\Module;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
-use App\Models\Currency;
 use App\Models\Product;
 use App\Models\Project;
-use App\Models\Service;
-use App\Models\Message;
-use App\Models\Module;
-use App\Models\Software;
-use App\Models\Template;
-use App\Models\LanguageVariant;
-use App\Models\ContactLanguageVariant;
 use App\Models\ProjectFare;
+use App\Models\Service;
+use App\Models\Software;
+use App\Models\Team;
+use App\Models\Template;
 use App\Models\Unit;
-use App\Models\ContactProject;
+use App\Models\User;
 use Database\Factories\ClientFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -1959,7 +1959,7 @@ class TeamDemoSeeder extends Seeder
     private function ensureDemoTeamExists(): void
     {
         $team = Team::find(1);
-        if (!$team) {
+        if (! $team) {
             $this->command->info('🏢 Creating Demo team...');
 
             // Create a user first for team ownership
@@ -1969,7 +1969,7 @@ class TeamDemoSeeder extends Seeder
                     'name' => 'Admin',
                     'password' => bcrypt('password'),
                     'email_verified_at' => now(),
-                ]
+                ],
             );
 
             // Create the team
@@ -1982,9 +1982,38 @@ class TeamDemoSeeder extends Seeder
             // Ensure the team has ID 1 (if not, update the user's current team)
             $user->update(['current_team_id' => $team->id]);
         }
+
+        // Configure email settings for Demo team
+        $this->configureDemoEmailSettings($team);
     }
 
-        /**
+    /**
+     * Configure email settings for Demo team
+     */
+    private function configureDemoEmailSettings(Team $team): void
+    {
+        $this->command->info('📧 Configuring Demo team email settings...');
+
+        // Set From Name
+        $team->setSetting('mail_from_name', 'Tester', [
+            'type' => 'string',
+            'group' => 'email',
+            'is_encrypted' => false,
+        ]);
+
+        // Set From Email Address
+        $team->setSetting('mail_from_address', 'bitcoder@idoneo.dev', [
+            'type' => 'string',
+            'group' => 'email',
+            'is_encrypted' => false,
+        ]);
+
+        $this->command->info('✅ Demo team email settings configured successfully!');
+        $this->command->info('   - From Name: Tester');
+        $this->command->info('   - From Email: bitcoder@idoneo.dev');
+    }
+
+    /**
      * Create simple demo template for team 1 (moved from SimpleTemplateSeeder)
      */
     private function createSimpleDemoTemplate(): void
@@ -2010,32 +2039,32 @@ class TeamDemoSeeder extends Seeder
                                 'padding-right' => '10px',
                                 'padding-bottom' => '10px',
                                 'padding-left' => '10px',
-                                'width' => '100%'
-                            ]
+                                'width' => '100%',
+                            ],
                         ],
                         [
                             'selectors' => [['name' => 'gjs-cell', 'private' => 1]],
                             'style' => [
                                 'width' => '100%',
-                                'display' => 'block'
+                                'display' => 'block',
                             ],
                             'mediaText' => '(max-width: 768px)',
-                            'atRuleType' => 'media'
+                            'atRuleType' => 'media',
                         ],
                         [
                             'selectors' => [['name' => 'gjs-cell', 'private' => 1]],
                             'style' => [
                                 'width' => '8%',
                                 'display' => 'table-cell',
-                                'height' => '75px'
-                            ]
+                                'height' => '75px',
+                            ],
                         ],
                         [
                             'selectors' => ['#ix12'],
                             'style' => [
-                                'padding' => '10px'
-                            ]
-                        ]
+                                'padding' => '10px',
+                            ],
+                        ],
                     ]),
                     'components' => json_encode([
                         [
@@ -2043,7 +2072,7 @@ class TeamDemoSeeder extends Seeder
                             'droppable' => '.gjs-cell',
                             'resizable' => [
                                 'tl' => 0, 'tc' => 0, 'tr' => 0, 'cl' => 0, 'cr' => 0,
-                                'bl' => 0, 'br' => 0, 'minDim' => 1
+                                'bl' => 0, 'br' => 0, 'minDim' => 1,
                             ],
                             'classes' => [['name' => 'gjs-row', 'private' => 1]],
                             'components' => [
@@ -2053,22 +2082,22 @@ class TeamDemoSeeder extends Seeder
                                     'resizable' => [
                                         'tl' => 0, 'tc' => 0, 'tr' => 0, 'cl' => 0, 'cr' => 1,
                                         'bl' => 0, 'br' => 0, 'minDim' => 1, 'bc' => 0,
-                                        'currentUnit' => 1, 'step' => 0.2
+                                        'currentUnit' => 1, 'step' => 0.2,
                                     ],
                                     'classes' => [['name' => 'gjs-cell', 'private' => 1]],
                                     'components' => [
                                         [
                                             'type' => 'text',
                                             'content' => 'Bienvenido <b>{{name}}</b>, esta es un envío de prueba.',
-                                            'attributes' => ['id' => 'ix12']
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ])
-                ]
-            ]
+                                            'attributes' => ['id' => 'ix12'],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ]),
+                ],
+            ],
         );
 
         $this->command->info("✅ Simple template created: {$template->name} (ID: {$template->id})");
@@ -2104,7 +2133,7 @@ class TeamDemoSeeder extends Seeder
                     'type_id' => 2,
                     'template_id' => $demoTemplate->id,
                     'status_id' => 0,
-                ]
+                ],
             );
 
             Message::firstOrCreate(
@@ -2118,7 +2147,7 @@ class TeamDemoSeeder extends Seeder
                     'template_id' => $demoTemplate->id,
                     'category_id' => $staffCategory?->id,
                     'status_id' => 0,
-                ]
+                ],
             );
 
             if ($staffCategory) {
@@ -2140,8 +2169,9 @@ class TeamDemoSeeder extends Seeder
 
         // Get contacts module
         $contactsModule = Module::where('key', 'contacts')->first();
-        if (!$contactsModule) {
+        if (! $contactsModule) {
             $this->command->warn('⚠️  Contacts module not found, skipping staff creation');
+
             return;
         }
 
@@ -2156,7 +2186,7 @@ class TeamDemoSeeder extends Seeder
             [
                 'description' => 'Categoría principal para contactos',
                 'status' => 1,
-            ]
+            ],
         );
 
         $this->command->info("✅ Main category created: {$mainContactCategory->name} (ID: {$mainContactCategory->id})");
@@ -2172,7 +2202,7 @@ class TeamDemoSeeder extends Seeder
                 'description' => 'Contactos internos del equipo',
                 'parent_id' => $mainContactCategory->id,
                 'status' => 1,
-            ]
+            ],
         );
 
         $this->command->info("✅ Staff subcategory created: {$staffCategory->name} (ID: {$staffCategory->id}) -> Parent: {$mainContactCategory->name}");
@@ -2220,11 +2250,11 @@ class TeamDemoSeeder extends Seeder
                     'creator_id' => 1,
                     'responsible_id' => 1,
                     'status_id' => 1,
-                ]
+                ],
             );
 
             // Assign Staff category to contact
-            if (!$contact->categories()->where('category_id', $staffCategory->id)->exists()) {
+            if (! $contact->categories()->where('category_id', $staffCategory->id)->exists()) {
                 $contact->categories()->attach($staffCategory->id);
                 $this->command->info("  ✅ Assigned Staff category to: {$contact->email}");
             } else {
@@ -2235,6 +2265,6 @@ class TeamDemoSeeder extends Seeder
         }
 
         $this->command->info("✅ Staff contacts processed: {$created} total");
-        $this->command->info("📧 Staff emails ready for newsletter campaigns!");
+        $this->command->info('📧 Staff emails ready for newsletter campaigns!');
     }
 }
