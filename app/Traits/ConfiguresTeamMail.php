@@ -34,6 +34,17 @@ trait ConfiguresTeamMail
             // Just ensure we have the advertising footer
             $advertisingFooter = $team->getAdvertisingFooter();
             Config::set('app.mail_advertising_footer', $advertisingFooter);
+
+            // However, if team has from_name/from_address settings, use those
+            $fromName = $team->getSetting('mail_from_name');
+            $fromAddress = $team->getSetting('mail_from_address');
+
+            if ($fromName) {
+                Config::set('mail.from.name', $fromName);
+            }
+            if ($fromAddress) {
+                Config::set('mail.from.address', $fromAddress);
+            }
         }
     }
 
@@ -45,6 +56,7 @@ trait ConfiguresTeamMail
     {
         if ($team->hasOutgoingEmailConfig()) {
             $config = $team->getOutgoingEmailConfig();
+
             return $config['from_address'];
         }
 
@@ -59,6 +71,7 @@ trait ConfiguresTeamMail
     {
         if ($team->hasOutgoingEmailConfig()) {
             $config = $team->getOutgoingEmailConfig();
+
             return $config['from_name'];
         }
 
