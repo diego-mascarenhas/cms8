@@ -1246,10 +1246,10 @@ class ContactController extends Controller
                 ], 404);
             }
 
-            // Reset the existing delivery for resend
+            // Reset the existing delivery for resend (immediate sending)
             $lastDelivery->update([
                 'status_id' => 1, // pending
-                'sent_at' => now(), // Send immediately
+                'sent_at' => now(), // Send immediately for resend
                 'delivered_at' => null, // Reset delivery status
                 'delivery_status' => null, // Reset delivery status
                 'email_provider' => null, // Reset provider info
@@ -1288,10 +1288,10 @@ class ContactController extends Controller
                 ], 400);
             }
 
-            // Reset the existing delivery for resend
+            // Reset the existing delivery for resend (immediate sending)
             $delivery->update([
                 'status_id' => 1, // pending
-                'sent_at' => now(), // Send immediately
+                'sent_at' => now(), // Send immediately for resend
                 'delivered_at' => null, // Reset delivery status
                 'delivery_status' => null, // Reset delivery status
                 'email_provider' => null, // Reset provider info

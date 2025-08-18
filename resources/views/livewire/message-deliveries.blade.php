@@ -59,7 +59,7 @@
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    @if($delivery['status_text'] === 'Sent')
+                                    @if($delivery['status_text'] !== 'Scheduled')
                                         <a href="#" class="text-info" onclick="resendDelivery({{ $delivery['id'] }}, this)" title="Reenviar email">
                                             <i class="ti ti-mail-forward ti-sm"></i>
                                         </a>
