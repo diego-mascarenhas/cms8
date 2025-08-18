@@ -22,21 +22,36 @@ class MailBabyService
     public function sendEmail(array $emailData)
     {
         try {
-            $response = Http::withHeaders([
-                'X-API-KEY' => $this->apiKey,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->post($this->baseUrl . '/mail/send', [
+            $payload = [
                 'to' => $emailData['to'],
                 'from' => $emailData['from'],
                 'subject' => $emailData['subject'],
                 'body' => $emailData['body'],
-                'replyto' => $emailData['reply_to'] ?? null,
-                'cc' => $emailData['cc'] ?? null,
-                'bcc' => $emailData['bcc'] ?? null,
-                'attachments' => $emailData['attachments'] ?? null,
-                'id' => $emailData['message_id'] ?? null, // Custom ID for tracking
-            ]);
+            ];
+
+            // Add optional fields only if they have values
+            if (!empty($emailData['reply_to'])) {
+                $payload['replyto'] = $emailData['reply_to'];
+            }
+            if (!empty($emailData['cc'])) {
+                $payload['cc'] = $emailData['cc'];
+            }
+            if (!empty($emailData['bcc'])) {
+                $payload['bcc'] = $emailData['bcc'];
+            }
+            if (!empty($emailData['attachments'])) {
+                $payload['attachments'] = $emailData['attachments'];
+            }
+            // Remove the custom ID for now - might not be supported
+            // if (!empty($emailData['message_id'])) {
+            //     $payload['id'] = $emailData['message_id'];
+            // }
+
+            $response = Http::withHeaders([
+                'X-API-KEY' => $this->apiKey,
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ])->post($this->baseUrl . '/mail/send', $payload);
 
             if ($response->successful()) {
                 $data = $response->json();

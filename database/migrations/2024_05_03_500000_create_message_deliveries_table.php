@@ -18,7 +18,7 @@ return new class extends Migration
 			$table->dateTime('delivered_at')->nullable();
 			$table->dateTime('removed_at')->nullable();
 			$table->tinyInteger('status_id')->default(1);
-			
+
 			// Email provider tracking
 			$table->string('email_provider')->nullable()->index(); // mailbaby, sendgrid, mailgun, smtp, etc.
 			$table->string('provider_message_id')->nullable()->index(); // Provider-specific message ID
@@ -27,7 +27,7 @@ return new class extends Migration
 			$table->timestamp('opened_at')->nullable();
 			$table->timestamp('clicked_at')->nullable();
 			$table->json('provider_data')->nullable(); // Provider-specific webhook data
-			
+
 			$table->timestamps();
 
 			$table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
