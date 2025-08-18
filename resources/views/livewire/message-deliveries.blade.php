@@ -17,45 +17,55 @@
                     <thead>
                         <tr>
                             <th>Contact</th>
-                            <th>Email</th>
-                            <th>Scheduled/Sent At</th>
-                            <th>Delivered At</th>
+                            <th>Delivery Status</th>
                             <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($deliveries as $delivery)
                             <tr>
-                                <td>{{ $delivery['contact_name'] }}</td>
                                 <td>
-                                    <small class="text-muted">{{ $delivery['contact_email'] }}</small>
+                                    <div class="d-flex flex-column">
+                                        <h6 class="mb-0">{{ $delivery['contact_name'] }}</h6>
+                                        <small class="text-muted">{{ $delivery['contact_email'] }}</small>
+                                    </div>
                                 </td>
                                 <td>
-                                    @if($delivery['delivered_at'])
-                                        <small class="text-success">{{ $delivery['sent_at'] }}</small>
-                                    @elseif($delivery['sent_at'])
-                                        @if($delivery['status_text'] === 'Scheduled')
-                                            <small class="text-warning">
-                                                <i class="ti ti-clock me-1"></i>{{ $delivery['sent_at'] }}
+                                    <div class="d-flex flex-column">
+                                        @if($delivery['delivered_at'])
+                                            <small class="text-success">
+                                                <i class="ti ti-check me-1"></i>Delivered: {{ $delivery['delivered_at'] }}
                                             </small>
+                                            <small class="text-muted">Sent: {{ $delivery['sent_at'] }}</small>
+                                        @elseif($delivery['sent_at'])
+                                            @if($delivery['status_text'] === 'Scheduled')
+                                                <small class="text-warning">
+                                                    <i class="ti ti-clock me-1"></i>Scheduled: {{ $delivery['sent_at'] }}
+                                                </small>
+                                            @else
+                                                <small class="text-primary">
+                                                    <i class="ti ti-send me-1"></i>Sent: {{ $delivery['sent_at'] }}
+                                                </small>
+                                            @endif
                                         @else
-                                            <small>{{ $delivery['sent_at'] }}</small>
+                                            <span class="text-muted">Pending</span>
                                         @endif
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($delivery['delivered_at'])
-                                        <small>{{ $delivery['delivered_at'] }}</small>
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
+                                    </div>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge bg-{{ $delivery['status'] }}">
+                                    <span class="badge bg-label-{{ $delivery['status'] }}">
                                         {{ $delivery['status_text'] }}
                                     </span>
+                                </td>
+                                <td class="text-center">
+                                    @if($delivery['status_text'] === 'Sent')
+                                        <a href="#" class="text-info" onclick="resendDelivery({{ $delivery['id'] }}, this)" title="Reenviar email">
+                                            <i class="ti ti-mail-forward ti-sm"></i>
+                                        </a>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach

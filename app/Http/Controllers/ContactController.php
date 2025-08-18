@@ -1270,4 +1270,45 @@ class ContactController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Resend a specific message delivery
+     */
+    public function resendDelivery(Request $request, $deliveryId)
+    {
+        try {
+            $delivery = MessageDelivery::findOrFail($deliveryId);
+
+            // Only allow resending if the delivery was actually sent
+            if (! $delivery->sent_at || $delivery->sent_at->isFuture()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solo se pueden reenviar emails que ya han sido enviados',
+                ], 400);
+            }
+
+            // Create a new delivery record for the resend
+            $newDelivery = MessageDelivery::create([
+                'team_id' => $delivery->team_id,
+                'message_id' => $delivery->message_id,
+                'contact_id' => $delivery->contact_id,
+                'status_id' => 1, // pending
+                'sent_at' => now(), // Send immediately
+            ]);
+
+            // Dispatch the job to send the email immediately
+            SendMessageCampaignJob::dispatch($newDelivery);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email reenviado correctamente a '.$delivery->contact->email,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al reenviar email: '.$e->getMessage(),
+            ], 500);
+        }
+    }
 }
