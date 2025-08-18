@@ -2,9 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Jobs\SimulateEmailDeliveryJob;
-use App\Mail\MessageDeliveryMail;
 use App\Mail\MailBabyMail;
+use App\Mail\MessageDeliveryMail;
 use App\Models\MessageDelivery;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Bus\Queueable;
@@ -17,7 +16,7 @@ use Illuminate\Support\Facades\Mail;
 
 class SendMessageCampaignJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ConfiguresTeamMail;
+    use ConfiguresTeamMail, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * The message delivery instance.
@@ -67,25 +66,28 @@ class SendMessageCampaignJob implements ShouldQueue
                 // Release this job to be retried later
                 $delay = $this->messageDelivery->sent_at->diffInSeconds(now());
                 $this->release($delay);
+
                 return;
             }
 
             // Check if contact exists and has email
-            if (!$this->messageDelivery->contact || !$this->messageDelivery->contact->email) {
+            if (! $this->messageDelivery->contact || ! $this->messageDelivery->contact->email) {
                 Log::warning('Message delivery skipped: No contact or email', [
                     'delivery_id' => $this->messageDelivery->id,
-                    'contact_id' => $this->messageDelivery->contact_id
+                    'contact_id' => $this->messageDelivery->contact_id,
                 ]);
                 $this->messageDelivery->markAsError();
+
                 return;
             }
 
             // Check if message is still active
-            if (!$this->messageDelivery->message || $this->messageDelivery->message->status_id != 1) {
+            if (! $this->messageDelivery->message || $this->messageDelivery->message->status_id != 1) {
                 Log::info('Message delivery cancelled: Message not active', [
                     'delivery_id' => $this->messageDelivery->id,
-                    'message_id' => $this->messageDelivery->message_id
+                    'message_id' => $this->messageDelivery->message_id,
                 ]);
+
                 return;
             }
 
@@ -95,16 +97,18 @@ class SendMessageCampaignJob implements ShouldQueue
                     'delivery_id' => $this->messageDelivery->id,
                     'delivered_at' => $this->messageDelivery->delivered_at,
                 ]);
+
                 return;
             }
 
             // Validate contact email
-            if (!filter_var($this->messageDelivery->contact->email, FILTER_VALIDATE_EMAIL)) {
+            if (! filter_var($this->messageDelivery->contact->email, FILTER_VALIDATE_EMAIL)) {
                 Log::warning('Message delivery skipped: Invalid email address', [
                     'delivery_id' => $this->messageDelivery->id,
                     'email' => $this->messageDelivery->contact->email,
                 ]);
                 $this->messageDelivery->markAsError();
+
                 return;
             }
 
@@ -117,8 +121,8 @@ class SendMessageCampaignJob implements ShouldQueue
                 $mailBabyMail = new MailBabyMail($this->messageDelivery);
                 $result = $mailBabyMail->sendViaMailBaby();
 
-                if (!$result['success']) {
-                    throw new \Exception('MailBaby sending failed: ' . ($result['error'] ?? 'Unknown error'));
+                if (! $result['success']) {
+                    throw new \Exception('MailBaby sending failed: '.($result['error'] ?? 'Unknown error'));
                 }
 
                 Log::info('Message delivery sent via MailBaby', [
@@ -139,14 +143,8 @@ class SendMessageCampaignJob implements ShouldQueue
                 $this->messageDelivery->update([
                     'email_provider' => 'smtp',
                     'sent_at' => now(), // Actual send time
-                    'status_id' => 2, // 2 = sent (not delivered)
+                    'status_id' => 2, // 2 = sent (not delivered - only webhooks can confirm delivery)
                 ]);
-
-                // Schedule a job to simulate delivery confirmation (5-10 minutes later)
-                // In production, this would be replaced by actual webhook handling
-                $deliveryDelayMinutes = rand(5, 10);
-                SimulateEmailDeliveryJob::dispatch($this->messageDelivery)
-                    ->delay(now()->addMinutes($deliveryDelayMinutes));
             }
 
             Log::info('Message delivery sent successfully', [
@@ -155,14 +153,14 @@ class SendMessageCampaignJob implements ShouldQueue
                 'message_id' => $this->messageDelivery->message_id,
                 'scheduled_time' => $this->messageDelivery->sent_at,
                 'actual_send_time' => now(),
-                'simulated_delivery_in_minutes' => $deliveryDelayMinutes,
+                'delivery_confirmation' => 'Will be confirmed via webhook',
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to send message delivery', [
                 'delivery_id' => $this->messageDelivery->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             // Mark as failed
@@ -176,14 +174,13 @@ class SendMessageCampaignJob implements ShouldQueue
     /**
      * The job failed to process.
      *
-     * @param \Exception $exception
      * @return void
      */
     public function failed(\Exception $exception)
     {
         Log::error('Message delivery job failed permanently', [
             'delivery_id' => $this->messageDelivery->id,
-            'error' => $exception->getMessage()
+            'error' => $exception->getMessage(),
         ]);
 
         // Mark as permanently failed
