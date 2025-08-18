@@ -603,6 +603,9 @@ Route::get('/collaborator/debug/availability', [CollaboratorController::class, '
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
 Route::get('message/track/click/{token}', [MessageTrackingController::class, 'trackClick'])->name('message.track.click');
 
+// MailBaby webhooks (public route - no authentication required)
+Route::post('webhooks/mailbaby', [App\Http\Controllers\MailBabyWebhookController::class, 'handle'])->name('mailbaby.webhook');
+
 // WhatsApp Cart Testing Routes (available in all environments)
 Route::prefix('test-cart')->group(function () {
     Route::get('/', [App\Http\Controllers\TestCartController::class, 'index'])->name('test.cart.index');

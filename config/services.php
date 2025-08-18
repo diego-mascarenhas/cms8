@@ -69,4 +69,11 @@ return [
         'system_prompt' => env('CLAUDE_SYSTEM_PROMPT'),
     ],
 
+    'mailbaby' => [
+        'api_key' => env('MAILBABY_API_KEY'),
+        'api_url' => env('MAILBABY_API_URL', 'https://api.mailbaby.net'),
+        'webhook_secret' => env('MAILBABY_WEBHOOK_SECRET'),
+        'enabled' => env('MAILBABY_ENABLED', false),
+    ],
+
 ];

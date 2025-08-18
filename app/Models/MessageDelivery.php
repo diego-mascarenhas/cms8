@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\HasEmailProviderTracking;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MessageDelivery extends Model
 {
-	use HasFactory;
+	use HasFactory, HasEmailProviderTracking;
 
 	protected $fillable = [
 		'team_id',
@@ -18,12 +19,23 @@ class MessageDelivery extends Model
 		'delivered_at',
 		'removed_at',
 		'status_id',
+		'email_provider',
+		'provider_message_id',
+		'delivery_status',
+		'bounced_at',
+		'opened_at',
+		'clicked_at',
+		'provider_data',
 	];
 
 	protected $casts = [
 		'sent_at' => 'datetime',
 		'delivered_at' => 'datetime',
 		'removed_at' => 'datetime',
+		'bounced_at' => 'datetime',
+		'opened_at' => 'datetime',
+		'clicked_at' => 'datetime',
+		'provider_data' => 'array',
 	];
 
 	public function team()

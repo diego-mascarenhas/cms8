@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Jobs\SimulateEmailDeliveryJob;
 use App\Mail\MessageDeliveryMail;
+use App\Mail\MailBabyMail;
 use App\Models\MessageDelivery;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Bus\Queueable;
@@ -107,27 +108,46 @@ class SendMessageCampaignJob implements ShouldQueue
                 return;
             }
 
-            // Configure mail for the team (custom SMTP or system with advertising)
-            $this->configureMailForTeam($this->messageDelivery->team);
-
             // Mark as sending
             $this->messageDelivery->update(['status_id' => 3]); // 3 = sending
 
-            // Send the email
-            Mail::to($this->messageDelivery->contact->email)
-                ->send(new MessageDeliveryMail($this->messageDelivery));
+            // Check if MailBaby API is enabled
+            if (config('services.mailbaby.enabled', false) && config('services.mailbaby.api_key')) {
+                // Send via MailBaby API (webhooks will handle delivery confirmation)
+                $mailBabyMail = new MailBabyMail($this->messageDelivery);
+                $result = $mailBabyMail->sendViaMailBaby();
 
-            // Mark as sent (NOT delivered yet - we need webhook confirmation for that)
-            $this->messageDelivery->update([
-                'sent_at' => now(), // Actual send time
-                'status_id' => 2, // 2 = sent (not delivered)
-            ]);
+                if (!$result['success']) {
+                    throw new \Exception('MailBaby sending failed: ' . ($result['error'] ?? 'Unknown error'));
+                }
 
-            // Schedule a job to simulate delivery confirmation (5-10 minutes later)
-            // In production, this would be replaced by actual webhook handling
-            $deliveryDelayMinutes = rand(5, 10);
-            SimulateEmailDeliveryJob::dispatch($this->messageDelivery)
-                ->delay(now()->addMinutes($deliveryDelayMinutes));
+                Log::info('Message delivery sent via MailBaby', [
+                    'delivery_id' => $this->messageDelivery->id,
+                    'provider_message_id' => $result['provider_message_id'],
+                    'contact_email' => $this->messageDelivery->contact->email,
+                ]);
+
+            } else {
+                // Use traditional SMTP with team configuration
+                $this->configureMailForTeam($this->messageDelivery->team);
+
+                // Send the email
+                Mail::to($this->messageDelivery->contact->email)
+                    ->send(new MessageDeliveryMail($this->messageDelivery));
+
+                // Mark as sent (NOT delivered yet - we need webhook confirmation for that)
+                $this->messageDelivery->update([
+                    'email_provider' => 'smtp',
+                    'sent_at' => now(), // Actual send time
+                    'status_id' => 2, // 2 = sent (not delivered)
+                ]);
+
+                // Schedule a job to simulate delivery confirmation (5-10 minutes later)
+                // In production, this would be replaced by actual webhook handling
+                $deliveryDelayMinutes = rand(5, 10);
+                SimulateEmailDeliveryJob::dispatch($this->messageDelivery)
+                    ->delay(now()->addMinutes($deliveryDelayMinutes));
+            }
 
             Log::info('Message delivery sent successfully', [
                 'delivery_id' => $this->messageDelivery->id,
