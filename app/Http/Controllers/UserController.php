@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -59,19 +58,22 @@ class UserController extends Controller
 	{
 		$validated = $request->validate([
 			'name' => 'required|string|max:255',
-			'email' => [
-				'required',
-				'email',
-				'max:255',
-				Rule::unique('users')->where(function ($query) {
-					return $query->whereHas('teams', function ($q) {
-						$q->where('team_id', Auth::user()->currentTeam->id);
-					});
-				})
-			],
+			'email' => 'required|email|max:255',
 			'password' => 'required|string|min:8|confirmed',
-			'role_id' => 'required|exists:roles,id',
+			'role_ids' => 'required|array|min:1',
+			'role_ids.*' => 'exists:roles,id',
 		]);
+
+		// Check email uniqueness within the current team
+		$emailExists = User::where('email', $validated['email'])
+			->whereHas('teams', function ($q) {
+				$q->where('team_id', Auth::user()->currentTeam->id);
+			})
+			->exists();
+
+		if ($emailExists) {
+			return back()->withErrors(['email' => __('The email has already been taken.')])->withInput();
+		}
 
 		$user = User::create([
 			'name' => $validated['name'],
@@ -79,9 +81,9 @@ class UserController extends Controller
 			'password' => Hash::make($validated['password']),
 		]);
 
-		// Assign role
-		$role = Role::findById($validated['role_id']);
-		$user->assignRole($role);
+		// Assign roles
+		$roles = Role::whereIn('id', $validated['role_ids'])->get();
+		$user->syncRoles($roles);
 
 		// Add user to current team
 		$user->teams()->attach(Auth::user()->currentTeam->id);
@@ -96,7 +98,8 @@ class UserController extends Controller
 	public function show(User $user)
 	{
 		// Allow users to view themselves or if they have permission
-		if (!Auth::user()->can('user.show') && Auth::id() !== $user->id) {
+		$currentUser = Auth::user();
+		if (!$currentUser->can('user.show') && Auth::id() !== $user->id) {
 			abort(403);
 		}
 
@@ -114,7 +117,8 @@ class UserController extends Controller
 	public function edit(User $user)
 	{
 		// Allow users to edit themselves or if they have permission
-		if (!Auth::user()->can('user.edit') && Auth::id() !== $user->id) {
+		$currentUser = Auth::user();
+		if (!$currentUser->can('user.edit') && Auth::id() !== $user->id) {
 			abort(403);
 		}
 
@@ -137,7 +141,8 @@ class UserController extends Controller
 	public function update(Request $request, User $user)
 	{
 		// Allow users to update themselves or if they have permission
-		if (!Auth::user()->can('user.update') && Auth::id() !== $user->id) {
+		$currentUser = Auth::user();
+		if (!$currentUser->can('user.update') && Auth::id() !== $user->id) {
 			abort(403);
 		}
 
@@ -148,19 +153,23 @@ class UserController extends Controller
 
 		$validated = $request->validate([
 			'name' => 'required|string|max:255',
-			'email' => [
-				'required',
-				'email',
-				'max:255',
-				Rule::unique('users')->ignore($user->id)->where(function ($query) {
-					return $query->whereHas('teams', function ($q) {
-						$q->where('team_id', Auth::user()->currentTeam->id);
-					});
-				})
-			],
+			'email' => 'required|email|max:255',
 			'password' => 'nullable|string|min:8|confirmed',
-			'role_id' => 'required|exists:roles,id',
+			'role_ids' => 'required|array|min:1',
+			'role_ids.*' => 'exists:roles,id',
 		]);
+
+		// Check email uniqueness within the current team (excluding current user)
+		$emailExists = User::where('email', $validated['email'])
+			->where('id', '!=', $user->id)
+			->whereHas('teams', function ($q) {
+				$q->where('team_id', Auth::user()->currentTeam->id);
+			})
+			->exists();
+
+		if ($emailExists) {
+			return back()->withErrors(['email' => __('The email has already been taken.')])->withInput();
+		}
 
 		$updateData = [
 			'name' => $validated['name'],
@@ -173,9 +182,9 @@ class UserController extends Controller
 
 		$user->update($updateData);
 
-		// Update role
-		$role = Role::findById($validated['role_id']);
-		$user->syncRoles([$role]);
+		// Update roles
+		$roles = Role::whereIn('id', $validated['role_ids'])->get();
+		$user->syncRoles($roles);
 
 		return redirect()->route('user.index')
 			->with('success', __('User updated successfully.'));

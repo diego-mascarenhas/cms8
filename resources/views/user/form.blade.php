@@ -15,7 +15,10 @@
 	$(function() {
 		// Initialize Select2 if available
 		if ($.fn.select2) {
-			$('#role_id').select2();
+			$('#role_ids').select2({
+				placeholder: '{{ __("Select roles") }}',
+				allowClear: true
+			});
 		}
 	});
 </script>
@@ -69,17 +72,17 @@
 			</div>
 
 			<div class="col-md-6">
-				<label for="role_id" class="form-label">{{ __('Role') }} (*)</label>
-				<select class="form-select @error('role_id') is-invalid @enderror" id="role_id" name="role_id">
-					<option value="">{{ __('Select a role') }}</option>
+				<label for="role_ids" class="form-label">{{ __('Roles') }} (*)</label>
+				<select class="form-select @error('role_ids') is-invalid @enderror" id="role_ids" name="role_ids[]" multiple>
 					@foreach($roles as $role)
 						<option value="{{ $role->id }}"
-							@if(old('role_id', (isset($data) && $data->roles->first()) ? $data->roles->first()->id : '') == $role->id) selected @endif>
+							@if(in_array($role->id, old('role_ids', (isset($data) ? $data->roles->pluck('id')->toArray() : [])))) selected @endif>
 							{{ ucfirst($role->name) }}
 						</option>
 					@endforeach
 				</select>
-				@error('role_id')
+				<div class="form-text">{{ __('Hold Ctrl/Cmd to select multiple roles') }}</div>
+				@error('role_ids')
 					<div class="invalid-feedback">{{ $message }}</div>
 				@enderror
 			</div>
