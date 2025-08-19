@@ -1339,7 +1339,6 @@ class TeamDemoSeeder extends Seeder
                 'team_id' => 1,
                 'name' => 'Idoneo Technologies',
                 'website' => 'https://idoneo.dev',
-                // 'email' => 'bitcoder@idoneo.dev',
                 'email' => 'no-reply@revisionalpha.com',
                 'type_id' => 1, // Cliente
                 'status_id' => 1, // Activo
@@ -2003,7 +2002,7 @@ class TeamDemoSeeder extends Seeder
         ]);
 
         // Set From Email Address
-        $team->setSetting('mail_from_address', 'bitcoder@idoneo.dev', [
+        $team->setSetting('mail_from_address', 'no-reply@revisionalpha.com', [
             'type' => 'string',
             'group' => 'email',
             'is_encrypted' => false,
@@ -2011,7 +2010,7 @@ class TeamDemoSeeder extends Seeder
 
         $this->command->info('✅ Demo team email settings configured successfully!');
         $this->command->info('   - From Name: Tester');
-        $this->command->info('   - From Email: bitcoder@idoneo.dev');
+        $this->command->info('   - From Email: no-reply@revisionalpha.com');
     }
 
     /**

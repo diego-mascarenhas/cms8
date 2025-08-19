@@ -115,7 +115,7 @@ Total tests: 4
 🎉 All configured services are working correctly!
 📧 Sending individual reports to team owners...
 📧 Individual report for 'Demo Team' would be sent to: owner@company.com
-📧 Admin summary would be sent to: bitcoder@idoneo.dev
+📧 Admin summary would be sent to: no-reply@revisionalpha.com
 ```
 
 ## 📝 **Logging y Reportes**
@@ -169,7 +169,7 @@ php artisan test --filter="it_generates_consistent_team_hash"
 ### 📧 **Email de Notificaciones**
 ```bash
 # .env
-NOTIFICATION_EMAIL=bitcoder@idoneo.dev  # (valor por defecto)
+NOTIFICATION_EMAIL=no-reply@revisionalpha.com  # (valor por defecto)
 # o personalizar:
 NOTIFICATION_EMAIL=admin@yourcompany.com
 ```
@@ -202,7 +202,7 @@ $team->setSetting('mail_password', 'password', ['is_encrypted' => true]);
 - Revisar filtros de team específico
 
 ### 📧 **"No report email configured"**
-- Configurar `NOTIFICATION_EMAIL` en `.env` (por defecto: bitcoder@idoneo.dev)
+- Configurar `NOTIFICATION_EMAIL` en `.env` (por defecto: no-reply@revisionalpha.com)
 - O usar `--report-email=email@domain.com`
 
 ### 🔌 **Fallos de Conexión**
