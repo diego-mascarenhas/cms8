@@ -51,12 +51,7 @@ Route::post('/mailgun/webhook', function (Request $request) {
         'recipient' => $recipient,
         'domain' => $request->input('domain'),
         'message_id' => $messageId,
-        'debug_message_id_attempts' => [
-            'message.headers.message-id' => $request->input('message.headers.message-id'),
-            'Message-Id' => $request->input('Message-Id'),
-            'message_headers_message-id' => $request->input('message_headers_message-id'),
-            'message-id' => $request->input('message-id'),
-        ],
+        'debug_raw_message_id' => $request->input('message_headers_message-id'),
         'full_payload' => $request->all(),
     ]);
 
