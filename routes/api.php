@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\AuthController;
+use App\Models\MessageDelivery;
+use App\Models\MessageDeliveryStat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -38,20 +40,31 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // Mailgun Webhook (sin autenticación para recibir eventos)
 Route::post('/mailgun/webhook', function (Request $request) {
-    $event = $request->input('event');
-    $recipient = $request->input('recipient');
-    $messageId = $request->input('message.headers.message-id')
-                ?: $request->input('Message-Id')
-                ?: $request->input('message_headers_message-id')  // Formato real de Mailgun
-                ?: $request->input('message-id');
+    // Support both webhook formats: direct fields and event-data wrapper
+    $eventData = $request->input('event-data');
+
+    if ($eventData) {
+        // New Mailgun format with event-data wrapper
+        $event = $eventData['event'] ?? null;
+        $recipient = $eventData['recipient'] ?? null;
+        $messageId = $eventData['message']['headers']['message-id'] ?? null;
+    } else {
+        // Legacy/test format with direct fields
+        $event = $request->input('event');
+        $recipient = $request->input('recipient');
+        $messageId = $request->input('message.headers.message-id')
+                    ?: $request->input('Message-Id')
+                    ?: $request->input('message_headers_message-id')
+                    ?: $request->input('message-id');
+    }
 
     Log::info('📧 Mailgun Webhook Received', [
         'timestamp' => now(),
         'event_type' => $event,
         'recipient' => $recipient,
-        'domain' => $request->input('domain'),
+        'domain' => $request->input('domain') ?: ($eventData['recipient-domain'] ?? null),
         'message_id' => $messageId,
-        'debug_raw_message_id' => $request->input('message_headers_message-id'),
+        'webhook_format' => $eventData ? 'event-data' : 'legacy',
         'full_payload' => $request->all(),
     ]);
 
@@ -60,12 +73,12 @@ Route::post('/mailgun/webhook', function (Request $request) {
 
     // First try to find by provider_message_id
     if ($messageId) {
-        $delivery = App\Models\MessageDelivery::where('provider_message_id', $messageId)->first();
+        $delivery = MessageDelivery::where('provider_message_id', $messageId)->first();
     }
 
     // If not found, try by recipient email
     if (! $delivery && $recipient) {
-        $delivery = App\Models\MessageDelivery::whereHas('contact', function ($q) use ($recipient) {
+        $delivery = MessageDelivery::whereHas('contact', function ($q) use ($recipient) {
             $q->where('email', $recipient);
         })
             ->where('sent_at', '>=', now()->subDays(7)) // Only recent deliveries
@@ -244,7 +257,7 @@ Route::post('/mailgun/webhook', function (Request $request) {
     // Update aggregate statistics if delivery was found and updated
     if ($delivery && in_array($event, ['delivered', 'opened', 'clicked', 'permanent_fail', 'failed', 'bounced', 'dropped'])) {
         // Update MessageDeliveryStat
-        $stats = App\Models\MessageDeliveryStat::firstOrCreate(['message_id' => $delivery->message_id], [
+        $stats = MessageDeliveryStat::firstOrCreate(['message_id' => $delivery->message_id], [
             'subscribers' => 0,
             'sent' => 0,
             'delivered' => 0,
@@ -254,7 +267,7 @@ Route::post('/mailgun/webhook', function (Request $request) {
         ]);
 
         // Recalculate stats from actual deliveries
-        $deliveries = App\Models\MessageDelivery::where('message_id', $delivery->message_id);
+        $deliveries = MessageDelivery::where('message_id', $delivery->message_id);
 
         $stats->update([
             'sent' => $deliveries->whereNotNull('sent_at')->count(),
