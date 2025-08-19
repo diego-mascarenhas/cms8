@@ -12,13 +12,13 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SoftwareController;
-use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamContactController;
+use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamProjectController;
+use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\TemplateImportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +33,53 @@ use App\Http\Controllers\Api\TemplateImportController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
+});
+
+// Mailgun Webhook (sin autenticación para recibir eventos)
+Route::post('/mailgun/webhook', function (Request $request) {
+    Log::info('📧 Mailgun Webhook Received', [
+        'timestamp' => now(),
+        'event_type' => $request->input('event'),
+        'recipient' => $request->input('recipient'),
+        'domain' => $request->input('domain'),
+        'message_id' => $request->input('message.headers.message-id'),
+        'full_payload' => $request->all(),
+    ]);
+
+    // Eventos importantes de tracking
+    $event = $request->input('event');
+    $recipient = $request->input('recipient');
+
+    switch ($event) {
+        case 'delivered':
+            Log::info("✅ EMAIL DELIVERED successfully to {$recipient}");
+            break;
+        case 'failed':
+            Log::error("❌ EMAIL FAILED to {$recipient}", [
+                'reason' => $request->input('reason'),
+                'description' => $request->input('description'),
+            ]);
+            break;
+        case 'bounced':
+            Log::warning("⚠️ EMAIL BOUNCED from {$recipient}", [
+                'error' => $request->input('error'),
+            ]);
+            break;
+        case 'dropped':
+            Log::warning("🗑️ EMAIL DROPPED to {$recipient}", [
+                'reason' => $request->input('reason'),
+                'description' => $request->input('description'),
+            ]);
+            break;
+        case 'complained':
+            Log::warning("📢 SPAM COMPLAINT from {$recipient}");
+            break;
+        case 'unsubscribed':
+            Log::info("🚫 UNSUBSCRIBED: {$recipient}");
+            break;
+    }
+
+    return response()->json(['status' => 'success']);
 });
 
 Route::group(['prefix' => 'auth'], function () {
