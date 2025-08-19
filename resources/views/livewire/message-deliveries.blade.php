@@ -54,9 +54,25 @@
                                     </div>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge bg-label-{{ $delivery['status'] }}">
-                                        {{ $delivery['status_text'] }}
-                                    </span>
+                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                        <span class="badge bg-label-{{ $delivery['status'] }}">
+                                            {{ $delivery['status_text'] }}
+                                        </span>
+                                        
+                                        {{-- Opened Icon --}}
+                                        @if($delivery['has_opened'])
+                                            <i class="ti ti-eye ti-sm text-info" 
+                                               title="Opened: {{ $delivery['opened_at'] }}" 
+                                               style="cursor: help;"></i>
+                                        @endif
+                                        
+                                        {{-- Clicked Icon --}}
+                                        @if($delivery['has_clicked'])
+                                            <i class="ti ti-mouse ti-sm text-success" 
+                                               title="Clicked: {{ $delivery['clicked_at'] }}" 
+                                               style="cursor: help;"></i>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="text-center">
                                     @if($delivery['status_text'] !== 'Scheduled')

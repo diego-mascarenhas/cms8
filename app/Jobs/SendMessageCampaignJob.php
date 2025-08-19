@@ -284,12 +284,15 @@ class SendMessageCampaignJob implements ShouldQueue
                 'has_html_content' => ! empty($renderedContent),
             ]);
 
-            // Send via Mailgun SDK
+            // Send via Mailgun SDK with tracking enabled
             $result = $mgClient->messages()->send($domain, [
                 'from' => config('mail.from.name').' <'.config('mail.from.address').'>',
                 'to' => $this->messageDelivery->contact->email,
                 'subject' => $this->messageDelivery->message->subject,
                 'html' => $renderedContent,
+                'o:tracking' => 'yes',           // ✅ Enable open tracking
+                'o:tracking-clicks' => 'yes',   // ✅ Enable click tracking
+                'o:tracking-opens' => 'yes',    // ✅ Enable open tracking (explicit)
             ]);
 
             // Extract real Message ID from Mailgun response
@@ -316,13 +319,32 @@ class SendMessageCampaignJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
 
+            // ✅ Fix: Ensure fallback uses correct Mailgun domain
+            $originalFromAddress = config('mail.from.address');
+            $originalFromName = config('mail.from.name');
+
+            // Temporarily set Mailgun domain for fallback
+            config(['mail.from.address' => 'no-reply@revisionalpha.com']);
+            config(['mail.from.name' => 'REVISION ALPHA Emailer']);
+
             // Fallback to Laravel Mail
             Mail::mailer('mailgun')
                 ->to($this->messageDelivery->contact->email)
                 ->send(new MessageDeliveryMail($this->messageDelivery));
 
+            // Restore original config
+            config(['mail.from.address' => $originalFromAddress]);
+            config(['mail.from.name' => $originalFromName]);
+
             // Use fallback tracking method
             $fallbackId = $this->messageDelivery->id.'-'.time().'@fallback';
+
+            Log::info('✅ SendMessageCampaignJob: Email sent via Mailgun fallback', [
+                'delivery_id' => $this->messageDelivery->id,
+                'contact_email' => $this->messageDelivery->contact->email,
+                'from_address_used' => 'no-reply@revisionalpha.com',
+                'fallback_message_id' => $fallbackId,
+            ]);
 
             $this->messageDelivery->update([
                 'email_provider' => 'mailgun',

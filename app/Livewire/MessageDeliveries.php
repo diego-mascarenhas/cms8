@@ -8,6 +8,7 @@ use Livewire\Component;
 class MessageDeliveries extends Component
 {
     public $messageId;
+
     public $deliveries;
 
     public function mount($messageId)
@@ -31,8 +32,14 @@ class MessageDeliveries extends Component
                         (is_string($delivery->sent_at) ? $delivery->sent_at : $delivery->sent_at->format('M j, Y H:i')) : null,
                     'delivered_at' => $delivery->delivered_at ?
                         (is_string($delivery->delivered_at) ? $delivery->delivered_at : $delivery->delivered_at->format('M j, Y H:i')) : null,
+                    'opened_at' => $delivery->opened_at ?
+                        (is_string($delivery->opened_at) ? $delivery->opened_at : $delivery->opened_at->format('M j, Y H:i')) : null,
+                    'clicked_at' => $delivery->clicked_at ?
+                        (is_string($delivery->clicked_at) ? $delivery->clicked_at : $delivery->clicked_at->format('M j, Y H:i')) : null,
                     'status' => $this->getStatusBadge($delivery),
-                    'status_text' => $this->getStatusText($delivery)
+                    'status_text' => $this->getStatusText($delivery),
+                    'has_opened' => ! is_null($delivery->opened_at),
+                    'has_clicked' => ! is_null($delivery->clicked_at),
                 ];
             });
     }
@@ -47,7 +54,7 @@ class MessageDeliveries extends Component
             return 'warning';
         } elseif ($delivery->sent_at && $delivery->sent_at->isFuture()) {
             return 'info'; // Scheduled
-        } elseif ($delivery->sent_at && $delivery->sent_at->isPast() && !$delivery->delivered_at) {
+        } elseif ($delivery->sent_at && $delivery->sent_at->isPast() && ! $delivery->delivered_at) {
             return 'primary'; // Sent but not delivered
         } else {
             return 'secondary'; // Pending
@@ -66,7 +73,7 @@ class MessageDeliveries extends Component
             return 'Sending';
         } elseif ($delivery->sent_at && $delivery->sent_at->isFuture()) {
             return 'Scheduled';
-        } elseif ($delivery->sent_at && $delivery->sent_at->isPast() && !$delivery->delivered_at) {
+        } elseif ($delivery->sent_at && $delivery->sent_at->isPast() && ! $delivery->delivered_at) {
             return 'Sent';
         } else {
             return 'Pending';
