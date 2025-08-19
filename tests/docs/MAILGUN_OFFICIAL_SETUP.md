@@ -14,15 +14,32 @@ composer require nyholm/psr7                  # PSR-7 support
 composer show | grep -E "(mailgun|symfony)"
 ```
 
-### **🚨 ERROR COMÚN (500): Bridge Faltante**
-**Si obtienes este error:**
+### **🚨 ERRORES COMUNES de Mailgun:**
+
+#### **Error 1 - Bridge Faltante (500):**
 ```
 Class "Symfony\Component\Mailer\Bridge\Mailgun\Transport\MailgunTransportFactory" not found
 ```
-
-**Solución:** Instalar el bridge de Symfony:
+**Solución:**
 ```bash
 composer require symfony/mailgun-mailer
+php artisan config:clear
+```
+
+#### **Error 2 - HttpClient Faltante:**
+```
+You cannot use "Symfony\Component\Mailer\Transport\AbstractHttpTransport" as the HttpClient component is not installed. Try running "composer require symfony/http-client".
+```
+**Solución:**
+```bash
+composer require symfony/http-client
+php artisan config:clear
+```
+
+#### **🚀 Solución Completa (Instalar Todo):**
+```bash
+# Instalar TODOS los paquetes de una vez para evitar errores
+composer require mailgun/mailgun-php symfony/mailgun-mailer symfony/http-client nyholm/psr7
 php artisan config:clear
 ```
 
@@ -216,7 +233,7 @@ try {
 
 ## 🔧 **Troubleshooting Completo**
 
-### **🚨 Error 500: MailgunTransportFactory not found**
+### **🚨 Error 1: MailgunTransportFactory not found**
 ```bash
 # Síntoma:
 Class "Symfony\Component\Mailer\Bridge\Mailgun\Transport\MailgunTransportFactory" not found
@@ -225,6 +242,25 @@ Class "Symfony\Component\Mailer\Bridge\Mailgun\Transport\MailgunTransportFactory
 # Solución:
 composer require symfony/mailgun-mailer
 php artisan config:clear
+```
+
+### **🚨 Error 2: HttpClient not installed**
+```bash
+# Síntoma:
+You cannot use "Symfony\Component\Mailer\Transport\AbstractHttpTransport" as the HttpClient component is not installed
+
+# Causa: Falta el HttpClient de Symfony
+# Solución:
+composer require symfony/http-client
+php artisan config:clear
+```
+
+### **🚨 Solución Universal (Todos los Errores)**
+```bash
+# Instalar TODOS los paquetes necesarios de una vez:
+composer require mailgun/mailgun-php symfony/mailgun-mailer symfony/http-client nyholm/psr7
+php artisan config:clear
+php artisan cache:clear
 ```
 
 ### **🚨 Error: API Key inválida**
