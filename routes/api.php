@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 /*
