@@ -405,8 +405,32 @@ class MessageController extends Controller
             // Get HTML content for the test (simplified without tracking)
             $htmlContent = $this->getTestHtmlForContact($message, $testContact);
 
-            // Send test email directly using Mail facade
-            Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+            // Send test email using configured provider
+            $emailProvider = config('services.email.provider', 'smtp');
+
+            \Log::info('🔧 TEST SEND: Using email provider', [
+                'email_provider' => $emailProvider,
+                'user_email' => $user->email,
+            ]);
+
+            switch ($emailProvider) {
+                case 'mailgun':
+                    if (config('services.mailgun.secret')) {
+                        Mail::mailer('mailgun')->to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+                    } else {
+                        \Log::warning('TEST SEND: Mailgun not configured, using default SMTP');
+                        Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+                    }
+                    break;
+                case 'mailbaby':
+                    \Log::warning('TEST SEND: MailBaby API not supported for test emails, using SMTP');
+                    Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+                    break;
+                case 'smtp':
+                default:
+                    Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+                    break;
+            }
 
             \Log::info('✅ TEST SEND: Email sent successfully', [
                 'message_id' => $message->id,

@@ -76,4 +76,9 @@ return [
         'enabled' => env('MAILBABY_ENABLED', false),
     ],
 
+    'email' => [
+        'provider' => env('EMAIL_PROVIDER', 'smtp'), // mailbaby | mailgun | smtp
+        'fallback_to_smtp' => env('EMAIL_FALLBACK_TO_SMTP', true),
+    ],
+
 ];

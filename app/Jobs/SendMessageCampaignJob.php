@@ -130,59 +130,50 @@ class SendMessageCampaignJob implements ShouldQueue
             // Mark as sending
             $this->messageDelivery->update(['status_id' => 3]); // 3 = sending
 
-            // Check if MailBaby API is enabled
-            if (config('services.mailbaby.enabled', false) && config('services.mailbaby.api_key')) {
-                // Send via MailBaby API (webhooks will handle delivery confirmation)
-                $mailBabyMail = new MailBabyMail($this->messageDelivery);
-                $result = $mailBabyMail->sendViaMailBaby();
+            // Get email provider from configuration
+            $emailProvider = config('services.email.provider', 'smtp');
+            $fallbackToSmtp = config('services.email.fallback_to_smtp', true);
 
-                if (! $result['success']) {
-                    throw new \Exception('MailBaby sending failed: '.($result['error'] ?? 'Unknown error'));
-                }
+            Log::info('🔧 SendMessageCampaignJob: Email provider configuration', [
+                'delivery_id' => $this->messageDelivery->id,
+                'email_provider' => $emailProvider,
+                'fallback_to_smtp' => $fallbackToSmtp,
+            ]);
 
-                Log::info('Message delivery sent via MailBaby', [
-                    'delivery_id' => $this->messageDelivery->id,
-                    'provider_message_id' => $result['provider_message_id'],
-                    'contact_email' => $this->messageDelivery->contact->email,
-                ]);
+            // Send email based on configured provider
+            switch ($emailProvider) {
+                case 'mailbaby':
+                    if (config('services.mailbaby.enabled', false) && config('services.mailbaby.api_key')) {
+                        $this->sendViaMailBaby();
+                        break;
+                    } elseif ($fallbackToSmtp) {
+                        Log::warning('MailBaby not configured, falling back to SMTP', [
+                            'delivery_id' => $this->messageDelivery->id,
+                        ]);
+                        $this->sendViaSmtp();
+                        break;
+                    } else {
+                        throw new \Exception('MailBaby provider selected but not configured');
+                    }
 
-            } else {
-                // Use traditional SMTP with team configuration
-                Log::info('🔧 SendMessageCampaignJob: About to configure SMTP for team', [
-                    'delivery_id' => $this->messageDelivery->id,
-                    'team_id' => $this->messageDelivery->team->id,
-                    'team_name' => $this->messageDelivery->team->name,
-                    'team_has_custom_smtp' => $this->messageDelivery->team->hasOutgoingEmailConfig(),
-                    'before_config_host' => config('mail.mailers.smtp.host'),
-                    'before_config_username' => config('mail.mailers.smtp.username'),
-                ]);
+                case 'mailgun':
+                    if (config('services.mailgun.secret')) {
+                        $this->sendViaMailgun();
+                        break;
+                    } elseif ($fallbackToSmtp) {
+                        Log::warning('Mailgun not configured, falling back to SMTP', [
+                            'delivery_id' => $this->messageDelivery->id,
+                        ]);
+                        $this->sendViaSmtp();
+                        break;
+                    } else {
+                        throw new \Exception('Mailgun provider selected but not configured');
+                    }
 
-                $this->configureMailForTeam($this->messageDelivery->team);
-
-                Log::info('✅ SendMessageCampaignJob: SMTP configured, about to send email', [
-                    'delivery_id' => $this->messageDelivery->id,
-                    'contact_email' => $this->messageDelivery->contact->email,
-                    'after_config_host' => config('mail.mailers.smtp.host'),
-                    'after_config_username' => config('mail.mailers.smtp.username'),
-                    'after_config_from_address' => config('mail.from.address'),
-                    'after_config_from_name' => config('mail.from.name'),
-                ]);
-
-                // Send the email
-                Mail::to($this->messageDelivery->contact->email)
-                    ->send(new MessageDeliveryMail($this->messageDelivery));
-
-                Log::info('📧 SendMessageCampaignJob: Email sent via Laravel Mail', [
-                    'delivery_id' => $this->messageDelivery->id,
-                    'contact_email' => $this->messageDelivery->contact->email,
-                ]);
-
-                // Mark as sent (NOT delivered yet - we need webhook confirmation for that)
-                $this->messageDelivery->update([
-                    'email_provider' => 'smtp',
-                    'sent_at' => now(), // Actual send time
-                    'status_id' => 2, // 2 = sent (not delivered - only webhooks can confirm delivery)
-                ]);
+                case 'smtp':
+                default:
+                    $this->sendViaSmtp();
+                    break;
             }
 
             Log::info('Message delivery sent successfully', [
@@ -235,5 +226,104 @@ class SendMessageCampaignJob implements ShouldQueue
 
         // Mark as permanently failed
         $this->messageDelivery->markAsError();
+    }
+
+    /**
+     * Send email via MailBaby API
+     */
+    protected function sendViaMailBaby()
+    {
+        Log::info('📧 SendMessageCampaignJob: Using MailBaby API', [
+            'delivery_id' => $this->messageDelivery->id,
+            'contact_email' => $this->messageDelivery->contact->email,
+        ]);
+
+        $mailBabyMail = new MailBabyMail($this->messageDelivery);
+        $result = $mailBabyMail->sendViaMailBaby();
+
+        if (! $result['success']) {
+            throw new \Exception('MailBaby sending failed: '.($result['error'] ?? 'Unknown error'));
+        }
+
+        Log::info('✅ SendMessageCampaignJob: Email sent via MailBaby', [
+            'delivery_id' => $this->messageDelivery->id,
+            'provider_message_id' => $result['provider_message_id'],
+            'contact_email' => $this->messageDelivery->contact->email,
+        ]);
+
+        // MailBaby handles status updates via webhooks
+    }
+
+    /**
+     * Send email via Mailgun API
+     */
+    protected function sendViaMailgun()
+    {
+        Log::info('📧 SendMessageCampaignJob: Using Mailgun API', [
+            'delivery_id' => $this->messageDelivery->id,
+            'mailgun_domain' => config('services.mailgun.domain'),
+            'contact_email' => $this->messageDelivery->contact->email,
+        ]);
+
+        $this->configureMailForTeam($this->messageDelivery->team);
+
+        // Send via Mailgun
+        Mail::mailer('mailgun')
+            ->to($this->messageDelivery->contact->email)
+            ->send(new MessageDeliveryMail($this->messageDelivery));
+
+        Log::info('✅ SendMessageCampaignJob: Email sent via Mailgun', [
+            'delivery_id' => $this->messageDelivery->id,
+            'contact_email' => $this->messageDelivery->contact->email,
+        ]);
+
+        // Mark as sent
+        $this->messageDelivery->update([
+            'email_provider' => 'mailgun',
+            'sent_at' => now(),
+            'status_id' => 2, // 2 = sent
+        ]);
+    }
+
+    /**
+     * Send email via SMTP with team configuration
+     */
+    protected function sendViaSmtp()
+    {
+        Log::info('📧 SendMessageCampaignJob: Using SMTP', [
+            'delivery_id' => $this->messageDelivery->id,
+            'team_id' => $this->messageDelivery->team->id,
+            'team_name' => $this->messageDelivery->team->name,
+            'team_has_custom_smtp' => $this->messageDelivery->team->hasOutgoingEmailConfig(),
+            'before_config_host' => config('mail.mailers.smtp.host'),
+            'before_config_username' => config('mail.mailers.smtp.username'),
+        ]);
+
+        $this->configureMailForTeam($this->messageDelivery->team);
+
+        Log::info('✅ SendMessageCampaignJob: SMTP configured, about to send email', [
+            'delivery_id' => $this->messageDelivery->id,
+            'contact_email' => $this->messageDelivery->contact->email,
+            'after_config_host' => config('mail.mailers.smtp.host'),
+            'after_config_username' => config('mail.mailers.smtp.username'),
+            'after_config_from_address' => config('mail.from.address'),
+            'after_config_from_name' => config('mail.from.name'),
+        ]);
+
+        // Send the email
+        Mail::to($this->messageDelivery->contact->email)
+            ->send(new MessageDeliveryMail($this->messageDelivery));
+
+        Log::info('✅ SendMessageCampaignJob: Email sent via SMTP', [
+            'delivery_id' => $this->messageDelivery->id,
+            'contact_email' => $this->messageDelivery->contact->email,
+        ]);
+
+        // Mark as sent
+        $this->messageDelivery->update([
+            'email_provider' => 'smtp',
+            'sent_at' => now(),
+            'status_id' => 2, // 2 = sent
+        ]);
     }
 }
