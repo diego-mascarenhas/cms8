@@ -38,81 +38,245 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // Mailgun Webhook (sin autenticación para recibir eventos)
 Route::post('/mailgun/webhook', function (Request $request) {
+    $event = $request->input('event');
+    $recipient = $request->input('recipient');
+    $messageId = $request->input('message.headers.message-id')
+                ?: $request->input('Message-Id')
+                ?: $request->input('message_headers_message-id')  // Formato real de Mailgun
+                ?: $request->input('message-id');
+
     Log::info('📧 Mailgun Webhook Received', [
         'timestamp' => now(),
-        'event_type' => $request->input('event'),
-        'recipient' => $request->input('recipient'),
+        'event_type' => $event,
+        'recipient' => $recipient,
         'domain' => $request->input('domain'),
-        'message_id' => $request->input('message.headers.message-id'),
+        'message_id' => $messageId,
+        'debug_message_id_attempts' => [
+            'message.headers.message-id' => $request->input('message.headers.message-id'),
+            'Message-Id' => $request->input('Message-Id'),
+            'message_headers_message-id' => $request->input('message_headers_message-id'),
+            'message-id' => $request->input('message-id'),
+        ],
         'full_payload' => $request->all(),
     ]);
 
-    // Eventos importantes de tracking
-    $event = $request->input('event');
-    $recipient = $request->input('recipient');
+    // Find the corresponding MessageDelivery
+    $delivery = null;
 
+    // First try to find by provider_message_id
+    if ($messageId) {
+        $delivery = App\Models\MessageDelivery::where('provider_message_id', $messageId)->first();
+    }
+
+    // If not found, try by recipient email
+    if (! $delivery && $recipient) {
+        $delivery = App\Models\MessageDelivery::whereHas('contact', function ($q) use ($recipient) {
+            $q->where('email', $recipient);
+        })
+            ->where('sent_at', '>=', now()->subDays(7)) // Only recent deliveries
+            ->orderBy('sent_at', 'desc')
+            ->first();
+    }
+
+    if ($delivery) {
+        Log::info('📧 Found MessageDelivery for webhook', [
+            'delivery_id' => $delivery->id,
+            'message_id' => $delivery->message_id,
+            'contact_email' => $delivery->contact->email,
+        ]);
+    } else {
+        Log::warning('📧 No MessageDelivery found for webhook', [
+            'event' => $event,
+            'recipient' => $recipient,
+            'message_id' => $messageId,
+        ]);
+    }
+
+    // Process events and update delivery if found
     switch ($event) {
         case 'accepted':
             Log::info("📨 EMAIL ACCEPTED by Mailgun for {$recipient}");
+            // No need to update delivery for accepted - just logging
             break;
+
         case 'delivered':
             Log::info("✅ EMAIL DELIVERED successfully to {$recipient}");
+            if ($delivery) {
+                $delivery->update([
+                    'delivered_at' => now(),
+                    'status_id' => 2, // 2 = delivered
+                ]);
+                Log::info('📊 Updated delivery status to delivered', ['delivery_id' => $delivery->id]);
+            }
             break;
+
         case 'opened':
             Log::info("👁️ EMAIL OPENED by {$recipient}", [
                 'user_agent' => $request->input('user-agent'),
                 'client_info' => $request->input('client-info'),
             ]);
+            if ($delivery && ! $delivery->opened_at) {
+                $delivery->update([
+                    'opened_at' => now(),
+                    'status_id' => 3, // 3 = opened
+                ]);
+                Log::info('📊 Updated delivery status to opened', ['delivery_id' => $delivery->id]);
+            }
             break;
+
         case 'clicked':
             Log::info("🖱️ EMAIL LINK CLICKED by {$recipient}", [
                 'url' => $request->input('url'),
                 'user_agent' => $request->input('user-agent'),
             ]);
+            if ($delivery && ! $delivery->clicked_at) {
+                $delivery->update([
+                    'clicked_at' => now(),
+                    'status_id' => 4, // 4 = clicked
+                ]);
+                Log::info('📊 Updated delivery status to clicked', ['delivery_id' => $delivery->id]);
+            }
             break;
+
         case 'unsubscribed':
             Log::info("🚫 UNSUBSCRIBED: {$recipient}", [
                 'mailing_list' => $request->input('mailing-list'),
             ]);
+            // Could update contact to unsubscribed status if needed
             break;
+
         case 'complained':
             Log::warning("📢 SPAM COMPLAINT from {$recipient}");
+            if ($delivery) {
+                $delivery->update([
+                    'status_id' => 5, // 5 = complained
+                    'provider_data' => array_merge($delivery->provider_data ?? [], [
+                        'complained_at' => now()->toISOString(),
+                        'complaint_reason' => 'spam',
+                    ]),
+                ]);
+                Log::info('📊 Updated delivery status to complained', ['delivery_id' => $delivery->id]);
+            }
             break;
+
         case 'permanent_fail':
             Log::error("❌ PERMANENT FAILURE to {$recipient}", [
                 'reason' => $request->input('reason'),
                 'description' => $request->input('description'),
                 'code' => $request->input('code'),
             ]);
+            if ($delivery) {
+                $delivery->update([
+                    'status_id' => 6, // 6 = permanent failure
+                    'bounced_at' => now(),
+                    'provider_data' => array_merge($delivery->provider_data ?? [], [
+                        'failure_type' => 'permanent',
+                        'failure_reason' => $request->input('reason'),
+                        'failure_description' => $request->input('description'),
+                        'failure_code' => $request->input('code'),
+                    ]),
+                ]);
+                Log::info('📊 Updated delivery status to permanent failure', ['delivery_id' => $delivery->id]);
+            }
             break;
+
         case 'temporary_fail':
             Log::warning("⏳ TEMPORARY FAILURE to {$recipient}", [
                 'reason' => $request->input('reason'),
                 'description' => $request->input('description'),
                 'code' => $request->input('code'),
             ]);
+            if ($delivery) {
+                $delivery->update([
+                    'provider_data' => array_merge($delivery->provider_data ?? [], [
+                        'last_temporary_failure' => now()->toISOString(),
+                        'failure_reason' => $request->input('reason'),
+                        'failure_description' => $request->input('description'),
+                        'failure_code' => $request->input('code'),
+                    ]),
+                ]);
+                Log::info('📊 Updated delivery with temporary failure info', ['delivery_id' => $delivery->id]);
+            }
             break;
+
             // Eventos legacy (por compatibilidad)
         case 'failed':
             Log::error("❌ EMAIL FAILED to {$recipient}", [
                 'reason' => $request->input('reason'),
                 'description' => $request->input('description'),
             ]);
+            if ($delivery) {
+                $delivery->update([
+                    'status_id' => 6, // 6 = failed
+                    'bounced_at' => now(),
+                ]);
+            }
             break;
+
         case 'bounced':
             Log::warning("⚠️ EMAIL BOUNCED from {$recipient}", [
                 'error' => $request->input('error'),
             ]);
+            if ($delivery) {
+                $delivery->update([
+                    'status_id' => 6, // 6 = bounced
+                    'bounced_at' => now(),
+                ]);
+            }
             break;
+
         case 'dropped':
             Log::warning("🗑️ EMAIL DROPPED to {$recipient}", [
                 'reason' => $request->input('reason'),
                 'description' => $request->input('description'),
             ]);
+            if ($delivery) {
+                $delivery->update([
+                    'status_id' => 6, // 6 = dropped
+                    'provider_data' => array_merge($delivery->provider_data ?? [], [
+                        'dropped_reason' => $request->input('reason'),
+                        'dropped_description' => $request->input('description'),
+                    ]),
+                ]);
+            }
             break;
+
         default:
             Log::info("📧 Unknown Mailgun event: {$event} for {$recipient}");
             break;
+    }
+
+    // Update aggregate statistics if delivery was found and updated
+    if ($delivery && in_array($event, ['delivered', 'opened', 'clicked', 'permanent_fail', 'failed', 'bounced', 'dropped'])) {
+        // Update MessageDeliveryStat
+        $stats = App\Models\MessageDeliveryStat::firstOrCreate(['message_id' => $delivery->message_id], [
+            'subscribers' => 0,
+            'sent' => 0,
+            'delivered' => 0,
+            'opened' => 0,
+            'clicks' => 0,
+            'failed' => 0,
+        ]);
+
+        // Recalculate stats from actual deliveries
+        $deliveries = App\Models\MessageDelivery::where('message_id', $delivery->message_id);
+
+        $stats->update([
+            'sent' => $deliveries->whereNotNull('sent_at')->count(),
+            'delivered' => $deliveries->whereNotNull('delivered_at')->count(),
+            'opened' => $deliveries->whereNotNull('opened_at')->count(),
+            'clicks' => $deliveries->whereNotNull('clicked_at')->count(),
+            'failed' => $deliveries->whereIn('status_id', [5, 6])->count(), // complained, failed, bounced
+        ]);
+
+        Log::info('📊 Updated message statistics', [
+            'message_id' => $delivery->message_id,
+            'sent' => $stats->sent,
+            'delivered' => $stats->delivered,
+            'opened' => $stats->opened,
+            'clicks' => $stats->clicks,
+            'failed' => $stats->failed,
+        ]);
     }
 
     return response()->json(['status' => 'success']);

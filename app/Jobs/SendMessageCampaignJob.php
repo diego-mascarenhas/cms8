@@ -267,19 +267,29 @@ class SendMessageCampaignJob implements ShouldQueue
 
         $this->configureMailForTeam($this->messageDelivery->team);
 
-        // Send via Mailgun
-        Mail::mailer('mailgun')
+        // Send via Mailgun and capture response
+        $sentMessage = Mail::mailer('mailgun')
             ->to($this->messageDelivery->contact->email)
             ->send(new MessageDeliveryMail($this->messageDelivery));
+
+        // Extract Message ID from Mailgun response
+        $providerMessageId = null;
+        if ($sentMessage && method_exists($sentMessage, 'getMessageId')) {
+            $providerMessageId = $sentMessage->getMessageId();
+        } elseif ($sentMessage && method_exists($sentMessage, 'getId')) {
+            $providerMessageId = $sentMessage->getId();
+        }
 
         Log::info('✅ SendMessageCampaignJob: Email sent via Mailgun', [
             'delivery_id' => $this->messageDelivery->id,
             'contact_email' => $this->messageDelivery->contact->email,
+            'provider_message_id' => $providerMessageId,
         ]);
 
-        // Mark as sent
+        // Mark as sent with provider message ID
         $this->messageDelivery->update([
             'email_provider' => 'mailgun',
+            'provider_message_id' => $providerMessageId,
             'sent_at' => now(),
             'status_id' => 2, // 2 = sent
         ]);
