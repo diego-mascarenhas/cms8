@@ -39,6 +39,11 @@ MAILGUN_SECRET=key-xxxxxxxxxxxxxxxxx
 MAILGUN_ENDPOINT=api.mailgun.net
 ```
 
+> **📖 Setup Completo:** Ver `tests/docs/MAILGUN_OFFICIAL_SETUP.md` para:
+> - Instalación de paquetes requeridos
+> - Fix de errores comunes (Error 500)
+> - Testing y troubleshooting completo
+
 ### **3. SMTP Tradicional:**
 ```bash
 EMAIL_PROVIDER=smtp
