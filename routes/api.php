@@ -140,7 +140,7 @@ Route::post('/mailgun/webhook', function (Request $request) {
             if ($delivery && ! $delivery->clicked_at) {
                 $delivery->update([
                     'clicked_at' => now(),
-                    'status_id' => 4, // 4 = clicked
+                    // Keep current status_id, just add clicked_at timestamp
                 ]);
                 Log::info('📊 Updated delivery status to clicked', ['delivery_id' => $delivery->id]);
             }

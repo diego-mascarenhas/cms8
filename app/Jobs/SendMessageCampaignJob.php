@@ -279,16 +279,18 @@ class SendMessageCampaignJob implements ShouldQueue
 
             Log::info('🔧 SendMessageCampaignJob: Content rendered for Mailgun', [
                 'delivery_id' => $this->messageDelivery->id,
+                'message_name' => $this->messageDelivery->message->name,
                 'raw_content_length' => strlen($this->messageDelivery->message->content ?? ''),
                 'rendered_content_length' => strlen($renderedContent ?? ''),
                 'has_html_content' => ! empty($renderedContent),
+                'from_config' => config('mail.from.name').' <'.config('mail.from.address').'>',
             ]);
 
             // Send via Mailgun SDK with tracking enabled
             $result = $mgClient->messages()->send($domain, [
                 'from' => config('mail.from.name').' <'.config('mail.from.address').'>',
                 'to' => $this->messageDelivery->contact->email,
-                'subject' => $this->messageDelivery->message->subject,
+                'subject' => $this->messageDelivery->message->name,  // ✅ Fixed: use 'name' not 'subject'
                 'html' => $renderedContent,
                 'o:tracking' => 'yes',           // ✅ Enable open tracking
                 'o:tracking-clicks' => 'yes',   // ✅ Enable click tracking

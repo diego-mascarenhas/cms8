@@ -24,15 +24,36 @@ trait ConfiguresTeamMail
             'current_env_username' => env('MAIL_USERNAME'),
         ]);
 
-        // 🎯 PRIORITY: If EMAIL_PROVIDER is mailgun, skip team SMTP
+        // 🎯 PRIORITY: Always check team email settings first (from_name, from_address)
+        $teamEmailConfig = $team->getOutgoingEmailConfig();
+
+        // Set team's from_name and from_address if available
+        if (! empty($teamEmailConfig['from_name'])) {
+            Config::set('mail.from.name', $teamEmailConfig['from_name']);
+        }
+        if (! empty($teamEmailConfig['from_address'])) {
+            Config::set('mail.from.address', $teamEmailConfig['from_address']);
+        }
+
+        \Log::info('🔧 ConfiguresTeamMail: Applied team email config', [
+            'team_id' => $team->id,
+            'team_has_from_name' => ! empty($teamEmailConfig['from_name']),
+            'team_has_from_address' => ! empty($teamEmailConfig['from_address']),
+            'final_from_name' => config('mail.from.name'),
+            'final_from_address' => config('mail.from.address'),
+        ]);
+
+        // If EMAIL_PROVIDER is mailgun, only transport changes, but keep team email config
         if ($emailProvider === 'mailgun') {
-            \Log::info('🚀 EMAIL_PROVIDER=mailgun: Skipping team SMTP, using Mailgun API', [
+            \Log::info('🚀 EMAIL_PROVIDER=mailgun: Using Mailgun API with team email config', [
                 'team_id' => $team->id,
                 'mailgun_domain' => config('services.mailgun.domain'),
                 'mailgun_configured' => ! empty(config('services.mailgun.secret')),
+                'from_name' => config('mail.from.name'),
+                'from_address' => config('mail.from.address'),
             ]);
 
-            return; // Skip team configuration, use global Mailgun
+            return; // Use Mailgun transport but with team email config applied
         }
 
         // Check if team has its own email configuration (only for SMTP provider)
