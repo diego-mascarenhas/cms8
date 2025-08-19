@@ -13,15 +13,29 @@ trait ConfiguresTeamMail
      */
     protected function configureMailForTeam(Team $team)
     {
+        $emailProvider = config('services.email.provider', 'smtp');
+
         \Log::info('🔧 ConfiguresTeamMail: Starting SMTP configuration', [
             'team_id' => $team->id,
             'team_name' => $team->name,
+            'email_provider' => $emailProvider,
             'has_custom_smtp' => $team->hasOutgoingEmailConfig(),
             'current_env_host' => env('MAIL_HOST'),
             'current_env_username' => env('MAIL_USERNAME'),
         ]);
 
-        // Check if team has its own email configuration
+        // 🎯 PRIORITY: If EMAIL_PROVIDER is mailgun, skip team SMTP
+        if ($emailProvider === 'mailgun') {
+            \Log::info('🚀 EMAIL_PROVIDER=mailgun: Skipping team SMTP, using Mailgun API', [
+                'team_id' => $team->id,
+                'mailgun_domain' => config('services.mailgun.domain'),
+                'mailgun_configured' => ! empty(config('services.mailgun.secret')),
+            ]);
+
+            return; // Skip team configuration, use global Mailgun
+        }
+
+        // Check if team has its own email configuration (only for SMTP provider)
         if ($team->hasOutgoingEmailConfig()) {
             // Use team's custom SMTP configuration
             $config = $team->getOutgoingEmailConfig();
