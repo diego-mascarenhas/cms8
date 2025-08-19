@@ -273,12 +273,23 @@ class SendMessageCampaignJob implements ShouldQueue
             $mgClient = Mailgun::create(config('services.mailgun.secret'));
             $domain = config('services.mailgun.domain');
 
+            // Render the email content using the Mailable
+            $mail = new MessageDeliveryMail($this->messageDelivery);
+            $renderedContent = $mail->render();
+
+            Log::info('🔧 SendMessageCampaignJob: Content rendered for Mailgun', [
+                'delivery_id' => $this->messageDelivery->id,
+                'raw_content_length' => strlen($this->messageDelivery->message->content ?? ''),
+                'rendered_content_length' => strlen($renderedContent ?? ''),
+                'has_html_content' => ! empty($renderedContent),
+            ]);
+
             // Send via Mailgun SDK
             $result = $mgClient->messages()->send($domain, [
                 'from' => config('mail.from.name').' <'.config('mail.from.address').'>',
                 'to' => $this->messageDelivery->contact->email,
                 'subject' => $this->messageDelivery->message->subject,
-                'html' => $this->messageDelivery->message->content,
+                'html' => $renderedContent,
             ]);
 
             // Extract real Message ID from Mailgun response
