@@ -59,6 +59,7 @@ class UserSeeder extends Seeder
             ['name' => 'Client', 'email' => 'client@example.com', 'role' => 7],
             ['name' => 'User', 'email' => 'user@example.com', 'role' => 8],
             ['name' => 'Guest', 'email' => 'guest@example.com', 'role' => 9],
+            ['name' => 'Tester', 'email' => 'tester@revisionalpha.com', 'role' => 8],
         ];
 
         foreach ($demoUsers as $userData) {
