@@ -1339,7 +1339,8 @@ class TeamDemoSeeder extends Seeder
                 'team_id' => 1,
                 'name' => 'Idoneo Technologies',
                 'website' => 'https://idoneo.dev',
-                'email' => 'bitcoder@idoneo.dev',
+                // 'email' => 'bitcoder@idoneo.dev',
+                'email' => 'no-reply@revisionalpha.com',
                 'type_id' => 1, // Cliente
                 'status_id' => 1, // Activo
                 'created_at' => '2025-08-10 15:12:31',
