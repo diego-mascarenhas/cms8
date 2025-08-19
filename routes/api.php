@@ -51,9 +51,47 @@ Route::post('/mailgun/webhook', function (Request $request) {
     $recipient = $request->input('recipient');
 
     switch ($event) {
+        case 'accepted':
+            Log::info("📨 EMAIL ACCEPTED by Mailgun for {$recipient}");
+            break;
         case 'delivered':
             Log::info("✅ EMAIL DELIVERED successfully to {$recipient}");
             break;
+        case 'opened':
+            Log::info("👁️ EMAIL OPENED by {$recipient}", [
+                'user_agent' => $request->input('user-agent'),
+                'client_info' => $request->input('client-info'),
+            ]);
+            break;
+        case 'clicked':
+            Log::info("🖱️ EMAIL LINK CLICKED by {$recipient}", [
+                'url' => $request->input('url'),
+                'user_agent' => $request->input('user-agent'),
+            ]);
+            break;
+        case 'unsubscribed':
+            Log::info("🚫 UNSUBSCRIBED: {$recipient}", [
+                'mailing_list' => $request->input('mailing-list'),
+            ]);
+            break;
+        case 'complained':
+            Log::warning("📢 SPAM COMPLAINT from {$recipient}");
+            break;
+        case 'permanent_fail':
+            Log::error("❌ PERMANENT FAILURE to {$recipient}", [
+                'reason' => $request->input('reason'),
+                'description' => $request->input('description'),
+                'code' => $request->input('code'),
+            ]);
+            break;
+        case 'temporary_fail':
+            Log::warning("⏳ TEMPORARY FAILURE to {$recipient}", [
+                'reason' => $request->input('reason'),
+                'description' => $request->input('description'),
+                'code' => $request->input('code'),
+            ]);
+            break;
+            // Eventos legacy (por compatibilidad)
         case 'failed':
             Log::error("❌ EMAIL FAILED to {$recipient}", [
                 'reason' => $request->input('reason'),
@@ -71,11 +109,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
                 'description' => $request->input('description'),
             ]);
             break;
-        case 'complained':
-            Log::warning("📢 SPAM COMPLAINT from {$recipient}");
-            break;
-        case 'unsubscribed':
-            Log::info("🚫 UNSUBSCRIBED: {$recipient}");
+        default:
+            Log::info("📧 Unknown Mailgun event: {$event} for {$recipient}");
             break;
     }
 
