@@ -54,11 +54,26 @@ class SendMessageCampaignJob implements ShouldQueue
     public function handle()
     {
         try {
+            Log::info('🚀 SendMessageCampaignJob: Starting job execution', [
+                'delivery_id' => $this->messageDelivery->id,
+                'job_queue' => $this->queue ?? 'default',
+                'job_attempts' => $this->attempts(),
+            ]);
+
             $this->messageDelivery->load(['contact', 'message', 'message.template', 'team']);
+
+            Log::info('📊 SendMessageCampaignJob: Data loaded', [
+                'delivery_id' => $this->messageDelivery->id,
+                'team_id' => $this->messageDelivery->team->id ?? 'null',
+                'team_name' => $this->messageDelivery->team->name ?? 'null',
+                'contact_email' => $this->messageDelivery->contact->email ?? 'null',
+                'message_id' => $this->messageDelivery->message->id ?? 'null',
+                'message_name' => $this->messageDelivery->message->name ?? 'null',
+            ]);
 
             // Check if it's time to send (respect scheduled time)
             if ($this->messageDelivery->sent_at && $this->messageDelivery->sent_at->isFuture()) {
-                Log::info('Message delivery not yet time to send, releasing job', [
+                Log::info('⏰ Message delivery not yet time to send, releasing job', [
                     'delivery_id' => $this->messageDelivery->id,
                     'scheduled_time' => $this->messageDelivery->sent_at,
                     'current_time' => now(),
@@ -133,11 +148,34 @@ class SendMessageCampaignJob implements ShouldQueue
 
             } else {
                 // Use traditional SMTP with team configuration
+                Log::info('🔧 SendMessageCampaignJob: About to configure SMTP for team', [
+                    'delivery_id' => $this->messageDelivery->id,
+                    'team_id' => $this->messageDelivery->team->id,
+                    'team_name' => $this->messageDelivery->team->name,
+                    'team_has_custom_smtp' => $this->messageDelivery->team->hasOutgoingEmailConfig(),
+                    'before_config_host' => config('mail.mailers.smtp.host'),
+                    'before_config_username' => config('mail.mailers.smtp.username'),
+                ]);
+
                 $this->configureMailForTeam($this->messageDelivery->team);
+
+                Log::info('✅ SendMessageCampaignJob: SMTP configured, about to send email', [
+                    'delivery_id' => $this->messageDelivery->id,
+                    'contact_email' => $this->messageDelivery->contact->email,
+                    'after_config_host' => config('mail.mailers.smtp.host'),
+                    'after_config_username' => config('mail.mailers.smtp.username'),
+                    'after_config_from_address' => config('mail.from.address'),
+                    'after_config_from_name' => config('mail.from.name'),
+                ]);
 
                 // Send the email
                 Mail::to($this->messageDelivery->contact->email)
                     ->send(new MessageDeliveryMail($this->messageDelivery));
+
+                Log::info('📧 SendMessageCampaignJob: Email sent via Laravel Mail', [
+                    'delivery_id' => $this->messageDelivery->id,
+                    'contact_email' => $this->messageDelivery->contact->email,
+                ]);
 
                 // Mark as sent (NOT delivered yet - we need webhook confirmation for that)
                 $this->messageDelivery->update([
@@ -157,9 +195,21 @@ class SendMessageCampaignJob implements ShouldQueue
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to send message delivery', [
+            Log::error('❌ SendMessageCampaignJob: Failed to send message delivery', [
                 'delivery_id' => $this->messageDelivery->id,
-                'error' => $e->getMessage(),
+                'team_id' => $this->messageDelivery->team->id ?? 'null',
+                'team_name' => $this->messageDelivery->team->name ?? 'null',
+                'contact_email' => $this->messageDelivery->contact->email ?? 'null',
+                'error_message' => $e->getMessage(),
+                'error_code' => $e->getCode(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'exception_class' => get_class($e),
+                // Current mail configuration at time of error
+                'current_smtp_host' => config('mail.mailers.smtp.host'),
+                'current_smtp_username' => config('mail.mailers.smtp.username'),
+                'current_from_address' => config('mail.from.address'),
+                'team_has_custom_smtp' => $this->messageDelivery->team->hasOutgoingEmailConfig() ?? false,
                 'trace' => $e->getTraceAsString(),
             ]);
 
