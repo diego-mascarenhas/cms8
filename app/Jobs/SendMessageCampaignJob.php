@@ -13,6 +13,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Mailgun\Mailgun;
 
 class SendMessageCampaignJob implements ShouldQueue
 {
@@ -267,32 +268,58 @@ class SendMessageCampaignJob implements ShouldQueue
 
         $this->configureMailForTeam($this->messageDelivery->team);
 
-        // Send via Mailgun and capture response
-        $sentMessage = Mail::mailer('mailgun')
-            ->to($this->messageDelivery->contact->email)
-            ->send(new MessageDeliveryMail($this->messageDelivery));
+        // Use Mailgun SDK directly for better control over response
+        try {
+            $mgClient = Mailgun::create(config('services.mailgun.secret'));
+            $domain = config('services.mailgun.domain');
 
-        // Extract Message ID from Mailgun response
-        $providerMessageId = null;
-        if ($sentMessage && method_exists($sentMessage, 'getMessageId')) {
-            $providerMessageId = $sentMessage->getMessageId();
-        } elseif ($sentMessage && method_exists($sentMessage, 'getId')) {
-            $providerMessageId = $sentMessage->getId();
+            // Send via Mailgun SDK
+            $result = $mgClient->messages()->send($domain, [
+                'from' => config('mail.from.name').' <'.config('mail.from.address').'>',
+                'to' => $this->messageDelivery->contact->email,
+                'subject' => $this->messageDelivery->message->subject,
+                'html' => $this->messageDelivery->message->content,
+            ]);
+
+            // Extract real Message ID from Mailgun response
+            $providerMessageId = $result->getId();
+
+            Log::info('✅ SendMessageCampaignJob: Email sent via Mailgun SDK', [
+                'delivery_id' => $this->messageDelivery->id,
+                'contact_email' => $this->messageDelivery->contact->email,
+                'provider_message_id' => $providerMessageId,
+                'mailgun_response' => $result->getMessage(),
+            ]);
+
+            // Mark as sent with real provider message ID
+            $this->messageDelivery->update([
+                'email_provider' => 'mailgun',
+                'provider_message_id' => $providerMessageId,
+                'sent_at' => now(),
+                'status_id' => 2, // 2 = sent
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Mailgun SDK failed, falling back to Laravel Mail', [
+                'delivery_id' => $this->messageDelivery->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Fallback to Laravel Mail
+            Mail::mailer('mailgun')
+                ->to($this->messageDelivery->contact->email)
+                ->send(new MessageDeliveryMail($this->messageDelivery));
+
+            // Use fallback tracking method
+            $fallbackId = $this->messageDelivery->id.'-'.time().'@fallback';
+
+            $this->messageDelivery->update([
+                'email_provider' => 'mailgun',
+                'provider_message_id' => $fallbackId,
+                'sent_at' => now(),
+                'status_id' => 2,
+            ]);
         }
-
-        Log::info('✅ SendMessageCampaignJob: Email sent via Mailgun', [
-            'delivery_id' => $this->messageDelivery->id,
-            'contact_email' => $this->messageDelivery->contact->email,
-            'provider_message_id' => $providerMessageId,
-        ]);
-
-        // Mark as sent with provider message ID
-        $this->messageDelivery->update([
-            'email_provider' => 'mailgun',
-            'provider_message_id' => $providerMessageId,
-            'sent_at' => now(),
-            'status_id' => 2, // 2 = sent
-        ]);
     }
 
     /**
