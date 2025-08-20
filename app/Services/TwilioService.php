@@ -26,7 +26,8 @@ class TwilioService
 	{
 		$this->team = $team;
 
-		if ($this->team && $this->team->hasTwilioConfig()) {
+		// Only initialize config if not in console mode or if team is explicitly provided
+		if ($this->team && !app()->runningInConsole() && $this->team->hasTwilioConfig()) {
 			// Use team-specific configuration
 			$this->config = $this->team->getTwilioConfig();
 			$this->client = new Client($this->config['sid'], $this->config['token']);
