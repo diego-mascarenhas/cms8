@@ -314,10 +314,13 @@ class MessageController extends Controller
                 ->first();
 
             if (! $existingDelivery) {
-                // Schedule with random intervals (5 minutes apart + random 0-2 minutes)
-                $baseDelayMinutes = $contactIndex * 5; // 5 minutes between each
-                $randomDelayMinutes = rand(0, 120); // Random 0-2 minutes (in seconds converted to minutes)
-                $scheduledTime = now()->addMinutes($baseDelayMinutes)->addSeconds($randomDelayMinutes);
+                // Schedule with configurable intervals from .env
+                $baseMinutes = config('services.email.delay.base_minutes', 5);
+                $maxRandomSeconds = config('services.email.delay.random_seconds', 120);
+
+                $baseDelayMinutes = $contactIndex * $baseMinutes; // Configurable minutes between each
+                $randomDelaySeconds = rand(0, $maxRandomSeconds); // Configurable random seconds
+                $scheduledTime = now()->addMinutes($baseDelayMinutes)->addSeconds($randomDelaySeconds);
 
                 MessageDelivery::create([
                     'team_id' => $message->team_id,

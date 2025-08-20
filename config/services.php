@@ -79,6 +79,12 @@ return [
     'email' => [
         'provider' => env('EMAIL_PROVIDER', 'smtp'), // mailbaby | mailgun | smtp
         'fallback_to_smtp' => env('EMAIL_FALLBACK_TO_SMTP', true),
+
+        // Email sending delay configuration
+        'delay' => [
+            'base_minutes' => (int) env('EMAIL_DELAY_BASE_MINUTES', 5), // Minutes between each email
+            'random_seconds' => (int) env('EMAIL_DELAY_RANDOM_SECONDS', 120), // Random 0-X seconds added
+        ],
     ],
 
 ];
