@@ -152,7 +152,6 @@ Route::post('/mailgun/webhook', function (Request $request) {
                     MessageDeliveryLink::create([
                         'message_delivery_id' => $delivery->id,
                         'link' => $clickedUrl,
-                        'created_at' => now(),
                     ]);
 
                     Log::info('🔗 Created Lead Conversion Link', [

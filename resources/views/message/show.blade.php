@@ -107,7 +107,9 @@
 										</div>
 									</td>
 									<td>
-										<small class="text-muted">{{ $link->created_at->format('M j, Y H:i') }}</small>
+										<small class="text-muted">
+											{{ is_string($link->created_at) ? $link->created_at : $link->created_at->format('M j, Y H:i') }}
+										</small>
 									</td>
 									<td>
 										<a href="{{ $link->link }}"
