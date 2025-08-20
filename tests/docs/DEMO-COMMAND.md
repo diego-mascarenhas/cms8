@@ -113,7 +113,7 @@ https://revisionalpha.com/login/token/[TOKEN]
 ### Empresa Demo
 - **ID**: 2 (Idoneo Technologies)
 - **Website**: https://idoneo.dev
-- **Email**: bitcoder@idoneo.dev
+- **Email**: no-reply@revisionalpha.com
 - **Team**: 1 (Principal)
 - **Servicios Incluidos**:
   - AI Software Development (Activo)

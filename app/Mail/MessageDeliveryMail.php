@@ -24,6 +24,13 @@ class MessageDeliveryMail extends Mailable implements ShouldQueue
 	{
 		$subject = $this->delivery->message ? $this->delivery->message->name : 'Newsletter';
 		$html = $this->delivery->getHtmlForContact();
+
+		// Add advertising footer if team is using system SMTP
+		$advertisingFooter = config('app.mail_advertising_footer', '');
+		if ($advertisingFooter) {
+			$html .= $advertisingFooter;
+		}
+
 		$css = '';
 		$inliner = new CssToInlineStyles();
 		$htmlInlined = $inliner->convert($html, $css);

@@ -1,12 +1,32 @@
----
-description: 
-globs: 
-alwaysApply: true
----
+# Git and Commit Rules
 
-# Your rule content
+## 🚫 AI Git Blacklist (CRITICAL)
+- ❌ **NEVER RUN**: `git add`, `git commit`, `git push`, `git merge`, `git pull`
+- ❌ **FORBIDDEN**: Any git command execution whatsoever
+- ❌ **NO AUTOMATION**: Zero git interaction from AI
+- ✅ **ONLY ALLOWED**: File modifications and code changes
+- 👤 **USER CONTROL**: Human handles ALL git operations manually
 
-- You can @ files here
-- You can use markdown but dont have to
+## 📋 Commit Guidelines (For User)
+- Make simple commits of no more than 10 words
+- Use present tense (e.g. "Add contact validation", "Fix email provider")
+- Be descriptive but concise
+- One logical change per commit
 
-Make simple commits of no more than 10 words
+## 🎯 AI Responsibilities
+- ✅ Modify files as requested
+- ✅ Suggest commit messages (but not execute)
+- ✅ Prepare code for user to commit
+- ❌ Never touch git commands
+- 📢 Say "Ready for you to commit" when changes are done
+
+## Examples
+**Good commit messages:**
+- "Add Mailgun webhook tracking"
+- "Fix email provider priority"
+- "Update user seeder"
+
+**AI should say:**
+- "File modified, ready for you to commit"
+- "Changes complete, you can now commit"
+- NOT: "Let me commit this for you"

@@ -233,7 +233,7 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('mail_host'),
                         'is_encrypted' => false,
                         'placeholder' => env('MAIL_HOST'),
-                        'help' => 'Leave empty to use: ' . env('MAIL_HOST'),
+                        'help' => 'Leave empty to use: '.env('MAIL_HOST'),
                         'section' => 'outgoing',
                         'row' => 1,
                     ],
@@ -258,7 +258,7 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('mail_encryption'),
                         'is_encrypted' => false,
                         'placeholder' => env('MAIL_ENCRYPTION'),
-                        'help' => 'Leave empty to use: ' . env('MAIL_ENCRYPTION'),
+                        'help' => 'Leave empty to use: '.env('MAIL_ENCRYPTION'),
                         'section' => 'outgoing',
                         'row' => 1,
                     ],
@@ -269,7 +269,7 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('mail_from_name'),
                         'is_encrypted' => false,
                         'placeholder' => env('MAIL_FROM_NAME'),
-                        'help' => 'Leave empty to use: ' . env('MAIL_FROM_NAME'),
+                        'help' => 'Leave empty to use: '.env('MAIL_FROM_NAME'),
                         'section' => 'outgoing',
                         'row' => 2,
                     ],
@@ -279,18 +279,18 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('mail_from_address'),
                         'is_encrypted' => false,
                         'placeholder' => env('MAIL_FROM_ADDRESS'),
-                        'help' => 'Leave empty to use: ' . env('MAIL_FROM_ADDRESS'),
+                        'help' => 'Leave empty to use: '.env('MAIL_FROM_ADDRESS'),
                         'section' => 'outgoing',
                         'row' => 2,
                     ],
                     // Outgoing Email (SMTP) - Row 3 (Authentication)
                     'mail_username' => [
                         'label' => 'SMTP Username',
-                        'type' => 'email',
+                        'type' => 'text',
                         'value' => $team->getSetting('mail_username'),
                         'is_encrypted' => false,
                         'placeholder' => env('MAIL_USERNAME'),
-                        'help' => 'Leave empty to use: ' . env('MAIL_USERNAME'),
+                        'help' => 'Username for SMTP authentication (can be email or account ID). Leave empty to use: '.env('MAIL_USERNAME'),
                         'section' => 'outgoing',
                         'row' => 3,
                     ],
@@ -339,10 +339,10 @@ class TeamSettingController extends Controller
                     // Incoming Email (IMAP) - Row 2
                     'imap_username' => [
                         'label' => 'IMAP Username',
-                        'type' => 'email',
+                        'type' => 'text',
                         'value' => $team->getSetting('imap_username'),
                         'is_encrypted' => false,
-                        'help' => 'Usually same as SMTP username',
+                        'help' => 'Username for IMAP authentication (can be email or account ID). Usually same as SMTP username',
                         'section' => 'incoming',
                         'row' => 2,
                     ],
@@ -697,10 +697,11 @@ class TeamSettingController extends Controller
         app(\App\Services\CustomTranslationService::class)->clearCache();
 
         $message = "Importación completada: {$imported} nuevas traducciones, {$updated} actualizadas";
+
         return redirect()->back()->with('success', $message);
     }
 
-        /**
+    /**
      * Test SMTP connection
      */
     public function testSmtpConnection(Team $team)
@@ -713,7 +714,7 @@ class TeamSettingController extends Controller
             if (empty($config['host']) || empty($config['username'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'SMTP configuration is incomplete. Please configure host and username.'
+                    'message' => 'SMTP configuration is incomplete. Please configure host and username.',
                 ]);
             }
 
@@ -724,10 +725,10 @@ class TeamSettingController extends Controller
 
             // Test basic connectivity
             $socket = @fsockopen($host, $port, $errno, $errstr, $timeout);
-            if (!$socket) {
+            if (! $socket) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Cannot connect to {$host}:{$port} - {$errstr} ({$errno})"
+                    'message' => "Cannot connect to {$host}:{$port} - {$errstr} ({$errno})",
                 ]);
             }
             fclose($socket);
@@ -761,7 +762,7 @@ class TeamSettingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'SMTP connection successful!'
+                'message' => 'SMTP connection successful!',
             ]);
 
         } catch (\Exception $e) {
@@ -772,7 +773,7 @@ class TeamSettingController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'SMTP connection failed: ' . $e->getMessage()
+                'message' => 'SMTP connection failed: '.$e->getMessage(),
             ]);
         }
     }
@@ -790,7 +791,7 @@ class TeamSettingController extends Controller
             if (empty($config['host']) || empty($config['username'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'IMAP configuration is incomplete. Please configure host and username.'
+                    'message' => 'IMAP configuration is incomplete. Please configure host and username.',
                 ]);
             }
 
@@ -809,26 +810,27 @@ class TeamSettingController extends Controller
 
             if ($connection) {
                 imap_close($connection);
+
                 return response()->json([
                     'success' => true,
-                    'message' => 'IMAP connection successful!'
+                    'message' => 'IMAP connection successful!',
                 ]);
             } else {
                 return response()->json([
                     'success' => false,
-                    'message' => 'IMAP connection failed: ' . imap_last_error()
+                    'message' => 'IMAP connection failed: '.imap_last_error(),
                 ]);
             }
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'IMAP connection failed: ' . $e->getMessage()
+                'message' => 'IMAP connection failed: '.$e->getMessage(),
             ]);
         }
     }
 
-        /**
+    /**
      * Test Stripe connection
      */
     public function testStripeConnection(Team $team)
@@ -842,22 +844,22 @@ class TeamSettingController extends Controller
             if (empty($publicKey) || empty($secretKey)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Stripe configuration is incomplete. Please configure both public and secret keys.'
+                    'message' => 'Stripe configuration is incomplete. Please configure both public and secret keys.',
                 ]);
             }
 
             // Validate key format first
-            if (!str_starts_with($publicKey, 'pk_')) {
+            if (! str_starts_with($publicKey, 'pk_')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid public key format. Must start with pk_'
+                    'message' => 'Invalid public key format. Must start with pk_',
                 ]);
             }
 
-            if (!str_starts_with($secretKey, 'sk_')) {
+            if (! str_starts_with($secretKey, 'sk_')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid secret key format. Must start with sk_'
+                    'message' => 'Invalid secret key format. Must start with sk_',
                 ]);
             }
 
@@ -880,30 +882,31 @@ class TeamSettingController extends Controller
             \Stripe\Product::update($testProduct->id, ['active' => false]);
 
             $accountName = $account->display_name ?? $account->business_profile->name ?? 'Account';
+
             return response()->json([
                 'success' => true,
-                'message' => "Stripe connection successful! Account: {$accountName} ({$account->country})"
+                'message' => "Stripe connection successful! Account: {$accountName} ({$account->country})",
             ]);
 
         } catch (\Stripe\Exception\AuthenticationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Stripe authentication failed: Invalid API keys'
+                'message' => 'Stripe authentication failed: Invalid API keys',
             ]);
         } catch (\Stripe\Exception\InvalidRequestException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Stripe request failed: ' . $e->getMessage()
+                'message' => 'Stripe request failed: '.$e->getMessage(),
             ]);
         } catch (\Stripe\Exception\ApiErrorException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Stripe API error: ' . $e->getMessage()
+                'message' => 'Stripe API error: '.$e->getMessage(),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Stripe connection failed: ' . $e->getMessage()
+                'message' => 'Stripe connection failed: '.$e->getMessage(),
             ]);
         }
     }
@@ -921,15 +924,15 @@ class TeamSettingController extends Controller
             if (empty($config['sid']) || empty($config['token'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Twilio configuration is incomplete. Please configure SID and Token.'
+                    'message' => 'Twilio configuration is incomplete. Please configure SID and Token.',
                 ]);
             }
 
             // Validate SID format
-            if (!str_starts_with($config['sid'], 'AC')) {
+            if (! str_starts_with($config['sid'], 'AC')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid Account SID format. Must start with AC'
+                    'message' => 'Invalid Account SID format. Must start with AC',
                 ]);
             }
 
@@ -946,29 +949,29 @@ class TeamSettingController extends Controller
             if ($account->status !== 'active') {
                 return response()->json([
                     'success' => false,
-                    'message' => "Twilio account status: {$account->status}. Account must be active."
+                    'message' => "Twilio account status: {$account->status}. Account must be active.",
                 ]);
             }
 
             return response()->json([
                 'success' => true,
-                'message' => "Twilio connection successful! Account: {$account->friendlyName} ({$account->status})"
+                'message' => "Twilio connection successful! Account: {$account->friendlyName} ({$account->status})",
             ]);
 
         } catch (\Twilio\Exceptions\RestException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Twilio API error: ' . $e->getMessage()
+                'message' => 'Twilio API error: '.$e->getMessage(),
             ]);
         } catch (\Twilio\Exceptions\TwilioException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Twilio connection failed: ' . $e->getMessage()
+                'message' => 'Twilio connection failed: '.$e->getMessage(),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Twilio test failed: ' . $e->getMessage()
+                'message' => 'Twilio test failed: '.$e->getMessage(),
             ]);
         }
     }

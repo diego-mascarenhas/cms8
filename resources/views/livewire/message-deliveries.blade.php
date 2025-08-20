@@ -17,45 +17,75 @@
                     <thead>
                         <tr>
                             <th>Contact</th>
-                            <th>Email</th>
-                            <th>Scheduled/Sent At</th>
-                            <th>Delivered At</th>
+                            <th>Delivery Status</th>
                             <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($deliveries as $delivery)
                             <tr>
-                                <td>{{ $delivery['contact_name'] }}</td>
                                 <td>
-                                    <small class="text-muted">{{ $delivery['contact_email'] }}</small>
+                                    <div class="d-flex flex-column">
+                                        <h6 class="mb-0">{{ $delivery['contact_name'] }}</h6>
+                                        <small class="text-muted">{{ $delivery['contact_email'] }}</small>
+                                    </div>
                                 </td>
                                 <td>
-                                    @if($delivery['delivered_at'])
-                                        <small class="text-success">{{ $delivery['sent_at'] }}</small>
-                                    @elseif($delivery['sent_at'])
-                                        @if($delivery['status_text'] === 'Scheduled')
-                                            <small class="text-warning">
-                                                <i class="ti ti-clock me-1"></i>{{ $delivery['sent_at'] }}
+                                    <div class="d-flex flex-column">
+                                        @if($delivery['delivered_at'])
+                                            <small class="text-success">
+                                                <i class="ti ti-check me-1"></i>Delivered: {{ $delivery['delivered_at'] }}
                                             </small>
+                                            <small class="text-muted">Sent: {{ $delivery['sent_at'] }}</small>
+                                        @elseif($delivery['sent_at'])
+                                            @if($delivery['status_text'] === 'Scheduled')
+                                                <small class="text-warning">
+                                                    <i class="ti ti-clock me-1"></i>Scheduled: {{ $delivery['sent_at'] }}
+                                                </small>
+                                            @else
+                                                <small class="text-primary">
+                                                    <i class="ti ti-send me-1"></i>Sent: {{ $delivery['sent_at'] }}
+                                                </small>
+                                            @endif
                                         @else
-                                            <small>{{ $delivery['sent_at'] }}</small>
+                                            <span class="text-muted">Pending</span>
                                         @endif
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($delivery['delivered_at'])
-                                        <small>{{ $delivery['delivered_at'] }}</small>
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
+                                    </div>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge bg-{{ $delivery['status'] }}">
-                                        {{ $delivery['status_text'] }}
-                                    </span>
+                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                        <span class="badge bg-label-{{ $delivery['status'] }}">
+                                            {{ $delivery['status_text'] }}
+                                        </span>
+
+                                        {{-- Opened Icon --}}
+                                        @if($delivery['has_opened'])
+                                            <i class="ti ti-eye ti-sm text-info"
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="top"
+                                               data-bs-original-title="Opened: {{ $delivery['opened_at'] }}"
+                                               style="cursor: help;"></i>
+                                        @endif
+
+                                        {{-- Clicked Icon --}}
+                                        @if($delivery['has_clicked'])
+                                            <i class="ti ti-mouse ti-sm text-success"
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="top"
+                                               data-bs-original-title="Clicked: {{ $delivery['clicked_at'] }}"
+                                               style="cursor: help;"></i>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    @if($delivery['status_text'] !== 'Scheduled')
+                                        <a href="#" class="text-info" onclick="resendDelivery({{ $delivery['id'] }}, this)" title="Reenviar email">
+                                            <i class="ti ti-mail-forward ti-sm"></i>
+                                        </a>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -70,3 +100,26 @@
         </div>
     </div>
 </div>
+
+{{-- Initialize tooltips after Livewire updates --}}
+<script>
+document.addEventListener('livewire:updated', function() {
+    // Dispose existing tooltips to prevent duplicates
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        var existingTooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+        if (existingTooltip) {
+            existingTooltip.dispose();
+        }
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Initialize tooltips on first load
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>

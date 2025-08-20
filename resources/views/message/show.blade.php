@@ -87,26 +87,63 @@
 		<div class="card mb-4">
 			<div class="card-header">Lead Conversion Links</div>
 			<div class="card-body table-responsive">
-				<table class="table table-sm">
-					<thead>
-						<tr>
-							<th>Delivery</th>
-							<th>Created At</th>
-							<th>Link</th>
-						</tr>
-					</thead>
-					<tbody>
-						@foreach($links as $link)
+				@if($links->count() > 0)
+					<table class="table table-sm">
+						<thead>
 							<tr>
-								<td>{{ $link->message_delivery_id }}</td>
-								<td>{{ $link->created_at }}</td>
-								<td>
-									<a href="{{ $link->link }}" target="_blank">{{ $link->link }}</a>
-								</td>
+								<th>Contact</th>
+								<th>Clicked At</th>
+								<th>Link</th>
+								<th class="text-center">Actions</th>
 							</tr>
-						@endforeach
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							@foreach($links as $link)
+								<tr>
+									<td>
+										<div class="d-flex flex-column">
+											<h6 class="mb-0">{{ $link->messageDelivery->contact->name ?? 'Unknown' }}</h6>
+											<small class="text-muted">{{ $link->messageDelivery->contact->email ?? 'N/A' }}</small>
+										</div>
+									</td>
+									<td>
+										<small class="text-muted">
+											{{ is_string($link->created_at) ? $link->created_at : $link->created_at->format('M j, Y H:i') }}
+										</small>
+									</td>
+									<td>
+										<a href="{{ $link->link }}"
+										   target="_blank"
+										   class="text-primary"
+										   data-bs-toggle="tooltip"
+										   data-bs-placement="top"
+										   data-bs-original-title="Click to open: {{ $link->link }}">
+											{{ Str::limit($link->link, 50) }}
+											<i class="ti ti-external-link ti-xs ms-1"></i>
+										</a>
+									</td>
+									<td class="text-center">
+										<button class="btn btn-sm btn-outline-secondary"
+												onclick="copyToClipboard('{{ $link->link }}')"
+												data-bs-toggle="tooltip"
+												data-bs-placement="top"
+												data-bs-original-title="Copy link">
+											<i class="ti ti-copy ti-xs"></i>
+										</button>
+									</td>
+								</tr>
+							@endforeach
+						</tbody>
+					</table>
+				@else
+					<div class="text-center py-4">
+						<div class="mb-3">
+							<i class="ti ti-link-off ti-lg text-muted"></i>
+						</div>
+						<h6 class="text-muted">No hay enlaces de conversión</h6>
+						<p class="text-muted small">Los enlaces de conversión aparecerán aquí cuando los contactos interactúen con los emails enviados.</p>
+					</div>
+				@endif
 			</div>
 		</div>
 	</div>
@@ -136,6 +173,113 @@ function previewMessage() {
     // Open preview in new window/tab
     const previewUrl = `{{ route('message.preview', $message->id ?? 0) }}`;
     window.open(previewUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+}
+
+// Copy to clipboard function
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show success toast or notification
+        if (typeof window.Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Copied!',
+                text: 'Link copied to clipboard',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+    }).catch(function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+function resendDelivery(deliveryId, element) {
+    Swal.fire({
+        title: '¿Reenviar este email?',
+        text: 'Se creará una nueva entrega y se enviará inmediatamente',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, reenviar',
+        cancelButtonText: 'Cancelar',
+        customClass: {
+            confirmButton: 'btn btn-info me-3 waves-effect waves-light',
+            cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+        },
+        buttonsStyling: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading state
+            const originalHtml = element.innerHTML;
+            element.innerHTML = '<i class="ti ti-loader ti-sm"></i>';
+            element.style.pointerEvents = 'none';
+
+            // Send AJAX request to resend delivery
+            fetch(`/delivery/${deliveryId}/resend`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Restore original state
+                element.innerHTML = originalHtml;
+                element.style.pointerEvents = 'auto';
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Email reenviado!',
+                        text: data.message,
+                        customClass: {
+                            confirmButton: 'btn btn-success waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+
+                    // Refresh the deliveries table (trigger Livewire polling)
+                    if (typeof Livewire !== 'undefined') {
+                        Livewire.dispatch('loadDeliveries');
+                    }
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Ha ocurrido un error al reenviar el email',
+                        customClass: {
+                            confirmButton: 'btn btn-danger waves-effect waves-light'
+                        },
+                        buttonsStyling: false
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Restore original state
+                element.innerHTML = originalHtml;
+                element.style.pointerEvents = 'auto';
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Ha ocurrido un error al procesar la solicitud',
+                    customClass: {
+                        confirmButton: 'btn btn-danger waves-effect waves-light'
+                    },
+                    buttonsStyling: false
+                });
+            });
+        }
+    });
 }
 
 function startCampaign(messageId) {
