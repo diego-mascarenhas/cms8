@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\AuthController;
 use App\Models\MessageDelivery;
+use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -133,15 +134,33 @@ Route::post('/mailgun/webhook', function (Request $request) {
             break;
 
         case 'clicked':
+            $clickedUrl = $request->input('url') ?: ($eventData['url'] ?? null);
+
             Log::info("🖱️ EMAIL LINK CLICKED by {$recipient}", [
-                'url' => $request->input('url'),
+                'url' => $clickedUrl,
                 'user_agent' => $request->input('user-agent'),
             ]);
+
             if ($delivery && ! $delivery->clicked_at) {
                 $delivery->update([
                     'clicked_at' => now(),
                     // Keep current status_id, just add clicked_at timestamp
                 ]);
+
+                // ✅ Create Lead Conversion Link record
+                if ($clickedUrl) {
+                    MessageDeliveryLink::create([
+                        'message_delivery_id' => $delivery->id,
+                        'link' => $clickedUrl,
+                        'created_at' => now(),
+                    ]);
+
+                    Log::info('🔗 Created Lead Conversion Link', [
+                        'delivery_id' => $delivery->id,
+                        'url' => $clickedUrl,
+                    ]);
+                }
+
                 Log::info('📊 Updated delivery status to clicked', ['delivery_id' => $delivery->id]);
             }
             break;

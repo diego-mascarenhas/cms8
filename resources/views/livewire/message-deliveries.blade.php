@@ -58,18 +58,22 @@
                                         <span class="badge bg-label-{{ $delivery['status'] }}">
                                             {{ $delivery['status_text'] }}
                                         </span>
-                                        
+
                                         {{-- Opened Icon --}}
                                         @if($delivery['has_opened'])
-                                            <i class="ti ti-eye ti-sm text-info" 
-                                               title="Opened: {{ $delivery['opened_at'] }}" 
+                                            <i class="ti ti-eye ti-sm text-info"
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="top"
+                                               data-bs-original-title="Opened: {{ $delivery['opened_at'] }}"
                                                style="cursor: help;"></i>
                                         @endif
-                                        
+
                                         {{-- Clicked Icon --}}
                                         @if($delivery['has_clicked'])
-                                            <i class="ti ti-mouse ti-sm text-success" 
-                                               title="Clicked: {{ $delivery['clicked_at'] }}" 
+                                            <i class="ti ti-mouse ti-sm text-success"
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="top"
+                                               data-bs-original-title="Clicked: {{ $delivery['clicked_at'] }}"
                                                style="cursor: help;"></i>
                                         @endif
                                     </div>
@@ -96,3 +100,26 @@
         </div>
     </div>
 </div>
+
+{{-- Initialize tooltips after Livewire updates --}}
+<script>
+document.addEventListener('livewire:updated', function() {
+    // Dispose existing tooltips to prevent duplicates
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        var existingTooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+        if (existingTooltip) {
+            existingTooltip.dispose();
+        }
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Initialize tooltips on first load
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>

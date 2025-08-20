@@ -91,18 +91,43 @@
 					<table class="table table-sm">
 						<thead>
 							<tr>
-								<th>Delivery</th>
-								<th>Created At</th>
+								<th>Contact</th>
+								<th>Clicked At</th>
 								<th>Link</th>
+								<th class="text-center">Actions</th>
 							</tr>
 						</thead>
 						<tbody>
 							@foreach($links as $link)
 								<tr>
-									<td>{{ $link->message_delivery_id }}</td>
-									<td>{{ $link->created_at }}</td>
 									<td>
-										<a href="{{ $link->link }}" target="_blank">{{ $link->link }}</a>
+										<div class="d-flex flex-column">
+											<h6 class="mb-0">{{ $link->messageDelivery->contact->name ?? 'Unknown' }}</h6>
+											<small class="text-muted">{{ $link->messageDelivery->contact->email ?? 'N/A' }}</small>
+										</div>
+									</td>
+									<td>
+										<small class="text-muted">{{ $link->created_at->format('M j, Y H:i') }}</small>
+									</td>
+									<td>
+										<a href="{{ $link->link }}"
+										   target="_blank"
+										   class="text-primary"
+										   data-bs-toggle="tooltip"
+										   data-bs-placement="top"
+										   data-bs-original-title="Click to open: {{ $link->link }}">
+											{{ Str::limit($link->link, 50) }}
+											<i class="ti ti-external-link ti-xs ms-1"></i>
+										</a>
+									</td>
+									<td class="text-center">
+										<button class="btn btn-sm btn-outline-secondary"
+												onclick="copyToClipboard('{{ $link->link }}')"
+												data-bs-toggle="tooltip"
+												data-bs-placement="top"
+												data-bs-original-title="Copy link">
+											<i class="ti ti-copy ti-xs"></i>
+										</button>
 									</td>
 								</tr>
 							@endforeach
@@ -147,6 +172,32 @@ function previewMessage() {
     const previewUrl = `{{ route('message.preview', $message->id ?? 0) }}`;
     window.open(previewUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
 }
+
+// Copy to clipboard function
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show success toast or notification
+        if (typeof window.Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Copied!',
+                text: 'Link copied to clipboard',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+    }).catch(function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
 
 function resendDelivery(deliveryId, element) {
     Swal.fire({

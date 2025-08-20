@@ -125,8 +125,11 @@ class MessageController extends Controller
         // Obtener entregas reales
         $deliveries = MessageDelivery::where('message_id', $message->id)->with('contact')->get();
 
-        // Obtener links de conversión reales
-        $links = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))->get();
+        // Obtener links de conversión reales con relaciones
+        $links = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
+            ->with(['messageDelivery.contact'])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return view('message.show', [
             'message' => $message,
