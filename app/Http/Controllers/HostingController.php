@@ -11,89 +11,89 @@ use Illuminate\Validation\Rule;
 
 class HostingController extends Controller
 {
-    use TracksContactActions;
+	use TracksContactActions;
 
-    public function index(DomainDataTable $dataTable)
-    {
-        $data['servers'] = Server::all();
+	public function index(DomainDataTable $dataTable)
+	{
+		$data['servers'] = Server::all();
 
-        return $dataTable->render('hosting.index', $data);
-    }
+		return $dataTable->render('hosting.index', $data);
+	}
 
-    public function create()
-    {
-        $servers = Server::all();
+	public function create()
+	{
+		$servers = Server::all();
 
-        return view('hosting.create', compact('servers'));
-    }
+		return view('hosting.create', compact('servers'));
+	}
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'domain' => 'required|string|unique:domains,domain',
-            'server_id' => 'required|integer|exists:servers,id',
-            'username' => 'required|string',
-            'plan' => 'nullable|string',
-            'site_type' => 'nullable|string',
-            'php_version' => 'nullable|string',
-            'notes' => 'nullable|string',
-        ]);
+	public function store(Request $request)
+	{
+		$validated = $request->validate([
+			'domain' => 'required|string|unique:domains,domain',
+			'server_id' => 'required|integer|exists:servers,id',
+			'username' => 'required|string',
+			'plan' => 'nullable|string',
+			'site_type' => 'nullable|string',
+			'php_version' => 'nullable|string',
+			'notes' => 'nullable|string',
+		]);
 
-        // Set default values
-        $validated['suspended'] = $request->input('suspended', false);
-        $validated['needs_update'] = $request->input('needs_update', false);
-        $validated['is_working'] = true;
-        $validated['data'] = [];
+		// Set default values
+		$validated['suspended'] = $request->input('suspended', false);
+		$validated['needs_update'] = $request->input('needs_update', false);
+		$validated['is_working'] = true;
+		$validated['data'] = [];
 
-        $domain = Domain::create($validated);
+		$domain = Domain::create($validated);
 
-        return redirect()->route('hosting.index')
-            ->with('success', 'Hosting creado exitosamente.');
-    }
+		return redirect()->route('hosting.index')
+			->with('success', 'Hosting creado exitosamente.');
+	}
 
-    public function show(Domain $hosting)
-    {
-        // Redirigir al controlador de dominio para mostrar el dominio
-        return redirect()->route('domain.show', $hosting->id);
-    }
+	public function show(Domain $hosting)
+	{
+		// Redirigir al controlador de dominio para mostrar el dominio
+		return redirect()->route('domain.show', $hosting->id);
+	}
 
-    public function edit(Domain $hosting)
-    {
-        $servers = Server::all();
+	public function edit(Domain $hosting)
+	{
+		$servers = Server::all();
 
-        return view('hosting.create', compact('hosting', 'servers'));
-    }
+		return view('hosting.create', compact('hosting', 'servers'));
+	}
 
-    public function update(Request $request, Domain $hosting)
-    {
-        $validated = $request->validate([
-            'domain' => [
-                'required',
-                'string',
-                Rule::unique('domains')->ignore($hosting->id),
-            ],
-            'server_id' => 'required|integer|exists:servers,id',
-            'username' => 'required|string',
-            'plan' => 'nullable|string',
-            'site_type' => 'nullable|string',
-            'php_version' => 'nullable|string',
-            'notes' => 'nullable|string',
-        ]);
+	public function update(Request $request, Domain $hosting)
+	{
+		$validated = $request->validate([
+			'domain' => [
+				'required',
+				'string',
+				Rule::unique('domains')->ignore($hosting->id),
+			],
+			'server_id' => 'required|integer|exists:servers,id',
+			'username' => 'required|string',
+			'plan' => 'nullable|string',
+			'site_type' => 'nullable|string',
+			'php_version' => 'nullable|string',
+			'notes' => 'nullable|string',
+		]);
 
-        // Set boolean values
-        $validated['suspended'] = $request->input('suspended', false);
-        $validated['needs_update'] = $request->input('needs_update', false);
-        $validated['is_working'] = true;
+		// Set boolean values
+		$validated['suspended'] = $request->input('suspended', false);
+		$validated['needs_update'] = $request->input('needs_update', false);
+		$validated['is_working'] = true;
 
-        $hosting->update($validated);
+		$hosting->update($validated);
 
-        return redirect()->route('hosting.index')
-            ->with('success', 'Hosting actualizado exitosamente.');
-    }
+		return redirect()->route('hosting.index')
+			->with('success', 'Hosting actualizado exitosamente.');
+	}
 
-    public function destroy(Domain $hosting)
-    {
-        // Redirigir al controlador de dominio para eliminar el dominio
-        return redirect()->route('domain.destroy', $hosting->id);
-    }
+	public function destroy(Domain $hosting)
+	{
+		// Redirigir al controlador de dominio para eliminar el dominio
+		return redirect()->route('domain.destroy', $hosting->id);
+	}
 }

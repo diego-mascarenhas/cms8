@@ -22,7 +22,8 @@ class List60DataTable extends DataTable
 		return (new EloquentDataTable($query))
 			->addColumn('action', 'list60.action')
 			->setRowId('id')
-			->editColumn('contact_id', function ($row) {
+			->editColumn('contact_id', function ($row)
+			{
 				// Mostrar la primera empresa asociada al contacto (si existe)
 				$companyName = $row->contact->enterprises->first() ? e($row->contact->enterprises->first()->name) : '';
 
@@ -31,20 +32,26 @@ class List60DataTable extends DataTable
 							<small class="text-muted">'.($companyName ?: '&nbsp;').'</small>
 						</div>';
 			})
-			->editColumn('status_id', function ($row) {
+			->editColumn('status_id', function ($row)
+			{
 				return $row->status_label;
 			})
-			->addColumn('sources', function ($row) {
+			->addColumn('sources', function ($row)
+			{
 				return $row->contact->sources_icons_html;
 			})
-			->editColumn('date_next', function ($row) {
+			->editColumn('date_next', function ($row)
+			{
 				return Carbon::parse($row->date_next)->translatedFormat('d F');
 			})
-			->editColumn('type_id', function ($row) {
+			->editColumn('type_id', function ($row)
+			{
 				return $row->type->name ?? __('Undefined');
 			})
-			->filterColumn('contact_id', function ($query, $keyword) {
-				$query->whereHas('contact', function ($q) use ($keyword) {
+			->filterColumn('contact_id', function ($query, $keyword)
+			{
+				$query->whereHas('contact', function ($q) use ($keyword)
+				{
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class TabsPills extends Controller
 {
-    public function index()
-    {
-        return view('content.user-interface.ui-tabs-pills');
-    }
+	public function index()
+	{
+		return view('content.user-interface.ui-tabs-pills');
+	}
 }

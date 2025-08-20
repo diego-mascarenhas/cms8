@@ -8,32 +8,34 @@ use Illuminate\Database\Eloquent\Model;
 
 class ContactAbsence extends Model
 {
-    use HasFactory;
+	use HasFactory;
 
-    protected $table = 'contact_absences';
+	protected $table = 'contact_absences';
 
-    protected $fillable = [
-        'contact_id',
-        'absence_date',
-        'reason',
-        'team_id',
-    ];
+	protected $fillable = [
+		'contact_id',
+		'absence_date',
+		'reason',
+		'team_id',
+	];
 
-    protected $casts = [
-        'absence_date' => 'date',
-    ];
+	protected $casts = [
+		'absence_date' => 'date',
+	];
 
-    public function contact()
-    {
-        return $this->belongsTo(Contact::class);
-    }
+	public function contact()
+	{
+		return $this->belongsTo(Contact::class);
+	}
 
-    protected static function booted()
-    {
-        static::addGlobalScope('team', function (Builder $builder) {
-            if (auth()->check()) {
-                $builder->where('team_id', auth()->user()->currentTeam->id);
-            }
-        });
-    }
+	protected static function booted()
+	{
+		static::addGlobalScope('team', function (Builder $builder)
+		{
+			if (auth()->check())
+			{
+				$builder->where('team_id', auth()->user()->currentTeam->id);
+			}
+		});
+	}
 }

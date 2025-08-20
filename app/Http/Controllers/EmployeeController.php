@@ -4,14 +4,13 @@ namespace App\Http\Controllers;
 
 use App\DataTables\EmployeeDataTable;
 use App\Models\Contact;
-use App\Models\ContactAbsence;
-use App\Models\ContactWeeklyAvailability;
 use App\Models\ContactStatus;
+use App\Models\ContactWeeklyAvailability;
 use App\Models\Language;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Spatie\Activitylog\Models\Activity;
-use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
@@ -19,25 +18,32 @@ class EmployeeController extends Controller
 	{
 		// Get employee statistics
 		$dashboardStats = [
-			'totalEmployees' => Contact::whereHas('user', function ($query) {
-				$query->whereHas('roles', function ($q) {
+			'totalEmployees' => Contact::whereHas('user', function ($query)
+			{
+				$query->whereHas('roles', function ($q)
+				{
 					$q->where('name', 'employee');
 				});
 			})->count(),
-			'activeEmployees' => Contact::whereHas('user', function ($query) {
-				$query->whereHas('roles', function ($q) {
+			'activeEmployees' => Contact::whereHas('user', function ($query)
+			{
+				$query->whereHas('roles', function ($q)
+				{
 					$q->where('name', 'employee');
 				});
 			})->whereRaw("JSON_EXTRACT(data, '$.active') = true")->count(),
-			'newThisWeek' => Contact::whereHas('user', function ($query) {
-				$query->whereHas('roles', function ($q) {
+			'newThisWeek' => Contact::whereHas('user', function ($query)
+			{
+				$query->whereHas('roles', function ($q)
+				{
 					$q->where('name', 'employee');
 				});
 			})->where('created_at', '>=', now()->subWeek())->count(),
 		];
 
 		// Get statuses for filter
-		$statuses = ContactStatus::all()->map(function ($status) {
+		$statuses = ContactStatus::all()->map(function ($status)
+		{
 			return ['id' => $status->id, 'name' => $status->name];
 		})->toArray();
 
@@ -46,7 +52,8 @@ class EmployeeController extends Controller
 		$categories = \App\Models\Category::whereIn('module_id', [10, 14, 22]) // services, communications, mail
 			->orWhereNull('module_id')
 			->get()
-			->map(function ($category) {
+			->map(function ($category)
+			{
 				return ['id' => $category->id, 'name' => $category->name];
 			})
 			->toArray();
@@ -54,22 +61,26 @@ class EmployeeController extends Controller
 		return $dataTable->render('employee.index', compact('dashboardStats', 'statuses', 'categories'));
 	}
 
-	    public function create()
-    {
-        $statuses = ContactStatus::all()->map(function ($status) {
-            return ['id' => $status->id, 'name' => $status->name];
-        })->toArray();
-        $languages = Language::all()->map(function ($language) {
-            return ['id' => $language->code, 'name' => $language->name];
-        })->toArray();
-        $users = User::whereHas('roles', function ($query) {
-            $query->where('name', 'employee');
-        })->get()->map(function ($user) {
-            return ['id' => $user->id, 'name' => $user->name];
-        })->toArray();
+	public function create()
+	{
+		$statuses = ContactStatus::all()->map(function ($status)
+		{
+			return ['id' => $status->id, 'name' => $status->name];
+		})->toArray();
+		$languages = Language::all()->map(function ($language)
+		{
+			return ['id' => $language->code, 'name' => $language->name];
+		})->toArray();
+		$users = User::whereHas('roles', function ($query)
+		{
+			$query->where('name', 'employee');
+		})->get()->map(function ($user)
+		{
+			return ['id' => $user->id, 'name' => $user->name];
+		})->toArray();
 
-        return view('employee.form', compact('statuses', 'languages', 'users'));
-    }
+		return view('employee.form', compact('statuses', 'languages', 'users'));
+	}
 
 	public function store(Request $request)
 	{
@@ -163,23 +174,27 @@ class EmployeeController extends Controller
 		return view('employee.show', compact('contact', 'totalSeconds'));
 	}
 
-	    public function edit($id)
-    {
-        $contact = Contact::findOrFail($id);
-        $statuses = ContactStatus::all()->map(function ($status) {
-            return ['id' => $status->id, 'name' => $status->name];
-        })->toArray();
-        $languages = Language::all()->map(function ($language) {
-            return ['id' => $language->code, 'name' => $language->name];
-        })->toArray();
-        $users = User::whereHas('roles', function ($query) {
-            $query->where('name', 'employee');
-        })->get()->map(function ($user) {
-            return ['id' => $user->id, 'name' => $user->name];
-        })->toArray();
+	public function edit($id)
+	{
+		$contact = Contact::findOrFail($id);
+		$statuses = ContactStatus::all()->map(function ($status)
+		{
+			return ['id' => $status->id, 'name' => $status->name];
+		})->toArray();
+		$languages = Language::all()->map(function ($language)
+		{
+			return ['id' => $language->code, 'name' => $language->name];
+		})->toArray();
+		$users = User::whereHas('roles', function ($query)
+		{
+			$query->where('name', 'employee');
+		})->get()->map(function ($user)
+		{
+			return ['id' => $user->id, 'name' => $user->name];
+		})->toArray();
 
-        return view('employee.form', compact('contact', 'statuses', 'languages', 'users'));
-    }
+		return view('employee.form', compact('contact', 'statuses', 'languages', 'users'));
+	}
 
 	public function update(Request $request, $id)
 	{
@@ -210,7 +225,7 @@ class EmployeeController extends Controller
 		]);
 
 		// Prepare data JSON field
-		$data = $contact->data ?? (object)[];
+		$data = $contact->data ?? (object) [];
 		$data->city = $validated['city'] ?? null;
 		$data->province = $validated['province'] ?? null;
 		$data->command = $validated['command'] ?? null;
@@ -262,14 +277,16 @@ class EmployeeController extends Controller
 			->whereBetween('absence_date', [$startDate, $endDate])
 			->get()
 			->pluck('absence_date')
-			->map(function ($date) {
+			->map(function ($date)
+			{
 				return $date->format('Y-m-d');
 			})
 			->toArray();
 
 		// Get weekly availability
 		$weeklyAvailability = $contact->weeklyAvailability;
-		if (! $weeklyAvailability) {
+		if (! $weeklyAvailability)
+		{
 			// Create default availability if none exists
 			$weeklyAvailability = $contact->weeklyAvailability()->create([
 				'contact_id' => $contact->id,
@@ -286,7 +303,8 @@ class EmployeeController extends Controller
 
 		// Generate months for calendar
 		$months = [];
-		for ($i = 0; $i < 6; $i++) {
+		for ($i = 0; $i < 6; $i++)
+		{
 			$currentMonth = Carbon::now()->addMonths($i);
 			$months[] = [
 				'name' => $currentMonth->format('F Y'),
@@ -318,12 +336,14 @@ class EmployeeController extends Controller
 		// Check if absence already exists
 		$absence = $contact->absences()->where('absence_date', $date)->first();
 
-		if ($absence) {
+		if ($absence)
+		{
 			// Delete absence (mark as available)
 			$absence->delete();
 
 			return response()->json(['status' => 'available', 'date' => $request->date]);
-		} else {
+		} else
+		{
 			// Create absence (mark as unavailable)
 			$contact->absences()->create([
 				'absence_date' => $date,
@@ -350,7 +370,8 @@ class EmployeeController extends Controller
 
 		// Get or create weekly availability
 		$weeklyAvailability = $contact->weeklyAvailability;
-		if (! $weeklyAvailability) {
+		if (! $weeklyAvailability)
+		{
 			$weeklyAvailability = new ContactWeeklyAvailability;
 			$weeklyAvailability->contact_id = $contact->id;
 			$weeklyAvailability->team_id = auth()->user()->currentTeam->id;

@@ -17,28 +17,36 @@ class NotificationDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($notification) {
+			->addColumn('action', function ($notification)
+			{
 				return view('notification.action', compact('notification'));
 			})
-			->addColumn('contact_name', function ($notification) {
+			->addColumn('contact_name', function ($notification)
+			{
 				return $notification->contact ? $notification->contact->name.' '.$notification->contact->surname : 'N/A';
 			})
-			->addColumn('type_name', function ($notification) {
+			->addColumn('type_name', function ($notification)
+			{
 				return $notification->type ? $notification->type->name : 'N/A';
 			})
-			->addColumn('status', function ($notification) {
+			->addColumn('status', function ($notification)
+			{
 				return $notification->status_badge;
 			})
-			->addColumn('read_status', function ($notification) {
+			->addColumn('read_status', function ($notification)
+			{
 				return $notification->read_status_badge;
 			})
-			->addColumn('sent_date', function ($notification) {
+			->addColumn('sent_date', function ($notification)
+			{
 				return $notification->formatted_sent_date;
 			})
-			->editColumn('created_at', function ($notification) {
+			->editColumn('created_at', function ($notification)
+			{
 				return $notification->created_at->format('d/m/Y H:i');
 			})
-			->editColumn('subject', function ($notification) {
+			->editColumn('subject', function ($notification)
+			{
 				return '<span title="'.e($notification->subject).'">'.
 					   e(\Str::limit($notification->subject, 50)).'</span>';
 			})
@@ -56,24 +64,30 @@ class NotificationDataTable extends DataTable
 			->orderBy('created_at', 'desc');
 
 		// Apply filters
-		if (request()->has('status') && request()->status != '') {
+		if (request()->has('status') && request()->status != '')
+		{
 			$status = request()->status;
-			if ($status === 'sent') {
+			if ($status === 'sent')
+			{
 				$query->where('is_sent', true);
-			} elseif ($status === 'unsent') {
+			} elseif ($status === 'unsent')
+			{
 				$query->where('is_sent', false);
 			}
 		}
 
-		if (request()->has('type') && request()->type != '') {
+		if (request()->has('type') && request()->type != '')
+		{
 			$query->where('type_id', request()->type);
 		}
 
-		if (request()->has('date_from') && request()->date_from != '') {
+		if (request()->has('date_from') && request()->date_from != '')
+		{
 			$query->whereDate('created_at', '>=', request()->date_from);
 		}
 
-		if (request()->has('date_to') && request()->date_to != '') {
+		if (request()->has('date_to') && request()->date_to != '')
+		{
 			$query->whereDate('created_at', '<=', request()->date_to);
 		}
 

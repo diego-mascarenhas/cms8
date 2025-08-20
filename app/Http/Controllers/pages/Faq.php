@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class Faq extends Controller
 {
-    public function index()
-    {
-        return view('content.pages.pages-faq');
-    }
+	public function index()
+	{
+		return view('content.pages.pages-faq');
+	}
 }

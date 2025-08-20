@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class License extends Model
 {
-    use HasFactory;
+	use HasFactory;
 
-    protected $table = 'licenses';
+	protected $table = 'licenses';
 
-    protected $fillable = [
-        'name', 'env', 'key', 'debug', 'url', 'commit',
-    ];
+	protected $fillable = [
+		'name', 'env', 'key', 'debug', 'url', 'commit',
+	];
 }

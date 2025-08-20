@@ -15,10 +15,12 @@ class StylebookDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($stylebook) {
+			->addColumn('action', function ($stylebook)
+			{
 				return view('stylebook.action', compact('stylebook'))->render();
 			})
-			->editColumn('language', function ($row) {
+			->editColumn('language', function ($row)
+			{
 				$languageName = $row->languageRelation ? $row->languageRelation->name : strtoupper($row->language);
 
 				// Use helper to map language code to appropriate country code for flags
@@ -28,16 +30,20 @@ class StylebookDataTable extends DataTable
 
 				return $flag.e($languageName);
 			})
-			->editColumn('date', function ($row) {
+			->editColumn('date', function ($row)
+			{
 				return $row->date ? $row->date->format('d/m/Y') : '';
 			})
-			->orderColumn('name', function ($query, $order) {
+			->orderColumn('name', function ($query, $order)
+			{
 				$query->orderBy('name', $order);
 			})
-			->orderColumn('language', function ($query, $order) {
+			->orderColumn('language', function ($query, $order)
+			{
 				$query->orderBy('language', $order);
 			})
-			->orderColumn('date', function ($query, $order) {
+			->orderColumn('date', function ($query, $order)
+			{
 				$query->orderBy('date', $order);
 			})
 			->rawColumns(['action', 'language'])

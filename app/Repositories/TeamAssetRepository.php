@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class TeamAssetRepository extends AssetRepository
 {
-		/**
+	/**
 	 * Generate a secure hash for the team ID
 	 */
 	protected function getTeamHash($teamId)
@@ -42,11 +42,11 @@ class TeamAssetRepository extends AssetRepository
 		// Ensure name is not empty
 		if (empty($name))
 		{
-			$name = 'file_' . substr(md5(time() . rand()), 0, 8);
+			$name = 'file_'.substr(md5(time().rand()), 0, 8);
 		}
 
 		// Combine with extension
-		return $name . '.' . strtolower($extension);
+		return $name.'.'.strtolower($extension);
 	}
 
 	public function __construct()
@@ -54,9 +54,16 @@ class TeamAssetRepository extends AssetRepository
 		parent::__construct();
 
 		// Set team-specific upload path with simplified structure
-		$teamId = Auth::check() ? (Auth::user()->currentTeam->id ?? 'default') : 'default';
-		$teamHash = $this->getTeamHash($teamId);
-		$this->diskPath = "templates/{$teamHash}";
+		// Skip during bootstrap to prevent auth-related errors
+		if ($this->shouldSkipTeamInitialization())
+		{
+			$this->diskPath = 'templates/default';
+		} else
+		{
+			$teamId = Auth::check() ? (Auth::user()->currentTeam->id ?? 'default') : 'default';
+			$teamHash = $this->getTeamHash($teamId);
+			$this->diskPath = "templates/{$teamHash}";
+		}
 	}
 
 	/**
@@ -66,17 +73,19 @@ class TeamAssetRepository extends AssetRepository
 	public function uploadSinglgeFile(UploadedFile $file)
 	{
 		// Make sure we have the latest team ID in case it changed during the request
-		$teamId = Auth::check() ? (Auth::user()->currentTeam->id ?? 'default') : 'default';
-		$teamHash = $this->getTeamHash($teamId);
-		$this->diskPath = "templates/{$teamHash}";
+		if (! $this->shouldSkipTeamInitialization())
+		{
+			$teamId = Auth::check() ? (Auth::user()->currentTeam->id ?? 'default') : 'default';
+			$teamHash = $this->getTeamHash($teamId);
+			$this->diskPath = "templates/{$teamHash}";
+		}
 
 		// Check if the file is from blob or has a real filename
 		if ($file->getClientOriginalName() === 'blob')
 		{
 			// Use default method for blob files (these are typically from image editor)
 			return parent::uploadSinglgeFile($file);
-		}
-		else
+		} else
 		{
 			// Normalize the filename before storing
 			$normalizedFilename = $this->normalizeFilename($file->getClientOriginalName());
@@ -101,6 +110,15 @@ class TeamAssetRepository extends AssetRepository
 	 */
 	public function getTeamInfo()
 	{
+		if ($this->shouldSkipTeamInitialization())
+		{
+			return [
+				'team_id' => 'default',
+				'team_hash' => 'default',
+				'path' => $this->diskPath,
+			];
+		}
+
 		$teamId = Auth::check() ? (Auth::user()->currentTeam->id ?? 'default') : 'default';
 		$teamHash = $this->getTeamHash($teamId);
 
@@ -117,5 +135,37 @@ class TeamAssetRepository extends AssetRepository
 	public function testNormalizeFilename($filename)
 	{
 		return $this->normalizeFilename($filename);
+	}
+
+	/**
+	 * Determine if team initialization should be skipped during bootstrap
+	 */
+	protected function shouldSkipTeamInitialization()
+	{
+		// Skip during console commands
+		if (app()->runningInConsole())
+		{
+			return true;
+		}
+
+		// Skip if not bootstrapped
+		if (! app()->hasBeenBootstrapped())
+		{
+			return true;
+		}
+
+		// Skip if no session or auth available
+		try
+		{
+			if (! Auth::check())
+			{
+				return true;
+			}
+		} catch (\Exception $e)
+		{
+			return true;
+		}
+
+		return false;
 	}
 }

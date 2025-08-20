@@ -16,9 +16,11 @@ class UserController extends Controller
 	 */
 	public function index(UserDataTable $dataTable)
 	{
-		$users = User::whereHas('teams', function ($query) {
+		$users = User::whereHas('teams', function ($query)
+		{
 			$query->where('team_id', Auth::user()->currentTeam->id);
-		})->whereHas('roles', function ($query) {
+		})->whereHas('roles', function ($query)
+		{
 			$query->where('name', 'admin');
 		})->get();
 
@@ -66,12 +68,14 @@ class UserController extends Controller
 
 		// Check email uniqueness within the current team
 		$emailExists = User::where('email', $validated['email'])
-			->whereHas('teams', function ($q) {
+			->whereHas('teams', function ($q)
+			{
 				$q->where('team_id', Auth::user()->currentTeam->id);
 			})
 			->exists();
 
-		if ($emailExists) {
+		if ($emailExists)
+		{
 			return back()->withErrors(['email' => __('The email has already been taken.')])->withInput();
 		}
 
@@ -99,12 +103,14 @@ class UserController extends Controller
 	{
 		// Allow users to view themselves or if they have permission
 		$currentUser = Auth::user();
-		if (!$currentUser->can('user.show') && Auth::id() !== $user->id) {
+		if (! $currentUser->can('user.show') && Auth::id() !== $user->id)
+		{
 			abort(403);
 		}
 
 		// Verify user belongs to current team (unless viewing yourself)
-		if (Auth::id() !== $user->id && !$user->teams->contains(Auth::user()->currentTeam->id)) {
+		if (Auth::id() !== $user->id && ! $user->teams->contains(Auth::user()->currentTeam->id))
+		{
 			abort(404);
 		}
 
@@ -118,12 +124,14 @@ class UserController extends Controller
 	{
 		// Allow users to edit themselves or if they have permission
 		$currentUser = Auth::user();
-		if (!$currentUser->can('user.edit') && Auth::id() !== $user->id) {
+		if (! $currentUser->can('user.edit') && Auth::id() !== $user->id)
+		{
 			abort(403);
 		}
 
 		// Verify user belongs to current team (unless editing yourself)
-		if (Auth::id() !== $user->id && !$user->teams->contains(Auth::user()->currentTeam->id)) {
+		if (Auth::id() !== $user->id && ! $user->teams->contains(Auth::user()->currentTeam->id))
+		{
 			abort(404);
 		}
 
@@ -142,12 +150,14 @@ class UserController extends Controller
 	{
 		// Allow users to update themselves or if they have permission
 		$currentUser = Auth::user();
-		if (!$currentUser->can('user.update') && Auth::id() !== $user->id) {
+		if (! $currentUser->can('user.update') && Auth::id() !== $user->id)
+		{
 			abort(403);
 		}
 
 		// Verify user belongs to current team (unless updating yourself)
-		if (Auth::id() !== $user->id && !$user->teams->contains(Auth::user()->currentTeam->id)) {
+		if (Auth::id() !== $user->id && ! $user->teams->contains(Auth::user()->currentTeam->id))
+		{
 			abort(404);
 		}
 
@@ -162,12 +172,14 @@ class UserController extends Controller
 		// Check email uniqueness within the current team (excluding current user)
 		$emailExists = User::where('email', $validated['email'])
 			->where('id', '!=', $user->id)
-			->whereHas('teams', function ($q) {
+			->whereHas('teams', function ($q)
+			{
 				$q->where('team_id', Auth::user()->currentTeam->id);
 			})
 			->exists();
 
-		if ($emailExists) {
+		if ($emailExists)
+		{
 			return back()->withErrors(['email' => __('The email has already been taken.')])->withInput();
 		}
 
@@ -176,7 +188,8 @@ class UserController extends Controller
 			'email' => $validated['email'],
 		];
 
-		if (!empty($validated['password'])) {
+		if (! empty($validated['password']))
+		{
 			$updateData['password'] = Hash::make($validated['password']);
 		}
 
@@ -198,12 +211,14 @@ class UserController extends Controller
 		$user = User::findOrFail($id);
 
 		// Verify user belongs to current team
-		if (!$user->teams->contains(Auth::user()->currentTeam->id)) {
+		if (! $user->teams->contains(Auth::user()->currentTeam->id))
+		{
 			abort(404);
 		}
 
 		// Prevent deleting yourself
-		if ($user->id === Auth::id()) {
+		if ($user->id === Auth::id())
+		{
 			return response()->json(['error' => __('You cannot delete yourself.')], 422);
 		}
 

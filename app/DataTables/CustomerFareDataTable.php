@@ -17,10 +17,12 @@ class CustomerFareDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($customerFare) {
+			->addColumn('action', function ($customerFare)
+			{
 				return view('customer-fare.action', compact('customerFare'));
 			})
-			->addColumn('fare_info', function ($customerFare) {
+			->addColumn('fare_info', function ($customerFare)
+			{
 				$fareBlock = $customerFare->fare->block ? $customerFare->fare->block->name : 'N/A';
 
 				return '<div>
@@ -28,16 +30,19 @@ class CustomerFareDataTable extends DataTable
 					<small class="text-muted">'.$fareBlock.'</small>
 				</div>';
 			})
-			->addColumn('unit_type', function ($customerFare) {
+			->addColumn('unit_type', function ($customerFare)
+			{
 				return $customerFare->fare->unit ? $customerFare->fare->unit->type : 'N/A';
 			})
-			->addColumn('languages', function ($customerFare) {
+			->addColumn('languages', function ($customerFare)
+			{
 				$origin = $customerFare->languageOrigin ? $customerFare->languageOrigin->name : 'N/A';
 				$destination = $customerFare->languageDestination ? $customerFare->languageDestination->name : 'N/A';
 
 				return $origin.' → '.$destination;
 			})
-			->addColumn('amount_formatted', function ($customerFare) {
+			->addColumn('amount_formatted', function ($customerFare)
+			{
 				$negotiableBadge = $customerFare->negotiable ?
 					'<span class="badge bg-label-warning ms-1">Negotiable</span>' : '';
 
@@ -54,7 +59,8 @@ class CustomerFareDataTable extends DataTable
 	{
 		return $model->newQuery()
 			->with(['fare.unit', 'fare.block', 'languageOrigin', 'languageDestination', 'currency'])
-			->when(request('customer_id'), function ($query, $customerId) {
+			->when(request('customer_id'), function ($query, $customerId)
+			{
 				return $query->where('customer_id', $customerId);
 			});
 	}

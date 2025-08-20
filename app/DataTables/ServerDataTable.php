@@ -14,11 +14,13 @@ class ServerDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($server) {
+			->addColumn('action', function ($server)
+			{
 				return view('server.action', ['id' => $server->id])->render();
 			})
 			->setRowId('id')
-			->editColumn('status_id', function ($server) {
+			->editColumn('status_id', function ($server)
+			{
 				$statusClass = $server->status_id->color();
 				$statusText = $server->status_id->name();
 

@@ -7,28 +7,28 @@ use Illuminate\View\Component;
 
 class EnterpriseStatusSelect extends Component
 {
-    public $id;
+	public $id;
 
-    public $label;
+	public $label;
 
-    public $value;
+	public $value;
 
-    public $enterpriseTypeId;
+	public $enterpriseTypeId;
 
-    public function __construct($id = 'status_id', $label = 'Estado', $value = null, $enterpriseTypeId = 1)
-    {
-        $this->id = $id;
-        $this->label = $label;
-        $this->value = $value;
-        $this->enterpriseTypeId = $enterpriseTypeId;
-    }
+	public function __construct($id = 'status_id', $label = 'Estado', $value = null, $enterpriseTypeId = 1)
+	{
+		$this->id = $id;
+		$this->label = $label;
+		$this->value = $value;
+		$this->enterpriseTypeId = $enterpriseTypeId;
+	}
 
-    public function render()
-    {
-        $options = EnterpriseStatus::getOptions($this->enterpriseTypeId);
+	public function render()
+	{
+		$options = EnterpriseStatus::getOptions($this->enterpriseTypeId);
 
-        return view('components.enterprise-status-select', [
-            'options' => $options,
-        ]);
-    }
+		return view('components.enterprise-status-select', [
+			'options' => $options,
+		]);
+	}
 }

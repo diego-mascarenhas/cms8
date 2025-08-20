@@ -23,14 +23,18 @@ class WhastappDataTable extends DataTable
 			->addColumn('action', 'whastapp.action')
 			->setRowId('id')
 			->rawColumns(['verified'])
-			->editColumn('date', function ($data) {
+			->editColumn('date', function ($data)
+			{
 				return Carbon::parse($data->date)->format('d-m-Y H:i:s');
 			})
-			->editColumn('phone', function ($data) {
+			->editColumn('phone', function ($data)
+			{
 				return $data->user ? $data->user->name : $data->phone;
 			})
-			->addColumn('verified', function ($data) {
-				if ($data->user) {
+			->addColumn('verified', function ($data)
+			{
+				if ($data->user)
+				{
 					return $data->user->email_verified_at
 						? '<i class="ti fs-4 ti-shield-check text-success"></i>'
 						: '<i class="ti fs-4 ti-shield-x text-warning"></i>';

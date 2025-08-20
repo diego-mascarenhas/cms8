@@ -15,10 +15,12 @@ class CertificationDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($certification) {
+			->addColumn('action', function ($certification)
+			{
 				return view('certification.action', compact('certification'));
 			})
-			->editColumn('language', function ($row) {
+			->editColumn('language', function ($row)
+			{
 				$languageName = $row->languageRelation ? $row->languageRelation->name : strtoupper($row->language);
 
 				// Use helper to map language code to appropriate country code for flags
@@ -28,10 +30,12 @@ class CertificationDataTable extends DataTable
 
 				return $flag.e($languageName);
 			})
-			->orderColumn('certification', function ($query, $order) {
+			->orderColumn('certification', function ($query, $order)
+			{
 				$query->orderBy('certification', $order);
 			})
-			->orderColumn('language', function ($query, $order) {
+			->orderColumn('language', function ($query, $order)
+			{
 				$query->orderBy('language', $order);
 			})
 			->rawColumns(['action', 'language'])

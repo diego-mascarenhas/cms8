@@ -52,7 +52,7 @@ class VariantLanguageSelect extends Component
 			{
 				$options->push((object) [
 					'value' => $base->code,
-					'label' => $base->name . '  (Todos)',
+					'label' => $base->name.'  (Todos)',
 					'flag' => null, // Base languages don't have specific flags
 					'base' => $base->code,
 				]);

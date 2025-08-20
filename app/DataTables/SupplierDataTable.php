@@ -21,25 +21,32 @@ class SupplierDataTable extends DataTable
 		return (new EloquentDataTable($query))
 			->addColumn('action', 'supplier.action')
 			->setRowId('id')
-			->addColumn('billing_address', function ($row) {
+			->addColumn('billing_address', function ($row)
+			{
 				$billingAddress = $row->enterpriseBillingAddress();
 
 				return $billingAddress ? $billingAddress->name : null;
 			})
-			->filterColumn('billing_address', function ($query, $keyword) {
-				$query->whereHas('enterpriseBillingAddresses', function ($q) use ($keyword) {
+			->filterColumn('billing_address', function ($query, $keyword)
+			{
+				$query->whereHas('enterpriseBillingAddresses', function ($q) use ($keyword)
+				{
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})
-			->addColumn('status', function ($row) {
+			->addColumn('status', function ($row)
+			{
 				return $row->status ? '<span class="badge rounded-pill bg-label-success">Active</span>' :
 									  '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
 			})
 			->rawColumns(['name', 'action', 'status'])
-			->editColumn('status', function ($data) {
-				if ($data->status) {
+			->editColumn('status', function ($data)
+			{
+				if ($data->status)
+				{
 					return '<span class="badge rounded-pill bg-label-success">Active</span>';
-				} else {
+				} else
+				{
 					return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
 				}
 			});

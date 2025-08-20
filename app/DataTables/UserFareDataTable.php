@@ -15,25 +15,30 @@ class UserFareDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($userFare) {
+			->addColumn('action', function ($userFare)
+			{
 				return view('user-fare.action', compact('userFare'));
 			})
-			->addColumn('languages', function ($userFare) {
+			->addColumn('languages', function ($userFare)
+			{
 				return '<span class="badge bg-label-primary me-1">'.
 					($userFare->languageOrigin ? $userFare->languageOrigin->name : 'N/A').
 					' → '.
 					($userFare->languageDestination ? $userFare->languageDestination->name : 'N/A').
 					'</span>';
 			})
-			->addColumn('fare_type', function ($userFare) {
+			->addColumn('fare_type', function ($userFare)
+			{
 				return $userFare->fare ? $userFare->fare->name.' ('.($userFare->fare->unit->type ?? 'N/A').')' : 'N/A';
 			})
-			->addColumn('price', function ($userFare) {
+			->addColumn('price', function ($userFare)
+			{
 				$negotiableTag = $userFare->negotiable ? '<span class="badge bg-label-warning ms-1">Negociable</span>' : '';
 
 				return $userFare->formatted_amount.' / '.($userFare->fare->unit->type ?? 'N/A').$negotiableTag;
 			})
-			->addColumn('user', function ($userFare) {
+			->addColumn('user', function ($userFare)
+			{
 				return $userFare->user ? $userFare->user->name : 'N/A';
 			})
 			->rawColumns(['action', 'languages', 'price', 'fare_type'])

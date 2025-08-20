@@ -27,25 +27,26 @@ use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
-    protected $policies = [
-        Certification::class => CertificationPolicy::class,
-        Enterprise::class => ClientPolicy::class,
-        Contact::class => ContactPolicy::class,
-        Fare::class => FarePolicy::class,
-        Project::class => ProjectPolicy::class,
-        Service::class => ServicePolicy::class,
-        Invoice::class => InvoicePolicy::class,
-        LanguageVariant::class => LanguageVariantPolicy::class,
-        Software::class => SoftwarePolicy::class,
-        Stylebook::class => StyleBookPolicy::class,
-    ];
+	protected $policies = [
+		Certification::class => CertificationPolicy::class,
+		Enterprise::class => ClientPolicy::class,
+		Contact::class => ContactPolicy::class,
+		Fare::class => FarePolicy::class,
+		Project::class => ProjectPolicy::class,
+		Service::class => ServicePolicy::class,
+		Invoice::class => InvoicePolicy::class,
+		LanguageVariant::class => LanguageVariantPolicy::class,
+		Software::class => SoftwarePolicy::class,
+		Stylebook::class => StyleBookPolicy::class,
+	];
 
-    public function boot()
-    {
-        $this->registerPolicies();
+	public function boot()
+	{
+		$this->registerPolicies();
 
-        Gate::define('view-language-variants', function ($user) {
-            return $user->hasRole('admin');
-        });
-    }
+		Gate::define('view-language-variants', function ($user)
+		{
+			return $user->hasRole('admin');
+		});
+	}
 }

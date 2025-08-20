@@ -19,46 +19,59 @@ class EmployeeDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($contact) {
+			->addColumn('action', function ($contact)
+			{
 				return view('employee.action', compact('contact'));
 			})
 			->setRowId('id')
-			->editColumn('name', function ($row) {
+			->editColumn('name', function ($row)
+			{
 				$fullName = e($row->name);
-				if (!empty($row->surname)) {
-					$fullName .= ' ' . e($row->surname);
+				if (! empty($row->surname))
+				{
+					$fullName .= ' '.e($row->surname);
 				}
 
 				return '<div class="d-flex flex-column">
 							<span class="fw-medium text-body text-truncate">'.$fullName.'</span>
 						</div>';
 			})
-			->addColumn('city', function ($row) {
+			->addColumn('city', function ($row)
+			{
 				return $row->data->city ?? '-';
 			})
-			->addColumn('province', function ($row) {
+			->addColumn('province', function ($row)
+			{
 				return $row->data->province ?? '-';
 			})
-			->addColumn('command', function ($row) {
+			->addColumn('command', function ($row)
+			{
 				return $row->data->command ?? '-';
 			})
-			->addColumn('active', function ($row) {
+			->addColumn('active', function ($row)
+			{
 				$isActive = $row->data->active ?? true;
-				if ($isActive) {
+				if ($isActive)
+				{
 					return '<span class="badge bg-label-success"><i class="ti ti-check ti-sm"></i></span>';
-				} else {
+				} else
+				{
 					return '<span class="badge bg-label-danger"><i class="ti ti-x ti-sm"></i></span>';
 				}
 			})
-			->addColumn('responsible_name', function ($contact) {
+			->addColumn('responsible_name', function ($contact)
+			{
 				return $contact->responsible->name ?? __('Unassigned');
 			})
-			->filterColumn('responsible_name', function ($query, $keyword) {
-				$query->whereHas('responsible', function ($q) use ($keyword) {
+			->filterColumn('responsible_name', function ($query, $keyword)
+			{
+				$query->whereHas('responsible', function ($q) use ($keyword)
+				{
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})
-			->editColumn('status_id', function ($row) {
+			->editColumn('status_id', function ($row)
+			{
 				return $row->status_label;
 			})
 			->rawColumns(['name', 'action', 'active', 'status_id']);
@@ -67,8 +80,10 @@ class EmployeeDataTable extends DataTable
 	public function query(Contact $model): QueryBuilder
 	{
 		return $model->newQuery()
-			->whereHas('user', function ($query) {
-				$query->whereHas('roles', function ($q) {
+			->whereHas('user', function ($query)
+			{
+				$query->whereHas('roles', function ($q)
+				{
 					$q->where('name', 'employee');
 				});
 			})

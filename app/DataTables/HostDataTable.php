@@ -22,13 +22,17 @@ class HostDataTable extends DataTable
 			->addColumn('action', 'host.action')
 			->setRowId('id')
 			->rawColumns(['name', 'power_state', 'action'])
-			->editColumn('type_id', function ($data) {
+			->editColumn('type_id', function ($data)
+			{
 				return $data->type->name;
 			})
-			->editColumn('power_state', function ($data) {
-				if ($data->power_state == 'POWERED_ON') {
+			->editColumn('power_state', function ($data)
+			{
+				if ($data->power_state == 'POWERED_ON')
+				{
 					return '<div class="ms-3 badge bg-label-success">ON</div>';
-				} else {
+				} else
+				{
 					return '<div class="ms-3 badge bg-label-danger">OFF</div>';
 				}
 			});

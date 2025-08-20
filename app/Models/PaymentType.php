@@ -7,26 +7,27 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentType extends Model
 {
-    use HasFactory;
+	use HasFactory;
 
-    public $timestamps = false;
+	public $timestamps = false;
 
-    protected $table = 'payment_types';
+	protected $table = 'payment_types';
 
-    protected $fillable = ['name', 'status'];
+	protected $fillable = ['name', 'status'];
 
-    public function payments()
-    {
-        return $this->hasMany(Payment::class);
-    }
+	public function payments()
+	{
+		return $this->hasMany(Payment::class);
+	}
 
-    public static function getOptions()
-    {
-        return self::all()->map(function ($data) {
-            return [
-                'id' => $data->id,
-                'name' => $data->name,
-            ];
-        });
-    }
+	public static function getOptions()
+	{
+		return self::all()->map(function ($data)
+		{
+			return [
+				'id' => $data->id,
+				'name' => $data->name,
+			];
+		});
+	}
 }

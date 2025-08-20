@@ -20,16 +20,20 @@ class LanguageVariantDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($variant) {
+			->addColumn('action', function ($variant)
+			{
 				return view('language.variants.action', compact('variant'));
 			})
 			->setRowId('id')
-			->editColumn('name', function ($row) {
+			->editColumn('name', function ($row)
+			{
 				// If country_code is provided, use it directly
 				// Otherwise, try to map from the language code (the part before the hyphen in the variant code)
-				if ($row->country_code) {
+				if ($row->country_code)
+				{
 					$flagCode = strtolower($row->country_code);
-				} else {
+				} else
+				{
 					// Get base language code from the variant code (e.g., "en" from "en-US")
 					$langCode = strtolower(explode('-', $row->code)[0] ?? '');
 					$flagCode = Helpers::getLanguageFlag($langCode);
@@ -39,10 +43,12 @@ class LanguageVariantDataTable extends DataTable
 
 				return $flag.e($row->name);
 			})
-			->editColumn('base_language', function ($row) {
+			->editColumn('base_language', function ($row)
+			{
 				return $row->baseLanguage ? e($row->baseLanguage->name) : e($row->base_language);
 			})
-			->editColumn('country_code', function ($row) {
+			->editColumn('country_code', function ($row)
+			{
 				return strtoupper($row->country_code ?? '');
 			})
 			->rawColumns(['name', 'action']);

@@ -6,11 +6,10 @@ use App\Http\Controllers\Controller;
 
 class Horizontal extends Controller
 {
-    public function index()
-    {
+	public function index()
+	{
+		$pageConfigs = ['myLayout' => 'horizontal'];
 
-        $pageConfigs = ['myLayout' => 'horizontal'];
-
-        return view('content.dashboard.dashboards-analytics', ['pageConfigs' => $pageConfigs]);
-    }
+		return view('content.dashboard.dashboards-analytics', ['pageConfigs' => $pageConfigs]);
+	}
 }

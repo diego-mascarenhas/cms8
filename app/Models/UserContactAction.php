@@ -7,47 +7,47 @@ use Illuminate\Database\Eloquent\Model;
 
 class UserContactAction extends Model
 {
-    use HasFactory;
+	use HasFactory;
 
-    public $timestamps = false;
+	public $timestamps = false;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
-    protected $fillable = [
-        'user_id',
-        'contact_id',
-        'action',
-        'start_time',
-        'end_time',
-        'duration_seconds',
-    ];
+	/**
+	 * The attributes that are mass assignable.
+	 *
+	 * @var array
+	 */
+	protected $fillable = [
+		'user_id',
+		'contact_id',
+		'action',
+		'start_time',
+		'end_time',
+		'duration_seconds',
+	];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array
-     */
-    protected $casts = [
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
-    ];
+	/**
+	 * The attributes that should be cast.
+	 *
+	 * @var array
+	 */
+	protected $casts = [
+		'start_time' => 'datetime',
+		'end_time' => 'datetime',
+	];
 
-    /**
-     * Get the user that performed the action.
-     */
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+	/**
+	 * Get the user that performed the action.
+	 */
+	public function user()
+	{
+		return $this->belongsTo(User::class);
+	}
 
-    /**
-     * Get the enterprise associated with the action.
-     */
-    public function contact()
-    {
-        return $this->belongsTo(Contact::class);
-    }
+	/**
+	 * Get the enterprise associated with the action.
+	 */
+	public function contact()
+	{
+		return $this->belongsTo(Contact::class);
+	}
 }

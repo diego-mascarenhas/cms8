@@ -8,31 +8,32 @@ use Illuminate\Http\Request;
 
 class PageController extends Controller
 {
-    use EditorTrait;
+	use EditorTrait;
 
-    public function editor(Request $request, Page $page)
-    {
-        return $this->show_gjs_editor($request, $page);
-    }
+	public function editor(Request $request, Page $page)
+	{
+		return $this->show_gjs_editor($request, $page);
+	}
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        $page = Page::find($id);
+	/**
+	 * Display the specified resource.
+	 */
+	public function show(string $id)
+	{
+		$page = Page::find($id);
 
-        if (! $page) {
-            return redirect()->route('page.index')->with('error', 'Page not found.');
-        }
+		if (! $page)
+		{
+			return redirect()->route('page.index')->with('error', 'Page not found.');
+		}
 
-        return view('page.show', compact('page'));
-    }
+		return view('page.show', compact('page'));
+	}
 
-    public function home()
-    {
-        $page = Page::findOrFail(1);
+	public function home()
+	{
+		$page = Page::findOrFail(1);
 
-        return view('page.home', compact('page'));
-    }
+		return view('page.home', compact('page'));
+	}
 }

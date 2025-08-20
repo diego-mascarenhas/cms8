@@ -17,37 +17,49 @@ class ProjectDataTable extends DataTable
 		return (new EloquentDataTable($query))
 			->addColumn('action', 'project.action')
 			->setRowId('id')
-			->editColumn('enterprise_id', function ($data) {
+			->editColumn('enterprise_id', function ($data)
+			{
 				return $data->client->name;
 			})
-			->filterColumn('enterprise_id', function ($query, $keyword) {
-				$query->whereHas('client', function ($q) use ($keyword) {
+			->filterColumn('enterprise_id', function ($query, $keyword)
+			{
+				$query->whereHas('client', function ($q) use ($keyword)
+				{
 					$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
 				});
 			})
-			->editColumn('category_id', function ($data) {
+			->editColumn('category_id', function ($data)
+			{
 				return $data->category ? $data->category->name : 'Sin categoría';
 			})
-			->filterColumn('category_id', function ($query, $keyword) {
-				$query->whereHas('category', function ($q) use ($keyword) {
+			->filterColumn('category_id', function ($query, $keyword)
+			{
+				$query->whereHas('category', function ($q) use ($keyword)
+				{
 					$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
 				});
 			})
-			->editColumn('date_start', function ($data) {
+			->editColumn('date_start', function ($data)
+			{
 				return $data->date_start ? Carbon::parse($data->date_start)->format('d-m-Y') : '-';
 			})
-			->editColumn('date_end', function ($data) {
+			->editColumn('date_end', function ($data)
+			{
 				return $data->date_end ? Carbon::parse($data->date_end)->format('d-m-Y') : '-';
 			})
-			->addColumn('responsible_name', function ($contact) {
+			->addColumn('responsible_name', function ($contact)
+			{
 				return $contact->responsible->name ?? 'Sin asignar';
 			})
-			->filterColumn('responsible_name', function ($query, $keyword) {
-				$query->whereHas('responsible', function ($q) use ($keyword) {
+			->filterColumn('responsible_name', function ($query, $keyword)
+			{
+				$query->whereHas('responsible', function ($q) use ($keyword)
+				{
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})
-			->editColumn('status_id', function ($row) {
+			->editColumn('status_id', function ($row)
+			{
 				return $row->status_label;
 			})
 			->rawColumns(['action', 'status_id']);

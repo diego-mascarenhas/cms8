@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class ListGroups extends Controller
 {
-    public function index()
-    {
-        return view('content.user-interface.ui-list-groups');
-    }
+	public function index()
+	{
+		return view('content.user-interface.ui-list-groups');
+	}
 }

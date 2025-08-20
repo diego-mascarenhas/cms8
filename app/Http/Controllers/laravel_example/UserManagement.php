@@ -82,8 +82,7 @@ class UserManagement extends Controller
 				->limit($limit)
 				->orderBy($order, $dir)
 				->get();
-		}
-		else
+		} else
 		{
 			$search = $request->input('search.value');
 
@@ -111,7 +110,7 @@ class UserManagement extends Controller
 
 		$data = [];
 
-		if (!empty($users))
+		if (! empty($users))
 		{
 			// providing a dummy id instead of database ids
 			$ids = $start;
@@ -138,8 +137,7 @@ class UserManagement extends Controller
 				'code' => 200,
 				'data' => $data,
 			]);
-		}
-		else
+		} else
 		{
 			return response()->json([
 				'message' => 'Internal Server Error',
@@ -185,8 +183,7 @@ class UserManagement extends Controller
 				if ($request->userContact)
 				{
 					$data['phone'] = preg_replace('/\D/', '', $request->userContact);
-				}
-				else
+				} else
 				{
 					$data['phone'] = null;
 				}
@@ -213,8 +210,7 @@ class UserManagement extends Controller
 						// Assign the role by name
 						$user->syncRoles([$role->name]);
 						Log::info("Role assigned: {$role->name}");
-					}
-					else
+					} else
 					{
 						Log::warning("Role not found with ID: {$request->role}");
 					}
@@ -237,8 +233,7 @@ class UserManagement extends Controller
 					'status' => 'Updated',
 					'user' => $user,
 				]);
-			}
-			else
+			} else
 			{
 				// create new one if email is unique
 				$userEmail = User::where('email', $request->email)->first();
@@ -254,8 +249,7 @@ class UserManagement extends Controller
 					if ($request->userContact)
 					{
 						$data['phone'] = preg_replace('/\D/', '', $request->userContact);
-					}
-					else
+					} else
 					{
 						$data['phone'] = null;
 					}
@@ -273,7 +267,7 @@ class UserManagement extends Controller
 						$guestRole = \Spatie\Permission\Models\Role::where('name', 'guest')->first();
 						if ($guestRole)
 						{
-							$roleId = $guestRole->id;
+						    $roleId = $guestRole->id;
 						}
 					}
 
@@ -284,13 +278,12 @@ class UserManagement extends Controller
 						$role = \Spatie\Permission\Models\Role::find($roleId);
 						if ($role)
 						{
-							// Assign the role by name
-							$user->assignRole($role->name);
-							Log::info("Role assigned: {$role->name}");
-						}
-						else
+						    // Assign the role by name
+						    $user->assignRole($role->name);
+						    Log::info("Role assigned: {$role->name}");
+						} else
 						{
-							Log::warning("Role not found with ID: {$roleId}");
+						    Log::warning("Role not found with ID: {$roleId}");
 						}
 					}
 
@@ -299,10 +292,9 @@ class UserManagement extends Controller
 					{
 						\App\Jobs\SendNewUserWelcomeEmail::dispatch($user, $currentTeam);
 						Log::info("Welcome email job queued for: {$user->email}");
-					}
-					catch (\Exception $e)
+					} catch (\Exception $e)
 					{
-						Log::error('Failed to queue welcome email: ' . $e->getMessage());
+						Log::error('Failed to queue welcome email: '.$e->getMessage());
 						// Don't fail the user creation if email queueing fails
 					}
 
@@ -326,19 +318,17 @@ class UserManagement extends Controller
 						'user' => $user,
 						'message' => 'Usuario creado exitosamente. Se ha enviado un email con instrucciones para configurar la contraseña.',
 					]);
-				}
-				else
+				} else
 				{
 					// user already exist
 					return response()->json(['message' => 'already exits'], 422);
 				}
 			}
-		}
-		catch (\Exception $e)
+		} catch (\Exception $e)
 		{
-			Log::error('Error saving user data: ' . $e->getMessage());
+			Log::error('Error saving user data: '.$e->getMessage());
 
-			return response()->json(['message' => 'Error processing request: ' . $e->getMessage()], 500);
+			return response()->json(['message' => 'Error processing request: '.$e->getMessage()], 500);
 		}
 	}
 
@@ -367,7 +357,7 @@ class UserManagement extends Controller
 
 			// Get all roles for debugging
 			$allRoles = \Spatie\Permission\Models\Role::all();
-			Log::info('All available roles: ' . $allRoles->pluck('name', 'id'));
+			Log::info('All available roles: '.$allRoles->pluck('name', 'id'));
 
 			// Get the user's first role (ID)
 			$userRole = $user->roles->first();
@@ -387,10 +377,9 @@ class UserManagement extends Controller
 			}
 
 			return response()->json($user);
-		}
-		catch (\Exception $e)
+		} catch (\Exception $e)
 		{
-			Log::error('Error fetching user data: ' . $e->getMessage());
+			Log::error('Error fetching user data: '.$e->getMessage());
 
 			return response()->json(['error' => 'User not found'], 404);
 		}
@@ -402,9 +391,7 @@ class UserManagement extends Controller
 	 * @param  int  $id
 	 * @return \Illuminate\Http\Response
 	 */
-	public function update(Request $request, $id)
-	{
-	}
+	public function update(Request $request, $id) {}
 
 	/**
 	 * Remove the specified resource from storage.

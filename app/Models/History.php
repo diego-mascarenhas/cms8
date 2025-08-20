@@ -8,24 +8,25 @@ use Illuminate\Database\Eloquent\Model;
 
 class History extends Model
 {
-    use HasFactory;
+	use HasFactory;
 
-    public $timestamps = false;
+	public $timestamps = false;
 
-    protected $table = 'history';
+	protected $table = 'history';
 
-    protected static function boot()
-    {
-        parent::boot();
+	protected static function boot()
+	{
+		parent::boot();
 
-        static::addGlobalScope('UsersMessages', function (Builder $builder) {
-            $builder->where('answer', '!=', '__call_action__')
-                ->where('answer', 'not like', '_event_voice_note__%');
-        });
-    }
+		static::addGlobalScope('UsersMessages', function (Builder $builder)
+		{
+			$builder->where('answer', '!=', '__call_action__')
+				->where('answer', 'not like', '_event_voice_note__%');
+		});
+	}
 
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'phone', 'phone');
-    }
+	public function user()
+	{
+		return $this->belongsTo(User::class, 'phone', 'phone');
+	}
 }

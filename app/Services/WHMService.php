@@ -3,288 +3,311 @@
 namespace App\Services;
 
 use App\Models\Domain;
+use App\Models\Server;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Models\Server;
 
 class WHMService
 {
-    public function syncDomainsFromAllServers()
-    {
-        $serversString = env('WHM_SERVERS');
+	public function syncDomainsFromAllServers()
+	{
+		$serversString = env('WHM_SERVERS');
 
-        if (empty($serversString)) {
-            return [
-                'success' => false,
-                'errors' => ['No hay servidores configurados en WHM_SERVERS'],
-            ];
-        }
+		if (empty($serversString))
+		{
+			return [
+				'success' => false,
+				'errors' => ['No hay servidores configurados en WHM_SERVERS'],
+			];
+		}
 
-        $serversList = explode(',', $serversString);
-        $successCount = 0;
-        $errors = [];
+		$serversList = explode(',', $serversString);
+		$successCount = 0;
+		$errors = [];
 
-        foreach ($serversList as $index => $serverString) {
-            $server = explode(':', trim($serverString));
+		foreach ($serversList as $index => $serverString)
+		{
+			$server = explode(':', trim($serverString));
 
-            if (count($server) < 3) {
-                $errors[] = 'Configuración de servidor incorrecta. Formato requerido: hostname:usuario:token';
+			if (count($server) < 3)
+			{
+				$errors[] = 'Configuración de servidor incorrecta. Formato requerido: hostname:usuario:token';
 
-                continue;
-            }
+				continue;
+			}
 
-            try {
-                $url = "https://{$server[0]}:2087";
-                $response = Http::withHeaders([
-                    'Authorization' => 'whm '.$server[1].':'.$server[2],
-                ])->get($url.'/json-api/listaccts');
+			try
+			{
+				$url = "https://{$server[0]}:2087";
+				$response = Http::withHeaders([
+					'Authorization' => 'whm '.$server[1].':'.$server[2],
+				])->get($url.'/json-api/listaccts');
 
-                if ($response->successful()) {
-                    $data = $response->json();
+				if ($response->successful())
+				{
+					$data = $response->json();
 
-                    if (isset($data['acct'])) {
-                        foreach ($data['acct'] as $account) {
-                            $plan = $account['plan'] ?? $account['owner'] ?? null;
+					if (isset($data['acct']))
+					{
+						foreach ($data['acct'] as $account)
+						{
+						    $plan = $account['plan'] ?? $account['owner'] ?? null;
 
-                            $domain = Domain::withTrashed()
-                                ->where('domain', $account['domain'])
-                                ->where('server_url', $server[0])
-                                ->first();
+						    $domain = Domain::withTrashed()
+						        ->where('domain', $account['domain'])
+						        ->where('server_url', $server[0])
+						        ->first();
 
-                            if ($domain && $domain->trashed()) {
-                                $domain->restore();
-                            }
+						    if ($domain && $domain->trashed())
+						    {
+						        $domain->restore();
+						    }
 
-                            Domain::updateOrCreate(
-                                [
-                                    'domain' => $account['domain'],
-                                    'server_url' => $server[0],
-                                ],
-                                [
-                                    'username' => $account['user'],
-                                    'plan' => $plan,
-                                    'status_id' => $account['suspended'],
-                                    'data' => $account,
-                                ],
-                            );
-                        }
-                        $successCount++;
-                    }
-                } else {
-                    $error = "Error en servidor {$server[0]}: ".$response->body();
-                    $errors[] = $error;
-                    Log::error($error);
-                }
-            } catch (\Exception $e) {
-                $error = "Error en servidor {$server[0]}: ".$e->getMessage();
-                $errors[] = $error;
-                Log::error($error, [
-                    'exception' => get_class($e),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
-        }
+						    Domain::updateOrCreate(
+						        [
+						            'domain' => $account['domain'],
+						            'server_url' => $server[0],
+						        ],
+						        [
+						            'username' => $account['user'],
+						            'plan' => $plan,
+						            'status_id' => $account['suspended'],
+						            'data' => $account,
+						        ],
+						    );
+						}
+						$successCount++;
+					}
+				} else
+				{
+					$error = "Error en servidor {$server[0]}: ".$response->body();
+					$errors[] = $error;
+					Log::error($error);
+				}
+			} catch (\Exception $e)
+			{
+				$error = "Error en servidor {$server[0]}: ".$e->getMessage();
+				$errors[] = $error;
+				Log::error($error, [
+					'exception' => get_class($e),
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+					'trace' => $e->getTraceAsString(),
+				]);
+			}
+		}
 
-        return [
-            'success' => $successCount > 0,
-            'total_servers' => count($serversList),
-            'successful_servers' => $successCount,
-            'errors' => $errors,
-        ];
-    }
+		return [
+			'success' => $successCount > 0,
+			'total_servers' => count($serversList),
+			'successful_servers' => $successCount,
+			'errors' => $errors,
+		];
+	}
 
-    public function testConnections()
-    {
-        $serversString = env('WHM_SERVERS');
-        if (empty($serversString)) {
-            return ['error' => 'No hay servidores configurados en WHM_SERVERS'];
-        }
+	public function testConnections()
+	{
+		$serversString = env('WHM_SERVERS');
+		if (empty($serversString))
+		{
+			return ['error' => 'No hay servidores configurados en WHM_SERVERS'];
+		}
 
-        $results = [];
-        $serversList = explode(',', $serversString);
+		$results = [];
+		$serversList = explode(',', $serversString);
 
-        foreach ($serversList as $index => $serverString) {
-            $server = explode(':', trim($serverString));
+		foreach ($serversList as $index => $serverString)
+		{
+			$server = explode(':', trim($serverString));
 
-            $results[] = [
-                'index' => $index,
-                'raw_string' => $serverString,
-                'parsed_components' => count($server),
-                'components' => $server,
-                'test_result' => $this->testSingleServer($server),
-            ];
-        }
+			$results[] = [
+				'index' => $index,
+				'raw_string' => $serverString,
+				'parsed_components' => count($server),
+				'components' => $server,
+				'test_result' => $this->testSingleServer($server),
+			];
+		}
 
-        return $results;
-    }
+		return $results;
+	}
 
-    private function testSingleServer($server)
-    {
-        try {
-            if (count($server) < 3) {
-                return [
-                    'success' => false,
-                    'error' => 'Faltan componentes. Se necesitan 3 (servidor:usuario:token)',
-                    'components_found' => count($server),
-                ];
-            }
+	private function testSingleServer($server)
+	{
+		try
+		{
+			if (count($server) < 3)
+			{
+				return [
+					'success' => false,
+					'error' => 'Faltan componentes. Se necesitan 3 (servidor:usuario:token)',
+					'components_found' => count($server),
+				];
+			}
 
-            // Intentar resolver el hostname
-            $ip = gethostbyname($server[0]);
-            if ($ip === $server[0]) {
-                return [
-                    'success' => false,
-                    'error' => 'No se pudo resolver el hostname',
-                    'hostname' => $server[0],
-                ];
-            }
+			// Intentar resolver el hostname
+			$ip = gethostbyname($server[0]);
+			if ($ip === $server[0])
+			{
+				return [
+					'success' => false,
+					'error' => 'No se pudo resolver el hostname',
+					'hostname' => $server[0],
+				];
+			}
 
-            // Probar la conexión
-            $url = "https://{$server[0]}:2087";
-            $response = Http::withHeaders([
-                'Authorization' => 'whm '.$server[1].':'.$server[2],
-            ])
-                ->timeout(10)
-                ->get($url.'/json-api/version');
+			// Probar la conexión
+			$url = "https://{$server[0]}:2087";
+			$response = Http::withHeaders([
+				'Authorization' => 'whm '.$server[1].':'.$server[2],
+			])
+				->timeout(10)
+				->get($url.'/json-api/version');
 
-            return [
-                'success' => $response->successful(),
-                'status_code' => $response->status(),
-                'response' => $response->json(),
-                'ip' => $ip,
-                'url' => $url,
-            ];
+			return [
+				'success' => $response->successful(),
+				'status_code' => $response->status(),
+				'response' => $response->json(),
+				'ip' => $ip,
+				'url' => $url,
+			];
+		} catch (\Exception $e)
+		{
+			return [
+				'success' => false,
+				'error' => $e->getMessage(),
+				'error_type' => get_class($e),
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+			];
+		}
+	}
 
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'error_type' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ];
-        }
-    }
+	public function getDomainsFromServer(Server $server)
+	{
+		if ($server->control_panel !== 'cpanel' || ! $server->hasToken())
+		{
+			return [
+				'success' => false,
+				'error' => 'Server is not configured for cPanel or missing token',
+			];
+		}
 
-    public function getDomainsFromServer(Server $server)
-    {
-        if ($server->control_panel !== 'cpanel' || !$server->hasToken()) {
-            return [
-                'success' => false,
-                'error' => 'Server is not configured for cPanel or missing token'
-            ];
-        }
+		try
+		{
+			$url = "https://{$server->server_url}:2087";
+			$response = Http::withHeaders([
+				'Authorization' => $server->getWhmAuthHeader(),
+			])
+				->timeout(30)
+				->get($url.'/json-api/listaccts');
 
-        try {
-            $url = "https://{$server->server_url}:2087";
-            $response = Http::withHeaders([
-                'Authorization' => $server->getWhmAuthHeader(),
-            ])
-                ->timeout(30)
-                ->get($url . '/json-api/listaccts');
+			if ($response->successful())
+			{
+				$data = $response->json();
 
-            if ($response->successful()) {
-                $data = $response->json();
-                
-                if (isset($data['acct'])) {
-                    return [
-                        'success' => true,
-                        'domains' => collect($data['acct'])->map(function($account) {
-                            return [
-                                'domain' => $account['domain'],
-                                'user' => $account['user'],
-                                'plan' => $account['plan'] ?? $account['owner'] ?? null,
-                                'suspended' => $account['suspended'] ?? 0,
-                                'disk_used' => $account['diskused'] ?? 0,
-                                'disk_limit' => $account['disklimit'] ?? 0,
-                                'email' => $account['email'] ?? null,
-                                'ip' => $account['ip'] ?? null,
-                                'theme' => $account['theme'] ?? null,
-                                'shell' => $account['shell'] ?? null,
-                                'partition' => $account['partition'] ?? null,
-                                'max_ftp' => $account['maxftp'] ?? null,
-                                'max_sql' => $account['maxsql'] ?? null,
-                                'max_pop' => $account['maxpop'] ?? null,
-                                'max_lists' => $account['maxlst'] ?? null,
-                                'max_sub' => $account['maxsub'] ?? null,
-                                'max_park' => $account['maxpark'] ?? null,
-                                'max_addon' => $account['maxaddon'] ?? null,
-                                'startdate' => $account['startdate'] ?? null,
-                            ];
-                        })
-                    ];
-                }
-                
-                return [
-                    'success' => true,
-                    'domains' => collect([])
-                ];
-            }
-            
-            return [
-                'success' => false,
-                'error' => 'API request failed: ' . $response->body(),
-                'status_code' => $response->status()
-            ];
-            
-        } catch (\Exception $e) {
-            Log::error('Error getting domains from server: ' . $e->getMessage(), [
-                'server_id' => $server->id,
-                'server_url' => $server->server_url,
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
-            
-            return [
-                'success' => false,
-                'error' => 'Connection error: ' . $e->getMessage()
-            ];
-        }
-    }
+				if (isset($data['acct']))
+				{
+					return [
+						'success' => true,
+						'domains' => collect($data['acct'])->map(function ($account)
+						{
+						    return [
+						        'domain' => $account['domain'],
+						        'user' => $account['user'],
+						        'plan' => $account['plan'] ?? $account['owner'] ?? null,
+						        'suspended' => $account['suspended'] ?? 0,
+						        'disk_used' => $account['diskused'] ?? 0,
+						        'disk_limit' => $account['disklimit'] ?? 0,
+						        'email' => $account['email'] ?? null,
+						        'ip' => $account['ip'] ?? null,
+						        'theme' => $account['theme'] ?? null,
+						        'shell' => $account['shell'] ?? null,
+						        'partition' => $account['partition'] ?? null,
+						        'max_ftp' => $account['maxftp'] ?? null,
+						        'max_sql' => $account['maxsql'] ?? null,
+						        'max_pop' => $account['maxpop'] ?? null,
+						        'max_lists' => $account['maxlst'] ?? null,
+						        'max_sub' => $account['maxsub'] ?? null,
+						        'max_park' => $account['maxpark'] ?? null,
+						        'max_addon' => $account['maxaddon'] ?? null,
+						        'startdate' => $account['startdate'] ?? null,
+						    ];
+						}),
+					];
+				}
 
-    public function syncDomainsFromServer(Server $server)
-    {
-        $result = $this->getDomainsFromServer($server);
-        
-        if (!$result['success']) {
-            return $result;
-        }
+				return [
+					'success' => true,
+					'domains' => collect([]),
+				];
+			}
 
-        $synced = 0;
-        
-        foreach ($result['domains'] as $accountData) {
-            $domain = Domain::withTrashed()
-                ->where('domain', $accountData['domain'])
-                ->where('server_url', $server->server_url)
-                ->first();
+			return [
+				'success' => false,
+				'error' => 'API request failed: '.$response->body(),
+				'status_code' => $response->status(),
+			];
+		} catch (\Exception $e)
+		{
+			Log::error('Error getting domains from server: '.$e->getMessage(), [
+				'server_id' => $server->id,
+				'server_url' => $server->server_url,
+				'exception' => get_class($e),
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+			]);
 
-            if ($domain && $domain->trashed()) {
-                $domain->restore();
-            }
+			return [
+				'success' => false,
+				'error' => 'Connection error: '.$e->getMessage(),
+			];
+		}
+	}
 
-            Domain::updateOrCreate(
-                [
-                    'domain' => $accountData['domain'],
-                    'server_url' => $server->server_url
-                ],
-                [
-                    'username' => $accountData['user'],
-                    'plan' => $accountData['plan'],
-                    'status_id' => $accountData['suspended'],
-                    'data' => $accountData
-                ]
-            );
-            
-            $synced++;
-        }
+	public function syncDomainsFromServer(Server $server)
+	{
+		$result = $this->getDomainsFromServer($server);
 
-        return [
-            'success' => true,
-            'domains_synced' => $synced,
-            'total_domains' => $result['domains']->count()
-        ];
-    }
+		if (! $result['success'])
+		{
+			return $result;
+		}
+
+		$synced = 0;
+
+		foreach ($result['domains'] as $accountData)
+		{
+			$domain = Domain::withTrashed()
+				->where('domain', $accountData['domain'])
+				->where('server_url', $server->server_url)
+				->first();
+
+			if ($domain && $domain->trashed())
+			{
+				$domain->restore();
+			}
+
+			Domain::updateOrCreate(
+				[
+					'domain' => $accountData['domain'],
+					'server_url' => $server->server_url,
+				],
+				[
+					'username' => $accountData['user'],
+					'plan' => $accountData['plan'],
+					'status_id' => $accountData['suspended'],
+					'data' => $accountData,
+				],
+			);
+
+			$synced++;
+		}
+
+		return [
+			'success' => true,
+			'domains_synced' => $synced,
+			'total_domains' => $result['domains']->count(),
+		];
+	}
 }

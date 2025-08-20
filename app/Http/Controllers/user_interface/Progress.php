@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class Progress extends Controller
 {
-    public function index()
-    {
-        return view('content.user-interface.ui-progress');
-    }
+	public function index()
+	{
+		return view('content.user-interface.ui-progress');
+	}
 }

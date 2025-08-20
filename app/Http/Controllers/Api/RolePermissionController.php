@@ -7,12 +7,12 @@ use Spatie\Permission\Models\Role;
 
 class RolePermissionController extends Controller
 {
-    public function index()
-    {
-        $roles = Role::with('permissions')->get();
+	public function index()
+	{
+		$roles = Role::with('permissions')->get();
 
-        return response()->json([
-            'roles' => $roles,
-        ]);
-    }
+		return response()->json([
+			'roles' => $roles,
+		]);
+	}
 }

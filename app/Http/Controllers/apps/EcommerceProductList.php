@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class EcommerceProductList extends Controller
 {
-    public function index()
-    {
-        return view('content.apps.app-ecommerce-product-list');
-    }
+	public function index()
+	{
+		return view('content.apps.app-ecommerce-product-list');
+	}
 }

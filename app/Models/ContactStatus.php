@@ -6,17 +6,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class ContactStatus extends Model
 {
-    public $timestamps = false;
+	public $timestamps = false;
 
-    public static function getOptions()
-    {
-        $query = self::query();
+	public static function getOptions()
+	{
+		$query = self::query();
 
-        return $query->get()->map(function ($status) {
-            return [
-                'id' => $status->id,
-                'name' => $status->name,
-            ];
-        });
-    }
+		return $query->get()->map(function ($status)
+		{
+			return [
+				'id' => $status->id,
+				'name' => $status->name,
+			];
+		});
+	}
 }

@@ -14,10 +14,13 @@ class TwilioWebhookController extends Controller
 	{
 		// Find team by webhook hash if provided
 		$team = null;
-		if ($hash) {
+		if ($hash)
+		{
 			$team = Team::findByWebhookHash($hash);
-			if (!$team) {
+			if (! $team)
+			{
 				Log::warning("Invalid webhook hash: {$hash}");
+
 				return response('Invalid webhook hash', 404);
 			}
 		}
@@ -26,9 +29,11 @@ class TwilioWebhookController extends Controller
 		// Create TwilioService instance with the correct team (or null for global config)
 		$twilioService = new TwilioService($team);
 
-		if (!$twilioService->isConfigured()) {
+		if (! $twilioService->isConfigured())
+		{
 			$teamInfo = $team ? "team: {$team->name}" : 'global .env configuration';
 			Log::error("Twilio not configured for {$teamInfo}");
+
 			return response('Twilio not configured', 500);
 		}
 
@@ -44,7 +49,8 @@ class TwilioWebhookController extends Controller
 	{
 		// Find team by hash if provided (for logging purposes)
 		$team = null;
-		if ($hash) {
+		if ($hash)
+		{
 			$team = Team::findByWebhookHash($hash);
 		}
 		// If no hash provided, leave $team as null (using global .env configuration)
@@ -52,7 +58,7 @@ class TwilioWebhookController extends Controller
 		// Log the status callback for debugging
 		Log::info('Message status callback received', array_merge($request->all(), [
 			'team_id' => $team ? $team->id : 'global',
-			'team_name' => $team ? $team->name : 'Global .env config'
+			'team_name' => $team ? $team->name : 'Global .env config',
 		]));
 
 		// Get important data from the callback
@@ -62,17 +68,19 @@ class TwilioWebhookController extends Controller
 		// Find the corresponding message in our database
 		$message = Conversation::where('message_sid', $messageSid)->first();
 
-		if ($message) {
+		if ($message)
+		{
 			// Update the message status
 			$message->status = $messageStatus;
 			$message->save();
 
 			Log::info("Message status updated: {$messageSid} to {$messageStatus}", [
-				'team_id' => $team ? $team->id : 'global'
+				'team_id' => $team ? $team->id : 'global',
 			]);
-		} else {
+		} else
+		{
 			Log::warning("Message not found for SID: {$messageSid}", [
-				'team_id' => $team ? $team->id : 'global'
+				'team_id' => $team ? $team->id : 'global',
 			]);
 		}
 
@@ -88,7 +96,8 @@ class TwilioWebhookController extends Controller
 	{
 		// Find team by hash if provided
 		$team = null;
-		if ($hash) {
+		if ($hash)
+		{
 			$team = Team::findByWebhookHash($hash);
 		}
 		// If no hash provided, leave $team as null (using global .env configuration)
@@ -98,7 +107,8 @@ class TwilioWebhookController extends Controller
 		// Log that the fallback was triggered
 		Log::warning('Fallback webhook triggered', $request->all());
 
-		try {
+		try
+		{
 			// Process the message as a normal incoming message
 			// but mark it as coming through the fallback
 			$messageSid = $request->input('MessageSid');
@@ -109,7 +119,8 @@ class TwilioWebhookController extends Controller
 
 			// Determine the channel type
 			$channel = 'sms';
-			if (strpos($from, 'whatsapp:') !== false || strpos($to, 'whatsapp:') !== false) {
+			if (strpos($from, 'whatsapp:') !== false || strpos($to, 'whatsapp:') !== false)
+			{
 				$channel = 'whatsapp';
 			}
 
@@ -118,8 +129,10 @@ class TwilioWebhookController extends Controller
 
 			// Process media if present
 			$media = [];
-			if ($numMedia > 0) {
-				for ($i = 0; $i < $numMedia; $i++) {
+			if ($numMedia > 0)
+			{
+				for ($i = 0; $i < $numMedia; $i++)
+				{
 					$mediaUrl = $request->input("MediaUrl{$i}");
 					$contentType = $request->input("MediaContentType{$i}");
 					$media[] = [
@@ -138,7 +151,7 @@ class TwilioWebhookController extends Controller
 				'body' => $body,
 				'status' => 'received',
 				'direction' => 'inbound',
-				'media' => !empty($media) ? $media : null,
+				'media' => ! empty($media) ? $media : null,
 				'metadata' => array_merge($request->except(['_token']), ['via_fallback' => true]),
 			]);
 
@@ -151,8 +164,9 @@ class TwilioWebhookController extends Controller
 				'conversation_id' => $conversation->id,
 				'via_fallback' => true,
 			]);
-		} catch (\Exception $e) {
-			Log::error('Error processing fallback message: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error processing fallback message: '.$e->getMessage());
 
 			return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
 		}

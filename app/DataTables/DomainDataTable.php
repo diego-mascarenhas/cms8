@@ -14,27 +14,33 @@ class DomainDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($domain) {
-				if (request()->route()->getName() == 'hosting.index') {
+			->addColumn('action', function ($domain)
+			{
+				if (request()->route()->getName() == 'hosting.index')
+				{
 					return view('hosting.action', ['id' => $domain->id])->render();
 				}
 
 				return view('domain.action', ['id' => $domain->id])->render();
 			})
 			->setRowId('id')
-			->editColumn('suspended', function ($domain) {
+			->editColumn('suspended', function ($domain)
+			{
 				$statusClass = $domain->suspended ? 'danger' : 'success';
 				$statusText = $domain->suspended ? 'Suspended' : 'Active';
 
 				return '<span class="badge bg-label-'.$statusClass.'">'.$statusText.'</span>';
 			})
-			->editColumn('site_type', function ($domain) {
+			->editColumn('site_type', function ($domain)
+			{
 				return $domain->site_type ?? 'N/A';
 			})
-			->editColumn('php_version', function ($domain) {
+			->editColumn('php_version', function ($domain)
+			{
 				return $domain->php_version ?? 'N/A';
 			})
-			->addColumn('server_url', function ($domain) {
+			->addColumn('server_url', function ($domain)
+			{
 				return $domain->server ? $domain->server->server_url : 'N/A';
 			})
 			->rawColumns(['suspended', 'action']);

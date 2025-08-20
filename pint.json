@@ -1,7 +1,6 @@
 {
     "preset": "laravel",
     "rules": {
-        "indentation_type": true,
         "array_indentation": true,
         "method_argument_space": {
             "on_multiline": "ensure_fully_multiline"
@@ -15,11 +14,25 @@
         },
         "trailing_comma_in_multiline": {
             "elements": ["arrays", "arguments", "parameters"]
-        }
+        },
+        "braces": {
+            "allow_single_line_closure": false,
+            "position_after_functions_and_oop_constructs": "next",
+            "position_after_control_structures": "next",
+            "position_after_anonymous_constructs": "next"
+        },
+        "curly_braces_position": {
+            "functions_opening_brace": "next_line_unless_newline_at_signature_end",
+            "classes_opening_brace": "next_line_unless_newline_at_signature_end",
+            "anonymous_classes_opening_brace": "next_line_unless_newline_at_signature_end",
+            "control_structures_opening_brace": "next_line_unless_newline_at_signature_end",
+            "anonymous_functions_opening_brace": "next_line_unless_newline_at_signature_end"
+        },
+        "indentation_type": false
     },
     "exclude": [
         "bootstrap/cache",
         "storage",
         "vendor"
     ]
-} 
+}

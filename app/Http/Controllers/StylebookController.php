@@ -19,7 +19,7 @@ class StylebookController extends Controller
 	 */
 	protected function getTeamHash($teamId)
 	{
-		return substr(md5('team_salt_' . $teamId . '_' . config('app.key')), 0, 12);
+		return substr(md5('team_salt_'.$teamId.'_'.config('app.key')), 0, 12);
 	}
 
 	/**
@@ -29,6 +29,7 @@ class StylebookController extends Controller
 	{
 		$teamId = auth()->user()->currentTeam->id ?? 'default';
 		$teamHash = $this->getTeamHash($teamId);
+
 		return "stylebooks/{$teamHash}";
 	}
 

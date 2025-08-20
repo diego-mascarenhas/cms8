@@ -15,28 +15,37 @@ class UserDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($user) {
+			->addColumn('action', function ($user)
+			{
 				return view('user.action', ['id' => $user->id])->render();
 			})
 			->setRowId('id')
-			->editColumn('email_verified_at', function ($user) {
-				if ($user->email_verified_at) {
-					return '<span class="badge bg-label-success">' . __('Verified') . '</span>';
-				} else {
-					return '<span class="badge bg-label-warning">' . __('Pending') . '</span>';
+			->editColumn('email_verified_at', function ($user)
+			{
+				if ($user->email_verified_at)
+				{
+					return '<span class="badge bg-label-success">'.__('Verified').'</span>';
+				} else
+				{
+					return '<span class="badge bg-label-warning">'.__('Pending').'</span>';
 				}
 			})
-			->editColumn('roles', function ($user) {
+			->editColumn('roles', function ($user)
+			{
 				$roleNames = $user->roles->pluck('name')->toArray();
-				$badges = array_map(function($role) {
+				$badges = array_map(function ($role)
+				{
 					$colorClass = $this->getRoleColorClass($role);
-					return '<span class="badge bg-label-' . $colorClass . '">' . ucfirst($role) . '</span>';
+
+					return '<span class="badge bg-label-'.$colorClass.'">'.ucfirst($role).'</span>';
 				}, $roleNames);
 
 				return implode(' ', $badges);
 			})
-			->filterColumn('roles', function($query, $keyword) {
-				$query->whereHas('roles', function($q) use ($keyword) {
+			->filterColumn('roles', function ($query, $keyword)
+			{
+				$query->whereHas('roles', function ($q) use ($keyword)
+				{
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})
@@ -48,10 +57,12 @@ class UserDataTable extends DataTable
 		// Filter users by current team and admin role
 		return User::query()
 			->with('roles')
-			->whereHas('teams', function ($query) {
+			->whereHas('teams', function ($query)
+			{
 				$query->where('team_id', Auth::user()->currentTeam->id);
 			})
-			->whereHas('roles', function ($query) {
+			->whereHas('roles', function ($query)
+			{
 				$query->where('name', 'admin');
 			});
 	}
@@ -68,7 +79,7 @@ class UserDataTable extends DataTable
 			->processing(true)
 			->serverSide(true)
 			->language([
-				'url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json',
+				'url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json',
 			])
 			->parameters([
 				'select' => false,
@@ -118,7 +129,7 @@ class UserDataTable extends DataTable
 
 	protected function filename(): string
 	{
-		return 'User_' . date('YmdHis');
+		return 'User_'.date('YmdHis');
 	}
 
 	private function getRoleColorClass($role): string

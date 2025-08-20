@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class Selects extends Controller
 {
-    public function index()
-    {
-        return view('content.form-elements.forms-selects');
-    }
+	public function index()
+	{
+		return view('content.form-elements.forms-selects');
+	}
 }

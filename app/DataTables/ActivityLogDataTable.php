@@ -21,15 +21,19 @@ class ActivityLogDataTable extends DataTable
 	{
 		return (new EloquentDataTable($query))
 			->addIndexColumn()
-			->addColumn('user', function (Activity $activity) {
-				if ($activity->causer) {
+			->addColumn('user', function (Activity $activity)
+			{
+				if ($activity->causer)
+				{
 					return $activity->causer->name;
 				}
 
 				return '<span class="text-muted">Sistema</span>';
 			})
-			->addColumn('subject', function (Activity $activity) {
-				if ($activity->subject) {
+			->addColumn('subject', function (Activity $activity)
+			{
+				if ($activity->subject)
+				{
 					$modelName = class_basename($activity->subject_type);
 
 					return $modelName.' #'.$activity->subject_id;
@@ -37,11 +41,14 @@ class ActivityLogDataTable extends DataTable
 
 				return '<span class="text-muted">-</span>';
 			})
-			->addColumn('description', function (Activity $activity) {
+			->addColumn('description', function (Activity $activity)
+			{
 				return '<span class="badge bg-label-primary">'.$activity->description.'</span>';
 			})
-			->addColumn('properties', function (Activity $activity) {
-				if ($activity->properties && $activity->properties->count() > 0) {
+			->addColumn('properties', function (Activity $activity)
+			{
+				if ($activity->properties && $activity->properties->count() > 0)
+				{
 					$html = '<button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse"
 							   data-bs-target="#collapse-'.$activity->id.'" aria-expanded="false">
 							   <i class="ti ti-eye ti-sm"></i>
@@ -49,9 +56,11 @@ class ActivityLogDataTable extends DataTable
 					$html .= '<div class="collapse mt-2" id="collapse-'.$activity->id.'">';
 					$html .= '<div class="card card-body p-2" style="font-size: 11px;">';
 
-					foreach ($activity->properties as $key => $value) {
-						if (is_array($value) || is_object($value)) {
-							$value = json_encode($value, JSON_PRETTY_PRINT);
+					foreach ($activity->properties as $key => $value)
+					{
+						if (is_array($value) || is_object($value))
+						{
+						    $value = json_encode($value, JSON_PRETTY_PRINT);
 						}
 						$html .= '<strong>'.ucfirst($key).':</strong> '.$value.'<br>';
 					}
@@ -63,7 +72,8 @@ class ActivityLogDataTable extends DataTable
 
 				return '<span class="text-muted">-</span>';
 			})
-			->addColumn('created_at', function (Activity $activity) {
+			->addColumn('created_at', function (Activity $activity)
+			{
 				return $activity->created_at->format('d/m/Y H:i:s');
 			})
 			->addColumn('action', 'activity-log.action')
@@ -80,7 +90,8 @@ class ActivityLogDataTable extends DataTable
 			->latest();
 
 		// Filter by team if user has currentTeam
-		if (auth()->check() && auth()->user()->currentTeam) {
+		if (auth()->check() && auth()->user()->currentTeam)
+		{
 			$teamUserIds = auth()->user()->currentTeam->users->pluck('id');
 			$query->whereIn('causer_id', $teamUserIds);
 		}

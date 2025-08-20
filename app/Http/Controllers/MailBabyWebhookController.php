@@ -9,198 +9,206 @@ use Illuminate\Support\Facades\Log;
 
 class MailBabyWebhookController extends Controller
 {
-    private $mailBabyService;
+	private $mailBabyService;
 
-    public function __construct(MailBabyService $mailBabyService)
-    {
-        $this->mailBabyService = $mailBabyService;
-    }
+	public function __construct(MailBabyService $mailBabyService)
+	{
+		$this->mailBabyService = $mailBabyService;
+	}
 
-    /**
-     * Handle MailBaby webhook notifications
-     */
-    public function handle(Request $request)
-    {
-        try {
-            $payload = $request->getContent();
-            $signature = $request->header('X-MailBaby-Signature');
+	/**
+	 * Handle MailBaby webhook notifications
+	 */
+	public function handle(Request $request)
+	{
+		try
+		{
+			$payload = $request->getContent();
+			$signature = $request->header('X-MailBaby-Signature');
 
-            // Validate webhook signature if available
-            if ($signature && !$this->mailBabyService->validateWebhookSignature($payload, $signature)) {
-                Log::warning('MailBaby webhook: Invalid signature', [
-                    'signature' => $signature,
-                    'ip' => $request->ip(),
-                ]);
-                return response('Invalid signature', 401);
-            }
+			// Validate webhook signature if available
+			if ($signature && ! $this->mailBabyService->validateWebhookSignature($payload, $signature))
+			{
+				Log::warning('MailBaby webhook: Invalid signature', [
+					'signature' => $signature,
+					'ip' => $request->ip(),
+				]);
 
-            $data = $request->json()->all();
+				return response('Invalid signature', 401);
+			}
 
-            Log::info('MailBaby webhook received', [
-                'data' => $data,
-                'ip' => $request->ip(),
-            ]);
+			$data = $request->json()->all();
 
-            // Process different webhook events
-            $eventType = $data['event'] ?? $data['type'] ?? 'unknown';
-            $mailbabyId = $data['id'] ?? $data['message_id'] ?? null;
+			Log::info('MailBaby webhook received', [
+				'data' => $data,
+				'ip' => $request->ip(),
+			]);
 
-            if (!$mailbabyId) {
-                Log::warning('MailBaby webhook: No message ID provided', $data);
-                return response('No message ID', 400);
-            }
+			// Process different webhook events
+			$eventType = $data['event'] ?? $data['type'] ?? 'unknown';
+			$mailbabyId = $data['id'] ?? $data['message_id'] ?? null;
 
-            // Find the message delivery by provider message ID
-            $delivery = MessageDelivery::where('provider_message_id', $mailbabyId)
-                                      ->where('email_provider', 'mailbaby')
-                                      ->first();
+			if (! $mailbabyId)
+			{
+				Log::warning('MailBaby webhook: No message ID provided', $data);
 
-            if (!$delivery) {
-                Log::warning('MailBaby webhook: Message delivery not found', [
-                    'mailbaby_id' => $mailbabyId,
-                    'event' => $eventType,
-                ]);
-                return response('Message not found', 404);
-            }
+				return response('No message ID', 400);
+			}
 
-            // Process different event types
-            switch ($eventType) {
-                case 'delivered':
-                case 'delivery':
-                    $this->handleDelivered($delivery, $data);
-                    break;
+			// Find the message delivery by provider message ID
+			$delivery = MessageDelivery::where('provider_message_id', $mailbabyId)
+				->where('email_provider', 'mailbaby')
+				->first();
 
-                case 'bounced':
-                case 'bounce':
-                    $this->handleBounced($delivery, $data);
-                    break;
+			if (! $delivery)
+			{
+				Log::warning('MailBaby webhook: Message delivery not found', [
+					'mailbaby_id' => $mailbabyId,
+					'event' => $eventType,
+				]);
 
-                case 'opened':
-                case 'open':
-                    $this->handleOpened($delivery, $data);
-                    break;
+				return response('Message not found', 404);
+			}
 
-                case 'clicked':
-                case 'click':
-                    $this->handleClicked($delivery, $data);
-                    break;
+			// Process different event types
+			switch ($eventType)
+			{
+				case 'delivered':
+				case 'delivery':
+					$this->handleDelivered($delivery, $data);
+					break;
 
-                case 'failed':
-                case 'error':
-                    $this->handleFailed($delivery, $data);
-                    break;
+				case 'bounced':
+				case 'bounce':
+					$this->handleBounced($delivery, $data);
+					break;
 
-                default:
-                    Log::info('MailBaby webhook: Unknown event type', [
-                        'event' => $eventType,
-                        'data' => $data,
-                    ]);
-                    break;
-            }
+				case 'opened':
+				case 'open':
+					$this->handleOpened($delivery, $data);
+					break;
 
-            return response('OK', 200);
+				case 'clicked':
+				case 'click':
+					$this->handleClicked($delivery, $data);
+					break;
 
-        } catch (\Exception $e) {
-            Log::error('MailBaby webhook: Exception processing webhook', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'payload' => $request->getContent(),
-            ]);
+				case 'failed':
+				case 'error':
+					$this->handleFailed($delivery, $data);
+					break;
 
-            return response('Error processing webhook', 500);
-        }
-    }
+				default:
+					Log::info('MailBaby webhook: Unknown event type', [
+						'event' => $eventType,
+						'data' => $data,
+					]);
+					break;
+			}
 
-    /**
-     * Handle delivered event
-     */
-    private function handleDelivered(MessageDelivery $delivery, array $data)
-    {
-        $delivery->update([
-            'delivered_at' => now(),
-            'delivery_status' => 'delivered',
-            'status_id' => 3, // delivered
-            'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
-        ]);
+			return response('OK', 200);
+		} catch (\Exception $e)
+		{
+			Log::error('MailBaby webhook: Exception processing webhook', [
+				'error' => $e->getMessage(),
+				'trace' => $e->getTraceAsString(),
+				'payload' => $request->getContent(),
+			]);
 
-        Log::info('MailBaby webhook: Email delivered', [
-            'delivery_id' => $delivery->id,
-            'provider_message_id' => $delivery->provider_message_id,
-            'contact_email' => $delivery->contact->email ?? 'unknown',
-        ]);
-    }
+			return response('Error processing webhook', 500);
+		}
+	}
 
-    /**
-     * Handle bounced event
-     */
-    private function handleBounced(MessageDelivery $delivery, array $data)
-    {
-        $delivery->update([
-            'bounced_at' => now(),
-            'delivery_status' => 'bounced',
-            'status_id' => 4, // bounced/failed
-            'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
-        ]);
+	/**
+	 * Handle delivered event
+	 */
+	private function handleDelivered(MessageDelivery $delivery, array $data)
+	{
+		$delivery->update([
+			'delivered_at' => now(),
+			'delivery_status' => 'delivered',
+			'status_id' => 3, // delivered
+			'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
+		]);
 
-        Log::warning('MailBaby webhook: Email bounced', [
-            'delivery_id' => $delivery->id,
-            'provider_message_id' => $delivery->provider_message_id,
-            'contact_email' => $delivery->contact->email ?? 'unknown',
-            'bounce_reason' => $data['reason'] ?? 'unknown',
-        ]);
-    }
+		Log::info('MailBaby webhook: Email delivered', [
+			'delivery_id' => $delivery->id,
+			'provider_message_id' => $delivery->provider_message_id,
+			'contact_email' => $delivery->contact->email ?? 'unknown',
+		]);
+	}
 
-    /**
-     * Handle opened event
-     */
-    private function handleOpened(MessageDelivery $delivery, array $data)
-    {
-        $delivery->update([
-            'opened_at' => now(),
-            'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
-        ]);
+	/**
+	 * Handle bounced event
+	 */
+	private function handleBounced(MessageDelivery $delivery, array $data)
+	{
+		$delivery->update([
+			'bounced_at' => now(),
+			'delivery_status' => 'bounced',
+			'status_id' => 4, // bounced/failed
+			'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
+		]);
 
-        Log::info('MailBaby webhook: Email opened', [
-            'delivery_id' => $delivery->id,
-            'provider_message_id' => $delivery->provider_message_id,
-            'contact_email' => $delivery->contact->email ?? 'unknown',
-        ]);
-    }
+		Log::warning('MailBaby webhook: Email bounced', [
+			'delivery_id' => $delivery->id,
+			'provider_message_id' => $delivery->provider_message_id,
+			'contact_email' => $delivery->contact->email ?? 'unknown',
+			'bounce_reason' => $data['reason'] ?? 'unknown',
+		]);
+	}
 
-    /**
-     * Handle clicked event
-     */
-    private function handleClicked(MessageDelivery $delivery, array $data)
-    {
-        $delivery->update([
-            'clicked_at' => now(),
-            'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
-        ]);
+	/**
+	 * Handle opened event
+	 */
+	private function handleOpened(MessageDelivery $delivery, array $data)
+	{
+		$delivery->update([
+			'opened_at' => now(),
+			'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
+		]);
 
-        Log::info('MailBaby webhook: Email clicked', [
-            'delivery_id' => $delivery->id,
-            'provider_message_id' => $delivery->provider_message_id,
-            'contact_email' => $delivery->contact->email ?? 'unknown',
-            'url' => $data['url'] ?? 'unknown',
-        ]);
-    }
+		Log::info('MailBaby webhook: Email opened', [
+			'delivery_id' => $delivery->id,
+			'provider_message_id' => $delivery->provider_message_id,
+			'contact_email' => $delivery->contact->email ?? 'unknown',
+		]);
+	}
 
-    /**
-     * Handle failed event
-     */
-    private function handleFailed(MessageDelivery $delivery, array $data)
-    {
-        $delivery->update([
-            'delivery_status' => 'failed',
-            'status_id' => 4, // failed
-            'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
-        ]);
+	/**
+	 * Handle clicked event
+	 */
+	private function handleClicked(MessageDelivery $delivery, array $data)
+	{
+		$delivery->update([
+			'clicked_at' => now(),
+			'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
+		]);
 
-        Log::error('MailBaby webhook: Email failed', [
-            'delivery_id' => $delivery->id,
-            'provider_message_id' => $delivery->provider_message_id,
-            'contact_email' => $delivery->contact->email ?? 'unknown',
-            'error' => $data['error'] ?? 'unknown',
-        ]);
-    }
+		Log::info('MailBaby webhook: Email clicked', [
+			'delivery_id' => $delivery->id,
+			'provider_message_id' => $delivery->provider_message_id,
+			'contact_email' => $delivery->contact->email ?? 'unknown',
+			'url' => $data['url'] ?? 'unknown',
+		]);
+	}
+
+	/**
+	 * Handle failed event
+	 */
+	private function handleFailed(MessageDelivery $delivery, array $data)
+	{
+		$delivery->update([
+			'delivery_status' => 'failed',
+			'status_id' => 4, // failed
+			'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
+		]);
+
+		Log::error('MailBaby webhook: Email failed', [
+			'delivery_id' => $delivery->id,
+			'provider_message_id' => $delivery->provider_message_id,
+			'contact_email' => $delivery->contact->email ?? 'unknown',
+			'error' => $data['error'] ?? 'unknown',
+		]);
+	}
 }

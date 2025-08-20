@@ -17,21 +17,27 @@ class TaskDataTable extends DataTable
 		return (new EloquentDataTable($query))
 			->addColumn('action', 'task.action')
 			->setRowId('id')
-			->editColumn('responsible_id', function ($data) {
+			->editColumn('responsible_id', function ($data)
+			{
 				return $data->responsible->name ?? __('Unassigned');
 			})
-			->filterColumn('responsible_id', function ($query, $keyword) {
-				$query->whereHas('responsible', function ($q) use ($keyword) {
+			->filterColumn('responsible_id', function ($query, $keyword)
+			{
+				$query->whereHas('responsible', function ($q) use ($keyword)
+				{
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})
-			->editColumn('start_date', function ($data) {
+			->editColumn('start_date', function ($data)
+			{
 				return Carbon::parse($data->start_date)->format('d-m-Y');
 			})
-			->editColumn('due_date', function ($data) {
+			->editColumn('due_date', function ($data)
+			{
 				return Carbon::parse($data->due_date)->format('d-m-Y');
 			})
-			->editColumn('status_id', function ($row) {
+			->editColumn('status_id', function ($row)
+			{
 				return $row->status_label;
 			})
 			->rawColumns(['action', 'status_id']);

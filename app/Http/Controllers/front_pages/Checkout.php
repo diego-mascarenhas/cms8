@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 
 class Checkout extends Controller
 {
-    public function index()
-    {
-        $pageConfigs = ['myLayout' => 'front'];
+	public function index()
+	{
+		$pageConfigs = ['myLayout' => 'front'];
 
-        return view('content.front-pages.checkout-page', ['pageConfigs' => $pageConfigs]);
-    }
+		return view('content.front-pages.checkout-page', ['pageConfigs' => $pageConfigs]);
+	}
 }

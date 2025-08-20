@@ -23,18 +23,23 @@ class InvoiceDataTable extends DataTable
 			->addColumn('action', 'invoice.action')
 			->setRowId('id')
 			->rawColumns(['status'])
-			->editColumn('enterprise_id', function ($data) {
+			->editColumn('enterprise_id', function ($data)
+			{
 				return $data->enterprise->name;
 			})
-			->filterColumn('enterprise_id', function ($query, $keyword) {
-				$query->whereHas('enterprise', function ($q) use ($keyword) {
+			->filterColumn('enterprise_id', function ($query, $keyword)
+			{
+				$query->whereHas('enterprise', function ($q) use ($keyword)
+				{
 					$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
 				});
 			})
-			->editColumn('date', function ($data) {
+			->editColumn('date', function ($data)
+			{
 				return Carbon::parse($data->date)->format('d-m-Y');
 			})
-			->editColumn('status', function ($data) {
+			->editColumn('status', function ($data)
+			{
 				return $data->status_label;
 			});
 	}

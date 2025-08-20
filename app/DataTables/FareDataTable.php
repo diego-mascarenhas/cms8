@@ -14,32 +14,40 @@ class FareDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($fare) {
+			->addColumn('action', function ($fare)
+			{
 				return view('fare.action', compact('fare'));
 			})
-			->addColumn('units', function ($fare) {
-				if ($fare->units->isEmpty()) {
+			->addColumn('units', function ($fare)
+			{
+				if ($fare->units->isEmpty())
+				{
 					return '<span class="text-muted">N/A</span>';
 				}
 
 				$badges = '';
-				foreach ($fare->units as $unit) {
+				foreach ($fare->units as $unit)
+				{
 					$badges .= '<span class="badge bg-label-primary me-1">'.$unit->type.'</span>';
 				}
 
 				return $badges;
 			})
-			->addColumn('type', function ($fare) {
+			->addColumn('type', function ($fare)
+			{
 				return $fare->type ? $fare->type->name : '';
 			})
-			->addColumn('glosary', function ($fare) {
+			->addColumn('glosary', function ($fare)
+			{
 				return $fare->glosary_id ? 'Texto explicando de qué trata este tipo de servicio / tarifa' : '';
 			})
-			->orderColumn('type', function ($query, $order) {
+			->orderColumn('type', function ($query, $order)
+			{
 				$query->leftJoin('fare_types', 'fares.type_id', '=', 'fare_types.id')
 					->orderBy('fare_types.name', $order);
 			})
-			->orderColumn('units', function ($query, $order) {
+			->orderColumn('units', function ($query, $order)
+			{
 				// This is a simplified approach as units is a many-to-many relationship
 				$query->orderBy('name', $order);
 			})

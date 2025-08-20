@@ -19,14 +19,17 @@ class ContactDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($contact) {
+			->addColumn('action', function ($contact)
+			{
 				return view('contact.action', compact('contact'));
 			})
 			->setRowId('id')
-			->editColumn('name', function ($row) {
+			->editColumn('name', function ($row)
+			{
 				$fullName = e($row->name);
-				if (!empty($row->surname)) {
-					$fullName .= ' ' . e($row->surname);
+				if (! empty($row->surname))
+				{
+					$fullName .= ' '.e($row->surname);
 				}
 				$companyName = $row->enterprises->first() ? e($row->enterprises->first()->name) : '';
 
@@ -35,44 +38,59 @@ class ContactDataTable extends DataTable
 							<small class="text-muted">'.($companyName ?: '&nbsp;').'</small>
 						</div>';
 			})
-			->addColumn('current_sentiment', function ($row) {
-				if ($row->currentSentiment) {
+			->addColumn('current_sentiment', function ($row)
+			{
+				if ($row->currentSentiment)
+				{
 					return '<span style="font-size: 1.5em;">'.$row->currentSentiment->sentiment->emoji.'</span>';
 				}
 
 				return '<span style="font-size: 1.5em;">🤔</span>';
 			})
-			->filterColumn('current_sentiment', function ($query, $keyword) {
-				if ($keyword !== '') {
-					$query->whereHas('currentSentiment', function ($q) use ($keyword) {
+			->filterColumn('current_sentiment', function ($query, $keyword)
+			{
+				if ($keyword !== '')
+				{
+					$query->whereHas('currentSentiment', function ($q) use ($keyword)
+					{
 						$q->where('sentiment_id', $keyword);
 					});
 				}
 			})
-			->addColumn('sources', function ($row) {
+			->addColumn('sources', function ($row)
+			{
 				return $row->sources_icons_html;
 			})
-			->addColumn('responsible_name', function ($contact) {
+			->addColumn('responsible_name', function ($contact)
+			{
 				return $contact->responsible->name ?? __('Unassigned');
 			})
-			->filterColumn('responsible_name', function ($query, $keyword) {
-				$query->whereHas('responsible', function ($q) use ($keyword) {
+			->filterColumn('responsible_name', function ($query, $keyword)
+			{
+				$query->whereHas('responsible', function ($q) use ($keyword)
+				{
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})
-			->addColumn('categories', function ($row) {
-				return $row->categories->map(function ($category) {
+			->addColumn('categories', function ($row)
+			{
+				return $row->categories->map(function ($category)
+				{
 					return '<span class="badge bg-label-primary me-1">'.e($category->name).'</span>';
 				})->join(' ');
 			})
-			->filterColumn('categories', function ($query, $keyword) {
-				if ($keyword !== '') {
-					$query->whereHas('categories', function ($q) use ($keyword) {
+			->filterColumn('categories', function ($query, $keyword)
+			{
+				if ($keyword !== '')
+				{
+					$query->whereHas('categories', function ($q) use ($keyword)
+					{
 						$q->where('id', $keyword);
 					});
 				}
 			})
-			->editColumn('status_id', function ($row) {
+			->editColumn('status_id', function ($row)
+			{
 				return $row->status_label;
 			})
 			->rawColumns(['name', 'action', 'current_sentiment', 'sources', 'status_id', 'categories']);

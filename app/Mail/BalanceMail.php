@@ -8,18 +8,18 @@ use Illuminate\Queue\SerializesModels;
 
 class BalanceMail extends Mailable
 {
-    use Queueable, SerializesModels;
+	use Queueable, SerializesModels;
 
-    public $balances;
+	public $balances;
 
-    public function __construct($balances)
-    {
-        $this->balances = $balances;
-    }
+	public function __construct($balances)
+	{
+		$this->balances = $balances;
+	}
 
-    public function build()
-    {
-        return $this->view('emails.balance')
-            ->with(['balances' => $this->balances]);
-    }
+	public function build()
+	{
+		return $this->view('emails.balance')
+			->with(['balances' => $this->balances]);
+	}
 }

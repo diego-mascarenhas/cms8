@@ -21,27 +21,35 @@ class ClientDataTable extends DataTable
 		return (new EloquentDataTable($query))
 			->addColumn('action', 'client.action')
 			->setRowId('id')
-			->editColumn('name', function ($row) {
+			->editColumn('name', function ($row)
+			{
 				return '<div class="d-flex flex-column">
 							<span class="fw-medium text-body text-truncate">'.e($row->name).'</span>
 							<small class="text-muted">'.e($row->responsible->name ?? 'Sin asignar').'</small>
 						</div>';
 			})
-			->addColumn('sources', function ($row) {
+			->addColumn('sources', function ($row)
+			{
 				return $row->sources_icons_html;
 			})
-			->addColumn('responsible_name', function ($contact) {
-				if ($contact->responsible) {
+			->addColumn('responsible_name', function ($contact)
+			{
+				if ($contact->responsible)
+				{
 					return e($contact->responsible->name);
 				}
+
 				return '<span class="text-muted">-</span>';
 			})
-			->filterColumn('responsible_name', function ($query, $keyword) {
-				$query->whereHas('responsible', function ($q) use ($keyword) {
+			->filterColumn('responsible_name', function ($query, $keyword)
+			{
+				$query->whereHas('responsible', function ($q) use ($keyword)
+				{
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})
-			->editColumn('status_id', function ($row) {
+			->editColumn('status_id', function ($row)
+			{
 				return $row->status_label;
 			})
 			->rawColumns(['name', 'action', 'sources', 'responsible_name', 'status_id', 'website', 'phone']);
@@ -137,7 +145,8 @@ class ClientDataTable extends DataTable
 
 	private function ensureProtocol($url)
 	{
-		if (! preg_match('~^(?:f|ht)tps?://~i', $url)) {
+		if (! preg_match('~^(?:f|ht)tps?://~i', $url))
+		{
 			$url = 'https://'.$url;
 		}
 

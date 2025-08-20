@@ -19,17 +19,21 @@ class TemplateDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($template) {
+			->addColumn('action', function ($template)
+			{
 				return view('template.action', ['id' => $template->getHashedId()])->render();
 			})
 			->setRowId('id')
 			->rawColumns(['name', 'action', 'status_id'])
-			->editColumn('status_id', function ($data) {
+			->editColumn('status_id', function ($data)
+			{
 				$statusValue = is_object($data->status_id) ? $data->status_id->value : $data->status_id;
 
-				if ($statusValue == 2) {
+				if ($statusValue == 2)
+				{
 					return '<span class="badge rounded-pill bg-label-success">Active</span>';
-				} else {
+				} else
+				{
 					return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
 				}
 			});

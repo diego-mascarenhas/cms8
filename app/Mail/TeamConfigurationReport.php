@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -11,56 +10,59 @@ use Illuminate\Queue\SerializesModels;
 
 class TeamConfigurationReport extends Mailable
 {
-    use Queueable, SerializesModels;
+	use Queueable, SerializesModels;
 
-    public $teamResult;
-    public $failuresOnly;
+	public $teamResult;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct($teamResult, $failuresOnly = false)
-    {
-        $this->teamResult = $teamResult;
-        $this->failuresOnly = $failuresOnly;
-    }
+	public $failuresOnly;
 
-    /**
-     * Get the message envelope.
-     */
-        public function envelope(): Envelope
-    {
-        $teamName = html_entity_decode($this->teamResult['team_name'], ENT_QUOTES, 'UTF-8');
-        $failedCount = $this->teamResult['summary']['failed'];
+	/**
+	 * Create a new message instance.
+	 */
+	public function __construct($teamResult, $failuresOnly = false)
+	{
+		$this->teamResult = $teamResult;
+		$this->failuresOnly = $failuresOnly;
+	}
 
-        if ($failedCount > 0) {
-            $subject = "⚠️ Configuration Issues - {$teamName}";
-        } else {
-            $subject = "✅ Configuration Report - {$teamName}";
-        }
+	/**
+	 * Get the message envelope.
+	 */
+	public function envelope(): Envelope
+	{
+		$teamName = html_entity_decode($this->teamResult['team_name'], ENT_QUOTES, 'UTF-8');
+		$failedCount = $this->teamResult['summary']['failed'];
 
-        return new Envelope(
-            subject: $subject,
-        );
-    }
+		if ($failedCount > 0)
+		{
+			$subject = "⚠️ Configuration Issues - {$teamName}";
+		} else
+		{
+			$subject = "✅ Configuration Report - {$teamName}";
+		}
 
-    /**
-     * Get the message content definition.
-     */
-    public function content(): Content
-    {
-        return new Content(
-            view: 'emails.team-configuration-report',
-        );
-    }
+		return new Envelope(
+			subject: $subject,
+		);
+	}
 
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
-    }
+	/**
+	 * Get the message content definition.
+	 */
+	public function content(): Content
+	{
+		return new Content(
+			view: 'emails.team-configuration-report',
+		);
+	}
+
+	/**
+	 * Get the attachments for the message.
+	 *
+	 * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+	 */
+	public function attachments(): array
+	{
+		return [];
+	}
 }

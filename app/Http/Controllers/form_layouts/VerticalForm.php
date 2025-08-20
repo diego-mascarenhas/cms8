@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class VerticalForm extends Controller
 {
-    public function index()
-    {
-        return view('content.form-layout.form-layouts-vertical');
-    }
+	public function index()
+	{
+		return view('content.form-layout.form-layouts-vertical');
+	}
 }

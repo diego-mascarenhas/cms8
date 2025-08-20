@@ -7,57 +7,61 @@ use Illuminate\Database\Eloquent\Model;
 
 class PaymentAccount extends Model
 {
-    use HasFactory;
+	use HasFactory;
 
-    public $timestamps = true;
+	public $timestamps = true;
 
-    protected $table = 'payment_accounts';
+	protected $table = 'payment_accounts';
 
-    protected $fillable = ['team_id', 'code', 'name', 'symbol', 'currency_id', 'status'];
+	protected $fillable = ['team_id', 'code', 'name', 'symbol', 'currency_id', 'status'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope('team', function ($builder) {
-            if (auth()->check()) {
-                $builder->where('team_id', auth()->user()->currentTeam->id);
-            }
-        });
+	protected static function booted()
+	{
+		static::addGlobalScope('team', function ($builder)
+		{
+			if (auth()->check())
+			{
+				$builder->where('team_id', auth()->user()->currentTeam->id);
+			}
+		});
 
-        static::addGlobalScope('activeStatus', function ($builder) {
-            $builder->where('status', 1);
-        });
-    }
+		static::addGlobalScope('activeStatus', function ($builder)
+		{
+			$builder->where('status', 1);
+		});
+	}
 
-    public function team()
-    {
-        return $this->belongsTo(Team::class);
-    }
+	public function team()
+	{
+		return $this->belongsTo(Team::class);
+	}
 
-    public function currency()
-    {
-        return $this->belongsTo(Currency::class);
-    }
+	public function currency()
+	{
+		return $this->belongsTo(Currency::class);
+	}
 
-    public function payments()
-    {
-        return $this->hasMany(Payment::class, 'account_id');
-    }
+	public function payments()
+	{
+		return $this->hasMany(Payment::class, 'account_id');
+	}
 
-    public static function getOptions()
-    {
-        return self::all()->map(function ($data) {
-            return [
-                'id' => $data->id,
-                'name' => $data->name,
-            ];
-        });
-    }
+	public static function getOptions()
+	{
+		return self::all()->map(function ($data)
+		{
+			return [
+				'id' => $data->id,
+				'name' => $data->name,
+			];
+		});
+	}
 
-    public function getTotalAmountAttribute()
-    {
-        $income = $this->payments()->where('transaction_type', 'I')->sum('amount');
-        $expense = $this->payments()->where('transaction_type', 'E')->sum('amount');
+	public function getTotalAmountAttribute()
+	{
+		$income = $this->payments()->where('transaction_type', 'I')->sum('amount');
+		$expense = $this->payments()->where('transaction_type', 'E')->sum('amount');
 
-        return $income - $expense;
-    }
+		return $income - $expense;
+	}
 }

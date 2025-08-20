@@ -8,18 +8,18 @@ use Illuminate\Queue\SerializesModels;
 
 class LeadNotification extends Mailable
 {
-    use Queueable, SerializesModels;
+	use Queueable, SerializesModels;
 
-    public $leadData;
+	public $leadData;
 
-    public function __construct($leadData)
-    {
-        $this->leadData = $leadData;
-    }
+	public function __construct($leadData)
+	{
+		$this->leadData = $leadData;
+	}
 
-    public function build()
-    {
-        return $this->subject('Nuevo Lead Recibido')
-            ->view('emails.lead-notification');
-    }
+	public function build()
+	{
+		return $this->subject('Nuevo Lead Recibido')
+			->view('emails.lead-notification');
+	}
 }

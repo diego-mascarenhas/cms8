@@ -12,11 +12,13 @@ class ClientPolicy
 
 	public function view(User $user, Enterprise $client)
 	{
-		if ($user->hasRole('admin')) {
+		if ($user->hasRole('admin'))
+		{
 			return true;
 		}
 
-		if ($user->hasRole('collaborator')) {
+		if ($user->hasRole('collaborator'))
+		{
 			return $client->assigned_to == $user->id;
 		}
 

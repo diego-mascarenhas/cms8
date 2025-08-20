@@ -7,64 +7,65 @@ use Illuminate\Database\Eloquent\Model;
 
 class Invoice extends Model
 {
-    use HasFactory;
+	use HasFactory;
 
-    protected $fillable = [
-        'enterprise_id',
-        'billing_id',
-        'type_id',
-        'operation',
-        'number',
-        'date',
-        'due_date',
-        'gross_amount',
-        'discount',
-        'total_amount',
-        'balance',
-        'status',
-    ];
+	protected $fillable = [
+		'enterprise_id',
+		'billing_id',
+		'type_id',
+		'operation',
+		'number',
+		'date',
+		'due_date',
+		'gross_amount',
+		'discount',
+		'total_amount',
+		'balance',
+		'status',
+	];
 
-    public function enterprise()
-    {
-        return $this->belongsTo(Enterprise::class, 'enterprise_id');
-    }
+	public function enterprise()
+	{
+		return $this->belongsTo(Enterprise::class, 'enterprise_id');
+	}
 
-    public function type()
-    {
-        return $this->belongsTo(InvoiceType::class);
-    }
+	public function type()
+	{
+		return $this->belongsTo(InvoiceType::class);
+	}
 
-    public function billingAddress()
-    {
-        return $this->belongsTo(EnterpriseBillingAddress::class, 'billing_id');
-    }
+	public function billingAddress()
+	{
+		return $this->belongsTo(EnterpriseBillingAddress::class, 'billing_id');
+	}
 
-    public function items()
-    {
-        return $this->hasMany(InvoiceItem::class);
-    }
+	public function items()
+	{
+		return $this->hasMany(InvoiceItem::class);
+	}
 
-    public function getStatusLabelAttribute()
-    {
-        switch ($this->status) {
-            case 1:
-                return '<span class="badge rounded-pill bg-label-primary">Print</span>';
-            case 2:
-                return '<span class="badge rounded-pill bg-label-warning">Printed</span>';
-            case 3:
-                return '<span class="badge rounded-pill bg-label-danger">Cancelled</span>';
-            case 4:
-                return '<span class="badge rounded-pill bg-label-info">Credit Note</span>';
-            case 5:
-                return '<span class="badge rounded-pill bg-label-success">Bonified</span>';
-            case 6:
-                return '<span class="badge rounded-pill bg-label-success">Bonified (Credit Note)</span>';
-            case 7:
-                return '<span class="badge rounded-pill bg-label-danger">Error</span>';
-            case 8:
-                return '<span class="badge rounded-pill bg-label-warning">Issuing</span>';
-            default:
-                return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
-        }
-    }
+	public function getStatusLabelAttribute()
+	{
+		switch ($this->status)
+		{
+			case 1:
+				return '<span class="badge rounded-pill bg-label-primary">Print</span>';
+			case 2:
+				return '<span class="badge rounded-pill bg-label-warning">Printed</span>';
+			case 3:
+				return '<span class="badge rounded-pill bg-label-danger">Cancelled</span>';
+			case 4:
+				return '<span class="badge rounded-pill bg-label-info">Credit Note</span>';
+			case 5:
+				return '<span class="badge rounded-pill bg-label-success">Bonified</span>';
+			case 6:
+				return '<span class="badge rounded-pill bg-label-success">Bonified (Credit Note)</span>';
+			case 7:
+				return '<span class="badge rounded-pill bg-label-danger">Error</span>';
+			case 8:
+				return '<span class="badge rounded-pill bg-label-warning">Issuing</span>';
+			default:
+				return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
+		}
+	}
 }

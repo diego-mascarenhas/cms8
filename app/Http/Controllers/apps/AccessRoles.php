@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class AccessRoles extends Controller
 {
-    public function index()
-    {
-        return view('content.apps.app-access-roles');
-    }
+	public function index()
+	{
+		return view('content.apps.app-access-roles');
+	}
 }

@@ -2,11 +2,11 @@
 
 namespace App\Mail;
 
+use App\Models\MessageDelivery;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use App\Models\MessageDelivery;
 use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
 class MessageDeliveryMail extends Mailable implements ShouldQueue
@@ -27,13 +27,15 @@ class MessageDeliveryMail extends Mailable implements ShouldQueue
 
 		// Add advertising footer if team is using system SMTP
 		$advertisingFooter = config('app.mail_advertising_footer', '');
-		if ($advertisingFooter) {
+		if ($advertisingFooter)
+		{
 			$html .= $advertisingFooter;
 		}
 
 		$css = '';
-		$inliner = new CssToInlineStyles();
+		$inliner = new CssToInlineStyles;
 		$htmlInlined = $inliner->convert($html, $css);
+
 		return $this->subject($subject)
 			->html($htmlInlined);
 	}

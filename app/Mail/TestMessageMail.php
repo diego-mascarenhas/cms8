@@ -11,54 +11,60 @@ use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
 class TestMessageMail extends Mailable
 {
-    use Queueable, SerializesModels;
+	use Queueable, SerializesModels;
 
-    public $message;
-    public $testContact;
-    public $htmlContent;
+	public $message;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct(Message $message, stdClass $testContact, string $htmlContent)
-    {
-        $this->message = $message;
-        $this->testContact = $testContact;
-        $this->htmlContent = $htmlContent;
-    }
+	public $testContact;
 
-    /**
-     * Build the message.
-     */
-    public function build()
-    {
-        $team = auth()->user()->currentTeam;
-        $emailConfig = $team->getOutgoingEmailConfig();
+	public $htmlContent;
 
-        // Add advertising footer if team is using system SMTP
-        $finalHtml = $this->htmlContent;
-        $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
+	/**
+	 * Create a new message instance.
+	 */
+	public function __construct(Message $message, stdClass $testContact, string $htmlContent)
+	{
+		$this->message = $message;
+		$this->testContact = $testContact;
+		$this->htmlContent = $htmlContent;
+	}
 
-        if ($advertisingFooter) {
-            if (stripos($finalHtml, '</body>') !== false) {
-                $finalHtml = str_ireplace('</body>', $advertisingFooter . '</body>', $finalHtml);
-            } else {
-                $finalHtml .= $advertisingFooter;
-            }
-        }
+	/**
+	 * Build the message.
+	 */
+	public function build()
+	{
+		$team = auth()->user()->currentTeam;
+		$emailConfig = $team->getOutgoingEmailConfig();
 
-        // Get CSS from template if available
-        $css = '';
-        if ($this->message->template && isset($this->message->template->gjs_data['css'])) {
-            $css = $this->message->template->gjs_data['css'];
-        }
+		// Add advertising footer if team is using system SMTP
+		$finalHtml = $this->htmlContent;
+		$advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
 
-        // Inline CSS styles
-        $cssInliner = new CssToInlineStyles();
-        $inlinedHtml = $cssInliner->convert($finalHtml, $css);
+		if ($advertisingFooter)
+		{
+			if (stripos($finalHtml, '</body>') !== false)
+			{
+				$finalHtml = str_ireplace('</body>', $advertisingFooter.'</body>', $finalHtml);
+			} else
+			{
+				$finalHtml .= $advertisingFooter;
+			}
+		}
 
-        return $this->from($emailConfig['from_address'], $emailConfig['from_name'])
-                    ->subject('[TEST] ' . $this->message->name)
-                    ->html($inlinedHtml);
-    }
+		// Get CSS from template if available
+		$css = '';
+		if ($this->message->template && isset($this->message->template->gjs_data['css']))
+		{
+			$css = $this->message->template->gjs_data['css'];
+		}
+
+		// Inline CSS styles
+		$cssInliner = new CssToInlineStyles;
+		$inlinedHtml = $cssInliner->convert($finalHtml, $css);
+
+		return $this->from($emailConfig['from_address'], $emailConfig['from_name'])
+			->subject('[TEST] '.$this->message->name)
+			->html($inlinedHtml);
+	}
 }

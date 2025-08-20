@@ -9,84 +9,84 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ContactValoration extends Model
 {
-    use HasFactory;
+	use HasFactory;
 
-    public $incrementing = false;
+	public $incrementing = false;
 
-    protected $keyType = 'int';
+	protected $keyType = 'int';
 
-    protected $fillable = [
-        'id',
-        'team_id',
-        'name',
-        'icon',
-    ];
+	protected $fillable = [
+		'id',
+		'team_id',
+		'name',
+		'icon',
+	];
 
-    protected $casts = [
-        'id' => 'integer',
-        'team_id' => 'integer',
-    ];
+	protected $casts = [
+		'id' => 'integer',
+		'team_id' => 'integer',
+	];
 
-    /**
-     * Get the team that owns the valoration
-     */
-    public function team(): BelongsTo
-    {
-        return $this->belongsTo(Team::class);
-    }
+	/**
+	 * Get the team that owns the valoration
+	 */
+	public function team(): BelongsTo
+	{
+		return $this->belongsTo(Team::class);
+	}
 
-    /**
-     * Get all contacts with this valoration
-     */
-    public function contacts(): HasMany
-    {
-        return $this->hasMany(Contact::class, 'valoration_id');
-    }
+	/**
+	 * Get all contacts with this valoration
+	 */
+	public function contacts(): HasMany
+	{
+		return $this->hasMany(Contact::class, 'valoration_id');
+	}
 
-    /**
-     * Get valorations for a specific team
-     */
-    public static function getOptions($teamId = null)
-    {
-        $teamId = $teamId ?? auth()->user()->currentTeam->id ?? 1;
+	/**
+	 * Get valorations for a specific team
+	 */
+	public static function getOptions($teamId = null)
+	{
+		$teamId = $teamId ?? auth()->user()->currentTeam->id ?? 1;
 
-        return self::where('team_id', $teamId)
-            ->pluck('name', 'id')
-            ->toArray();
-    }
+		return self::where('team_id', $teamId)
+			->pluck('name', 'id')
+			->toArray();
+	}
 
-    /**
-     * Get the default valorations
-     */
-    public static function getDefaults()
-    {
-        return [
-            'Top',
-            'Validada',
-            'Interesante',
-            'Ojo',
-            'Lista negra',
-        ];
-    }
+	/**
+	 * Get the default valorations
+	 */
+	public static function getDefaults()
+	{
+		return [
+			'Top',
+			'Validada',
+			'Interesante',
+			'Ojo',
+			'Lista negra',
+		];
+	}
 
-    /**
-     * Get available icons for selection
-     */
-    public static function getAvailableIcons()
-    {
-        return [
-            '⭐' => 'Top/Estrella',
-            '✅' => 'Validada/Check',
-            '🕐' => 'Interesante/Reloj',
-            '👁️' => 'En espera/Ojo',
-            '❌' => 'Lista negra/X',
-            '🔘' => 'Neutro/Círculo',
-            '🎯' => 'Objetivo/Target',
-            '💎' => 'Premium/Diamante',
-            '🔥' => 'Urgente/Fuego',
-            '📊' => 'Análisis/Gráfico',
-            '🏆' => 'Excelente/Trofeo',
-            '⚡' => 'Rápido/Rayo',
-        ];
-    }
+	/**
+	 * Get available icons for selection
+	 */
+	public static function getAvailableIcons()
+	{
+		return [
+			'⭐' => 'Top/Estrella',
+			'✅' => 'Validada/Check',
+			'🕐' => 'Interesante/Reloj',
+			'👁️' => 'En espera/Ojo',
+			'❌' => 'Lista negra/X',
+			'🔘' => 'Neutro/Círculo',
+			'🎯' => 'Objetivo/Target',
+			'💎' => 'Premium/Diamante',
+			'🔥' => 'Urgente/Fuego',
+			'📊' => 'Análisis/Gráfico',
+			'🏆' => 'Excelente/Trofeo',
+			'⚡' => 'Rápido/Rayo',
+		];
+	}
 }

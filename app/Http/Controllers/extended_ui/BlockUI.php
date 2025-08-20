@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class BlockUI extends Controller
 {
-    public function index()
-    {
-        return view('content.extended-ui.extended-ui-blockui');
-    }
+	public function index()
+	{
+		return view('content.extended-ui.extended-ui-blockui');
+	}
 }

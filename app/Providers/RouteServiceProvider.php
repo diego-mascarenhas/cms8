@@ -10,37 +10,39 @@ use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
 {
-    /**
-     * The path to your application's "home" route.
-     *
-     * Typically, users are redirected here after authentication.
-     *
-     * @var string
-     */
-    public const HOME = '/';
+	/**
+	 * The path to your application's "home" route.
+	 *
+	 * Typically, users are redirected here after authentication.
+	 *
+	 * @var string
+	 */
+	public const HOME = '/';
 
-    /**
-     * Define your route model bindings, pattern filters, and other route configuration.
-     */
-    public function boot(): void
-    {
-        RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
-        });
+	/**
+	 * Define your route model bindings, pattern filters, and other route configuration.
+	 */
+	public function boot(): void
+	{
+		RateLimiter::for('api', function (Request $request)
+		{
+			return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+		});
 
-        $this->routes(function () {
-            Route::middleware('api')
-                ->prefix('api')
-                ->namespace($this->namespace)
-                ->group(base_path('routes/api.php'));
+		$this->routes(function ()
+		{
+			Route::middleware('api')
+				->prefix('api')
+				->namespace($this->namespace)
+				->group(base_path('routes/api.php'));
 
-            Route::middleware('web')
-                ->namespace($this->namespace)
-                ->group(base_path('routes/web.php'));
+			Route::middleware('web')
+				->namespace($this->namespace)
+				->group(base_path('routes/web.php'));
 
-            Route::middleware('mailbox')
-                ->prefix('mailbox')
-                ->group(base_path('routes/mailbox.php'));
-        });
-    }
+			Route::middleware('mailbox')
+				->prefix('mailbox')
+				->group(base_path('routes/mailbox.php'));
+		});
+	}
 }

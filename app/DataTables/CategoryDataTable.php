@@ -23,19 +23,25 @@ class CategoryDataTable extends DataTable
 			->addColumn('action', 'category.action')
 			->setRowId('id')
 			->rawColumns(['name', 'action', 'status'])
-			->addColumn('user_count', function ($data) {
+			->addColumn('user_count', function ($data)
+			{
 				return $data->users_count;
 			})
-			->editColumn('created_at', function ($data) {
+			->editColumn('created_at', function ($data)
+			{
 				return Carbon::parse($data->created_at)->format('d-m-Y H:i:s');
 			})
-			->editColumn('updated_at', function ($data) {
+			->editColumn('updated_at', function ($data)
+			{
 				return Carbon::parse($data->updated_at)->format('d-m-Y H:i:s');
 			})
-			->editColumn('status', function ($data) {
-				if ($data->status) {
+			->editColumn('status', function ($data)
+			{
+				if ($data->status)
+				{
 					return '<span class="badge rounded-pill bg-label-success">Active</span>';
-				} else {
+				} else
+				{
 					return '<span class="badge rounded-pill bg-label-warning">Inactive</span>';
 				}
 			});

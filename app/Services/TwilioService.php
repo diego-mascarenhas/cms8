@@ -19,19 +19,23 @@ use Twilio\Rest\Client;
 class TwilioService
 {
 	protected $client;
+
 	protected $team;
+
 	protected $config;
 
-	public function __construct(Team $team = null)
+	public function __construct(?Team $team = null)
 	{
 		$this->team = $team;
 
 		// Only initialize config if not in console mode or if team is explicitly provided
-		if ($this->team && !app()->runningInConsole() && $this->team->hasTwilioConfig()) {
+		if ($this->team && ! app()->runningInConsole() && $this->team->hasTwilioConfig())
+		{
 			// Use team-specific configuration
 			$this->config = $this->team->getTwilioConfig();
 			$this->client = new Client($this->config['sid'], $this->config['token']);
-		} else {
+		} else
+		{
 			// Use global .env configuration
 			$this->config = [
 				'sid' => config('services.twilio.sid'),
@@ -40,7 +44,8 @@ class TwilioService
 				'whatsapp_from' => config('services.twilio.whatsapp_from'),
 			];
 
-			if ($this->config['sid'] && $this->config['token']) {
+			if ($this->config['sid'] && $this->config['token'])
+			{
 				$this->client = new Client($this->config['sid'], $this->config['token']);
 			}
 		}
@@ -51,7 +56,8 @@ class TwilioService
 	 */
 	protected function getDefaultTeam()
 	{
-		if (auth()->check() && auth()->user()->currentTeam) {
+		if (auth()->check() && auth()->user()->currentTeam)
+		{
 			return auth()->user()->currentTeam;
 		}
 
@@ -64,7 +70,8 @@ class TwilioService
 	public static function forCurrentUser()
 	{
 		$team = null;
-		if (auth()->check() && auth()->user()->currentTeam) {
+		if (auth()->check() && auth()->user()->currentTeam)
+		{
 			$team = auth()->user()->currentTeam;
 		}
 
@@ -78,10 +85,12 @@ class TwilioService
 	{
 		$this->team = $team;
 
-		if ($team->hasTwilioConfig()) {
+		if ($team->hasTwilioConfig())
+		{
 			$this->config = $team->getTwilioConfig();
 			$this->client = new Client($this->config['sid'], $this->config['token']);
-		} else {
+		} else
+		{
 			// Fallback to global config
 			$this->config = [
 				'sid' => config('services.twilio.sid'),
@@ -90,7 +99,8 @@ class TwilioService
 				'whatsapp_from' => config('services.twilio.whatsapp_from'),
 			];
 
-			if ($this->config['sid'] && $this->config['token']) {
+			if ($this->config['sid'] && $this->config['token'])
+			{
 				$this->client = new Client($this->config['sid'], $this->config['token']);
 			}
 		}
@@ -113,18 +123,20 @@ class TwilioService
 	{
 		$numbers = [];
 
-		if (isset($this->config['sms_from'])) {
+		if (isset($this->config['sms_from']))
+		{
 			$cleanSms = preg_replace('/[^0-9]/', '', $this->config['sms_from']);
 			$numbers[] = $cleanSms;
 			$numbers[] = $this->config['sms_from'];
 		}
 
-		if (isset($this->config['whatsapp_from'])) {
+		if (isset($this->config['whatsapp_from']))
+		{
 			$cleanWhatsapp = preg_replace('/[^0-9]/', '', $this->config['whatsapp_from']);
 			$numbers[] = $cleanWhatsapp;
 			$numbers[] = $this->config['whatsapp_from'];
-			$numbers[] = 'whatsapp:' . $this->config['whatsapp_from'];
-			$numbers[] = 'whatsapp:+' . $this->config['whatsapp_from'];
+			$numbers[] = 'whatsapp:'.$this->config['whatsapp_from'];
+			$numbers[] = 'whatsapp:+'.$this->config['whatsapp_from'];
 		}
 
 		return array_unique($numbers);
@@ -151,32 +163,38 @@ class TwilioService
 
 		// Always try to get user directly by phone (full number)
 		$user = User::where('phone', $cleanNumber)->first();
-		if ($user) {
+		if ($user)
+		{
 			return $user;
 		}
 
 		// Try without country code if not found
-		if (strlen($cleanNumber) > 9) {
+		if (strlen($cleanNumber) > 9)
+		{
 			$withoutCountryCode = substr($cleanNumber, -9);
 			$user = User::where('phone', $withoutCountryCode)->first();
-			if ($user) {
+			if ($user)
+			{
 				return $user;
 			}
 		}
 
 		// If no user found directly, try to find through contact relationship
-		$contact = Contact::whereHas('sources', function ($query) use ($cleanNumber) {
+		$contact = Contact::whereHas('sources', function ($query) use ($cleanNumber)
+		{
 			$query
 				->where('source_id', 2)  // Phone source
 				->where('value', $cleanNumber);
 		})->first();
 
-		if ($contact && $contact->user) {
+		if ($contact && $contact->user)
+		{
 			return $contact->user;
 		}
 
 		// If still no user found, try to get contact name
-		if ($contact) {
+		if ($contact)
+		{
 			return (object) [
 				'name' => $contact->name,
 				'id' => null,
@@ -209,25 +227,29 @@ class TwilioService
 	private function sendAutoGreeting($phoneNumber)
 	{
 		// Check if it's the first message today
-		if (!$this->isFirstMessageToday($phoneNumber)) {
+		if (! $this->isFirstMessageToday($phoneNumber))
+		{
 			return false;
 		}
 
 		// Get user information
 		$user = $this->getUserByPhone($phoneNumber);
 
-		if ($user && !empty($user->name)) {
+		if ($user && ! empty($user->name))
+		{
 			$greeting = "¡Hola {$user->name}! 👋";
 
-			try {
+			try
+			{
 				// Send the greeting
 				$this->sendWhatsApp($phoneNumber, $greeting);
 
 				Log::info("Auto greeting sent to {$phoneNumber}: {$greeting}");
 
 				return true;
-			} catch (\Exception $e) {
-				Log::error("Failed to send auto greeting to {$phoneNumber}: " . $e->getMessage());
+			} catch (\Exception $e)
+			{
+				Log::error("Failed to send auto greeting to {$phoneNumber}: ".$e->getMessage());
 
 				return false;
 			}
@@ -238,11 +260,13 @@ class TwilioService
 
 	public function sendSms($to, $message)
 	{
-		if (!$this->isConfigured()) {
-			throw new \Exception('Twilio not configured for team: ' . ($this->team ? $this->team->name : 'No team'));
+		if (! $this->isConfigured())
+		{
+			throw new \Exception('Twilio not configured for team: '.($this->team ? $this->team->name : 'No team'));
 		}
 
-		try {
+		try
+		{
 			// Get the status callback URL for this team
 			$statusCallbackUrl = $this->team ? $this->team->getTwilioStatusCallbackUrl() : url(route('twilio.status'));
 
@@ -280,22 +304,25 @@ class TwilioService
 			]);
 
 			return $twilioMessage;
-		} catch (\Exception $e) {
-			Log::error('Twilio SMS Error: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Twilio SMS Error: '.$e->getMessage());
 			throw $e;
 		}
 	}
 
 	public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
 	{
-		if (!$this->isConfigured()) {
-			throw new \Exception('Twilio not configured for team: ' . ($this->team ? $this->team->name : 'No team'));
+		if (! $this->isConfigured())
+		{
+			throw new \Exception('Twilio not configured for team: '.($this->team ? $this->team->name : 'No team'));
 		}
 
-		try {
+		try
+		{
 			// Format the numbers with whatsapp: prefix for Twilio
-			$formattedTo = 'whatsapp:' . $to;
-			$whatsappFromNumber = 'whatsapp:' . $this->config['whatsapp_from'];
+			$formattedTo = 'whatsapp:'.$to;
+			$whatsappFromNumber = 'whatsapp:'.$this->config['whatsapp_from'];
 
 			// Get the status callback URL for this team
 			$statusCallbackUrl = $this->team ? $this->team->getTwilioStatusCallbackUrl() : url(route('twilio.status'));
@@ -323,7 +350,8 @@ class TwilioService
 			];
 
 			// Merge custom metadata if provided
-			if ($metadata) {
+			if ($metadata)
+			{
 				$messageMetadata = array_merge($messageMetadata, $metadata);
 			}
 
@@ -342,15 +370,17 @@ class TwilioService
 			]);
 
 			return $twilioMessage;
-		} catch (\Exception $e) {
-			Log::error('Twilio WhatsApp Error: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Twilio WhatsApp Error: '.$e->getMessage());
 			throw $e;
 		}
 	}
 
 	public function processIncomingMessage($request)
 	{
-		try {
+		try
+		{
 			$messageSid = $request->input('MessageSid');
 			$from = $request->input('From');
 			$to = $request->input('To');
@@ -361,7 +391,7 @@ class TwilioService
 			Log::info('Raw phone numbers from Twilio', [
 				'original_from' => $from,
 				'original_to' => $to,
-				'body' => $body
+				'body' => $body,
 			]);
 
 			// Clean phone numbers by removing whatsapp: prefix and non-numeric characters
@@ -373,12 +403,13 @@ class TwilioService
 				'clean_from' => $cleanFrom,
 				'clean_to' => $cleanTo,
 				'from_length' => strlen($cleanFrom),
-				'to_length' => strlen($cleanTo)
+				'to_length' => strlen($cleanTo),
 			]);
 
 			// Determine the channel type
 			$channel = 'sms';
-			if (strpos($from, 'whatsapp:') !== false || strpos($to, 'whatsapp:') !== false) {
+			if (strpos($from, 'whatsapp:') !== false || strpos($to, 'whatsapp:') !== false)
+			{
 				$channel = 'whatsapp';
 			}
 
@@ -387,8 +418,10 @@ class TwilioService
 
 			// Process media if present
 			$media = [];
-			if ($numMedia > 0) {
-				for ($i = 0; $i < $numMedia; $i++) {
+			if ($numMedia > 0)
+			{
+				for ($i = 0; $i < $numMedia; $i++)
+				{
 					$mediaUrl = $request->input("MediaUrl{$i}");
 					$contentType = $request->input("MediaContentType{$i}");
 					$media[] = [
@@ -408,72 +441,84 @@ class TwilioService
 				'status' => 'received',
 				'direction' => 'inbound',
 				'team_id' => $this->team ? $this->team->id : null,
-				'media' => !empty($media) ? $media : null,
+				'media' => ! empty($media) ? $media : null,
 				'metadata' => $request->except(['_token']),
 			]);
 
 			// Send automatic greeting if it's WhatsApp and first message of the day
-			if ($channel == 'whatsapp') {
+			if ($channel == 'whatsapp')
+			{
 				$this->sendAutoGreeting($cleanFrom);
 			}
 
 			// Send email notification for new message
 			$notificationEmail = config('services.notifications.email');
-			if ($notificationEmail) {
+			if ($notificationEmail)
+			{
 				Mail::to($notificationEmail)->send(new IncomingMessageNotification($conversation));
 				Log::info("Email notification sent to {$notificationEmail} for message {$messageSid}");
 			}
 
 			// Check if this is part of a registration process
-			if ($channel == 'whatsapp') {
+			if ($channel == 'whatsapp')
+			{
 				$chatController = app(\App\Http\Controllers\ChatController::class);
 				$registrationResponse = $chatController->processRegistration($cleanFrom, $body);
 
 				// If this was a registration step, we've already handled it
-				if ($registrationResponse) {
+				if ($registrationResponse)
+				{
 					return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'registration' => true]);
 				}
 
 				// Check if user is using cart commands (HIGHEST PRIORITY)
 				$cartResponse = $this->processCartCommands($cleanFrom, $body);
-				if ($cartResponse) {
+				if ($cartResponse)
+				{
 					return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
 				}
 
 				// Check if user is asking about products
 				$productResponse = $this->processProductCommands($cleanFrom, $body);
-				if ($productResponse) {
+				if ($productResponse)
+				{
 					return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'product_processed' => true]);
 				}
 
 				// Check if user is trying to report service information
 				$serviceResponse = $this->processServiceCommands($cleanFrom, $body);
-				if ($serviceResponse) {
+				if ($serviceResponse)
+				{
 					return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'service_processed' => true]);
 				}
 
 				// Check if user sent "DEMO" command
 				$demoResponse = $this->processDemoCommand($cleanFrom, $body);
-				if ($demoResponse) {
+				if ($demoResponse)
+				{
 					return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'demo_processed' => true]);
 				}
 
 				// Check if user is requesting QR code
 				$qrResponse = $this->processQrCommand($cleanFrom, $body);
-				if ($qrResponse) {
+				if ($qrResponse)
+				{
 					return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'qr_processed' => true]);
 				}
 			}
 
 			// Automatic AI response using Claude
-			if (config('services.claude.auto_respond', false) && $channel == 'whatsapp') {
-				try {
+			if (config('services.claude.auto_respond', false) && $channel == 'whatsapp')
+			{
+				try
+				{
 					// Get recent chat history for context
 					$history = Conversation::where('channel', 'whatsapp')
-						->where(function ($query) use ($cleanFrom) {
-							$query
-								->where('from', $cleanFrom)
-								->orWhere('to', $cleanFrom);
+						->where(function ($query) use ($cleanFrom)
+						{
+						    $query
+						        ->where('from', $cleanFrom)
+						        ->orWhere('to', $cleanFrom);
 						})
 						->orderBy('created_at', 'desc')
 						->limit(10)
@@ -487,27 +532,31 @@ class TwilioService
 					$claudeResponse = $claudeService->chat($body, $history);
 
 					// If Claude responded successfully, send the response
-					if ($claudeResponse['success']) {
+					if ($claudeResponse['success'])
+					{
 						$aiMessage = $claudeResponse['text'];
 
 						// Send the AI message
 						$this->sendWhatsApp($cleanFrom, $aiMessage);
 
-						Log::info("Auto AI response sent to {$cleanFrom}: " . \Illuminate\Support\Str::limit($aiMessage, 100));
-					} else {
-						Log::warning('Failed to get AI response: ' . ($claudeResponse['message'] ?? 'Unknown error'));
+						Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
+					} else
+					{
+						Log::warning('Failed to get AI response: '.($claudeResponse['message'] ?? 'Unknown error'));
 					}
 
 					// Analyze sentiment of the incoming message
 					$this->analyzeSentiment($cleanFrom, $body);
-				} catch (\Exception $e) {
-					Log::error('Error in auto AI response: ' . $e->getMessage());
+				} catch (\Exception $e)
+				{
+					Log::error('Error in auto AI response: '.$e->getMessage());
 				}
 			}
 
 			return response()->json(['status' => 'success', 'conversation_id' => $conversation->id]);
-		} catch (\Exception $e) {
-			Log::error('Error processing incoming message: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error processing incoming message: '.$e->getMessage());
 
 			return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
 		}
@@ -523,14 +572,16 @@ class TwilioService
 	 */
 	public function sendWhatsAppTemplate($to, $templateName, $parameters = [])
 	{
-		if (!$this->isConfigured()) {
-			throw new \Exception('Twilio not configured for team: ' . ($this->team ? $this->team->name : 'No team'));
+		if (! $this->isConfigured())
+		{
+			throw new \Exception('Twilio not configured for team: '.($this->team ? $this->team->name : 'No team'));
 		}
 
-		try {
+		try
+		{
 			// Format the numbers with whatsapp: prefix
-			$formattedTo = 'whatsapp:' . $to;
-			$whatsappFromNumber = 'whatsapp:' . $this->config['whatsapp_from'];
+			$formattedTo = 'whatsapp:'.$to;
+			$whatsappFromNumber = 'whatsapp:'.$this->config['whatsapp_from'];
 
 			// Get the status callback URL for this team
 			$statusCallbackUrl = $this->team ? $this->team->getTwilioStatusCallbackUrl() : url(route('twilio.status'));
@@ -539,7 +590,8 @@ class TwilioService
 			$contentSid = null;
 			$contentVariables = null;
 
-			if (!empty($parameters)) {
+			if (! empty($parameters))
+			{
 				$contentVariables = json_encode(['1' => $parameters]);
 			}
 
@@ -583,8 +635,9 @@ class TwilioService
 			]);
 
 			return $twilioMessage;
-		} catch (\Exception $e) {
-			Log::error('Twilio WhatsApp Template Error: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Twilio WhatsApp Template Error: '.$e->getMessage());
 			throw $e;
 		}
 	}
@@ -594,20 +647,24 @@ class TwilioService
 	 */
 	private function analyzeSentiment($phoneNumber, $messageBody)
 	{
-		try {
+		try
+		{
 			// Find user by phone number
 			$phoneAsInt = is_numeric($phoneNumber) ? (int) $phoneNumber : null;
 			$user = null;
 
-			if ($phoneAsInt) {
+			if ($phoneAsInt)
+			{
 				$user = \App\Models\User::where('phone', $phoneAsInt)->first();
 			}
 
-			if (!$user) {
-				$user = \App\Models\User::where('phone', 'like', '%' . $phoneNumber . '%')->first();
+			if (! $user)
+			{
+				$user = \App\Models\User::where('phone', 'like', '%'.$phoneNumber.'%')->first();
 			}
 
-			if (!$user) {
+			if (! $user)
+			{
 				Log::info('No user found for sentiment analysis', ['phone' => $phoneNumber]);
 
 				return;
@@ -615,7 +672,8 @@ class TwilioService
 
 			// Find associated contact
 			$contact = \App\Models\Contact::where('user_id', $user->id)->first();
-			if (!$contact) {
+			if (! $contact)
+			{
 				Log::info('No contact found for sentiment analysis', ['user_id' => $user->id]);
 
 				return;
@@ -624,12 +682,13 @@ class TwilioService
 			// Analyze message for emotional indicators
 			$sentiment = $this->detectSentiment($messageBody);
 
-			if ($sentiment) {
+			if ($sentiment)
+			{
 				// Create sentiment history entry
 				\App\Models\ContactSentimentHistory::create([
 					'contact_id' => $contact->id,
 					'sentiment_id' => $sentiment['id'],
-					'notes' => 'Análisis automático de WhatsApp: ' . $sentiment['reason'],
+					'notes' => 'Análisis automático de WhatsApp: '.$sentiment['reason'],
 				]);
 
 				Log::info('Sentiment detected and recorded', [
@@ -638,8 +697,9 @@ class TwilioService
 					'message' => substr($messageBody, 0, 100),
 				]);
 			}
-		} catch (\Exception $e) {
-			Log::error('Error in sentiment analysis: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error in sentiment analysis: '.$e->getMessage());
 		}
 	}
 
@@ -730,8 +790,10 @@ class TwilioService
 		];
 
 		// Check for very negative sentiment
-		foreach ($veryNegativeKeywords as $keyword) {
-			if (strpos($message, $keyword) !== false) {
+		foreach ($veryNegativeKeywords as $keyword)
+		{
+			if (strpos($message, $keyword) !== false)
+			{
 				return [
 					'id' => 1,
 					'name' => 'Muy Negativo',
@@ -741,8 +803,10 @@ class TwilioService
 		}
 
 		// Check for negative sentiment
-		foreach ($negativeKeywords as $keyword) {
-			if (strpos($message, $keyword) !== false) {
+		foreach ($negativeKeywords as $keyword)
+		{
+			if (strpos($message, $keyword) !== false)
+			{
 				return [
 					'id' => 2,
 					'name' => 'Negativo',
@@ -752,8 +816,10 @@ class TwilioService
 		}
 
 		// Check for very positive sentiment
-		foreach ($veryPositiveKeywords as $keyword) {
-			if (strpos($message, $keyword) !== false) {
+		foreach ($veryPositiveKeywords as $keyword)
+		{
+			if (strpos($message, $keyword) !== false)
+			{
 				return [
 					'id' => 5,
 					'name' => 'Muy Positivo',
@@ -763,8 +829,10 @@ class TwilioService
 		}
 
 		// Check for positive sentiment
-		foreach ($positiveKeywords as $keyword) {
-			if (strpos($message, $keyword) !== false) {
+		foreach ($positiveKeywords as $keyword)
+		{
+			if (strpos($message, $keyword) !== false)
+			{
 				return [
 					'id' => 4,
 					'name' => 'Positivo',
@@ -774,7 +842,8 @@ class TwilioService
 		}
 
 		// Additional patterns for negative sentiment
-		if (preg_match('/no\s+(funciona|sirve|me\s+gusta|está\s+bien)/i', $message)) {
+		if (preg_match('/no\s+(funciona|sirve|me\s+gusta|está\s+bien)/i', $message))
+		{
 			return [
 				'id' => 2,
 				'name' => 'Negativo',
@@ -783,7 +852,8 @@ class TwilioService
 		}
 
 		// Additional patterns for very negative sentiment
-		if (preg_match('/es\s+una\s+(mierda|basura|estafa)/i', $message)) {
+		if (preg_match('/es\s+una\s+(mierda|basura|estafa)/i', $message))
+		{
 			return [
 				'id' => 1,
 				'name' => 'Muy Negativo',
@@ -800,25 +870,29 @@ class TwilioService
 	 */
 	public function processServiceCommands($phoneNumber, $message)
 	{
-		try {
+		try
+		{
 			// Clean and normalize the message
 			$normalizedMessage = strtolower(trim($message));
 
 			// Skip if this is a cart command (comprar, contratar, etc.)
-			if (preg_match('/^(comprar|contratar|compra|contrata|carrito|checkout|finalizar|vaciar)/i', $normalizedMessage)) {
+			if (preg_match('/^(comprar|contratar|compra|contrata|carrito|checkout|finalizar|vaciar)/i', $normalizedMessage))
+			{
 				return null;
 			}
 
 			// Find user by phone number
 			$user = $this->getUserByPhone($phoneNumber);
-			if (!$user || isset($user->is_contact)) {
+			if (! $user || isset($user->is_contact))
+			{
 				// User not found or is just a contact, skip service processing
 				return null;
 			}
 
 			// Get the user's contact for enterprises
 			$contact = Contact::where('user_id', $user->id)->first();
-			if (!$contact) {
+			if (! $contact)
+			{
 				return null;
 			}
 
@@ -847,8 +921,10 @@ class TwilioService
 			];
 
 			$containsServiceKeyword = false;
-			foreach ($serviceKeywords as $keyword) {
-				if (strpos($normalizedMessage, $keyword) !== false) {
+			foreach ($serviceKeywords as $keyword)
+			{
+				if (strpos($normalizedMessage, $keyword) !== false)
+				{
 					$containsServiceKeyword = true;
 					break;
 				}
@@ -862,7 +938,8 @@ class TwilioService
 				preg_match('/información\s+de\s+(mi\s+)?(servicio|hosting|dominio)/i', $message)
 			);
 
-			if (!$containsServiceKeyword && !$isServiceReport) {
+			if (! $containsServiceKeyword && ! $isServiceReport)
+			{
 				return null;
 			}
 
@@ -870,15 +947,18 @@ class TwilioService
 			$enterprises = $contact->enterprises()->get();
 			$responseMessage = '';
 
-			if ($enterprises->isEmpty()) {
+			if ($enterprises->isEmpty())
+			{
 				$responseMessage = "Veo que estás preguntando sobre servicios. Actualmente no tienes empresas registradas en nuestro sistema.\n\n";
 				$responseMessage .= "Para consultar sobre nuevos servicios o registrar tu empresa, puedes:\n";
 				$responseMessage .= "• Contactarnos a través de: https://revisionalpha.com/contactenos\n";
 				$responseMessage .= '• O déjanos más detalles aquí y te ayudaremos.';
-			} else {
+			} else
+			{
 				$responseMessage = "📋 *Información de tus servicios:*\n\n";
 
-				foreach ($enterprises as $enterprise) {
+				foreach ($enterprises as $enterprise)
+				{
 					$services = Service::where('enterprise_id', $enterprise->id)
 						->with(['category', 'currency'])
 						->orderBy('status', 'desc')
@@ -887,41 +967,51 @@ class TwilioService
 
 					$responseMessage .= "🏢 *{$enterprise->name}*\n";
 
-					if ($services->isEmpty()) {
+					if ($services->isEmpty())
+					{
 						$responseMessage .= "• No hay servicios registrados actualmente\n\n";
-					} else {
-						foreach ($services as $service) {
-							$statusEmoji = $service->status == 1 ? '✅' : '⚠️';
-							$responseMessage .= "{$statusEmoji} *{$service->description}*\n";
+					} else
+					{
+						foreach ($services as $service)
+						{
+						    $statusEmoji = $service->status == 1 ? '✅' : '⚠️';
+						    $responseMessage .= "{$statusEmoji} *{$service->description}*\n";
 
-							if ($service->category) {
-								$responseMessage .= "   Categoría: {$service->category->name}\n";
-							}
+						    if ($service->category)
+						    {
+						        $responseMessage .= "   Categoría: {$service->category->name}\n";
+						    }
 
-							if ($service->price) {
-								$currency = $service->currency ? $service->currency->symbol : '$';
-								$responseMessage .= "   Precio: {$currency}" . number_format($service->price, 2) . "\n";
-							}
+						    if ($service->price)
+						    {
+						        $currency = $service->currency ? $service->currency->symbol : '$';
+						        $responseMessage .= "   Precio: {$currency}".number_format($service->price, 2)."\n";
+						    }
 
-							if ($service->next_billing) {
-								$nextBilling = \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y');
-								$responseMessage .= "   Próxima facturación: {$nextBilling}\n";
-							}
+						    if ($service->next_billing)
+						    {
+						        $nextBilling = \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y');
+						        $responseMessage .= "   Próxima facturación: {$nextBilling}\n";
+						    }
 
-							if ($service->expires_at) {
-								$expiresAt = \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y');
-								$daysUntilExpiry = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($service->expires_at), false);
+						    if ($service->expires_at)
+						    {
+						        $expiresAt = \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y');
+						        $daysUntilExpiry = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($service->expires_at), false);
 
-								if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0) {
-									$responseMessage .= "   ⚠️ Expira: {$expiresAt} (en {$daysUntilExpiry} días)\n";
-								} elseif ($daysUntilExpiry < 0) {
-									$responseMessage .= "   🔴 Expiró: {$expiresAt}\n";
-								} else {
-									$responseMessage .= "   Expira: {$expiresAt}\n";
-								}
-							}
+						        if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0)
+						        {
+						            $responseMessage .= "   ⚠️ Expira: {$expiresAt} (en {$daysUntilExpiry} días)\n";
+						        } elseif ($daysUntilExpiry < 0)
+						        {
+						            $responseMessage .= "   🔴 Expiró: {$expiresAt}\n";
+						        } else
+						        {
+						            $responseMessage .= "   Expira: {$expiresAt}\n";
+						        }
+						    }
 
-							$responseMessage .= "\n";
+						    $responseMessage .= "\n";
 						}
 					}
 				}
@@ -946,8 +1036,9 @@ class TwilioService
 			]);
 
 			return ['success' => true, 'message' => 'Service information sent'];
-		} catch (\Exception $e) {
-			Log::error('Error processing service commands: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error processing service commands: '.$e->getMessage());
 
 			return null;
 		}
@@ -958,7 +1049,8 @@ class TwilioService
 	 */
 	public function processProductCommands($phoneNumber, $message)
 	{
-		try {
+		try
+		{
 			// Clean and normalize the message
 			$normalizedMessage = strtolower(trim($message));
 
@@ -979,8 +1071,10 @@ class TwilioService
 			];
 
 			$containsProductKeyword = false;
-			foreach ($productKeywords as $keyword) {
-				if (strpos($normalizedMessage, $keyword) !== false) {
+			foreach ($productKeywords as $keyword)
+			{
+				if (strpos($normalizedMessage, $keyword) !== false)
+				{
 					$containsProductKeyword = true;
 					break;
 				}
@@ -994,7 +1088,8 @@ class TwilioService
 				preg_match('/precios?/i', $message)
 			);
 
-			if (!$containsProductKeyword && !$isProductCommand) {
+			if (! $containsProductKeyword && ! $isProductCommand)
+			{
 				return null;
 			}
 
@@ -1008,8 +1103,9 @@ class TwilioService
 			]);
 
 			return ['success' => true, 'message' => $catalogMessage];
-		} catch (\Exception $e) {
-			Log::error('Error processing product commands: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error processing product commands: '.$e->getMessage());
 
 			return null;
 		}
@@ -1020,12 +1116,14 @@ class TwilioService
 	 */
 	private function sendProductCatalog($phoneNumber)
 	{
-		try {
+		try
+		{
 			// Find user and their team for product filtering
 			$user = $this->getUserByPhone($phoneNumber);
 			$teamId = 1;  // Default to team 1 for demo
 
-			if ($user && !isset($user->is_contact) && $user->currentTeam) {
+			if ($user && ! isset($user->is_contact) && $user->currentTeam)
+			{
 				$teamId = $user->currentTeam->id;
 			}
 
@@ -1038,7 +1136,8 @@ class TwilioService
 				->orderBy('price')
 				->get();
 
-			if ($products->isEmpty()) {
+			if ($products->isEmpty())
+			{
 				$message = "📦 *Catálogo de Productos*\n\n";
 				$message .= "Actualmente no hay productos disponibles.\n\n";
 				$message .= '📞 Contacta a soporte: https://revisionalpha.com/contactenos';
@@ -1053,14 +1152,16 @@ class TwilioService
 			// Group products by category
 			$productsByCategory = $products->groupBy('category.name');
 
-			foreach ($productsByCategory as $categoryName => $categoryProducts) {
+			foreach ($productsByCategory as $categoryName => $categoryProducts)
+			{
 				$message .= "📂 *{$categoryName}*\n";
 
-				foreach ($categoryProducts as $product) {
+				foreach ($categoryProducts as $product)
+				{
 					$currency = $product->currency ? $product->currency->symbol : '$';
 					$message .= "• *{$product->name}*\n";
-					$message .= "  💰 {$currency}" . number_format($product->price, 2) . "\n";
-					$message .= '  📝 ' . \Illuminate\Support\Str::limit($product->description, 80) . "\n\n";
+					$message .= "  💰 {$currency}".number_format($product->price, 2)."\n";
+					$message .= '  📝 '.\Illuminate\Support\Str::limit($product->description, 80)."\n\n";
 				}
 			}
 
@@ -1072,8 +1173,9 @@ class TwilioService
 			$this->sendWhatsApp($phoneNumber, $message);
 
 			return $message;
-		} catch (\Exception $e) {
-			Log::error('Error sending product catalog: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error sending product catalog: '.$e->getMessage());
 
 			// Fallback message
 			$fallbackMessage = "📦 *Catálogo de Productos*\n\n";
@@ -1095,14 +1197,17 @@ class TwilioService
 	 */
 	public function processDemoCommand($phoneNumber, $message)
 	{
-		try {
+		try
+		{
 			$normalizedMessage = trim($message);
 
 			// Check if message is exactly "DEMO" (case sensitive)
-			if ($normalizedMessage === 'DEMO') {
+			if ($normalizedMessage === 'DEMO')
+			{
 				// Check if user already exists
 				$existingUser = $this->getUserByPhone($phoneNumber);
-				if ($existingUser && !isset($existingUser->is_contact)) {
+				if ($existingUser && ! isset($existingUser->is_contact))
+				{
 					$this->sendWhatsApp($phoneNumber, "¡Hola! Ya tienes una cuenta registrada en nuestro sistema. 😊\n\nPuedes acceder a tu área de cliente o contactarnos si necesitas ayuda.");
 
 					return ['success' => true, 'message' => 'User already exists'];
@@ -1119,13 +1224,15 @@ class TwilioService
 
 			// Check if we're in a demo registration flow
 			$demoState = $this->getDemoState($phoneNumber);
-			if ($demoState) {
+			if ($demoState)
+			{
 				return $this->handleDemoRegistrationStep($phoneNumber, $message, $demoState);
 			}
 
 			return null;
-		} catch (\Exception $e) {
-			Log::error('Error processing demo command: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error processing demo command: '.$e->getMessage());
 
 			return null;
 		}
@@ -1136,10 +1243,13 @@ class TwilioService
 	 */
 	private function handleDemoRegistrationStep($phoneNumber, $message, $state)
 	{
-		try {
-			switch ($state) {
+		try
+		{
+			switch ($state)
+			{
 				case 'awaiting_name':
-					if (strlen(trim($message)) < 2) {
+					if (strlen(trim($message)) < 2)
+					{
 						$this->sendWhatsApp($phoneNumber, '❌ Por favor, ingresa un nombre válido (mínimo 2 caracteres):');
 
 						return ['success' => false, 'message' => 'Invalid name'];
@@ -1156,7 +1266,8 @@ class TwilioService
 					$email = trim($message);
 
 					// Validate email format
-					if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+					if (! filter_var($email, FILTER_VALIDATE_EMAIL))
+					{
 						$this->sendWhatsApp($phoneNumber, '❌ Por favor, ingresa un email válido (ejemplo: tu@email.com):');
 
 						return ['success' => false, 'message' => 'Invalid email'];
@@ -1164,7 +1275,8 @@ class TwilioService
 
 					// Check if email already exists
 					$existingUser = \App\Models\User::where('email', $email)->first();
-					if ($existingUser) {
+					if ($existingUser)
+					{
 						$this->sendWhatsApp($phoneNumber, "❌ Este email ya está registrado en nuestro sistema.\n\n📧 Por favor, usa otro email:");
 
 						return ['success' => false, 'message' => 'Email already exists'];
@@ -1183,8 +1295,9 @@ class TwilioService
 
 					return null;
 			}
-		} catch (\Exception $e) {
-			Log::error('Error handling demo registration step: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error handling demo registration step: '.$e->getMessage());
 			$this->clearDemoState($phoneNumber);
 
 			return null;
@@ -1196,7 +1309,8 @@ class TwilioService
 	 */
 	private function createDemoUser($phoneNumber, $email)
 	{
-		try {
+		try
+		{
 			$name = $this->getDemoData($phoneNumber, 'name');
 			$cleanPhone = \App\Helpers\PhoneHelper::clean($phoneNumber, '54', true);
 
@@ -1229,7 +1343,8 @@ class TwilioService
 
 			// Associate contact with Idoneo Technologies (ID: 2)
 			$idoneoTech = \App\Models\Enterprise::find(2);
-			if ($idoneoTech) {
+			if ($idoneoTech)
+			{
 				$contact->enterprises()->attach(2);
 			}
 
@@ -1259,8 +1374,9 @@ class TwilioService
 			]);
 
 			return ['success' => true, 'message' => 'Demo user created'];
-		} catch (\Exception $e) {
-			Log::error('Error creating demo user: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error creating demo user: '.$e->getMessage());
 			$this->sendWhatsApp($phoneNumber, '❌ Hubo un error creando tu cuenta demo. Por favor, intenta más tarde o contacta soporte.');
 			$this->clearDemoData($phoneNumber);
 
@@ -1328,26 +1444,33 @@ class TwilioService
 		// Check if user is requesting QR code
 		$qrKeywords = ['qr', 'QR', 'codigo', 'código', 'qrcode', 'QRCODE'];
 
-		if (!in_array(trim($message), $qrKeywords)) {
+		if (! in_array(trim($message), $qrKeywords))
+		{
 			return false;
 		}
 
-		try {
+		try
+		{
 			// Get user information
 			$user = $this->getUserByPhone($phoneNumber);
 
-			if (!$user) {
+			if (! $user)
+			{
 				// If no user found, send generic QR
 				$this->sendGenericQr($phoneNumber);
+
 				return true;
 			}
 
 			// Generate personalized QR with user data
 			$this->sendPersonalizedQr($phoneNumber, $user);
+
 			return true;
-		} catch (\Exception $e) {
-			Log::error('Error processing QR command: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error processing QR command: '.$e->getMessage());
 			$this->sendWhatsApp($phoneNumber, '❌ Hubo un error generando tu código QR. Por favor, intenta más tarde.');
+
 			return true;
 		}
 	}
@@ -1357,14 +1480,16 @@ class TwilioService
 	 */
 	private function sendGenericQr($phoneNumber)
 	{
-		try {
+		try
+		{
 			// Generate QR code image
 			$qrImagePath = $this->generateQrCodeImage(
 				'https://revisionalpha.com/contactenos?name=NOMBRE&email=EMAIL&phone=PHONE&message=FRASE_INSPIRE_LARAVEL',
-				'generic_qr'
+				'generic_qr',
 			);
 
-			if ($qrImagePath) {
+			if ($qrImagePath)
+			{
 				// Send QR image via WhatsApp
 				$this->sendWhatsAppWithMedia($phoneNumber, $qrImagePath, 'generic_qr');
 
@@ -1379,12 +1504,14 @@ class TwilioService
 				$message .= "🎯 *¿Necesitas ayuda?* Responde con 'ayuda' para más información.";
 
 				$this->sendWhatsApp($phoneNumber, $message);
-			} else {
+			} else
+			{
 				// Fallback to text-only if image generation fails
 				$this->sendGenericQrTextOnly($phoneNumber);
 			}
-		} catch (\Exception $e) {
-			Log::error('Error generating generic QR: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error generating generic QR: '.$e->getMessage());
 			$this->sendGenericQrTextOnly($phoneNumber);
 		}
 	}
@@ -1394,7 +1521,8 @@ class TwilioService
 	 */
 	private function sendPersonalizedQr($phoneNumber, $user)
 	{
-		try {
+		try
+		{
 			// Prepare user data
 			$name = $user->name ?? 'Usuario';
 			$email = $user->email ?? 'email@ejemplo.com';
@@ -1404,17 +1532,18 @@ class TwilioService
 			$personalMessage = "¡Hola {$name}! Estamos aquí para ayudarte con tus necesidades tecnológicas.";
 
 			// Generate personalized URL
-			$personalizedUrl = 'https://revisionalpha.com/contactenos?' . http_build_query([
+			$personalizedUrl = 'https://revisionalpha.com/contactenos?'.http_build_query([
 				'name' => $name,
 				'email' => $email,
 				'phone' => $phone,
-				'message' => $personalMessage
+				'message' => $personalMessage,
 			]);
 
 			// Generate QR code image
 			$qrImagePath = $this->generateQrCodeImage($personalizedUrl, 'personalized_qr');
 
-			if ($qrImagePath) {
+			if ($qrImagePath)
+			{
 				// Send QR image via WhatsApp
 				$this->sendWhatsAppWithMedia($phoneNumber, $qrImagePath, 'personalized_qr');
 
@@ -1426,7 +1555,7 @@ class TwilioService
 				$message .= "• Teléfono: {$phone}\n";
 				$message .= "• Mensaje: {$personalMessage}\n\n";
 				$message .= "🔗 *Enlace personalizado:*\n";
-				$message .= $personalizedUrl . "\n\n";
+				$message .= $personalizedUrl."\n\n";
 				$message .= "💡 *¿Qué puedes hacer?*\n";
 				$message .= "• Compartir este QR con colegas\n";
 				$message .= "• Usarlo en presentaciones\n";
@@ -1434,12 +1563,14 @@ class TwilioService
 				$message .= "🎯 *¿Necesitas modificar algo?* Responde con 'modificar' para cambiar los datos.";
 
 				$this->sendWhatsApp($phoneNumber, $message);
-			} else {
+			} else
+			{
 				// Fallback to text-only if image generation fails
 				$this->sendPersonalizedQrTextOnly($phoneNumber, $user);
 			}
-		} catch (\Exception $e) {
-			Log::error('Error generating personalized QR: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error generating personalized QR: '.$e->getMessage());
 			$this->sendPersonalizedQrTextOnly($phoneNumber, $user);
 		}
 	}
@@ -1449,7 +1580,8 @@ class TwilioService
 	 */
 	private function generateQrCodeImage($data, $filename)
 	{
-		try {
+		try
+		{
 			// Create QR code instance with PNG output
 			$qrcode = new \chillerlan\QRCode\QRCode(new QROptions([
 				'outputType' => QROutputInterface::GDIMAGE_PNG,
@@ -1464,21 +1596,24 @@ class TwilioService
 
 			// Create storage directory if it doesn't exist
 			$storagePath = storage_path('app/public/qr-codes');
-			if (!file_exists($storagePath)) {
+			if (! file_exists($storagePath))
+			{
 				mkdir($storagePath, 0755, true);
 			}
 
 			// Generate unique filename
-			$uniqueFilename = $filename . '_' . time() . '_' . uniqid() . '.png';
-			$fullPath = $storagePath . '/' . $uniqueFilename;
+			$uniqueFilename = $filename.'_'.time().'_'.uniqid().'.png';
+			$fullPath = $storagePath.'/'.$uniqueFilename;
 
 			// Save binary PNG to file
 			file_put_contents($fullPath, $pngBinary);
 
 			// Return the public URL path
-			return 'storage/qr-codes/' . $uniqueFilename;
-		} catch (\Exception $e) {
-			Log::error('Error generating QR code image: ' . $e->getMessage());
+			return 'storage/qr-codes/'.$uniqueFilename;
+		} catch (\Exception $e)
+		{
+			Log::error('Error generating QR code image: '.$e->getMessage());
+
 			return false;
 		}
 	}
@@ -1488,17 +1623,20 @@ class TwilioService
 	 */
 	private function sendWhatsAppWithMedia($phoneNumber, $mediaPath, $type)
 	{
-		try {
+		try
+		{
 			$fullMediaPath = public_path($mediaPath);
 
-			if (!file_exists($fullMediaPath)) {
+			if (! file_exists($fullMediaPath))
+			{
 				Log::error("Media file not found: {$fullMediaPath}");
+
 				return false;
 			}
 
 			// Format phone number for WhatsApp
-			$whatsappTo = 'whatsapp:' . $this->formatPhoneNumber($phoneNumber);
-			$whatsappFrom = 'whatsapp:' . $this->config['whatsapp_from'];
+			$whatsappTo = 'whatsapp:'.$this->formatPhoneNumber($phoneNumber);
+			$whatsappFrom = 'whatsapp:'.$this->config['whatsapp_from'];
 
 			// Get file info
 			$fileSize = filesize($fullMediaPath);
@@ -1506,8 +1644,10 @@ class TwilioService
 			$mimeType = $this->getMimeType($fileExtension);
 
 			// Check file size (Twilio limit: 16MB for media)
-			if ($fileSize > 16 * 1024 * 1024) {
+			if ($fileSize > 16 * 1024 * 1024)
+			{
 				Log::error("File too large for Twilio: {$fileSize} bytes");
+
 				return false;
 			}
 
@@ -1515,53 +1655,60 @@ class TwilioService
 			$publicUrl = url($mediaPath);
 
 			// For local development, we'll use a placeholder or skip media
-			if (strpos($publicUrl, 'localhost') !== false || strpos($publicUrl, '.test') !== false) {
+			if (strpos($publicUrl, 'localhost') !== false || strpos($publicUrl, '.test') !== false)
+			{
 				Log::info("Local environment detected, skipping media send for: {$publicUrl}");
 				// In local environment, we'll just send the text message
 				$message = $this->client->messages->create(
 					$whatsappTo,
 					[
 						'from' => $whatsappFrom,
-						'body' => "🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.\n\n🔗 Enlace directo: {$publicUrl}"
-					]
+						'body' => "🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.\n\n🔗 Enlace directo: {$publicUrl}",
+					],
 				);
-			} else {
+			} else
+			{
 				// Production environment - send with media
 				$message = $this->client->messages->create(
 					$whatsappTo,
 					[
 						'from' => $whatsappFrom,
 						'body' => '🔄 Tu código QR está listo! Escanéalo para acceder a revision alpha.',
-						'mediaUrl' => [$publicUrl]
-					]
+						'mediaUrl' => [$publicUrl],
+					],
 				);
 			}
 
-			if ($message->sid) {
+			if ($message->sid)
+			{
 				Log::info('WhatsApp media message sent successfully', [
 					'message_sid' => $message->sid,
 					'to' => $phoneNumber,
 					'media_path' => $mediaPath,
 					'type' => $type,
-					'status' => $message->status
+					'status' => $message->status,
 				]);
 
 				// Save to conversation history
 				$this->saveMediaMessageToHistory($phoneNumber, $message, $mediaPath, $type);
 
 				return true;
-			} else {
+			} else
+			{
 				Log::error('Failed to send WhatsApp media message: No message SID returned');
+
 				return false;
 			}
-		} catch (\Exception $e) {
-			Log::error('Error sending WhatsApp media: ' . $e->getMessage(), [
+		} catch (\Exception $e)
+		{
+			Log::error('Error sending WhatsApp media: '.$e->getMessage(), [
 				'phone_number' => $phoneNumber,
 				'media_path' => $mediaPath,
 				'type' => $type,
 				'error' => $e->getMessage(),
-				'trace' => $e->getTraceAsString()
+				'trace' => $e->getTraceAsString(),
 			]);
+
 			return false;
 		}
 	}
@@ -1575,12 +1722,14 @@ class TwilioService
 		$cleanNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
 
 		// Ensure it starts with country code
-		if (strlen($cleanNumber) === 9 && substr($cleanNumber, 0, 1) === '9') {
+		if (strlen($cleanNumber) === 9 && substr($cleanNumber, 0, 1) === '9')
+		{
 			// Argentine mobile number, add 54
-			$cleanNumber = '54' . $cleanNumber;
-		} elseif (strlen($cleanNumber) === 10 && substr($cleanNumber, 0, 2) === '15') {
+			$cleanNumber = '54'.$cleanNumber;
+		} elseif (strlen($cleanNumber) === 10 && substr($cleanNumber, 0, 2) === '15')
+		{
 			// Argentine mobile with 15 prefix, replace with 54 9
-			$cleanNumber = '54' . substr($cleanNumber, 2);
+			$cleanNumber = '54'.substr($cleanNumber, 2);
 		}
 
 		return $cleanNumber;
@@ -1609,7 +1758,8 @@ class TwilioService
 	 */
 	private function saveMediaMessageToHistory($phoneNumber, $twilioMessage, $mediaPath, $type)
 	{
-		try {
+		try
+		{
 			$conversation = Conversation::create([
 				'message_sid' => $twilioMessage->sid,
 				'channel' => 'whatsapp',
@@ -1624,24 +1774,25 @@ class TwilioService
 						'url' => url($mediaPath),
 						'content_type' => 'image/png',
 						'type' => $type,
-						'local_path' => $mediaPath
-					]
+						'local_path' => $mediaPath,
+					],
 				],
 				'metadata' => [
 					'twilio_message_sid' => $twilioMessage->sid,
 					'qr_type' => $type,
 					'media_sent' => true,
-					'file_path' => $mediaPath
+					'file_path' => $mediaPath,
 				],
 			]);
 
 			Log::info('Media message saved to conversation history', [
 				'conversation_id' => $conversation->id,
 				'message_sid' => $twilioMessage->sid,
-				'phone_number' => $phoneNumber
+				'phone_number' => $phoneNumber,
 			]);
-		} catch (\Exception $e) {
-			Log::error('Error saving media message to history: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error saving media message to history: '.$e->getMessage());
 		}
 	}
 
@@ -1673,11 +1824,11 @@ class TwilioService
 
 		$personalMessage = "¡Hola {$name}! Estamos aquí para ayudarte con tus necesidades tecnológicas.";
 
-		$personalizedUrl = 'https://revisionalpha.com/contactenos?' . http_build_query([
+		$personalizedUrl = 'https://revisionalpha.com/contactenos?'.http_build_query([
 			'name' => $name,
 			'email' => $email,
 			'phone' => $phone,
-			'message' => $personalMessage
+			'message' => $personalMessage,
 		]);
 
 		$message = "🔄 Generando tu código QR personalizado...\n\n";
@@ -1689,7 +1840,7 @@ class TwilioService
 		$message .= "• Teléfono: {$phone}\n";
 		$message .= "• Mensaje: {$personalMessage}\n\n";
 		$message .= "🔗 *Enlace personalizado:*\n";
-		$message .= $personalizedUrl . "\n\n";
+		$message .= $personalizedUrl."\n\n";
 		$message .= "💡 *¿Qué puedes hacer?*\n";
 		$message .= "• Compartir este QR con colegas\n";
 		$message .= "• Usarlo en presentaciones\n";
@@ -1704,56 +1855,61 @@ class TwilioService
 	 */
 	private function sendWhatsAppWithButtons($phoneNumber, $message, $buttons)
 	{
-		try {
-			$formattedTo = 'whatsapp:' . $phoneNumber;
+		try
+		{
+			$formattedTo = 'whatsapp:'.$phoneNumber;
 			$statusCallbackUrl = url(route('twilio.status'));
 
 			// Format buttons for Twilio WhatsApp Interactive Messages
 			$interactiveData = [
 				'type' => 'button',
 				'body' => [
-					'text' => $message
+					'text' => $message,
 				],
 				'action' => [
-					'buttons' => array_map(function ($button) {
+					'buttons' => array_map(function ($button)
+					{
 						return [
-							'type' => 'reply',
-							'reply' => [
-								'id' => $button['reply']['id'],
-								'title' => substr($button['reply']['title'], 0, 20)  // WhatsApp limit: 20 chars
-							]
+						    'type' => 'reply',
+						    'reply' => [
+						        'id' => $button['reply']['id'],
+						        'title' => substr($button['reply']['title'], 0, 20),  // WhatsApp limit: 20 chars
+						    ],
 						];
-					}, $buttons)
-				]
+					}, $buttons),
+				],
 			];
 
 			// Try to send interactive message (requires Twilio configuration)
-			try {
+			try
+			{
 				$twilioMessage = $this->client->messages->create(
 					$formattedTo,
 					[
-						'from' => 'whatsapp:' . $this->config['whatsapp_from'],
+						'from' => 'whatsapp:'.$this->config['whatsapp_from'],
 						'statusCallback' => $statusCallbackUrl,
-						'body' => json_encode($interactiveData)  // Send as JSON for now
-					]
+						'body' => json_encode($interactiveData),  // Send as JSON for now
+					],
 				);
-			} catch (\Exception $interactiveError) {
+			} catch (\Exception $interactiveError)
+			{
 				// Fallback: Send as regular message with numbered options
 				Log::warning('Interactive buttons not supported, using text fallback');
 
-				$fallbackMessage = $message . "\n\n";
-				foreach ($buttons as $index => $button) {
-					$fallbackMessage .= ($index + 1) . '. ' . $button['reply']['title'] . "\n";
+				$fallbackMessage = $message."\n\n";
+				foreach ($buttons as $index => $button)
+				{
+					$fallbackMessage .= ($index + 1).'. '.$button['reply']['title']."\n";
 				}
 				$fallbackMessage .= "\nResponde con el número de tu opción.";
 
 				$twilioMessage = $this->client->messages->create(
 					$formattedTo,
 					[
-						'from' => 'whatsapp:' . $this->config['whatsapp_from'],
+						'from' => 'whatsapp:'.$this->config['whatsapp_from'],
 						'statusCallback' => $statusCallbackUrl,
-						'body' => $fallbackMessage
-					]
+						'body' => $fallbackMessage,
+					],
 				);
 			}
 
@@ -1772,12 +1928,13 @@ class TwilioService
 			Log::info('WhatsApp message with buttons sent', [
 				'to' => $phoneNumber,
 				'sid' => $twilioMessage->sid,
-				'buttons_count' => count($buttons)
+				'buttons_count' => count($buttons),
 			]);
 
 			return $twilioMessage;
-		} catch (\Exception $e) {
-			Log::error('Error sending WhatsApp with buttons: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error sending WhatsApp with buttons: '.$e->getMessage());
 
 			// Fallback to regular message
 			return $this->sendWhatsApp($phoneNumber, $message);
@@ -1789,13 +1946,14 @@ class TwilioService
 	 */
 	public function processCartCommands($phoneNumber, $message)
 	{
-		try {
+		try
+		{
 			// DEBUG: Log phone number and message for troubleshooting
 			Log::info('Cart command received', [
 				'phone_number' => $phoneNumber,
 				'message' => $message,
 				'phone_length' => strlen($phoneNumber),
-				'phone_format' => 'Raw from WhatsApp'
+				'phone_format' => 'Raw from WhatsApp',
 			]);
 
 			// Clean and normalize the message
@@ -1805,7 +1963,8 @@ class TwilioService
 			$user = $this->getUserByPhone($phoneNumber);
 			$teamId = 1;  // Default to team 1 for demo
 
-			if ($user && !isset($user->is_contact) && $user->currentTeam) {
+			if ($user && ! isset($user->is_contact) && $user->currentTeam)
+			{
 				$teamId = $user->currentTeam->id;
 			}
 
@@ -1818,43 +1977,52 @@ class TwilioService
 				'phone_number' => $phoneNumber,
 				'cart_items_count' => $currentCartItems->count(),
 				'cart_total' => Cart::getTotal(),
-				'storage_key' => 'cart_' . $phoneNumber
+				'storage_key' => 'cart_'.$phoneNumber,
 			]);
 
 			// Check for checkout confirmation commands (YES responses)
-			if (in_array($normalizedMessage, ['si', 'sí', 'yes', 'confirmar', 'aceptar', 'proceder'])) {
+			if (in_array($normalizedMessage, ['si', 'sí', 'yes', 'confirmar', 'aceptar', 'proceder']))
+			{
 				return $this->confirmCheckout($phoneNumber, $teamId);
 			}
 
 			// Check for continue shopping commands (NO responses)
-			if (in_array($normalizedMessage, ['no', 'nah', 'seguir comprando', 'continuar', 'agregar mas', 'cancelar'])) {
+			if (in_array($normalizedMessage, ['no', 'nah', 'seguir comprando', 'continuar', 'agregar mas', 'cancelar']))
+			{
 				return $this->continueShoppingFromCheckout($phoneNumber);
 			}
 
 			// Check for add to cart commands (comprar, contratar)
-			if (preg_match('/^(comprar|contratar|compra|contrata)\s+(.+)/i', $normalizedMessage, $matches)) {
+			if (preg_match('/^(comprar|contratar|compra|contrata)\s+(.+)/i', $normalizedMessage, $matches))
+			{
 				$productName = trim($matches[2]);
+
 				return $this->addToCart($phoneNumber, $productName, $teamId);
 			}
 
 			// Check for cart view commands
-			if (in_array($normalizedMessage, ['carrito', 'ver carrito', 'mi carrito', 'cart'])) {
+			if (in_array($normalizedMessage, ['carrito', 'ver carrito', 'mi carrito', 'cart']))
+			{
 				return $this->viewCart($phoneNumber, $teamId);
 			}
 
 			// Check for clear cart commands
-			if (in_array($normalizedMessage, ['vaciar carrito', 'limpiar carrito', 'borrar carrito', 'clear cart'])) {
+			if (in_array($normalizedMessage, ['vaciar carrito', 'limpiar carrito', 'borrar carrito', 'clear cart']))
+			{
 				return $this->clearCart($phoneNumber);
 			}
 
 			// Check for checkout commands
-			if (in_array($normalizedMessage, ['checkout', 'finalizar', 'finalizar compra', 'pagar', 'comprar todo'])) {
+			if (in_array($normalizedMessage, ['checkout', 'finalizar', 'finalizar compra', 'pagar', 'comprar todo']))
+			{
 				return $this->initiateCheckout($phoneNumber, $teamId);
 			}
 
 			return null;
-		} catch (\Exception $e) {
-			Log::error('Error processing cart commands: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error processing cart commands: '.$e->getMessage());
+
 			return null;
 		}
 	}
@@ -1864,7 +2032,8 @@ class TwilioService
 	 */
 	private function addToCart($phoneNumber, $productName, $teamId)
 	{
-		try {
+		try
+		{
 			// Search for product by name
 			$product = \App\Models\Product::where('team_id', $teamId)
 				->where('name', 'LIKE', "%{$productName}%")
@@ -1872,12 +2041,14 @@ class TwilioService
 				->where('whatsapp_enabled', true)
 				->first();
 
-			if (!$product) {
+			if (! $product)
+			{
 				$response = "❌ **Producto no encontrado**: '{$productName}'\n\n";
 				$response .= "📋 Escribe 'productos' para ver nuestro catálogo completo\n";
 				$response .= '💡 **Tip**: Usa el nombre exacto del producto';
 
 				$this->sendWhatsApp($phoneNumber, $response);
+
 				return ['success' => false, 'message' => 'Product not found'];
 			}
 
@@ -1885,16 +2056,18 @@ class TwilioService
 			$cartItems = Cart::getContent();
 			$existingItem = $cartItems->where('id', $product->id)->first();
 
-			if ($existingItem) {
+			if ($existingItem)
+			{
 				// Update quantity
 				Cart::update($product->id, [
 					'quantity' => [
 						'relative' => false,
-						'value' => $existingItem->quantity + 1
-					]
+						'value' => $existingItem->quantity + 1,
+					],
 				]);
 				$quantity = $existingItem->quantity + 1;
-			} else {
+			} else
+			{
 				// Add new item
 				Cart::add([
 					'id' => $product->id,
@@ -1906,7 +2079,7 @@ class TwilioService
 						'currency_id' => $product->currency_id,
 						'description' => $product->description,
 						'category_name' => $product->category->name ?? '',
-					]
+					],
 				]);
 				$quantity = 1;
 			}
@@ -1914,10 +2087,10 @@ class TwilioService
 			$currency = $product->currency ? $product->currency->symbol : '$';
 
 			$response = "✅ **{$product->name}** agregado al carrito!\n\n";
-			$response .= "💰 **Precio**: {$currency}" . number_format($product->price, 2) . "\n";
+			$response .= "💰 **Precio**: {$currency}".number_format($product->price, 2)."\n";
 			$response .= "📦 **Cantidad**: {$quantity}\n";
-			$response .= '🏷️ **Categoría**: ' . ($product->category->name ?? 'General') . "\n\n";
-			$response .= "🛒 **Total del carrito**: {$currency}" . number_format(Cart::getTotal(), 2) . "\n\n";
+			$response .= '🏷️ **Categoría**: '.($product->category->name ?? 'General')."\n\n";
+			$response .= "🛒 **Total del carrito**: {$currency}".number_format(Cart::getTotal(), 2)."\n\n";
 			$response .= "**Opciones:**\n";
 			$response .= "• Escribe 'carrito' para ver todos tus productos\n";
 			$response .= "• Escribe 'comprar [producto]' para agregar más\n";
@@ -1930,13 +2103,15 @@ class TwilioService
 				'product_id' => $product->id,
 				'product_name' => $product->name,
 				'quantity' => $quantity,
-				'cart_total' => Cart::getTotal()
+				'cart_total' => Cart::getTotal(),
 			]);
 
 			return ['success' => true, 'message' => 'Product added to cart'];
-		} catch (\Exception $e) {
-			Log::error('Error adding to cart: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error adding to cart: '.$e->getMessage());
 			$this->sendWhatsApp($phoneNumber, '❌ Error al agregar producto. Inténtalo nuevamente.');
+
 			return ['success' => false, 'message' => 'Error adding to cart'];
 		}
 	}
@@ -1946,33 +2121,38 @@ class TwilioService
 	 */
 	private function viewCart($phoneNumber, $teamId)
 	{
-		try {
+		try
+		{
 			$cartItems = Cart::getContent();
 
-			if ($cartItems->isEmpty()) {
+			if ($cartItems->isEmpty())
+			{
 				$response = "🛒 **Tu carrito está vacío**\n\n";
 				$response .= "📋 Escribe 'productos' para ver nuestro catálogo\n";
 				$response .= "💡 **Tip**: Usa 'comprar [producto]' para agregar items";
 
 				$this->sendWhatsApp($phoneNumber, $response);
+
 				return ['success' => true, 'message' => $response];
 			}
 
 			$response = "🛒 **Tu Carrito de Compras**\n\n";
 
-			foreach ($cartItems as $item) {
+			foreach ($cartItems as $item)
+			{
 				$response .= "• **{$item->name}**\n";
-				$response .= '  💰 $' . number_format($item->price, 2) . " x {$item->quantity}\n";
-				$response .= '  💵 Subtotal: $' . number_format($item->price * $item->quantity, 2) . "\n";
+				$response .= '  💰 $'.number_format($item->price, 2)." x {$item->quantity}\n";
+				$response .= '  💵 Subtotal: $'.number_format($item->price * $item->quantity, 2)."\n";
 
-				if (!empty($item->attributes->category_name)) {
+				if (! empty($item->attributes->category_name))
+				{
 					$response .= "  🏷️ {$item->attributes->category_name}\n";
 				}
 				$response .= "\n";
 			}
 
-			$response .= '💰 **TOTAL: $' . number_format(Cart::getTotal(), 2) . "**\n";
-			$response .= '📦 **Items**: ' . Cart::getTotalQuantity() . "\n\n";
+			$response .= '💰 **TOTAL: $'.number_format(Cart::getTotal(), 2)."**\n";
+			$response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
 
 			$response .= "**Opciones:**\n";
 			$response .= "• Escribe 'checkout' para finalizar tu compra\n";
@@ -1984,13 +2164,15 @@ class TwilioService
 			Log::info('Cart viewed', [
 				'phone' => $phoneNumber,
 				'items_count' => $cartItems->count(),
-				'total' => Cart::getTotal()
+				'total' => Cart::getTotal(),
 			]);
 
 			return ['success' => true, 'message' => $response];
-		} catch (\Exception $e) {
-			Log::error('Error viewing cart: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error viewing cart: '.$e->getMessage());
 			$this->sendWhatsApp($phoneNumber, '❌ Error al mostrar carrito. Inténtalo nuevamente.');
+
 			return ['success' => false, 'message' => 'Error viewing cart'];
 		}
 	}
@@ -2000,7 +2182,8 @@ class TwilioService
 	 */
 	private function clearCart($phoneNumber)
 	{
-		try {
+		try
+		{
 			Cart::clear();
 
 			$response = "🗑️ **Carrito vaciado exitosamente**\n\n";
@@ -2012,9 +2195,11 @@ class TwilioService
 			Log::info('Cart cleared', ['phone' => $phoneNumber]);
 
 			return ['success' => true, 'message' => 'Cart cleared'];
-		} catch (\Exception $e) {
-			Log::error('Error clearing cart: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error clearing cart: '.$e->getMessage());
 			$this->sendWhatsApp($phoneNumber, '❌ Error al vaciar carrito. Inténtalo nuevamente.');
+
 			return ['success' => false, 'message' => 'Error clearing cart'];
 		}
 	}
@@ -2024,14 +2209,17 @@ class TwilioService
 	 */
 	private function initiateCheckout($phoneNumber, $teamId)
 	{
-		try {
+		try
+		{
 			$cartItems = Cart::getContent();
 
-			if ($cartItems->isEmpty()) {
+			if ($cartItems->isEmpty())
+			{
 				$response = "❌ **Tu carrito está vacío**\n\n";
 				$response .= "📋 Escribe 'productos' para ver nuestro catálogo";
 
 				$this->sendWhatsApp($phoneNumber, $response);
+
 				return ['success' => false, 'message' => $response];
 			}
 
@@ -2039,12 +2227,13 @@ class TwilioService
 
 			$response = "🛒 **Resumen de tu compra**\n\n";
 
-			foreach ($cartItems as $item) {
-				$response .= "• {$item->name} x{$item->quantity} - \$" . number_format($item->price * $item->quantity, 2) . "\n";
+			foreach ($cartItems as $item)
+			{
+				$response .= "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n";
 			}
 
-			$response .= "\n💰 **TOTAL: \$" . number_format($total, 2) . "**\n";
-			$response .= '📦 **Items**: ' . Cart::getTotalQuantity() . "\n\n";
+			$response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
+			$response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
 			$response .= "❓ **¿Quieres confirmar tu compra?**\n\n";
 			$response .= 'Responde *SÍ* para proceder o *NO* para seguir comprando.';
 
@@ -2055,13 +2244,15 @@ class TwilioService
 				'phone' => $phoneNumber,
 				'items_count' => $cartItems->count(),
 				'total' => $total,
-				'items' => $cartItems->toArray()
+				'items' => $cartItems->toArray(),
 			]);
 
 			return ['success' => true, 'message' => $response];
-		} catch (\Exception $e) {
-			Log::error('Error initiating checkout: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error initiating checkout: '.$e->getMessage());
 			$this->sendWhatsApp($phoneNumber, '❌ Error al procesar checkout. Contacta soporte.');
+
 			return ['success' => false, 'message' => 'Error in checkout'];
 		}
 	}
@@ -2071,14 +2262,17 @@ class TwilioService
 	 */
 	private function confirmCheckout($phoneNumber, $teamId)
 	{
-		try {
+		try
+		{
 			$cartItems = Cart::getContent();
 
-			if ($cartItems->isEmpty()) {
+			if ($cartItems->isEmpty())
+			{
 				$response = "❌ **Tu carrito está vacío**\n\n";
 				$response .= "📋 Escribe 'productos' para ver nuestro catálogo";
 
 				$this->sendWhatsApp($phoneNumber, $response);
+
 				return ['success' => false, 'message' => $response];
 			}
 
@@ -2087,17 +2281,18 @@ class TwilioService
 			$response = "✅ **¡Compra Confirmada!**\n\n";
 			$response .= "📋 **Resumen del pedido:**\n";
 
-			foreach ($cartItems as $item) {
-				$response .= "• {$item->name} x{$item->quantity} - \$" . number_format($item->price * $item->quantity, 2) . "\n";
+			foreach ($cartItems as $item)
+			{
+				$response .= "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n";
 			}
 
-			$response .= "\n💰 **TOTAL: \$" . number_format($total, 2) . "**\n";
-			$response .= '📦 **Items**: ' . Cart::getTotalQuantity() . "\n\n";
+			$response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
+			$response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
 
 			$response .= "📧 **Próximos pasos:**\n";
 			$response .= "• Te enviaremos un email con los detalles completos\n";
 			$response .= "• Incluirá enlaces de pago seguros y opciones de entrega\n";
-			$response .= '• Número de orden: #' . strtoupper(substr(md5($phoneNumber . time()), 0, 8)) . "\n\n";
+			$response .= '• Número de orden: #'.strtoupper(substr(md5($phoneNumber.time()), 0, 8))."\n\n";
 
 			$response .= "💳 **El proceso continúa por email:**\n";
 			$response .= "• Enlaces de pago seguros\n";
@@ -2119,16 +2314,18 @@ class TwilioService
 				'items_count' => $cartItems->count(),
 				'total' => $total,
 				'items' => $cartItems->toArray(),
-				'order_id' => strtoupper(substr(md5($phoneNumber . time()), 0, 8))
+				'order_id' => strtoupper(substr(md5($phoneNumber.time()), 0, 8)),
 			]);
 
 			// Clear the cart after successful checkout
 			Cart::clear();
 
 			return ['success' => true, 'message' => $response];
-		} catch (\Exception $e) {
-			Log::error('Error confirming checkout: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error confirming checkout: '.$e->getMessage());
 			$this->sendWhatsApp($phoneNumber, '❌ Error al confirmar compra. Por favor inténtalo nuevamente.');
+
 			return ['success' => false, 'message' => 'Error confirming checkout'];
 		}
 	}
@@ -2138,7 +2335,8 @@ class TwilioService
 	 */
 	private function continueShoppingFromCheckout($phoneNumber)
 	{
-		try {
+		try
+		{
 			$response = "🛍️ **¡Perfecto!**\n\n";
 			$response .= "Puedes seguir agregando productos a tu carrito.\n\n";
 			$response .= "📋 **Opciones disponibles:**\n";
@@ -2152,13 +2350,15 @@ class TwilioService
 
 			Log::info('User chose to continue shopping', [
 				'phone' => $phoneNumber,
-				'cart_items_count' => Cart::getContent()->count()
+				'cart_items_count' => Cart::getContent()->count(),
 			]);
 
 			return ['success' => true, 'message' => $response];
-		} catch (\Exception $e) {
-			Log::error('Error processing continue shopping: ' . $e->getMessage());
+		} catch (\Exception $e)
+		{
+			Log::error('Error processing continue shopping: '.$e->getMessage());
 			$this->sendWhatsApp($phoneNumber, '❌ Error al procesar solicitud. Inténtalo nuevamente.');
+
 			return ['success' => false, 'message' => 'Error processing continue shopping'];
 		}
 	}

@@ -9,28 +9,28 @@ use Illuminate\Queue\SerializesModels;
 
 class IncomingMessageNotification extends Mailable
 {
-    use Queueable, SerializesModels;
+	use Queueable, SerializesModels;
 
-    public $conversation;
+	public $conversation;
 
-    /**
-     * Create a new message instance.
-     *
-     * @return void
-     */
-    public function __construct(Conversation $conversation)
-    {
-        $this->conversation = $conversation;
-    }
+	/**
+	 * Create a new message instance.
+	 *
+	 * @return void
+	 */
+	public function __construct(Conversation $conversation)
+	{
+		$this->conversation = $conversation;
+	}
 
-    /**
-     * Build the message.
-     *
-     * @return $this
-     */
-    public function build()
-    {
-        return $this->subject('New Message Received')
-            ->view('emails.incoming-message-notification');
-    }
+	/**
+	 * Build the message.
+	 *
+	 * @return $this
+	 */
+	public function build()
+	{
+		return $this->subject('New Message Received')
+			->view('emails.incoming-message-notification');
+	}
 }

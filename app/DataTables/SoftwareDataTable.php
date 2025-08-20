@@ -14,16 +14,20 @@ class SoftwareDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('action', function ($software) {
+			->addColumn('action', function ($software)
+			{
 				return view('software.action', compact('software'));
 			})
-			->addColumn('category', function ($software) {
+			->addColumn('category', function ($software)
+			{
 				return $software->category ? $software->category->name : '';
 			})
-			->orderColumn('name', function ($query, $order) {
+			->orderColumn('name', function ($query, $order)
+			{
 				$query->orderBy('name', $order);
 			})
-			->orderColumn('category', function ($query, $order) {
+			->orderColumn('category', function ($query, $order)
+			{
 				$query->leftJoin('categories', 'software.category_id', '=', 'categories.id')
 					->orderBy('categories.name', $order);
 			})

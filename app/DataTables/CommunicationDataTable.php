@@ -23,24 +23,31 @@ class CommunicationDataTable extends DataTable
 			->addColumn('action', 'communication.action')
 			->setRowId('id')
 			->rawColumns(['status'])
-			->editColumn('user_id', function ($data) {
+			->editColumn('user_id', function ($data)
+			{
 				return $data->user->name;
 			})
-			->filterColumn('user_id', function ($query, $keyword) {
-				$query->whereHas('user', function ($q) use ($keyword) {
+			->filterColumn('user_id', function ($query, $keyword)
+			{
+				$query->whereHas('user', function ($q) use ($keyword)
+				{
 					$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
 				});
 			})
-			->editColumn('type_id', function ($data) {
+			->editColumn('type_id', function ($data)
+			{
 				return $data->type->name;
 			})
-			->editColumn('sent', function ($data) {
+			->editColumn('sent', function ($data)
+			{
 				return Carbon::parse($data->sent)->format('d-m-Y H:i:s');
 			})
-			->editColumn('received', function ($data) {
+			->editColumn('received', function ($data)
+			{
 				return Carbon::parse($data->received)->format('d-m-Y H:i:s');
 			})
-			->editColumn('status', function ($data) {
+			->editColumn('status', function ($data)
+			{
 				return $data->status_label;
 			});
 	}

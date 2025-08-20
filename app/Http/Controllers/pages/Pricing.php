@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class Pricing extends Controller
 {
-    public function index()
-    {
-        return view('content.pages.pages-pricing');
-    }
+	public function index()
+	{
+		return view('content.pages.pages-pricing');
+	}
 }

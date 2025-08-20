@@ -19,35 +19,44 @@ class AccountDataTable extends DataTable
 	public function dataTable(QueryBuilder $query): EloquentDataTable
 	{
 		return (new EloquentDataTable($query))
-			->addColumn('owner_name', function ($account) {
+			->addColumn('owner_name', function ($account)
+			{
 				return $account->owner->name;
 			})
-			->filterColumn('owner_name', function ($query, $keyword) {
-				$query->whereHas('owner', function ($q) use ($keyword) {
+			->filterColumn('owner_name', function ($query, $keyword)
+			{
+				$query->whereHas('owner', function ($q) use ($keyword)
+				{
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})
-			->addColumn('members_count', function ($account) {
+			->addColumn('members_count', function ($account)
+			{
 				return $account->members_count;
 			})
-			->addColumn('active_clients_count', function ($account) {
+			->addColumn('active_clients_count', function ($account)
+			{
 				return $account->active_clients_count;
 			})
-			->addColumn('total_time', function ($account) {
+			->addColumn('total_time', function ($account)
+			{
 				$seconds = $account->total_time;
 				$hours = floor($seconds / 3600);
 				$minutes = floor(($seconds % 3600) / 60);
 
-				if ($hours > 0) {
+				if ($hours > 0)
+				{
 					return sprintf('%dh %dm', $hours, $minutes);
 				}
 
 				return sprintf('%dm', $minutes);
 			})
-			->editColumn('created_at', function ($account) {
+			->editColumn('created_at', function ($account)
+			{
 				return $account->created_at->format('d/m/Y');
 			})
-			->addColumn('action', function ($account) {
+			->addColumn('action', function ($account)
+			{
 				return '<div class="d-flex justify-content-center align-items-center">
 					<a href="'.route('account.edit', $account->id).'" class="text-body">
 						<i class="ti ti-edit ti-sm me-2"></i>
