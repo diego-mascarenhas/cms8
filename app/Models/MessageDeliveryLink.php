@@ -7,22 +7,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class MessageDeliveryLink extends Model
 {
-	use HasFactory;
+    use HasFactory;
 
-	public $timestamps = false;
+    public $timestamps = true;
 
-	protected $fillable = [
-		'message_delivery_id',
-		'created_at',
-		'link',
-	];
+    protected $fillable = [
+        'message_delivery_id',
+        'link',
+    ];
 
-	protected $dates = [
-		'created_at',
-	];
+    protected $casts = [
+        'created_at' => 'datetime',
+    ];
 
-	public function messageDelivery()
-	{
-		return $this->belongsTo(MessageDelivery::class, 'message_delivery_id');
-	}
+    public function messageDelivery()
+    {
+        return $this->belongsTo(MessageDelivery::class, 'message_delivery_id');
+    }
 }

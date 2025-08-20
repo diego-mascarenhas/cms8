@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ContactDataTable;
 use App\Http\Requests\UpdateContactRequest;
+use App\Jobs\SendMessageCampaignJob;
 use App\Models\Contact;
 use App\Models\ContactSentiment;
 use App\Models\ContactSentimentHistory;
 use App\Models\ContactSource;
 use App\Models\ContactStatus;
 use App\Models\Country;
+use App\Models\MessageDelivery;
 use App\Models\Source;
 use App\Traits\TracksContactActions;
 use Carbon\Carbon;
@@ -746,8 +748,8 @@ class ContactController extends Controller
         if ($team && $team->hasModule('projects')) {
             $data['projects'] = \App\Models\Project::where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('real_name', 'like', "%{$query}%")
-                  ->orWhere('description', 'like', "%{$query}%");
+                    ->orWhere('real_name', 'like', "%{$query}%")
+                    ->orWhere('description', 'like', "%{$query}%");
             })
                 ->with(['client', 'status'])
                 ->select('id', 'name', 'real_name', 'enterprise_id', 'status_id', 'created_at')
@@ -1221,5 +1223,47 @@ class ContactController extends Controller
         $redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';
 
         return redirect()->route($redirectRoute, $id)->with('success', 'Usuario desvinculado correctamente');
+    }
+
+    /**
+     * Resend a specific message delivery
+     */
+    public function resendDelivery(Request $request, $deliveryId)
+    {
+        try {
+            $delivery = MessageDelivery::findOrFail($deliveryId);
+
+            // Only allow resending if the delivery was actually sent
+            if (! $delivery->sent_at || $delivery->sent_at->isFuture()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solo se pueden reenviar emails que ya han sido enviados',
+                ], 400);
+            }
+
+            // Reset the existing delivery for resend (immediate sending)
+            $delivery->update([
+                'status_id' => 1, // pending
+                'sent_at' => now(), // Send immediately for resend
+                'delivered_at' => null, // Reset delivery status
+                'delivery_status' => null, // Reset delivery status
+                'email_provider' => null, // Reset provider info
+                'provider_message_id' => null, // Reset provider message ID
+            ]);
+
+            // Dispatch the job to send the email immediately
+            SendMessageCampaignJob::dispatch($delivery);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email reenviado correctamente a '.$delivery->contact->email,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al reenviar email: '.$e->getMessage(),
+            ], 500);
+        }
     }
 }

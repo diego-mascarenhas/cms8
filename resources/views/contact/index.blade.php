@@ -165,8 +165,8 @@
                         placeholder="Selector de estado emocional" />
                 </div>
                 <div class="flex-grow-1">
-                    <x-module-categories-select 
-                        id="CategoryFilter" 
+                    <x-module-categories-select
+                        id="CategoryFilter"
                         label=""
                         moduleKey="contacts"
                         :selected="''"
@@ -324,7 +324,7 @@
                                 row.remove();
                             });
                         }
-                        
+
                         Swal.fire({
                             icon: 'success',
                             title: '¡Éxito!',
@@ -389,13 +389,13 @@
                         } else {
                             const iconElement = element.querySelector('i.ti-list-check');
                             const linkElement = element;
-                            
+
                             if (linkElement && iconElement) {
                                 linkElement.className = 'text-success';
                                 linkElement.removeAttribute('href');
                                 linkElement.removeAttribute('onclick');
                             }
-                            
+
                             Swal.fire({
                                 icon: 'success',
                                 title: '¡Éxito!',
@@ -420,6 +420,8 @@
                 }
             });
         }
+
+
     </script>
 @endpush
 

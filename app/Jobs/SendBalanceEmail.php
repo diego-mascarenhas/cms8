@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\PaymentAccount;
 use App\Models\User;
+use App\Traits\ConfiguresTeamMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\Mail;
 
 class SendBalanceEmail implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ConfiguresTeamMail;
 
     public function handle()
     {
@@ -25,6 +26,11 @@ class SendBalanceEmail implements ShouldQueue
 
         // Enviar el correo a cada administrador
         foreach ($adminUsers as $user) {
+            // Configure mail for the user's current team
+            if ($user->currentTeam) {
+                $this->configureMailForTeam($user->currentTeam);
+            }
+
             Mail::to($user->email)->send(new \App\Mail\BalanceMail($balances));
         }
     }

@@ -2,49 +2,61 @@
 
 namespace App\Models;
 
+use App\Traits\HasEmailProviderTracking;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MessageDelivery extends Model
 {
-	use HasFactory;
+    use HasEmailProviderTracking, HasFactory;
 
-	protected $fillable = [
-		'team_id',
-		'message_id',
-		'contact_id',
-		'smtp_id',
-		'sent_at',
-		'delivered_at',
-		'removed_at',
-		'status_id',
-	];
+    protected $fillable = [
+        'team_id',
+        'message_id',
+        'contact_id',
+        'smtp_id',
+        'sent_at',
+        'delivered_at',
+        'removed_at',
+        'status_id',
+        'email_provider',
+        'provider_message_id',
+        'delivery_status',
+        'bounced_at',
+        'opened_at',
+        'clicked_at',
+        'provider_data',
+    ];
 
-	protected $casts = [
-		'sent_at' => 'datetime',
-		'delivered_at' => 'datetime',
-		'removed_at' => 'datetime',
-	];
+    protected $casts = [
+        'sent_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'removed_at' => 'datetime',
+        'bounced_at' => 'datetime',
+        'opened_at' => 'datetime',
+        'clicked_at' => 'datetime',
+        'provider_data' => 'array',
+    ];
 
-	public function team()
-	{
-		return $this->belongsTo(Team::class);
-	}
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
 
-	public function message()
-	{
-		return $this->belongsTo(Message::class);
-	}
+    public function message()
+    {
+        return $this->belongsTo(Message::class);
+    }
 
-	public function contact()
-	{
-		return $this->belongsTo(Contact::class);
-	}
+    public function contact()
+    {
+        return $this->belongsTo(Contact::class);
+    }
 
-	public function links()
-	{
-		return $this->hasMany(MessageDeliveryLink::class, 'message_delivery_id');
-	}
+    public function links()
+    {
+        return $this->hasMany(MessageDeliveryLink::class, 'message_delivery_id');
+    }
 
     /**
      * Tracking events for this delivery
@@ -59,7 +71,7 @@ class MessageDelivery extends Model
      */
     public function getTrackingToken()
     {
-        return hash('sha256', config('app.key') . $this->id);
+        return hash('sha256', config('app.key').$this->id);
     }
 
     /**
@@ -75,7 +87,7 @@ class MessageDelivery extends Model
      */
     public function getTrackedUrl($originalUrl)
     {
-        return route('message.track.click', ['token' => $this->getTrackingToken()]) . '?url=' . urlencode($originalUrl);
+        return route('message.track.click', ['token' => $this->getTrackingToken()]).'?url='.urlencode($originalUrl);
     }
 
     /**
@@ -88,8 +100,6 @@ class MessageDelivery extends Model
             'status_id' => 1, // 1 = sent
         ]);
     }
-
-
 
     /**
      * Mark as delivered (status_id = 2)
@@ -109,7 +119,7 @@ class MessageDelivery extends Model
     public function markAsOpened()
     {
         \Log::info('Trying to mark as opened', ['id' => $this->id, 'opened_at' => $this->opened_at]);
-        if (!$this->opened_at) {
+        if (! $this->opened_at) {
             $this->update([
                 'opened_at' => now(),
                 'status_id' => 2, // 2 = opened
@@ -135,7 +145,10 @@ class MessageDelivery extends Model
      */
     public function markAsError()
     {
-        $this->sent_at = now();
+        // Only set sent_at if it wasn't already set (actual send attempt was made)
+        if (! $this->sent_at) {
+            $this->sent_at = now();
+        }
         $this->status_id = 4; // 4 = error
         $this->save();
     }
@@ -151,6 +164,7 @@ class MessageDelivery extends Model
         if ($this->sent_at) {
             return '<span class="badge bg-success">Sent</span>';
         }
+
         return '<span class="badge bg-warning">Pending</span>';
     }
 
@@ -174,11 +188,11 @@ class MessageDelivery extends Model
         $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
 
         // Insert tracking image and advertising footer before </body> or at the end
-        $trackingImg = '<img src="' . $this->getTrackingUrl() . '" width="1" height="1" style="display:none;" alt="" />';
-        $insertContent = $advertisingFooter . $trackingImg;
+        $trackingImg = '<img src="'.$this->getTrackingUrl().'" width="1" height="1" style="display:none;" alt="" />';
+        $insertContent = $advertisingFooter.$trackingImg;
 
         if (stripos($html, '</body>') !== false) {
-            $html = str_ireplace('</body>', $insertContent . '</body>', $html);
+            $html = str_ireplace('</body>', $insertContent.'</body>', $html);
         } else {
             $html .= $insertContent;
         }

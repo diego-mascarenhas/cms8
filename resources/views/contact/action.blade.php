@@ -8,6 +8,7 @@
             <a href="#" class="text-body" onclick="addToList({{ $contact->id }}, this)"><i class="ti ti-list-check ti-sm me-2"></i></a>
         @endif
     @endif
+
     @if (auth()->user()->can('contact.show'))
         <a href="{{ route('contact.show', $contact->id) }}" class="text-body"><i class="ti ti-eye ti-sm me-2"></i></a>
     @endif
