@@ -141,13 +141,17 @@ Route::post('/mailgun/webhook', function (Request $request) {
                 'user_agent' => $request->input('user-agent'),
             ]);
 
-            if ($delivery && ! $delivery->clicked_at) {
-                $delivery->update([
-                    'clicked_at' => now(),
-                    // Keep current status_id, just add clicked_at timestamp
-                ]);
+            if ($delivery) {
+                // Update clicked_at timestamp only if first click
+                if (! $delivery->clicked_at) {
+                    $delivery->update([
+                        'clicked_at' => now(),
+                        // Keep current status_id, just add clicked_at timestamp
+                    ]);
+                    Log::info('📊 Updated delivery status to clicked (first time)', ['delivery_id' => $delivery->id]);
+                }
 
-                // ✅ Create Lead Conversion Link record
+                // ✅ ALWAYS Create Lead Conversion Link record for each click
                 if ($clickedUrl) {
                     MessageDeliveryLink::create([
                         'message_delivery_id' => $delivery->id,
@@ -157,10 +161,11 @@ Route::post('/mailgun/webhook', function (Request $request) {
                     Log::info('🔗 Created Lead Conversion Link', [
                         'delivery_id' => $delivery->id,
                         'url' => $clickedUrl,
+                        'click_number' => MessageDeliveryLink::where('message_delivery_id', $delivery->id)->count(),
                     ]);
+                } else {
+                    Log::warning('🔗 No URL provided for click event', ['delivery_id' => $delivery->id]);
                 }
-
-                Log::info('📊 Updated delivery status to clicked', ['delivery_id' => $delivery->id]);
             }
             break;
 
