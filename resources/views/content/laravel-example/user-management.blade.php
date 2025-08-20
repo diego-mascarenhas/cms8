@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'User Management - Crud App')
+@section('title', __('User Management'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -24,143 +24,220 @@
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
 
-@section('page-script')
-<script src="{{asset('js/laravel-user-management.js')}}"></script>
-@endsection
-
 @section('content')
-
-<div class="row g-4 mb-4">
-  <div class="col-sm-6 col-xl-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-start justify-content-between">
-          <div class="content-left">
-            <span>Users</span>
-            <div class="d-flex align-items-end mt-2">
-              <h3 class="mb-0 me-2">{{$totalUser}}</h3>
-              <small class="text-success">(100%)</small>
-            </div>
-            <small>Total Users</small>
-          </div>
-          <span class="badge bg-label-primary rounded p-2">
-            <i class="ti ti-user ti-sm"></i>
-          </span>
-        </div>
-      </div>
+<!-- Header following project pattern -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+    <div class="d-flex flex-column justify-content-center">
+        <h4 class="mb-1 mt-3">{{ __('User Management') }}</h4>
+        <p class="text-muted">{{ __('Manage team users and their permissions') }}</p>
     </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-start justify-content-between">
-          <div class="content-left">
-            <span>Verified Users</span>
-            <div class="d-flex align-items-end mt-2">
-              <h3 class="mb-0 me-2">{{$verified}}</h3>
-              <small class="text-success">(+95%)</small>
-            </div>
-            <small>Recent analytics </small>
-          </div>
-          <span class="badge bg-label-success rounded p-2">
-            <i class="ti ti-user-check ti-sm"></i>
-          </span>
-        </div>
-      </div>
+    @can('user.create')
+    <div class="mt-3 mt-md-0">
+        <a href="#" class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#offcanvasAddUser">
+            <i class="ti ti-plus me-1"></i> {{ __('Add User') }}
+        </a>
     </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-start justify-content-between">
-          <div class="content-left">
-            <span>Duplicate Users</span>
-            <div class="d-flex align-items-end mt-2">
-              <h3 class="mb-0 me-2">{{$userDuplicates}}</h3>
-              <small class="text-success">(0%)</small>
-            </div>
-            <small>Recent analytics</small>
-          </div>
-          <span class="badge bg-label-danger rounded p-2">
-            <i class="ti ti-users ti-sm"></i>
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="card">
-      <div class="card-body">
-        <div class="d-flex align-items-start justify-content-between">
-          <div class="content-left">
-            <span>Verification Pending</span>
-            <div class="d-flex align-items-end mt-2">
-              <h3 class="mb-0 me-2">{{$notVerified}}</h3>
-              <small class="text-danger">(+6%)</small>
-            </div>
-            <small>Recent analytics</small>
-          </div>
-          <span class="badge bg-label-warning rounded p-2">
-            <i class="ti ti-user-circle ti-sm"></i>
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
+    @endcan
 </div>
-<!-- Users List Table -->
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ __('Users') }}</span>
+                        <div class="d-flex align-items-end mt-2">
+                            <h3 class="mb-0 me-2">{{$totalUser}}</h3>
+                            <small class="text-success">(100%)</small>
+                        </div>
+                        <small>{{ __('Total Users') }}</small>
+                    </div>
+                    <span class="badge bg-label-primary rounded p-2">
+                        <i class="ti ti-user ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ __('Verified Users') }}</span>
+                        <div class="d-flex align-items-end mt-2">
+                            <h3 class="mb-0 me-2">{{$verified}}</h3>
+                            <small class="text-success">({{ $totalUser > 0 ? round(($verified / $totalUser) * 100) : 0 }}%)</small>
+                        </div>
+                        <small>{{ __('Email verified') }}</small>
+                    </div>
+                    <span class="badge bg-label-success rounded p-2">
+                        <i class="ti ti-user-check ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ __('Duplicate Users') }}</span>
+                        <div class="d-flex align-items-end mt-2">
+                            <h3 class="mb-0 me-2">{{$userDuplicates}}</h3>
+                            <small class="text-warning">({{ $totalUser > 0 ? round(($userDuplicates / $totalUser) * 100) : 0 }}%)</small>
+                        </div>
+                        <small>{{ __('Duplicate emails') }}</small>
+                    </div>
+                    <span class="badge bg-label-danger rounded p-2">
+                        <i class="ti ti-users ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ __('Verification Pending') }}</span>
+                        <div class="d-flex align-items-end mt-2">
+                            <h3 class="mb-0 me-2">{{$notVerified}}</h3>
+                            <small class="text-danger">({{ $totalUser > 0 ? round(($notVerified / $totalUser) * 100) : 0 }}%)</small>
+                        </div>
+                        <small>{{ __('Pending verification') }}</small>
+                    </div>
+                    <span class="badge bg-label-warning rounded p-2">
+                        <i class="ti ti-user-circle ti-sm"></i>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users DataTable -->
 <div class="card">
-  <div class="card-header">
-    <h5 class="card-title mb-0">Search Filter</h5>
-  </div>
-  <div class="card-datatable table-responsive">
-    <table class="datatables-users table">
-      <thead class="border-top">
-        <tr>
-          <th></th>
-          <th>Id</th>
-          <th>User</th>
-          <th>Email</th>
-          <th>Roles</th>
-          <th>Verified</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-    </table>
-  </div>
-  <!-- Offcanvas to add new user -->
-  <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasAddUser" aria-labelledby="offcanvasAddUserLabel">
+    <div class="card-body">
+        {{ $dataTable->table() }}
+    </div>
+</div>
+
+<!-- Offcanvas to add new user -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasAddUser" aria-labelledby="offcanvasAddUserLabel">
     <div class="offcanvas-header">
-      <h5 id="offcanvasAddUserLabel" class="offcanvas-title">Add User</h5>
-      <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <h5 id="offcanvasAddUserLabel" class="offcanvas-title">{{ __('Add User') }}</h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body mx-0 flex-grow-0">
-      <form class="add-new-user pt-0" id="addNewUserForm">
-        <input type="hidden" name="id" id="user_id">
-        <div class="mb-3">
-          <label class="form-label" for="add-user-fullname">Full Name</label>
-          <input type="text" class="form-control" id="add-user-fullname" name="name" />
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="add-user-email">Email</label>
-          <input type="text" id="add-user-email" class="form-control" name="email" />
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="add-user-contact">Phone</label>
-          <input type="text" id="add-user-contact" class="form-control" name="userContact" />
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="user-role">Role</label>
-          <select id="user-role" name="role" class="form-select">
-            @foreach($roles as $role)
-              <option value="{{ $role->id }}" {{ $role->name == 'guest' ? 'selected' : '' }}>{{ $role->name }}</option>
-            @endforeach
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary me-sm-3 me-1 data-submit">Submit</button>
-        <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="offcanvas">Cancel</button>
-      </form>
+        <form class="add-new-user pt-0" id="addNewUserForm">
+            <input type="hidden" name="id" id="user_id">
+            <div class="mb-3">
+                <label class="form-label" for="add-user-fullname">{{ __('Full Name') }}</label>
+                <input type="text" class="form-control" id="add-user-fullname" name="name" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="add-user-email">{{ __('Email') }}</label>
+                <input type="text" id="add-user-email" class="form-control" name="email" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="add-user-contact">{{ __('Phone') }}</label>
+                <input type="text" id="add-user-contact" class="form-control" name="userContact" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="user-role">{{ __('Role') }}</label>
+                <select id="user-role" name="role" class="form-select">
+                    @foreach($roles as $role)
+                        <option value="{{ $role->id }}" {{ $role->name == 'guest' ? 'selected' : '' }}>{{ ucfirst($role->name) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary me-sm-3 me-1 data-submit">{{ __('Submit') }}</button>
+            <button type="reset" class="btn btn-label-secondary" data-bs-dismiss="offcanvas">{{ __('Cancel') }}</button>
+        </form>
     </div>
-  </div>
 </div>
 @endsection
+
+@push('scripts')
+    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+
+    <script>
+        function deleteUser(id, element) {
+            event.preventDefault();
+            Swal.fire({
+                title: '{{ __("Are you sure?") }}',
+                text: "{{ __('Do you want to delete this user?') }}",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '{{ __("Yes, delete") }}',
+                cancelButtonText: '{{ __("Cancel") }}',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then(function (result) {
+                if (result.value) {
+                    fetch("{{ route('user.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const row = element.closest('tr');
+                        if (row) {
+                            row.classList.add('fade-out');
+                            row.addEventListener('transitionend', () => {
+                                row.remove();
+                            });
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: '{{ __("Success!") }}',
+                            text: data.success,
+                            customClass: {
+                                confirmButton: 'btn btn-success'
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: '{{ __("Error") }}',
+                            text: '{{ __("An error occurred while deleting the record") }}',
+                            customClass: {
+                                confirmButton: 'btn btn-primary'
+                            }
+                        });
+                    });
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            // Edit user handler
+            $(document).on('click', '.edit-user', function() {
+                var id = $(this).data('id');
+                // Add edit functionality here
+                console.log('Edit user:', id);
+            });
+        });
+    </script>
+@endpush
+
+<style>
+    .fade-out {
+        opacity: 0;
+        transition: opacity 0.5s ease-out;
+    }
+</style>

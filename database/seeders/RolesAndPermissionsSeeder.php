@@ -351,6 +351,14 @@ class RolesAndPermissionsSeeder extends Seeder
 
 		$administratorRole = Role::firstOrCreate(['name' => 'admin']);
 		$administratorRole->syncPermissions([
+			'user.index',
+			'user.list',
+			'user.create',
+			'user.show',
+			'user.edit',
+			'user.store',
+			'user.update',
+			'user.destroy',
 			'client.index',
 			'client.list',
 			'client.create',

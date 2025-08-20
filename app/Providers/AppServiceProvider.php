@@ -23,5 +23,16 @@ class AppServiceProvider extends ServiceProvider
     {
         Builder::useVite();
         JsonResource::withoutWrapping();
+
+        // Force override the translator after it's been resolved
+        $this->app->extend('translator', function ($translator, $app) {
+            $loader = $app['translation.loader'];
+            $locale = $app['config']['app.locale'];
+
+            $customTranslator = new \App\Translation\CustomTranslator($loader, $locale);
+            $customTranslator->setFallback($app['config']['app.fallback_locale']);
+
+            return $customTranslator;
+        });
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\laravel_example;
 
+use App\DataTables\UserDataTable;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -13,9 +14,9 @@ use Spatie\Permission\Models\Role;
 class UserManagement extends Controller
 {
 	/**
-	 * Redirect to user-management view.
+	 * Display user management with DataTable.
 	 */
-	public function UserManagement()
+	public function UserManagement(UserDataTable $dataTable)
 	{
 		$users = User::whereHas('teams', function ($query)
 		{
@@ -33,7 +34,7 @@ class UserManagement extends Controller
 
 		$roles = Role::all();
 
-		return view('content.laravel-example.user-management', [
+		return $dataTable->render('content.laravel-example.user-management', [
 			'totalUser' => $userCount,
 			'verified' => $verified,
 			'notVerified' => $notVerified,

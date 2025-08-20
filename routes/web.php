@@ -44,6 +44,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TwilioWebhookController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
 use Illuminate\Support\Facades\Route;
 
@@ -262,6 +263,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
     Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
     Route::post('/chat/send-template', [ChatController::class, 'sendTemplateMessage'])->name('chat.send-template');
+
+    // Users
+    Route::get('/user/list', [UserController::class, 'index'])->name('user.index');
+    Route::get('/user/create', [UserController::class, 'create'])->name('user.create');
+    Route::post('/user', [UserController::class, 'store'])->name('user.store');
+    Route::get('/user/{user}', [UserController::class, 'show'])->name('user.show');
+    Route::get('/user/{user}/edit', [UserController::class, 'edit'])->name('user.edit');
+    Route::put('/user/{user}', [UserController::class, 'update'])->name('user.update');
+    Route::delete('/user/{id}', [UserController::class, 'destroy'])->name('user.destroy');
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
