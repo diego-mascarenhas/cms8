@@ -6,7 +6,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3">
-			<span class="text-muted fw-light">Messages /</span> {{ $message->name }}
+			<span class="text-muted fw-light">Messages/</span> {{ $message->name }}
 		</h4>
 		<p class="text-muted">Detailed view of the message and its statistics</p>
 	</div>
@@ -17,12 +17,20 @@
 		</button>
 
 		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
+		@php
+			$isAuthorized = isset($dnsStatus) && $dnsStatus['spf']['has_mailbaby'] && $dnsStatus['mailbaby_auth']['authorized'];
+			$usingSystemSmtp = auth()->user()->currentTeam->isUsingSystemSmtp();
+			$canSend = !$usingSystemSmtp || $isAuthorized;
+		@endphp
+
 		@if($message->status_id == 1 && ($stats_db->sent ?? 0) < ($stats_db->subscribers ?? 0))
 			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
 				<i class="ti ti-player-pause me-1"></i>Pause
 			</button>
 		@else
-			<button class="btn btn-success me-2" onclick="startCampaign({{ $message->id }})">
+			<button class="btn btn-success me-2 {{ !$canSend ? 'disabled' : '' }}"
+					onclick="{{ $canSend ? 'startCampaign(' . $message->id . ')' : 'showAuthorizationError()' }}"
+					{{ !$canSend ? 'disabled' : '' }}>
 				<i class="ti ti-send me-1"></i>Send Now
 			</button>
 		@endif
@@ -33,38 +41,56 @@
 	</div>
 </div>
 
+<!-- Configuration Alerts (if any issues) -->
+@if($dnsStatus)
+@php
+	$isAuthorized = $dnsStatus['spf']['has_mailbaby'] && $dnsStatus['mailbaby_auth']['authorized'];
+	$usingSystemSmtp = auth()->user()->currentTeam->isUsingSystemSmtp();
+	$hasConfigIssues = $usingSystemSmtp && (!$dnsStatus['spf']['has_mailbaby'] || !$isAuthorized);
+@endphp
+
+@if($hasConfigIssues)
+<div class="row mb-3">
+	<div class="col-12">
+		@if(!$dnsStatus['spf']['has_mailbaby'])
+			<div class="alert alert-warning" role="alert">
+				<i class="ti ti-alert-triangle me-2"></i>
+				<strong>SPF Configuration Required:</strong>
+				Add TXT record: <code>"v=spf1 include:spf.revisionalpha.com -all"</code> to domain <strong>{{ $dnsStatus['domain'] }}</strong>
+			</div>
+		@endif
+
+		@if($usingSystemSmtp && !$isAuthorized)
+			<div class="alert alert-danger" role="alert">
+				<i class="ti ti-x-circle me-2"></i>
+				<strong>Domain Not Authorized:</strong>
+				Your domain <strong>{{ $dnsStatus['domain'] }}</strong> is not authorized to use system SMTP. Email sending is disabled.
+			</div>
+		@endif
+	</div>
+</div>
+@endif
+@endif
+
 <div class="row">
 	<!-- Left Column: Stats + General Info -->
 	<div class="col-lg-4 col-md-5">
 		<!-- Delivery Stats Component (Auto-updating) -->
 		@livewire('delivery-stats', ['messageId' => $message->id])
 
-		<!-- General Info -->
+				<!-- General Info -->
 		<div class="card mb-4">
 			<div class="card-header d-flex justify-content-between align-items-center">
-				<span>General Information</span>
-				<button class="btn btn-sm btn-outline-info" onclick="testSend({{ $message->id }})">
+				<h5 class="mb-0">General Information</h5>
+				<button class="btn btn-sm btn-outline-info {{ !$canSend ? 'disabled' : '' }}"
+						onclick="{{ $canSend ? 'testSend(' . $message->id . ')' : 'showAuthorizationError()' }}"
+						{{ !$canSend ? 'disabled' : '' }}>
 					<i class="ti ti-send-2 me-1"></i>Test Send
 				</button>
 			</div>
 			<div class="card-body">
-				<div class="mb-2"><strong>Subject:</strong> {{ $message->name }}</div>
-				<div class="mb-2"><strong>Sender:</strong>
-					@if(auth()->user()->currentTeam->isUsingSystemSmtp())
-						<span class="text-info">{{ $emailConfig['from_name'] }} (System SMTP)</span>
-					@else
-						<span class="text-success">{{ $emailConfig['from_name'] }} (Own SMTP)</span>
-					@endif
-					</span>
-				</div>
-				<div class="mb-2"><strong>Sender Email:</strong>
-					@if(auth()->user()->currentTeam->isUsingSystemSmtp())
-						<span class="text-info">{{ $emailConfig['from_address'] }} (System SMTP)</span>
-					@else
-						<span class="text-success">{{ $emailConfig['from_address'] }} (Own SMTP)</span>
-					@endif
-					</span>
-				</div>
+				<div class="mb-2"><strong>Sender:</strong> {{ $emailConfig['from_name'] }}</div>
+				<div class="mb-2"><strong>Email:</strong> {{ $emailConfig['from_address'] }}</div>
 				<div class="mb-2"><strong>Category:</strong>
 					@if($message->category)
 						{{ $message->category->name }}
@@ -540,6 +566,19 @@ function pauseCampaign(messageId) {
                 }
             });
         }
+    });
+}
+
+function showAuthorizationError() {
+    Swal.fire({
+        title: '🚫 Authorization Required',
+        text: 'Your domain needs to be properly configured to send emails using system SMTP. Please configure your SPF record or use your own SMTP settings.',
+        icon: 'warning',
+        confirmButtonText: 'OK',
+        customClass: {
+            confirmButton: 'btn btn-warning waves-effect waves-light'
+        },
+        buttonsStyling: false
     });
 }
 

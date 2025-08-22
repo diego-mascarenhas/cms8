@@ -2,10 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Mail\TrackedTestMail;
+use App\Jobs\SendMessageCampaignJob;
 use App\Models\MessageDelivery;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
 
 class SendTrackedTestMail extends Command
 {
@@ -16,22 +15,31 @@ class SendTrackedTestMail extends Command
 	public function handle()
 	{
 		$deliveryId = $this->argument('delivery_id');
-		$delivery = MessageDelivery::find($deliveryId);
+		$delivery = MessageDelivery::with(['contact', 'message', 'team'])->find($deliveryId);
+
 		if (! $delivery)
 		{
 			$this->error('No se encontró el MessageDelivery con ID: '.$deliveryId);
-
 			return 1;
 		}
+
 		if (! $delivery->contact || ! $delivery->contact->email)
 		{
 			$this->error('El delivery no tiene contacto o email asociado.');
-
 			return 1;
 		}
-		Mail::to($delivery->contact->email)->send(new TrackedTestMail($delivery));
-		$delivery->markAsSent();
-		$this->info('Correo de prueba enviado a: '.$delivery->contact->email);
+
+		if (! $delivery->team)
+		{
+			$this->error('El delivery no tiene team asociado.');
+			return 1;
+		}
+
+		// 🚀 Use the Job instead of sending directly
+		SendMessageCampaignJob::dispatch($delivery);
+
+		$this->info('Job de envío despachado para: '.$delivery->contact->email.' (Team: '.$delivery->team->name.')');
+		$this->info('El correo se enviará usando la configuración del equipo y el proveedor configurado.');
 
 		return 0;
 	}

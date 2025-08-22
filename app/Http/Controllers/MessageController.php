@@ -13,6 +13,7 @@ use App\Models\MessageType;
 use App\Models\Template;
 use App\Models\User;
 use App\Traits\ConfiguresTeamMail;
+use App\Helpers\DnsHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -134,6 +135,21 @@ class MessageController extends Controller
 			->orderBy('created_at', 'desc')
 			->get();
 
+		// Verificar configuración DNS para el dominio del remitente
+		$dnsStatus = null;
+		$mailbabyUser = null;
+
+		if (!empty($emailConfig['from_address'])) {
+			// Obtener el usuario de MailBaby desde la configuración
+			$mailbabyUser = config('services.mailbaby.enabled') ? env('MAIL_USERNAME') : null;
+
+			// Verificar configuración DNS
+			$dnsStatus = DnsHelper::checkEmailDomainConfiguration(
+				$emailConfig['from_address'],
+				$mailbabyUser
+			);
+		}
+
 		return view('message.show', [
 			'message' => $message,
 			'stats' => $stats,
@@ -142,6 +158,8 @@ class MessageController extends Controller
 			'links' => $links,
 			'emailConfig' => $emailConfig,
 			'contactsInCategory' => $contactsInCategory,
+			'dnsStatus' => $dnsStatus,
+			'mailbabyUser' => $mailbabyUser,
 		]);
 	}
 

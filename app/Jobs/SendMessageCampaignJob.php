@@ -137,57 +137,33 @@ class SendMessageCampaignJob implements ShouldQueue
 			// Mark as sending
 			$this->messageDelivery->update(['status_id' => 3]); // 3 = sending
 
-			// Get email provider from configuration
-			$emailProvider = config('services.email.provider', 'smtp');
-			$fallbackToSmtp = config('services.email.fallback_to_smtp', true);
+			// Determine email provider based on configuration
+			$mailbabyEnabled = config('services.mailbaby.enabled', false);
+			$mailbabyApiKey = config('services.mailbaby.api_key');
+			$mailgunSecret = config('services.mailgun.secret');
 
 			Log::info('🔧 SendMessageCampaignJob: Email provider configuration', [
 				'delivery_id' => $this->messageDelivery->id,
-				'email_provider' => $emailProvider,
-				'fallback_to_smtp' => $fallbackToSmtp,
+				'mailbaby_enabled' => $mailbabyEnabled,
+				'mailbaby_has_api_key' => !empty($mailbabyApiKey),
+				'mailgun_has_secret' => !empty($mailgunSecret),
 			]);
 
-			// Send email based on configured provider
-			switch ($emailProvider)
-			{
-				case 'mailbaby':
-					if (config('services.mailbaby.enabled', false) && config('services.mailbaby.api_key'))
-					{
-						$this->sendViaMailBaby();
-						break;
-					} elseif ($fallbackToSmtp)
-					{
-						Log::warning('MailBaby not configured, falling back to SMTP', [
-						    'delivery_id' => $this->messageDelivery->id,
-						]);
-						$this->sendViaSmtp();
-						break;
-					} else
-					{
-						throw new \Exception('MailBaby provider selected but not configured');
-					}
-
-				case 'mailgun':
-					if (config('services.mailgun.secret'))
-					{
-						$this->sendViaMailgun();
-						break;
-					} elseif ($fallbackToSmtp)
-					{
-						Log::warning('Mailgun not configured, falling back to SMTP', [
-						    'delivery_id' => $this->messageDelivery->id,
-						]);
-						$this->sendViaSmtp();
-						break;
-					} else
-					{
-						throw new \Exception('Mailgun provider selected but not configured');
-					}
-
-				case 'smtp':
-				default:
+			// Priority: MailBaby > Mailgun > SMTP
+			if ($mailbabyEnabled && $mailbabyApiKey) {
+				try {
+					$this->sendViaMailBaby();
+				} catch (\Exception $e) {
+					Log::warning('MailBaby API failed, falling back to SMTP', [
+						'delivery_id' => $this->messageDelivery->id,
+						'error' => $e->getMessage(),
+					]);
 					$this->sendViaSmtp();
-					break;
+				}
+			} elseif ($mailgunSecret) {
+				$this->sendViaMailgun();
+			} else {
+				$this->sendViaSmtp();
 			}
 
 			Log::info('Message delivery sent successfully', [
@@ -257,16 +233,33 @@ class SendMessageCampaignJob implements ShouldQueue
 
 		if (! $result['success'])
 		{
-			throw new \Exception('MailBaby sending failed: '.($result['error'] ?? 'Unknown error'));
+			// Check if it's an API key error (401) - these should fallback to SMTP
+			$errorMessage = $result['error'] ?? 'Unknown error';
+			if (strpos($errorMessage, '"code":401') !== false || strpos($errorMessage, 'API key') !== false) {
+				Log::warning('MailBaby API key invalid, will fallback to SMTP', [
+					'delivery_id' => $this->messageDelivery->id,
+					'error' => $errorMessage,
+				]);
+				throw new \Exception('MailBaby API key invalid: ' . $errorMessage);
+			}
+
+			// For other errors, also try fallback
+			throw new \Exception('MailBaby sending failed: ' . $errorMessage);
 		}
 
 		Log::info('✅ SendMessageCampaignJob: Email sent via MailBaby', [
 			'delivery_id' => $this->messageDelivery->id,
-			'provider_message_id' => $result['provider_message_id'],
+			'provider_message_id' => $result['provider_message_id'] ?? null,
 			'contact_email' => $this->messageDelivery->contact->email,
 		]);
 
-		// MailBaby handles status updates via webhooks
+		// Mark as sent via MailBaby
+		$this->messageDelivery->update([
+			'email_provider' => 'mailbaby',
+			'provider_message_id' => $result['provider_message_id'] ?? null,
+			'sent_at' => now(),
+			'status_id' => 2, // 2 = sent
+		]);
 	}
 
 	/**
