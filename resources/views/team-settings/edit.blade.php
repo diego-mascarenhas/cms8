@@ -57,7 +57,11 @@
                                         @php $currentSection = $setting['section']; @endphp
 
                                         {{-- Add section title --}}
-                                        @if($setting['section'] === 'outgoing')
+                                        @if($setting['section'] === 'sender')
+                                            <div class="col-12 mb-3">
+                                                <h6 class="text-muted mb-0">📧 Sender Information</h6>
+                                            </div>
+                                        @elseif($setting['section'] === 'outgoing')
                                             <div class="col-12 mb-3">
                                                 <h6 class="text-muted mb-0">📤 Outgoing Email (SMTP)</h6>
                                             </div>
