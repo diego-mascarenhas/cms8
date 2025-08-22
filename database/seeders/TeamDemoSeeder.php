@@ -2217,12 +2217,12 @@ class TeamDemoSeeder extends Seeder
 			[
                 'name' => 'Diego',
                 'surname' => 'Mascarenhas',
-                'email' => 'diego@revisionapha.es',
+                'email' => 'diego@revisionalpha.es',
             ],
 			[
                 'name' => 'Fernando',
                 'surname' => 'Barneto',
-                'email' => 'fernando@revisionapha.com',
+                'email' => 'fernando@revisionalpha.com',
             ],
 			[
                 'name' => 'REVISION ALPHA',
