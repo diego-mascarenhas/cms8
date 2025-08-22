@@ -29,7 +29,12 @@ class MessageDeliveryMail extends Mailable implements ShouldQueue
 		$inliner = new CssToInlineStyles;
 		$htmlInlined = $inliner->convert($html, $css);
 
-		return $this->subject($subject)
+		// Get explicit from configuration like TestMessageMail does
+		$fromAddress = config('mail.from.address');
+		$fromName = config('mail.from.name');
+
+		return $this->from($fromAddress, $fromName)
+			->subject($subject)
 			->html($htmlInlined);
 	}
 }
