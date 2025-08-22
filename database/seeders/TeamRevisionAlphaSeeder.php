@@ -123,18 +123,19 @@ class TeamRevisionAlphaSeeder extends Seeder
         // Update current team for main user
         $revisionUser->update(['current_team_id' => $team->id]);
 
-        // // Create Fernando Barneto - revision alpha
-        // $fernando = User::updateOrCreate(
-        //     ['email' => 'fernando@revisionalpha.com'],
-        //     [
-        //         'name' => 'Fernando Barneto',
-        //         'email' => 'fernando@revisionalpha.com',
-        //         'password' => Hash::make('@PabloHDP!'),
-        //         'email_verified_at' => now(),
-        //         'current_team_id' => $team->id,
-        //     ]
-        // );
-        // $fernando->assignRole(1);
+        // Create Fernando Barneto - revision alpha
+        $fernando = User::updateOrCreate(
+            ['email' => 'fernando@revisionalpha.com'],
+            [
+                'name' => 'Fernando Barneto',
+                'email' => 'fernando@revisionalpha.com',
+				'phone' => '34616333128',
+                'password' => Hash::make('@PabloHDP!'),
+                'email_verified_at' => now(),
+                'current_team_id' => $team->id,
+            ]
+        );
+        $fernando->assignRole(2);
 
         // // Add to team if not already there
         // if (!$fernando->teams()->where('team_id', $team->id)->exists()) {
