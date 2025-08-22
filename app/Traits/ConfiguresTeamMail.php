@@ -109,25 +109,20 @@ trait ConfiguresTeamMail
 			$advertisingFooter = $team->getAdvertisingFooter();
 			Config::set('app.mail_advertising_footer', $advertisingFooter);
 
-			// TEMPORAL: Comentado para usar solo configuración del .env
-			// $fromName = $team->getSetting('mail_from_name');
-			// $fromAddress = $team->getSetting('mail_from_address');
+			// However, if team has from_name/from_address settings, use those
+			$fromName = $team->getSetting('mail_from_name');
+			$fromAddress = $team->getSetting('mail_from_address');
 
-			// if ($fromName)
-			// {
-			// 	Config::set('mail.from.name', $fromName);
-			// 	\Log::info('📝 Custom from_name applied', ['from_name' => $fromName]);
-			// }
-			// if ($fromAddress)
-			// {
-			// 	Config::set('mail.from.address', $fromAddress);
-			// 	\Log::info('📝 Custom from_address applied', ['from_address' => $fromAddress]);
-			// }
-
-			\Log::info('🔧 TEMPORAL: Using only .env configuration', [
-				'env_mail_from_address' => env('MAIL_FROM_ADDRESS'),
-				'env_mail_from_name' => env('MAIL_FROM_NAME'),
-			]);
+			if ($fromName)
+			{
+				Config::set('mail.from.name', $fromName);
+				\Log::info('📝 Custom from_name applied', ['from_name' => $fromName]);
+			}
+			if ($fromAddress)
+			{
+				Config::set('mail.from.address', $fromAddress);
+				\Log::info('📝 Custom from_address applied', ['from_address' => $fromAddress]);
+			}
 
 			\Log::info('✅ System SMTP configuration confirmed', [
 				'team_id' => $team->id,

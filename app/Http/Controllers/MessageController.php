@@ -296,13 +296,23 @@ class MessageController extends Controller
 				->where('status_id', 1) // 1 = pending
 				->get();
 
+			$contactIndex = 0;
 			foreach ($pendingDeliveries as $delivery)
 			{
-				// Calculate delay based on the scheduled sent_at time
-				$delaySeconds = max(0, $delivery->sent_at->diffInSeconds(now()));
+				// Smart delay: Only apply delays for Redis/Database queues, not Sync
+				$queueConnection = config('queue.default');
 
-				SendMessageCampaignJob::dispatch($delivery)
-					->delay($delaySeconds); // Delay based on scheduled time
+				if ($queueConnection === 'sync') {
+					// Sync mode: Send immediately (delays don't work in sync mode)
+					SendMessageCampaignJob::dispatch($delivery);
+				} else {
+					// Redis/Database mode: Use delays as configured
+					$delaySeconds = max(0, $delivery->sent_at->diffInSeconds(now()));
+					SendMessageCampaignJob::dispatch($delivery)
+						->delay($delaySeconds);
+				}
+
+				$contactIndex++;
 			}
 
 			return response()->json([
