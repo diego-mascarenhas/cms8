@@ -313,19 +313,14 @@ class Team extends JetstreamTeam
 
 		return '
 		<div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-top: 1px solid #e9ecef; text-align: center; font-family: Arial, sans-serif;">
-			<p style="margin: 0 0 10px 0; color: #6c757d; font-size: 12px;">
+			<p style="margin: 0; color: #6c757d; font-size: 12px;">
 				Este email fue enviado con
-				<a href="https://revisionalpha.com/emailer" style="color: #007bff; text-decoration: none; font-weight: bold;">REVISION ALPHA Emailer</a>
+				<a href="https://revisionalpha.com/emailer" style="color: #007bff; text-decoration: none; font-weight: bold;">REVISION ALPHA Mailer</a>
 			</p>
-			<p style="margin: 0; color: #6c757d; font-size: 11px;">
+			<p style="margin: 5px 0 0 0; color: #6c757d; font-size: 11px;">
 				Email Marketing fácil, rápido y seguro -
 				<a href="https://revisionalpha.com/emailer" style="color: #007bff; text-decoration: none;">¡Empieza ahora!</a>
 			</p>
-			<div style="margin-top: 10px;">
-				<a href="https://revisionalpha.com/emailer" style="display: inline-block; padding: 8px 16px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: bold;">
-					Crear mi cuenta gratis
-				</a>
-			</div>
 		</div>';
 	}
 
