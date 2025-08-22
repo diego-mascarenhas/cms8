@@ -439,20 +439,51 @@ class SendMessageCampaignJob implements ShouldQueue
 			'after_config_from_name' => config('mail.from.name'),
 		]);
 
-		// Send the email
-		Mail::to($this->messageDelivery->contact->email)
-			->send(new MessageDeliveryMail($this->messageDelivery));
+		// Send the email with detailed error logging
+		try {
+			Log::info('📤 SendMessageCampaignJob: About to send email', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'from_address' => config('mail.from.address'),
+				'from_name' => config('mail.from.name'),
+				'smtp_host' => config('mail.mailers.smtp.host'),
+				'smtp_username' => config('mail.mailers.smtp.username'),
+			]);
 
-		Log::info('✅ SendMessageCampaignJob: Email sent via SMTP', [
-			'delivery_id' => $this->messageDelivery->id,
-			'contact_email' => $this->messageDelivery->contact->email,
-		]);
+			Mail::to($this->messageDelivery->contact->email)
+				->send(new MessageDeliveryMail($this->messageDelivery));
 
-		// Mark as sent
-		$this->messageDelivery->update([
-			'email_provider' => 'smtp',
-			'sent_at' => now(),
-			'status_id' => 2, // 2 = sent
-		]);
+			Log::info('✅ SendMessageCampaignJob: Email sent via SMTP successfully', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+			]);
+
+			// Mark as sent
+			$this->messageDelivery->update([
+				'email_provider' => 'smtp',
+				'sent_at' => now(),
+				'status_id' => 2, // 2 = sent
+			]);
+
+		} catch (\Exception $e) {
+			Log::error('❌ SendMessageCampaignJob: SMTP email failed', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'error_message' => $e->getMessage(),
+				'error_code' => $e->getCode(),
+				'error_file' => $e->getFile(),
+				'error_line' => $e->getLine(),
+				'error_trace' => $e->getTraceAsString(),
+			]);
+
+			// Mark as failed
+			$this->messageDelivery->update([
+				'status_id' => 4, // 4 = failed
+				'delivery_status' => 'failed',
+			]);
+
+			// Re-throw the exception so the job fails and goes to failed_jobs
+			throw $e;
+		}
 	}
 }
