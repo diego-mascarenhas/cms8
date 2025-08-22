@@ -137,33 +137,82 @@ class SendMessageCampaignJob implements ShouldQueue
 			// Mark as sending
 			$this->messageDelivery->update(['status_id' => 3]); // 3 = sending
 
-			// Determine email provider based on configuration
+						// Determine email provider based on configuration
+			$emailProvider = env('EMAIL_PROVIDER', 'smtp');
 			$mailbabyEnabled = config('services.mailbaby.enabled', false);
 			$mailbabyApiKey = config('services.mailbaby.api_key');
 			$mailgunSecret = config('services.mailgun.secret');
+			$fallbackToSmtp = env('EMAIL_FALLBACK_TO_SMTP', true);
 
 			Log::info('🔧 SendMessageCampaignJob: Email provider configuration', [
 				'delivery_id' => $this->messageDelivery->id,
+				'email_provider' => $emailProvider,
 				'mailbaby_enabled' => $mailbabyEnabled,
 				'mailbaby_has_api_key' => !empty($mailbabyApiKey),
 				'mailgun_has_secret' => !empty($mailgunSecret),
+				'fallback_to_smtp' => $fallbackToSmtp,
 			]);
 
-			// Priority: MailBaby > Mailgun > SMTP
-			if ($mailbabyEnabled && $mailbabyApiKey) {
-				try {
-					$this->sendViaMailBaby();
-				} catch (\Exception $e) {
-					Log::warning('MailBaby API failed, falling back to SMTP', [
-						'delivery_id' => $this->messageDelivery->id,
-						'error' => $e->getMessage(),
-					]);
+			// Respect EMAIL_PROVIDER configuration
+			switch ($emailProvider) {
+				case 'mailbaby':
+					if ($mailbabyEnabled && $mailbabyApiKey) {
+						try {
+							$this->sendViaMailBaby();
+							break;
+						} catch (\Exception $e) {
+							Log::warning('MailBaby API failed, falling back to SMTP', [
+								'delivery_id' => $this->messageDelivery->id,
+								'error' => $e->getMessage(),
+							]);
+							if ($fallbackToSmtp) {
+								$this->sendViaSmtp();
+								break;
+							}
+							throw $e;
+						}
+					} else {
+						Log::warning('MailBaby provider selected but not configured', [
+							'delivery_id' => $this->messageDelivery->id,
+						]);
+						if ($fallbackToSmtp) {
+							$this->sendViaSmtp();
+							break;
+						}
+						throw new \Exception('MailBaby provider selected but not configured');
+					}
+
+				case 'mailgun':
+					if ($mailgunSecret) {
+						try {
+							$this->sendViaMailgun();
+							break;
+						} catch (\Exception $e) {
+							Log::warning('Mailgun failed, falling back to SMTP', [
+								'delivery_id' => $this->messageDelivery->id,
+								'error' => $e->getMessage(),
+							]);
+							if ($fallbackToSmtp) {
+								$this->sendViaSmtp();
+								break;
+							}
+							throw $e;
+						}
+					} else {
+						Log::warning('Mailgun provider selected but not configured', [
+							'delivery_id' => $this->messageDelivery->id,
+						]);
+						if ($fallbackToSmtp) {
+							$this->sendViaSmtp();
+							break;
+						}
+						throw new \Exception('Mailgun provider selected but not configured');
+					}
+
+				case 'smtp':
+				default:
 					$this->sendViaSmtp();
-				}
-			} elseif ($mailgunSecret) {
-				$this->sendViaMailgun();
-			} else {
-				$this->sendViaSmtp();
+					break;
 			}
 
 			Log::info('Message delivery sent successfully', [
