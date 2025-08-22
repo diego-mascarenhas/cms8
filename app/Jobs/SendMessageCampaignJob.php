@@ -341,7 +341,7 @@ class SendMessageCampaignJob implements ShouldQueue
 			$originalFromName = config('mail.from.name');
 
 			// Temporarily set Mailgun domain for fallback
-			config(['mail.from.address' => 'no-reply@revisionalpha.com']);
+			config(['mail.from.address' => 'no-reply@idoneo.dev']);
 			config(['mail.from.name' => 'REVISION ALPHA Emailer']);
 
 			// Fallback to Laravel Mail
@@ -359,7 +359,7 @@ class SendMessageCampaignJob implements ShouldQueue
 			Log::info('✅ SendMessageCampaignJob: Email sent via Mailgun fallback', [
 				'delivery_id' => $this->messageDelivery->id,
 				'contact_email' => $this->messageDelivery->contact->email,
-				'from_address_used' => 'no-reply@revisionalpha.com',
+				'from_address_used' => 'no-reply@idoneo.dev',
 				'fallback_message_id' => $fallbackId,
 			]);
 

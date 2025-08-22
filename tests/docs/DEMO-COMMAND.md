@@ -28,7 +28,7 @@ Para crear tu cuenta demo, necesito algunos datos:
 - Mínimo 2 caracteres
 - Se almacena temporalmente por 10 minutos
 
-#### Paso 2: Solicitar Email  
+#### Paso 2: Solicitar Email
 ```
 ✅ Perfecto, *[NOMBRE]*!
 
@@ -79,7 +79,7 @@ Si todos los datos son válidos, el sistema:
 
 🚀 Ahora tienes acceso a nuestros servicios de Idoneo Technologies:
 • Desarrollo de Software con IA
-• Gestión de Infraestructura en la Nube  
+• Gestión de Infraestructura en la Nube
 • Desarrollo de Apps Móviles
 • Consultoría en Ciberseguridad
 
@@ -113,7 +113,7 @@ https://revisionalpha.com/login/token/[TOKEN]
 ### Empresa Demo
 - **ID**: 2 (Idoneo Technologies)
 - **Website**: https://idoneo.dev
-- **Email**: no-reply@revisionalpha.com
+- **Email**: no-reply@idoneo.dev
 - **Team**: 1 (Principal)
 - **Servicios Incluidos**:
   - AI Software Development (Activo)

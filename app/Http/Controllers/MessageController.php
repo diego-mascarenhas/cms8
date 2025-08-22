@@ -14,6 +14,7 @@ use App\Models\Template;
 use App\Models\User;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use stdClass;
 use Twilio\Rest\Client;
@@ -386,7 +387,7 @@ class MessageController extends Controller
 			$user = auth()->user();
 			$team = $user->currentTeam;
 
-			\Log::info('🧪 TEST SEND: Starting test email', [
+			Log::info('🧪 TEST SEND: Starting test email', [
 				'message_id' => $message->id,
 				'message_name' => $message->name,
 				'user_email' => $user->email,
@@ -400,7 +401,7 @@ class MessageController extends Controller
 			// Get email config (will use system defaults if not configured)
 			$emailConfig = $team->getOutgoingEmailConfig();
 
-			\Log::info('🔍 TEST SEND: Email config retrieved', [
+			Log::info('🔍 TEST SEND: Email config retrieved', [
 				'smtp_host' => $emailConfig['host'],
 				'smtp_port' => $emailConfig['port'],
 				'smtp_username' => $emailConfig['username'],
@@ -412,7 +413,7 @@ class MessageController extends Controller
 			// ✨ IMPORTANTE: Configurar SMTP igual que en el Job
 			$this->configureMailForTeam($team);
 
-			\Log::info('✅ TEST SEND: SMTP configured, ready to send', [
+			Log::info('✅ TEST SEND: SMTP configured, ready to send', [
 				'after_config_host' => config('mail.mailers.smtp.host'),
 				'after_config_username' => config('mail.mailers.smtp.username'),
 				'after_config_from_address' => config('mail.from.address'),
@@ -432,7 +433,7 @@ class MessageController extends Controller
 			// Send test email using configured provider
 			$emailProvider = config('services.email.provider', 'smtp');
 
-			\Log::info('🔧 TEST SEND: Using email provider', [
+			Log::info('🔧 TEST SEND: Using email provider', [
 				'email_provider' => $emailProvider,
 				'user_email' => $user->email,
 			]);
@@ -445,12 +446,12 @@ class MessageController extends Controller
 						Mail::mailer('mailgun')->to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
 					} else
 					{
-						\Log::warning('TEST SEND: Mailgun not configured, using default SMTP');
+						Log::warning('TEST SEND: Mailgun not configured, using default SMTP');
 						Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
 					}
 					break;
 				case 'mailbaby':
-					\Log::warning('TEST SEND: MailBaby API not supported for test emails, using SMTP');
+					Log::warning('TEST SEND: MailBaby API not supported for test emails, using SMTP');
 					Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
 					break;
 				case 'smtp':
@@ -459,7 +460,7 @@ class MessageController extends Controller
 					break;
 			}
 
-			\Log::info('✅ TEST SEND: Email sent successfully', [
+			Log::info('✅ TEST SEND: Email sent successfully', [
 				'message_id' => $message->id,
 				'user_email' => $user->email,
 				'smtp_host_used' => config('mail.mailers.smtp.host'),
@@ -473,7 +474,8 @@ class MessageController extends Controller
 			]);
 		} catch (\Exception $e)
 		{
-			\Log::error('❌ TEST SEND: Failed to send test email', [
+			// Log detailed error for debugging
+			Log::error('❌ TEST SEND: Failed to send test email', [
 				'message_id' => $id,
 				'user_email' => $user->email ?? 'unknown',
 				'team_id' => $team->id ?? 'unknown',
@@ -485,9 +487,12 @@ class MessageController extends Controller
 				'trace' => $e->getTraceAsString(),
 			]);
 
+			// Determine user-friendly error message based on error type
+			$userMessage = $this->getUserFriendlyErrorMessage($e);
+
 			return response()->json([
 				'success' => false,
-				'message' => 'Error sending test email: '.$e->getMessage(),
+				'message' => $userMessage,
 			]);
 		}
 	}
@@ -582,5 +587,45 @@ class MessageController extends Controller
 				'sampleContact' => null,
 			]);
 		}
+	}
+
+	/**
+	 * Get user-friendly error message based on exception type
+	 */
+	private function getUserFriendlyErrorMessage(\Exception $e): string
+	{
+		$errorMessage = $e->getMessage();
+		$errorCode = $e->getCode();
+
+		// Check for common SMTP error patterns
+		if (strpos($errorMessage, '550 domain is not configured with ORIGIN IP IN SPF') !== false ||
+			strpos($errorMessage, 'SPF') !== false ||
+			strpos($errorMessage, '550') !== false) {
+			return "No se pudo enviar el email de prueba.\nPor favor, contacte con soporte técnico para autorizar la salida de emails desde su dominio.";
+		}
+
+		// Check for authentication errors
+		if (strpos($errorMessage, '535') !== false ||
+			strpos($errorMessage, 'authentication') !== false ||
+			strpos($errorMessage, 'login') !== false) {
+			return 'Error de autenticación en el servidor de correo. Verifique las credenciales de configuración.';
+		}
+
+		// Check for connection errors
+		if (strpos($errorMessage, 'connection') !== false ||
+			strpos($errorMessage, 'timeout') !== false ||
+			strpos($errorMessage, 'refused') !== false) {
+			return 'No se pudo conectar al servidor de correo. Verifique la configuración de conexión.';
+		}
+
+		// Check for quota exceeded
+		if (strpos($errorMessage, 'quota') !== false ||
+			strpos($errorMessage, 'limit') !== false ||
+			strpos($errorMessage, 'exceeded') !== false) {
+			return 'Se ha alcanzado el límite de envío de emails. Contacte con soporte técnico.';
+		}
+
+		// Generic error message for unknown errors
+		return 'No se pudo enviar el email de prueba. Por favor, contacte con soporte técnico si el problema persiste.';
 	}
 }

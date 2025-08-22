@@ -21,17 +21,17 @@ class TrackContactViewing
 	{
 		$currentRoute = $request->route()->getName();
 
-		if (app()->environment('local'))
-		{
-			Log::info('TrackContactViewing middleware executing', [
-				'route' => $currentRoute,
-				'session_tracking_id' => session('tracking_id'),
-				'session_contact_id' => session('viewing_contact_id'),
-				'previous_url' => session('previous_url'),
-				'current_url' => $request->fullUrl(),
-				'time' => now(),
-			]);
-		}
+		// if (app()->environment('local'))
+		// {
+		// 	Log::info('TrackContactViewing middleware executing', [
+		// 		'route' => $currentRoute,
+		// 		'session_tracking_id' => session('tracking_id'),
+		// 		'session_contact_id' => session('viewing_contact_id'),
+		// 		'previous_url' => session('previous_url'),
+		// 		'current_url' => $request->fullUrl(),
+		// 		'time' => now(),
+		// 	]);
+		// }
 
 		if ($currentRoute === 'contact.show')
 		{
@@ -42,16 +42,16 @@ class TrackContactViewing
 
 			if ($tracking && ! $tracking->end_time && ! $request->ajax())
 			{
-				if (app()->environment('local'))
-				{
-					Log::info('Ending tracking', [
-						'tracking_id' => session('tracking_id'),
-						'contact_id' => session('viewing_contact_id'),
-						'from_url' => session('previous_url'),
-						'to_url' => $request->fullUrl(),
-						'time' => now(),
-					]);
-				}
+				// if (app()->environment('local'))
+				// {
+				// 	Log::info('Ending tracking', [
+				// 		'tracking_id' => session('tracking_id'),
+				// 		'contact_id' => session('viewing_contact_id'),
+				// 		'from_url' => session('previous_url'),
+				// 		'to_url' => $request->fullUrl(),
+				// 		'time' => now(),
+				// 	]);
+				// }
 
 				$this->endActionTracking(session('tracking_id'));
 				session()->forget(['tracking_id', 'viewing_contact_id', 'previous_url']);
