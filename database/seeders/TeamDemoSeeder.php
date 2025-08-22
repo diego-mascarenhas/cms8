@@ -2210,6 +2210,21 @@ class TeamDemoSeeder extends Seeder
         // Staff contacts to create
         $staffContacts = [
             [
+                'name' => 'Idoneo',
+                'surname' => 'Dev',
+                'email' => 'bitcoder@idoneo.dev',
+            ],
+			[
+                'name' => 'Diego',
+                'surname' => 'Mascarenhas',
+                'email' => 'diego@revisionapha.es',
+            ],
+			[
+                'name' => 'Fernando',
+                'surname' => 'Barneto',
+                'email' => 'fernando@revisionapha.com',
+            ],
+			[
                 'name' => 'REVISION ALPHA',
                 'surname' => 'Hotmail',
                 'email' => 'revisionalpha@hotmail.com',

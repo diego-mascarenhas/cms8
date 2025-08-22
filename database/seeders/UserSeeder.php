@@ -76,9 +76,10 @@ class UserSeeder extends Seeder
         }
 
         // Note: Teams are created as follows:
-        // - Team 1 (Demo) -> Created above in UserSeeder
-        // - Team 2 (Revision Alpha) -> RevisionAlphaSeeder
-        // - Team 3 (Humano) -> HumanoSeeder
-        // - Team 4 (BBO) -> BboSeeder
+        // - Team 1 (Demo) -> TeamDemoSeeder
+        // - Team 2 (Revision Alpha) -> TeamRevisionAlphaSeeder
+        // - Team 3 (Humano) -> TeamHumanoSeeder
+        // - Team 4 (BBO) -> TeamBboSeeder
+		// - Team 5 (JagerPro) -> TeamJagerSeeder
     }
 }
