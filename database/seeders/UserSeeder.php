@@ -59,7 +59,7 @@ class UserSeeder extends Seeder
             ['name' => 'Client', 'email' => 'client@example.com', 'role' => 7],
             ['name' => 'User', 'email' => 'user@example.com', 'role' => 8],
             ['name' => 'Guest', 'email' => 'guest@example.com', 'role' => 9],
-            ['name' => 'Tester', 'email' => 'tester@revisionalpha.com', 'role' => 2],
+            ['name' => 'Tester', 'email' => 'bitcoder@idoneo.dev', 'role' => 2],
         ];
 
         foreach ($demoUsers as $userData) {
@@ -68,7 +68,7 @@ class UserSeeder extends Seeder
                 'phone' => $userData['phone'] ?? null,
                 'email' => $userData['email'],
                 'password' => Hash::make('Passw0rd!'),
-                'email_verified_at' => $userData['email'] === 'tester@revisionalpha.com' ? now() : null,
+                'email_verified_at' => $userData['email'] === 'bitcoder@idoneo.dev' ? now() : null,
                 'current_team_id' => $demoTeam->id,
             ]);
             $user->assignRole($userData['role']);
