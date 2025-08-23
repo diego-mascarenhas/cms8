@@ -169,13 +169,14 @@ class MessageController extends Controller
 	public function edit(string $id)
 	{
 		$data = Message::find($id);
-		$data->types = MessageType::getOptions();
-		$data->templates = Template::getOptions();
 
 		if (! $data)
 		{
 			return redirect()->route('message-list')->with('error', 'Message not found.');
 		}
+
+		$data->types = MessageType::getOptions();
+		$data->templates = Template::getOptions();
 
 		return view('message.form', compact('data'));
 	}
