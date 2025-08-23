@@ -3,6 +3,7 @@
 namespace App\Helpers;
 
 use App\Models\MessageDelivery;
+use App\Models\MessageDeliveryLink;
 
 class EmailTrackingHelper
 {
@@ -28,6 +29,9 @@ class EmailTrackingHelper
             if (self::shouldSkipUrl($originalUrl)) {
                 return $matches[0]; // Return original match
             }
+
+            // Save the original link to database
+            self::saveTrackedLink($delivery, $originalUrl);
 
             // Create tracking URL
             $trackingUrl = self::createTrackingUrl($delivery->getTrackingToken(), $originalUrl);
@@ -67,6 +71,34 @@ class EmailTrackingHelper
         }
 
         return false;
+    }
+
+    /**
+     * Save tracked link to database
+     */
+    private static function saveTrackedLink(MessageDelivery $delivery, string $originalUrl): void
+    {
+        try {
+            // Check if this link is already saved for this delivery to avoid duplicates
+            $existingLink = MessageDeliveryLink::where('message_delivery_id', $delivery->id)
+                ->where('link', $originalUrl)
+                ->first();
+
+            if (!$existingLink) {
+                MessageDeliveryLink::create([
+                    'message_delivery_id' => $delivery->id,
+                    'link' => $originalUrl,
+                    'created_at' => now(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Log error but don't break email sending
+            \Log::error('Failed to save tracked link', [
+                'delivery_id' => $delivery->id,
+                'url' => $originalUrl,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**
