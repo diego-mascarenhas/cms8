@@ -126,9 +126,10 @@
 					<table class="table table-sm">
 						<thead>
 							<tr>
-								<th>Contact</th>
-								<th>Clicked At</th>
 								<th>Link</th>
+								<th class="text-center">Total Clicks</th>
+								<th>First Click</th>
+								<th>Last Click</th>
 								<th class="text-center">Actions</th>
 							</tr>
 						</thead>
@@ -136,35 +137,38 @@
 							@foreach($links as $link)
 								<tr>
 									<td>
-										<div class="d-flex flex-column">
-											<h6 class="mb-0">{{ $link->messageDelivery->contact->name ?? 'Unknown' }}</h6>
-											<small class="text-muted">{{ $link->messageDelivery->contact->email ?? 'N/A' }}</small>
-										</div>
-									</td>
-									<td>
-										<small class="text-muted">
-											{{ is_string($link->created_at) ? $link->created_at : $link->created_at->format('M j, Y H:i') }}
-										</small>
-									</td>
-									<td>
 										<a href="{{ $link->link }}"
 										   target="_blank"
 										   class="text-primary"
 										   data-bs-toggle="tooltip"
 										   data-bs-placement="top"
 										   data-bs-original-title="Click to open: {{ $link->link }}">
-											{{ Str::limit($link->link, 50) }}
+											{{ Str::limit($link->link, 60) }}
 											<i class="ti ti-external-link ti-xs ms-1"></i>
 										</a>
 									</td>
 									<td class="text-center">
-										<button class="btn btn-sm btn-outline-secondary"
-												onclick="copyToClipboard('{{ $link->link }}')"
-												data-bs-toggle="tooltip"
-												data-bs-placement="top"
-												data-bs-original-title="Copy link">
-											<i class="ti ti-copy ti-xs"></i>
-										</button>
+										<span class="badge bg-primary">{{ $link->total_clicks }}</span>
+									</td>
+									<td>
+										<small class="text-muted">
+											{{ $link->first_click ? \Carbon\Carbon::parse($link->first_click)->format('M j, Y H:i') : 'N/A' }}
+										</small>
+									</td>
+									<td>
+										<small class="text-muted">
+											{{ $link->last_click ? \Carbon\Carbon::parse($link->last_click)->format('M j, Y H:i') : 'Never' }}
+										</small>
+									</td>
+									<td class="text-center">
+										<a href="javascript:;"
+										   onclick="copyToClipboard('{{ $link->link }}')"
+										   data-bs-toggle="tooltip"
+										   data-bs-placement="top"
+										   data-bs-original-title="Copy link"
+										   class="text-body">
+											<i class="ti ti-copy ti-sm"></i>
+										</a>
 									</td>
 								</tr>
 							@endforeach

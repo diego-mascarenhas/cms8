@@ -129,10 +129,11 @@ class MessageController extends Controller
 		// Obtener entregas reales
 		$deliveries = MessageDelivery::where('message_id', $message->id)->with('contact')->get();
 
-		// Obtener links de conversión reales con relaciones
+		// Obtener links de conversión agrupados por URL única
 		$links = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
-			->with(['messageDelivery.contact'])
-			->orderBy('created_at', 'desc')
+			->selectRaw('link, SUM(click_count) as total_clicks, MIN(created_at) as first_click, MAX(updated_at) as last_click')
+			->groupBy('link')
+			->orderBy('total_clicks', 'desc')
 			->get();
 
 		// Verificar configuración DNS para el dominio del remitente
