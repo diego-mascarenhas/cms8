@@ -141,17 +141,39 @@ class TeamSettingController extends Controller
 				'title' => 'Notification Settings',
 				'icon' => 'ti ti-bell',
 				'settings' => [
-					'notifications_email' => [
+					'notifications_email_enabled' => [
 						'label' => 'Email Notifications',
 						'type' => 'checkbox',
-						'value' => $team->getSetting('notifications_email', '1'),
+						'value' => $team->getSetting('notifications_email_enabled', '0'), // Default disabled
 						'is_encrypted' => false,
+						'section' => 'general',
+						'row' => 1,
 					],
-					'notifications_sms' => [
+					'notifications_sms_enabled' => [
 						'label' => 'SMS Notifications',
 						'type' => 'checkbox',
-						'value' => $team->getSetting('notifications_sms', '0'),
+						'value' => $team->getSetting('notifications_sms_enabled', '0'), // Default disabled
 						'is_encrypted' => false,
+						'section' => 'general',
+						'row' => 1,
+					],
+					'notifications_from_name' => [
+						'label' => 'From Name',
+						'type' => 'text',
+						'value' => $team->getSetting('notifications_from_name', ''),
+						'is_encrypted' => false,
+						'section' => 'sender',
+						'row' => 2,
+						'placeholder' => 'Your Company Name',
+					],
+					'notifications_from_email' => [
+						'label' => 'From Email Address',
+						'type' => 'email',
+						'value' => $team->getSetting('notifications_from_email', ''),
+						'is_encrypted' => false,
+						'section' => 'sender',
+						'row' => 2,
+						'placeholder' => 'notifications@yourdomain.com',
 					],
 				],
 			],

@@ -153,6 +153,42 @@
                                     </div>
                                 @endforeach
                             </div>
+
+                            {{-- SPF Information for Notifications and Email Configuration --}}
+                            @if($groupKey === 'notifications')
+                                <div class="alert alert-info mt-4">
+                                    <h6 class="alert-heading mb-2">
+                                        <i class="ti ti-info-circle me-1"></i>
+                                        SPF Configuration Required
+                                    </h6>
+                                    <p class="mb-2">
+                                        To ensure your notification emails are delivered successfully, add this SPF record to your domain's DNS:
+                                    </p>
+                                    <div class="bg-light p-2 rounded mb-2">
+                                        <code>v=spf1 include:spf.revisionalpha.com -all</code>
+                                    </div>
+                                    <small class="text-muted">
+                                        This SPF record authorizes REVISION ALPHA Mailer to send emails on behalf of your domain.
+                                    </small>
+                                </div>
+                            @elseif($groupKey === 'email')
+                                <div class="alert alert-info mt-4">
+                                    <h6 class="alert-heading mb-2">
+                                        <i class="ti ti-info-circle me-1"></i>
+                                        SPF Configuration Required
+                                    </h6>
+                                    <p class="mb-2">
+                                        To ensure your emails are delivered successfully and avoid spam filters, add this SPF record to your domain's DNS:
+                                    </p>
+                                    <div class="bg-light p-2 rounded mb-2">
+                                        <code>v=spf1 include:spf.revisionalpha.com -all</code>
+                                    </div>
+                                    <small class="text-muted">
+                                        This SPF record authorizes REVISION ALPHA Mailer to send emails on behalf of your domain. Required for both system SMTP and custom SMTP configurations.
+                                    </small>
+                                </div>
+                            @endif
+
                             <div class="mt-4">
                                 <button type="submit" class="btn btn-primary me-2">Save Changes</button>
                                 <a href="{{ route('team-settings.index', $team) }}" class="btn btn-outline-secondary">Cancel</a>

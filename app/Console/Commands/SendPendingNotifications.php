@@ -33,9 +33,15 @@ class SendPendingNotifications extends Command
 
 		$this->info('Starting to process pending notifications...');
 
-		// Get pending notifications
+		// Get pending notifications only from teams with notifications enabled
 		$pendingNotifications = Notification::with(['contact', 'user', 'team'])
 			->unsent()
+			->whereHas('team', function ($query) {
+				$query->whereHas('settings', function ($settingsQuery) {
+					$settingsQuery->where('key', 'notifications_email_enabled')
+						->where('value', '1'); // true as string
+				});
+			})
 			->orderBy('created_at', 'asc')
 			->limit($limit)
 			->get();

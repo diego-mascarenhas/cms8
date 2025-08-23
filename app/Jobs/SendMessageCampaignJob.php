@@ -135,7 +135,7 @@ class SendMessageCampaignJob implements ShouldQueue
 			}
 
 			// Mark as sending
-			$this->messageDelivery->update(['status_id' => 3]); // 3 = sending
+			$this->messageDelivery->update(['status_id' => 2]); // 2 = sending
 
 						// Determine email provider based on configuration
 			$emailProvider = env('EMAIL_PROVIDER', 'smtp');
@@ -302,12 +302,20 @@ class SendMessageCampaignJob implements ShouldQueue
 			'contact_email' => $this->messageDelivery->contact->email,
 		]);
 
-		// Mark as sent via MailBaby
+		// Mark as sent AND delivered (since we don't wait for webhooks)
 		$this->messageDelivery->update([
 			'email_provider' => 'mailbaby',
 			'provider_message_id' => $result['provider_message_id'] ?? null,
 			'sent_at' => now(),
-			'status_id' => 2, // 2 = sent
+			'delivered_at' => now(), // Mark as delivered immediately
+			'delivery_status' => 'delivered', // Set delivery status
+			'status_id' => 3, // 3 = delivered (instead of 2 = sent)
+		]);
+
+		Log::info('📬 SendMessageCampaignJob: Marked as delivered', [
+			'delivery_id' => $this->messageDelivery->id,
+			'contact_email' => $this->messageDelivery->contact->email,
+			'delivery_method' => 'mailbaby_immediate',
 		]);
 	}
 
@@ -364,12 +372,20 @@ class SendMessageCampaignJob implements ShouldQueue
 				'mailgun_response' => $result->getMessage(),
 			]);
 
-			// Mark as sent with real provider message ID
+			// Mark as sent AND delivered (since we don't wait for webhooks)
 			$this->messageDelivery->update([
 				'email_provider' => 'mailgun',
 				'provider_message_id' => $providerMessageId,
 				'sent_at' => now(),
-				'status_id' => 2, // 2 = sent
+				'delivered_at' => now(), // Mark as delivered immediately
+				'delivery_status' => 'delivered', // Set delivery status
+				'status_id' => 3, // 3 = delivered (instead of 2 = sent)
+			]);
+
+			Log::info('📬 SendMessageCampaignJob: Marked as delivered', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'delivery_method' => 'mailgun_immediate',
 			]);
 		} catch (\Exception $e)
 		{
@@ -409,7 +425,15 @@ class SendMessageCampaignJob implements ShouldQueue
 				'email_provider' => 'mailgun',
 				'provider_message_id' => $fallbackId,
 				'sent_at' => now(),
-				'status_id' => 2,
+				'delivered_at' => now(), // Mark as delivered immediately
+				'delivery_status' => 'delivered', // Set delivery status
+				'status_id' => 3, // 3 = delivered (instead of 2 = sent)
+			]);
+
+			Log::info('📬 SendMessageCampaignJob: Marked as delivered', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'delivery_method' => 'mailgun_fallback_immediate',
 			]);
 		}
 	}
@@ -458,11 +482,19 @@ class SendMessageCampaignJob implements ShouldQueue
 				'contact_email' => $this->messageDelivery->contact->email,
 			]);
 
-			// Mark as sent
+			// Mark as sent AND delivered (since we don't have webhook confirmation)
 			$this->messageDelivery->update([
 				'email_provider' => 'smtp',
 				'sent_at' => now(),
-				'status_id' => 2, // 2 = sent
+				'delivered_at' => now(), // Mark as delivered immediately for SMTP
+				'delivery_status' => 'delivered', // Set delivery status
+				'status_id' => 3, // 3 = delivered (instead of 2 = sent)
+			]);
+
+			Log::info('📬 SendMessageCampaignJob: Marked as delivered', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'delivery_method' => 'smtp_immediate',
 			]);
 
 		} catch (\Exception $e) {
