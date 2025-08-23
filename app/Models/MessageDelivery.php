@@ -137,9 +137,13 @@ class MessageDelivery extends Model
 	 */
 	public function markAsClicked()
 	{
-		$this->update([
-			'status_id' => 3, // 3 = clicked
-		]);
+		// Only update clicked_at if it's the first click
+		if (!$this->clicked_at) {
+			$this->update([
+				'clicked_at' => now(),
+				'status_id' => 3, // 3 = clicked
+			]);
+		}
 	}
 
 	/**
@@ -186,6 +190,11 @@ class MessageDelivery extends Model
 		// Simple variable replacement for {{name}}
 		$html = str_replace('{{name}}', $contactName, $templateHtml);
 
+		// Rewrite URLs for click tracking (only for SMTP emails)
+		if ($this->shouldEnableClickTracking()) {
+			$html = \App\Helpers\EmailTrackingHelper::rewriteUrlsForTracking($html, $this);
+		}
+
 		// Get team to check if advertising footer should be added
 		$team = $this->message && $this->message->team ? $this->message->team : auth()->user()->currentTeam;
 
@@ -205,5 +214,15 @@ class MessageDelivery extends Model
 		}
 
 		return $html;
+	}
+
+	/**
+	 * Check if click tracking should be enabled for this delivery
+	 */
+	private function shouldEnableClickTracking(): bool
+	{
+		// Enable click tracking for SMTP emails (not for providers that handle it themselves)
+		return in_array($this->email_provider, ['smtp', null]) ||
+			   config('services.email.provider', 'smtp') === 'smtp';
 	}
 }
