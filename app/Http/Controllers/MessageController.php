@@ -131,7 +131,7 @@ class MessageController extends Controller
 
 		// Obtener links de conversión agrupados por URL única
 		$links = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
-			->selectRaw('link, SUM(click_count) as total_clicks, MIN(created_at) as first_click, MAX(updated_at) as last_click')
+			->selectRaw('link, COUNT(DISTINCT message_delivery_id) as unique_clicks, SUM(click_count) as total_clicks, MIN(created_at) as first_click, MAX(updated_at) as last_click')
 			->groupBy('link')
 			->orderBy('total_clicks', 'desc')
 			->get();
@@ -383,15 +383,17 @@ class MessageController extends Controller
 			// Get all deliveries for this message
 			$deliveries = MessageDelivery::where('message_id', $message->id)->get();
 
-			// Get contact details for this specific link
+						// Get contact details for this specific link - only those who actually clicked
 			$linkDetails = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
 				->where('link', $link)
+				->where('click_count', '>', 0) // Only contacts who actually clicked
 				->with(['messageDelivery.contact'])
 				->get();
 
 			// Group by contact and sum click counts
 			$contactData = [];
 			$totalClicks = 0;
+			$uniqueClicks = 0;
 
 			foreach ($linkDetails as $linkDetail) {
 				$contact = $linkDetail->messageDelivery->contact;
@@ -409,6 +411,7 @@ class MessageController extends Controller
 						'first_click' => $linkDetail->created_at,
 						'last_click' => $linkDetail->updated_at,
 					];
+					$uniqueClicks++; // Count unique contacts
 				}
 
 				$contactData[$contactId]['click_count'] += $clickCount;
@@ -442,6 +445,7 @@ class MessageController extends Controller
 				'success' => true,
 				'contacts' => array_values($contacts),
 				'totalClicks' => $totalClicks,
+				'uniqueClicks' => $uniqueClicks,
 				'link' => $link,
 			]);
 

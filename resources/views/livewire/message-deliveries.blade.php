@@ -103,23 +103,31 @@
 
 {{-- Initialize tooltips after Livewire updates --}}
 <script>
-document.addEventListener('livewire:updated', function() {
+// Function to initialize tooltips
+function initializeTooltips() {
     // Dispose existing tooltips to prevent duplicates
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
         var existingTooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
         if (existingTooltip) {
             existingTooltip.dispose();
         }
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+        new bootstrap.Tooltip(tooltipTriggerEl);
     });
+}
+
+// Initialize tooltips after Livewire updates
+document.addEventListener('livewire:updated', function() {
+    setTimeout(initializeTooltips, 100); // Small delay to ensure DOM is ready
 });
 
 // Initialize tooltips on first load
 document.addEventListener('DOMContentLoaded', function() {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
+    initializeTooltips();
+});
+
+// Also initialize when the component is loaded
+window.addEventListener('load', function() {
+    initializeTooltips();
 });
 </script>

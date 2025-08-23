@@ -127,6 +127,7 @@
 						<thead>
 							<tr>
 								<th>Link</th>
+								<th class="text-center">Unique Clicks</th>
 								<th class="text-center">Total Clicks</th>
 								<th>First Click</th>
 								<th>Last Click</th>
@@ -146,6 +147,9 @@
 											{{ Str::limit($link->link, 60) }}
 											<i class="ti ti-external-link ti-xs ms-1"></i>
 										</a>
+									</td>
+									<td class="text-center">
+										<span class="badge bg-info">{{ $link->unique_clicks }}</span>
 									</td>
 									<td class="text-center">
 										<span class="badge bg-primary">{{ $link->total_clicks }}</span>
@@ -315,7 +319,7 @@ function showLinkDetails(encodedLink, linkUrl) {
         })
         .then(data => {
             if (data.success) {
-                displayLinkDetails(data.contacts, data.totalClicks);
+                displayLinkDetails(data.contacts, data.totalClicks, data.uniqueClicks);
             } else {
                 displayError(data.message || 'Error loading contact details');
             }
@@ -326,12 +330,15 @@ function showLinkDetails(encodedLink, linkUrl) {
         });
 }
 
-function displayLinkDetails(contacts, totalClicks) {
+function displayLinkDetails(contacts, totalClicks, uniqueClicks) {
     let html = `
         <div class="mb-3">
             <div class="d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">Contact Details</h6>
-                <span class="badge bg-primary">${totalClicks} total clicks</span>
+                <div>
+                    <span class="badge bg-info me-2">${uniqueClicks} unique</span>
+                    <span class="badge bg-primary">${totalClicks} total</span>
+                </div>
             </div>
         </div>
     `;
@@ -352,6 +359,9 @@ function displayLinkDetails(contacts, totalClicks) {
         `;
 
         contacts.forEach(contact => {
+            // Use different colors: info for single click, primary for multiple clicks
+            const badgeClass = contact.click_count === 1 ? 'bg-info' : 'bg-primary';
+
             html += `
                 <tr>
                     <td>
@@ -361,7 +371,7 @@ function displayLinkDetails(contacts, totalClicks) {
                         </div>
                     </td>
                     <td class="text-center">
-                        <span class="badge bg-info">${contact.click_count}</span>
+                        <span class="badge ${badgeClass}">${contact.click_count}</span>
                     </td>
                     <td>
                         <small class="text-muted">${contact.first_click}</small>
