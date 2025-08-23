@@ -2029,7 +2029,7 @@ class TeamDemoSeeder extends Seeder
                 'status_id' => 1,
                 'gjs_data' => [
                     'css' => '* { box-sizing: border-box; } body {margin: 0;}.gjs-row{display:table;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;width:100%;}.gjs-cell{width:8%;display:table-cell;height:75px;}#ix12{padding:10px;}@media (max-width: 768px){.gjs-cell{width:100%;display:block;}}',
-                    'html' => '<body><div class="gjs-row"><div class="gjs-cell"><div id="ix12">Bienvenido <b>{{name}}</b>, esta es un envío de prueba.</div></div></div></body>',
+                    'html' => '<body><div class="gjs-row"><div class="gjs-cell"><div id="ix12">Bienvenido <b>{{name}}</b>, esta es un envío de prueba. <a href="https://revisionalpha.com/emailer">Visita nuestro sitio web</a> para más información sobre email marketing. También puedes <a href="https://humano.app">conocer nuestras aplicaciones</a>.</div></div></div></body>',
                     'styles' => json_encode([
                         [
                             'selectors' => [['name' => 'gjs-row', 'private' => 1]],
@@ -2088,7 +2088,7 @@ class TeamDemoSeeder extends Seeder
                                     'components' => [
                                         [
                                             'type' => 'text',
-                                            'content' => 'Bienvenido <b>{{name}}</b>, esta es un envío de prueba.',
+                                            'content' => 'Bienvenido <b>{{name}}</b>, esta es un envío de prueba. <a href="https://revisionalpha.com/emailer">Visita nuestro sitio web</a> para más información sobre email marketing. También puedes <a href="https://humano.app">conocer nuestras aplicaciones</a>.',
                                             'attributes' => ['id' => 'ix12'],
                                         ],
                                     ],
@@ -2129,7 +2129,7 @@ class TeamDemoSeeder extends Seeder
                     'team_id' => 1,
                 ],
                 [
-                    'text' => 'Test Message with Demo Template',
+                    'text' => 'Hola {{name}}, esta es una campaña de prueba. Visita https://revisionalpha.com/emailer para más información sobre email marketing. También puedes conocer nuestras aplicaciones en https://humano.app',
                     'type_id' => 2,
                     'template_id' => $demoTemplate->id,
                     'status_id' => 0,
@@ -2142,7 +2142,7 @@ class TeamDemoSeeder extends Seeder
                     'team_id' => 1,
                 ],
                 [
-                    'text' => 'Demo Newsletter Campaign using simple template with {{name}} variable',
+                    'text' => 'Hola {{name}}, te invitamos a conocer nuestros servicios. Descubre REVISION ALPHA Emailer en https://revisionalpha.com/emailer y nuestras aplicaciones en https://humano.app ¡Esperamos verte pronto!',
                     'type_id' => 1,
                     'template_id' => $demoTemplate->id,
                     'category_id' => $staffCategory?->id,

@@ -216,7 +216,7 @@ class MessageDelivery extends Model
 		return $html;
 	}
 
-	/**
+		/**
 	 * Check if click tracking should be enabled for this delivery
 	 */
 	private function shouldEnableClickTracking(): bool
@@ -224,5 +224,20 @@ class MessageDelivery extends Model
 		// Enable click tracking for SMTP emails (not for providers that handle it themselves)
 		return in_array($this->email_provider, ['smtp', null]) ||
 			   config('services.email.provider', 'smtp') === 'smtp';
+	}
+
+	/**
+	 * Generate personalized text for WhatsApp campaigns
+	 */
+	public function getTextForWhatsApp(): string
+	{
+		$messageText = $this->message && $this->message->text
+			? $this->message->text
+			: 'Mensaje de prueba';
+
+		$contactName = $this->contact ? $this->contact->name : '';
+
+		// Simple variable replacement for {{name}}
+		return str_replace('{{name}}', $contactName, $messageText);
 	}
 }
