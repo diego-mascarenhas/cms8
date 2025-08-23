@@ -275,7 +275,7 @@ class MessageController extends Controller
 		return view('message.unsubscribe', ['email' => $email]);
 	}
 
-	/**
+		/**
 	 * Start a message campaign
 	 */
 	public function startCampaign(Request $request, $id)
@@ -284,40 +284,18 @@ class MessageController extends Controller
 		{
 			$message = Message::findOrFail($id);
 
-			// Update message status to active
-			$message->update(['status_id' => 1]);
+			// Simply activate the message - the scheduler will handle delivery creation
+			$message->update([
+				'status_id' => 1, // Active
+				'started_at' => now(), // Mark when campaign started
+			]);
 
-			// Create deliveries if they don't exist and schedule them with random intervals
-			$this->populateMessageDeliveries($message);
-
-			// Dispatch jobs for pending deliveries
-			$pendingDeliveries = MessageDelivery::where('message_id', $message->id)
-				->whereNull('delivered_at') // Not delivered yet
-				->where('status_id', 1) // 1 = pending
-				->get();
-
-			$contactIndex = 0;
-			foreach ($pendingDeliveries as $delivery)
-			{
-				// Smart delay: Only apply delays for Redis/Database queues, not Sync
-				$queueConnection = config('queue.default');
-
-				if ($queueConnection === 'sync') {
-					// Sync mode: Send immediately (delays don't work in sync mode)
-					SendMessageCampaignJob::dispatch($delivery);
-				} else {
-					// Redis/Database mode: Use delays as configured
-					$delaySeconds = max(0, $delivery->sent_at->diffInSeconds(now()));
-					SendMessageCampaignJob::dispatch($delivery)
-						->delay($delaySeconds);
-				}
-
-				$contactIndex++;
-			}
+			// Count potential contacts for this campaign
+			$contactsCount = $this->getContactsForMessage($message)->count();
 
 			return response()->json([
 				'success' => true,
-				'message' => 'Campaign started successfully. '.$pendingDeliveries->count().' emails queued for sending.',
+				'message' => "Campaign activated successfully. {$contactsCount} contacts will be processed by the scheduler.",
 			]);
 		} catch (\Exception $e)
 		{
@@ -329,53 +307,19 @@ class MessageController extends Controller
 	}
 
 	/**
-	 * Populate message deliveries for a campaign with scheduled send times
+	 * Get contacts for a message based on its category
 	 */
-	private function populateMessageDeliveries(Message $message)
+	private function getContactsForMessage(Message $message)
 	{
-		// Get contacts from the message's category
-		$contacts = collect();
-
 		if ($message->category)
 		{
-			$contacts = $message->category->contacts()->where('status_id', 1)->get();
+			return $message->category->contacts()->where('status_id', 1);
 		} else
 		{
 			// If no category, get all active contacts from the team
-			$contacts = \App\Models\Contact::where('team_id', $message->team_id)
+			return \App\Models\Contact::where('team_id', $message->team_id)
 				->where('status_id', 1)
-				->whereNotNull('email')
-				->get();
-		}
-
-		$contactIndex = 0;
-		foreach ($contacts as $contact)
-		{
-			// Check if delivery already exists
-			$existingDelivery = MessageDelivery::where('message_id', $message->id)
-				->where('contact_id', $contact->id)
-				->first();
-
-			if (! $existingDelivery)
-			{
-				// Schedule with configurable intervals from .env
-				$baseMinutes = config('services.email.delay.base_minutes', 5);
-				$maxRandomSeconds = config('services.email.delay.random_seconds', 120);
-
-				$baseDelayMinutes = $contactIndex * $baseMinutes; // Configurable minutes between each
-				$randomDelaySeconds = rand(0, $maxRandomSeconds); // Configurable random seconds
-				$scheduledTime = now()->addMinutes($baseDelayMinutes)->addSeconds($randomDelaySeconds);
-
-				MessageDelivery::create([
-					'team_id' => $message->team_id,
-					'message_id' => $message->id,
-					'contact_id' => $contact->id,
-					'status_id' => 1, // 1 = pending
-					'sent_at' => $scheduledTime, // Schedule the send time
-				]);
-
-				$contactIndex++;
-			}
+				->whereNotNull('email');
 		}
 	}
 

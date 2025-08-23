@@ -159,6 +159,19 @@ class Kernel extends ConsoleKernel
 			->name('team-config-weekly-report')
 			->description('Weekly team configuration report with admin summary')
 			->runInBackground();
+
+		// Email Campaign Processing
+		$schedule->command('campaigns:process-active')
+			->everyMinute()
+			->withoutOverlapping()
+			->name('process-active-campaigns')
+			->description('Create deliveries for active campaigns');
+
+		$schedule->command('campaigns:send-scheduled')
+			->everyMinute()
+			->withoutOverlapping()
+			->name('send-scheduled-deliveries')
+			->description('Send scheduled email deliveries');
 	}
 
 	/**

@@ -16,10 +16,11 @@ class Message extends Model
 
 	protected $table = 'messages';
 
-	protected $fillable = ['name', 'type_id', 'category_id', 'template_id', 'text', 'status_id', 'team_id'];
+	protected $fillable = ['name', 'type_id', 'category_id', 'template_id', 'text', 'status_id', 'team_id', 'started_at'];
 
 	protected $casts = [
 		'status_id' => 'boolean',
+		'started_at' => 'datetime',
 	];
 
 	protected static function booted()
