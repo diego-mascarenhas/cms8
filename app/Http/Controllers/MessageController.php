@@ -311,16 +311,37 @@ class MessageController extends Controller
 	 */
 	private function getContactsForMessage(Message $message)
 	{
+		$query = null;
+
 		if ($message->category)
 		{
-			return $message->category->contacts()->where('status_id', 1);
+			$query = $message->category->contacts()->where('status_id', 1);
 		} else
 		{
 			// If no category, get all active contacts from the team
-			return \App\Models\Contact::where('team_id', $message->team_id)
+			$query = \App\Models\Contact::where('team_id', $message->team_id)
 				->where('status_id', 1)
 				->whereNotNull('email');
 		}
+
+		// Exclude test/demo email addresses
+		$testDomains = [
+			'@example.org',
+			'@example.net',
+			'@example.com',
+			'@demo.com',
+			'@test.com',
+			'@localhost',
+			'@testing.com',
+			'@dummy.com',
+			'@fake.com',
+		];
+
+		foreach ($testDomains as $domain) {
+			$query->where('email', 'not like', '%' . $domain);
+		}
+
+		return $query;
 	}
 
 	/**

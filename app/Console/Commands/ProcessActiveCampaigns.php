@@ -100,8 +100,8 @@ class ProcessActiveCampaigns extends Command
 			if (!$existingDelivery)
 			{
 				// Calculate scheduled time based on the last delivery + random interval
-				$baseMinutes = config('services.email.delay.base_minutes', 5);
-				$maxRandomSeconds = config('services.email.delay.random_seconds', 120);
+				$baseMinutes = config('services.email.delay.base_minutes', 1); // Reduced from 5 to 1 minute
+				$maxRandomSeconds = config('services.email.delay.random_seconds', 60); // Reduced from 120 to 60 seconds
 
 				$delayMinutes = $deliveryIndex * $baseMinutes;
 				$randomSeconds = rand(0, $maxRandomSeconds);
@@ -118,8 +118,11 @@ class ProcessActiveCampaigns extends Command
 				$createdCount++;
 				$deliveryIndex++;
 
-				// Only create one delivery per run to spread the load
-				break;
+				// Create multiple deliveries per run but limit to avoid overload
+				$maxDeliveries = config('services.email.processing.deliveries_per_campaign_run', 50);
+				if ($createdCount >= $maxDeliveries) {
+					break;
+				}
 			}
 		}
 
@@ -131,16 +134,36 @@ class ProcessActiveCampaigns extends Command
 	 */
 	private function getContactsForMessage(Message $message)
 	{
+		$query = null;
+
 		if ($message->category)
 		{
-			return $message->category->contacts()->where('status_id', 1)->get();
+			$query = $message->category->contacts()->where('status_id', 1);
 		} else
 		{
 			// If no category, get all active contacts from the team
-			return \App\Models\Contact::where('team_id', $message->team_id)
+			$query = \App\Models\Contact::where('team_id', $message->team_id)
 				->where('status_id', 1)
-				->whereNotNull('email')
-				->get();
+				->whereNotNull('email');
 		}
+
+		// Exclude test/demo email addresses
+		$testDomains = [
+			'@example.org',
+			'@example.net',
+			'@example.com',
+			'@demo.com',
+			'@test.com',
+			'@localhost',
+			'@testing.com',
+			'@dummy.com',
+			'@fake.com',
+		];
+
+		foreach ($testDomains as $domain) {
+			$query->where('email', 'not like', '%' . $domain);
+		}
+
+		return $query->get();
 	}
 }
