@@ -160,15 +160,25 @@
 											{{ $link->last_click ? \Carbon\Carbon::parse($link->last_click)->format('M j, Y H:i') : 'Never' }}
 										</small>
 									</td>
-									<td class="text-center">
-										<a href="javascript:;"
-										   onclick="copyToClipboard('{{ $link->link }}')"
-										   data-bs-toggle="tooltip"
-										   data-bs-placement="top"
-										   data-bs-original-title="Copy link"
-										   class="text-body">
-											<i class="ti ti-copy ti-sm"></i>
-										</a>
+																		<td class="text-center">
+										<div class="d-flex justify-content-center align-items-center gap-2">
+											<a href="javascript:;"
+											   onclick="showLinkDetails('{{ base64_encode($link->link) }}', '{{ addslashes($link->link) }}')"
+											   data-bs-toggle="tooltip"
+											   data-bs-placement="top"
+											   data-bs-original-title="View contacts who clicked"
+											   class="text-body">
+												<i class="ti ti-users ti-sm"></i>
+											</a>
+											<a href="javascript:;"
+											   onclick="copyToClipboard('{{ $link->link }}')"
+											   data-bs-toggle="tooltip"
+											   data-bs-placement="top"
+											   data-bs-original-title="Copy link"
+											   class="text-body">
+												<i class="ti ti-copy ti-sm"></i>
+											</a>
+										</div>
 									</td>
 								</tr>
 							@endforeach
@@ -187,6 +197,41 @@
 		</div>
 	</div>
 </div>
+
+<!-- Modal for Link Contact Details -->
+<div class="modal fade" id="linkDetailsModal" tabindex="-1" aria-labelledby="linkDetailsModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="linkDetailsModalLabel">
+					<i class="ti ti-users me-2"></i>Contacts who clicked this link
+				</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<div class="mb-3">
+					<strong>Link:</strong>
+					<a href="#" id="modalLinkUrl" target="_blank" class="text-primary">
+						<span id="modalLinkText"></span>
+						<i class="ti ti-external-link ti-xs ms-1"></i>
+					</a>
+				</div>
+				<div id="linkDetailsContent">
+					<div class="text-center py-4">
+						<div class="spinner-border text-primary" role="status">
+							<span class="visually-hidden">Loading...</span>
+						</div>
+						<p class="mt-2 text-muted">Loading contact details...</p>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+
 @endsection
 
 @section('vendor-style')
@@ -239,6 +284,122 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 });
+
+// Show link details modal
+function showLinkDetails(encodedLink, linkUrl) {
+    // Set the link in the modal header
+    document.getElementById('modalLinkUrl').href = linkUrl;
+    document.getElementById('modalLinkText').textContent = linkUrl;
+
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('linkDetailsModal'));
+    modal.show();
+
+    // Reset content to loading state
+    document.getElementById('linkDetailsContent').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading contact details...</p>
+        </div>
+    `;
+
+    // Fetch link details
+    fetch(`/message/{{ $message->id }}/link-details/${encodedLink}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                displayLinkDetails(data.contacts, data.totalClicks);
+            } else {
+                displayError(data.message || 'Error loading contact details');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching link details:', error);
+            displayError('Error loading contact details');
+        });
+}
+
+function displayLinkDetails(contacts, totalClicks) {
+    let html = `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Contact Details</h6>
+                <span class="badge bg-primary">${totalClicks} total clicks</span>
+            </div>
+        </div>
+    `;
+
+    if (contacts && contacts.length > 0) {
+        html += `
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Contact</th>
+                            <th class="text-center">Clicks</th>
+                            <th>First Click</th>
+                            <th>Last Click</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        contacts.forEach(contact => {
+            html += `
+                <tr>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <h6 class="mb-0">${contact.name}</h6>
+                            <small class="text-muted">${contact.email}</small>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-info">${contact.click_count}</span>
+                    </td>
+                    <td>
+                        <small class="text-muted">${contact.first_click}</small>
+                    </td>
+                    <td>
+                        <small class="text-muted">${contact.last_click}</small>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="text-center py-4">
+                <i class="ti ti-users-off ti-lg text-muted"></i>
+                <h6 class="text-muted mt-2">No clicks recorded</h6>
+                <p class="text-muted small">This link hasn't been clicked by any contacts yet.</p>
+            </div>
+        `;
+    }
+
+    document.getElementById('linkDetailsContent').innerHTML = html;
+}
+
+function displayError(message) {
+    document.getElementById('linkDetailsContent').innerHTML = `
+        <div class="text-center py-4">
+            <i class="ti ti-alert-circle ti-lg text-danger"></i>
+            <h6 class="text-danger mt-2">Error</h6>
+            <p class="text-muted small">${message}</p>
+        </div>
+    `;
+}
 
 function resendDelivery(deliveryId, element) {
     Swal.fire({

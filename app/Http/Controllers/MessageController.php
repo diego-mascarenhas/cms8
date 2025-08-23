@@ -372,6 +372,88 @@ class MessageController extends Controller
 	}
 
 	/**
+	 * Get contact details for a specific link
+	 */
+	public function getLinkDetails(Request $request, $id, $encodedLink)
+	{
+		try {
+			$message = Message::findOrFail($id);
+			$link = base64_decode($encodedLink);
+
+			// Get all deliveries for this message
+			$deliveries = MessageDelivery::where('message_id', $message->id)->get();
+
+			// Get contact details for this specific link
+			$linkDetails = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
+				->where('link', $link)
+				->with(['messageDelivery.contact'])
+				->get();
+
+			// Group by contact and sum click counts
+			$contactData = [];
+			$totalClicks = 0;
+
+			foreach ($linkDetails as $linkDetail) {
+				$contact = $linkDetail->messageDelivery->contact;
+				if (!$contact) continue;
+
+				$contactId = $contact->id;
+				$clickCount = $linkDetail->click_count;
+				$totalClicks += $clickCount;
+
+				if (!isset($contactData[$contactId])) {
+					$contactData[$contactId] = [
+						'name' => $contact->name,
+						'email' => $contact->email,
+						'click_count' => 0,
+						'first_click' => $linkDetail->created_at,
+						'last_click' => $linkDetail->updated_at,
+					];
+				}
+
+				$contactData[$contactId]['click_count'] += $clickCount;
+
+				// Update first/last click times
+				if ($linkDetail->created_at < $contactData[$contactId]['first_click']) {
+					$contactData[$contactId]['first_click'] = $linkDetail->created_at;
+				}
+				if ($linkDetail->updated_at && $linkDetail->updated_at > $contactData[$contactId]['last_click']) {
+					$contactData[$contactId]['last_click'] = $linkDetail->updated_at;
+				}
+			}
+
+			// Format the data for response
+			$contacts = array_map(function($contact) {
+				return [
+					'name' => $contact['name'],
+					'email' => $contact['email'],
+					'click_count' => $contact['click_count'],
+					'first_click' => $contact['first_click'] ? $contact['first_click']->format('M j, Y H:i') : 'N/A',
+					'last_click' => $contact['last_click'] ? $contact['last_click']->format('M j, Y H:i') : 'Never',
+				];
+			}, $contactData);
+
+			// Sort by click count descending
+			usort($contacts, function($a, $b) {
+				return $b['click_count'] - $a['click_count'];
+			});
+
+			return response()->json([
+				'success' => true,
+				'contacts' => array_values($contacts),
+				'totalClicks' => $totalClicks,
+				'link' => $link,
+			]);
+
+		} catch (\Exception $e) {
+			return response()->json([
+				'success' => false,
+				'message' => 'Error loading link details: ' . $e->getMessage(),
+			], 500);
+		}
+	}
+
+	/**
 	 * Send a test email to the current user
 	 */
 	public function testSend(Request $request, $id)
