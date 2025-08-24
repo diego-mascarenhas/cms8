@@ -105,7 +105,7 @@ class MessageController extends Controller
 			$contactsInCategory = $message->category->contacts()->count();
 		}
 
-		// Obtener estadísticas reales (ejemplo: sumarización de deliveries)
+		// Obtener estadísticas reales calculadas desde la base de datos
 		$stats = [
 			'subscribers' => MessageDelivery::where('message_id', $message->id)->count(),
 			'remaining' => 0, // Puedes calcularlo según tu lógica
@@ -113,12 +113,17 @@ class MessageController extends Controller
 			'sent' => MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count(),
 			'rejected' => 0, // Ajusta según tu lógica
 			'delivered' => MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count(),
-			'opened' => 0, // Si tienes tracking de aperturas
+			'opened' => MessageDelivery::where('message_id', $message->id)->whereNotNull('opened_at')->count(),
 			'unsubscribed' => 0, // Si tienes tracking de desuscriptos
-			'clicks' => 0, // Si tienes tracking de clicks
-			'unique_opens' => 0, // Si tienes tracking de aperturas únicas
-			'ratio' => 0, // Puedes calcular el ratio real
+			'clicks' => MessageDelivery::where('message_id', $message->id)->whereNotNull('clicked_at')->count(),
+			'unique_opens' => MessageDelivery::where('message_id', $message->id)->whereNotNull('opened_at')->count(), // Same as opened for now
+			'ratio' => 0, // Se calculará después
 		];
+
+		// Calcular el ratio de apertura (open rate)
+		if ($stats['delivered'] > 0) {
+			$stats['ratio'] = round(($stats['opened'] / $stats['delivered']) * 100, 1);
+		}
 
 		// Obtener stats de la tabla message_delivery_stats usando el modelo
 		$stats_db = MessageDeliveryStat::where('message_id', $message->id)->first();

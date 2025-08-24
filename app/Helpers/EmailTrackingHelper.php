@@ -18,6 +18,7 @@ class EmailTrackingHelper
         }
 
         // Check if click tracking is enabled for this message
+        // Only rewrite URLs if explicitly enabled to avoid SPAM issues
         if (!$delivery->message || !$delivery->message->enable_click_tracking) {
             return $html;
         }
@@ -128,6 +129,7 @@ class EmailTrackingHelper
         }
 
         // Check if open tracking is enabled for this message
+        // Only add tracking pixel if explicitly enabled to avoid SPAM issues
         if (!$delivery->message || !$delivery->message->enable_open_tracking) {
             return $html;
         }
@@ -152,7 +154,8 @@ class EmailTrackingHelper
             return $html;
         }
 
-        // Check if the message has show_unsubscribe enabled (default true for backward compatibility)
+        // Check if unsubscribe is enabled for this message
+        // Only add unsubscribe link if explicitly enabled
         if (!$delivery->message || !$delivery->message->show_unsubscribe) {
             return $html;
         }

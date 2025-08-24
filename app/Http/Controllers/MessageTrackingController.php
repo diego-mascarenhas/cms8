@@ -54,6 +54,25 @@ class MessageTrackingController extends Controller
 		{
 			$originalUrl = $request->query('url', '/');
 
+			// If this is the first interaction and open tracking is enabled,
+			// also register an open event (user must have opened the email to click)
+			if (!$delivery->opened_at && $delivery->message && $delivery->message->enable_open_tracking) {
+				\App\Models\MessageDeliveryTracking::createEvent(
+					$delivery->id,
+					'opened',
+					[
+						'source' => 'inferred_from_click',
+						'timestamp' => now(),
+					],
+				);
+				$delivery->markAsOpened();
+				\Log::info('Open event inferred from click', [
+					'delivery_id' => $delivery->id,
+					'contact_email' => $delivery->contact ? $delivery->contact->email : 'unknown',
+					'clicked_url' => $originalUrl,
+				]);
+			}
+
 			// Create tracking event using the new method
 			\App\Models\MessageDeliveryTracking::createEvent(
 				$delivery->id,

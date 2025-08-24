@@ -79,7 +79,7 @@ class DeliveryStats extends Component
 			return ! $delivery->sent_at || $delivery->sent_at->isFuture();
 		})->count();
 
-		$ratio = $subscribers > 0 ? round(($opened / $subscribers) * 100, 2) : 0;
+		$ratio = $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0;
 
 		\App\Models\MessageDeliveryStat::updateOrCreate(
 			['message_id' => $this->messageId],
