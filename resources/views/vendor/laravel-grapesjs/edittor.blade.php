@@ -47,6 +47,39 @@
         .gjs-frame a:hover {
             text-decoration: underline !important;
         }
+
+        /* Footer specific styles - High priority to prevent GrapesJS override */
+        .gjs-frame table[bgcolor="#2A333D"] {
+            background-color: #2A333D !important;
+        }
+
+        .gjs-frame table[bgcolor="#2A333D"] * {
+            color: #ffffff !important;
+        }
+
+        .gjs-frame table[bgcolor="#2A333D"] span {
+            color: #ffffff !important;
+        }
+
+        .gjs-frame table[bgcolor="#2A333D"] strong {
+            color: #ffffff !important;
+        }
+
+        .gjs-frame table[bgcolor="#2A333D"] a {
+            color: #ffffff !important;
+            text-decoration: none !important;
+        }
+
+        .gjs-frame table[bgcolor="#2A333D"] a:hover {
+            color: #ffffff !important;
+            text-decoration: underline !important;
+        }
+
+        /* Force styles even after GrapesJS loads */
+        .gjs-frame table[bgcolor="#2A333D"] td,
+        .gjs-frame table[bgcolor="#2A333D"] td * {
+            color: #ffffff !important;
+        }
     </style>
     <script>
         window.editorConfig = @json($editorConfig ?? []);
@@ -134,14 +167,20 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Force font styles in GrapesJS canvas after editor loads
-        setTimeout(function() {
+        // Function to apply persistent styles
+        function applyPersistentStyles() {
             const editor = getGrapesEditorInstance();
             if (editor && editor.Canvas) {
                 const canvasDoc = editor.Canvas.getDocument();
                 if (canvasDoc) {
-                    // Create style element for canvas
+                    // Remove existing style if present
+                    const existingStyle = canvasDoc.getElementById('persistent-email-styles');
+                    if (existingStyle) {
+                        existingStyle.remove();
+                    }
+
                     const style = canvasDoc.createElement('style');
+                    style.id = 'persistent-email-styles';
                     style.textContent = `
                         * {
                             font-family: helvetica, arial, verdana, sans-serif !important;
@@ -163,12 +202,55 @@
                         a:hover {
                             text-decoration: underline !important;
                         }
+
+                        /* Footer styles - Maximum priority */
+                        table[bgcolor="#2A333D"] {
+                            background-color: #2A333D !important;
+                        }
+                        table[bgcolor="#2A333D"] *,
+                        table[bgcolor="#2A333D"] span,
+                        table[bgcolor="#2A333D"] strong,
+                        table[bgcolor="#2A333D"] td,
+                        table[bgcolor="#2A333D"] td * {
+                            color: #ffffff !important;
+                        }
+                        table[bgcolor="#2A333D"] a {
+                            color: #ffffff !important;
+                            text-decoration: none !important;
+                        }
+                        table[bgcolor="#2A333D"] a:hover {
+                            color: #ffffff !important;
+                            text-decoration: underline !important;
+                        }
                     `;
                     canvasDoc.head.appendChild(style);
-                    console.log('Email template fonts applied to GrapesJS canvas');
+                    console.log('Persistent email template styles applied to GrapesJS canvas');
+                    return true;
                 }
             }
-        }, 2000); // Wait for editor to fully load
+            return false;
+        }
+
+        // Apply styles initially
+        setTimeout(applyPersistentStyles, 2000);
+
+        // Re-apply styles periodically to prevent GrapesJS from overriding them
+        setInterval(function() {
+            const editor = getGrapesEditorInstance();
+            if (editor && editor.Canvas) {
+                applyPersistentStyles();
+            }
+        }, 5000); // Re-apply every 5 seconds
+
+        // Apply styles on editor events
+        setTimeout(function() {
+            const editor = getGrapesEditorInstance();
+            if (editor) {
+                editor.on('load', applyPersistentStyles);
+                editor.on('component:update', applyPersistentStyles);
+                editor.on('style:update', applyPersistentStyles);
+            }
+        }, 3000);
 
         setTimeout(function() {
             document.getElementById('import-url-btn').addEventListener('click', async function() {

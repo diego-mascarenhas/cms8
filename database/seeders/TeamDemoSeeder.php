@@ -35,6 +35,7 @@ use App\Models\Unit;
 use App\Models\User;
 use Database\Factories\ClientFactory;
 use Illuminate\Database\Seeder;
+use App\Helpers\GrapesJsHelper;
 use Illuminate\Support\Facades\DB;
 
 class TeamDemoSeeder extends Seeder
@@ -134,6 +135,9 @@ class TeamDemoSeeder extends Seeder
 
         // Create professional email template with logos
         $this->createProfessionalEmailTemplate();
+
+        // Fix GrapesJS structure for all templates after creation
+        $this->fixGrapesJsStructure();
 
         // Create Staff category and contacts FIRST
         $this->createStaffCategoryAndContacts();
@@ -2356,8 +2360,7 @@ class TeamDemoSeeder extends Seeder
                                                             </h1>
                                                         </td>
                                                         <td align="right">
-                                                            <span><strong>{{date}}</strong></span><br />
-                                                            <span><em>{{header}}</em></span>
+                                                            <!-- Header area - now empty to match template changes -->
                                                         </td>
                                                     </tr>
                                                     <tr>
@@ -2380,10 +2383,7 @@ class TeamDemoSeeder extends Seeder
                                                     <tr>
                                                         <td>
                                                             <div style="text-align: center; margin-bottom: 30px">
-                                                                <div style="text-align: right; margin-bottom: 10px;">
-                                                                    <span style="color: #999; font-size: 12px;">{{date}}</span>
-                                                                </div>
-                                                                <h1 style="font-size: 28px; color: #2a333d; margin: 0; font-weight: 700">{{header}}</h1>
+                                                                <h1 style="font-size: 28px; color: #2a333d; margin: 0; font-weight: 700">Email Marketing fácil, rápido y seguro</h1>
                                                                 <h2 style="font-size: 18px; color: #666; margin: 8px 0 15px 0; font-weight: 400; font-style: italic;">Comunicarte con tus clientes nunca fue tan fácil</h2>
                                                                 <h3 style="font-size: 20px; color: #36f1cd; margin: 15px 0 0 0; font-weight: 600">¡GRATUITO para todos nuestros clientes!</h3>
                                                                 <div
@@ -2484,7 +2484,7 @@ class TeamDemoSeeder extends Seeder
                                                                         box-shadow: 0 4px 15px rgba(54, 241, 205, 0.3);
                                                                     "
                                                                 >
-                                                                    ¡Empieza ahora!
+                                                                    <strong>¡Empieza ahora!</strong>
                                                                 </a>
                                                             </div>
                                                             <p style="color: #999; font-size: 12px; margin: 15px 0 0 0">Comienza tu campaña de email marketing</p>
@@ -2502,17 +2502,13 @@ class TeamDemoSeeder extends Seeder
                                                                         margin: 20px 0;
                                                                     "
                                                                 ></div>
-                                                                <p style="color: #999; font-size: 12px; font-style: italic; margin: 0; line-height: 1.5">
-                                                                    Este es un mensaje automático del sistema de <strong style="color: #36f1cd">REVISION ALPHA</strong><br />
-                                                                    Para cualquier consulta, utiliza nuestro sistema de soporte.
-                                                                </p>
                                                                 <div style="margin-top: 15px">
                                                                     <span style="color: #36f1cd; font-size: 20px">✨</span>
                                                                     <span style="color: #ff1a1d; font-size: 16px; margin: 0 8px">•</span>
                                                                     <span style="color: #36f1cd; font-size: 20px">✨</span>
                                                                 </div>
                                                                 <p style="color: #2a333d; font-size: 16px; font-weight: 600; margin: 15px 0 0 0">
-                                                                    ¡Gracias por confiar en nosotros!
+                                                                    <strong>¡Gracias por confiar en nosotros!</strong>
                                                                 </p>
                                                             </div>
                                                         </td>
@@ -2562,15 +2558,16 @@ class TeamDemoSeeder extends Seeder
                                                                     </td>
                                                                     <td align="right">
                                                                         <span style="color: #ffffff"
-                                                                            ><strong>Contáctenos:</strong>
-                                                                            <span style="color: #ffffff !important"
-                                                                                >+54 11.5219.0345</span
+                                                                            ><strong>WhatsApp:</strong>
+                                                                            <a href="https://api.whatsapp.com/send/?phone=12202137800&text=Hola!"
+                                                                               style="color: #ffffff !important; text-decoration: none;"
+                                                                               target="_blank">+1 (220) 213-7800</a
                                                                             ><br />
                                                                             <strong>Email:</strong>
                                                                             <a
-                                                                                href="mailto:administracion@revisionalpha.com?subject=Consulta"
+                                                                                href="mailto:info@revisionalpha.com?subject=Consulta"
                                                                                 style="color: inherit"
-                                                                                >administracion@revisionalpha.com</a
+                                                                                >info@revisionalpha.com</a
                                                                             ></span
                                                                         >
                                                                     </td>
@@ -2663,5 +2660,40 @@ class TeamDemoSeeder extends Seeder
         // Show editor URL for reference
         $editorUrl = route('template.editor', $template->getHashedId());
         $this->command->info("🔗 Editor URL: {$editorUrl}");
+    }
+
+    /**
+     * Fix GrapesJS structure for all templates after seeding
+     */
+    private function fixGrapesJsStructure(): void
+    {
+        $this->command->info('🔧 Fixing GrapesJS structure for all templates...');
+
+        // Get all templates for Team 1
+        $templates = Template::where('team_id', 1)->get();
+
+        $fixed = 0;
+        $failed = 0;
+
+        foreach ($templates as $template) {
+            try {
+                $result = GrapesJsHelper::fixTemplateStructure($template);
+                if ($result) {
+                    $this->command->info("✅ Fixed GrapesJS structure for: {$template->name} (ID: {$template->id})");
+                    $fixed++;
+                } else {
+                    $this->command->warn("⚠️ Failed to fix GrapesJS structure for: {$template->name} (ID: {$template->id})");
+                    $failed++;
+                }
+            } catch (\Exception $e) {
+                $this->command->error("❌ Error fixing template {$template->name}: " . $e->getMessage());
+                $failed++;
+            }
+        }
+
+        $this->command->info("📊 GrapesJS structure fix summary:");
+        $this->command->info("   - Templates fixed: {$fixed}");
+        $this->command->info("   - Templates failed: {$failed}");
+        $this->command->info("✅ GrapesJS structure fix completed!");
     }
 }

@@ -244,7 +244,7 @@ class MessageDelivery extends Model
 		return str_replace('{{name}}', $contactName, $messageText);
 	}
 
-	/**
+		/**
 	 * Replace email template variables with actual values
 	 */
 	private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string
@@ -254,27 +254,8 @@ class MessageDelivery extends Model
 		$htmlContent = str_replace('{{contact_name}}', ($contact->name ?? '').' '.($contact->surname ?? ''), $htmlContent);
 		$htmlContent = str_replace('{{email}}', $contact->email ?? '', $htmlContent);
 
-		// Date variable - current date formatted
-		$currentDate = now()->format('d/m/Y');
-		$htmlContent = str_replace('{{date}}', $currentDate, $htmlContent);
-
-		// Header variable - use message name or team name as fallback
-		$header = '';
-		if ($message && $message->name) {
-			$header = $message->name;
-		} elseif ($message && $message->team) {
-			$header = $message->team->name ?? '';
-		}
-
-		// If header is empty, remove the variable completely (including any surrounding HTML)
-		if (empty($header)) {
-			// Remove {{header}} and any surrounding whitespace/HTML that might be empty
-			$htmlContent = preg_replace('/\s*\{\{header\}\}\s*/', '', $htmlContent);
-			// Also remove common patterns like <h1>{{header}}</h1> if header is empty
-			$htmlContent = preg_replace('/<([^>]+)>\s*\{\{header\}\}\s*<\/\1>/', '', $htmlContent);
-		} else {
-			$htmlContent = str_replace('{{header}}', $header, $htmlContent);
-		}
+		// Note: {{date}} and {{header}} variables have been removed from templates
+		// They are now hardcoded in the template content
 
 		return $htmlContent;
 	}

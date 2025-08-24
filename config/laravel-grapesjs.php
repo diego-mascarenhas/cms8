@@ -106,6 +106,38 @@ return [
                 a:hover {
                     text-decoration: underline !important;
                 }
+
+                /* Footer specific styles - High priority */
+                table[bgcolor="#2A333D"] {
+                    background-color: #2A333D !important;
+                }
+
+                table[bgcolor="#2A333D"] * {
+                    color: #ffffff !important;
+                }
+
+                table[bgcolor="#2A333D"] span {
+                    color: #ffffff !important;
+                }
+
+                table[bgcolor="#2A333D"] strong {
+                    color: #ffffff !important;
+                }
+
+                table[bgcolor="#2A333D"] a {
+                    color: #ffffff !important;
+                    text-decoration: none !important;
+                }
+
+                table[bgcolor="#2A333D"] a:hover {
+                    color: #ffffff !important;
+                    text-decoration: underline !important;
+                }
+
+                /* Prevent GrapesJS from overriding footer styles */
+                .gjs-frame table[bgcolor="#2A333D"] * {
+                    color: #ffffff !important;
+                }
             ')
         ],
         'scripts' => [],
