@@ -85,13 +85,26 @@
                                     </div>
                                 </td>
                                 <td class="text-center">
-                                    @if($delivery['status_text'] !== 'Scheduled')
-                                        <a href="#" class="text-info" onclick="resendDelivery({{ $delivery['id'] }}, this)" title="Reenviar email">
-                                            <i class="ti ti-mail-forward ti-sm"></i>
-                                        </a>
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
+                                    <div class="d-flex justify-content-center align-items-center gap-2">
+                                        @if($delivery['contact_id'])
+                                            <a href="{{ route('contact.show', $delivery['contact_id']) }}"
+                                               class="text-primary"
+                                               title="Ver detalle del contacto"
+                                               data-bs-toggle="tooltip"
+                                               data-bs-placement="top"
+                                               data-bs-original-title="Ver detalle del contacto">
+                                                <i class="ti ti-eye ti-sm"></i>
+                                            </a>
+                                        @endif
+
+                                        @if($delivery['status_text'] !== 'Scheduled')
+                                            <a href="#" class="text-info" onclick="resendDelivery({{ $delivery['id'] }}, this)" title="Reenviar email">
+                                                <i class="ti ti-mail-forward ti-sm"></i>
+                                            </a>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach
@@ -118,13 +131,26 @@ function initializeTooltips() {
         if (existingTooltip) {
             existingTooltip.dispose();
         }
-        new bootstrap.Tooltip(tooltipTriggerEl);
+        new bootstrap.Tooltip(tooltipTriggerEl, {
+            boundary: 'viewport',
+            placement: 'auto',
+            container: 'body'
+        });
     });
 }
 
-// Initialize tooltips after Livewire updates
+// Initialize tooltips after Livewire updates (multiple events for better coverage)
 document.addEventListener('livewire:updated', function() {
-    setTimeout(initializeTooltips, 100); // Small delay to ensure DOM is ready
+    setTimeout(initializeTooltips, 50);
+});
+
+document.addEventListener('livewire:navigated', function() {
+    setTimeout(initializeTooltips, 50);
+});
+
+// For Livewire v3 compatibility
+document.addEventListener('livewire:load', function() {
+    initializeTooltips();
 });
 
 // Initialize tooltips on first load
@@ -134,6 +160,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Also initialize when the component is loaded
 window.addEventListener('load', function() {
-    initializeTooltips();
+    setTimeout(initializeTooltips, 100);
+});
+
+// Force tooltip initialization when clicking on elements (fallback)
+document.addEventListener('click', function(e) {
+    if (e.target.closest('[data-bs-toggle="tooltip"]')) {
+        setTimeout(initializeTooltips, 10);
+    }
 });
 </script>

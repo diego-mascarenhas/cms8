@@ -2380,7 +2380,10 @@ class TeamDemoSeeder extends Seeder
                                                     <tr>
                                                         <td>
                                                             <div style="text-align: center; margin-bottom: 30px">
-                                                                <h1 style="font-size: 28px; color: #2a333d; margin: 0; font-weight: 700">Email Marketing fácil, rápido y seguro</h1>
+                                                                <div style="text-align: right; margin-bottom: 10px;">
+                                                                    <span style="color: #999; font-size: 12px;">{{date}}</span>
+                                                                </div>
+                                                                <h1 style="font-size: 28px; color: #2a333d; margin: 0; font-weight: 700">{{header}}</h1>
                                                                 <h2 style="font-size: 18px; color: #666; margin: 8px 0 15px 0; font-weight: 400; font-style: italic;">Comunicarte con tus clientes nunca fue tan fácil</h2>
                                                                 <h3 style="font-size: 20px; color: #36f1cd; margin: 15px 0 0 0; font-weight: 600">¡GRATUITO para todos nuestros clientes!</h3>
                                                                 <div
@@ -2589,8 +2592,68 @@ class TeamDemoSeeder extends Seeder
                             </tr>
                         </table>
                     ',
-                    'styles' => json_encode([]),
-                    'components' => json_encode([]),
+                    'styles' => json_encode([
+                        [
+                            'selectors' => [['name' => 'email-container', 'private' => 0]],
+                            'style' => [
+                                'width' => '100%',
+                                'background-color' => '#F5EFEF',
+                                'border' => '0',
+                                'cellpadding' => '0',
+                                'cellspacing' => '0'
+                            ]
+                        ],
+                        [
+                            'selectors' => [['name' => 'email-content', 'private' => 0]],
+                            'style' => [
+                                'width' => '700px',
+                                'background-color' => '#FFFFFF',
+                                'border' => '0',
+                                'cellpadding' => '0',
+                                'cellspacing' => '0'
+                            ]
+                        ],
+                        [
+                            'selectors' => [['name' => 'email-inner', 'private' => 0]],
+                            'style' => [
+                                'width' => '660px',
+                                'background-color' => '#FFFFFF',
+                                'border' => '0',
+                                'cellpadding' => '0',
+                                'cellspacing' => '0'
+                            ]
+                        ]
+                    ]),
+                    'components' => json_encode([
+                        [
+                            'tagName' => 'table',
+                            'attributes' => [
+                                'width' => '100%',
+                                'bgcolor' => '#F5EFEF',
+                                'border' => '0',
+                                'cellpadding' => '0',
+                                'cellspacing' => '0'
+                            ],
+                            'classes' => [['name' => 'email-container']],
+                            'components' => [
+                                [
+                                    'tagName' => 'tr',
+                                    'components' => [
+                                        [
+                                            'tagName' => 'td',
+                                            'attributes' => ['align' => 'center'],
+                                            'components' => [
+                                                [
+                                                    'type' => 'text',
+                                                    'content' => '<!-- Professional Newsletter Template -->'
+                                                ]
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]),
                 ]
             ],
         );

@@ -135,10 +135,28 @@ class MessageController extends Controller
 
 		// Obtener links de conversión agrupados por URL única
 		$links = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
-			->selectRaw('link, COUNT(DISTINCT message_delivery_id) as unique_clicks, SUM(click_count) as total_clicks, MIN(created_at) as first_click, MAX(updated_at) as last_click')
+			->where('click_count', '>', 0) // Only count links that were actually clicked
+			->with('messageDelivery.contact')
+			->get()
 			->groupBy('link')
-			->orderBy('total_clicks', 'desc')
-			->get();
+			->map(function ($linkGroup) {
+				$link = $linkGroup->first()->link;
+				$totalClicks = $linkGroup->sum('click_count');
+				$uniqueContacts = $linkGroup->pluck('messageDelivery.contact.id')->filter()->unique();
+				$uniqueClicks = $uniqueContacts->count();
+				$firstClick = $linkGroup->min('created_at');
+				$lastClick = $linkGroup->max('updated_at');
+
+				return (object) [
+					'link' => $link,
+					'unique_clicks' => $uniqueClicks,
+					'total_clicks' => $totalClicks,
+					'first_click' => $firstClick,
+					'last_click' => $lastClick,
+				];
+			})
+			->sortByDesc('total_clicks')
+			->values();
 
 		// Verificar configuración DNS para el dominio del remitente
 		$dnsStatus = null;
@@ -654,9 +672,7 @@ class MessageController extends Controller
 				$htmlContent = $gjsData['html'] ?? '';
 
 				// Replace variables
-				$htmlContent = str_replace('{{name}}', $sampleContact->name ?? 'John', $htmlContent);
-				$htmlContent = str_replace('{{contact_name}}', ($sampleContact->name ?? 'John').' '.($sampleContact->surname ?? 'Doe'), $htmlContent);
-				$htmlContent = str_replace('{{email}}', $sampleContact->email ?? 'john.doe@example.com', $htmlContent);
+				$htmlContent = $this->replaceEmailVariables($htmlContent, $sampleContact, $message);
 			} else
 			{
 				$htmlContent = '<p>'.$message->text.'</p>';
@@ -730,5 +746,40 @@ class MessageController extends Controller
 
 		// Generic error message for unknown errors
 		return 'No se pudo enviar el email de prueba. Por favor, contacte con soporte técnico si el problema persiste.';
+	}
+
+	/**
+	 * Replace email template variables with actual values
+	 */
+	private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string
+	{
+		// Basic contact variables
+		$htmlContent = str_replace('{{name}}', $contact->name ?? 'John', $htmlContent);
+		$htmlContent = str_replace('{{contact_name}}', ($contact->name ?? 'John').' '.($contact->surname ?? 'Doe'), $htmlContent);
+		$htmlContent = str_replace('{{email}}', $contact->email ?? 'john.doe@example.com', $htmlContent);
+
+		// Date variable - current date formatted
+		$currentDate = now()->format('d/m/Y');
+		$htmlContent = str_replace('{{date}}', $currentDate, $htmlContent);
+
+		// Header variable - use team name or message name as fallback
+		$header = '';
+		if ($message && $message->name) {
+			$header = $message->name;
+		} elseif (auth()->check() && auth()->user()->currentTeam) {
+			$header = auth()->user()->currentTeam->name ?? '';
+		}
+
+		// If header is empty, remove the variable completely (including any surrounding HTML)
+		if (empty($header)) {
+			// Remove {{header}} and any surrounding whitespace/HTML that might be empty
+			$htmlContent = preg_replace('/\s*\{\{header\}\}\s*/', '', $htmlContent);
+			// Also remove common patterns like <h1>{{header}}</h1> if header is empty
+			$htmlContent = preg_replace('/<([^>]+)>\s*\{\{header\}\}\s*<\/\1>/', '', $htmlContent);
+		} else {
+			$htmlContent = str_replace('{{header}}', $header, $htmlContent);
+		}
+
+		return $htmlContent;
 	}
 }

@@ -107,6 +107,13 @@
 						All contacts
 					@endif
 				</div>
+				<div class="mb-2"><strong>Contact Status:</strong>
+					@if($message->contactStatus)
+						{{ $message->contactStatus->name }}
+					@else
+						<span class="text-muted">All statuses</span>
+					@endif
+				</div>
 			</div>
 		</div>
 	</div>
@@ -138,15 +145,12 @@
 							@foreach($links as $link)
 								<tr>
 									<td>
-										<a href="{{ $link->link }}"
-										   target="_blank"
-										   class="text-primary"
-										   data-bs-toggle="tooltip"
-										   data-bs-placement="top"
-										   data-bs-original-title="Click to open: {{ $link->link }}">
+										<span class="text-muted"
+											  data-bs-toggle="tooltip"
+											  data-bs-placement="top"
+											  data-bs-original-title="{{ $link->link }}">
 											{{ Str::limit($link->link, 60) }}
-											<i class="ti ti-external-link ti-xs ms-1"></i>
-										</a>
+										</span>
 									</td>
 									<td class="text-center">
 										<span class="badge bg-info">{{ $link->unique_clicks }}</span>
@@ -166,6 +170,14 @@
 									</td>
 																		<td class="text-center">
 										<div class="d-flex justify-content-center align-items-center gap-2">
+											<a href="{{ $link->link }}"
+											   target="_blank"
+											   data-bs-toggle="tooltip"
+											   data-bs-placement="top"
+											   data-bs-original-title="Open link: {{ $link->link }}"
+											   class="text-body">
+												<i class="ti ti-external-link ti-sm"></i>
+											</a>
 											<a href="javascript:;"
 											   onclick="showLinkDetails('{{ base64_encode($link->link) }}', '{{ addslashes($link->link) }}')"
 											   data-bs-toggle="tooltip"
