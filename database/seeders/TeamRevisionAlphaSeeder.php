@@ -7,7 +7,9 @@ use App\Models\Contact;
 use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\Team;
+use App\Models\Template;
 use App\Models\User;
+use App\Helpers\GrapesJsHelper;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -35,6 +37,12 @@ class TeamRevisionAlphaSeeder extends Seeder
 
         // 5. Create Revision Alpha categories
         $this->createRevisionAlphaCategories();
+
+        // 6. Create professional email template
+        $this->createProfessionalEmailTemplate();
+
+        // 7. Configure email settings
+        $this->configureRevisionAlphaEmailSettings($team);
 
         // Asignar módulos por defecto al equipo Revision Alpha
         $defaultModuleKeys = [
@@ -336,5 +344,256 @@ class TeamRevisionAlphaSeeder extends Seeder
         ]);
 
         $this->command->info('✅ Created Revision Alpha categories');
+    }
+
+    /**
+     * Create professional email template with logos and better design
+     */
+    private function createProfessionalEmailTemplate(): void
+    {
+        $this->command->info('🎨 Creating professional email template for Revision Alpha team...');
+
+        $template = Template::updateOrCreate(
+            [
+                'name' => 'Email Marketing fácil, rápido y seguro',
+                'team_id' => $this->teamId,
+            ],
+            [
+                'status_id' => 1,
+                'gjs_data' => [
+                    'css' => '
+                        * {
+                            padding: 0;
+                            margin: 0;
+                            line-height: 1.5;
+                        }
+
+                        body {
+                            font-family: helvetica, arial, verdana, sans-serif;
+                        }
+
+                        h1, h2, h3, h4, h5, h6, strong {
+                            font-weight: 600;
+                        }
+
+                        p, span, a, td {
+                            font-size: 14px;
+                            font-weight: 300;
+                            color: #777777;
+                        }
+
+                        a {
+                            text-decoration: none;
+                        }
+
+                        a:hover {
+                            text-decoration: underline;
+                        }
+                    ',
+                    'html' => '
+                        <table width="100%" bgcolor="#F5EFEF" border="0" cellpadding="0" cellspacing="0" style="font-family: helvetica, arial, verdana, sans-serif;">
+                            <tr>
+                                <td align="center">
+                                    <table width="660" bgcolor="#FFFFFF" border="0" cellpadding="0" cellspacing="0">
+                                        <!-- Header with Logo -->
+                                        <tr>
+                                            <td style="padding: 30px 40px 20px 40px;">
+                                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="left" style="vertical-align: middle;">
+                                                            <img src="' . asset('assets/logo-revision-alpha.png') . '" alt="REVISION ALPHA" style="height: 40px; display: block;" />
+                                                        </td>
+                                                        <td align="right" style="vertical-align: middle;">
+                                                            <div style="text-align: right; margin-bottom: 10px;">
+                                                                <!-- Date placeholder removed -->
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Main Title -->
+                                        <tr>
+                                            <td style="padding: 0 40px 30px 40px;">
+                                                <h1 style="font-size: 28px; color: #2a333d; margin: 0; font-weight: 700">Email Marketing fácil, rápido y seguro</h1>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Content Section -->
+                                        <tr>
+                                            <td style="padding: 0 40px 30px 40px;">
+                                                <p style="font-size: 16px; line-height: 1.6; color: #555555; margin: 0 0 20px 0;">
+                                                    Hola {{name}},
+                                                </p>
+                                                <p style="font-size: 16px; line-height: 1.6; color: #555555; margin: 0 0 20px 0;">
+                                                    Te damos la bienvenida a <strong>REVISION ALPHA Emailer</strong>, la plataforma de email marketing más fácil, rápida y segura del mercado.
+                                                </p>
+                                                <p style="font-size: 16px; line-height: 1.6; color: #555555; margin: 0 0 30px 0;">
+                                                    Con nuestro sistema podrás crear campañas profesionales, hacer seguimiento detallado de tus envíos y aumentar tus conversiones de manera efectiva.
+                                                </p>
+                                            </td>
+                                        </tr>
+
+                                        <!-- CTA Button -->
+                                        <tr>
+                                            <td style="padding: 0 40px 40px 40px; text-align: center;">
+                                                <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                                                    <tr>
+                                                        <td style="background-color: #007bff; border-radius: 6px; padding: 15px 30px;">
+                                                            <a href="https://revisionalpha.com/emailer" style="color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; display: block;">
+                                                                <strong>¡Empieza ahora!</strong>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Features Section -->
+                                        <tr>
+                                            <td style="padding: 0 40px 40px 40px;">
+                                                <h2 style="font-size: 20px; color: #2a333d; margin: 0 0 20px 0; font-weight: 600;">¿Por qué elegir REVISION ALPHA?</h2>
+                                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td style="padding: 10px 0; vertical-align: top;">
+                                                            <div style="display: inline-block; vertical-align: top; margin-right: 10px;">
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#28a745" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                                </svg>
+                                                            </div>
+                                                            <strong style="color: #2a333d;">100% GRATUITO</strong> - Sin costos ocultos ni límites
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="padding: 10px 0; vertical-align: top;">
+                                                            <div style="display: inline-block; vertical-align: top; margin-right: 10px;">
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                    <path d="M13 10V3L4 14H11V21L20 10H13Z" stroke="#ffc107" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                                </svg>
+                                                            </div>
+                                                            <strong style="color: #2a333d;">Súper Rápido</strong> - Crea campañas en minutos
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="padding: 10px 0; vertical-align: top;">
+                                                            <div style="display: inline-block; vertical-align: top; margin-right: 10px;">
+                                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#17a2b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                                </svg>
+                                                            </div>
+                                                            <strong style="color: #2a333d;">Máxima Seguridad</strong> - Tus datos siempre protegidos
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Footer -->
+                                        <tr>
+                                            <td>
+                                                <table width="100%" bgcolor="#2A333D" border="0" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td style="padding: 30px 40px;">
+                                                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                                                <tr>
+                                                                    <td align="left" style="vertical-align: top;">
+                                                                        <img src="' . asset('assets/logo.png') . '" alt="Logo" style="height: 30px; display: block;" />
+                                                                        <p style="color: #ffffff; font-size: 12px; margin: 10px 0 0 0;">
+                                                                            <strong>¡Gracias por confiar en nosotros!</strong>
+                                                                        </p>
+                                                                    </td>
+                                                                    <td align="right">
+                                                                        <span style="color: #ffffff"
+                                                                            ><strong>WhatsApp:</strong>
+                                                                            <a href="https://api.whatsapp.com/send/?phone=12202137800&text=Hola!"
+                                                                               style="color: #ffffff !important; text-decoration: none;"
+                                                                               target="_blank">+1 (220) 213-7800</a
+                                                                            ><br />
+                                                                            <strong>Email:</strong>
+                                                                            <a
+                                                                                href="mailto:info@revisionalpha.com?subject=Consulta"
+                                                                                style="color: inherit"
+                                                                                >info@revisionalpha.com</a
+                                                                            ></span
+                                                                        >
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    ',
+                    'styles' => json_encode([]),
+                    'components' => json_encode([]),
+                ]
+            ]
+        );
+
+        $this->command->info("✅ Professional template created: {$template->name} (ID: {$template->id})");
+
+        // Fix GrapesJS structure
+        try {
+            $result = GrapesJsHelper::fixTemplateStructure($template);
+            if ($result) {
+                $this->command->info("✅ Fixed GrapesJS structure for template: {$template->name}");
+            } else {
+                $this->command->warn("⚠️ Failed to fix GrapesJS structure for template: {$template->name}");
+            }
+        } catch (\Exception $e) {
+            $this->command->error("❌ Error fixing template structure: " . $e->getMessage());
+        }
+
+        // Show editor URL for reference
+        $editorUrl = route('template.editor', $template->getHashedId());
+        $this->command->info("🔗 Editor URL: {$editorUrl}");
+    }
+
+    /**
+     * Configure email settings for Revision Alpha team
+     */
+    private function configureRevisionAlphaEmailSettings(Team $team): void
+    {
+        $this->command->info('📧 Configuring Revision Alpha email settings...');
+
+        // Email Configuration > Sender Information
+        $team->setSetting('mail_from_name', 'REVISION ALPHA Marketing', [
+            'type' => 'string',
+            'group' => 'email',
+            'is_encrypted' => false,
+        ]);
+
+        $team->setSetting('mail_from_address', 'mkt@revisionalpha.net', [
+            'type' => 'string',
+            'group' => 'email',
+            'is_encrypted' => false,
+        ]);
+
+        // Notification Settings > Sender Information
+        $team->setSetting('notification_from_name', 'REVISION ALPHA', [
+            'type' => 'string',
+            'group' => 'notifications',
+            'is_encrypted' => false,
+        ]);
+
+        $team->setSetting('notification_from_address', 'info@revisionalpha.com', [
+            'type' => 'string',
+            'group' => 'notifications',
+            'is_encrypted' => false,
+        ]);
+
+        $this->command->info('✅ Revision Alpha email settings configured successfully!');
+        $this->command->info('   Email Configuration:');
+        $this->command->info('   - From Name: REVISION ALPHA Marketing');
+        $this->command->info('   - From Email: mkt@revisionalpha.net');
+        $this->command->info('   Notification Settings:');
+        $this->command->info('   - From Name: REVISION ALPHA');
+        $this->command->info('   - From Email: info@revisionalpha.com');
     }
 }

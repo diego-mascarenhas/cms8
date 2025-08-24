@@ -2299,7 +2299,7 @@ class TeamDemoSeeder extends Seeder
 
         $template = Template::updateOrCreate(
             [
-                'name' => 'Professional Newsletter',
+                'name' => 'Email Marketing fácil, rápido y seguro',
                 'team_id' => 1,
             ],
             [
