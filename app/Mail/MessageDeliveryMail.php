@@ -23,20 +23,18 @@ class MessageDeliveryMail extends Mailable implements ShouldQueue
 	public function build()
 	{
 		$subject = $this->delivery->message ? $this->delivery->message->name : 'Newsletter';
-		$html = $this->delivery->getHtmlForContact();
-
-		// Add advertising footer if team is using system SMTP
-		$advertisingFooter = config('app.mail_advertising_footer', '');
-		if ($advertisingFooter)
-		{
-			$html .= $advertisingFooter;
-		}
+		$html = $this->delivery->getHtmlForContact(); // This already includes the advertising footer
 
 		$css = '';
 		$inliner = new CssToInlineStyles;
 		$htmlInlined = $inliner->convert($html, $css);
 
-		return $this->subject($subject)
+		// Get explicit from configuration like TestMessageMail does
+		$fromAddress = config('mail.from.address');
+		$fromName = config('mail.from.name');
+
+		return $this->from($fromAddress, $fromName)
+			->subject($subject)
 			->html($htmlInlined);
 	}
 }

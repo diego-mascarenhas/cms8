@@ -22,7 +22,7 @@ class MessageDataTable extends DataTable
 		return (new EloquentDataTable($query))
 			->addColumn('action', 'message.action')
 			->setRowId('id')
-			->rawColumns(['name', 'action', 'status_id'])
+			->rawColumns(['name', 'action', 'status_id', 'contact_status_id'])
 			->editColumn('type_id', function ($data)
 			{
 				return $data->type->name;
@@ -30,6 +30,10 @@ class MessageDataTable extends DataTable
 			->editColumn('category_id', function ($data)
 			{
 				return optional($data->category)->name;
+			})
+			->editColumn('contact_status_id', function ($data)
+			{
+				return optional($data->contactStatus)->name ?? '<span class="text-muted">Todos</span>';
 			})
 			->editColumn('updated_at', function ($data)
 			{
@@ -51,7 +55,7 @@ class MessageDataTable extends DataTable
 
 	public function query(Message $model): QueryBuilder
 	{
-		return $model->newQuery();
+		return $model->newQuery()->with(['type', 'category', 'contactStatus']);
 	}
 
 	public function html(): HtmlBuilder
@@ -77,6 +81,9 @@ class MessageDataTable extends DataTable
 				->addClass('min-tablet'),
 			Column::make('category_id')
 				->title(__('Category'))
+				->addClass('min-desktop'),
+			Column::make('contact_status_id')
+				->title(__('Contact Status'))
 				->addClass('min-desktop'),
 			Column::make('updated_at')
 				->title(__('Updated'))

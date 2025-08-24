@@ -135,52 +135,77 @@ class SendMessageCampaignJob implements ShouldQueue
 			}
 
 			// Mark as sending
-			$this->messageDelivery->update(['status_id' => 3]); // 3 = sending
+			$this->messageDelivery->update(['status_id' => 2]); // 2 = sending
 
-			// Get email provider from configuration
-			$emailProvider = config('services.email.provider', 'smtp');
-			$fallbackToSmtp = config('services.email.fallback_to_smtp', true);
+						// Determine email provider based on configuration
+			$emailProvider = env('EMAIL_PROVIDER', 'smtp');
+			$mailbabyEnabled = config('services.mailbaby.enabled', false);
+			$mailbabyApiKey = config('services.mailbaby.api_key');
+			$mailgunSecret = config('services.mailgun.secret');
+			$fallbackToSmtp = env('EMAIL_FALLBACK_TO_SMTP', true);
 
 			Log::info('🔧 SendMessageCampaignJob: Email provider configuration', [
 				'delivery_id' => $this->messageDelivery->id,
 				'email_provider' => $emailProvider,
+				'mailbaby_enabled' => $mailbabyEnabled,
+				'mailbaby_has_api_key' => !empty($mailbabyApiKey),
+				'mailgun_has_secret' => !empty($mailgunSecret),
 				'fallback_to_smtp' => $fallbackToSmtp,
 			]);
 
-			// Send email based on configured provider
-			switch ($emailProvider)
-			{
+			// Respect EMAIL_PROVIDER configuration
+			switch ($emailProvider) {
 				case 'mailbaby':
-					if (config('services.mailbaby.enabled', false) && config('services.mailbaby.api_key'))
-					{
-						$this->sendViaMailBaby();
-						break;
-					} elseif ($fallbackToSmtp)
-					{
-						Log::warning('MailBaby not configured, falling back to SMTP', [
-						    'delivery_id' => $this->messageDelivery->id,
+					if ($mailbabyEnabled && $mailbabyApiKey) {
+						try {
+							$this->sendViaMailBaby();
+							break;
+						} catch (\Exception $e) {
+							Log::warning('MailBaby API failed, falling back to SMTP', [
+								'delivery_id' => $this->messageDelivery->id,
+								'error' => $e->getMessage(),
+							]);
+							if ($fallbackToSmtp) {
+								$this->sendViaSmtp();
+								break;
+							}
+							throw $e;
+						}
+					} else {
+						Log::warning('MailBaby provider selected but not configured', [
+							'delivery_id' => $this->messageDelivery->id,
 						]);
-						$this->sendViaSmtp();
-						break;
-					} else
-					{
+						if ($fallbackToSmtp) {
+							$this->sendViaSmtp();
+							break;
+						}
 						throw new \Exception('MailBaby provider selected but not configured');
 					}
 
 				case 'mailgun':
-					if (config('services.mailgun.secret'))
-					{
-						$this->sendViaMailgun();
-						break;
-					} elseif ($fallbackToSmtp)
-					{
-						Log::warning('Mailgun not configured, falling back to SMTP', [
-						    'delivery_id' => $this->messageDelivery->id,
+					if ($mailgunSecret) {
+						try {
+							$this->sendViaMailgun();
+							break;
+						} catch (\Exception $e) {
+							Log::warning('Mailgun failed, falling back to SMTP', [
+								'delivery_id' => $this->messageDelivery->id,
+								'error' => $e->getMessage(),
+							]);
+							if ($fallbackToSmtp) {
+								$this->sendViaSmtp();
+								break;
+							}
+							throw $e;
+						}
+					} else {
+						Log::warning('Mailgun provider selected but not configured', [
+							'delivery_id' => $this->messageDelivery->id,
 						]);
-						$this->sendViaSmtp();
-						break;
-					} else
-					{
+						if ($fallbackToSmtp) {
+							$this->sendViaSmtp();
+							break;
+						}
 						throw new \Exception('Mailgun provider selected but not configured');
 					}
 
@@ -257,16 +282,41 @@ class SendMessageCampaignJob implements ShouldQueue
 
 		if (! $result['success'])
 		{
-			throw new \Exception('MailBaby sending failed: '.($result['error'] ?? 'Unknown error'));
+			// Check if it's an API key error (401) - these should fallback to SMTP
+			$errorMessage = $result['error'] ?? 'Unknown error';
+			if (strpos($errorMessage, '"code":401') !== false || strpos($errorMessage, 'API key') !== false) {
+				Log::warning('MailBaby API key invalid, will fallback to SMTP', [
+					'delivery_id' => $this->messageDelivery->id,
+					'error' => $errorMessage,
+				]);
+				throw new \Exception('MailBaby API key invalid: ' . $errorMessage);
+			}
+
+			// For other errors, also try fallback
+			throw new \Exception('MailBaby sending failed: ' . $errorMessage);
 		}
 
 		Log::info('✅ SendMessageCampaignJob: Email sent via MailBaby', [
 			'delivery_id' => $this->messageDelivery->id,
-			'provider_message_id' => $result['provider_message_id'],
+			'provider_message_id' => $result['provider_message_id'] ?? null,
 			'contact_email' => $this->messageDelivery->contact->email,
 		]);
 
-		// MailBaby handles status updates via webhooks
+		// Mark as sent AND delivered (since we don't wait for webhooks)
+		$this->messageDelivery->update([
+			'email_provider' => 'mailbaby',
+			'provider_message_id' => $result['provider_message_id'] ?? null,
+			'sent_at' => now(),
+			'delivered_at' => now(), // Mark as delivered immediately
+			'delivery_status' => 'delivered', // Set delivery status
+			'status_id' => 3, // 3 = delivered (instead of 2 = sent)
+		]);
+
+		Log::info('📬 SendMessageCampaignJob: Marked as delivered', [
+			'delivery_id' => $this->messageDelivery->id,
+			'contact_email' => $this->messageDelivery->contact->email,
+			'delivery_method' => 'mailbaby_immediate',
+		]);
 	}
 
 	/**
@@ -322,12 +372,20 @@ class SendMessageCampaignJob implements ShouldQueue
 				'mailgun_response' => $result->getMessage(),
 			]);
 
-			// Mark as sent with real provider message ID
+			// Mark as sent AND delivered (since we don't wait for webhooks)
 			$this->messageDelivery->update([
 				'email_provider' => 'mailgun',
 				'provider_message_id' => $providerMessageId,
 				'sent_at' => now(),
-				'status_id' => 2, // 2 = sent
+				'delivered_at' => now(), // Mark as delivered immediately
+				'delivery_status' => 'delivered', // Set delivery status
+				'status_id' => 3, // 3 = delivered (instead of 2 = sent)
+			]);
+
+			Log::info('📬 SendMessageCampaignJob: Marked as delivered', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'delivery_method' => 'mailgun_immediate',
 			]);
 		} catch (\Exception $e)
 		{
@@ -341,7 +399,7 @@ class SendMessageCampaignJob implements ShouldQueue
 			$originalFromName = config('mail.from.name');
 
 			// Temporarily set Mailgun domain for fallback
-			config(['mail.from.address' => 'no-reply@revisionalpha.com']);
+			config(['mail.from.address' => 'no-reply@idoneo.dev']);
 			config(['mail.from.name' => 'REVISION ALPHA Emailer']);
 
 			// Fallback to Laravel Mail
@@ -359,7 +417,7 @@ class SendMessageCampaignJob implements ShouldQueue
 			Log::info('✅ SendMessageCampaignJob: Email sent via Mailgun fallback', [
 				'delivery_id' => $this->messageDelivery->id,
 				'contact_email' => $this->messageDelivery->contact->email,
-				'from_address_used' => 'no-reply@revisionalpha.com',
+				'from_address_used' => 'no-reply@idoneo.dev',
 				'fallback_message_id' => $fallbackId,
 			]);
 
@@ -367,7 +425,15 @@ class SendMessageCampaignJob implements ShouldQueue
 				'email_provider' => 'mailgun',
 				'provider_message_id' => $fallbackId,
 				'sent_at' => now(),
-				'status_id' => 2,
+				'delivered_at' => now(), // Mark as delivered immediately
+				'delivery_status' => 'delivered', // Set delivery status
+				'status_id' => 3, // 3 = delivered (instead of 2 = sent)
+			]);
+
+			Log::info('📬 SendMessageCampaignJob: Marked as delivered', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'delivery_method' => 'mailgun_fallback_immediate',
 			]);
 		}
 	}
@@ -397,20 +463,59 @@ class SendMessageCampaignJob implements ShouldQueue
 			'after_config_from_name' => config('mail.from.name'),
 		]);
 
-		// Send the email
-		Mail::to($this->messageDelivery->contact->email)
-			->send(new MessageDeliveryMail($this->messageDelivery));
+		// Send the email with detailed error logging
+		try {
+			Log::info('📤 SendMessageCampaignJob: About to send email', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'from_address' => config('mail.from.address'),
+				'from_name' => config('mail.from.name'),
+				'smtp_host' => config('mail.mailers.smtp.host'),
+				'smtp_username' => config('mail.mailers.smtp.username'),
+			]);
 
-		Log::info('✅ SendMessageCampaignJob: Email sent via SMTP', [
-			'delivery_id' => $this->messageDelivery->id,
-			'contact_email' => $this->messageDelivery->contact->email,
-		]);
+			Mail::to($this->messageDelivery->contact->email)
+				->send(new MessageDeliveryMail($this->messageDelivery));
 
-		// Mark as sent
-		$this->messageDelivery->update([
-			'email_provider' => 'smtp',
-			'sent_at' => now(),
-			'status_id' => 2, // 2 = sent
-		]);
+			Log::info('✅ SendMessageCampaignJob: Email sent via SMTP successfully', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+			]);
+
+			// Mark as sent AND delivered (since we don't have webhook confirmation)
+			$this->messageDelivery->update([
+				'email_provider' => 'smtp',
+				'sent_at' => now(),
+				'delivered_at' => now(), // Mark as delivered immediately for SMTP
+				'delivery_status' => 'delivered', // Set delivery status
+				'status_id' => 3, // 3 = delivered (instead of 2 = sent)
+			]);
+
+			Log::info('📬 SendMessageCampaignJob: Marked as delivered', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'delivery_method' => 'smtp_immediate',
+			]);
+
+		} catch (\Exception $e) {
+			Log::error('❌ SendMessageCampaignJob: SMTP email failed', [
+				'delivery_id' => $this->messageDelivery->id,
+				'contact_email' => $this->messageDelivery->contact->email,
+				'error_message' => $e->getMessage(),
+				'error_code' => $e->getCode(),
+				'error_file' => $e->getFile(),
+				'error_line' => $e->getLine(),
+				'error_trace' => $e->getTraceAsString(),
+			]);
+
+			// Mark as failed
+			$this->messageDelivery->update([
+				'status_id' => 4, // 4 = failed
+				'delivery_status' => 'failed',
+			]);
+
+			// Re-throw the exception so the job fails and goes to failed_jobs
+			throw $e;
+		}
 	}
 }

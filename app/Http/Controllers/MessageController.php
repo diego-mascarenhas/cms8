@@ -12,8 +12,12 @@ use App\Models\MessageDeliveryStat;
 use App\Models\MessageType;
 use App\Models\Template;
 use App\Models\User;
+use App\Models\ContactStatus;
+use App\Models\Contact;
 use App\Traits\ConfiguresTeamMail;
+use App\Helpers\DnsHelper;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use stdClass;
 use Twilio\Rest\Client;
@@ -35,6 +39,7 @@ class MessageController extends Controller
 		$data = new stdClass;
 		$data->types = MessageType::getOptions();
 		$data->templates = Template::getOptions();
+		$data->contactStatuses = ContactStatus::getOptions();
 
 		return view('message.form', compact('data'));
 	}
@@ -56,15 +61,25 @@ class MessageController extends Controller
 		// Set status_id based on checkbox presence
 		$status_id = $request->has('status_id') ? 1 : 0; // 1 = active, 0 = inactive
 
+		// Set boolean fields based on checkbox presence
+		$show_unsubscribe = $request->has('show_unsubscribe') ? 1 : 0;
+		$enable_open_tracking = $request->has('enable_open_tracking') ? 1 : 0;
+		$enable_click_tracking = $request->has('enable_click_tracking') ? 1 : 0;
+
 		Message::updateOrCreate(
 			['id' => $request->id],
 			[
 				'name' => $data['name'],
 				'type_id' => $data['type_id'],
-				'category_id' => $data['category_id'],
+				'category_id' => $data['category_id'] ?: null, // Convert empty string to null
+				'contact_status_id' => $data['contact_status_id'] ?? null,
 				'template_id' => $templateId,
 				'text' => $data['text'],
 				'status_id' => $status_id,
+				'show_unsubscribe' => $show_unsubscribe,
+				'enable_open_tracking' => $enable_open_tracking,
+				'enable_click_tracking' => $enable_click_tracking,
+				'min_hours_between_emails' => $data['min_hours_between_emails'] ?? 48,
 			],
 		);
 
@@ -90,7 +105,7 @@ class MessageController extends Controller
 			$contactsInCategory = $message->category->contacts()->count();
 		}
 
-		// Obtener estadísticas reales (ejemplo: sumarización de deliveries)
+		// Obtener estadísticas reales calculadas desde la base de datos
 		$stats = [
 			'subscribers' => MessageDelivery::where('message_id', $message->id)->count(),
 			'remaining' => 0, // Puedes calcularlo según tu lógica
@@ -98,12 +113,17 @@ class MessageController extends Controller
 			'sent' => MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count(),
 			'rejected' => 0, // Ajusta según tu lógica
 			'delivered' => MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count(),
-			'opened' => 0, // Si tienes tracking de aperturas
+			'opened' => MessageDelivery::where('message_id', $message->id)->whereNotNull('opened_at')->count(),
 			'unsubscribed' => 0, // Si tienes tracking de desuscriptos
-			'clicks' => 0, // Si tienes tracking de clicks
-			'unique_opens' => 0, // Si tienes tracking de aperturas únicas
-			'ratio' => 0, // Puedes calcular el ratio real
+			'clicks' => MessageDelivery::where('message_id', $message->id)->whereNotNull('clicked_at')->count(),
+			'unique_opens' => MessageDelivery::where('message_id', $message->id)->whereNotNull('opened_at')->count(), // Same as opened for now
+			'ratio' => 0, // Se calculará después
 		];
+
+		// Calcular el ratio de apertura (open rate)
+		if ($stats['delivered'] > 0) {
+			$stats['ratio'] = round(($stats['opened'] / $stats['delivered']) * 100, 1);
+		}
 
 		// Obtener stats de la tabla message_delivery_stats usando el modelo
 		$stats_db = MessageDeliveryStat::where('message_id', $message->id)->first();
@@ -127,11 +147,45 @@ class MessageController extends Controller
 		// Obtener entregas reales
 		$deliveries = MessageDelivery::where('message_id', $message->id)->with('contact')->get();
 
-		// Obtener links de conversión reales con relaciones
+		// Obtener links de conversión agrupados por URL única
 		$links = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
-			->with(['messageDelivery.contact'])
-			->orderBy('created_at', 'desc')
-			->get();
+			->where('click_count', '>', 0) // Only count links that were actually clicked
+			->with('messageDelivery.contact')
+			->get()
+			->groupBy('link')
+			->map(function ($linkGroup) {
+				$link = $linkGroup->first()->link;
+				$totalClicks = $linkGroup->sum('click_count');
+				$uniqueContacts = $linkGroup->pluck('messageDelivery.contact.id')->filter()->unique();
+				$uniqueClicks = $uniqueContacts->count();
+				$firstClick = $linkGroup->min('created_at');
+				$lastClick = $linkGroup->max('updated_at');
+
+				return (object) [
+					'link' => $link,
+					'unique_clicks' => $uniqueClicks,
+					'total_clicks' => $totalClicks,
+					'first_click' => $firstClick,
+					'last_click' => $lastClick,
+				];
+			})
+			->sortByDesc('total_clicks')
+			->values();
+
+		// Verificar configuración DNS para el dominio del remitente
+		$dnsStatus = null;
+		$mailbabyUser = null;
+
+		if (!empty($emailConfig['from_address'])) {
+			// Obtener el usuario de MailBaby desde la configuración
+			$mailbabyUser = config('services.mailbaby.enabled') ? env('MAIL_USERNAME') : null;
+
+			// Verificar configuración DNS
+			$dnsStatus = DnsHelper::checkEmailDomainConfiguration(
+				$emailConfig['from_address'],
+				$mailbabyUser
+			);
+		}
 
 		return view('message.show', [
 			'message' => $message,
@@ -141,6 +195,8 @@ class MessageController extends Controller
 			'links' => $links,
 			'emailConfig' => $emailConfig,
 			'contactsInCategory' => $contactsInCategory,
+			'dnsStatus' => $dnsStatus,
+			'mailbabyUser' => $mailbabyUser,
 		]);
 	}
 
@@ -150,13 +206,15 @@ class MessageController extends Controller
 	public function edit(string $id)
 	{
 		$data = Message::find($id);
-		$data->types = MessageType::getOptions();
-		$data->templates = Template::getOptions();
 
 		if (! $data)
 		{
 			return redirect()->route('message-list')->with('error', 'Message not found.');
 		}
+
+		$data->types = MessageType::getOptions();
+		$data->templates = Template::getOptions();
+		$data->contactStatuses = ContactStatus::getOptions();
 
 		return view('message.form', compact('data'));
 	}
@@ -243,20 +301,37 @@ class MessageController extends Controller
 		Mail::send(new MySendGridMail($data));
 	}
 
-	public function unsubscribe($email)
-	{
-		$user = User::where('email', $email)->first();
+	    public function unsubscribe($email)
+    {
+        // Update contact status to "Perdido" (ID 4) when they unsubscribe
+        // But don't change status if they are already a client (status_id 5)
+        $contact = Contact::where('email', $email)->first();
 
-		if ($user)
-		{
-			$user->subscribed = false;
-			$user->save();
-		}
+        if ($contact)
+        {
+            if ($contact->status_id != 5) {
+                $contact->update(['status_id' => 4]);
 
-		return view('message.unsubscribe', ['email' => $email]);
-	}
+                Log::info('Contact unsubscribed - status updated to Perdido', [
+                    'contact_id' => $contact->id,
+                    'contact_email' => $contact->email,
+                    'previous_status' => $contact->getOriginal('status_id'),
+                    'new_status' => 4,
+                ]);
+            } else {
+                Log::info('Contact is a client - unsubscribed but status not changed', [
+                    'contact_id' => $contact->id,
+                    'contact_email' => $contact->email,
+                    'current_status' => 5,
+                    'action' => 'unsubscribe_attempt',
+                ]);
+            }
+        }
 
-	/**
+        return view('message.unsubscribe', ['email' => $email]);
+    }
+
+		/**
 	 * Start a message campaign
 	 */
 	public function startCampaign(Request $request, $id)
@@ -265,30 +340,18 @@ class MessageController extends Controller
 		{
 			$message = Message::findOrFail($id);
 
-			// Update message status to active
-			$message->update(['status_id' => 1]);
+			// Simply activate the message - the scheduler will handle delivery creation
+			$message->update([
+				'status_id' => 1, // Active
+				'started_at' => now(), // Mark when campaign started
+			]);
 
-			// Create deliveries if they don't exist and schedule them with random intervals
-			$this->populateMessageDeliveries($message);
-
-			// Dispatch jobs for pending deliveries
-			$pendingDeliveries = MessageDelivery::where('message_id', $message->id)
-				->whereNull('delivered_at') // Not delivered yet
-				->where('status_id', 1) // 1 = pending
-				->get();
-
-			foreach ($pendingDeliveries as $delivery)
-			{
-				// Calculate delay based on the scheduled sent_at time
-				$delaySeconds = max(0, $delivery->sent_at->diffInSeconds(now()));
-
-				SendMessageCampaignJob::dispatch($delivery)
-					->delay($delaySeconds); // Delay based on scheduled time
-			}
+			// Count potential contacts for this campaign
+			$contactsCount = $this->getContactsForMessage($message)->count();
 
 			return response()->json([
 				'success' => true,
-				'message' => 'Campaign started successfully. '.$pendingDeliveries->count().' emails queued for sending.',
+				'message' => "Campaign activated successfully. {$contactsCount} contacts will be processed by the scheduler.",
 			]);
 		} catch (\Exception $e)
 		{
@@ -300,54 +363,41 @@ class MessageController extends Controller
 	}
 
 	/**
-	 * Populate message deliveries for a campaign with scheduled send times
+	 * Get contacts for a message based on its category
 	 */
-	private function populateMessageDeliveries(Message $message)
+	private function getContactsForMessage(Message $message)
 	{
-		// Get contacts from the message's category
-		$contacts = collect();
+		$query = null;
 
 		if ($message->category)
 		{
-			$contacts = $message->category->contacts()->where('status_id', 1)->get();
+			$query = $message->category->contacts()->where('status_id', 1);
 		} else
 		{
 			// If no category, get all active contacts from the team
-			$contacts = \App\Models\Contact::where('team_id', $message->team_id)
+			$query = \App\Models\Contact::where('team_id', $message->team_id)
 				->where('status_id', 1)
-				->whereNotNull('email')
-				->get();
+				->whereNotNull('email');
 		}
 
-		$contactIndex = 0;
-		foreach ($contacts as $contact)
-		{
-			// Check if delivery already exists
-			$existingDelivery = MessageDelivery::where('message_id', $message->id)
-				->where('contact_id', $contact->id)
-				->first();
+		// Exclude test/demo email addresses
+		$testDomains = [
+			'@example.org',
+			'@example.net',
+			'@example.com',
+			'@demo.com',
+			'@test.com',
+			'@localhost',
+			'@testing.com',
+			'@dummy.com',
+			'@fake.com',
+		];
 
-			if (! $existingDelivery)
-			{
-				// Schedule with configurable intervals from .env
-				$baseMinutes = config('services.email.delay.base_minutes', 5);
-				$maxRandomSeconds = config('services.email.delay.random_seconds', 120);
-
-				$baseDelayMinutes = $contactIndex * $baseMinutes; // Configurable minutes between each
-				$randomDelaySeconds = rand(0, $maxRandomSeconds); // Configurable random seconds
-				$scheduledTime = now()->addMinutes($baseDelayMinutes)->addSeconds($randomDelaySeconds);
-
-				MessageDelivery::create([
-					'team_id' => $message->team_id,
-					'message_id' => $message->id,
-					'contact_id' => $contact->id,
-					'status_id' => 1, // 1 = pending
-					'sent_at' => $scheduledTime, // Schedule the send time
-				]);
-
-				$contactIndex++;
-			}
+		foreach ($testDomains as $domain) {
+			$query->where('email', 'not like', '%' . $domain);
 		}
+
+		return $query;
 	}
 
 	/**
@@ -376,6 +426,92 @@ class MessageController extends Controller
 	}
 
 	/**
+	 * Get contact details for a specific link
+	 */
+	public function getLinkDetails(Request $request, $id, $encodedLink)
+	{
+		try {
+			$message = Message::findOrFail($id);
+			$link = base64_decode($encodedLink);
+
+			// Get all deliveries for this message
+			$deliveries = MessageDelivery::where('message_id', $message->id)->get();
+
+						// Get contact details for this specific link - only those who actually clicked
+			$linkDetails = MessageDeliveryLink::whereIn('message_delivery_id', $deliveries->pluck('id'))
+				->where('link', $link)
+				->where('click_count', '>', 0) // Only contacts who actually clicked
+				->with(['messageDelivery.contact'])
+				->get();
+
+			// Group by contact and sum click counts
+			$contactData = [];
+			$totalClicks = 0;
+			$uniqueClicks = 0;
+
+			foreach ($linkDetails as $linkDetail) {
+				$contact = $linkDetail->messageDelivery->contact;
+				if (!$contact) continue;
+
+				$contactId = $contact->id;
+				$clickCount = $linkDetail->click_count;
+				$totalClicks += $clickCount;
+
+				if (!isset($contactData[$contactId])) {
+					$contactData[$contactId] = [
+						'name' => $contact->name,
+						'email' => $contact->email,
+						'click_count' => 0,
+						'first_click' => $linkDetail->created_at,
+						'last_click' => $linkDetail->updated_at,
+					];
+					$uniqueClicks++; // Count unique contacts
+				}
+
+				$contactData[$contactId]['click_count'] += $clickCount;
+
+				// Update first/last click times
+				if ($linkDetail->created_at < $contactData[$contactId]['first_click']) {
+					$contactData[$contactId]['first_click'] = $linkDetail->created_at;
+				}
+				if ($linkDetail->updated_at && $linkDetail->updated_at > $contactData[$contactId]['last_click']) {
+					$contactData[$contactId]['last_click'] = $linkDetail->updated_at;
+				}
+			}
+
+			// Format the data for response
+			$contacts = array_map(function($contact) {
+				return [
+					'name' => $contact['name'],
+					'email' => $contact['email'],
+					'click_count' => $contact['click_count'],
+					'first_click' => $contact['first_click'] ? $contact['first_click']->format('M j, Y H:i') : 'N/A',
+					'last_click' => $contact['last_click'] ? $contact['last_click']->format('M j, Y H:i') : 'Never',
+				];
+			}, $contactData);
+
+			// Sort by click count descending
+			usort($contacts, function($a, $b) {
+				return $b['click_count'] - $a['click_count'];
+			});
+
+			return response()->json([
+				'success' => true,
+				'contacts' => array_values($contacts),
+				'totalClicks' => $totalClicks,
+				'uniqueClicks' => $uniqueClicks,
+				'link' => $link,
+			]);
+
+		} catch (\Exception $e) {
+			return response()->json([
+				'success' => false,
+				'message' => 'Error loading link details: ' . $e->getMessage(),
+			], 500);
+		}
+	}
+
+	/**
 	 * Send a test email to the current user
 	 */
 	public function testSend(Request $request, $id)
@@ -386,7 +522,7 @@ class MessageController extends Controller
 			$user = auth()->user();
 			$team = $user->currentTeam;
 
-			\Log::info('🧪 TEST SEND: Starting test email', [
+			Log::info('🧪 TEST SEND: Starting test email', [
 				'message_id' => $message->id,
 				'message_name' => $message->name,
 				'user_email' => $user->email,
@@ -400,7 +536,7 @@ class MessageController extends Controller
 			// Get email config (will use system defaults if not configured)
 			$emailConfig = $team->getOutgoingEmailConfig();
 
-			\Log::info('🔍 TEST SEND: Email config retrieved', [
+			Log::info('🔍 TEST SEND: Email config retrieved', [
 				'smtp_host' => $emailConfig['host'],
 				'smtp_port' => $emailConfig['port'],
 				'smtp_username' => $emailConfig['username'],
@@ -412,7 +548,7 @@ class MessageController extends Controller
 			// ✨ IMPORTANTE: Configurar SMTP igual que en el Job
 			$this->configureMailForTeam($team);
 
-			\Log::info('✅ TEST SEND: SMTP configured, ready to send', [
+			Log::info('✅ TEST SEND: SMTP configured, ready to send', [
 				'after_config_host' => config('mail.mailers.smtp.host'),
 				'after_config_username' => config('mail.mailers.smtp.username'),
 				'after_config_from_address' => config('mail.from.address'),
@@ -432,7 +568,7 @@ class MessageController extends Controller
 			// Send test email using configured provider
 			$emailProvider = config('services.email.provider', 'smtp');
 
-			\Log::info('🔧 TEST SEND: Using email provider', [
+			Log::info('🔧 TEST SEND: Using email provider', [
 				'email_provider' => $emailProvider,
 				'user_email' => $user->email,
 			]);
@@ -445,12 +581,12 @@ class MessageController extends Controller
 						Mail::mailer('mailgun')->to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
 					} else
 					{
-						\Log::warning('TEST SEND: Mailgun not configured, using default SMTP');
+						Log::warning('TEST SEND: Mailgun not configured, using default SMTP');
 						Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
 					}
 					break;
 				case 'mailbaby':
-					\Log::warning('TEST SEND: MailBaby API not supported for test emails, using SMTP');
+					Log::warning('TEST SEND: MailBaby API not supported for test emails, using SMTP');
 					Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
 					break;
 				case 'smtp':
@@ -459,7 +595,7 @@ class MessageController extends Controller
 					break;
 			}
 
-			\Log::info('✅ TEST SEND: Email sent successfully', [
+			Log::info('✅ TEST SEND: Email sent successfully', [
 				'message_id' => $message->id,
 				'user_email' => $user->email,
 				'smtp_host_used' => config('mail.mailers.smtp.host'),
@@ -473,7 +609,8 @@ class MessageController extends Controller
 			]);
 		} catch (\Exception $e)
 		{
-			\Log::error('❌ TEST SEND: Failed to send test email', [
+			// Log detailed error for debugging
+			Log::error('❌ TEST SEND: Failed to send test email', [
 				'message_id' => $id,
 				'user_email' => $user->email ?? 'unknown',
 				'team_id' => $team->id ?? 'unknown',
@@ -485,9 +622,12 @@ class MessageController extends Controller
 				'trace' => $e->getTraceAsString(),
 			]);
 
+			// Determine user-friendly error message based on error type
+			$userMessage = $this->getUserFriendlyErrorMessage($e);
+
 			return response()->json([
 				'success' => false,
-				'message' => 'Error sending test email: '.$e->getMessage(),
+				'message' => $userMessage,
 			]);
 		}
 	}
@@ -546,9 +686,7 @@ class MessageController extends Controller
 				$htmlContent = $gjsData['html'] ?? '';
 
 				// Replace variables
-				$htmlContent = str_replace('{{name}}', $sampleContact->name ?? 'John', $htmlContent);
-				$htmlContent = str_replace('{{contact_name}}', ($sampleContact->name ?? 'John').' '.($sampleContact->surname ?? 'Doe'), $htmlContent);
-				$htmlContent = str_replace('{{email}}', $sampleContact->email ?? 'john.doe@example.com', $htmlContent);
+				$htmlContent = $this->replaceEmailVariables($htmlContent, $sampleContact, $message);
 			} else
 			{
 				$htmlContent = '<p>'.$message->text.'</p>';
@@ -582,5 +720,61 @@ class MessageController extends Controller
 				'sampleContact' => null,
 			]);
 		}
+	}
+
+	/**
+	 * Get user-friendly error message based on exception type
+	 */
+	private function getUserFriendlyErrorMessage(\Exception $e): string
+	{
+		$errorMessage = $e->getMessage();
+		$errorCode = $e->getCode();
+
+		// Check for common SMTP error patterns
+		if (strpos($errorMessage, '550 domain is not configured with ORIGIN IP IN SPF') !== false ||
+			strpos($errorMessage, 'SPF') !== false ||
+			strpos($errorMessage, '550') !== false) {
+			return "No se pudo enviar el email de prueba.\nPor favor, contacte con soporte técnico para autorizar la salida de emails desde su dominio.";
+		}
+
+		// Check for authentication errors
+		if (strpos($errorMessage, '535') !== false ||
+			strpos($errorMessage, 'authentication') !== false ||
+			strpos($errorMessage, 'login') !== false) {
+			return 'Error de autenticación en el servidor de correo. Verifique las credenciales de configuración.';
+		}
+
+		// Check for connection errors
+		if (strpos($errorMessage, 'connection') !== false ||
+			strpos($errorMessage, 'timeout') !== false ||
+			strpos($errorMessage, 'refused') !== false) {
+			return 'No se pudo conectar al servidor de correo. Verifique la configuración de conexión.';
+		}
+
+		// Check for quota exceeded
+		if (strpos($errorMessage, 'quota') !== false ||
+			strpos($errorMessage, 'limit') !== false ||
+			strpos($errorMessage, 'exceeded') !== false) {
+			return 'Se ha alcanzado el límite de envío de emails. Contacte con soporte técnico.';
+		}
+
+		// Generic error message for unknown errors
+		return 'No se pudo enviar el email de prueba. Por favor, contacte con soporte técnico si el problema persiste.';
+	}
+
+		/**
+	 * Replace email template variables with actual values
+	 */
+	private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string
+	{
+		// Basic contact variables
+		$htmlContent = str_replace('{{name}}', $contact->name ?? 'John', $htmlContent);
+		$htmlContent = str_replace('{{contact_name}}', ($contact->name ?? 'John').' '.($contact->surname ?? 'Doe'), $htmlContent);
+		$htmlContent = str_replace('{{email}}', $contact->email ?? 'john.doe@example.com', $htmlContent);
+
+		// Note: {{date}} and {{header}} variables have been removed from templates
+		// They are now hardcoded in the template content
+
+		return $htmlContent;
 	}
 }

@@ -54,7 +54,7 @@ MAIL_PORT=587
 MAIL_USERNAME=mb80474
 MAIL_PASSWORD=xxxxxx
 MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS=no-reply@revisionalpha.com
+MAIL_FROM_ADDRESS=no-reply@idoneo.dev
 MAIL_FROM_NAME="Revision Alpha"
 ```
 

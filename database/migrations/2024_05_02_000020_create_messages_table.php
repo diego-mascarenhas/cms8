@@ -17,15 +17,25 @@ return new class extends Migration
             $table->string('name');
             $table->unsignedInteger('type_id');
             $table->foreignId('category_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
+            $table->unsignedTinyInteger('contact_status_id')->nullable();
             $table->foreignId('template_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->text('text');
             $table->tinyInteger('status_id')->default(1);
+            $table->boolean('show_unsubscribe')->default(true);
+            $table->boolean('enable_open_tracking')->default(true);
+            $table->boolean('enable_click_tracking')->default(true);
+            $table->integer('min_hours_between_emails')->default(48)->comment('Minimum hours to wait before sending another email to the same contact');
+            $table->timestamp('started_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
 
             $table->foreign('type_id')->references('id')->on('message_type')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
+
+            $table->foreign('contact_status_id')->references('id')->on('contact_statuses')
+                ->onUpdate('cascade')
+                ->onDelete('set null');
         });
     }
 

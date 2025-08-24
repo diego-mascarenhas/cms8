@@ -247,6 +247,12 @@ class RolesAndPermissionsSeeder extends Seeder
 
 		Permission::firstOrCreate(['name' => 'category.list']);
 		Permission::firstOrCreate(['name' => 'message.list']);
+		Permission::firstOrCreate(['name' => 'message.create']);
+		Permission::firstOrCreate(['name' => 'message.show']);
+		Permission::firstOrCreate(['name' => 'message.edit']);
+		Permission::firstOrCreate(['name' => 'message.store']);
+		Permission::firstOrCreate(['name' => 'message.update']);
+		Permission::firstOrCreate(['name' => 'message.destroy']);
 		Permission::firstOrCreate(['name' => 'template.list']);
 
 		Permission::firstOrCreate(['name' => 'hosting.index']);
@@ -428,6 +434,12 @@ class RolesAndPermissionsSeeder extends Seeder
 			'hosting.update',
 			'category.list',
 			'message.list',
+			'message.create',
+			'message.show',
+			'message.edit',
+			'message.store',
+			'message.update',
+			'message.destroy',
 			'template.list',
 			'domain.index',
 			'domain.list',

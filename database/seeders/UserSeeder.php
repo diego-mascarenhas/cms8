@@ -59,7 +59,7 @@ class UserSeeder extends Seeder
             ['name' => 'Client', 'email' => 'client@example.com', 'role' => 7],
             ['name' => 'User', 'email' => 'user@example.com', 'role' => 8],
             ['name' => 'Guest', 'email' => 'guest@example.com', 'role' => 9],
-            ['name' => 'Tester', 'email' => 'tester@revisionalpha.com', 'role' => 2],
+            ['name' => 'Tester', 'email' => 'bitcoder@idoneo.dev', 'role' => 2],
         ];
 
         foreach ($demoUsers as $userData) {
@@ -68,7 +68,7 @@ class UserSeeder extends Seeder
                 'phone' => $userData['phone'] ?? null,
                 'email' => $userData['email'],
                 'password' => Hash::make('Passw0rd!'),
-                'email_verified_at' => $userData['email'] === 'tester@revisionalpha.com' ? now() : null,
+                'email_verified_at' => $userData['email'] === 'bitcoder@idoneo.dev' ? now() : null,
                 'current_team_id' => $demoTeam->id,
             ]);
             $user->assignRole($userData['role']);
@@ -76,9 +76,10 @@ class UserSeeder extends Seeder
         }
 
         // Note: Teams are created as follows:
-        // - Team 1 (Demo) -> Created above in UserSeeder
-        // - Team 2 (Revision Alpha) -> RevisionAlphaSeeder
-        // - Team 3 (Humano) -> HumanoSeeder
-        // - Team 4 (BBO) -> BboSeeder
+        // - Team 1 (Demo) -> TeamDemoSeeder
+        // - Team 2 (Revision Alpha) -> TeamRevisionAlphaSeeder
+        // - Team 3 (Humano) -> TeamHumanoSeeder
+        // - Team 4 (BBO) -> TeamBboSeeder
+		// - Team 5 (JagerPro) -> TeamJagerSeeder
     }
 }

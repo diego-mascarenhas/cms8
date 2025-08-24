@@ -6,23 +6,47 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3">
-			<span class="text-muted fw-light">Messages /</span> {{ $message->name }}
+			<span class="text-muted fw-light">Messages/</span> {{ $message->name }}
 		</h4>
 		<p class="text-muted">Detailed view of the message and its statistics</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
+		<!-- Edit Button -->
+		@can('message.edit')
+		<a href="{{ route('message.edit', $message->id) }}" class="btn btn-primary waves-effect waves-light">
+			<i class="ti ti-edit me-1"></i>Edit Message
+		</a>
+		@endcan
+
 		<!-- Preview Button -->
-		<button class="btn btn-primary me-2" onclick="previewMessage()">
+		<button class="btn btn-outline-primary me-2" onclick="previewMessage()">
 			<i class="ti ti-eye me-1"></i>Preview
 		</button>
 
 		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
-		@if($message->status_id == 1 && ($stats_db->sent ?? 0) < ($stats_db->subscribers ?? 0))
+		@php
+			$isAuthorized = isset($dnsStatus) && $dnsStatus['spf']['has_mailbaby'] && $dnsStatus['mailbaby_auth']['authorized'];
+			$usingSystemSmtp = auth()->user()->currentTeam->isUsingSystemSmtp();
+			$canSend = !$usingSystemSmtp || $isAuthorized;
+		@endphp
+
+		@php
+			// Check if campaign is active and has deliveries pending or in progress
+			$totalDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)->count();
+			$sentDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count();
+			$hasDeliveriesPending = $totalDeliveries > $sentDeliveries;
+			$campaignIsActive = $message->status_id == 1;
+			$campaignCanBePaused = $campaignIsActive && ($totalDeliveries > 0 || $message->started_at);
+		@endphp
+
+		@if($campaignCanBePaused)
 			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
 				<i class="ti ti-player-pause me-1"></i>Pause
 			</button>
 		@else
-			<button class="btn btn-success me-2" onclick="startCampaign({{ $message->id }})">
+			<button class="btn btn-success me-2 {{ !$canSend ? 'disabled' : '' }}"
+					onclick="{{ $canSend ? 'startCampaign(' . $message->id . ')' : 'showAuthorizationError()' }}"
+					{{ !$canSend ? 'disabled' : '' }}>
 				<i class="ti ti-send me-1"></i>Send Now
 			</button>
 		@endif
@@ -33,43 +57,68 @@
 	</div>
 </div>
 
+<!-- Configuration Alerts (if any issues) -->
+@if($dnsStatus)
+@php
+	$isAuthorized = $dnsStatus['spf']['has_mailbaby'] && $dnsStatus['mailbaby_auth']['authorized'];
+	$usingSystemSmtp = auth()->user()->currentTeam->isUsingSystemSmtp();
+	$hasConfigIssues = $usingSystemSmtp && (!$dnsStatus['spf']['has_mailbaby'] || !$isAuthorized);
+@endphp
+
+@if($hasConfigIssues)
+<div class="row mb-3">
+	<div class="col-12">
+		@if(!$dnsStatus['spf']['has_mailbaby'])
+			<div class="alert alert-warning" role="alert">
+				<i class="ti ti-alert-triangle me-2"></i>
+				<strong>SPF Configuration Required:</strong>
+				Add TXT record: <code>"v=spf1 include:spf.revisionalpha.com -all"</code> to domain <strong>{{ $dnsStatus['domain'] }}</strong>
+			</div>
+		@endif
+
+		@if($usingSystemSmtp && !$isAuthorized)
+			<div class="alert alert-danger" role="alert">
+				<i class="ti ti-x-circle me-2"></i>
+				<strong>Domain Not Authorized:</strong>
+				Your domain <strong>{{ $dnsStatus['domain'] }}</strong> is not authorized to use system SMTP. Email sending is disabled.
+			</div>
+		@endif
+	</div>
+</div>
+@endif
+@endif
+
 <div class="row">
 	<!-- Left Column: Stats + General Info -->
 	<div class="col-lg-4 col-md-5">
 		<!-- Delivery Stats Component (Auto-updating) -->
 		@livewire('delivery-stats', ['messageId' => $message->id])
 
-		<!-- General Info -->
+				<!-- General Info -->
 		<div class="card mb-4">
 			<div class="card-header d-flex justify-content-between align-items-center">
-				<span>General Information</span>
-				<button class="btn btn-sm btn-outline-info" onclick="testSend({{ $message->id }})">
+				<h5 class="mb-0">General Information</h5>
+				<button class="btn btn-sm btn-outline-info {{ !$canSend ? 'disabled' : '' }}"
+						onclick="{{ $canSend ? 'testSend(' . $message->id . ')' : 'showAuthorizationError()' }}"
+						{{ !$canSend ? 'disabled' : '' }}>
 					<i class="ti ti-send-2 me-1"></i>Test Send
 				</button>
 			</div>
 			<div class="card-body">
-				<div class="mb-2"><strong>Subject:</strong> {{ $message->name }}</div>
-				<div class="mb-2"><strong>Sender:</strong>
-					@if(auth()->user()->currentTeam->isUsingSystemSmtp())
-						<span class="text-info">{{ $emailConfig['from_name'] }} (System SMTP)</span>
-					@else
-						<span class="text-success">{{ $emailConfig['from_name'] }} (Own SMTP)</span>
-					@endif
-					</span>
-				</div>
-				<div class="mb-2"><strong>Sender Email:</strong>
-					@if(auth()->user()->currentTeam->isUsingSystemSmtp())
-						<span class="text-info">{{ $emailConfig['from_address'] }} (System SMTP)</span>
-					@else
-						<span class="text-success">{{ $emailConfig['from_address'] }} (Own SMTP)</span>
-					@endif
-					</span>
-				</div>
+				<div class="mb-2"><strong>Sender:</strong> {{ $emailConfig['from_name'] }}</div>
+				<div class="mb-2"><strong>Email:</strong> {{ $emailConfig['from_address'] }}</div>
 				<div class="mb-2"><strong>Category:</strong>
 					@if($message->category)
 						{{ $message->category->name }}
 					@else
 						All contacts
+					@endif
+				</div>
+				<div class="mb-2"><strong>Contact Status:</strong>
+					@if($message->contactStatus)
+						{{ $message->contactStatus->name }}
+					@else
+						<span class="text-muted">All statuses</span>
 					@endif
 				</div>
 			</div>
@@ -91,9 +140,11 @@
 					<table class="table table-sm">
 						<thead>
 							<tr>
-								<th>Contact</th>
-								<th>Clicked At</th>
 								<th>Link</th>
+								<th class="text-center">Unique Clicks</th>
+								<th class="text-center">Total Clicks</th>
+								<th>First Click</th>
+								<th>Last Click</th>
 								<th class="text-center">Actions</th>
 							</tr>
 						</thead>
@@ -101,35 +152,56 @@
 							@foreach($links as $link)
 								<tr>
 									<td>
-										<div class="d-flex flex-column">
-											<h6 class="mb-0">{{ $link->messageDelivery->contact->name ?? 'Unknown' }}</h6>
-											<small class="text-muted">{{ $link->messageDelivery->contact->email ?? 'N/A' }}</small>
-										</div>
+										<span class="text-muted"
+											  data-bs-toggle="tooltip"
+											  data-bs-placement="top"
+											  data-bs-original-title="{{ $link->link }}">
+											{{ Str::limit($link->link, 60) }}
+										</span>
+									</td>
+									<td class="text-center">
+										<span class="badge bg-info">{{ $link->unique_clicks }}</span>
+									</td>
+									<td class="text-center">
+										<span class="badge bg-primary">{{ $link->total_clicks }}</span>
 									</td>
 									<td>
 										<small class="text-muted">
-											{{ is_string($link->created_at) ? $link->created_at : $link->created_at->format('M j, Y H:i') }}
+											{{ $link->first_click ? \Carbon\Carbon::parse($link->first_click)->format('M j, Y H:i') : 'N/A' }}
 										</small>
 									</td>
 									<td>
-										<a href="{{ $link->link }}"
-										   target="_blank"
-										   class="text-primary"
-										   data-bs-toggle="tooltip"
-										   data-bs-placement="top"
-										   data-bs-original-title="Click to open: {{ $link->link }}">
-											{{ Str::limit($link->link, 50) }}
-											<i class="ti ti-external-link ti-xs ms-1"></i>
-										</a>
+										<small class="text-muted">
+											{{ $link->last_click ? \Carbon\Carbon::parse($link->last_click)->format('M j, Y H:i') : 'Never' }}
+										</small>
 									</td>
-									<td class="text-center">
-										<button class="btn btn-sm btn-outline-secondary"
-												onclick="copyToClipboard('{{ $link->link }}')"
-												data-bs-toggle="tooltip"
-												data-bs-placement="top"
-												data-bs-original-title="Copy link">
-											<i class="ti ti-copy ti-xs"></i>
-										</button>
+																		<td class="text-center">
+										<div class="d-flex justify-content-center align-items-center gap-2">
+											<a href="{{ $link->link }}"
+											   target="_blank"
+											   data-bs-toggle="tooltip"
+											   data-bs-placement="top"
+											   data-bs-original-title="Open link: {{ $link->link }}"
+											   class="text-body">
+												<i class="ti ti-external-link ti-sm"></i>
+											</a>
+											<a href="javascript:;"
+											   onclick="showLinkDetails('{{ base64_encode($link->link) }}', '{{ addslashes($link->link) }}')"
+											   data-bs-toggle="tooltip"
+											   data-bs-placement="top"
+											   data-bs-original-title="View contacts who clicked"
+											   class="text-body">
+												<i class="ti ti-users ti-sm"></i>
+											</a>
+											<a href="javascript:;"
+											   onclick="copyToClipboard('{{ $link->link }}')"
+											   data-bs-toggle="tooltip"
+											   data-bs-placement="top"
+											   data-bs-original-title="Copy link"
+											   class="text-body">
+												<i class="ti ti-copy ti-sm"></i>
+											</a>
+										</div>
 									</td>
 								</tr>
 							@endforeach
@@ -148,6 +220,41 @@
 		</div>
 	</div>
 </div>
+
+<!-- Modal for Link Contact Details -->
+<div class="modal fade" id="linkDetailsModal" tabindex="-1" aria-labelledby="linkDetailsModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="linkDetailsModalLabel">
+					<i class="ti ti-users me-2"></i>Contacts who clicked this link
+				</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<div class="mb-3">
+					<strong>Link:</strong>
+					<a href="#" id="modalLinkUrl" target="_blank" class="text-primary">
+						<span id="modalLinkText"></span>
+						<i class="ti ti-external-link ti-xs ms-1"></i>
+					</a>
+				</div>
+				<div id="linkDetailsContent">
+					<div class="text-center py-4">
+						<div class="spinner-border text-primary" role="status">
+							<span class="visually-hidden">Loading...</span>
+						</div>
+						<p class="mt-2 text-muted">Loading contact details...</p>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+
 @endsection
 
 @section('vendor-style')
@@ -200,6 +307,128 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 });
+
+// Show link details modal
+function showLinkDetails(encodedLink, linkUrl) {
+    // Set the link in the modal header
+    document.getElementById('modalLinkUrl').href = linkUrl;
+    document.getElementById('modalLinkText').textContent = linkUrl;
+
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('linkDetailsModal'));
+    modal.show();
+
+    // Reset content to loading state
+    document.getElementById('linkDetailsContent').innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading contact details...</p>
+        </div>
+    `;
+
+    // Fetch link details
+    fetch(`/message/{{ $message->id }}/link-details/${encodedLink}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                displayLinkDetails(data.contacts, data.totalClicks, data.uniqueClicks);
+            } else {
+                displayError(data.message || 'Error loading contact details');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching link details:', error);
+            displayError('Error loading contact details');
+        });
+}
+
+function displayLinkDetails(contacts, totalClicks, uniqueClicks) {
+    let html = `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Contact Details</h6>
+                <div>
+                    <span class="badge bg-info me-2">${uniqueClicks} unique</span>
+                    <span class="badge bg-primary">${totalClicks} total</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (contacts && contacts.length > 0) {
+        html += `
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Contact</th>
+                            <th class="text-center">Clicks</th>
+                            <th>First Click</th>
+                            <th>Last Click</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        contacts.forEach(contact => {
+            // Use different colors: info for single click, primary for multiple clicks
+            const badgeClass = contact.click_count === 1 ? 'bg-info' : 'bg-primary';
+
+            html += `
+                <tr>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <h6 class="mb-0">${contact.name}</h6>
+                            <small class="text-muted">${contact.email}</small>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge ${badgeClass}">${contact.click_count}</span>
+                    </td>
+                    <td>
+                        <small class="text-muted">${contact.first_click}</small>
+                    </td>
+                    <td>
+                        <small class="text-muted">${contact.last_click}</small>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="text-center py-4">
+                <i class="ti ti-users-off ti-lg text-muted"></i>
+                <h6 class="text-muted mt-2">No clicks recorded</h6>
+                <p class="text-muted small">This link hasn't been clicked by any contacts yet.</p>
+            </div>
+        `;
+    }
+
+    document.getElementById('linkDetailsContent').innerHTML = html;
+}
+
+function displayError(message) {
+    document.getElementById('linkDetailsContent').innerHTML = `
+        <div class="text-center py-4">
+            <i class="ti ti-alert-circle ti-lg text-danger"></i>
+            <h6 class="text-danger mt-2">Error</h6>
+            <p class="text-muted small">${message}</p>
+        </div>
+    `;
+}
 
 function resendDelivery(deliveryId, element) {
     Swal.fire({
@@ -540,6 +769,19 @@ function pauseCampaign(messageId) {
                 }
             });
         }
+    });
+}
+
+function showAuthorizationError() {
+    Swal.fire({
+        title: '🚫 Authorization Required',
+        text: 'Your domain needs to be properly configured to send emails using system SMTP. Please configure your SPF record or use your own SMTP settings.',
+        icon: 'warning',
+        confirmButtonText: 'OK',
+        customClass: {
+            confirmButton: 'btn btn-warning waves-effect waves-light'
+        },
+        buttonsStyling: false
     });
 }
 

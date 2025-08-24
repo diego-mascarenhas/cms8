@@ -82,8 +82,14 @@ return [
 
         // Email sending delay configuration
         'delay' => [
-            'base_minutes' => (int) env('EMAIL_DELAY_BASE_MINUTES', 5), // Minutes between each email
-            'random_seconds' => (int) env('EMAIL_DELAY_RANDOM_SECONDS', 120), // Random 0-X seconds added
+            'base_minutes' => (int) env('EMAIL_DELAY_BASE_MINUTES', 1), // Minutes between each email (reduced from 5)
+            'random_seconds' => (int) env('EMAIL_DELAY_RANDOM_SECONDS', 60), // Random 0-X seconds added (reduced from 120)
+        ],
+
+        // Campaign processing limits
+        'processing' => [
+            'deliveries_per_campaign_run' => (int) env('EMAIL_DELIVERIES_PER_CAMPAIGN_RUN', 50), // Max deliveries created per campaign per run
+            'deliveries_per_send_run' => (int) env('EMAIL_DELIVERIES_PER_SEND_RUN', 100), // Max deliveries sent per run
         ],
     ],
 

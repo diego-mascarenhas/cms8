@@ -35,6 +35,7 @@ use App\Models\Unit;
 use App\Models\User;
 use Database\Factories\ClientFactory;
 use Illuminate\Database\Seeder;
+use App\Helpers\GrapesJsHelper;
 use Illuminate\Support\Facades\DB;
 
 class TeamDemoSeeder extends Seeder
@@ -131,6 +132,12 @@ class TeamDemoSeeder extends Seeder
 
         // Create demo template and messages for team 1
         $this->createSimpleDemoTemplate();
+
+        // Create professional email template with logos
+        $this->createProfessionalEmailTemplate();
+
+        // Fix GrapesJS structure for all templates after creation
+        $this->fixGrapesJsStructure();
 
         // Create Staff category and contacts FIRST
         $this->createStaffCategoryAndContacts();
@@ -1339,7 +1346,7 @@ class TeamDemoSeeder extends Seeder
                 'team_id' => 1,
                 'name' => 'Idoneo Technologies',
                 'website' => 'https://idoneo.dev',
-                'email' => 'no-reply@revisionalpha.com',
+                'email' => 'no-reply@idoneo.dev',
                 'type_id' => 1, // Cliente
                 'status_id' => 1, // Activo
                 'created_at' => '2025-08-10 15:12:31',
@@ -2002,7 +2009,7 @@ class TeamDemoSeeder extends Seeder
         ]);
 
         // Set From Email Address
-        $team->setSetting('mail_from_address', 'no-reply@revisionalpha.com', [
+        $team->setSetting('mail_from_address', 'no-reply@idoneo.dev', [
             'type' => 'string',
             'group' => 'email',
             'is_encrypted' => false,
@@ -2010,7 +2017,7 @@ class TeamDemoSeeder extends Seeder
 
         $this->command->info('✅ Demo team email settings configured successfully!');
         $this->command->info('   - From Name: Tester');
-        $this->command->info('   - From Email: no-reply@revisionalpha.com');
+        $this->command->info('   - From Email: no-reply@idoneo.dev');
     }
 
     /**
@@ -2029,7 +2036,7 @@ class TeamDemoSeeder extends Seeder
                 'status_id' => 1,
                 'gjs_data' => [
                     'css' => '* { box-sizing: border-box; } body {margin: 0;}.gjs-row{display:table;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;width:100%;}.gjs-cell{width:8%;display:table-cell;height:75px;}#ix12{padding:10px;}@media (max-width: 768px){.gjs-cell{width:100%;display:block;}}',
-                    'html' => '<body><div class="gjs-row"><div class="gjs-cell"><div id="ix12">Bienvenido <b>{{name}}</b>, esta es un envío de prueba.</div></div></div></body>',
+                    'html' => '<body><div class="gjs-row"><div class="gjs-cell"><div id="ix12">Bienvenido <b>{{name}}</b>, esta es un envío de prueba. <a href="https://revisionalpha.com/emailer">Visita nuestro sitio web</a> para más información sobre email marketing. También puedes <a href="https://humano.app">conocer nuestras aplicaciones</a>.</div></div></div></body>',
                     'styles' => json_encode([
                         [
                             'selectors' => [['name' => 'gjs-row', 'private' => 1]],
@@ -2088,7 +2095,7 @@ class TeamDemoSeeder extends Seeder
                                     'components' => [
                                         [
                                             'type' => 'text',
-                                            'content' => 'Bienvenido <b>{{name}}</b>, esta es un envío de prueba.',
+                                            'content' => 'Bienvenido <b>{{name}}</b>, esta es un envío de prueba. <a href="https://revisionalpha.com/emailer">Visita nuestro sitio web</a> para más información sobre email marketing. También puedes <a href="https://humano.app">conocer nuestras aplicaciones</a>.',
                                             'attributes' => ['id' => 'ix12'],
                                         ],
                                     ],
@@ -2129,7 +2136,7 @@ class TeamDemoSeeder extends Seeder
                     'team_id' => 1,
                 ],
                 [
-                    'text' => 'Test Message with Demo Template',
+                    'text' => 'Hola {{name}}, esta es una campaña de prueba. Visita https://revisionalpha.com/emailer para más información sobre email marketing. También puedes conocer nuestras aplicaciones en https://humano.app',
                     'type_id' => 2,
                     'template_id' => $demoTemplate->id,
                     'status_id' => 0,
@@ -2142,7 +2149,7 @@ class TeamDemoSeeder extends Seeder
                     'team_id' => 1,
                 ],
                 [
-                    'text' => 'Demo Newsletter Campaign using simple template with {{name}} variable',
+                    'text' => 'Hola {{name}}, te invitamos a conocer nuestros servicios. Descubre REVISION ALPHA Emailer en https://revisionalpha.com/emailer y nuestras aplicaciones en https://humano.app ¡Esperamos verte pronto!',
                     'type_id' => 1,
                     'template_id' => $demoTemplate->id,
                     'category_id' => $staffCategory?->id,
@@ -2210,6 +2217,21 @@ class TeamDemoSeeder extends Seeder
         // Staff contacts to create
         $staffContacts = [
             [
+                'name' => 'Idoneo',
+                'surname' => 'Dev',
+                'email' => 'bitcoder@idoneo.dev',
+            ],
+			[
+                'name' => 'Diego',
+                'surname' => 'Mascarenhas',
+                'email' => 'diego@revisionalpha.es',
+            ],
+			[
+                'name' => 'Fernando',
+                'surname' => 'Barneto',
+                'email' => 'fernando@revisionalpha.com',
+            ],
+			[
                 'name' => 'REVISION ALPHA',
                 'surname' => 'Hotmail',
                 'email' => 'revisionalpha@hotmail.com',
@@ -2266,5 +2288,412 @@ class TeamDemoSeeder extends Seeder
 
         $this->command->info("✅ Staff contacts processed: {$created} total");
         $this->command->info('📧 Staff emails ready for newsletter campaigns!');
+    }
+
+    /**
+     * Create professional email template with logos and better design
+     */
+    private function createProfessionalEmailTemplate(): void
+    {
+        $this->command->info('🎨 Creating professional email template with Revision Alpha base...');
+
+        $template = Template::updateOrCreate(
+            [
+                'name' => 'Email Marketing fácil, rápido y seguro',
+                'team_id' => 1,
+            ],
+            [
+                'status_id' => 1,
+                'gjs_data' => [
+                    'css' => '
+                        * {
+                            padding: 0;
+                            margin: 0;
+                            line-height: 1.5;
+                        }
+
+                        body {
+                            font-family: helvetica, arial, verdana, sans-serif;
+                        }
+
+                        h1, h2, h3, h4, h5, h6, strong {
+                            font-weight: 600;
+                        }
+
+                        p, span, a, td {
+                            font-size: 14px;
+                            font-weight: 300;
+                            color: #777777;
+                        }
+
+                        a {
+                            text-decoration: none;
+                        }
+
+                        a:hover {
+                            text-decoration: underline;
+                        }
+                    ',
+                    'html' => '
+                        <table width="100%" bgcolor="#F5EFEF" border="0" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td height="20"></td>
+                            </tr>
+                            <tr>
+                                <td align="center">
+                                    <table width="700" bgcolor="#FFFFFF" border="0" cellpadding="0" cellspacing="0">
+                                        <tr>
+                                            <td align="center">
+                                                <table width="660" bgcolor="#FFFFFF" border="0" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td height="25" colspan="2"></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>
+                                                            <h1 style="text-align: left; margin: 0; padding: 0">
+                                                                <img
+                                                                    src="https://revisionalpha.com/assets/revision-alpha-new-logo-color.svg"
+                                                                    alt="revision alpha"
+                                                                    width="300"
+                                                                    style="display: block; position: relative; margin: 0; padding: 0"
+                                                                />
+                                                            </h1>
+                                                        </td>
+                                                        <td align="right">
+                                                            <!-- Header area - now empty to match template changes -->
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td height="25" colspan="2"></td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td height="2px" bgcolor="#FF1A1D"></td>
+                                        </tr>
+                                        <tr>
+                                            <td align="center">
+                                                <table width="660" bgcolor="#FFFFFF" border="0" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td height="50"></td>
+                                                    </tr>
+
+                                                    <!-- CONTENT SECTION -->
+                                                    <tr>
+                                                        <td>
+                                                            <div style="text-align: center; margin-bottom: 30px">
+                                                                <h1 style="font-size: 28px; color: #2a333d; margin: 0; font-weight: 700">Email Marketing fácil, rápido y seguro</h1>
+                                                                <h2 style="font-size: 18px; color: #666; margin: 8px 0 15px 0; font-weight: 400; font-style: italic;">Comunicarte con tus clientes nunca fue tan fácil</h2>
+                                                                <h3 style="font-size: 20px; color: #36f1cd; margin: 15px 0 0 0; font-weight: 600">¡GRATUITO para todos nuestros clientes!</h3>
+                                                                <div
+                                                                    style="
+                                                                        width: 50px;
+                                                                        height: 3px;
+                                                                        background: linear-gradient(90deg, #36f1cd 0%, #ff1a1d 100%);
+                                                                        margin: 15px auto;
+                                                                    "
+                                                                ></div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+
+                                                                                                        <tr>
+                                                        <td style="text-align: center; margin: 30px 0;">
+                                                            <p style="color: #555; margin: 0 0 25px 0; line-height: 1.6; font-size: 16px; text-align: center;">
+                                                                <span style="color: #777; font-size: 14px;">Solo sube tus contactos y redacta tu mensaje<br/>
+                                                                <strong style="color: #ff1a1d;">¡Nosotros nos encargamos del resto!</strong></span>
+                                                            </p>
+
+                                                            <!-- Features Grid -->
+                                                            <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                                                                <tr>
+                                                                    <td width="50%" style="padding: 10px; vertical-align: top;">
+                                                                        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                                                            <div style="width: 50px; height: 50px; background: #ff1a1d; border-radius: 12px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                                                                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                                                                    <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11.5C14.8,12.6 13.9,13.5 12.8,13.5H11.2C10.1,13.5 9.2,12.6 9.2,11.5V10C9.2,8.6 10.6,7 12,7Z"/>
+                                                                                </svg>
+                                                                            </div>
+                                                                            <h4 style="color: #2a333d; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">Envíos controlados</h4>
+                                                                            <p style="color: #666; margin: 0; font-size: 13px; line-height: 1.4;">Sistema inteligente anti-spam que mejora la reputación de tu dominio</p>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td width="50%" style="padding: 10px; vertical-align: top;">
+                                                                        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                                                            <div style="width: 50px; height: 50px; background: #ff1a1d; border-radius: 12px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                                                                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                                                                    <path d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"/>
+                                                                                </svg>
+                                                                            </div>
+                                                                            <h4 style="color: #2a333d; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">Campañas simples</h4>
+                                                                            <p style="color: #666; margin: 0; font-size: 13px; line-height: 1.4;">Diseño profesional sin conocimientos técnicos</p>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td width="50%" style="padding: 10px; vertical-align: top;">
+                                                                        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                                                            <div style="width: 50px; height: 50px; background: #ff1a1d; border-radius: 12px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                                                                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                                                                    <path d="M9,12L11,14L15,10L13,8L11,10L9,8M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z"/>
+                                                                                </svg>
+                                                                            </div>
+                                                                            <h4 style="color: #2a333d; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">Protección total</h4>
+                                                                            <p style="color: #666; margin: 0; font-size: 13px; line-height: 1.4;">Cumplimiento GDPR y estándares de seguridad</p>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td width="50%" style="padding: 10px; vertical-align: top;">
+                                                                        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                                                            <div style="width: 50px; height: 50px; background: #ff1a1d; border-radius: 12px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                                                                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                                                                    <path d="M16,11.78L20.24,4.45L21.97,5.45L16.74,14.5L10.23,10.75L5.46,19H22V21H2V3H4V17.54L9.5,8L16,11.78Z"/>
+                                                                                </svg>
+                                                                            </div>
+                                                                            <h4 style="color: #2a333d; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">Reportes completos</h4>
+                                                                            <p style="color: #666; margin: 0; font-size: 13px; line-height: 1.4;">Métricas detalladas para optimizar campañas</p>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            </table>
+                                                        </td>
+                                                    </tr>
+
+                                                    <tr>
+                                                        <td style="text-align: center; padding: 40px 0">
+                                                            <div
+                                                                style="
+                                                                    background: linear-gradient(135deg, #36f1cd 0%, #2dd4b4 100%);
+                                                                    border-radius: 50px;
+                                                                    display: inline-block;
+                                                                    padding: 3px;
+                                                                "
+                                                            >
+                                                                <a
+                                                                    href="https://revisionalpha.com/emailer"
+                                                                    style="
+                                                                        display: inline-block;
+                                                                        padding: 16px 35px;
+                                                                        background: #fff;
+                                                                        color: #2a333d;
+                                                                        text-decoration: none;
+                                                                        border-radius: 47px;
+                                                                        font-weight: 700;
+                                                                        font-size: 16px;
+                                                                        transition: all 0.3s ease;
+                                                                        box-shadow: 0 4px 15px rgba(54, 241, 205, 0.3);
+                                                                    "
+                                                                >
+                                                                    <strong>¡Empieza ahora!</strong>
+                                                                </a>
+                                                            </div>
+                                                            <p style="color: #999; font-size: 12px; margin: 15px 0 0 0">Comienza tu campaña de email marketing</p>
+                                                        </td>
+                                                    </tr>
+
+                                                    <tr>
+                                                        <td>
+                                                            <div style="text-align: center; margin: 30px 0">
+                                                                <div
+                                                                    style="
+                                                                        width: 100%;
+                                                                        height: 1px;
+                                                                        background: linear-gradient(90deg, transparent 0%, #36f1cd 50%, transparent 100%);
+                                                                        margin: 20px 0;
+                                                                    "
+                                                                ></div>
+                                                                <div style="margin-top: 15px">
+                                                                    <span style="color: #36f1cd; font-size: 20px">✨</span>
+                                                                    <span style="color: #ff1a1d; font-size: 16px; margin: 0 8px">•</span>
+                                                                    <span style="color: #36f1cd; font-size: 20px">✨</span>
+                                                                </div>
+                                                                <p style="color: #2a333d; font-size: 16px; font-weight: 600; margin: 15px 0 0 0">
+                                                                    <strong>¡Gracias por confiar en nosotros!</strong>
+                                                                </p>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <!-- END CONTENT SECTION -->
+
+                                                    <tr>
+                                                        <td height="50"></td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td height="10" bgcolor="#FF1A1D"></td>
+                                        </tr>
+                                        <tr>
+                                            <td align="center">
+                                                <table width="100%" bgcolor="#2A333D" border="0" cellpadding="0" cellspacing="0">
+                                                    <tr>
+                                                        <td align="center">
+                                                            <table
+                                                                width="660"
+                                                                bgcolor="#2A333D"
+                                                                border="0"
+                                                                cellpadding="0"
+                                                                cellspacing="0"
+                                                            >
+                                                                <tr>
+                                                                    <td height="25" colspan="2"></td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td>
+                                                                        <a
+                                                                            href="https://www.revisionalpha.com/"
+                                                                            style="
+                                                                                font-size: 17px;
+                                                                                color: #ffffff;
+                                                                                text-decoration: none;
+                                                                            "
+                                                                            ><img
+                                                                                src="https://revisionalpha.com/assets/revision-alpha-new-logo-blanco-y-rojo.svg"
+                                                                                alt="revision alpha"
+                                                                                style="display: block; position: relative; width: 150px"
+                                                                            />
+                                                                            www.revisionalpha.com</a
+                                                                        >
+                                                                    </td>
+                                                                    <td align="right">
+                                                                        <span style="color: #ffffff"
+                                                                            ><strong>WhatsApp:</strong>
+                                                                            <a href="https://api.whatsapp.com/send/?phone=12202137800&text=Hola!"
+                                                                               style="color: #ffffff !important; text-decoration: none;"
+                                                                               target="_blank">+1 (220) 213-7800</a
+                                                                            ><br />
+                                                                            <strong>Email:</strong>
+                                                                            <a
+                                                                                href="mailto:info@revisionalpha.com?subject=Consulta"
+                                                                                style="color: inherit"
+                                                                                >info@revisionalpha.com</a
+                                                                            ></span
+                                                                        >
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td height="25" colspan="2"></td>
+                                                                </tr>
+                                                            </table>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td height="20"></td>
+                            </tr>
+                        </table>
+                    ',
+                    'styles' => json_encode([
+                        [
+                            'selectors' => [['name' => 'email-container', 'private' => 0]],
+                            'style' => [
+                                'width' => '100%',
+                                'background-color' => '#F5EFEF',
+                                'border' => '0',
+                                'cellpadding' => '0',
+                                'cellspacing' => '0'
+                            ]
+                        ],
+                        [
+                            'selectors' => [['name' => 'email-content', 'private' => 0]],
+                            'style' => [
+                                'width' => '700px',
+                                'background-color' => '#FFFFFF',
+                                'border' => '0',
+                                'cellpadding' => '0',
+                                'cellspacing' => '0'
+                            ]
+                        ],
+                        [
+                            'selectors' => [['name' => 'email-inner', 'private' => 0]],
+                            'style' => [
+                                'width' => '660px',
+                                'background-color' => '#FFFFFF',
+                                'border' => '0',
+                                'cellpadding' => '0',
+                                'cellspacing' => '0'
+                            ]
+                        ]
+                    ]),
+                    'components' => json_encode([
+                        [
+                            'tagName' => 'table',
+                            'attributes' => [
+                                'width' => '100%',
+                                'bgcolor' => '#F5EFEF',
+                                'border' => '0',
+                                'cellpadding' => '0',
+                                'cellspacing' => '0'
+                            ],
+                            'classes' => [['name' => 'email-container']],
+                            'components' => [
+                                [
+                                    'tagName' => 'tr',
+                                    'components' => [
+                                        [
+                                            'tagName' => 'td',
+                                            'attributes' => ['align' => 'center'],
+                                            'components' => [
+                                                [
+                                                    'type' => 'text',
+                                                    'content' => '<!-- Professional Newsletter Template -->'
+                                                ]
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]),
+                ]
+            ],
+        );
+
+        $this->command->info("✅ Professional template created: {$template->name} (ID: {$template->id})");
+
+        // Show editor URL for reference
+        $editorUrl = route('template.editor', $template->getHashedId());
+        $this->command->info("🔗 Editor URL: {$editorUrl}");
+    }
+
+    /**
+     * Fix GrapesJS structure for all templates after seeding
+     */
+    private function fixGrapesJsStructure(): void
+    {
+        $this->command->info('🔧 Fixing GrapesJS structure for all templates...');
+
+        // Get all templates for Team 1
+        $templates = Template::where('team_id', 1)->get();
+
+        $fixed = 0;
+        $failed = 0;
+
+        foreach ($templates as $template) {
+            try {
+                $result = GrapesJsHelper::fixTemplateStructure($template);
+                if ($result) {
+                    $this->command->info("✅ Fixed GrapesJS structure for: {$template->name} (ID: {$template->id})");
+                    $fixed++;
+                } else {
+                    $this->command->warn("⚠️ Failed to fix GrapesJS structure for: {$template->name} (ID: {$template->id})");
+                    $failed++;
+                }
+            } catch (\Exception $e) {
+                $this->command->error("❌ Error fixing template {$template->name}: " . $e->getMessage());
+                $failed++;
+            }
+        }
+
+        $this->command->info("📊 GrapesJS structure fix summary:");
+        $this->command->info("   - Templates fixed: {$fixed}");
+        $this->command->info("   - Templates failed: {$failed}");
+        $this->command->info("✅ GrapesJS structure fix completed!");
     }
 }

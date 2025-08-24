@@ -137,9 +137,13 @@ class MessageDelivery extends Model
 	 */
 	public function markAsClicked()
 	{
-		$this->update([
-			'status_id' => 3, // 3 = clicked
-		]);
+		// Only update clicked_at if it's the first click
+		if (!$this->clicked_at) {
+			$this->update([
+				'clicked_at' => now(),
+				'status_id' => 3, // 3 = clicked
+			]);
+		}
 	}
 
 	/**
@@ -183,8 +187,19 @@ class MessageDelivery extends Model
 			: '';
 		$contactName = $this->contact ? $this->contact->name : '';
 
-		// Simple variable replacement for {{name}}
-		$html = str_replace('{{name}}', $contactName, $templateHtml);
+		// Replace all template variables
+		$html = $this->replaceEmailVariables($templateHtml, $this->contact, $this->message);
+
+		// Rewrite URLs for click tracking (only for SMTP emails)
+		if ($this->shouldEnableClickTracking()) {
+			$html = \App\Helpers\EmailTrackingHelper::rewriteUrlsForTracking($html, $this);
+		}
+
+		// Add unsubscribe link
+		$html = \App\Helpers\EmailTrackingHelper::addUnsubscribeLink($html, $this);
+
+		// Add tracking pixel for open tracking
+		$html = \App\Helpers\EmailTrackingHelper::addTrackingPixel($html, $this);
 
 		// Get team to check if advertising footer should be added
 		$team = $this->message && $this->message->team ? $this->message->team : auth()->user()->currentTeam;
@@ -192,18 +207,56 @@ class MessageDelivery extends Model
 		// Add advertising footer if using system SMTP
 		$advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
 
-		// Insert tracking image and advertising footer before </body> or at the end
-		$trackingImg = '<img src="'.$this->getTrackingUrl().'" width="1" height="1" style="display:none;" alt="" />';
-		$insertContent = $advertisingFooter.$trackingImg;
-
+		// Insert advertising footer before </body> or at the end
 		if (stripos($html, '</body>') !== false)
 		{
-			$html = str_ireplace('</body>', $insertContent.'</body>', $html);
+			$html = str_ireplace('</body>', $advertisingFooter.'</body>', $html);
 		} else
 		{
-			$html .= $insertContent;
+			$html .= $advertisingFooter;
 		}
 
 		return $html;
+	}
+
+		/**
+	 * Check if click tracking should be enabled for this delivery
+	 */
+	private function shouldEnableClickTracking(): bool
+	{
+		// Enable click tracking for SMTP emails (not for providers that handle it themselves)
+		return in_array($this->email_provider, ['smtp', null]) ||
+			   config('services.email.provider', 'smtp') === 'smtp';
+	}
+
+	/**
+	 * Generate personalized text for WhatsApp campaigns
+	 */
+	public function getTextForWhatsApp(): string
+	{
+		$messageText = $this->message && $this->message->text
+			? $this->message->text
+			: 'Mensaje de prueba';
+
+		$contactName = $this->contact ? $this->contact->name : '';
+
+		// Simple variable replacement for {{name}}
+		return str_replace('{{name}}', $contactName, $messageText);
+	}
+
+		/**
+	 * Replace email template variables with actual values
+	 */
+	private function replaceEmailVariables(string $htmlContent, $contact, $message = null): string
+	{
+		// Basic contact variables
+		$htmlContent = str_replace('{{name}}', $contact->name ?? '', $htmlContent);
+		$htmlContent = str_replace('{{contact_name}}', ($contact->name ?? '').' '.($contact->surname ?? ''), $htmlContent);
+		$htmlContent = str_replace('{{email}}', $contact->email ?? '', $htmlContent);
+
+		// Note: {{date}} and {{header}} variables have been removed from templates
+		// They are now hardcoded in the template content
+
+		return $htmlContent;
 	}
 }

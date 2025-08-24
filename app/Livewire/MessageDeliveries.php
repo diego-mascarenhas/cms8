@@ -27,6 +27,7 @@ class MessageDeliveries extends Component
 			{
 				return [
 					'id' => $delivery->id,
+					'contact_id' => $delivery->contact ? $delivery->contact->id : null,
 					'contact_name' => $delivery->contact ? $delivery->contact->name : '-',
 					'contact_email' => $delivery->contact ? $delivery->contact->email : '-',
 					'sent_at' => $delivery->sent_at ?

@@ -130,23 +130,6 @@
                 </div>
             @endif
 
-            <!-- SMTP Status Indicator -->
-            @if($isUsingSystemSmtp)
-                <div class="mt-4 p-3 bg-light border-start border-primary border-4 rounded-end">
-                    <div class="d-flex align-items-center">
-                        <i class="ti ti-info-circle text-primary me-2"></i>
-                        <div>
-                            <small class="fw-medium text-primary">Powered by REVISION ALPHA Emailer</small>
-                            <br>
-                            <small class="text-muted">
-                                Email Marketing fácil, rápido y seguro -
-                                <a href="https://revisionalpha.com/emailer" class="text-decoration-none" target="_blank">¡Empieza ahora!</a>
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            @endif
-
         </div>
     </div>
 </div>
