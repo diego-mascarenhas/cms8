@@ -99,6 +99,13 @@ class ProcessActiveCampaigns extends Command
 
 			if (!$existingDelivery)
 			{
+				// Check if we can send to this contact based on minimum hours between emails
+				if (!$message->canSendToContact($contact)) {
+					$nextAvailableTime = $message->getNextAvailableTimeForContact($contact);
+					$this->info("   ⏰ Skipping {$contact->email} - next available: {$nextAvailableTime->format('Y-m-d H:i:s')}");
+					continue;
+				}
+
 				// Calculate scheduled time based on the last delivery + random interval
 				$baseMinutes = config('services.email.delay.base_minutes', 1); // Reduced from 5 to 1 minute
 				$maxRandomSeconds = config('services.email.delay.random_seconds', 60); // Reduced from 120 to 60 seconds
@@ -106,6 +113,12 @@ class ProcessActiveCampaigns extends Command
 				$delayMinutes = $deliveryIndex * $baseMinutes;
 				$randomSeconds = rand(0, $maxRandomSeconds);
 				$scheduledTime = $baseTime->copy()->addMinutes($delayMinutes)->addSeconds($randomSeconds);
+
+				// Ensure scheduled time respects minimum hours between emails
+				$nextAvailableTime = $message->getNextAvailableTimeForContact($contact);
+				if ($scheduledTime->lt($nextAvailableTime)) {
+					$scheduledTime = $nextAvailableTime->copy()->addMinutes($delayMinutes)->addSeconds($randomSeconds);
+				}
 
 				MessageDelivery::create([
 					'team_id' => $message->team_id,

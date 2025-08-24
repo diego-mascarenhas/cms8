@@ -65,12 +65,40 @@
 			<div class="col-md-12">
 				<x-input-textarea id="text" label="Text (*)" value="{{ old('text', $data->text?? '') }}" />
 			</div>
+			<div class="col-md-6">
+				<x-input-general
+					id="min_hours_between_emails"
+					label="Minimum Hours Between Emails"
+					type="number"
+					min="0"
+					step="1"
+					value="{{ old('min_hours_between_emails', $data->min_hours_between_emails ?? 48) }}"
+				/>
+				<div class="form-text mt-1">
+					Time to wait before sending another email to the same contact (default: 48 hours)
+				</div>
+			</div>
 			<div class="col-xl-12 p-4">
-				<div class="text-light small fw-medium">Status</div>
+				<div class="text-light small fw-medium">Options</div>
 				<div class="demo-inline-spacing">
 					<div class="form-check form-switch">
 						<input class="form-check-input" type="checkbox" id="status_id" name="status_id" value="1" {{ old('status_id', $data->status_id ?? 0) == 1 ? 'checked' : '' }}>
 						<label class="form-check-label" for="status_id">Active</label>
+					</div>
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
+						<label class="form-check-label" for="show_unsubscribe">Show Unsubscribe Link</label>
+					</div>
+				</div>
+				<div class="text-light small fw-medium mt-3">Tracking Options</div>
+				<div class="demo-inline-spacing">
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
+						<label class="form-check-label" for="enable_open_tracking">Enable Open Tracking</label>
+					</div>
+					<div class="form-check form-switch">
+						<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
+						<label class="form-check-label" for="enable_click_tracking">Enable Click Tracking</label>
 					</div>
 				</div>
 			</div>

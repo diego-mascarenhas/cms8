@@ -12,8 +12,13 @@ class EmailTrackingHelper
      */
     public static function rewriteUrlsForTracking(string $html, MessageDelivery $delivery): string
     {
-        // Only rewrite URLs if we have a valid delivery with tracking token
+        // Only rewrite URLs if we have a valid delivery with tracking token and click tracking is enabled
         if (!$delivery || !$delivery->getTrackingToken()) {
+            return $html;
+        }
+
+        // Check if click tracking is enabled for this message
+        if (!$delivery->message || !$delivery->message->enable_click_tracking) {
             return $html;
         }
 
@@ -122,6 +127,11 @@ class EmailTrackingHelper
             return $html;
         }
 
+        // Check if open tracking is enabled for this message
+        if (!$delivery->message || !$delivery->message->enable_open_tracking) {
+            return $html;
+        }
+
         $trackingImg = '<img src="' . $delivery->getTrackingUrl() . '" width="1" height="1" style="display:none;" alt="" />';
 
         // Insert tracking pixel before </body> or at the end
@@ -137,7 +147,13 @@ class EmailTrackingHelper
      */
     public static function addUnsubscribeLink(string $html, MessageDelivery $delivery): string
     {
+        // Check if delivery, contact, email exist and if unsubscribe is enabled for this message
         if (!$delivery || !$delivery->contact || !$delivery->contact->email) {
+            return $html;
+        }
+
+        // Check if the message has show_unsubscribe enabled (default true for backward compatibility)
+        if (!$delivery->message || !$delivery->message->show_unsubscribe) {
             return $html;
         }
 

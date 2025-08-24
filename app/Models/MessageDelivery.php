@@ -198,22 +198,22 @@ class MessageDelivery extends Model
 		// Add unsubscribe link
 		$html = \App\Helpers\EmailTrackingHelper::addUnsubscribeLink($html, $this);
 
+		// Add tracking pixel for open tracking
+		$html = \App\Helpers\EmailTrackingHelper::addTrackingPixel($html, $this);
+
 		// Get team to check if advertising footer should be added
 		$team = $this->message && $this->message->team ? $this->message->team : auth()->user()->currentTeam;
 
 		// Add advertising footer if using system SMTP
 		$advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
 
-		// Insert tracking image and advertising footer before </body> or at the end
-		$trackingImg = '<img src="'.$this->getTrackingUrl().'" width="1" height="1" style="display:none;" alt="" />';
-		$insertContent = $advertisingFooter.$trackingImg;
-
+		// Insert advertising footer before </body> or at the end
 		if (stripos($html, '</body>') !== false)
 		{
-			$html = str_ireplace('</body>', $insertContent.'</body>', $html);
+			$html = str_ireplace('</body>', $advertisingFooter.'</body>', $html);
 		} else
 		{
-			$html .= $insertContent;
+			$html .= $advertisingFooter;
 		}
 
 		return $html;
