@@ -131,4 +131,31 @@ class EmailTrackingHelper
             return $html . $trackingImg;
         }
     }
+
+    /**
+     * Add unsubscribe link to HTML content
+     */
+    public static function addUnsubscribeLink(string $html, MessageDelivery $delivery): string
+    {
+        if (!$delivery || !$delivery->contact || !$delivery->contact->email) {
+            return $html;
+        }
+
+        $unsubscribeUrl = url("/unsubscribe/" . urlencode($delivery->contact->email));
+
+        $unsubscribeHtml = '
+        <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-top: 1px solid #e9ecef; text-align: center; font-family: Arial, sans-serif;">
+            <p style="margin: 0; color: #6c757d; font-size: 12px;">
+                ' . __('If you no longer wish to receive emails like this') . ',
+                <a href="' . $unsubscribeUrl . '" style="color: #dc3545; text-decoration: none; font-weight: bold;">' . __('click here to unsubscribe') . '</a>
+            </p>
+        </div>';
+
+        // Insert unsubscribe link before tracking pixel or </body>
+        if (stripos($html, '</body>') !== false) {
+            return str_ireplace('</body>', $unsubscribeHtml . '</body>', $html);
+        } else {
+            return $html . $unsubscribeHtml;
+        }
+    }
 }

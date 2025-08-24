@@ -139,12 +139,22 @@ class ProcessActiveCampaigns extends Command
 		if ($message->category)
 		{
 			$query = $message->category->contacts()->where('status_id', 1);
+
+			// Filter by contact status if specified in message
+			if ($message->contact_status_id) {
+				$query->where('contact_status_id', $message->contact_status_id);
+			}
 		} else
 		{
 			// If no category, get all active contacts from the team
 			$query = \App\Models\Contact::where('team_id', $message->team_id)
 				->where('status_id', 1)
 				->whereNotNull('email');
+
+			// Filter by contact status if specified in message
+			if ($message->contact_status_id) {
+				$query->where('contact_status_id', $message->contact_status_id);
+			}
 		}
 
 		// Exclude test/demo email addresses

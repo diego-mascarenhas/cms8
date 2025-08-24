@@ -16,7 +16,7 @@ class Message extends Model
 
 	protected $table = 'messages';
 
-	protected $fillable = ['name', 'type_id', 'category_id', 'template_id', 'text', 'status_id', 'team_id', 'started_at'];
+	protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'status_id', 'team_id', 'started_at'];
 
 	protected $casts = [
 		'status_id' => 'boolean',
@@ -65,5 +65,10 @@ class Message extends Model
 	public function deliveries()
 	{
 		return $this->hasMany(MessageDelivery::class);
+	}
+
+	public function contactStatus()
+	{
+		return $this->belongsTo(ContactStatus::class);
 	}
 }

@@ -195,6 +195,9 @@ class MessageDelivery extends Model
 			$html = \App\Helpers\EmailTrackingHelper::rewriteUrlsForTracking($html, $this);
 		}
 
+		// Add unsubscribe link
+		$html = \App\Helpers\EmailTrackingHelper::addUnsubscribeLink($html, $this);
+
 		// Get team to check if advertising footer should be added
 		$team = $this->message && $this->message->team ? $this->message->team : auth()->user()->currentTeam;
 

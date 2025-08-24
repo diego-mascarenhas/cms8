@@ -37,12 +37,20 @@
 			<div class="col-md-6">
 				<x-input-general id="name" label="Name (*)" value="{{ old('name', $data->name?? '') }}" />
 			</div>
-			<div class="col-md-6">
+			<div class="col-md-4">
 				<x-module-categories-select
 					id="category_id"
 					label="Categoría"
 					moduleKey="contacts"
 					:selected="old('category_id', $data->category_id ?? '')"
+				/>
+			</div>
+			<div class="col-md-2">
+				<x-input-select
+					id="contact_status_id"
+					label="{{ __('Contact Status') }}"
+					:options="$data->contactStatuses ?? []"
+					value="{{ old('contact_status_id', $data->contact_status_id ?? '') }}"
 				/>
 			</div>
 			<div class="col-md-6">

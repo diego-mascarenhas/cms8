@@ -68,6 +68,27 @@ class MessageTrackingController extends Controller
 			// Update or create the link tracking record
 			$this->updateLinkClickCount($delivery, $originalUrl);
 
+			        // Update contact status to "Conversión" (ID 3) when they click any link
+        // But don't change status if they are already a client (status_id 5)
+        if ($delivery->contact && $delivery->contact->status_id != 3 && $delivery->contact->status_id != 5) {
+            $delivery->contact->update(['status_id' => 3]);
+            \Log::info('Contact status updated to Conversión', [
+                'contact_id' => $delivery->contact->id,
+                'contact_email' => $delivery->contact->email,
+                'delivery_id' => $delivery->id,
+                'clicked_url' => $originalUrl,
+                'previous_status' => $delivery->contact->getOriginal('status_id'),
+            ]);
+        } elseif ($delivery->contact && $delivery->contact->status_id == 5) {
+            \Log::info('Contact is already a client - status not changed', [
+                'contact_id' => $delivery->contact->id,
+                'contact_email' => $delivery->contact->email,
+                'delivery_id' => $delivery->id,
+                'clicked_url' => $originalUrl,
+                'current_status' => 5,
+            ]);
+        }
+
 			$delivery->markAsClicked();
 		}
 

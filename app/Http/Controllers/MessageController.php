@@ -12,6 +12,8 @@ use App\Models\MessageDeliveryStat;
 use App\Models\MessageType;
 use App\Models\Template;
 use App\Models\User;
+use App\Models\ContactStatus;
+use App\Models\Contact;
 use App\Traits\ConfiguresTeamMail;
 use App\Helpers\DnsHelper;
 use Illuminate\Http\Request;
@@ -37,6 +39,7 @@ class MessageController extends Controller
 		$data = new stdClass;
 		$data->types = MessageType::getOptions();
 		$data->templates = Template::getOptions();
+		$data->contactStatuses = ContactStatus::getOptions();
 
 		return view('message.form', compact('data'));
 	}
@@ -64,6 +67,7 @@ class MessageController extends Controller
 				'name' => $data['name'],
 				'type_id' => $data['type_id'],
 				'category_id' => $data['category_id'],
+				'contact_status_id' => $data['contact_status_id'] ?? null,
 				'template_id' => $templateId,
 				'text' => $data['text'],
 				'status_id' => $status_id,
@@ -178,6 +182,7 @@ class MessageController extends Controller
 
 		$data->types = MessageType::getOptions();
 		$data->templates = Template::getOptions();
+		$data->contactStatuses = ContactStatus::getOptions();
 
 		return view('message.form', compact('data'));
 	}
@@ -264,18 +269,35 @@ class MessageController extends Controller
 		Mail::send(new MySendGridMail($data));
 	}
 
-	public function unsubscribe($email)
-	{
-		$user = User::where('email', $email)->first();
+	    public function unsubscribe($email)
+    {
+        // Update contact status to "Perdido" (ID 4) when they unsubscribe
+        // But don't change status if they are already a client (status_id 5)
+        $contact = Contact::where('email', $email)->first();
 
-		if ($user)
-		{
-			$user->subscribed = false;
-			$user->save();
-		}
+        if ($contact)
+        {
+            if ($contact->status_id != 5) {
+                $contact->update(['status_id' => 4]);
 
-		return view('message.unsubscribe', ['email' => $email]);
-	}
+                Log::info('Contact unsubscribed - status updated to Perdido', [
+                    'contact_id' => $contact->id,
+                    'contact_email' => $contact->email,
+                    'previous_status' => $contact->getOriginal('status_id'),
+                    'new_status' => 4,
+                ]);
+            } else {
+                Log::info('Contact is a client - unsubscribed but status not changed', [
+                    'contact_id' => $contact->id,
+                    'contact_email' => $contact->email,
+                    'current_status' => 5,
+                    'action' => 'unsubscribe_attempt',
+                ]);
+            }
+        }
+
+        return view('message.unsubscribe', ['email' => $email]);
+    }
 
 		/**
 	 * Start a message campaign

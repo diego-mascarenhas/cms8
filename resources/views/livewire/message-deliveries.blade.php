@@ -1,7 +1,7 @@
 <div wire:poll.3s>
     <div class="card mb-4">
         <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="mb-0">Deliveries</h5>
+            <h5 class="mb-0">{{ __('Deliveries') }}</h5>
             <div class="d-flex align-items-center">
                 <small class="text-muted me-2">{{ count($deliveries) }} total</small>
                 <div wire:loading.delay>
@@ -16,10 +16,10 @@
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Contact</th>
-                            <th>Delivery Status</th>
-                            <th class="text-center">Status</th>
-                            <th class="text-center">Actions</th>
+                            <th>{{ __('Contact') }}</th>
+                            <th>{{ __('Delivery Status') }}</th>
+                            <th class="text-center">{{ __('Status') }}</th>
+                            <th class="text-center">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -27,7 +27,13 @@
                             <tr>
                                 <td>
                                     <div class="d-flex flex-column">
-                                        <h6 class="mb-0">{{ $delivery['contact_name'] }}</h6>
+                                        @if($delivery['contact_id'])
+                                            <a href="{{ route('contact.show', $delivery['contact_id']) }}" class="text-decoration-none">
+                                                <h6 class="mb-0 text-primary">{{ $delivery['contact_name'] }}</h6>
+                                            </a>
+                                        @else
+                                            <h6 class="mb-0">{{ $delivery['contact_name'] }}</h6>
+                                        @endif
                                         <small class="text-muted">{{ $delivery['contact_email'] }}</small>
                                     </div>
                                 </td>
@@ -35,21 +41,21 @@
                                     <div class="d-flex flex-column">
                                         @if($delivery['delivered_at'])
                                             <small class="text-success">
-                                                <i class="ti ti-check me-1"></i>Delivered: {{ $delivery['delivered_at'] }}
+                                                <i class="ti ti-check me-1"></i>{{ __('Delivered') }}: {{ $delivery['delivered_at'] }}
                                             </small>
-                                            <small class="text-muted">Sent: {{ $delivery['sent_at'] }}</small>
+                                            <small class="text-muted">{{ __('Sent') }}: {{ $delivery['sent_at'] }}</small>
                                         @elseif($delivery['sent_at'])
                                             @if($delivery['status_text'] === 'Scheduled')
                                                 <small class="text-warning">
-                                                    <i class="ti ti-clock me-1"></i>Scheduled: {{ $delivery['sent_at'] }}
+                                                    <i class="ti ti-clock me-1"></i>{{ __('Scheduled') }}: {{ $delivery['sent_at'] }}
                                                 </small>
                                             @else
                                                 <small class="text-primary">
-                                                    <i class="ti ti-send me-1"></i>Sent: {{ $delivery['sent_at'] }}
+                                                    <i class="ti ti-send me-1"></i>{{ __('Sent') }}: {{ $delivery['sent_at'] }}
                                                 </small>
                                             @endif
                                         @else
-                                            <span class="text-muted">Pending</span>
+                                            <span class="text-muted">{{ __('Pending') }}</span>
                                         @endif
                                     </div>
                                 </td>
@@ -64,7 +70,7 @@
                                             <i class="ti ti-eye ti-sm text-info"
                                                data-bs-toggle="tooltip"
                                                data-bs-placement="top"
-                                               data-bs-original-title="Opened: {{ $delivery['opened_at'] }}"
+                                               data-bs-original-title="{{ __('Opened') }}: {{ $delivery['opened_at'] }}"
                                                style="cursor: help;"></i>
                                         @endif
 
@@ -73,7 +79,7 @@
                                             <i class="ti ti-mouse ti-sm text-success"
                                                data-bs-toggle="tooltip"
                                                data-bs-placement="top"
-                                               data-bs-original-title="Clicked: {{ $delivery['clicked_at'] }}"
+                                               data-bs-original-title="{{ __('Clicked') }}: {{ $delivery['clicked_at'] }}"
                                                style="cursor: help;"></i>
                                         @endif
                                     </div>
@@ -94,7 +100,7 @@
             @else
                 <div class="text-center py-4">
                     <i class="ti ti-inbox ti-lg text-muted"></i>
-                    <p class="text-muted mt-2">No deliveries yet</p>
+                    <p class="text-muted mt-2">{{ __('No deliveries yet') }}</p>
                 </div>
             @endif
         </div>

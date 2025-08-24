@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->unsignedInteger('type_id');
             $table->foreignId('category_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
+            $table->unsignedTinyInteger('contact_status_id')->nullable();
             $table->foreignId('template_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->text('text');
             $table->tinyInteger('status_id')->default(1);
@@ -27,6 +28,10 @@ return new class extends Migration
             $table->foreign('type_id')->references('id')->on('message_type')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
+
+            $table->foreign('contact_status_id')->references('id')->on('contact_statuses')
+                ->onUpdate('cascade')
+                ->onDelete('set null');
         });
     }
 
