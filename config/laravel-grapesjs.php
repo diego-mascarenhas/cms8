@@ -75,7 +75,39 @@ return [
     */
 
     'canvas' => [
-        'styles' => [],
+        'styles' => [
+            // Email template fonts and styles
+            'data:text/css;base64,' . base64_encode('
+                /* Email template typography */
+                * {
+                    padding: 0;
+                    margin: 0;
+                    line-height: 1.5;
+                }
+
+                body {
+                    font-family: helvetica, arial, verdana, sans-serif !important;
+                }
+
+                h1, h2, h3, h4, h5, h6, strong {
+                    font-weight: 600 !important;
+                }
+
+                p, span, a, td {
+                    font-size: 14px !important;
+                    font-weight: 300 !important;
+                    color: #777777 !important;
+                }
+
+                a {
+                    text-decoration: none !important;
+                }
+
+                a:hover {
+                    text-decoration: underline !important;
+                }
+            ')
+        ],
         'scripts' => [],
     ],
 

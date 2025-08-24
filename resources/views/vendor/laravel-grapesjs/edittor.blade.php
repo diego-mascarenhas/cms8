@@ -19,6 +19,34 @@
             margin: 0;
             padding: 0;
         }
+
+        /* Email template fonts - ensure they're available in the editor */
+        body, .gjs-frame body {
+            font-family: helvetica, arial, verdana, sans-serif !important;
+        }
+
+        /* Override GrapesJS default fonts for email templates */
+        .gjs-frame * {
+            font-family: inherit !important;
+        }
+
+        .gjs-frame h1, .gjs-frame h2, .gjs-frame h3, .gjs-frame h4, .gjs-frame h5, .gjs-frame h6, .gjs-frame strong {
+            font-weight: 600 !important;
+        }
+
+        .gjs-frame p, .gjs-frame span, .gjs-frame a, .gjs-frame td {
+            font-size: 14px !important;
+            font-weight: 300 !important;
+            color: #777777 !important;
+        }
+
+        .gjs-frame a {
+            text-decoration: none !important;
+        }
+
+        .gjs-frame a:hover {
+            text-decoration: underline !important;
+        }
     </style>
     <script>
         window.editorConfig = @json($editorConfig ?? []);
@@ -106,6 +134,42 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Force font styles in GrapesJS canvas after editor loads
+        setTimeout(function() {
+            const editor = getGrapesEditorInstance();
+            if (editor && editor.Canvas) {
+                const canvasDoc = editor.Canvas.getDocument();
+                if (canvasDoc) {
+                    // Create style element for canvas
+                    const style = canvasDoc.createElement('style');
+                    style.textContent = `
+                        * {
+                            font-family: helvetica, arial, verdana, sans-serif !important;
+                        }
+                        body {
+                            font-family: helvetica, arial, verdana, sans-serif !important;
+                        }
+                        h1, h2, h3, h4, h5, h6, strong {
+                            font-weight: 600 !important;
+                        }
+                        p, span, a, td {
+                            font-size: 14px !important;
+                            font-weight: 300 !important;
+                            color: #777777 !important;
+                        }
+                        a {
+                            text-decoration: none !important;
+                        }
+                        a:hover {
+                            text-decoration: underline !important;
+                        }
+                    `;
+                    canvasDoc.head.appendChild(style);
+                    console.log('Email template fonts applied to GrapesJS canvas');
+                }
+            }
+        }, 2000); // Wait for editor to fully load
+
         setTimeout(function() {
             document.getElementById('import-url-btn').addEventListener('click', async function() {
                 const url = document.getElementById('import-url-input').value;
