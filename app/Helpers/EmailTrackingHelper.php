@@ -134,15 +134,7 @@ class EmailTrackingHelper
             return $html;
         }
 
-        // Multiple tracking methods for better detection
-        $trackingUrl = $delivery->getTrackingUrl();
-
-        $trackingImg = '
-        <!-- Email Open Tracking -->
-        <img src="' . $trackingUrl . '" width="1" height="1" style="display:none !important; visibility:hidden !important; opacity:0 !important; position:absolute !important; top:-9999px !important; left:-9999px !important;" alt="" />
-        <div style="display:none !important; visibility:hidden !important; opacity:0 !important; position:absolute !important; top:-9999px !important; left:-9999px !important;">
-            <img src="' . $trackingUrl . '" width="1" height="1" alt="" />
-        </div>';
+                $trackingImg = '<img src="' . $delivery->getTrackingUrl() . '" width="1" height="1" style="display:none;" alt="" />';
 
         // Insert tracking pixel before </body> or at the end
         if (stripos($html, '</body>') !== false) {

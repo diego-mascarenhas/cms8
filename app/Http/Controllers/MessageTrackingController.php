@@ -41,6 +41,16 @@ class MessageTrackingController extends Controller
 				]);
 
 				\Log::info('TEST: DB insert result', ['inserted' => $inserted]);
+
+				// Also update the opened_at column in message_deliveries for statistics
+				if (!$delivery->opened_at) {
+					\DB::table('message_deliveries')
+						->where('id', $delivery->id)
+						->update(['opened_at' => now(), 'updated_at' => now()]);
+
+					\Log::info('TEST: Updated opened_at in message_deliveries', ['delivery_id' => $delivery->id]);
+				}
+
 				\Log::info('TEST: Success - tracking pixel registered');
 
 			} catch (\Exception $e) {
