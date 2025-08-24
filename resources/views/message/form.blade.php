@@ -17,6 +17,81 @@
 
 @section('page-script')
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
+
+<script>
+// Time preset functionality
+function setTimePreset(value, unit) {
+    const input = document.getElementById('min_hours_between_emails');
+    const select = document.getElementById('time_unit');
+
+    // Convert to hours based on unit
+    let hours = value;
+    if (unit === 'days') {
+        hours = value * 24;
+    } else if (unit === 'weeks') {
+        hours = value * 24 * 7;
+    }
+
+    input.value = hours;
+    select.value = 'hours';
+
+    // Update button states
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+}
+
+// Convert time units when selector changes
+document.getElementById('time_unit').addEventListener('change', function() {
+    const input = document.getElementById('min_hours_between_emails');
+    const currentValue = parseInt(input.value) || 0;
+
+    if (this.value === 'days') {
+        // Convert hours to days
+        input.value = Math.round(currentValue / 24);
+        input.setAttribute('step', '0.5');
+    } else if (this.value === 'weeks') {
+        // Convert hours to weeks
+        input.value = Math.round(currentValue / (24 * 7) * 10) / 10;
+        input.setAttribute('step', '0.1');
+    } else {
+        // Convert back to hours
+        if (this.previousElementSibling.value === 'days') {
+            input.value = currentValue * 24;
+        } else if (this.previousElementSibling.value === 'weeks') {
+            input.value = Math.round(currentValue * 24 * 7);
+        }
+        input.setAttribute('step', '1');
+    }
+});
+
+// Convert to hours before form submission
+document.querySelector('form').addEventListener('submit', function() {
+    const input = document.getElementById('min_hours_between_emails');
+    const unit = document.getElementById('time_unit').value;
+    const value = parseFloat(input.value) || 0;
+
+    let hours = value;
+    if (unit === 'days') {
+        hours = value * 24;
+    } else if (unit === 'weeks') {
+        hours = value * 24 * 7;
+    }
+
+    // Create hidden input with hours value
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'min_hours_between_emails';
+    hiddenInput.value = Math.round(hours);
+
+    // Remove name from visible input to avoid conflict
+    input.removeAttribute('name');
+
+    // Add hidden input to form
+    this.appendChild(hiddenInput);
+});
+</script>
 @endsection
 
 @section('content')
@@ -43,6 +118,8 @@
 					label="Categoría"
 					moduleKey="contacts"
 					:selected="old('category_id', $data->category_id ?? '')"
+					:allowEmpty="true"
+					emptyText="Toda la base de datos"
 				/>
 			</div>
 			<div class="col-md-2">
@@ -65,40 +142,83 @@
 			<div class="col-md-12">
 				<x-input-textarea id="text" label="Text (*)" value="{{ old('text', $data->text?? '') }}" />
 			</div>
-			<div class="col-md-6">
-				<x-input-general
-					id="min_hours_between_emails"
-					label="Minimum Hours Between Emails"
-					type="number"
-					min="0"
-					step="1"
-					value="{{ old('min_hours_between_emails', $data->min_hours_between_emails ?? 48) }}"
-				/>
+						<div class="col-md-6">
+				<label for="min_hours_between_emails" class="form-label">Minimum Time Between Emails</label>
+				<div class="input-group">
+					<input
+						type="number"
+						class="form-control"
+						id="min_hours_between_emails"
+						name="min_hours_between_emails"
+						min="0"
+						step="1"
+						value="{{ old('min_hours_between_emails', $data->min_hours_between_emails ?? 48) }}"
+					>
+					<select class="form-select" id="time_unit" name="time_unit" style="max-width: 120px;">
+						<option value="hours" selected>Hours</option>
+						<option value="days">Days</option>
+						<option value="weeks">Weeks</option>
+					</select>
+				</div>
 				<div class="form-text mt-1">
-					Time to wait before sending another email to the same contact (default: 48 hours)
+					Time to wait before sending another email to the same contact
 				</div>
 			</div>
-			<div class="col-xl-12 p-4">
-				<div class="text-light small fw-medium">Options</div>
-				<div class="demo-inline-spacing">
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" id="status_id" name="status_id" value="1" {{ old('status_id', $data->status_id ?? 0) == 1 ? 'checked' : '' }}>
-						<label class="form-check-label" for="status_id">Active</label>
+			<div class="col-md-6">
+				<label class="form-label">Quick Presets</label>
+				<div class="btn-group d-flex" role="group">
+					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(0, 'hours')">Immediate</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(24, 'hours')">1 Day</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(48, 'hours')">2 Days</button>
+					<button type="button" class="btn btn-outline-secondary btn-sm" onclick="setTimePreset(1, 'weeks')">1 Week</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="row g-3 mt-3">
+			<div class="col-md-6">
+				<div class="card">
+					<div class="card-header">
+						<h6 class="card-title mb-0">General Options</h6>
 					</div>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
-						<label class="form-check-label" for="show_unsubscribe">Show Unsubscribe Link</label>
+					<div class="card-body">
+						<div class="form-check form-switch mb-3">
+							<input class="form-check-input" type="checkbox" id="status_id" name="status_id" value="1" {{ old('status_id', $data->status_id ?? 0) == 1 ? 'checked' : '' }}>
+							<label class="form-check-label" for="status_id">
+								<strong>Active Campaign</strong>
+								<div class="text-muted small">Enable this message for sending</div>
+							</label>
+						</div>
+						<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" id="show_unsubscribe" name="show_unsubscribe" value="1" {{ old('show_unsubscribe', $data->show_unsubscribe ?? 1) == 1 ? 'checked' : '' }}>
+							<label class="form-check-label" for="show_unsubscribe">
+								<strong>Show Unsubscribe Link</strong>
+								<div class="text-muted small">Include unsubscribe option in emails</div>
+							</label>
+						</div>
 					</div>
 				</div>
-				<div class="text-light small fw-medium mt-3">Tracking Options</div>
-				<div class="demo-inline-spacing">
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
-						<label class="form-check-label" for="enable_open_tracking">Enable Open Tracking</label>
+			</div>
+			<div class="col-md-6">
+				<div class="card">
+					<div class="card-header">
+						<h6 class="card-title mb-0">Tracking Options</h6>
 					</div>
-					<div class="form-check form-switch">
-						<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
-						<label class="form-check-label" for="enable_click_tracking">Enable Click Tracking</label>
+					<div class="card-body">
+						<div class="form-check form-switch mb-3">
+							<input class="form-check-input" type="checkbox" id="enable_open_tracking" name="enable_open_tracking" value="1" {{ old('enable_open_tracking', $data->enable_open_tracking ?? 1) == 1 ? 'checked' : '' }}>
+							<label class="form-check-label" for="enable_open_tracking">
+								<strong>Enable Open Tracking</strong>
+								<div class="text-muted small">Track when emails are opened</div>
+							</label>
+						</div>
+						<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" id="enable_click_tracking" name="enable_click_tracking" value="1" {{ old('enable_click_tracking', $data->enable_click_tracking ?? 1) == 1 ? 'checked' : '' }}>
+							<label class="form-check-label" for="enable_click_tracking">
+								<strong>Enable Click Tracking</strong>
+								<div class="text-muted small">Track clicks on email links</div>
+							</label>
+						</div>
 					</div>
 				</div>
 			</div>

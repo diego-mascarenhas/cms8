@@ -151,6 +151,7 @@ class ProcessActiveCampaigns extends Command
 
 		if ($message->category)
 		{
+			// If category is specified, get contacts from that category
 			$query = $message->category->contacts()->where('status_id', 1);
 
 			// Filter by contact status if specified in message
@@ -159,7 +160,7 @@ class ProcessActiveCampaigns extends Command
 			}
 		} else
 		{
-			// If no category, get all active contacts from the team
+			// If no category (NULL), get all active contacts from the team (entire database)
 			$query = \App\Models\Contact::where('team_id', $message->team_id)
 				->where('status_id', 1)
 				->whereNotNull('email');

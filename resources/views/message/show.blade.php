@@ -11,8 +11,15 @@
 		<p class="text-muted">Detailed view of the message and its statistics</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
+		<!-- Edit Button -->
+		@can('message.edit')
+		<a href="{{ route('message.edit', $message->id) }}" class="btn btn-primary waves-effect waves-light">
+			<i class="ti ti-edit me-1"></i>Edit Message
+		</a>
+		@endcan
+
 		<!-- Preview Button -->
-		<button class="btn btn-primary me-2" onclick="previewMessage()">
+		<button class="btn btn-outline-primary me-2" onclick="previewMessage()">
 			<i class="ti ti-eye me-1"></i>Preview
 		</button>
 

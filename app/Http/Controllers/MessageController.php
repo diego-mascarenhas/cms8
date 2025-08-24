@@ -61,16 +61,25 @@ class MessageController extends Controller
 		// Set status_id based on checkbox presence
 		$status_id = $request->has('status_id') ? 1 : 0; // 1 = active, 0 = inactive
 
+		// Set boolean fields based on checkbox presence
+		$show_unsubscribe = $request->has('show_unsubscribe') ? 1 : 0;
+		$enable_open_tracking = $request->has('enable_open_tracking') ? 1 : 0;
+		$enable_click_tracking = $request->has('enable_click_tracking') ? 1 : 0;
+
 		Message::updateOrCreate(
 			['id' => $request->id],
 			[
 				'name' => $data['name'],
 				'type_id' => $data['type_id'],
-				'category_id' => $data['category_id'],
+				'category_id' => $data['category_id'] ?: null, // Convert empty string to null
 				'contact_status_id' => $data['contact_status_id'] ?? null,
 				'template_id' => $templateId,
 				'text' => $data['text'],
 				'status_id' => $status_id,
+				'show_unsubscribe' => $show_unsubscribe,
+				'enable_open_tracking' => $enable_open_tracking,
+				'enable_click_tracking' => $enable_click_tracking,
+				'min_hours_between_emails' => $data['min_hours_between_emails'] ?? 48,
 			],
 		);
 
