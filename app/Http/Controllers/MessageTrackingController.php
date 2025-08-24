@@ -15,31 +15,71 @@ class MessageTrackingController extends Controller
 		{
 			return hash_equals($d->getTrackingToken(), $token);
 		});
-		if ($delivery)
+										if ($delivery)
 		{
 			\Log::info('Tracking: delivery encontrado', ['id' => $delivery->id]);
-			if (! $delivery->opened_at)
-			{
-				// Create tracking event using the new method
-				\App\Models\MessageDeliveryTracking::createEvent(
-					$delivery->id,
-					'opened',
-					[
-						'source' => 'email_tracking_pixel',
-						'timestamp' => now(),
-					],
-				);
+			\Log::info('TEST: About to enter try block');
 
-				$delivery->markAsOpened();
+			try {
+				\Log::info('TEST: Inside try block - step 1');
+				\Log::info('TEST: Delivery ID is: ' . $delivery->id);
+				\Log::info('TEST: About to call DB insert');
+
+				// Direct database insert without using models
+				$inserted = \DB::table('message_delivery_tracking')->insert([
+					'message_delivery_id' => $delivery->id,
+					'event' => 'opened',
+					'tracked_at' => now(),
+					'ip_address' => request()->ip(),
+					'user_agent' => request()->userAgent(),
+					'metadata' => json_encode([
+						'source' => 'email_tracking_pixel_direct',
+						'timestamp' => now(),
+					]),
+					'created_at' => now(),
+					'updated_at' => now(),
+				]);
+
+				\Log::info('TEST: DB insert result', ['inserted' => $inserted]);
+				\Log::info('TEST: Success - tracking pixel registered');
+
+			} catch (\Exception $e) {
+				\Log::error('ERROR in tracking pixel logic', [
+					'delivery_id' => $delivery->id,
+					'error_message' => $e->getMessage(),
+					'error_file' => $e->getFile(),
+					'error_line' => $e->getLine(),
+				]);
+			} catch (\Error $e) {
+				\Log::error('FATAL ERROR in tracking pixel logic', [
+					'delivery_id' => $delivery->id,
+					'error_message' => $e->getMessage(),
+					'error_file' => $e->getFile(),
+					'error_line' => $e->getLine(),
+				]);
+			} catch (\Throwable $e) {
+				\Log::error('THROWABLE ERROR in tracking pixel logic', [
+					'delivery_id' => $delivery->id,
+					'error_message' => $e->getMessage(),
+					'error_file' => $e->getFile(),
+					'error_line' => $e->getLine(),
+				]);
 			}
+
+			\Log::info('TEST: End of delivery block');
 		} else
 		{
 			\Log::info('Tracking: delivery NO encontrado para token', ['token' => $token]);
 		}
-		// Devolver imagen transparente
+
+		// Devolver imagen transparente con headers optimizados para evitar cache
 		$img = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
 
-		return response($img)->header('Content-Type', 'image/gif');
+		return response($img)
+			->header('Content-Type', 'image/gif')
+			->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+			->header('Pragma', 'no-cache')
+			->header('Expires', '0');
 	}
 
 	// Tracking de click
