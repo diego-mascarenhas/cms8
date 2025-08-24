@@ -45,7 +45,20 @@ if ($contact->status_id != 5) {
 
 ## Archivos Modificados
 
-### 1. `app/Http/Controllers/MessageTrackingController.php`
+### 1. `app/Console/Commands/ProcessActiveCampaigns.php`
+**Método**: `getContactsForMessage()`
+**Cambio**: Corregido el nombre de columna de `contact_status_id` a `status_id` en las consultas a la tabla `contacts`.
+
+```php
+// Filter by contact status if specified in message
+if ($message->contact_status_id) {
+    $query->where('status_id', $message->contact_status_id); // Corregido: era 'contact_status_id'
+}
+```
+
+**Problema resuelto**: Error en producción `SQLSTATE[42S22]: Column not found: 1054 Unknown column 'contact_status_id' in 'where clause'`
+
+### 2. `app/Http/Controllers/MessageTrackingController.php`
 **Método**: `trackClick()`
 **Cambio**: Agregada condición para no cambiar estado de clientes cuando hacen click.
 
@@ -72,7 +85,7 @@ if ($delivery->contact && $delivery->contact->status_id != 3 && $delivery->conta
 }
 ```
 
-### 2. `app/Http/Controllers/MessageController.php`
+### 3. `app/Http/Controllers/MessageController.php`
 **Método**: `unsubscribe()`
 **Cambio**: Agregada condición para no cambiar estado de clientes cuando se desuscriben.
 

@@ -142,7 +142,7 @@ class ProcessActiveCampaigns extends Command
 
 			// Filter by contact status if specified in message
 			if ($message->contact_status_id) {
-				$query->where('contact_status_id', $message->contact_status_id);
+				$query->where('status_id', $message->contact_status_id);
 			}
 		} else
 		{
@@ -153,7 +153,7 @@ class ProcessActiveCampaigns extends Command
 
 			// Filter by contact status if specified in message
 			if ($message->contact_status_id) {
-				$query->where('contact_status_id', $message->contact_status_id);
+				$query->where('status_id', $message->contact_status_id);
 			}
 		}
 
