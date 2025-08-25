@@ -142,17 +142,10 @@
             @endif
         </div>
 
-        {{-- Pagination - Simple and compact --}}
+        {{-- Pagination - Standard Laravel --}}
         @if($deliveries->hasPages())
-            <div class="card-body border-top pt-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
-                        {{ __('Showing') }} {{ $deliveries->firstItem() ?? 0 }}-{{ $deliveries->lastItem() ?? 0 }} {{ __('of') }} {{ $deliveries->total() }}
-                    </small>
-                    <div>
-                        {{ $deliveries->links() }}
-                    </div>
-                </div>
+            <div class="card-body border-top py-3">
+                {{ $deliveries->links() }}
             </div>
         @endif
     </div>
