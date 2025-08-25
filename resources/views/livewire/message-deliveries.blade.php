@@ -1,51 +1,36 @@
 <div wire:poll.3s>
     <div class="card mb-4">
-        <div class="card-header">
-            <div class="d-flex align-items-center justify-content-between">
-                <h5 class="mb-0">{{ __('Deliveries') }}</h5>
-                <div class="d-flex align-items-center">
-                    @if($search)
-                        <small class="text-muted me-2">{{ $deliveries->total() }} of {{ $totalCount }}</small>
-                    @else
-                        <small class="text-muted me-2">{{ $totalCount }} total</small>
-                    @endif
-                    <div wire:loading.delay>
-                        <span class="spinner-border spinner-border-sm text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Search Bar --}}
-            <div class="mt-3">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="input-group input-group-merge">
-                            <span class="input-group-text">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="mb-0">{{ __('Deliveries') }}</h5>
+            <div class="d-flex align-items-center">
+                {{-- Search Bar in header --}}
+                @if($hasDeliveries)
+                    <div class="me-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text border-0 bg-transparent px-2">
                                 <i class="ti ti-search"></i>
                             </span>
                             <input type="text"
-                                   class="form-control"
-                                   placeholder="{{ __('Search by name or email...') }}"
+                                   class="form-control form-control-sm border-0 bg-light"
+                                   style="width: 200px;"
+                                   placeholder="{{ __('Search...') }}"
                                    wire:model.live.debounce.300ms="search">
-                            @if($search)
-                                <button class="btn btn-outline-secondary"
-                                        type="button"
-                                        wire:click="$set('search', '')"
-                                        title="{{ __('Clear search') }}">
-                                    <i class="ti ti-x"></i>
-                                </button>
-                            @endif
                         </div>
                     </div>
+                @endif
+
+                <div wire:loading.delay wire:target="search">
+                    <span class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </span>
                 </div>
             </div>
         </div>
+
         <div class="card-body table-responsive p-0">
             @if($deliveries->count() > 0)
-                <table class="table table-sm mb-0">
-                    <thead class="table-light">
+                <table class="table table-sm table-striped mb-0">
+                    <thead>
                         <tr>
                             <th>{{ __('Contact') }}</th>
                             <th>{{ __('Delivery Status') }}</th>
@@ -157,15 +142,13 @@
             @endif
         </div>
 
-        {{-- Pagination --}}
+        {{-- Pagination - Simple and compact --}}
         @if($deliveries->hasPages())
-            <div class="card-footer">
+            <div class="card-body border-top pt-3">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <small class="text-muted">
-                            {{ __('Showing') }} {{ $deliveries->firstItem() ?? 0 }} {{ __('to') }} {{ $deliveries->lastItem() ?? 0 }} {{ __('of') }} {{ $deliveries->total() }} {{ __('results') }}
-                        </small>
-                    </div>
+                    <small class="text-muted">
+                        {{ __('Showing') }} {{ $deliveries->firstItem() ?? 0 }}-{{ $deliveries->lastItem() ?? 0 }} {{ __('of') }} {{ $deliveries->total() }}
+                    </small>
                     <div>
                         {{ $deliveries->links() }}
                     </div>

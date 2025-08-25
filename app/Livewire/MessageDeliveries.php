@@ -14,14 +14,11 @@ class MessageDeliveries extends Component
 
     public $search = '';
 
-    public $totalCount = 0;
-
     protected $paginationTheme = 'bootstrap';
 
     public function mount($messageId)
     {
         $this->messageId = $messageId;
-        $this->updateTotalCount();
     }
 
     public function updating($name, $value)
@@ -36,11 +33,6 @@ class MessageDeliveries extends Component
     public function getDeliveriesProperty()
     {
         return $this->loadDeliveries();
-    }
-
-    public function updateTotalCount()
-    {
-        $this->totalCount = MessageDelivery::where('message_id', $this->messageId)->count();
     }
 
     private function loadDeliveries()
@@ -147,11 +139,9 @@ class MessageDeliveries extends Component
 
     public function render()
     {
-        // Update total count on each render (for polling)
-        $this->updateTotalCount();
-
         return view('livewire.message-deliveries', [
             'deliveries' => $this->deliveries,
+            'hasDeliveries' => MessageDelivery::where('message_id', $this->messageId)->exists(),
         ]);
     }
 }
