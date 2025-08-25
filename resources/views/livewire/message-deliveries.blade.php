@@ -1,20 +1,51 @@
 <div wire:poll.3s>
     <div class="card mb-4">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="mb-0">{{ __('Deliveries') }}</h5>
-            <div class="d-flex align-items-center">
-                <small class="text-muted me-2">{{ count($deliveries) }} total</small>
-                <div wire:loading.delay>
-                    <span class="spinner-border spinner-border-sm text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </span>
+        <div class="card-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <h5 class="mb-0">{{ __('Deliveries') }}</h5>
+                <div class="d-flex align-items-center">
+                    @if($search)
+                        <small class="text-muted me-2">{{ $deliveries->total() }} of {{ $totalCount }}</small>
+                    @else
+                        <small class="text-muted me-2">{{ $totalCount }} total</small>
+                    @endif
+                    <div wire:loading.delay>
+                        <span class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Search Bar --}}
+            <div class="mt-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text">
+                                <i class="ti ti-search"></i>
+                            </span>
+                            <input type="text"
+                                   class="form-control"
+                                   placeholder="{{ __('Search by name or email...') }}"
+                                   wire:model.live.debounce.300ms="search">
+                            @if($search)
+                                <button class="btn btn-outline-secondary"
+                                        type="button"
+                                        wire:click="$set('search', '')"
+                                        title="{{ __('Clear search') }}">
+                                    <i class="ti ti-x"></i>
+                                </button>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="card-body table-responsive">
-            @if(count($deliveries) > 0)
-                <table class="table table-sm">
-                    <thead>
+        <div class="card-body table-responsive p-0">
+            @if($deliveries->count() > 0)
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
                         <tr>
                             <th>{{ __('Contact') }}</th>
                             <th>{{ __('Delivery Status') }}</th>
@@ -112,11 +143,35 @@
                 </table>
             @else
                 <div class="text-center py-4">
-                    <i class="ti ti-inbox ti-lg text-muted"></i>
-                    <p class="text-muted mt-2">{{ __('No deliveries yet') }}</p>
+                    @if($search)
+                        <i class="ti ti-search-off ti-lg text-muted"></i>
+                        <p class="text-muted mt-2">{{ __('No results found for') }} "<strong>{{ $search }}</strong>"</p>
+                        <button class="btn btn-sm btn-outline-primary" wire:click="$set('search', '')">
+                            <i class="ti ti-x me-1"></i>{{ __('Clear search') }}
+                        </button>
+                    @else
+                        <i class="ti ti-inbox ti-lg text-muted"></i>
+                        <p class="text-muted mt-2">{{ __('No deliveries yet') }}</p>
+                    @endif
                 </div>
             @endif
         </div>
+
+        {{-- Pagination --}}
+        @if($deliveries->hasPages())
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="text-muted">
+                            {{ __('Showing') }} {{ $deliveries->firstItem() ?? 0 }} {{ __('to') }} {{ $deliveries->lastItem() ?? 0 }} {{ __('of') }} {{ $deliveries->total() }} {{ __('results') }}
+                        </small>
+                    </div>
+                    <div>
+                        {{ $deliveries->links() }}
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 
