@@ -113,6 +113,22 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-mail-bolt mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Email Plans & Limits</h5>
+                            <p class="card-text">Configure email limits, plans and usage tracking for your team</p>
+                            <div class="btn-group">
+                                <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'email-plans']) }}" class="btn btn-primary">Configure</a>
+                                @if(auth()->user()->hasRole('admin'))
+                                    <a href="{{ route('email-plans-management.index') }}" class="btn btn-outline-primary">Manage</a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             @if($groupedSettings->count() > 0)

@@ -161,11 +161,31 @@ class SendAllPendingNow extends Command
                 continue;
             }
 
+            // Check email limits for team
+            if (! $delivery->team->canSendEmails(1))
+            {
+                $remaining = $delivery->team->getRemainingEmails();
+                $this->newLine();
+                $this->warn("⚠️  Team '{$delivery->team->name}' has reached email limits:");
+                $this->warn("    Monthly: {$remaining['monthly_used']}/{$remaining['monthly_limit']}");
+                if ($remaining['daily_limit'])
+                {
+                    $this->warn("    Daily: {$remaining['daily_used']}/{$remaining['daily_limit']}");
+                }
+                $errors++;
+                $bar->advance();
+
+                continue;
+            }
+
             try
             {
                 // 🚀 Dispatch job WITHOUT delay - send immediately!
                 SendMessageCampaignJob::dispatch($delivery)
                     ->onQueue('mailer');
+
+                // Increment team's email usage counter
+                $delivery->team->incrementEmailUsage(1);
 
                 $sent++;
             } catch (\Exception $e)
