@@ -50,7 +50,7 @@ class MessageDeliveries extends Component
             });
         }
 
-        $paginated = $query->orderBy('created_at', 'desc')->paginate(7);
+        $paginated = $query->orderBy('created_at', 'desc')->paginate(13);
 
         // Transform the items manually
         $transformedItems = collect($paginated->items())->map(function ($delivery)

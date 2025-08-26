@@ -144,7 +144,7 @@
 
         {{-- Pagination - Standard Laravel --}}
         @if($deliveries->hasPages())
-            <div class="card-body border-top py-3">
+            <div class="card-body border-top py-1">
                 {{ $deliveries->links() }}
             </div>
         @endif
