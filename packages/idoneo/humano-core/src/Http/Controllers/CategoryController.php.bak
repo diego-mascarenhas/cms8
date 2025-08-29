@@ -1,0 +1,25 @@
+<?php
+
+namespace Idoneo\HumanoCore\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+class CategoryController extends Controller
+{
+    public function index()
+    {
+        return view('humano-core::categories.index');
+    }
+    
+    public function create()
+    {
+        return view('humano-core::categories.create');
+    }
+    
+    public function store(Request $request)
+    {
+        // Lógica básica
+        return redirect()->route('categories.index');
+    }
+}
