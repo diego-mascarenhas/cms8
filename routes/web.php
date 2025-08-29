@@ -11,10 +11,12 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\ContactController;
-use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\EmailController;
+use App\Http\Controllers\EmailPlanController;
+use App\Http\Controllers\EmailPlansManagementController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\FareController;
 use App\Http\Controllers\HomeController;
@@ -53,8 +55,10 @@ Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
-])->group(function () {
-    Route::get('/dashboard', function () {
+])->group(function ()
+{
+    Route::get('/dashboard', function ()
+    {
         return view('dashboard');
     })->name('dashboard');
 });
@@ -77,40 +81,49 @@ Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name(
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
 
 // Adding routes for other dashboard types
-Route::get('/dashboard/client', function () {
+Route::get('/dashboard/client', function ()
+{
     // This view doesn't exist yet, so we'll redirect to collaborator for now
     return view('collaborator.dashboard');
 })->name('dashboard.client')->middleware('auth');
 
-Route::get('/dashboard/project', function () {
+Route::get('/dashboard/project', function ()
+{
     // This view doesn't exist yet, so we'll redirect to collaborator for now
     return view('collaborator.dashboard');
 })->name('dashboard.project')->middleware('auth');
 
 // errors
-Route::get('misc-not-authorized', function () {
+Route::get('misc-not-authorized', function ()
+{
     return view('content.pages.pages-misc-not-authorized');
 })->name('403');
 
-Route::get('misc-error', function () {
+Route::get('misc-error', function ()
+{
     return view('content.pages.pages-misc-error');
 })->name('404');
 
-Route::get('/error-without-team', function () {
+Route::get('/error-without-team', function ()
+{
     return view('error-without-team');
 })->name('error-without-team');
 
-Route::get('misc-under-maintenance', function () {
+Route::get('misc-under-maintenance', function ()
+{
     return view('content.pages.pages-misc-under-maintenance');
 })->name('under-maintenance');
 
-Route::get('misc-comingsoon', function () {
+Route::get('misc-comingsoon', function ()
+{
     return view('content.pages.pages-misc-comingsoon');
 })->name('comingsoon');
 
 // Authenticated routes
-Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
+Route::middleware(['auth'])->group(function ()
+{
+    Route::get('/dashboard', function ()
+    {
         return redirect()->route('dashboard');
     });
 
@@ -167,6 +180,23 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
     Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
     Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
+
+    // Email Plans Management (Admin only)
+    Route::middleware(['role:admin'])->group(function ()
+    {
+        Route::get('/email-plans', [EmailPlanController::class, 'index'])->name('email-plans.index');
+        Route::post('/email-plans/{team}/assign', [EmailPlanController::class, 'assign'])->name('email-plans.assign');
+        Route::get('/email-plans/{team}/details', [EmailPlanController::class, 'show'])->name('email-plans.show');
+
+        // Email Plans Management Interface
+        Route::get('/email-plans-management', [EmailPlansManagementController::class, 'index'])->name('email-plans-management.index');
+        Route::post('/email-plans-management/{team}/assign', [EmailPlansManagementController::class, 'assign'])->name('email-plans-management.assign');
+        Route::get('/email-plans-management/{team}/details', [EmailPlansManagementController::class, 'show'])->name('email-plans-management.show');
+        Route::post('/email-plans-management/{team}/sync-usage', [EmailPlansManagementController::class, 'syncUsage'])->name('email-plans-management.sync-usage');
+    });
+
+    // Current team email plan (for all users)
+    Route::get('/my-team/email-plan', [EmailPlanController::class, 'current'])->name('email-plans.current');
 
     // Contacts
     Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
@@ -478,7 +508,8 @@ Route::view('/strategy', 'strategy.index')->name('strategy.index');
 Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');
 Route::resource('organization', EnterpriseOrganizationController::class)->except(['index', 'show']);
 
-Route::get('/notes', function () {
+Route::get('/notes', function ()
+{
     return view('notes.index');
 })->name('notes.index');
 
@@ -509,13 +540,16 @@ Route::post('/twilio/fallback/{hash}', [TwilioWebhookController::class, 'handleF
     ->name('twilio.fallback.team');
 
 // Debug route for testing JSON response (no auth required)
-Route::get('/debug-units', function () {
+Route::get('/debug-units', function ()
+{
     $fare = \App\Models\Fare::with('units')->find(1);
-    if (! $fare) {
+    if (! $fare)
+    {
         return response()->json(['error' => 'Fare not found']);
     }
 
-    $units = $fare->units->map(function ($unit) {
+    $units = $fare->units->map(function ($unit)
+    {
         return [
             'id' => $unit->id,
             'type' => $unit->type,
@@ -532,8 +566,10 @@ Route::get('/debug-units', function () {
 })->name('debug-units');
 
 // Debug route for user authentication info
-Route::get('/debug-user', function () {
-    if (! auth()->check()) {
+Route::get('/debug-user', function ()
+{
+    if (! auth()->check())
+    {
         return response()->json(['error' => 'Not authenticated']);
     }
 
@@ -552,7 +588,8 @@ Route::get('/debug-user', function () {
 /*
  * OVH API Routes
  */
-Route::prefix('ovh')->group(function () {
+Route::prefix('ovh')->group(function ()
+{
     Route::get('/dashboard', [OvhApiController::class, 'dashboard'])->name('ovh.dashboard');
     Route::get('/invoices', [OvhApiController::class, 'getInvoices'])->name('ovh.invoices');
     Route::get('/services', [OvhApiController::class, 'getServices'])->name('ovh.services');
@@ -560,7 +597,8 @@ Route::prefix('ovh')->group(function () {
 });
 
 // Claude Prompts
-Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function () {
+Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function ()
+{
     Route::get('/prompts', [App\Http\Controllers\ClaudePromptController::class, 'index'])->name('prompts.index');
     Route::get('/prompts/create', [App\Http\Controllers\ClaudePromptController::class, 'create'])->name('prompts.create');
     Route::post('/prompts', [App\Http\Controllers\ClaudePromptController::class, 'store'])->name('prompts.store');
@@ -572,7 +610,8 @@ Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function (
 });
 
 // Language Variants
-Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function () {
+Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function ()
+{
     Route::get('/', [App\Http\Controllers\LanguageVariantController::class, 'index'])->name('index');
     Route::get('/create', [App\Http\Controllers\LanguageVariantController::class, 'create'])->name('create');
     Route::post('/', [App\Http\Controllers\LanguageVariantController::class, 'store'])->name('store');
@@ -603,10 +642,11 @@ Route::delete('/collaborator/{id}/documents/{media}', [CollaboratorController::c
 Route::get('/collaborator/debug/availability', [CollaboratorController::class, 'debugAvailability'])->name('collaborator.debug.availability');
 
 // Profile Update Routes
-Route::prefix('profile-update')->name('profile-update.')->middleware(['auth', 'verified'])->group(function () {
-	Route::get('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'index'])->name('index');
-	Route::post('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'store'])->name('store');
-	Route::post('/get-rates', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'getRatesForLanguagePair'])->name('get-rates');
+Route::prefix('profile-update')->name('profile-update.')->middleware(['auth', 'verified'])->group(function ()
+{
+    Route::get('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'index'])->name('index');
+    Route::post('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'store'])->name('store');
+    Route::post('/get-rates', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'getRatesForLanguagePair'])->name('get-rates');
 });
 
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
@@ -616,7 +656,8 @@ Route::get('message/track/click/{token}', [MessageTrackingController::class, 'tr
 Route::post('webhooks/mailbaby', [App\Http\Controllers\MailBabyWebhookController::class, 'handle'])->name('mailbaby.webhook');
 
 // WhatsApp Cart Testing Routes (available in all environments)
-Route::prefix('test-cart')->group(function () {
+Route::prefix('test-cart')->group(function ()
+{
     Route::get('/', [App\Http\Controllers\TestCartController::class, 'index'])->name('test.cart.index');
     Route::post('/process', [App\Http\Controllers\TestCartController::class, 'processMessage'])->name('test.cart.process');
     Route::get('/status', [App\Http\Controllers\TestCartController::class, 'cartStatus'])->name('test.cart.status');

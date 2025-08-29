@@ -3,17 +3,33 @@
         <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="mb-0">{{ __('Deliveries') }}</h5>
             <div class="d-flex align-items-center">
-                <small class="text-muted me-2">{{ count($deliveries) }} total</small>
-                <div wire:loading.delay>
+                {{-- Search Bar in header --}}
+                @if($hasDeliveries)
+                    <div class="me-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text border-0 bg-transparent px-2">
+                                <i class="ti ti-search"></i>
+                            </span>
+                            <input type="text"
+                                   class="form-control form-control-sm border-0 bg-light"
+                                   style="width: 200px;"
+                                   placeholder="{{ __('Search...') }}"
+                                   wire:model.live.debounce.300ms="search">
+                        </div>
+                    </div>
+                @endif
+
+                <div wire:loading.delay wire:target="search">
                     <span class="spinner-border spinner-border-sm text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </span>
                 </div>
             </div>
         </div>
-        <div class="card-body table-responsive">
-            @if(count($deliveries) > 0)
-                <table class="table table-sm">
+
+        <div class="card-body table-responsive p-0">
+            @if($deliveries->count() > 0)
+                <table class="table table-sm table-striped mb-0">
                     <thead>
                         <tr>
                             <th>{{ __('Contact') }}</th>
@@ -112,11 +128,26 @@
                 </table>
             @else
                 <div class="text-center py-4">
-                    <i class="ti ti-inbox ti-lg text-muted"></i>
-                    <p class="text-muted mt-2">{{ __('No deliveries yet') }}</p>
+                    @if($search)
+                        <i class="ti ti-search-off ti-lg text-muted"></i>
+                        <p class="text-muted mt-2">{{ __('No results found for') }} "<strong>{{ $search }}</strong>"</p>
+                        <button class="btn btn-sm btn-outline-primary" wire:click="$set('search', '')">
+                            <i class="ti ti-x me-1"></i>{{ __('Clear search') }}
+                        </button>
+                    @else
+                        <i class="ti ti-inbox ti-lg text-muted"></i>
+                        <p class="text-muted mt-2">{{ __('No deliveries yet') }}</p>
+                    @endif
                 </div>
             @endif
         </div>
+
+        {{-- Pagination - Standard Laravel --}}
+        @if($deliveries->hasPages())
+            <div class="card-body border-top py-1">
+                {{ $deliveries->links() }}
+            </div>
+        @endif
     </div>
 </div>
 

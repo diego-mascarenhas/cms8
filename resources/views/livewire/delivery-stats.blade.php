@@ -130,6 +130,31 @@
                 </div>
             @endif
 
+            {{-- Critical Errors Alert --}}
+            @if($wasPausedForErrors)
+                <div class="alert alert-danger d-flex align-items-center mt-4" role="alert">
+                    <i class="ti ti-alert-triangle me-2"></i>
+                    <div>
+                        <strong>Campaign Paused Automatically</strong><br>
+                        <small>
+                            {{ $criticalErrorsCount }} critical error(s) detected in the last hour.
+                            <br>The campaign has been paused to prevent further issues.
+                        </small>
+                    </div>
+                </div>
+            @elseif($criticalErrorsCount > 0 && $message && $message->status_id == 1)
+                <div class="alert alert-warning d-flex align-items-center mt-4" role="alert">
+                    <i class="ti ti-alert-circle me-2"></i>
+                    <div>
+                        <strong>Critical Errors Detected</strong><br>
+                        <small>
+                            {{ $criticalErrorsCount }} critical error(s) in the last hour.
+                            Campaign may be paused automatically if errors continue.
+                        </small>
+                    </div>
+                </div>
+            @endif
+
         </div>
     </div>
 </div>
