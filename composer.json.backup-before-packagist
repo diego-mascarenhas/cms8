@@ -7,9 +7,35 @@
     "framework"
   ],
   "license": "MIT",
-
+  "repositories": [
+    {
+      "type": "path",
+      "url": "packages/idoneo/humano-core"
+    },
+    {
+      "type": "path",
+      "url": "packages/idoneo/humano-crm"
+    },
+    {
+      "type": "path",
+      "url": "packages/idoneo/humano-billing"
+    },
+    {
+      "type": "path",
+      "url": "packages/idoneo/humano-communications"
+    },
+    {
+      "type": "path",
+      "url": "packages/idoneo/humano-hosting"
+    }
+  ],
   "require": {
     "php": "^8.1",
+    "idoneo/humano-core": "*",
+    "idoneo/humano-crm": "*",
+    "idoneo/humano-billing": "*",
+    "idoneo/humano-communications": "*",
+    "idoneo/humano-hosting": "*",
     "barryvdh/laravel-debugbar": "^3.14",
     "beyondcode/laravel-mailbox": "*",
     "chillerlan/php-qrcode": "^5.0",
@@ -17,7 +43,6 @@
     "doctrine/dbal": "^3.5.1",
     "fakerphp/faker": "^1.23",
     "guzzlehttp/guzzle": "^7.9",
-    "idoneo/humano-core": "^1.1.0",
     "jd-dotlogics/laravel-grapesjs": "^3.4",
     "laravel/cashier": "^15.4",
     "laravel/framework": "^10.23",
