@@ -434,3 +434,15 @@ composer.lock
 
 # Scripts
 /scripts/
+
+# Local backups and temp artifacts (security)
+backups/
+backup-*/
+*/backups/
+backups-*/
+backup-original-controllers/
+*.bak
+*.backup
+*.old
+*.tmp
+*.temp
