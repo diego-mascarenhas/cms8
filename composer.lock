@@ -2138,16 +2138,16 @@
         },
         {
             "name": "idoneo/humano-core",
-            "version": "v1.1.5",
+            "version": "v1.1.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/diego-mascarenhas/humano-core.git",
-                "reference": "e8df6eb72bf407b0e079507aea37e9e79014c231"
+                "reference": "247ed1e5e533122e5a5bb441a2cd24e16cdd4749"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/diego-mascarenhas/humano-core/zipball/e8df6eb72bf407b0e079507aea37e9e79014c231",
-                "reference": "e8df6eb72bf407b0e079507aea37e9e79014c231",
+                "url": "https://api.github.com/repos/diego-mascarenhas/humano-core/zipball/247ed1e5e533122e5a5bb441a2cd24e16cdd4749",
+                "reference": "247ed1e5e533122e5a5bb441a2cd24e16cdd4749",
                 "shasum": ""
             },
             "require": {
@@ -2216,9 +2216,9 @@
             ],
             "support": {
                 "issues": "https://github.com/diego-mascarenhas/humano-core/issues",
-                "source": "https://github.com/diego-mascarenhas/humano-core/tree/v1.1.5"
+                "source": "https://github.com/diego-mascarenhas/humano-core/tree/v1.1.6"
             },
-            "time": "2025-08-30T16:20:00+00:00"
+            "time": "2025-08-30T17:43:11+00:00"
         },
         {
             "name": "jd-dotlogics/laravel-grapesjs",
