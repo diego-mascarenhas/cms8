@@ -54,12 +54,25 @@ class DashboardController extends Controller
 				$query->whereIn('sentiment_id', [1, 2]);
 			}])->get();
 
-		// Clients to contact today (filtered by team)
+		// Clients to contact today (List of 60) - only when module is enabled
 		$today = Carbon::today();
-		$clientsToContactToday = List60::whereHas('contact', function ($query) use ($activeTeam)
+		$clientsToContactToday = 0;
+		$todayContacts = null;
+		if ($activeTeam && $activeTeam->hasModule('list60'))
 		{
-			$query->where('team_id', $activeTeam->id);
-		})->whereDate('date_next', $today)->count();
+			$clientsToContactToday = List60::whereHas('contact', function ($query) use ($activeTeam)
+			{
+				$query->where('team_id', $activeTeam->id);
+			})->whereDate('date_next', $today)->count();
+
+			$todayContacts = List60::with(['contact.enterprise', 'contact.currentSentiment.sentiment'])
+				->whereHas('contact', function ($query) use ($activeTeam)
+				{
+					$query->where('team_id', $activeTeam->id);
+				})
+				->whereDate('date_next', Carbon::today())
+				->get();
+		}
 
 		// Get latest sentiment for each contact (filtered by team)
 		$contacts = Contact::where('team_id', $activeTeam->id)
@@ -115,12 +128,17 @@ class DashboardController extends Controller
 			->whereDate('date_next', Carbon::today())
 			->get();
 
-		// Retrieve ongoing projects (IN_PROGRESS)
-		$ongoingProjects = Project::with(['client', 'responsible', 'status'])
-			->where('status_id', 9) // IN_PROGRESS status
-			->latest('updated_at')
-			->take(5)
-			->get();
+		// Retrieve ongoing projects only if Projects module is enabled for the team
+		$ongoingProjects = null;
+		if ($activeTeam && $activeTeam->hasModule('projects'))
+		{
+			$ongoingProjects = Project::with(['client', 'responsible', 'status'])
+				->where('team_id', $activeTeam->id)
+				->where('status_id', 9) // IN_PROGRESS status
+				->latest('updated_at')
+				->take(5)
+				->get();
+		}
 
 		// Get recent activities from team members
 		$teamUserIds = $activeTeam->users->pluck('id');

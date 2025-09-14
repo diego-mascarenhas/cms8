@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Listeners\AssignAdminRole;
+use App\Listeners\EnableCoreModulesForTeam;
+use Laravel\Jetstream\Events\TeamCreated;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Registered;
@@ -21,6 +23,9 @@ class EventServiceProvider extends ServiceProvider
 		Registered::class => [
 			SendEmailVerificationNotification::class,
 			AssignAdminRole::class,
+		],
+		TeamCreated::class => [
+			EnableCoreModulesForTeam::class,
 		],
 	];
 

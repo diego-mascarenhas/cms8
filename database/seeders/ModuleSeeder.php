@@ -29,6 +29,11 @@ class ModuleSeeder extends Seeder
             'icon' => 'checklist',
             'description' => 'Task management module',
         ],
+		'contacts' => [
+			'name' => 'Contacts',
+			'icon' => 'address-book',
+			'description' => 'Contact management module',
+		],
         'clients' => [
             'name' => 'Clients',
             'icon' => 'user-heart',
@@ -39,14 +44,19 @@ class ModuleSeeder extends Seeder
             'icon' => 'list-check',
             'description' => 'List of 60 management module',
         ],
+        'campaigns' => [
+            'name' => 'Campaigns',
+            'icon' => 'send',
+            'description' => 'Campaigns management module',
+        ],
+        'templates' => [
+            'name' => 'Templates',
+            'icon' => 'template',
+            'description' => 'Templates management module',
+        ],
     ];
 
     protected $additionalModules = [
-        'contacts' => [
-            'name' => 'Contacts',
-            'icon' => 'address-book',
-            'description' => 'Contact management module',
-        ],
         'collaborators' => [
 			'name' => 'Collaborators',
             'icon' => 'users-group',
@@ -197,16 +207,7 @@ class ModuleSeeder extends Seeder
             'icon' => 'api',
             'description' => 'Integrations management module',
         ],
-        'campaigns' => [
-            'name' => 'Campaigns',
-            'icon' => 'send',
-            'description' => 'Campaigns management module',
-        ],
-        'templates' => [
-            'name' => 'Templates',
-            'icon' => 'template',
-            'description' => 'Templates management module',
-        ],
+
         'languages' => [
             'name' => 'Languages',
             'icon' => 'language',
@@ -250,7 +251,7 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'templates', 'contacts', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'campaigns', 'products', 'orders', 'academy'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
     ];
 
     public function run()
@@ -258,7 +259,7 @@ class ModuleSeeder extends Seeder
         $this->command->info('Creando módulos...');
 
         foreach ($this->coreModules as $key => $moduleData) {
-            Module::firstOrCreate(
+            Module::updateOrCreate(
                 ['key' => $key],
                 [
                     'name' => $moduleData['name'],
@@ -273,7 +274,7 @@ class ModuleSeeder extends Seeder
         }
 
         foreach ($this->additionalModules as $key => $moduleData) {
-            Module::firstOrCreate(
+            Module::updateOrCreate(
                 ['key' => $key],
                 [
                     'name' => $moduleData['name'],

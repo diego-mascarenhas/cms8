@@ -70,6 +70,7 @@
                             <h4 class="text-success mb-0">{{ $recentLeadsCount }}</h4>
                         </div>
                     </div>
+                    @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('list60'))
                     <div class="d-flex align-items-center gap-3">
                         <span class="bg-label-warning p-2 rounded">
                             <i class='ti ti-discount-check ti-xl'></i>
@@ -79,6 +80,7 @@
                             <h4 class="text-warning mb-0">{{ $clientsToContactToday }}</h4>
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
 
@@ -260,7 +262,7 @@
                                                         'User logged out' => 'se desconectó',
                                                         'File uploaded' => 'subió un archivo',
                                                     ];
-                                                    
+
                                                     foreach ($translations as $en => $es) {
                                                         if (str_contains($description, $en)) {
                                                             $description = str_replace($en, $es, $description);
@@ -367,7 +369,7 @@
                                                     $today = \Carbon\Carbon::now();
                                                     $endDate = $project->end_date ? \Carbon\Carbon::parse($project->end_date) : null;
                                                     $startDate = $project->start_date ? \Carbon\Carbon::parse($project->start_date) : null;
-                                                    
+
                                                     if ($startDate && $endDate) {
                                                         $totalDays = $startDate->diffInDays($endDate);
                                                         $daysElapsed = $startDate->diffInDays($today);
@@ -405,6 +407,7 @@
             </div>
             @endif
 
+            @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('list60'))
             <!-- Today's Contacts (Restored) -->
             <div class="card mb-4">
                 <div class="card-header d-flex align-items-center justify-content-between">
@@ -469,6 +472,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 
@@ -541,7 +545,7 @@
         .sentiment-column {
             padding: 0 2px;
         }
-        
+
         .sentiment-bar {
             max-width: 40px;
         }
