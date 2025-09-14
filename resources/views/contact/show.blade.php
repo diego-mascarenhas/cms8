@@ -60,12 +60,16 @@
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @can('project.create')
+                @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('projects'))
                 <a href="{{ route('project.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-success waves-effect waves-light"><i
                         class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
+                @endif
             @endcan
             @can('service.create')
+                @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('services'))
                 <a href="{{ route('service.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-info waves-effect waves-light ms-2"><i
                         class="ti ti-server me-1"></i>Crear servicio</a>
+                @endif
             @endcan
             @can('chat.list')
                 @if ($data->getWhatsAppNumber())

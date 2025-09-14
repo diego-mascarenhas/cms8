@@ -32,6 +32,9 @@ class ModifyMenuBasedOnRole
 			// Get all core modules
 			$coreModules = Module::where('is_core', true)->pluck('key')->toArray();
 
+			// Modules that should always be visible regardless of team settings
+			$alwaysVisibleModules = ['dashboard', 'settings'];
+
 			// Filter the menu based on the user's permissions and team's modules
 			$filteredMenu = [];
 			$currentSection = null;
@@ -61,11 +64,13 @@ class ModifyMenuBasedOnRole
 						continue;
 					}
 
-					// If it's a core module, always show it
-					// If it's not a core module, check if the team has access
-					if ($moduleKey && ! in_array($moduleKey, $coreModules) && $team && ! $team->hasModule($moduleKey))
+					// Gate all menu items by team module setting, except a small allowlist
+					if ($moduleKey && ! in_array($moduleKey, $alwaysVisibleModules))
 					{
-						continue;
+						if (! $team || ! $team->hasModule($moduleKey))
+						{
+							continue;
+						}
 					}
 
 					// Add the item to the current section

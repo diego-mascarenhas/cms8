@@ -27,9 +27,11 @@
                 </a>
             @endcan
             @can('project.create')
+                @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('projects'))
                 <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-success waves-effect waves-light">
                     <i class="ti ti-folder-plus me-1"></i>{{ __('Create') }} {{ __('Project') }}
                 </a>
+                @endif
             @endcan
         </div>
     </div>
@@ -192,9 +194,11 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">{{ __('Projects') }} ({{ $client->projects->count() }})</h5>
                     @can('project.create')
-                    <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
-                        <i class="ti ti-plus me-1"></i>{{ __('New Project') }}
-                    </a>
+                        @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('projects'))
+                        <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
+                            <i class="ti ti-plus me-1"></i>{{ __('New Project') }}
+                        </a>
+                        @endif
                     @endcan
                 </div>
                 <div class="card-body">
@@ -262,9 +266,11 @@
                             <h6 class="mb-1">{{ __('No ongoing projects') }}</h6>
                             <p class="text-muted mb-3">{{ __('This client has no projects assigned yet.') }}</p>
                             @can('project.create')
-                            <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-primary">
-                                <i class="ti ti-plus me-1"></i>{{ __('Add Project') }}
-                            </a>
+                                @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('projects'))
+                                <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-primary">
+                                    <i class="ti ti-plus me-1"></i>{{ __('Add Project') }}
+                                </a>
+                                @endif
                             @endcan
                         </div>
                     @endif
