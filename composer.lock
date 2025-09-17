@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1acc5dccb9289944e07b0bcc0f97fd7b",
+    "content-hash": "d94d22f2da76935153fac9bd83d806dc",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -2140,6 +2140,97 @@
                 }
             ],
             "time": "2025-02-03T10:55:03+00:00"
+        },
+        {
+            "name": "idoneo/emailer",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/diego-mascarenhas/emailer.git",
+                "reference": "053c81fdef4fb37f4f1d1f44bf0bce2a603702d6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/diego-mascarenhas/emailer/zipball/053c81fdef4fb37f4f1d1f44bf0bce2a603702d6",
+                "reference": "053c81fdef4fb37f4f1d1f44bf0bce2a603702d6",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^10.0||^11.0||^12.0",
+                "php": "^8.1",
+                "spatie/laravel-package-tools": "^1.16",
+                "tijsverkoyen/css-to-inline-styles": "^2.2"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.14",
+                "nunomaduro/collision": "^8.8",
+                "orchestra/testbench": "^10.0.0||^9.0.0",
+                "pestphp/pest": "^4.0",
+                "pestphp/pest-plugin-arch": "^4.0",
+                "pestphp/pest-plugin-laravel": "^4.0",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "spatie/laravel-ray": "^1.35"
+            },
+            "suggest": {
+                "mailgun/mailgun-php": "Required for Mailgun email provider support",
+                "sendgrid/sendgrid": "Required for SendGrid email provider support"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Emailer": "idoneo\\Emailer\\Facades\\Emailer"
+                    },
+                    "providers": [
+                        "idoneo\\Emailer\\EmailerServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "idoneo\\Emailer\\": "src/",
+                    "idoneo\\Emailer\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "idoneo",
+                    "email": "diego.mascarenhas@icloud.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Professional email marketing package with maximum deliverability.",
+            "homepage": "https://github.com/diego-mascarenhas/emailer",
+            "keywords": [
+                "email-campaigns",
+                "email-marketing",
+                "email-tracking",
+                "emailer",
+                "idoneo",
+                "laravel",
+                "mailgun",
+                "newsletter",
+                "sendgrid",
+                "smtp"
+            ],
+            "support": {
+                "issues": "https://github.com/diego-mascarenhas/emailer/issues",
+                "source": "https://github.com/diego-mascarenhas/emailer/tree/v1.0.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/idoneo",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-08-28T10:30:51+00:00"
         },
         {
             "name": "jd-dotlogics/laravel-grapesjs",
