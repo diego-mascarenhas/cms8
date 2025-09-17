@@ -426,7 +426,10 @@ composer.lock
 # NPM Compiled
 /public/hot
 /public/storage
-# public/mix-manifest.json
+/public/assets/
+/public/vendor/
+/public/storage/
+/public/mix-manifest.json
 # public/js/laravel-user-management.js
 # public/assets/js/
 # public/assets/vendor/
@@ -434,3 +437,15 @@ composer.lock
 
 # Scripts
 /scripts/
+
+# Local backups and temp artifacts (security)
+backups/
+backup-*/
+*/backups/
+backups-*/
+backup-original-controllers/
+*.bak
+*.backup
+*.old
+*.tmp
+*.temp
