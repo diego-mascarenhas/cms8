@@ -17,6 +17,7 @@
     "fakerphp/faker": "^1.23",
     "guzzlehttp/guzzle": "^7.9",
     "idoneo/emailer": "^1.0",
+    "idoneo/humano-access-control": "*@dev",
     "jd-dotlogics/laravel-grapesjs": "^3.4",
     "laravel/cashier": "^15.4",
     "laravel/framework": "^10.23",
@@ -102,5 +103,9 @@
   "minimum-stability": "dev",
   "prefer-stable": true,
   "repositories": {
+    "humano-access-control": {
+      "type": "path",
+      "url": "packages/idoneo/humano-access-control"
+    }
   }
 }
