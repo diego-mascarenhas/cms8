@@ -16,8 +16,7 @@
     "doctrine/dbal": "^3.5.1",
     "fakerphp/faker": "^1.23",
     "guzzlehttp/guzzle": "^7.9",
-    "idoneo/emailer": "^1.0",
-    "idoneo/humano-access-control": "*@dev",
+    "idoneo/humano-access-control": "^0.0.3",
     "jd-dotlogics/laravel-grapesjs": "^3.4",
     "laravel/cashier": "^15.4",
     "laravel/framework": "^10.23",
@@ -50,7 +49,8 @@
     "nunomaduro/collision": "^7.0",
     "phpunit/phpunit": "^10.1",
     "pixinvent/vuexy-laravel-bootstrap-jetstream": "dev-mix",
-    "spatie/laravel-ignition": "^2.0"
+    "spatie/laravel-ignition": "^2.0",
+    "wikimedia/composer-merge-plugin": "^2.0"
   },
   "autoload": {
     "psr-4": {
@@ -89,6 +89,14 @@
   "extra": {
     "laravel": {
       "dont-discover": []
+    },
+    "merge-plugin": {
+      "include": [
+        "composer.local.json"
+      ],
+      "recurse": true,
+      "replace": false,
+      "ignore-duplicates": true
     }
   },
   "config": {
@@ -97,15 +105,12 @@
     "sort-packages": true,
     "allow-plugins": {
       "pestphp/pest-plugin": true,
-      "php-http/discovery": true
+      "php-http/discovery": true,
+      "wikimedia/composer-merge-plugin": true
     }
   },
   "minimum-stability": "dev",
   "prefer-stable": true,
   "repositories": {
-    "humano-access-control": {
-      "type": "path",
-      "url": "packages/idoneo/humano-access-control"
-    }
   }
 }
