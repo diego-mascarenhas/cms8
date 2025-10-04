@@ -330,6 +330,16 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/task', [TaskController::class, 'store'])->name('task.store');
     Route::put('/task/{id}', [TaskController::class, 'update'])->name('task.update');
     Route::delete('/task/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
+    Route::post('/task/update-status', [TaskController::class, 'updateStatus'])->name('task.update-status');
+    Route::post('/task/update-order', [TaskController::class, 'updateOrder'])->name('task.update-order');
+    
+    // Task Board Routes
+    Route::get('/task-board', [App\Http\Controllers\TaskBoardController::class, 'index'])->name('task-board.index');
+    Route::get('/task-board/create', [App\Http\Controllers\TaskBoardController::class, 'create'])->name('task-board.create');
+    Route::post('/task-board', [App\Http\Controllers\TaskBoardController::class, 'store'])->name('task-board.store');
+    Route::get('/task-board/{id}/edit', [App\Http\Controllers\TaskBoardController::class, 'edit'])->name('task-board.edit');
+    Route::get('/task-board/{id}/destroy', [App\Http\Controllers\TaskBoardController::class, 'destroy'])->name('task-board.destroy');
+    Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
 
     // Invoice Routes
     Route::get('/invoice/list', [InvoiceController::class, 'index'])->name('invoice.index');

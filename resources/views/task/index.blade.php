@@ -46,6 +46,14 @@
         <h4 class="mb-1 mt-3">{{ __('Tasks') }}</h4>
         <p class="text-muted">{{ __('Task Management') }}</p>
     </div>
+    <div class="d-flex align-content-center flex-wrap gap-3">
+        <a href="{{ route('task.create') }}" class="btn btn-primary">
+            <i class="ti ti-plus me-1"></i>{{ __('Add Task') }}
+        </a>
+        <a href="{{ route('task.index', ['view' => 'kanban']) }}" class="btn btn-secondary">
+            <i class="ti ti-layout-kanban me-1"></i>{{ __('Kanban View') }}
+        </a>
+    </div>
 </div>
 
 @if(session('success'))

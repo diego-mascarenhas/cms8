@@ -47,7 +47,7 @@
     $(function() {
         // Inicializar Select2 si está disponible
         if ($.fn.select2) {
-            $('#unit_ids, #type_id').select2();
+            $('#unit_ids, #type_id, #board_id').select2();
         }
     });
 </script>
@@ -66,6 +66,9 @@
 	<form class="card-body" action="{{ route('task.store') }}" method="POST">
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
+		@if(request()->has('view') && request()->view === 'kanban')
+			<input type="hidden" name="view" value="kanban">
+		@endif
 		
 		<div class="row g-3">
 			<div class="col-md-6">
@@ -80,7 +83,20 @@
 				/>
 			</div>
 			<div class="col-md-3">
-				<x-input-select id="status_id" label="Estado (*)" :options="$statuses" value="{{ old('status_id', $data->status_id ?? '1') }}" />
+				<x-input-select id="status_id" label="Estado (*)" :options="$statuses" value="{{ old('status_id', $data->status_id ?? request()->input('status_id', '1')) }}" />
+			</div>
+			
+			<div class="col-md-3">
+				<div class="mb-3">
+					<label for="board_id" class="form-label">{{ __('Board') }}</label>
+					<select id="board_id" name="board_id" class="form-select">
+						@foreach($boards as $board)
+							<option value="{{ $board['id'] }}" {{ (old('board_id', $defaultBoardId) == $board['id'] ? 'selected' : '') }}>
+								{{ $board['name'] }}
+							</option>
+						@endforeach
+					</select>
+				</div>
 			</div>
 
 			@if(auth()->user()->hasRole('admin'))
@@ -110,8 +126,12 @@
 		
 		<div class="pt-4">
 			<div class="col-12 d-flex">
-				<button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
-				<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('task.index') }}'">Cancelar</button>
+				<button type="submit" class="btn btn-primary me-sm-3 me-1">{{ __('Save') }}</button>
+				@if(request()->has('view') && request()->view === 'kanban')
+					<button type="button" class="btn btn-label-secondary" onclick="location.href='{{ route('task.index', ['view' => 'kanban', 'board_id' => $defaultBoardId]) }}'">{{ __('Cancel') }}</button>
+				@else
+					<button type="button" class="btn btn-label-secondary" onclick="location.href='{{ route('task.index') }}'">{{ __('Cancel') }}</button>
+				@endif
 			</div>
 		</div>
 	</form>

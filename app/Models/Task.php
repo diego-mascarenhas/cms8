@@ -13,6 +13,7 @@ class Task extends Model
 
 	protected $fillable = [
 		'team_id',
+		'board_id',
 		'category_id',
 		'responsible_id',
 		'title',
@@ -47,6 +48,11 @@ class Task extends Model
 	public function status()
 	{
 		return $this->belongsTo(TaskStatus::class);
+	}
+
+	public function board()
+	{
+		return $this->belongsTo(TaskBoard::class);
 	}
 
 	public function getStatusLabelAttribute()
