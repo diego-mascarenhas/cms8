@@ -21,8 +21,8 @@ class TaskController extends Controller
 
 	public function kanban(Request $request)
 	{
-        // Original single-board kanban: always use default board
-        $board = TaskBoard::getDefaultBoard();
+		// Original single-board kanban: always use default board
+		$board = TaskBoard::getDefaultBoard();
 
 		$statuses = TaskStatus::orderBy('order')->get()->map(function ($status) {
 			return [
@@ -32,7 +32,7 @@ class TaskController extends Controller
 			];
 		});
 
-        // No multi-board selector in original template
+		// No multi-board selector in original template
 
 		// Get tasks grouped by status
 		$tasksByStatus = [];
@@ -61,7 +61,7 @@ class TaskController extends Controller
 			});
 		}
 
-        return view('task.kanban', compact('statuses', 'tasksByStatus'));
+		return view('task.kanban', compact('statuses', 'tasksByStatus'));
 	}
 
 	public function create(Request $request)

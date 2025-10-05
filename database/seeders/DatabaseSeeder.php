@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
 			ModuleSeeder::class,  // Módulos disponibles del sistema
 			UserSeeder::class,  // Usuario admin inicial
 			TaskStatusSeeder::class,  // Estados de tareas (TO_DO, IN_PROGRESS, etc)
+			CoreModulesPermissionsSeeder::class,  // Permisos para módulos core
 		]);
 
 		// ============================================
@@ -38,22 +39,22 @@ class DatabaseSeeder extends Seeder
 		$this->command->info('');
 		$this->command->info('📊 Phase 2: Base System Data');
 		$this->call([
-			CurrencySeeder::class,  // Monedas (EUR, USD, etc)
-			CountrySeeder::class,  // Países
-			LanguageSeeder::class,  // Idiomas base
-			PaymentTypeSeeder::class,  // Tipos de pago
-			InvoiceTypeSeeder::class,  // Tipos de factura
-			EnterpriseTaxStatusTypeSeeder::class,  // Estados fiscales
-			EnterpriseTypeSeeder::class,  // Tipos de empresa
-			EnterpriseStatusSeeder::class,  // Estados de empresa
-			EnterpriseDepartmentSeeder::class,  // Departamentos
-			ContactStatusSeeder::class,  // Estados de contacto
-			ContactSentimentSeeder::class,  // Sentimientos
-			ContactValorationSeeder::class,  // Valoraciones
-			ProjectStatusSeeder::class,  // Estados de proyecto
-			UnitsSeeder::class,  // Unidades (palabras, minutos, etc)
-			FareTypesSeeder::class,  // Tipos de tarifa
-			CategorySeeder::class,  // Categorías base
+			CurrencySeeder::class,  // Currencies (EUR, USD, etc)
+			CountrySeeder::class,  // Countries
+			LanguageSeeder::class,  // Base languages
+			PaymentTypeSeeder::class,  // Payment types
+			InvoiceTypeSeeder::class,  // Invoice types
+			EnterpriseTaxStatusTypeSeeder::class,  // Tax status types
+			EnterpriseTypeSeeder::class,  // Enterprise types
+			EnterpriseStatusSeeder::class,  // Enterprise statuses
+			EnterpriseDepartmentSeeder::class,  // Departments
+			ContactStatusSeeder::class,  // Contact statuses
+			ContactSentimentSeeder::class,  // Sentiments
+			ContactValorationSeeder::class,  // Valuations
+			ProjectStatusSeeder::class,  // Project statuses
+			UnitsSeeder::class,  // Units (words, minutes, etc)
+			FareTypesSeeder::class,  // Fare types
+			CategorySeeder::class,  // Base categories
 		]);
 
 		// ============================================

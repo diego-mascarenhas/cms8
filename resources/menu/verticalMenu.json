@@ -17,7 +17,8 @@
       "name": "Today",
       "icon": "menu-icon tf-icons ti ti-calendar-time",
       "slug": "today",
-      "permission": "today.index"
+      "permission": "today.index",
+      "module_key": "today"
     },
     {
       "url": "contact/list",
@@ -251,12 +252,15 @@
       "module_key": "templates"
     },
     {
+      "menuHeader": "Infraestructure"
+    },
+    {
       "url": "server",
       "name": "Servers",
       "icon": "menu-icon tf-icons ti ti-server-2",
       "slug": "server.index",
       "permission": "hosting.index",
-      "module_key": "hosting"
+      "module_key": "servers"
     },
     {
       "url": "hosting",
