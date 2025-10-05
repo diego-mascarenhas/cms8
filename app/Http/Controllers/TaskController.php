@@ -15,34 +15,58 @@ class TaskController extends Controller
 		if ($request->has('view') && $request->view === 'kanban') {
 			return $this->kanban($request);
 		}
-		
+
 		return $dataTable->render('task.index');
 	}
-	
+
 	public function kanban(Request $request)
 	{
 		$boardId = $request->input('board_id');
 		$board = null;
-		
+
 		if ($boardId) {
 			$board = TaskBoard::findOrFail($boardId);
 		} else {
 			$board = TaskBoard::getDefaultBoard();
 		}
-		
-		$statuses = TaskStatus::orderBy('order')->get();
+
+		$statuses = TaskStatus::orderBy('order')->get()->map(function ($status) {
+			return [
+				'id' => $status->id,
+				'name' => $status->translated_name,
+				'original_name' => $status->name,
+			];
+		});
+
 		$boards = TaskBoard::orderBy('order')->get();
-		
+
 		// Get tasks grouped by status
 		$tasksByStatus = [];
 		foreach ($statuses as $status) {
-			$tasksByStatus[$status->id] = Task::where('status_id', $status->id)
+			$tasks = Task::where('status_id', $status['id'])
 				->where('board_id', $board->id)
 				->with(['responsible', 'category'])
 				->orderBy('order')
 				->get();
+
+			$tasksByStatus[$status['id']] = $tasks->map(function ($task) {
+				return [
+					'id' => $task->id,
+					'title' => $task->title,
+					'description' => $task->description,
+					'due_date' => $task->due_date ? $task->due_date->format('Y-m-d') : null,
+					'responsible' => $task->responsible ? [
+						'id' => $task->responsible->id,
+						'name' => $task->responsible->name,
+					] : null,
+					'category' => $task->category ? [
+						'id' => $task->category->id,
+						'name' => $task->category->name,
+					] : null,
+				];
+			});
 		}
-		
+
 		return view('task.kanban', compact('statuses', 'tasksByStatus', 'boards', 'board'));
 	}
 
@@ -51,7 +75,7 @@ class TaskController extends Controller
 		$statuses = TaskStatus::getOptions();
 		$boards = TaskBoard::getOptions();
 		$defaultBoardId = null;
-		
+
 		// If coming from kanban view, get the board_id
 		if ($request->has('board_id')) {
 			$defaultBoardId = $request->input('board_id');
@@ -128,7 +152,7 @@ class TaskController extends Controller
 
 		return view('task.form', compact('data', 'statuses', 'boards', 'defaultBoardId'));
 	}
-	
+
 	public function updateStatus(Request $request)
 	{
 		$request->validate([
@@ -136,15 +160,15 @@ class TaskController extends Controller
 			'status_id' => 'required|exists:task_statuses,id',
 			'order' => 'required|integer|min:0',
 		]);
-		
+
 		$task = Task::findOrFail($request->task_id);
 		$task->status_id = $request->status_id;
 		$task->order = $request->order;
 		$task->save();
-		
+
 		return response()->json(['success' => true]);
 	}
-	
+
 	public function updateOrder(Request $request)
 	{
 		$request->validate([
@@ -152,13 +176,13 @@ class TaskController extends Controller
 			'tasks.*.id' => 'required|exists:tasks,id',
 			'tasks.*.order' => 'required|integer|min:0',
 		]);
-		
+
 		foreach ($request->tasks as $taskData) {
 			$task = Task::findOrFail($taskData['id']);
 			$task->order = $taskData['order'];
 			$task->save();
 		}
-		
+
 		return response()->json(['success' => true]);
 	}
 }

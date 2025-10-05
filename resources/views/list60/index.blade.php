@@ -54,10 +54,6 @@
         </script>
     @endif
 
-    <div class="alert alert-info" role="alert">
-        <i class="ti ti-info-circle"></i> Averigua cómo esta vaina va a lanzar tus ventas
-    </div>
-
     <div class="card">
         <!-- <div class="card-header border-bottom">
             <div
@@ -122,7 +118,7 @@
                                 row.remove();
                             });
                         }
-                        
+
                         Swal.fire({
                             icon: 'success',
                             title: '¡Éxito!',

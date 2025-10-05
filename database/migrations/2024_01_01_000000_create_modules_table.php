@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
 	/**
 	 * Run the migrations.
 	 */
@@ -19,6 +18,8 @@ return new class extends Migration
 			$table->string('icon')->nullable();
 			$table->text('description')->nullable();
 			$table->boolean('is_core')->default(false);
+			$table->string('group')->nullable();
+			$table->unsignedTinyInteger('order')->default(0);
 			$table->tinyInteger('status')->default(1);
 			$table->timestamps();
 		});
@@ -33,11 +34,17 @@ return new class extends Migration
 
 			$table->unique(['module_id', 'team_id']);
 
-			$table->foreign('module_id')->references('id')->on('modules')
+			$table
+				->foreign('module_id')
+				->references('id')
+				->on('modules')
 				->onUpdate('cascade')
 				->onDelete('cascade');
 
-			$table->foreign('team_id')->references('id')->on('teams')
+			$table
+				->foreign('team_id')
+				->references('id')
+				->on('teams')
 				->onUpdate('cascade')
 				->onDelete('cascade');
 		});

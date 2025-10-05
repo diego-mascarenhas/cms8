@@ -5,10 +5,10 @@ namespace App\DataTables;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
-use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
 use Yajra\DataTables\Services\DataTable;
+use Yajra\DataTables\EloquentDataTable;
 
 class InvoiceDataTable extends DataTable
 {
@@ -23,35 +23,31 @@ class InvoiceDataTable extends DataTable
 			->addColumn('action', 'invoice.action')
 			->setRowId('id')
 			->rawColumns(['status'])
-			->editColumn('enterprise_id', function ($data)
-			{
-				return $data->enterprise->name;
+			->editColumn('enterprise_id', function ($data) {
+				return $data->enterprise?->name ?? '-';
 			})
-			->filterColumn('enterprise_id', function ($query, $keyword)
-			{
-				$query->whereHas('enterprise', function ($q) use ($keyword)
-				{
+			->filterColumn('enterprise_id', function ($query, $keyword) {
+				$query->whereHas('enterprise', function ($q) use ($keyword) {
 					$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
 				});
 			})
-			->editColumn('date', function ($data)
-			{
+			->editColumn('date', function ($data) {
 				return Carbon::parse($data->date)->format('d-m-Y');
 			})
-			->editColumn('status', function ($data)
-			{
+			->editColumn('status', function ($data) {
 				return $data->status_label;
 			});
 	}
 
 	public function query(Invoice $model): QueryBuilder
 	{
-		return $model->newQuery();
+		return $model->newQuery()->with('enterprise');
 	}
 
 	public function html(): HtmlBuilder
 	{
-		return $this->builder()
+		return $this
+			->builder()
 			->setTableId('invoice-table')
 			->columns($this->getColumns())
 			->minifiedAjax()
@@ -76,6 +72,6 @@ class InvoiceDataTable extends DataTable
 
 	protected function filename(): string
 	{
-		return 'Invoice_'.date('YmdHis');
+		return 'Invoice_' . date('YmdHis');
 	}
 }

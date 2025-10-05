@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Traits\ClearsActivityLog;
 use Illuminate\Database\Seeder;
-use Spatie\Activitylog\Models\Activity;
 
 class DatabaseSeeder extends Seeder
 {
@@ -12,55 +11,85 @@ class DatabaseSeeder extends Seeder
 
 	/**
 	 * Seed the application's database.
+	 *
+	 * HUMANO INSTALLER - Core System Setup
+	 * This seeder installs ONLY the essential components needed to run the system.
+	 * Additional features and demo data should be installed via packages or optional seeders.
 	 */
 	public function run(): void
 	{
+		$this->command->info('🚀 HUMANO Installer - Starting Core System Setup...');
+
+		// ============================================
+		// PHASE 1: System Foundation
+		// ============================================
+		$this->command->info('');
+		$this->command->info('📦 Phase 1: System Foundation');
 		$this->call([
-			CurrencySeeder::class,
-			MessageTypeSeeder::class,
-			PageSeeder::class,
-			RolesAndPermissionsSeeder::class,
-			PolicySeeder::class,
-			CountrySeeder::class,
-			LanguageSeeder::class,
-			SourceSeeder::class,
-			UserSeeder::class,
-			PaymentTypeSeeder::class,
-			EnterpriseTaxStatusTypeSeeder::class,
-			InvoiceTypeSeeder::class,
-			ProjectStatusSeeder::class,
-			EnterpriseTypeSeeder::class,
-			EnterpriseStatusSeeder::class,
-			EnterpriseDepartmentSeeder::class,
-			ContactStatusSeeder::class,
-			ContactSentimentSeeder::class,
-			ContactValorationSeeder::class,
-			SoftwareSeeder::class,
-			TopicsSeeder::class,
-			FareTypesSeeder::class,
-			FaresSeeder::class,
-			UnitsSeeder::class,
-			FareUnitSeeder::class,
-			ContactSkillsSeeder::class,
-			List60StatusesSeeder::class,
-
-			// Module and category seeders (must run first to create modules before team-specific seeders)
-			ModuleSeeder::class,
-			CategorySeeder::class,
-
-			LanguageVariantSeeder::class, // Language variants for Team 1
-			CollaboratorsSeeder::class, // Demo collaborators for Team 1
-			EmployeeSeeder::class, // Demo employees for Team 1
-			TeamDemoSeeder::class, // Demo data for Team 1 (clients, projects, fares, software, certifications, experience)
-			ModuleCategorySeeder::class,
-			CertificationsSeeder::class,
-			StylebooksSeeder::class,
-			NotificationTypesSeeder::class,
-			NotificationSeeder::class,
+			RolesAndPermissionsSeeder::class,  // Roles básicos (admin, user, developer)
+			ModuleSeeder::class,  // Módulos disponibles del sistema
+			UserSeeder::class,  // Usuario admin inicial
+			TaskStatusSeeder::class,  // Estados de tareas (TO_DO, IN_PROGRESS, etc)
 		]);
+
+		// ============================================
+		// PHASE 2: Base Data (Required for modules to work)
+		// ============================================
+		$this->command->info('');
+		$this->command->info('📊 Phase 2: Base System Data');
+		$this->call([
+			CurrencySeeder::class,  // Monedas (EUR, USD, etc)
+			CountrySeeder::class,  // Países
+			LanguageSeeder::class,  // Idiomas base
+			PaymentTypeSeeder::class,  // Tipos de pago
+			InvoiceTypeSeeder::class,  // Tipos de factura
+			EnterpriseTaxStatusTypeSeeder::class,  // Estados fiscales
+			EnterpriseTypeSeeder::class,  // Tipos de empresa
+			EnterpriseStatusSeeder::class,  // Estados de empresa
+			EnterpriseDepartmentSeeder::class,  // Departamentos
+			ContactStatusSeeder::class,  // Estados de contacto
+			ContactSentimentSeeder::class,  // Sentimientos
+			ContactValorationSeeder::class,  // Valoraciones
+			ProjectStatusSeeder::class,  // Estados de proyecto
+			UnitsSeeder::class,  // Unidades (palabras, minutos, etc)
+			FareTypesSeeder::class,  // Tipos de tarifa
+			CategorySeeder::class,  // Categorías base
+		]);
+
+		// ============================================
+		// PHASE 3: Demo Data (Optional - for testing/demos)
+		// Uncomment to create complete demo ecosystem with:
+		// - Demo Team with users
+		// - Clients, Projects, Services
+		// - Language variants, Collaborators
+		// - Invoices, Payments, Products
+		// - Templates, Messages, Task boards
+		// ============================================
+		// $this->command->info('');
+		// $this->command->info('🎭 Phase 3: Demo Data & Ecosystem');
+		// $this->call([
+		//     TeamDemoSeeder::class,
+		// ]);
+
+		// ============================================
+		// PHASE 3: Countries & Languages (Optional - can be added later)
+		// ============================================
+		// $this->command->info('');
+		// $this->command->info('🌍 Phase 3: Countries & Languages');
+		// $this->call([
+		//     CountrySeeder::class,
+		//     LanguageSeeder::class,
+		// ]);
 
 		// Clear activity log entries generated during seeding
 		$this->clearAllActivities();
+
+		$this->command->info('');
+		$this->command->info('✅ HUMANO Core System installed successfully!');
+		$this->command->info('');
+		$this->command->info('📝 Next steps:');
+		$this->command->info('   1. Run specific module seeders as needed');
+		$this->command->info('   2. Install packages via: php artisan module:install <module-key>');
+		$this->command->info('   3. Create your team and enable modules from the UI');
 	}
 }
-// Test comment
