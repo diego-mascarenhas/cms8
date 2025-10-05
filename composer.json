@@ -24,7 +24,7 @@
     "idoneo/humano-infrastructure": "^0.1 || dev-main",
     "idoneo/humano-mailbox": "^0.1.2 || dev-main",
     "idoneo/humano-mailer": "^0.1 || dev-main",
-    "idoneo/humano-tickets": "^0.1.1 || dev-main",
+    "idoneo/humano-tickets": "^0.1.2 || dev-main",
     "idoneo/humano-version-control": "^0.1 || dev-main",
     "jd-dotlogics/laravel-grapesjs": "^3.4",
     "laravel/cashier": "^15.4",
