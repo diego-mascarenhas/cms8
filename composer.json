@@ -22,7 +22,7 @@
     "idoneo/humano-chat": "^0.1.1 || dev-main",
     "idoneo/humano-ecommerce": "^0.1 || dev-main",
     "idoneo/humano-infrastructure": "^0.1 || dev-main",
-    "idoneo/humano-mailbox": "^0.1.1 || dev-main",
+    "idoneo/humano-mailbox": "^0.1.2 || dev-main",
     "idoneo/humano-mailer": "^0.1 || dev-main",
     "idoneo/humano-tickets": "^0.1.1 || dev-main",
     "idoneo/humano-version-control": "^0.1 || dev-main",
