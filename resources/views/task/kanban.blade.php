@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('Tasks') . ' - Kanban')
+@section('title', __('Tasks'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/jkanban/jkanban.css')}}" />
@@ -35,16 +35,16 @@
     <!-- Header -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">{{ __('Tasks') }} - {{ __('Kanban Board') }}</h4>
-            <p class="text-muted">{{ __('Manage tasks visually') }}</p>
+            <h4 class="mb-1 mt-3">Tareas</h4>
+            <p class="text-muted">Gestiona las tareas de forma visual</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3 mt-3 mt-md-0">
             <button type="button" class="btn btn-primary kanban-add-board-btn">
-                <i class="ti ti-plus me-1"></i>{{ __('Add Board') }}
+                <i class="ti ti-plus me-1"></i>Añadir tablero
             </button>
-            <button type="button" class="btn btn-label-secondary" id="view-list-btn">
-                <i class="ti ti-list me-1"></i>{{ __('List View') }}
-            </button>
+            <a href="{{ route('task.index') }}" class="btn btn-label-secondary waves-effect" id="view-list-btn">
+                <i class="ti ti-list me-1"></i>Vista de lista
+            </a>
         </div>
     </div>
 
@@ -56,11 +56,11 @@
     <!-- Add New Board (template original) -->
     <form class="kanban-add-new-board d-none">
         <div class="mb-3">
-            <input type="text" class="form-control kanban-add-board-input d-none" placeholder="{{ __('Board Title') }}">
+            <input type="text" class="form-control kanban-add-board-input d-none" placeholder="Título del tablero">
         </div>
         <div class="mb-3">
-            <button type="submit" class="btn btn-primary me-2 waves-effect waves-light">{{ __('Add') }}</button>
-            <button type="button" class="btn btn-label-secondary kanban-add-board-cancel-btn waves-effect waves-light">{{ __('Cancel') }}</button>
+            <button type="submit" class="btn btn-primary me-2 waves-effect waves-light">Añadir</button>
+            <button type="button" class="btn btn-label-secondary kanban-add-board-cancel-btn waves-effect waves-light">Cancelar</button>
         </div>
     </form>
 
@@ -72,27 +72,27 @@
         </div>
         <div class="offcanvas-body">
             <div class="mb-3">
-                <label class="form-label" for="title">{{ __('Title') }}</label>
-                <input type="text" id="title" class="form-control" placeholder="{{ __('Task title') }}" />
+                <label class="form-label" for="title">Título</label>
+                <input type="text" id="title" class="form-control" placeholder="Título de la tarea" />
             </div>
             <div class="mb-3">
-                <label class="form-label" for="due-date">{{ __('Due Date') }}</label>
-                <input type="text" id="due-date" class="form-control" placeholder="{{ __('Select date') }}" />
+                <label class="form-label" for="due-date">Fecha límite</label>
+                <input type="text" id="due-date" class="form-control" placeholder="Selecciona una fecha" />
             </div>
             <div class="mb-3">
-                <label class="form-label">{{ __('Labels') }}</label>
+                <label class="form-label">Etiquetas</label>
                 <select class="select2 form-select" multiple>
-                    <option data-color="bg-label-primary">{{ __('New') }}</option>
-                    <option data-color="bg-label-success">{{ __('In Progress') }}</option>
-                    <option data-color="bg-label-danger">{{ __('Blocked') }}</option>
+                    <option data-color="bg-label-primary">Nuevo</option>
+                    <option data-color="bg-label-success">En progreso</option>
+                    <option data-color="bg-label-danger">Bloqueado</option>
                 </select>
             </div>
             <div class="mb-3">
-                <label class="form-label">{{ __('Assigned') }}</label>
+                <label class="form-label">Asignados</label>
                 <div class="assigned d-flex align-items-center"></div>
             </div>
             <div class="mb-3">
-                <label class="form-label">{{ __('Comments') }}</label>
+                <label class="form-label">Comentarios</label>
                 <div class="comment-toolbar border-bottom pb-1"></div>
                 <div class="comment-editor"></div>
             </div>

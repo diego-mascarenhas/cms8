@@ -62,7 +62,7 @@
     },
     {
       "url": "kanban",
-      "name": "Kanban",
+      "name": "Tasks",
       "icon": "menu-icon tf-icons ti ti-layout-kanban",
       "slug": "kanban",
       "permission": "task.list",
