@@ -236,12 +236,19 @@ class ModuleSeeder extends Seeder
 			'order' => 3,
 		],
 		// SUPPORT & TICKETS
+		'mailbox' => [
+			'name' => 'Mailbox',
+			'icon' => 'mail',
+			'description' => 'Team mailbox management',
+			'group' => 'support',
+			'order' => 1,
+		],
 		'tickets' => [
 			'name' => 'Tickets',
 			'icon' => 'ticket',
 			'description' => 'Support ticket management module',
 			'group' => 'support',
-			'order' => 1,
+			'order' => 2,
 		],
 		// GENERAL MANAGEMENT
 		'enterprises' => [

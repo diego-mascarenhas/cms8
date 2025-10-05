@@ -140,6 +140,12 @@
             <!--/ Style Switcher -->
         @endif
 
+        <!-- Notification -->
+        @if ($configData['showNotifications'] == true)
+            <x-task-notifications />
+        @endif
+        <!--/ Notification -->
+
         <!-- Quick links  -->
         @if ($configData['showQuickAccess'] == true || Auth::user()->hasRole('developer'))
             <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
@@ -195,12 +201,6 @@
             </li>
         @endif
         <!-- Quick links -->
-
-        <!-- Notification -->
-        @if ($configData['showNotifications'] == true)
-            <x-task-notifications />
-        @endif
-        <!--/ Notification -->
 
         <!-- Mailbox -->
         @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('mailbox'))
