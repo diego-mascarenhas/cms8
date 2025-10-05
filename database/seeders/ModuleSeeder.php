@@ -178,7 +178,7 @@ class ModuleSeeder extends Seeder
 		],
 		'chat' => [
 			'name' => 'Chat',
-			'icon' => 'message-circle',
+			'icon' => 'lifebuoy',
 			'description' => 'Live chat module',
 			'group' => 'support',
 			'order' => 3,

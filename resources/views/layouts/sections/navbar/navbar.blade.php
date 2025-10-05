@@ -206,8 +206,7 @@
         @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('mailbox'))
         @can('mailbox.list')
         <li class="nav-item me-2 me-xl-0">
-            <a class="nav-link" href="{{ url('mailbox/list') }}"
-               data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Mailbox') }}">
+            <a class="nav-link" href="{{ url('mailbox') }}">
                 <i class="ti ti-mail ti-md"></i>
             </a>
         </li>
@@ -218,21 +217,8 @@
         @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('tickets'))
         @can('ticket.list')
         <li class="nav-item me-2 me-xl-0">
-            <a class="nav-link" href="{{ url('tickets') }}"
-               data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Tickets') }}">
+            <a class="nav-link" href="{{ url('tickets') }}">
                 <i class="ti ti-ticket ti-md"></i>
-            </a>
-        </li>
-        @endcan
-        @endif
-
-        <!-- Chat -->
-        @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('chat'))
-        @can('chat.list')
-        <li class="nav-item me-2 me-xl-0">
-            <a class="nav-link" href="{{ route('chat.index') }}"
-               data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Chat') }}">
-                <i class="ti ti-message-chatbot ti-md"></i>
             </a>
         </li>
         @endcan
