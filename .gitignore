@@ -449,3 +449,4 @@ backup-original-controllers/
 *.old
 *.tmp
 *.temp
+composer.local.json

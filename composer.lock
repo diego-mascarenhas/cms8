@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0a45372a4b0e3557c2743be8d6d9a2b4",
+    "content-hash": "8bf5beffd84fea9cc9e7dbd09fc676a2",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -2141,117 +2141,63 @@
             "time": "2025-08-22T14:27:06+00:00"
         },
         {
-            "name": "idoneo/emailer",
-            "version": "v1.0.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/diego-mascarenhas/emailer.git",
-                "reference": "053c81fdef4fb37f4f1d1f44bf0bce2a603702d6"
-            },
+            "name": "idoneo/humano-academy",
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/diego-mascarenhas/emailer/zipball/053c81fdef4fb37f4f1d1f44bf0bce2a603702d6",
-                "reference": "053c81fdef4fb37f4f1d1f44bf0bce2a603702d6",
-                "shasum": ""
+                "type": "path",
+                "url": "../packages/humano-academy",
+                "reference": "331f6c7ec8950a1aac066c94a2dadbf375dcfe63"
             },
             "require": {
-                "illuminate/contracts": "^10.0||^11.0||^12.0",
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
                 "php": "^8.1",
-                "spatie/laravel-package-tools": "^1.16",
-                "tijsverkoyen/css-to-inline-styles": "^2.2"
-            },
-            "require-dev": {
-                "larastan/larastan": "^3.0",
-                "laravel/pint": "^1.14",
-                "nunomaduro/collision": "^8.8",
-                "orchestra/testbench": "^10.0.0||^9.0.0",
-                "pestphp/pest": "^4.0",
-                "pestphp/pest-plugin-arch": "^4.0",
-                "pestphp/pest-plugin-laravel": "^4.0",
-                "phpstan/extension-installer": "^1.4",
-                "phpstan/phpstan-deprecation-rules": "^2.0",
-                "phpstan/phpstan-phpunit": "^2.0",
-                "spatie/laravel-ray": "^1.35"
-            },
-            "suggest": {
-                "mailgun/mailgun-php": "Required for Mailgun email provider support",
-                "sendgrid/sendgrid": "Required for SendGrid email provider support"
+                "spatie/laravel-package-tools": "^1.16"
             },
             "type": "library",
             "extra": {
                 "laravel": {
-                    "aliases": {
-                        "Emailer": "idoneo\\Emailer\\Facades\\Emailer"
-                    },
                     "providers": [
-                        "idoneo\\Emailer\\EmailerServiceProvider"
+                        "Idoneo\\HumanoAcademy\\HumanoAcademyServiceProvider"
                     ]
                 }
             },
             "autoload": {
                 "psr-4": {
-                    "idoneo\\Emailer\\": "src/",
-                    "idoneo\\Emailer\\Database\\Factories\\": "database/factories/"
+                    "Idoneo\\HumanoAcademy\\": "src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
             "license": [
-                "MIT"
+                "AGPL-3.0"
             ],
-            "authors": [
-                {
-                    "name": "idoneo",
-                    "email": "diego.mascarenhas@icloud.com",
-                    "role": "Developer"
-                }
-            ],
-            "description": "Professional email marketing package with maximum deliverability.",
-            "homepage": "https://github.com/diego-mascarenhas/emailer",
-            "keywords": [
-                "email-campaigns",
-                "email-marketing",
-                "email-tracking",
-                "emailer",
-                "idoneo",
-                "laravel",
-                "mailgun",
-                "newsletter",
-                "sendgrid",
-                "smtp"
-            ],
-            "support": {
-                "issues": "https://github.com/diego-mascarenhas/emailer/issues",
-                "source": "https://github.com/diego-mascarenhas/emailer/tree/v1.0.0"
-            },
-            "funding": [
-                {
-                    "url": "https://github.com/idoneo",
-                    "type": "github"
-                }
-            ],
-            "time": "2025-08-28T10:30:51+00:00"
+            "description": "Academy module for learning content and courses",
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "idoneo/humano-access-control",
-            "version": "dev-dev",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "packages/idoneo/humano-access-control",
-                "reference": "bf5a3eea60ef342e2b552a331787aeabe1196c56"
+                "url": "../packages/humano-access-control",
+                "reference": "0c0caa15295f7c39dede1f5b425612b1f704eb3c"
             },
             "require": {
-                "illuminate/contracts": "^10.0 || ^11.0",
+                "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
                 "php": "^8.1",
-                "spatie/laravel-package-tools": "^1.16"
+                "spatie/laravel-package-tools": "^1.16",
+                "spatie/laravel-permission": "^6.0",
+                "yajra/laravel-datatables-oracle": "^10.11 || ^11.0 || ^12.0"
             },
             "require-dev": {
                 "larastan/larastan": "^3.0",
                 "laravel/pint": "^1.14",
-                "nunomaduro/collision": "^8.8",
-                "orchestra/testbench": "^10.0.0||^9.0.0",
-                "pestphp/pest": "^4.0",
-                "pestphp/pest-plugin-arch": "^4.0",
-                "pestphp/pest-plugin-laravel": "^4.0",
+                "nunomaduro/collision": "^7.0 || ^8.0 || ^9.0",
+                "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
+                "pestphp/pest": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-arch": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^2.0 || ^3.0 || ^4.0",
                 "phpstan/extension-installer": "^1.4",
                 "phpstan/phpstan-deprecation-rules": "^2.0",
                 "phpstan/phpstan-phpunit": "^2.0",
@@ -2277,7 +2223,8 @@
             "autoload-dev": {
                 "psr-4": {
                     "Idoneo\\HumanoAccessControl\\Tests\\": "tests/",
-                    "Workbench\\App\\": "workbench/app/"
+                    "Workbench\\App\\": "workbench/app/",
+                    "App\\": "tests/Fixtures/App/"
                 }
             },
             "scripts": {
@@ -2316,6 +2263,467 @@
                 "humano-access-control",
                 "idoneo",
                 "laravel"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "idoneo/humano-billing",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../packages/humano-billing",
+                "reference": "3974907b320e500bf0b53d5051e25809bf74efac"
+            },
+            "require": {
+                "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+                "laravel/cashier": "^15.0",
+                "php": "^8.1",
+                "spatie/laravel-activitylog": "^4.10",
+                "spatie/laravel-package-tools": "^1.16",
+                "spatie/laravel-permission": "^6.0",
+                "yajra/laravel-datatables-oracle": "^10.11 || ^11.0 || ^12.0"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.14",
+                "nunomaduro/collision": "^7.0 || ^8.0 || ^9.0",
+                "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
+                "pestphp/pest": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-arch": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^2.0 || ^3.0 || ^4.0",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "spatie/laravel-ray": "^1.35"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Idoneo\\HumanoBilling\\HumanoBillingServiceProvider"
+                    ],
+                    "aliases": {
+                        "HumanoBilling": "Idoneo\\HumanoBilling\\Facades\\HumanoBilling"
+                    }
+                },
+                "branch-alias": {
+                    "dev-main": "0.1.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Idoneo\\HumanoBilling\\": "src/",
+                    "Idoneo\\HumanoBilling\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Idoneo\\HumanoBilling\\Tests\\": "tests/",
+                    "Workbench\\App\\": "workbench/app/",
+                    "App\\": "tests/Fixtures/App/"
+                }
+            },
+            "scripts": {
+                "post-autoload-dump": [
+                    "@composer run prepare"
+                ],
+                "prepare": [
+                    "@php vendor/bin/testbench package:discover --ansi"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "vendor/bin/pest"
+                ],
+                "test-coverage": [
+                    "vendor/bin/pest --coverage"
+                ],
+                "format": [
+                    "vendor/bin/pint"
+                ]
+            },
+            "license": [
+                "AGPL-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Diego Adrián Mascarenhas Goytía",
+                    "email": "diego.mascarenhas@icloud.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Comprehensive billing and payment management system for Humano applications",
+            "homepage": "https://github.com/diego-mascarenhas/humano-billing",
+            "keywords": [
+                "billing",
+                "humano-billing",
+                "idoneo",
+                "invoicing",
+                "laravel",
+                "payments"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "idoneo/humano-chat",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../packages/humano-chat",
+                "reference": "a04f30dd7df93a8df472da9a212dbd1d761511d3"
+            },
+            "require": {
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+                "php": "^8.1",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Idoneo\\HumanoChat\\HumanoChatServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Idoneo\\HumanoChat\\": "src/"
+                }
+            },
+            "license": [
+                "AGPL-3.0"
+            ],
+            "description": "Team chat with contact linking, threading and assignments",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "idoneo/humano-ecommerce",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../packages/humano-ecommerce",
+                "reference": "9e0629313323375ec3480fa23fc1d839a1d33d54"
+            },
+            "require": {
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+                "php": "^8.1",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Idoneo\\HumanoEcommerce\\HumanoEcommerceServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Idoneo\\HumanoEcommerce\\": "src/"
+                }
+            },
+            "license": [
+                "AGPL-3.0"
+            ],
+            "description": "E-commerce module (stores, products, orders)",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "idoneo/humano-infrastructure",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../packages/humano-infrastructure",
+                "reference": "35fb901783860a7745a8a74a99ccb116c4652c64"
+            },
+            "require": {
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+                "php": "^8.1",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Idoneo\\HumanoInfrastructure\\HumanoInfrastructureServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Idoneo\\HumanoInfrastructure\\": "src/"
+                }
+            },
+            "license": [
+                "AGPL-3.0"
+            ],
+            "description": "Infrastructure management module (hosting, servers, domains)",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "idoneo/humano-mailbox",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../packages/humano-mailbox",
+                "reference": "79eff6677b58db4cf30588d3cdb932dc61c8cd6a"
+            },
+            "require": {
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+                "php": "^8.1",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Idoneo\\HumanoMailbox\\HumanoMailboxServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Idoneo\\HumanoMailbox\\": "src/"
+                }
+            },
+            "license": [
+                "AGPL-3.0"
+            ],
+            "description": "Team mailbox with contact linking, threading and assignments",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "idoneo/humano-mailer",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../packages/humano-mailer",
+                "reference": "19a8e1bf2dd670f38c0e4b47c0f8e2a4e9bd3bd3"
+            },
+            "require": {
+                "guzzlehttp/guzzle": "^7.0",
+                "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+                "php": "^8.1|^8.2|^8.3|^8.4",
+                "spatie/laravel-package-tools": "^1.13",
+                "tijsverkoyen/css-to-inline-styles": "^2.2",
+                "yajra/laravel-datatables-oracle": "^10.11 || ^11.0"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.0",
+                "nunomaduro/collision": "^7.8 || ^8.0",
+                "orchestra/testbench": "^8.8 || ^9.0",
+                "pestphp/pest": "^2.20",
+                "pestphp/pest-plugin-arch": "^2.5",
+                "pestphp/pest-plugin-laravel": "^2.0",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan-deprecation-rules": "^1.0",
+                "phpstan/phpstan-phpunit": "^1.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Idoneo\\HumanoMailer\\HumanoMailerServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Idoneo\\HumanoMailer\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Idoneo\\HumanoMailer\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "post-autoload-dump": [
+                    "@php ./vendor/bin/testbench package:discover --ansi"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "vendor/bin/pest"
+                ],
+                "test-coverage": [
+                    "vendor/bin/pest --coverage"
+                ],
+                "format": [
+                    "vendor/bin/pint"
+                ]
+            },
+            "license": [
+                "AGPL-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Diego Mascarenhas",
+                    "email": "diego@idoneo.es",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Email marketing and messaging system for Humano applications",
+            "homepage": "https://github.com/diego-mascarenhas/humano-mailer",
+            "keywords": [
+                "campaigns",
+                "email",
+                "humano",
+                "idoneo",
+                "laravel",
+                "mailer",
+                "messaging",
+                "newsletter"
+            ],
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "idoneo/humano-tickets",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../packages/humano-tickets",
+                "reference": "3b8b1ccc006ec7689940da66c0153369f0e2705a"
+            },
+            "require": {
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+                "php": "^8.1",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Idoneo\\HumanoTickets\\HumanoTicketsServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Idoneo\\HumanoTickets\\": "src/"
+                }
+            },
+            "license": [
+                "AGPL-3.0"
+            ],
+            "description": "Support tickets management module",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "idoneo/humano-version-control",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../packages/humano-version-control",
+                "reference": "31ab3bb341d1804c39110420b52f70c37803341e"
+            },
+            "require": {
+                "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
+                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+                "php": "^8.1",
+                "spatie/laravel-activitylog": "^4.10",
+                "spatie/laravel-package-tools": "^1.16",
+                "spatie/laravel-permission": "^5.10 || ^6.0",
+                "yajra/laravel-datatables-oracle": "^10.11 || ^11.0 || ^12.0"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/boost": "^1.3",
+                "laravel/pint": "^1.14",
+                "nunomaduro/collision": "^7.0 || ^8.0 || ^9.0",
+                "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
+                "pestphp/pest": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-arch": "^2.0 || ^3.0 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^2.0 || ^3.0 || ^4.0",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "spatie/laravel-ray": "^1.35"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Idoneo\\HumanoVersionControl\\HumanoVersionControlServiceProvider"
+                    ],
+                    "aliases": {
+                        "HumanoVersionControl": "Idoneo\\HumanoVersionControl\\Facades\\HumanoVersionControl"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Idoneo\\HumanoVersionControl\\": "src/",
+                    "Idoneo\\HumanoVersionControl\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Idoneo\\HumanoVersionControl\\Tests\\": "tests/",
+                    "Workbench\\App\\": "workbench/app/",
+                    "App\\": "tests/Fixtures/App/"
+                }
+            },
+            "scripts": {
+                "post-autoload-dump": [
+                    "@composer run prepare"
+                ],
+                "prepare": [
+                    "@php vendor/bin/testbench package:discover --ansi"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "vendor/bin/pest"
+                ],
+                "test-coverage": [
+                    "vendor/bin/pest --coverage"
+                ],
+                "format": [
+                    "vendor/bin/pint"
+                ]
+            },
+            "license": [
+                "AGPL-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Diego Adrián Mascarenhas Goytía",
+                    "email": "diego.mascarenhas@icloud.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Advanced version control and audit system with restoration capabilities",
+            "homepage": "https://github.com/diego-mascarenhas/humano-version-control",
+            "keywords": [
+                "activity-log",
+                "audit",
+                "humano-version-control",
+                "idoneo",
+                "laravel",
+                "restoration",
+                "version-control"
             ],
             "transport-options": {
                 "relative": true
@@ -5238,16 +5646,16 @@
         },
         {
             "name": "phpoffice/phpspreadsheet",
-            "version": "1.29.12",
+            "version": "1.30.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPOffice/PhpSpreadsheet.git",
-                "reference": "7c06eed662cce7ecab88f6f9f7626b443f5285df"
+                "reference": "2f39286e0136673778b7a142b3f0d141e43d1714"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPOffice/PhpSpreadsheet/zipball/7c06eed662cce7ecab88f6f9f7626b443f5285df",
-                "reference": "7c06eed662cce7ecab88f6f9f7626b443f5285df",
+                "url": "https://api.github.com/repos/PHPOffice/PhpSpreadsheet/zipball/2f39286e0136673778b7a142b3f0d141e43d1714",
+                "reference": "2f39286e0136673778b7a142b3f0d141e43d1714",
                 "shasum": ""
             },
             "require": {
@@ -5338,9 +5746,9 @@
             ],
             "support": {
                 "issues": "https://github.com/PHPOffice/PhpSpreadsheet/issues",
-                "source": "https://github.com/PHPOffice/PhpSpreadsheet/tree/1.29.12"
+                "source": "https://github.com/PHPOffice/PhpSpreadsheet/tree/1.30.0"
             },
-            "time": "2025-07-23T04:40:30+00:00"
+            "time": "2025-08-10T06:28:02+00:00"
         },
         {
             "name": "phpoption/phpoption",
@@ -15159,12 +15567,77 @@
                 }
             ],
             "time": "2024-03-03T12:36:25+00:00"
+        },
+        {
+            "name": "wikimedia/composer-merge-plugin",
+            "version": "v2.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wikimedia/composer-merge-plugin.git",
+                "reference": "a03d426c8e9fb2c9c569d9deeb31a083292788bc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wikimedia/composer-merge-plugin/zipball/a03d426c8e9fb2c9c569d9deeb31a083292788bc",
+                "reference": "a03d426c8e9fb2c9c569d9deeb31a083292788bc",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^1.1||^2.0",
+                "php": ">=7.2.0"
+            },
+            "require-dev": {
+                "composer/composer": "^1.1||^2.0",
+                "ext-json": "*",
+                "mediawiki/mediawiki-phan-config": "0.11.1",
+                "php-parallel-lint/php-parallel-lint": "~1.3.1",
+                "phpspec/prophecy": "~1.15.0",
+                "phpunit/phpunit": "^8.5||^9.0",
+                "squizlabs/php_codesniffer": "~3.7.1"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Wikimedia\\Composer\\Merge\\V2\\MergePlugin",
+                "branch-alias": {
+                    "dev-master": "2.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Wikimedia\\Composer\\Merge\\V2\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Bryan Davis",
+                    "email": "bd808@wikimedia.org"
+                }
+            ],
+            "description": "Composer plugin to merge multiple composer.json files",
+            "support": {
+                "issues": "https://github.com/wikimedia/composer-merge-plugin/issues",
+                "source": "https://github.com/wikimedia/composer-merge-plugin/tree/v2.1.0"
+            },
+            "time": "2023-04-15T19:07:00+00:00"
         }
     ],
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
+        "idoneo/humano-academy": 20,
         "idoneo/humano-access-control": 20,
+        "idoneo/humano-billing": 20,
+        "idoneo/humano-chat": 20,
+        "idoneo/humano-ecommerce": 20,
+        "idoneo/humano-infrastructure": 20,
+        "idoneo/humano-mailbox": 20,
+        "idoneo/humano-mailer": 20,
+        "idoneo/humano-tickets": 20,
+        "idoneo/humano-version-control": 20,
         "pixinvent/vuexy-laravel-bootstrap-jetstream": 20
     },
     "prefer-stable": true,

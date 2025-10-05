@@ -16,7 +16,16 @@
     "doctrine/dbal": "^3.5.1",
     "fakerphp/faker": "^1.23",
     "guzzlehttp/guzzle": "^7.9",
-    "idoneo/humano-access-control": "^0.0.3",
+    "idoneo/humano-academy": "dev-main",
+    "idoneo/humano-access-control": "dev-main",
+    "idoneo/humano-billing": "dev-main",
+    "idoneo/humano-chat": "dev-main",
+    "idoneo/humano-ecommerce": "dev-main",
+    "idoneo/humano-infrastructure": "dev-main",
+    "idoneo/humano-mailbox": "dev-main",
+    "idoneo/humano-mailer": "dev-main",
+    "idoneo/humano-tickets": "dev-main",
+    "idoneo/humano-version-control": "dev-main",
     "jd-dotlogics/laravel-grapesjs": "^3.4",
     "laravel/cashier": "^15.4",
     "laravel/framework": "^10.23",
@@ -72,10 +81,10 @@
     }
   },
   "scripts": {
-            "post-autoload-dump": [
-            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-            "@php artisan package:discover --ansi"
-        ],
+    "post-autoload-dump": [
+      "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+      "@php artisan package:discover --ansi"
+    ],
     "post-update-cmd": [
       "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
     ],
@@ -111,6 +120,5 @@
   },
   "minimum-stability": "dev",
   "prefer-stable": true,
-  "repositories": {
-  }
+  "repositories": {}
 }
