@@ -14,12 +14,6 @@
 @section('page-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/css/pages/app-kanban.css')}}" />
 <style>
-.board-selector-wrapper {
-    margin-bottom: 1.5rem;
-}
-.board-selector {
-    max-width: 300px;
-}
 </style>
 @endsection
 
@@ -38,26 +32,10 @@
 
 (function() {
     let kanbanSidebar, kanban;
-    const boards = @json($boards);
-    const currentBoardId = {{ $board->id }};
     const statuses = @json($statuses);
     const tasksByStatus = @json($tasksByStatus);
 
-    // Initialize Board Selector
-    if ($('#board-selector').length) {
-        $('#board-selector').select2({
-            placeholder: '{{ __("Select Board") }}',
-            dropdownAutoWidth: true,
-            width: '100%'
-        });
-
-        $('#board-selector').on('change', function() {
-            const boardId = $(this).val();
-            if (boardId) {
-                window.location.href = '{{ route("task.index") }}?view=kanban&board_id=' + boardId;
-            }
-        });
-    }
+    // Single board view (no selector)
 
     // Initialize Kanban
     if (typeof jKanban !== 'undefined') {
@@ -150,7 +128,7 @@
     // Add Task Button
     $('#add-task-btn').on('click', function(e) {
         e.preventDefault();
-        window.location.href = '{{ route("task.create") }}?board_id=' + currentBoardId;
+        window.location.href = '{{ route('task.create') }}';
     });
 })();
 </script>
@@ -174,17 +152,7 @@
         </div>
     </div>
 
-    <!-- Board Selector -->
-    <div class="board-selector-wrapper">
-        <label class="form-label">{{ __('Board') }}:</label>
-        <select class="form-select board-selector" id="board-selector">
-            @foreach($boards as $boardOption)
-                <option value="{{ $boardOption->id }}" {{ $boardOption->id == $board->id ? 'selected' : '' }}>
-                    {{ $boardOption->name }}{{ $boardOption->is_default ? ' ⭐' : '' }}
-                </option>
-            @endforeach
-        </select>
-    </div>
+    
 
     <!-- Kanban Wrapper -->
     <div class="kanban-wrapper"></div>
