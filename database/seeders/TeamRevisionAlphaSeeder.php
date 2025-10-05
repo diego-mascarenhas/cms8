@@ -88,9 +88,20 @@ class TeamRevisionAlphaSeeder extends Seeder
 		$revisionUser = User::where('email', 'diego.mascarenhas@icloud.com')->first();
 
 		if (!$revisionUser) {
-			$this->command->error('Revision user not found. Please run UserSeeder first.');
-
-			return null;
+			$this->command->warn('⚠️  Revision user not found. Creating it now...');
+			
+			// Create the user if it doesn't exist
+			$revisionUser = User::create([
+				'name' => 'Diego Mascarenhas',
+				'email' => 'diego.mascarenhas@icloud.com',
+				'password' => Hash::make('password'),
+				'email_verified_at' => now(),
+			]);
+			
+			// Assign admin role
+			$revisionUser->assignRole('admin');
+			
+			$this->command->info("✅ Created Revision user: {$revisionUser->email}");
 		}
 
 		$team = Team::updateOrCreate(
