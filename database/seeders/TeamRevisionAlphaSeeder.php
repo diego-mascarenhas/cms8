@@ -677,6 +677,9 @@ class TeamRevisionAlphaSeeder extends Seeder
 	{
 		$this->command->info('📧 Creating demo message for Staff category...');
 
+		// Ensure message types exist
+		$this->ensureMessageTypesExist();
+
 		// Get the professional template we just created
 		$professionalTemplate = Template::where('name', 'Email Marketing fácil, rápido y seguro')
 			->where('team_id', $this->teamId)
@@ -758,5 +761,25 @@ class TeamRevisionAlphaSeeder extends Seeder
 		$this->command->info('   Notification Settings:');
 		$this->command->info('   - From Name: REVISION ALPHA');
 		$this->command->info('   - From Email: info@revisionalpha.com');
+	}
+
+	/**
+	 * Ensure message types exist in the database
+	 */
+	private function ensureMessageTypesExist(): void
+	{
+		$messageTypes = [
+			['id' => 1, 'name' => 'Mailer', 'status' => 1],
+			['id' => 2, 'name' => 'WhatsApp', 'status' => 1],
+		];
+
+		foreach ($messageTypes as $type) {
+			DB::table('message_type')->updateOrInsert(
+				['id' => $type['id']],
+				$type
+			);
+		}
+
+		$this->command->info('✅ Message types ensured');
 	}
 }
