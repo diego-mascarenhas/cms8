@@ -44,6 +44,7 @@ use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\StylebookController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\TimeController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
@@ -307,6 +308,17 @@ Route::middleware(['auth'])->group(function () {
 	Route::post('/project/{project}/service', [ProjectController::class, 'storeService'])->name('project.store-service');
 	Route::put('/project/{project}/service/{serviceId}', [ProjectController::class, 'updateService'])->name('project.update-service');
 	Route::delete('/project/{project}/service/{serviceId}', [ProjectController::class, 'deleteService'])->name('project.delete-service');
+
+	// Time Tracking Routes
+	Route::get('/time/list', [TimeController::class, 'index'])->name('time.index');
+	Route::get('/time/create', [TimeController::class, 'create'])->name('time.create');
+	Route::post('/time', [TimeController::class, 'store'])->name('time.store');
+	Route::get('/time/{id}/edit', [TimeController::class, 'edit'])->name('time.edit');
+	Route::put('/time/{id}', [TimeController::class, 'update'])->name('time.update');
+	Route::delete('/time/{id}', [TimeController::class, 'destroy'])->name('time.destroy');
+	Route::post('/time/start', [TimeController::class, 'start'])->name('time.start');
+	Route::post('/time/{id}/stop', [TimeController::class, 'stop'])->name('time.stop');
+	Route::get('/time/running', [TimeController::class, 'running'])->name('time.running');
 
 	// Task Routes
 	Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');

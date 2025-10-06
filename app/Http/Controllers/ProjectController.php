@@ -59,8 +59,7 @@ class ProjectController extends Controller
 			],
 		);
 
-		if (! $request->id)
-		{
+		if (!$request->id) {
 			return redirect()->route('project.show', $project->id)->with('success', 'Proyecto creado exitosamente.');
 		}
 
@@ -86,16 +85,14 @@ class ProjectController extends Controller
 
 		// If we have filter parameters, load collaborators automatically
 		$collaborators = collect();
-		if ($selectedSourceLanguage && $selectedTargetLanguage && $selectedService)
-		{
+		if ($selectedSourceLanguage && $selectedTargetLanguage && $selectedService) {
 			// Build the query for contacts with language variants and fares
 			$query = Contact::with([
 				'valoration',
 				'languageVariants.sourceLanguage',
 				'languageVariants.targetLanguage',
 				'fares.type',
-				'fares' => function ($query)
-				{
+				'fares' => function ($query) {
 					$query->withPivot('price', 'unit_id', 'currency_code', 'source_language_code', 'target_language_code');
 				},
 			]);
@@ -106,16 +103,14 @@ class ProjectController extends Controller
 				->whereHas('fares');  // Only contacts with services/fares
 
 			// Apply language filters - find collaborators with exact language combination
-			$query->whereHas('languageVariants', function ($q) use ($selectedSourceLanguage, $selectedTargetLanguage)
-			{
+			$query->whereHas('languageVariants', function ($q) use ($selectedSourceLanguage, $selectedTargetLanguage) {
 				$q
 					->where('source_language_code', $selectedSourceLanguage)
 					->where('target_language_code', $selectedTargetLanguage);
 			});
 
 			// Apply service filter
-			$query->whereHas('fares', function ($q) use ($selectedService)
-			{
+			$query->whereHas('fares', function ($q) use ($selectedService) {
 				$q->where('fares.id', $selectedService);
 			});
 
@@ -140,8 +135,7 @@ class ProjectController extends Controller
 		$hasDeliveryDateFilter = $request->has('delivery_date') && $request->delivery_date;
 
 		// Return empty if no filter is applied
-		if (! $hasLanguageFilter && ! $hasServiceFilter && ! $hasDaysFilter && ! $hasDeliveryDateFilter)
-		{
+		if (!$hasLanguageFilter && !$hasServiceFilter && !$hasDaysFilter && !$hasDeliveryDateFilter) {
 			return response()->json([
 				'html' => view('project.partials.collaborator-cards', [
 					'collaborators' => collect(),
@@ -160,8 +154,7 @@ class ProjectController extends Controller
 			'languageVariants.sourceLanguage',
 			'languageVariants.targetLanguage',
 			'fares.type',
-			'fares' => function ($query)
-			{
+			'fares' => function ($query) {
 				$query->withPivot('price', 'unit_id', 'currency_code', 'source_language_code', 'target_language_code');
 			},
 		]);
@@ -176,50 +169,39 @@ class ProjectController extends Controller
 		if ($request->has('source_language') &&
 				$request->source_language &&
 				$request->has('target_language') &&
-				$request->target_language)
-		{
+				$request->target_language) {
 			// Both source and target specified - find collaborators that match BOTH criteria
-			$query->whereHas('languageVariants', function ($q) use ($request)
-			{
+			$query->whereHas('languageVariants', function ($q) use ($request) {
 				$q
 					->where('source_language_code', $request->source_language)
 					->where('target_language_code', $request->target_language);
 			});
-		} elseif ($request->has('source_language') && $request->source_language)
-		{
+		} elseif ($request->has('source_language') && $request->source_language) {
 			// Only source language specified - search only in source_language_code
-			$query->whereHas('languageVariants', function ($q) use ($request)
-			{
+			$query->whereHas('languageVariants', function ($q) use ($request) {
 				$q->where('source_language_code', $request->source_language);
 			});
-		} elseif ($request->has('target_language') && $request->target_language)
-		{
+		} elseif ($request->has('target_language') && $request->target_language) {
 			// Only target language specified - search only in target_language_code
-			$query->whereHas('languageVariants', function ($q) use ($request)
-			{
+			$query->whereHas('languageVariants', function ($q) use ($request) {
 				$q->where('target_language_code', $request->target_language);
 			});
 		}
 
 		// Apply service filter
-		if ($request->has('service') && $request->service)
-		{
-			$query->whereHas('fares', function ($q) use ($request)
-			{
+		if ($request->has('service') && $request->service) {
+			$query->whereHas('fares', function ($q) use ($request) {
 				$q->where('fares.id', $request->service);
 			});
 		}
 
 		// Apply availability filter (days and delivery date) - similar to CollaboratorDataTable
-		if (($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date))
-		{
+		if (($request->has('days') && $request->days) && ($request->has('delivery_date') && $request->delivery_date)) {
 			$availableCollaboratorIds = $this->getAvailableCollaboratorIds($request->days, $request->delivery_date);
 
-			if (! empty($availableCollaboratorIds))
-			{
+			if (!empty($availableCollaboratorIds)) {
 				$query->whereIn('id', $availableCollaboratorIds);
-			} else
-			{
+			} else {
 				// If no collaborators are available, return empty result
 				$query->whereRaw('1 = 0');
 			}
@@ -254,8 +236,7 @@ class ProjectController extends Controller
 		$endDate = null;
 
 		// First check if it's a predefined option
-		switch ($deliveryDate)
-		{
+		switch ($deliveryDate) {
 			case 'today':
 				$endDate = now()->format('Y-m-d');
 				break;
@@ -273,42 +254,34 @@ class ProjectController extends Controller
 				break;
 			default:
 				// If it's a custom date, try to parse it
-				try
-				{
+				try {
 					// Handle Spanish date format (d/m/Y) or ISO format (Y-m-d)
-					if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $deliveryDate))
-					{
+					if (preg_match('/^\d{1,2}\/\d{1,2}\/\d{4}$/', $deliveryDate)) {
 						// Spanish format: d/m/Y
 						$endDate = Carbon::createFromFormat('d/m/Y', $deliveryDate)->format('Y-m-d');
-					} else
-					{
+					} else {
 						// ISO format: Y-m-d
 						$endDate = Carbon::parse($deliveryDate)->format('Y-m-d');
 					}
 
 					// Check if delivery date is in the past
-					if (Carbon::parse($endDate)->isPast())
-					{
+					if (Carbon::parse($endDate)->isPast()) {
 						return [];
 					}
-				} catch (\Exception $e)
-				{
+				} catch (\Exception $e) {
 					return [];
 				}
 		}
 
 		// Get all collaborators with their weekly availability and absences
-		$collaborators = Contact::with(['weeklyAvailability', 'absences' => function ($q) use ($startDate, $endDate)
-		{
+		$collaborators = Contact::with(['weeklyAvailability', 'absences' => function ($q) use ($startDate, $endDate) {
 			$q->whereBetween('absence_date', [$startDate, $endDate]);
 		}])->get();
 
-		foreach ($collaborators as $collaborator)
-		{
+		foreach ($collaborators as $collaborator) {
 			$availableDays = $this->calculateAvailableDays($collaborator, $startDate, $endDate);
 
-			if ($availableDays >= $requiredDays)
-			{
+			if ($availableDays >= $requiredDays) {
 				$availableIds[] = $collaborator->id;
 			}
 		}
@@ -324,8 +297,7 @@ class ProjectController extends Controller
 		$weeklyAvailability = $collaborator->weeklyAvailability;
 
 		// If no weekly availability is set, assume all days are available
-		if (! $weeklyAvailability)
-		{
+		if (!$weeklyAvailability) {
 			$weeklyPattern = [
 				'monday' => true,
 				'tuesday' => true,
@@ -335,8 +307,7 @@ class ProjectController extends Controller
 				'saturday' => true,
 				'sunday' => true,
 			];
-		} else
-		{
+		} else {
 			$weeklyPattern = [
 				'monday' => $weeklyAvailability->monday,
 				'tuesday' => $weeklyAvailability->tuesday,
@@ -349,8 +320,7 @@ class ProjectController extends Controller
 		}
 
 		// Get specific absence dates
-		$absenceDates = $collaborator->absences->pluck('absence_date')->map(function ($date)
-		{
+		$absenceDates = $collaborator->absences->pluck('absence_date')->map(function ($date) {
 			return $date->format('Y-m-d');
 		})->toArray();
 
@@ -358,8 +328,7 @@ class ProjectController extends Controller
 		$currentDate = Carbon::parse($startDate);
 		$endDateCarbon = Carbon::parse($endDate);
 
-		while ($currentDate->lte($endDateCarbon))
-		{
+		while ($currentDate->lte($endDateCarbon)) {
 			$dayOfWeek = strtolower($currentDate->format('l'));
 			$dateString = $currentDate->format('Y-m-d');
 
@@ -367,11 +336,10 @@ class ProjectController extends Controller
 			$isWeeklyAvailable = $weeklyPattern[$dayOfWeek] ?? false;
 
 			// Check if this specific date is not in absences
-			$isNotAbsent = ! in_array($dateString, $absenceDates);
+			$isNotAbsent = !in_array($dateString, $absenceDates);
 
 			// Day is available if both conditions are met
-			if ($isWeeklyAvailable && $isNotAbsent)
-			{
+			if ($isWeeklyAvailable && $isNotAbsent) {
 				$availableDays++;
 			}
 
@@ -411,10 +379,8 @@ class ProjectController extends Controller
 		$sentCount = 0;
 		$errors = [];
 
-		foreach ($collaboratorIds as $collaboratorId)
-		{
-			try
-			{
+		foreach ($collaboratorIds as $collaboratorId) {
+			try {
 				$collaborator = Contact::findOrFail($collaboratorId);
 
 				// Replace {nombre} placeholder with collaborator name
@@ -442,24 +408,20 @@ class ProjectController extends Controller
 				$relationshipExists = $project->collaborators()->where('contact_id', $collaboratorId)->exists();
 
 				$sentCount++;
-			} catch (\Exception $e)
-			{
-				$errors[] = "Error sending to collaborator {$collaboratorId}: ".$e->getMessage();
+			} catch (\Exception $e) {
+				$errors[] = "Error sending to collaborator {$collaboratorId}: " . $e->getMessage();
 			}
 		}
 
-		if ($sentCount > 0)
-		{
+		if ($sentCount > 0) {
 			$message = "Messages sent successfully to {$sentCount} collaborator(s).";
-			if (! empty($errors))
-			{
-				$message .= ' However, there were some errors: '.implode(', ', $errors);
+			if (!empty($errors)) {
+				$message .= ' However, there were some errors: ' . implode(', ', $errors);
 			}
 
 			return redirect()->route('project.show', $projectId)->with('success', $message);
-		} else
-		{
-			return redirect()->back()->with('error', 'Failed to send messages: '.implode(', ', $errors));
+		} else {
+			return redirect()->back()->with('error', 'Failed to send messages: ' . implode(', ', $errors));
 		}
 	}
 
@@ -483,7 +445,18 @@ class ProjectController extends Controller
 			'projectFares.targetLanguage',
 		])->findOrFail($id);
 
-		return view('project.show', compact('project'));
+		// Get time tracking data for this project
+		$timeEntries = \App\Models\Time::where('project_id', $id)
+			->with('user:id,name')
+			->orderBy('start_time', 'desc')
+			->limit(10)
+			->get();
+
+		$totalHours = \App\Models\Time::where('project_id', $id)
+			->whereNotNull('end_time')
+			->sum('duration_seconds') / 3600;
+
+		return view('project.show', compact('project', 'timeEntries', 'totalHours'));
 	}
 
 	/**
@@ -518,8 +491,7 @@ class ProjectController extends Controller
 	 */
 	public function removeCollaborator(Project $project, $collaborator)
 	{
-		try
-		{
+		try {
 			// Find the collaborator
 			$collaboratorModel = Contact::findOrFail($collaborator);
 
@@ -529,8 +501,7 @@ class ProjectController extends Controller
 				->whereNull('deleted_at')
 				->first();
 
-			if (! $pivotRecord)
-			{
+			if (!$pivotRecord) {
 				return response()->json([
 					'message' => 'El colaborador no está asociado con este proyecto.',
 				], 404);
@@ -542,8 +513,7 @@ class ProjectController extends Controller
 			return response()->json([
 				'message' => 'Colaborador eliminado del proyecto exitosamente.',
 			], 200);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'message' => 'Ha ocurrido un error al eliminar el colaborador.',
 			], 500);
@@ -568,12 +538,10 @@ class ProjectController extends Controller
 	 */
 	public function getFareUnits(Request $request)
 	{
-		try
-		{
+		try {
 			$fareId = $request->get('fare_id');
 
-			if (! $fareId)
-			{
+			if (!$fareId) {
 				return response()->json([
 					'units' => [],
 					'success' => true,
@@ -585,8 +553,7 @@ class ProjectController extends Controller
 			// Use withoutGlobalScopes to avoid team_id restriction
 			$fare = Fare::withoutGlobalScopes()->with('units')->find($fareId);
 
-			if (! $fare)
-			{
+			if (!$fare) {
 				return response()->json([
 					'units' => [],
 					'success' => true,
@@ -595,8 +562,7 @@ class ProjectController extends Controller
 				]);
 			}
 
-			$units = $fare->units->map(function ($unit)
-			{
+			$units = $fare->units->map(function ($unit) {
 				return [
 					'id' => $unit->id,
 					'type' => $unit->type,
@@ -611,11 +577,10 @@ class ProjectController extends Controller
 				'Content-Type' => 'application/json',
 				'Cache-Control' => 'no-cache, no-store, must-revalidate',
 			]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'units' => [],
-				'error' => 'Error loading units: '.$e->getMessage(),
+				'error' => 'Error loading units: ' . $e->getMessage(),
 				'success' => false,
 			], 200, [
 				'Content-Type' => 'application/json',
@@ -650,15 +615,13 @@ class ProjectController extends Controller
 			'services.*.unit' => 'required|string',
 		]);
 
-		try
-		{
+		try {
 			// Clear existing services
 			$project->projectFares()->delete();
 
 			// Add new services
 			$createdServices = [];
-			foreach ($request->services as $serviceData)
-			{
+			foreach ($request->services as $serviceData) {
 				$projectFare = $project->projectFares()->create([
 					'fare_id' => $serviceData['fare_id'],
 					'source_language_code' => $serviceData['source_language_code'],
@@ -672,11 +635,10 @@ class ProjectController extends Controller
 			return redirect()
 				->route('project.show', $project->id)
 				->with('success', 'Servicios agregados exitosamente.');
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return redirect()
 				->back()
-				->with('error', 'Error al guardar los servicios: '.$e->getMessage())
+				->with('error', 'Error al guardar los servicios: ' . $e->getMessage())
 				->withInput();
 		}
 	}
@@ -692,8 +654,7 @@ class ProjectController extends Controller
 			'fare',
 			'sourceLanguage',
 			'targetLanguage',
-		])->get()->map(function ($projectFare)
-		{
+		])->get()->map(function ($projectFare) {
 			return [
 				'id' => $projectFare->id,
 				'fare_id' => $projectFare->fare_id,
@@ -730,8 +691,7 @@ class ProjectController extends Controller
 			'unit' => 'required|string',
 		]);
 
-		try
-		{
+		try {
 			// Check for duplicates
 			$existingService = $project
 				->projectFares()
@@ -740,8 +700,7 @@ class ProjectController extends Controller
 				->where('target_language_code', $request->target_language_code)
 				->exists();
 
-			if ($existingService)
-			{
+			if ($existingService) {
 				return response()->json([
 					'success' => false,
 					'message' => 'Este servicio ya está agregado con la misma combinación de idiomas.',
@@ -776,11 +735,10 @@ class ProjectController extends Controller
 				],
 				'message' => 'Servicio agregado exitosamente.',
 			]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'success' => false,
-				'message' => 'Error al guardar el servicio: '.$e->getMessage(),
+				'message' => 'Error al guardar el servicio: ' . $e->getMessage(),
 			], 500);
 		}
 	}
@@ -801,8 +759,7 @@ class ProjectController extends Controller
 			'unit' => 'required|string',
 		]);
 
-		try
-		{
+		try {
 			// Check for duplicates (excluding current service)
 			$existingService = $project
 				->projectFares()
@@ -812,8 +769,7 @@ class ProjectController extends Controller
 				->where('id', '!=', $serviceId)
 				->exists();
 
-			if ($existingService)
-			{
+			if ($existingService) {
 				return response()->json([
 					'success' => false,
 					'message' => 'Este servicio ya está agregado con la misma combinación de idiomas.',
@@ -848,11 +804,10 @@ class ProjectController extends Controller
 				],
 				'message' => 'Servicio actualizado exitosamente.',
 			]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'success' => false,
-				'message' => 'Error al actualizar el servicio: '.$e->getMessage(),
+				'message' => 'Error al actualizar el servicio: ' . $e->getMessage(),
 			], 500);
 		}
 	}
@@ -865,19 +820,17 @@ class ProjectController extends Controller
 		$project = Project::findOrFail($projectId);
 		$projectFare = $project->projectFares()->findOrFail($serviceId);
 
-		try
-		{
+		try {
 			$projectFare->delete();
 
 			return response()->json([
 				'success' => true,
 				'message' => 'Servicio eliminado exitosamente.',
 			]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'success' => false,
-				'message' => 'Error al eliminar el servicio: '.$e->getMessage(),
+				'message' => 'Error al eliminar el servicio: ' . $e->getMessage(),
 			], 500);
 		}
 	}
@@ -887,34 +840,28 @@ class ProjectController extends Controller
 	 */
 	private function formatDate($date)
 	{
-		if (! $date)
-		{
+		if (!$date) {
 			return 'N/A';
 		}
 
-		try
-		{
+		try {
 			// If it's already a Carbon instance
-			if ($date instanceof Carbon)
-			{
+			if ($date instanceof Carbon) {
 				return $date->format('d/m/Y');
 			}
 
 			// If it's a string, try to parse it
-			if (is_string($date))
-			{
+			if (is_string($date)) {
 				return Carbon::parse($date)->format('d/m/Y');
 			}
 
 			// If it's a DateTime object
-			if ($date instanceof \DateTime)
-			{
+			if ($date instanceof \DateTime) {
 				return $date->format('d/m/Y');
 			}
 
 			return 'N/A';
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return 'N/A';
 		}
 	}
