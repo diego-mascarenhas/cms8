@@ -3,11 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Enterprise;
-use App\Models\EnterpriseType;
-use App\Models\PaymentType;
-use App\Models\InvoiceType;
 use App\Models\EnterpriseStatus;
+use App\Models\EnterpriseType;
 use App\Models\User;
+use Idoneo\HumanoBilling\Models\InvoiceType;
+use Idoneo\HumanoBilling\Models\PaymentType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ClientFactory extends Factory
@@ -33,7 +33,7 @@ class ClientFactory extends Factory
 		$provinces = ['Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Bilbao', 'Málaga', 'Zaragoza', 'Murcia', 'Palma', 'Las Palmas'];
 
 		return [
-			'team_id' => 1, // Team 1 (Demo)
+			'team_id' => 1,  // Team 1 (Demo)
 			'type_id' => EnterpriseType::where('name', 'Cliente')->first()->id ?? 1,
 			'name' => $this->faker->randomElement($companyNames),
 			'code' => $this->faker->unique()->regexify('[A-Z]{3}[0-9]{3}'),
@@ -57,8 +57,12 @@ class ClientFactory extends Factory
 			'payment_type_id' => PaymentType::inRandomOrder()->first()->id ?? 1,
 			'invoice_type_id' => InvoiceType::inRandomOrder()->first()->id ?? 1,
 			'status_id' => EnterpriseStatus::inRandomOrder()->first()->id ?? 1,
-			'creator_id' => User::whereHas('teams', function($query) { $query->where('team_id', 1); })->inRandomOrder()->first()->id ?? 1,
-			'responsible_id' => User::whereHas('teams', function($query) { $query->where('team_id', 1); })->inRandomOrder()->first()->id ?? 1,
+			'creator_id' => User::whereHas('teams', function ($query) {
+				$query->where('team_id', 1);
+			})->inRandomOrder()->first()->id ?? 1,
+			'responsible_id' => User::whereHas('teams', function ($query) {
+				$query->where('team_id', 1);
+			})->inRandomOrder()->first()->id ?? 1,
 		];
 	}
 
@@ -67,7 +71,7 @@ class ClientFactory extends Factory
 	 */
 	public function client(): static
 	{
-		return $this->state(fn (array $attributes) => [
+		return $this->state(fn(array $attributes) => [
 			'type_id' => EnterpriseType::where('name', 'Cliente')->first()->id ?? 1,
 		]);
 	}
@@ -77,7 +81,7 @@ class ClientFactory extends Factory
 	 */
 	public function supplier(): static
 	{
-		return $this->state(fn (array $attributes) => [
+		return $this->state(fn(array $attributes) => [
 			'type_id' => EnterpriseType::where('name', 'Proveedor')->first()->id ?? 2,
 		]);
 	}

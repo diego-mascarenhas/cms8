@@ -18,7 +18,7 @@
     "guzzlehttp/guzzle": "^7.9",
     "idoneo/humano-academy": "^0.1 || dev-main",
     "idoneo/humano-access-control": "^0.0.3 || dev-main",
-    "idoneo/humano-billing": "^0.2.1 || dev-main",
+    "idoneo/humano-billing": "^1.0 || dev-main",
     "idoneo/humano-chat": "^0.1.1 || dev-main",
     "idoneo/humano-ecommerce": "^0.1 || dev-main",
     "idoneo/humano-infrastructure": "^0.1 || dev-main",

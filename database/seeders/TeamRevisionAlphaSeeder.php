@@ -6,22 +6,32 @@ use App\Helpers\GrapesJsHelper;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Enterprise;
-use App\Models\Invoice;
 use App\Models\Message;
 use App\Models\Module;
-use App\Models\Payment;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
+use Idoneo\HumanoBilling\Models\Invoice;
+use Idoneo\HumanoBilling\Models\Payment;
+use Idoneo\HumanoBilling\Models\PaymentAccount;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class TeamRevisionAlphaSeeder extends Seeder
 {
 	private $teamId;
+
+	/**
+	 * Set the command context for the seeder
+	 */
+	public function setCommand($command)
+	{
+		$this->command = $command;
+	}
 
 	public function run()
 	{
@@ -52,14 +62,17 @@ class TeamRevisionAlphaSeeder extends Seeder
 		// 8. Configure email settings
 		$this->configureRevisionAlphaEmailSettings($team);
 
-		// 9. Import data from remote database
-		$this->command->info('📊 Importing data from remote database...');
+		// 9. Import base data from remote database
+		$this->command->info('📊 Importing base data from remote database...');
 		$this->importRevisionAlphaCategories();
-		$this->importRevisionAlphaServices();
-		$this->importRevisionAlphaProjects();
-		$this->importRevisionAlphaInvoices();
 		$this->importRevisionAlphaPaymentAccounts();
 		$this->importRevisionAlphaPayments();
+
+		// Note: Services, Projects, Invoices, and Invoice Items are NOT imported here
+		// because they require enterprises to be imported first.
+		// Run: php artisan import:interactive --auto to import all data including enterprises
+		$this->command->info('');
+		$this->command->info('ℹ️  Services, projects, and invoices will be imported with: php artisan import:interactive --auto');
 
 		// Asignar módulos CORE por defecto al equipo
 		// Estos son los módulos fundamentales que se activan automáticamente
@@ -71,6 +84,9 @@ class TeamRevisionAlphaSeeder extends Seeder
 			'services',  // Catálogo de servicios
 			'projects',  // Gestión de proyectos
 			'tasks',  // Sistema de tareas (Kanban)
+			'invoices',  // Gestión de facturas
+			'payments',  // Gestión de pagos
+			'accounting',  // Contabilidad
 		];
 
 		foreach ($defaultModuleKeys as $moduleKey) {
@@ -811,61 +827,43 @@ class TeamRevisionAlphaSeeder extends Seeder
 			$cmsGroup = env('CMS_GROUP', 502);
 			$this->command->info("   Using CMS_GROUP: {$cmsGroup}");
 
-			// Get the services module
-			$serviceModule = \App\Models\Module::where('key', 'services')->first();
+			// Import ALL categories from categorias_generales
+			$this->command->info('📂 Importing ALL general categories (categorias_generales)...');
 
-			if (!$serviceModule) {
-				$this->command->warn('⚠️  Services module not found, skipping categories import');
-				return;
-			}
-
-			// First, import the parent category (ID 10)
-			$parentCategory = DB::connection('mysql_tmp')
-				->table('categorias_generales')
-				->where('id', 10)
-				->first();
-
-			if ($parentCategory) {
-				try {
-					\App\Models\Category::updateOrCreate(
-						['id' => $parentCategory->id],
-						[
-							'team_id' => $this->teamId,
-							'name' => $parentCategory->categoria ?? 'Servicios',
-							'module_id' => $serviceModule->id,
-							'parent_id' => null,
-							'description' => strip_tags($parentCategory->descripcion ?? ''),
-							'status' => $parentCategory->estado > 0 ? 1 : 0,
-							'created_at' => $parentCategory->fecha_alta ?? now(),
-							'updated_at' => $parentCategory->fecha_modificacion ?? now(),
-						]
-					);
-					$this->command->info("   ✅ Imported parent category: {$parentCategory->categoria}");
-				} catch (\Exception $e) {
-					$this->command->warn('   ⚠️  Could not import parent category: ' . $e->getMessage());
-				}
-			}
-
-			// Import categories with parent_id = 10 (service categories)
-			$categories = DB::connection('mysql_tmp')
+			$allCategories = DB::connection('mysql_tmp')
 				->table('categorias_generales')
 				->where('grupo', $cmsGroup)
-				->where('padre', 10)
 				->where('estado', '>', 0)
+				->orderBy('padre')
+				->orderBy('id')
 				->get();
 
 			$imported = 0;
 			$skipped = 0;
-			foreach ($categories as $category) {
+
+			foreach ($allCategories as $category) {
 				try {
+					// Determine module based on parent or ID
+					$moduleKey = null;
+					if ($category->padre == 10 || $category->id == 10) {
+						$moduleKey = 'services';
+					}
+
+					$module = $moduleKey ? \App\Models\Module::where('key', $moduleKey)->first() : null;
+
+					$description = strip_tags($category->descripcion ?? '');
+					if (empty(trim($description))) {
+						$description = $category->categoria ?? 'Sin descripción';
+					}
+
 					\App\Models\Category::updateOrCreate(
 						['id' => $category->id],
 						[
 							'team_id' => $this->teamId,
 							'name' => $category->categoria ?? 'Sin nombre',
-							'module_id' => $serviceModule->id,
+							'module_id' => $module?->id,
 							'parent_id' => $category->padre > 0 ? $category->padre : null,
-							'description' => strip_tags($category->descripcion ?? ''),
+							'description' => $description,
 							'status' => $category->estado > 0 ? 1 : 0,
 							'created_at' => $category->fecha_alta ?? now(),
 							'updated_at' => $category->fecha_modificacion ?? now(),
@@ -881,10 +879,10 @@ class TeamRevisionAlphaSeeder extends Seeder
 			}
 
 			if ($skipped > 0) {
-				$this->command->warn("   ⚠️  Skipped {$skipped} categories due to errors");
+				$this->command->warn("   ⚠️  Skipped {$skipped} general categories due to errors");
 			}
 
-			$this->command->info("✅ Imported {$imported} service categories");
+			$this->command->info("✅ Imported {$imported} general categories");
 
 			// Import project categories from the 'categorias' table
 			$this->command->info('📂 Importing project categories...');
@@ -909,6 +907,8 @@ class TeamRevisionAlphaSeeder extends Seeder
 				$projectImported = 0;
 				foreach ($projectCategories as $category) {
 					try {
+						$description = $category->categoria ?? 'Sin descripción';
+
 						\App\Models\Category::updateOrCreate(
 							['id' => $category->id],
 							[
@@ -916,7 +916,7 @@ class TeamRevisionAlphaSeeder extends Seeder
 								'name' => $category->categoria ?? 'Sin nombre',
 								'module_id' => $projectModule->id,
 								'parent_id' => $category->padre == 10 ? 10 : null,
-								'description' => null,
+								'description' => $description,
 								'status' => 1,
 								'created_at' => $category->fecha_alta ?? now(),
 								'updated_at' => $category->fecha_modificacion ?? now(),
@@ -1009,6 +1009,13 @@ class TeamRevisionAlphaSeeder extends Seeder
 		$this->command->info('📄 Importing Revision Alpha invoices from remote database...');
 
 		try {
+			// Verify invoices table exists
+			if (!Schema::hasTable('invoices')) {
+				$this->command->warn('⚠️  Invoices table does not exist. Skipping invoice import.');
+				$this->command->info('   Run: php artisan vendor:publish --tag="humano-billing-migrations" && php artisan migrate');
+				return;
+			}
+
 			// Test connection
 			DB::connection('mysql_tmp')->getPdo();
 
@@ -1019,9 +1026,10 @@ class TeamRevisionAlphaSeeder extends Seeder
 			$invoices = DB::connection('mysql_tmp')
 				->table('facturas')
 				->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
+				->leftJoin('facturas_tipo', 'facturas.id_factura_tipo', '=', 'facturas_tipo.id')
 				->where('facturas.grupo', $cmsGroup)
 				->where('facturas.estado', '>', 0)
-				->select('facturas.*', 'empresas_fiscales.id_empresa as enterprise_id')
+				->select('facturas.*', 'empresas_fiscales.id_empresa as enterprise_id', 'facturas_tipo.factura_tipo as tipo_letra')
 				->get();
 
 			$imported = 0;
@@ -1031,12 +1039,24 @@ class TeamRevisionAlphaSeeder extends Seeder
 					// Map operation codes: V=sell (Venta), C=buy (Compra)
 					$operation = ($invoice->operacion ?? 'V') === 'V' ? 'sell' : 'buy';
 
+					// Format invoice number: letra + space + talonario (4 digits) - numero_factura (8 digits)
+					$invoiceNumber = '1';
+					if ($operation === 'sell') {
+						// Extract first letter from tipo_letra (e.g. "A Flora" -> "A")
+						$letra = $invoice->tipo_letra ? substr($invoice->tipo_letra, 0, 1) : 'X';
+						$talonario = str_pad($invoice->numero_talonario ?? 0, 4, '0', STR_PAD_LEFT);
+						$numero = str_pad($invoice->numero_factura ?? 0, 8, '0', STR_PAD_LEFT);
+						$invoiceNumber = $letra . ' ' . $talonario . '-' . $numero;
+					} else {
+						$invoiceNumber = $invoice->numero_factura ?? '1';
+					}
+
 					Invoice::updateOrCreate(
 						['id' => $invoice->id],
 						[
 							'enterprise_id' => $invoice->enterprise_id,
-							'type_id' => $invoice->id_tipo_factura ?? 1,
-							'number' => (string) ($invoice->numero_factura ?? ''),
+							'type_id' => $invoice->id_factura_tipo ?? 1,
+							'number' => $invoiceNumber,
 							'date' => $invoice->fecha ?? now(),
 							'due_date' => $invoice->vencimiento ?? null,
 							'operation' => $operation,
@@ -1065,6 +1085,101 @@ class TeamRevisionAlphaSeeder extends Seeder
 			$this->command->info("✅ Imported {$imported} invoices");
 		} catch (\Exception $e) {
 			$this->command->warn('⚠️  Could not import invoices: ' . $e->getMessage());
+		}
+	}
+
+	/**
+	 * Import invoice items from remote database for Revision Alpha
+	 */
+	private function importRevisionAlphaInvoiceItems(): void
+	{
+		$this->command->info('📝 Importing Revision Alpha invoice items from remote database...');
+
+		try {
+			// Verify invoice_items table exists
+			if (!Schema::hasTable('invoice_items')) {
+				$this->command->warn('⚠️  Invoice items table does not exist. Skipping invoice items import.');
+				$this->command->info('   Run: php artisan vendor:publish --tag="humano-billing-migrations" && php artisan migrate');
+				return;
+			}
+
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group for Revision Alpha
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->command->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			$items = DB::connection('mysql_tmp')
+				->table('facturas_items')
+				->whereExists(function ($query) use ($cmsGroup) {
+					$query
+						->select(DB::raw(1))
+						->from('facturas')
+						->whereColumn('facturas.id', 'facturas_items.id_factura')
+						->where('facturas.grupo', $cmsGroup)
+						->where('facturas.estado', '>', 0);
+				})
+				->get();
+
+			$imported = 0;
+			$skipped = 0;
+			foreach ($items as $item) {
+				try {
+					// Verify that the invoice exists
+					$invoiceExists = Invoice::where('id', $item->id_factura)->exists();
+					if (!$invoiceExists) {
+						$skipped++;
+						continue;
+					}
+
+					// Verify that the category exists if provided
+					$categoryId = null;
+					$categoryName = null;
+					if ($item->id_categoria) {
+						$category = \App\Models\Category::where('id', $item->id_categoria)->first();
+						if ($category) {
+							$categoryId = $category->id;
+							$categoryName = $category->name;
+						}
+					}
+
+					// Determine description: use item description, fallback to category name, then "Sin descripción"
+					$description = 'Sin descripción';
+					if (!empty($item->articulo) && trim($item->articulo) !== '') {
+						$description = $item->articulo;
+					} elseif ($categoryName) {
+						$description = $categoryName;
+					}
+
+					\Idoneo\HumanoBilling\Models\InvoiceItem::updateOrCreate(
+						['id' => $item->id],
+						[
+							'invoice_id' => $item->id_factura,
+							'category_id' => $categoryId,
+							'description' => $description,
+							'quantity' => $item->cantidad ?? 1,
+							'unit_price' => $item->precio ?? 0,
+							'discount' => $item->descuento ?? 0,
+							'tax_percentage' => $item->porcentaje_impuesto ?? 0,
+						]
+					);
+					$imported++;
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->command->warn("     Skipped invoice item {$item->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->command->warn("   ⚠️  Skipped {$skipped} invoice items due to errors");
+			}
+
+			$this->command->info("✅ Imported {$imported} invoice items");
+		} catch (\Exception $e) {
+			$this->command->warn('⚠️  Could not import invoice items: ' . $e->getMessage());
 		}
 	}
 
@@ -1178,7 +1293,7 @@ class TeamRevisionAlphaSeeder extends Seeder
 					$legacyCurrencyId = $account->id_moneda ?? 1;
 					$currencyId = $currencyMap[$legacyCurrencyId] ?? 840;  // Default to USD
 
-					\App\Models\PaymentAccount::updateOrCreate(
+					PaymentAccount::updateOrCreate(
 						['id' => $account->id],
 						[
 							'team_id' => $this->teamId,
@@ -1218,6 +1333,13 @@ class TeamRevisionAlphaSeeder extends Seeder
 		$this->command->info('💰 Importing Revision Alpha payments from remote database...');
 
 		try {
+			// Verify payments table exists
+			if (!Schema::hasTable('payments')) {
+				$this->command->warn('⚠️  Payments table does not exist. Skipping payment import.');
+				$this->command->info('   Run: php artisan vendor:publish --tag="humano-billing-migrations" && php artisan migrate');
+				return;
+			}
+
 			// Test connection
 			DB::connection('mysql_tmp')->getPdo();
 
@@ -1242,26 +1364,21 @@ class TeamRevisionAlphaSeeder extends Seeder
 
 			$payments = DB::connection('mysql_tmp')
 				->table('movimientos')
-				->join('facturas', 'movimientos.id_factura', '=', 'facturas.id')
-				->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
+				->leftJoin('facturas', 'movimientos.id_factura', '=', 'facturas.id')
+				->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
 				->where('movimientos.grupo', $cmsGroup)
 				->where('movimientos.estado', '>', 0)
-				->select('movimientos.*', 'empresas_fiscales.id_empresa as enterprise_id')
+				->select(
+					'movimientos.*',
+					'empresas_fiscales.id_empresa as enterprise_id',
+					'facturas.id_empresa_fiscal'
+				)
 				->get();
 
 			$imported = 0;
 			$skipped = 0;
 			foreach ($payments as $payment) {
 				try {
-					// Only import if the invoice exists
-					if ($payment->id_factura) {
-						$invoiceExists = DB::table('invoices')->where('id', $payment->id_factura)->exists();
-						if (!$invoiceExists) {
-							$skipped++;
-							continue;
-						}
-					}
-
 					// Get account ID - if not exists, use default account for this team
 					$accountId = $payment->id_cuenta;
 					if (!$accountId || !DB::table('payment_accounts')->where('id', $accountId)->exists()) {
@@ -1282,18 +1399,61 @@ class TeamRevisionAlphaSeeder extends Seeder
 					$legacyTypeId = $payment->id_forma_pago ?? 1;
 					$typeId = $paymentTypeMap[$legacyTypeId] ?? 1;  // Default to Cash if not mapped
 
+					// Determine transaction type: I=Income, E=Expense (default to expense if unknown)
+					$transactionType = 'expense';
+					if (isset($payment->transaccion)) {
+						$transactionType = strtoupper($payment->transaccion) === 'I' ? 'income' : 'expense';
+					}
+
+					// Get amount from 'valor' field
+					$amount = $payment->valor ?? 0;
+
+					// Get enterprise_id from multiple sources
+					$enterpriseId = null;
+
+					// 1. Try from the JOIN result
+					if ($payment->enterprise_id) {
+						if (DB::table('enterprises')->where('id', $payment->enterprise_id)->exists()) {
+							$enterpriseId = $payment->enterprise_id;
+						}
+					}
+
+					// 2. If still null, try to get from invoice
+					$invoiceId = $payment->id_factura;
+					if (!$enterpriseId && $invoiceId) {
+						$invoice = DB::table('invoices')->where('id', $invoiceId)->first();
+						if ($invoice && $invoice->enterprise_id) {
+							$enterpriseId = $invoice->enterprise_id;
+						}
+						// If invoice doesn't exist, set invoiceId to null
+						if (!$invoice) {
+							$invoiceId = null;
+						}
+					}
+
+					// 3. If still null and we have id_empresa_fiscal, try to find the enterprise
+					if (!$enterpriseId && isset($payment->id_empresa_fiscal)) {
+						$enterpriseFromFiscal = DB::table('enterprises')
+							->where('id', $payment->id_empresa_fiscal)
+							->where('team_id', $this->teamId)
+							->first();
+						if ($enterpriseFromFiscal) {
+							$enterpriseId = $enterpriseFromFiscal->id;
+						}
+					}
+
 					Payment::updateOrCreate(
 						['id' => $payment->id],
 						[
 							'team_id' => $this->teamId,
-							'enterprise_id' => $payment->enterprise_id,
-							'invoice_id' => $payment->id_factura ?? null,
-							'transaction_type' => (string) (($payment->operacion ?? 'I') === 'V' ? 'I' : 'E'),
-							'date' => $payment->fecha ?? now(),
-							'amount' => $payment->importe ?? 0,
+							'enterprise_id' => $enterpriseId,
+							'invoice_id' => $invoiceId,
+							'transaction_type' => $transactionType,
+							'date' => $payment->fecha ? \Carbon\Carbon::parse($payment->fecha)->format('Y-m-d') : now()->format('Y-m-d'),
+							'amount' => $amount,
 							'type_id' => $typeId,
 							'account_id' => $accountId,
-							'remarks' => $payment->comentario ?? null,
+							'remarks' => $payment->observaciones ?? null,
 							'status' => $payment->estado ?? 1,
 							'created_at' => $payment->fecha_alta ?? now(),
 							'updated_at' => $payment->fecha_modificacion ?? now(),

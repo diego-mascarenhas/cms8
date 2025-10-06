@@ -15,7 +15,7 @@ use Exception;
 
 class ImportDataCommand extends Command
 {
-	protected $signature = 'import:interactive {--auto : Run automatic import of enterprises and contacts}';
+	protected $signature = 'import:interactive {--auto : Run automatic import of ALL data (categories, payment types, enterprises, payment accounts, services, projects, invoices, payments, users)}';
 
 	protected $description = 'Interactive menu for importing data from old database';
 
@@ -254,10 +254,47 @@ class ImportDataCommand extends Command
 		}
 
 		if ($this->option('auto')) {
-			$this->info('Running in automatic mode: importing enterprises and contacts...');
+			$this->info('🚀 Running in automatic mode: importing ALL data...');
+			$this->newLine();
+
+			// Import in order to respect foreign key constraints
+			$this->info('📂 Step 1/9: Importing Categories...');
+			$this->processImport('2. Categories');
+			$this->newLine();
+
+			$this->info('💳 Step 2/9: Importing Payment Types...');
+			$this->processImport('3. Payment Types');
+			$this->newLine();
+
+			$this->info('🏢 Step 3/9: Importing Enterprises...');
 			$this->processImport('5. Enterprises');
+			$this->newLine();
+
+			$this->info('🏦 Step 4/9: Importing Payment Accounts...');
+			$this->processImport('4. Payment Accounts');
+			$this->newLine();
+
+			$this->info('📦 Step 5/9: Importing Services...');
+			$this->processImport('6. Services');
+			$this->newLine();
+
+			$this->info('📁 Step 6/9: Importing Projects...');
+			$this->processImport('7. Projects');
+			$this->newLine();
+
+			$this->info('📄 Step 7/9: Importing Invoices...');
+			$this->processImport('8. Invoices');
+			$this->newLine();
+
+			$this->info('💰 Step 8/9: Updating Payments (linking enterprises & invoices)...');
+			$this->processImport('9. Payments');
+			$this->newLine();
+
+			$this->info('👥 Step 9/9: Importing Users...');
 			$this->processImport('1. Users');
-			$this->info('Automatic import completed.');
+			$this->newLine();
+
+			$this->info('✅ Automatic import completed successfully!');
 
 			return 0;
 		}
@@ -727,167 +764,6 @@ class ImportDataCommand extends Command
 		return $stats;
 	}
 
-	protected function importServices($id = null)
-	{
-		$stats = [
-			'imported' => 0,
-			'updated' => 0,
-			'message' => null,
-		];
-
-		try {
-			// Buscar el módulo de servicios
-			$serviceModule = \App\Models\Module::where('key', 'services')->first();
-
-			if (!$serviceModule) {
-				throw new \Exception("El módulo 'services' no existe. Ejecute primero el seeder de módulos.");
-			}
-
-			$query = DB::connection('mysql_tmp')
-				->table('servicios')
-				->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
-				->where('servicios.grupo', env('CMS_GROUP'))
-				->where('servicios.estado', '>', 0)
-				->where('servicios.operacion', 'V')  // Solo importar servicios de venta
-				->select('servicios.*', 'servicios_hosting.*');
-
-			if ($id) {
-				$query->where('servicios.id', $id);
-			}
-
-			$services = $query->get();
-
-			if ($services->isEmpty()) {
-				$stats['message'] = 'No services found matching the criteria.';
-
-				return $stats;
-			}
-
-			$bar = $this->output->createProgressBar(count($services));
-			$bar->start();
-
-			// Pre-cargar empresas existentes en un array para verificación más rápida
-			$enterpriseIds = $services->pluck('id_empresa')->unique()->toArray();
-			$existingEnterprises = DB::table('enterprises')->whereIn('id', $enterpriseIds)->pluck('id')->toArray();
-
-			$this->info('Verificando ' . count($enterpriseIds) . ' empresas...');
-			$this->info('Encontradas ' . count($existingEnterprises) . ' empresas existentes');
-
-			foreach ($services as $data) {
-				$existingService = DB::table('services')->where('id', $data->id)->first();
-
-				// Verificar si existe la empresa
-				$enterpriseExists = in_array($data->id_empresa, $existingEnterprises);
-				if (!$enterpriseExists) {
-					$this->warn("Enterprise with ID {$data->id_empresa} not found, skipping service {$data->id}");
-					$bar->advance();
-
-					continue;
-				}
-
-				// Verificar si existe la categoría o asignar una predeterminada (4000)
-				$categoryId = 4000;  // Categoría predeterminada
-				$categoryExists = DB::table('categories')
-					->where('id', $data->id_categoria)
-					->exists();
-
-				if ($categoryExists) {
-					// Si la categoría existe, verificamos que tenga el module_id del módulo de servicios
-					$category = DB::table('categories')->where('id', $data->id_categoria)->first();
-
-					if (!$category->module_id) {
-						// Si no tiene module_id, actualizamos la categoría
-						DB::table('categories')
-							->where('id', $data->id_categoria)
-							->update(['module_id' => $serviceModule->id]);
-
-						$this->info("Categoría {$data->id_categoria} actualizada con module_id {$serviceModule->id}");
-					}
-
-					$categoryId = $data->id_categoria;
-				} else {
-					$this->warn("Categoría con ID {$data->id_categoria} no encontrada, asignando categoría predeterminada 4000 para el servicio {$data->id}");
-				}
-
-				$cleaned_description = strip_tags($data->descripcion);
-
-				// Crear un array con todos los campos de servicios_hosting
-				$hostingData = [];
-				foreach ((array) $data as $key => $value) {
-					// Si es un campo de servicios_hosting (no está en la tabla principal de servicios)
-					// El formato puede ser 'servicios_hosting.campo' o simplemente 'campo' dependiendo del driver
-					if (strpos($key, 'servicios_hosting.') === 0 ||
-						!in_array($key, ['id', 'id_empresa', 'id_categoria', 'descripcion', 'valor',
-							'frecuencia', 'operacion', 'estado', 'fecha_alta',
-							'fecha_modificacion', 'ultima', 'proxima', 'caduca',
-							'id_moneda', 'descuento'])) {
-						// Quitar el prefijo si existe
-						$cleanKey = str_replace('servicios_hosting.', '', $key);
-
-						// Si el campo es 'data' y es un JSON válido, lo decodificamos para evitar doble codificación
-						if ($cleanKey === 'data' && $value && is_string($value) && $this->isJson($value)) {
-							$decodedData = json_decode($value, true);
-							// Mezclamos los datos decodificados con el array principal
-							if (is_array($decodedData)) {
-								foreach ($decodedData as $dataKey => $dataValue) {
-									$hostingData[$dataKey] = $dataValue;
-								}
-							}
-						} else {
-							$hostingData[$cleanKey] = $value;
-						}
-					}
-				}
-
-				// Mostrar los datos para depuración
-				// $this->info("Datos de hosting para servicio {$data->id}: " . json_encode($hostingData));
-
-				$serviceData = [
-					'id' => $data->id,
-					'category_id' => $categoryId,
-					'enterprise_id' => $data->id_empresa,
-					'descriptiontion' => 'Sell',  // Siempre será Sell ya que filtramos por 'V'
-					'description' => $cleaned_description,  // Respetar el nombre del campo como está en la migración
-					'data' => json_encode($hostingData),
-					'currency_id' => $data->id_moneda,
-					'price' => $data->valor,
-					'discount' => $data->descuento,
-					'frequency' => $data->frecuencia,
-					'last_billed' => $data->ultima,
-					'next_billing' => $data->proxima,
-					'expires_at' => $data->caduca,
-					'status' => $data->estado,
-					'created_at' => $data->fecha_alta,
-					'updated_at' => $data->fecha_modificacion,
-				];
-
-				try {
-					if (!$existingService) {
-						DB::table('services')->insert($serviceData);
-						$stats['imported']++;
-						$this->info("Service with ID {$data->id} imported");
-					} else {
-						DB::table('services')->where('id', $existingService->id)->update($serviceData);
-						$stats['updated']++;
-						$this->info("Service with ID {$data->id} updated");
-					}
-				} catch (\Exception $e) {
-					$this->error("Error al importar servicio {$data->id}: " . $e->getMessage());
-				}
-
-				$bar->advance();
-			}
-
-			$bar->finish();
-			$this->newLine();
-		} catch (\Exception $e) {
-			$this->newLine();
-			throw new \Exception('Error importing services: ' . $e->getMessage());
-		}
-
-		return $stats;
-	}
-
 	/**
 	 * Importa las categorías desde el sistema antiguo
 	 */
@@ -1109,6 +985,384 @@ class ImportDataCommand extends Command
 		} catch (\Exception $e) {
 			$this->newLine();
 			throw new \Exception('Error importing invoices: ' . $e->getMessage());
+		}
+
+		return $stats;
+	}
+
+	/**
+	 * Import services from remote database
+	 */
+	protected function importServices($id = null)
+	{
+		$this->info('📦 Importing services from remote database...');
+
+		$stats = [
+			'imported' => 0,
+			'updated' => 0,
+			'message' => null,
+		];
+
+		try {
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			$query = DB::connection('mysql_tmp')
+				->table('servicios')
+				->where('servicios.grupo', $cmsGroup)
+				->where('servicios.estado', '>', 0)
+				->where('servicios.operacion', 'V');  // Only sales
+
+			if ($id) {
+				$query->where('servicios.id', $id);
+			}
+
+			$services = $query->get();
+
+			if ($services->isEmpty()) {
+				$stats['message'] = 'No services found matching the criteria.';
+				return $stats;
+			}
+
+			$skipped = 0;
+			foreach ($services as $service) {
+				try {
+					// Map operation codes: V=sell (Venta), C=buy (Compra)
+					$operation = ($service->operacion ?? 'V') === 'V' ? 'sell' : 'buy';
+
+					$existingService = \App\Models\Service::where('id', $service->id)->first();
+
+					\App\Models\Service::updateOrCreate(
+						['id' => $service->id],
+						[
+							'enterprise_id' => $service->id_empresa,
+							'category_id' => $service->id_categoria ?? null,
+							'operation' => $operation,
+							'description' => strip_tags($service->descripcion ?? ''),
+							'price' => $service->valor ?? 0,
+							'frequency' => $service->frecuencia ?? 'M',
+							'currency_id' => $service->id_moneda ?? 1,
+							'discount' => $service->descuento ?? 0,
+							'status' => $service->estado ?? 1,
+							'next_billing' => $service->proxima ?? null,
+							'last_billed' => $service->ultima ?? null,
+							'expires_at' => $service->caduca ?? null,
+							'created_at' => $service->fecha_alta ?? now(),
+							'updated_at' => $service->fecha_modificacion ?? now(),
+						]
+					);
+
+					if ($existingService) {
+						$stats['updated']++;
+					} else {
+						$stats['imported']++;
+					}
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->warn("     Skipped service {$service->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->warn("   ⚠️  Skipped {$skipped} services due to errors");
+			}
+
+			$this->info("✅ Imported {$stats['imported']} services, updated {$stats['updated']}");
+		} catch (\Exception $e) {
+			$this->warn('⚠️  Could not import services: ' . $e->getMessage());
+		}
+
+		return $stats;
+	}
+
+	/**
+	 * Import projects from remote database
+	 */
+	protected function importProjects($id = null)
+	{
+		$this->info('📁 Importing projects from remote database...');
+
+		$stats = [
+			'imported' => 0,
+			'updated' => 0,
+			'message' => null,
+		];
+
+		try {
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			$query = DB::connection('mysql_tmp')
+				->table('proyectos')
+				->where('grupo', $cmsGroup)
+				->where('estado', '>', 0);
+
+			if ($id) {
+				$query->where('id', $id);
+			}
+
+			$projects = $query->get();
+
+			if ($projects->isEmpty()) {
+				$stats['message'] = 'No projects found matching the criteria.';
+				return $stats;
+			}
+
+			$skipped = 0;
+			foreach ($projects as $project) {
+				try {
+					// Get team ID
+					$team = \App\Models\Team::where('name', 'REVISION ALPHA')->first();
+					if (!$team) {
+						throw new \Exception('Revision Alpha team not found');
+					}
+
+					// Get responsible user - default to the team owner if not found
+					$responsibleId = \App\Models\User::where('email', 'diego.mascarenhas@icloud.com')->first()->id;
+
+					// Check if enterprise exists
+					if (!DB::table('enterprises')->where('id', $project->id_empresa)->exists()) {
+						$skipped++;
+						continue;
+					}
+
+					$existingProject = \App\Models\Project::where('id', $project->id)->first();
+
+					\App\Models\Project::updateOrCreate(
+						['id' => $project->id],
+						[
+							'team_id' => $team->id,
+							'enterprise_id' => $project->id_empresa,
+							'category_id' => $project->id_categoria ?? null,
+							'responsible_id' => $responsibleId,
+							'name' => $project->titulo ?? 'Proyecto ' . $project->id,
+							'real_name' => null,
+							'description' => $project->descripcion ?? null,
+							'date_material' => null,
+							'date_start' => $project->desde ?? null,
+							'date_end' => $project->hasta ?? null,
+							'cost' => $project->costo ?? 0,
+							'price' => $project->valor ?? 0,
+							'discount' => $project->descuento ?? 0,
+							'status_id' => $project->estado ?? 1,
+							'created_at' => $project->fecha_alta ?? now(),
+							'updated_at' => $project->fecha_modificacion ?? now(),
+						]
+					);
+
+					if ($existingProject) {
+						$stats['updated']++;
+					} else {
+						$stats['imported']++;
+					}
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->warn("     Skipped project {$project->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->warn("   ⚠️  Skipped {$skipped} projects due to errors");
+			}
+
+			$this->info("✅ Imported {$stats['imported']} projects, updated {$stats['updated']}");
+		} catch (\Exception $e) {
+			$this->warn('⚠️  Could not import projects: ' . $e->getMessage());
+		}
+
+		return $stats;
+	}
+
+	/**
+	 * Import payments from remote database
+	 */
+	protected function importPayments($id = null)
+	{
+		$this->info('💰 Importing payments from remote database...');
+
+		$stats = [
+			'imported' => 0,
+			'updated' => 0,
+			'message' => null,
+		];
+
+		try {
+			// Verify payments table exists
+			if (!\Illuminate\Support\Facades\Schema::hasTable('payments')) {
+				$this->warn('⚠️  Payments table does not exist. Skipping payment import.');
+				$this->info('   Run: php artisan vendor:publish --tag="humano-billing-migrations" && php artisan migrate');
+				return $stats;
+			}
+
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			// Get team ID
+			$team = \App\Models\Team::where('name', 'REVISION ALPHA')->first();
+			if (!$team) {
+				throw new \Exception('Revision Alpha team not found');
+			}
+
+			// Payment type mapping from legacy to new IDs
+			$paymentTypeMap = [
+				1 => 1,  // Cash
+				2 => 2,  // Bank Transfer
+				3 => 3,  // Bank Deposit
+				4 => 4,  // Check
+				5 => 5,  // Debit
+				10 => 6,  // Credit Card
+				7 => 7,  // PayPal
+				17 => 8,  // Stripe
+				6 => 12,  // MercadoPago
+				13 => 12,  // MercadoPago
+				14 => 12,  // MercadoPago
+			];
+
+			$query = DB::connection('mysql_tmp')
+				->table('movimientos')
+				->leftJoin('facturas', 'movimientos.id_factura', '=', 'facturas.id')
+				->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
+				->where('movimientos.grupo', $cmsGroup)
+				->where('movimientos.estado', '>', 0)
+				->select(
+					'movimientos.*',
+					'empresas_fiscales.id_empresa as enterprise_id',
+					'facturas.id_empresa_fiscal'
+				);
+
+			if ($id) {
+				$query->where('movimientos.id', $id);
+			}
+
+			$payments = $query->get();
+
+			if ($payments->isEmpty()) {
+				$stats['message'] = 'No payments found matching the criteria.';
+				return $stats;
+			}
+
+			$skipped = 0;
+			foreach ($payments as $payment) {
+				try {
+					// Get account ID - if not exists, use default account for this team
+					$accountId = $payment->id_cuenta;
+					if (!$accountId || !DB::table('payment_accounts')->where('id', $accountId)->exists()) {
+						// Get the first account for this team as default
+						$defaultAccount = DB::table('payment_accounts')
+							->where('team_id', $team->id)
+							->first();
+
+						if (!$defaultAccount) {
+							$skipped++;
+							continue;  // Skip if no accounts exist for this team
+						}
+
+						$accountId = $defaultAccount->id;
+					}
+
+					// Map legacy payment type ID to new ID
+					$legacyTypeId = $payment->id_forma_pago ?? 1;
+					$typeId = $paymentTypeMap[$legacyTypeId] ?? 1;  // Default to Cash if not mapped
+
+					// Determine transaction type: I=Income, E=Expense (default to expense if unknown)
+					$transactionType = 'expense';
+					if (isset($payment->transaccion)) {
+						$transactionType = strtoupper($payment->transaccion) === 'I' ? 'income' : 'expense';
+					}
+
+					// Get amount from 'valor' field
+					$amount = $payment->valor ?? 0;
+
+					// Get enterprise_id from multiple sources
+					$enterpriseId = null;
+
+					// 1. Try from the JOIN result
+					if ($payment->enterprise_id) {
+						if (DB::table('enterprises')->where('id', $payment->enterprise_id)->exists()) {
+							$enterpriseId = $payment->enterprise_id;
+						}
+					}
+
+					// 2. If still null, try to get from invoice
+					$invoiceId = $payment->id_factura;
+					if (!$enterpriseId && $invoiceId) {
+						$invoice = DB::table('invoices')->where('id', $invoiceId)->first();
+						if ($invoice && $invoice->enterprise_id) {
+							$enterpriseId = $invoice->enterprise_id;
+						}
+						// If invoice doesn't exist, set invoiceId to null
+						if (!$invoice) {
+							$invoiceId = null;
+						}
+					}
+
+					// 3. If still null and we have id_empresa_fiscal, try to find the enterprise
+					if (!$enterpriseId && isset($payment->id_empresa_fiscal)) {
+						$enterpriseFromFiscal = DB::table('enterprises')
+							->where('id', $payment->id_empresa_fiscal)
+							->where('team_id', $team->id)
+							->first();
+						if ($enterpriseFromFiscal) {
+							$enterpriseId = $enterpriseFromFiscal->id;
+						}
+					}
+
+					$existingPayment = \Idoneo\HumanoBilling\Models\Payment::where('id', $payment->id)->first();
+
+					\Idoneo\HumanoBilling\Models\Payment::updateOrCreate(
+						['id' => $payment->id],
+						[
+							'team_id' => $team->id,
+							'enterprise_id' => $enterpriseId,
+							'invoice_id' => $invoiceId,
+							'transaction_type' => $transactionType,
+							'date' => $payment->fecha ? \Carbon\Carbon::parse($payment->fecha)->format('Y-m-d') : now()->format('Y-m-d'),
+							'amount' => $amount,
+							'type_id' => $typeId,
+							'account_id' => $accountId,
+							'remarks' => $payment->observaciones ?? null,
+							'status' => $payment->estado ?? 1,
+							'created_at' => $payment->fecha_alta ?? now(),
+							'updated_at' => $payment->fecha_modificacion ?? now(),
+						]
+					);
+
+					if ($existingPayment) {
+						$stats['updated']++;
+					} else {
+						$stats['imported']++;
+					}
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->warn("     Skipped payment {$payment->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->warn("   ⚠️  Skipped {$skipped} payments due to errors");
+			}
+
+			$this->info("✅ Imported {$stats['imported']} payments, updated {$stats['updated']}");
+		} catch (\Exception $e) {
+			$this->warn('⚠️  Could not import payments: ' . $e->getMessage());
 		}
 
 		return $stats;

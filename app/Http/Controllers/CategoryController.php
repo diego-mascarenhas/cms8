@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\DataTables\CategoryDataTable;
 use App\Models\Category;
-use App\Models\InvoiceItem;
 use App\Models\Module;
 use App\Models\Team;
+use Idoneo\HumanoBilling\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,8 +22,7 @@ class CategoryController extends Controller
 
 		// Get only parent categories (null parent_id) to show in a hierarchical view
 		$categories = Category::where('team_id', $team->id)
-			->when($moduleId, function ($query, $moduleId)
-			{
+			->when($moduleId, function ($query, $moduleId) {
 				return $query->where('module_id', $moduleId);
 			})
 			->whereNull('parent_id')
@@ -36,8 +35,7 @@ class CategoryController extends Controller
 		$modules = Module::orderBy('name')->get();
 
 		// Decide which view to use based on request
-		if ($request->ajax())
-		{
+		if ($request->ajax()) {
 			return $dataTable->render('category.index');
 		}
 
@@ -56,8 +54,7 @@ class CategoryController extends Controller
 		$parentId = $request->get('parent_id');
 		$parent = null;
 
-		if ($parentId)
-		{
+		if ($parentId) {
 			$parent = Category::where('team_id', $team->id)->findOrFail($parentId);
 		}
 
@@ -90,16 +87,14 @@ class CategoryController extends Controller
 		]);
 
 		// Check if parent belongs to the current team
-		if ($request->parent_id)
-		{
+		if ($request->parent_id) {
 			$parent = Category::where('team_id', $team->id)->findOrFail($request->parent_id);
 
 			// Check maximum depth allowed
 			$maxDepth = (int) $team->getSetting('categories_max_depth', 2);
 			$currentDepth = $this->getCategoryDepth($parent);
 
-			if ($currentDepth >= $maxDepth)
-			{
+			if ($currentDepth >= $maxDepth) {
 				return redirect()
 					->back()
 					->withInput()
@@ -108,8 +103,7 @@ class CategoryController extends Controller
 		}
 
 		$category = new Category;
-		if ($request->id)
-		{
+		if ($request->id) {
 			$category = Category::where('team_id', $team->id)->findOrFail($request->id);
 		}
 
@@ -193,8 +187,7 @@ class CategoryController extends Controller
 		// Check if category is being used
 		$usageCount = $this->getCategoryUsageCount($category);
 
-		if ($usageCount > 0)
-		{
+		if ($usageCount > 0) {
 			return response()->json([
 				'error' => "This category is being used by {$usageCount} items and cannot be deleted.",
 			], 422);
@@ -219,8 +212,7 @@ class CategoryController extends Controller
 			'categories.*.order' => 'required|integer|min:0',
 		]);
 
-		foreach ($request->categories as $item)
-		{
+		foreach ($request->categories as $item) {
 			Category::where('team_id', $team->id)
 				->where('id', $item['id'])
 				->update(['order' => $item['order']]);
@@ -245,20 +237,16 @@ class CategoryController extends Controller
 			->whereNull('category_id')
 			->get();
 
-		$reportData = $categories->map(function ($category)
-		{
-			$sortedItems = $category->invoiceItems->sortByDesc(function ($item)
-			{
+		$reportData = $categories->map(function ($category) {
+			$sortedItems = $category->invoiceItems->sortByDesc(function ($item) {
 				return $item->quantity * $item->unit_price - ($item->discount ?? 0);
 			});
 
-			$totalAmount = $sortedItems->sum(function ($item)
-			{
+			$totalAmount = $sortedItems->sum(function ($item) {
 				return $item->quantity * $item->unit_price - ($item->discount ?? 0);
 			});
 
-			if ($totalAmount == 0)
-			{
+			if ($totalAmount == 0) {
 				return null;
 			}
 
@@ -290,8 +278,7 @@ class CategoryController extends Controller
 			->with('invoiceItems.invoice.enterprise')
 			->findOrFail($id);
 
-		$totalAmount = $category->invoiceItems->sum(function ($item)
-		{
+		$totalAmount = $category->invoiceItems->sum(function ($item) {
 			return $item->quantity * $item->unit_price - ($item->discount ?? 0);
 		});
 
@@ -310,8 +297,7 @@ class CategoryController extends Controller
 		$depth = 0;
 		$current = $category;
 
-		while ($current->parent_id)
-		{
+		while ($current->parent_id) {
 			$depth++;
 			$current = $current->parent;
 		}
@@ -326,8 +312,7 @@ class CategoryController extends Controller
 	{
 		$ids = [];
 
-		foreach ($category->children as $child)
-		{
+		foreach ($category->children as $child) {
 			$ids[] = $child->id;
 			$ids = array_merge($ids, $this->getAllChildrenIds($child));
 		}

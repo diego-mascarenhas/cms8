@@ -2,9 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Models\PaymentAccount;
 use App\Models\User;
 use App\Traits\ConfiguresTeamMail;
+use Idoneo\HumanoBilling\Models\PaymentAccount;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -25,11 +25,9 @@ class SendBalanceEmail implements ShouldQueue
 		$adminUsers = User::role('admin')->get();
 
 		// Enviar el correo a cada administrador
-		foreach ($adminUsers as $user)
-		{
+		foreach ($adminUsers as $user) {
 			// Configure mail for the user's current team
-			if ($user->currentTeam)
-			{
+			if ($user->currentTeam) {
 				$this->configureMailForTeam($user->currentTeam);
 			}
 
@@ -39,14 +37,15 @@ class SendBalanceEmail implements ShouldQueue
 
 	protected function calculateBalances()
 	{
-		return PaymentAccount::all()->map(function ($account)
-		{
-			$income = $account->payments()
+		return PaymentAccount::all()->map(function ($account) {
+			$income = $account
+				->payments()
 				->approvedStatus()
 				->where('transaction_type', 'I')
 				->sum('amount');
 
-			$expense = $account->payments()
+			$expense = $account
+				->payments()
 				->approvedStatus()
 				->where('transaction_type', 'E')
 				->sum('amount');

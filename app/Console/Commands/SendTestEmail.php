@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Mail\BalanceMail;
-use App\Models\PaymentAccount;
+use Idoneo\HumanoBilling\Models\PaymentAccount;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 
@@ -15,7 +15,7 @@ class SendTestEmail extends Command
 
 	public function handle()
 	{
-		$balances = $this->getBalances(); // Define cómo obtienes los balances
+		$balances = $this->getBalances();  // Define cómo obtienes los balances
 		Mail::to('diego.mascarenhas@icloud.com')->send(new BalanceMail($balances));
 		// Mail::to('pablo@revisionalpha.com')->send(new BalanceMail($balances));
 
@@ -25,14 +25,15 @@ class SendTestEmail extends Command
 	private function getBalances()
 	{
 		// Lógica para obtener balances, similar a la del job
-		return PaymentAccount::all()->map(function ($account)
-		{
-			$income = $account->payments()
+		return PaymentAccount::all()->map(function ($account) {
+			$income = $account
+				->payments()
 				->approvedStatus()
 				->where('transaction_type', 'I')
 				->sum('amount');
 
-			$expense = $account->payments()
+			$expense = $account
+				->payments()
 				->approvedStatus()
 				->where('transaction_type', 'E')
 				->sum('amount');

@@ -30,8 +30,7 @@ class ContactController extends Controller
 
 	public function index(ContactDataTable $dataTable)
 	{
-		if (! auth()->user()->currentTeam)
-		{
+		if (!auth()->user()->currentTeam) {
 			return redirect()->route('error-without-team');
 		}
 
@@ -52,8 +51,7 @@ class ContactController extends Controller
 		$data = new \stdClass;
 
 		// Pre-fill user_id if provided in query string
-		if (request()->has('link_user'))
-		{
+		if (request()->has('link_user')) {
 			$data->user_id = request()->input('link_user');
 		}
 
@@ -81,21 +79,18 @@ class ContactController extends Controller
 		$contact = Contact::create($contactData);
 
 		// Sync categories
-		if (isset($data['categories']))
-		{
+		if (isset($data['categories'])) {
 			$contact->categories()->sync($data['categories']);
 		}
 
 		// Sync software
-		if (isset($data['software_ids']))
-		{
+		if (isset($data['software_ids'])) {
 			$contact->softwares()->sync($data['software_ids']);
 		}
 
 		$message = __('messages.success.created');
 
-		if ($request->ajax())
-		{
+		if ($request->ajax()) {
 			return response()->json([
 				'success' => true,
 				'message' => $message,
@@ -121,12 +116,11 @@ class ContactController extends Controller
 			'country',
 			'language',
 			'sentimentHistories.sentiment',
-			'enterprises', // relación correcta
+			'enterprises',  // relación correcta
 			'user.roles',
 		])->find($id);
 
-		if (! $data)
-		{
+		if (!$data) {
 			return redirect()
 				->route('contact-list')
 				->with('error', __('messages.errors.not_found'));
@@ -142,8 +136,7 @@ class ContactController extends Controller
 			'metrics' => null,
 		];
 
-		if ($team->getSetting('stripe_secret'))
-		{
+		if ($team->getSetting('stripe_secret')) {
 			$stripeData = [
 				'public_key' => $team->getSetting('stripe_public'),
 				'secret_key' => $team->getSetting('stripe_secret'),
@@ -155,23 +148,18 @@ class ContactController extends Controller
 				'metrics' => null,
 			];
 
-			if ($data->enterprise && $data->enterprise->code)
-			{
-				try
-				{
+			if ($data->enterprise && $data->enterprise->code) {
+				try {
 					Stripe::setApiKey($team->getSetting('stripe_secret'));
 					// ... rest of the Stripe code ...
-				} catch (\Exception $e)
-				{
-					\Log::error('Error fetching Stripe data: '.$e->getMessage());
+				} catch (\Exception $e) {
+					\Log::error('Error fetching Stripe data: ' . $e->getMessage());
 				}
 			}
 		}
 
-		if ($data->enterprise && $data->enterprise->code && $team->getSetting('stripe_secret'))
-		{
-			try
-			{
+		if ($data->enterprise && $data->enterprise->code && $team->getSetting('stripe_secret')) {
+			try {
 				// Set secret key for backend operations
 				Stripe::setApiKey($team->getSetting('stripe_secret'));
 
@@ -188,8 +176,8 @@ class ContactController extends Controller
 				// Get invoices
 				$invoices = Invoice::all([
 					'customer' => $customer->id,
-					'limit' => 10, // Last 10 invoices
-					'status' => 'paid', // Only paid invoices
+					'limit' => 10,  // Last 10 invoices
+					'status' => 'paid',  // Only paid invoices
 				]);
 
 				// Get payment methods
@@ -203,13 +191,12 @@ class ContactController extends Controller
 						'name' => $customer->name,
 						'email' => $customer->email,
 						'created' => Carbon::createFromTimestamp($customer->created)->format('d/m/Y'),
-						'tax_ids' => array_map(function ($taxId)
-						{
-						    return [
-						        'type' => $taxId->type,
-						        'value' => $taxId->value,
-						        'country' => $taxId->country,
-						    ];
+						'tax_ids' => array_map(function ($taxId) {
+							return [
+								'type' => $taxId->type,
+								'value' => $taxId->value,
+								'country' => $taxId->country,
+							];
 						}, $customer->tax_ids->data),
 					],
 					'subscription' => null,
@@ -218,48 +205,45 @@ class ContactController extends Controller
 				];
 
 				// Process subscriptions
-				if ($customer->subscriptions && ! empty($customer->subscriptions->data))
-				{
+				if ($customer->subscriptions && !empty($customer->subscriptions->data)) {
 					$stripeData['subscriptions'] = [];
 
-					foreach ($customer->subscriptions->data as $subscription)
-					{
+					foreach ($customer->subscriptions->data as $subscription) {
 						// Get product details for each subscription
 						$product = Product::retrieve($subscription->items->data[0]->plan->product);
 
 						$statusTranslations = [
-						    'active' => 'Activo',
-						    'past_due' => 'Pago Vencido',
-						    'canceled' => 'Cancelado',
-						    'incomplete' => 'Incompleto',
-						    'incomplete_expired' => 'Expirado',
-						    'trialing' => 'En Prueba',
-						    'unpaid' => 'No Pagado',
+							'active' => 'Activo',
+							'past_due' => 'Pago Vencido',
+							'canceled' => 'Cancelado',
+							'incomplete' => 'Incompleto',
+							'incomplete_expired' => 'Expirado',
+							'trialing' => 'En Prueba',
+							'unpaid' => 'No Pagado',
 						];
 
 						$stripeData['subscriptions'][] = [
-						    'id' => $subscription->id,
-						    'status' => $subscription->status,
-						    'status_translated' => $statusTranslations[$subscription->status] ?? ucfirst($subscription->status),
-						    'current_period_start' => $subscription->current_period_start,
-						    'current_period_end' => $subscription->current_period_end,
-						    'amount' => $subscription->items->data[0]->price->unit_amount / 100,
-						    'currency' => strtoupper($subscription->items->data[0]->price->currency),
-						    'interval' => $subscription->items->data[0]->plan->interval,
-						    'interval_count' => $subscription->items->data[0]->plan->interval_count,
-						    'product_id' => $subscription->items->data[0]->plan->product,
-						    'product_name' => $product->name,
-						    'description' => $subscription->description ?? null,
-						    'created' => $subscription->created,
-						    'collection_method' => $subscription->collection_method,
-						    'days_until_due' => $subscription->days_until_due,
+							'id' => $subscription->id,
+							'status' => $subscription->status,
+							'status_translated' => $statusTranslations[$subscription->status] ?? ucfirst($subscription->status),
+							'current_period_start' => $subscription->current_period_start,
+							'current_period_end' => $subscription->current_period_end,
+							'amount' => $subscription->items->data[0]->price->unit_amount / 100,
+							'currency' => strtoupper($subscription->items->data[0]->price->currency),
+							'interval' => $subscription->items->data[0]->plan->interval,
+							'interval_count' => $subscription->items->data[0]->plan->interval_count,
+							'product_id' => $subscription->items->data[0]->plan->product,
+							'product_name' => $product->name,
+							'description' => $subscription->description ?? null,
+							'created' => $subscription->created,
+							'collection_method' => $subscription->collection_method,
+							'days_until_due' => $subscription->days_until_due,
 						];
 					}
 				}
 
 				// Process payment method
-				if (! empty($paymentMethods->data))
-				{
+				if (!empty($paymentMethods->data)) {
 					$card = $paymentMethods->data[0]->card;
 					$stripeData['payment_method'] = [
 						'brand' => $card->brand,
@@ -270,11 +254,10 @@ class ContactController extends Controller
 				}
 
 				// Process invoices
-				foreach ($invoices->data as $invoice)
-				{
+				foreach ($invoices->data as $invoice) {
 					$stripeData['invoices'][] = [
 						'number' => $invoice->number,
-						'amount' => $invoice->amount_paid / 100, // Convert from cents
+						'amount' => $invoice->amount_paid / 100,  // Convert from cents
 						'currency' => strtoupper($invoice->currency),
 						'status' => $invoice->status,
 						'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
@@ -287,35 +270,31 @@ class ContactController extends Controller
 				$totalUnpaid = 0;
 				$firstInvoiceDate = null;
 
-				if (! empty($invoices->data))
-				{
-					foreach ($invoices->data as $invoice)
-					{
-						if ($invoice->status === 'paid')
-						{
-						    $totalPaid += $invoice->amount_paid / 100;
-						} else
-						{
-						    $totalUnpaid += $invoice->amount_due / 100;
+				if (!empty($invoices->data)) {
+					foreach ($invoices->data as $invoice) {
+						if ($invoice->status === 'paid') {
+							$totalPaid += $invoice->amount_paid / 100;
+						} else {
+							$totalUnpaid += $invoice->amount_due / 100;
 						}
 
 						// Track first invoice date for customer age calculation
-						if (! $firstInvoiceDate || $invoice->created < $firstInvoiceDate)
-						{
-						    $firstInvoiceDate = $invoice->created;
+						if (!$firstInvoiceDate || $invoice->created < $firstInvoiceDate) {
+							$firstInvoiceDate = $invoice->created;
 						}
 					}
 
 					// Calculate customer lifetime in months
-					$lifetimeMonths = $firstInvoiceDate ?
-						Carbon::createFromTimestamp($firstInvoiceDate)->diffInMonths(Carbon::now()) + 1 : 0;
+					$lifetimeMonths = $firstInvoiceDate
+						? Carbon::createFromTimestamp($firstInvoiceDate)->diffInMonths(Carbon::now()) + 1
+						: 0;
 
 					// Calculate LTV (total revenue / number of months)
 					$ltv = $lifetimeMonths > 0 ? $totalPaid / $lifetimeMonths : $totalPaid;
 
 					// Calculate CAC (assuming a base acquisition cost plus monthly marketing spend)
-					$baseAcquisitionCost = 50; // Coste de adquisición por cliente (50€)
-					$monthlyMarketingSpend = 10; // Gasto mensual en marketing por cliente (10€)
+					$baseAcquisitionCost = 50;  // Coste de adquisición por cliente (50€)
+					$monthlyMarketingSpend = 10;  // Gasto mensual en marketing por cliente (10€)
 					$cac = $baseAcquisitionCost + ($monthlyMarketingSpend * $lifetimeMonths);
 
 					$stripeData['metrics'] = [
@@ -326,9 +305,8 @@ class ContactController extends Controller
 						'lifetime_months' => $lifetimeMonths,
 					];
 				}
-			} catch (\Exception $e)
-			{
-				\Log::error('Error fetching Stripe data: '.$e->getMessage());
+			} catch (\Exception $e) {
+				\Log::error('Error fetching Stripe data: ' . $e->getMessage());
 			}
 		}
 
@@ -381,21 +359,18 @@ class ContactController extends Controller
 		$contact->update($contactData);
 
 		// Sync categories
-		if (isset($data['categories']))
-		{
+		if (isset($data['categories'])) {
 			$contact->categories()->sync($data['categories']);
 		}
 
 		// Sync software
-		if (isset($data['software_ids']))
-		{
+		if (isset($data['software_ids'])) {
 			$contact->softwares()->sync($data['software_ids']);
 		}
 
 		$message = __('messages.success.updated');
 
-		if ($request->ajax())
-		{
+		if ($request->ajax()) {
 			return response()->json([
 				'success' => true,
 				'message' => $message,
@@ -427,8 +402,7 @@ class ContactController extends Controller
 			'notes' => 'required|string|max:255',
 		]);
 
-		if ($validator->fails())
-		{
+		if ($validator->fails()) {
 			return response()->json(['errors' => $validator->errors()], 422);
 		}
 
@@ -440,8 +414,7 @@ class ContactController extends Controller
 			'notes' => $request->notes,
 		]);
 
-		if ($contact->list60)
-		{
+		if ($contact->list60) {
 			$newStatus = min($contact->list60->status_id + 1, 3);
 
 			$contact->list60->update([
@@ -468,18 +441,17 @@ class ContactController extends Controller
 		$file = $request->file('file');
 		$fileName = $file->getClientOriginalName();
 		$extension = $file->getClientOriginalExtension();
-		$teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
+		$teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
 
 		$file->storeAs('contact/import', $teamUserId);
 	}
 
 	public function showImportForm()
 	{
-		$fileName = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
-		$filePath = storage_path('app/contact/import/'.$fileName);
+		$fileName = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
+		$filePath = storage_path('app/contact/import/' . $fileName);
 
-		if (! file_exists($filePath))
-		{
+		if (!file_exists($filePath)) {
 			return view('contact.import');
 		}
 
@@ -490,14 +462,11 @@ class ContactController extends Controller
 		$contacts = [];
 		$totalImported = 0;
 
-		foreach ($rows as $row)
-		{
-			if (! empty(array_filter($row)))
-			{
+		foreach ($rows as $row) {
+			if (!empty(array_filter($row))) {
 				$contact = $this->detectFields($row);
 
-				if ($contact['email'] || $contact['phone'])
-				{
+				if ($contact['email'] || $contact['phone']) {
 					$contacts[] = $contact;
 
 					$newContact = $this->updateContact(
@@ -507,15 +476,14 @@ class ContactController extends Controller
 						$contact['socials'],
 					);
 
-					if ($newContact->wasRecentlyCreated)
-					{
+					if ($newContact->wasRecentlyCreated) {
 						$totalImported++;
 					}
 				}
 			}
 		}
 
-		$message = $totalImported.' contactos importados con éxito.';
+		$message = $totalImported . ' contactos importados con éxito.';
 
 		return redirect()
 			->route('contact-list')
@@ -533,58 +501,49 @@ class ContactController extends Controller
 
 		$contactSources = [];
 
-		if ($email)
-		{
+		if ($email) {
 			$contactSources[] = [
 				'source_id' => 1,
 				'value' => $email,
 			];
 		}
-		if ($phone)
-		{
+		if ($phone) {
 			$contactSources[] = [
 				'source_id' => 2,
 				'value' => $phone,
 			];
 		}
 
-		foreach ($socials as $sourceId => $value)
-		{
+		foreach ($socials as $sourceId => $value) {
 			$contactSources[] = [
 				'source_id' => $sourceId,
 				'value' => $value,
 			];
 		}
 
-		try
-		{
+		try {
 			$contact = Contact::where('team_id', auth()->user()->currentTeam->id)
-				->where(function ($query) use ($email, $phone)
-				{
-					if ($email)
-					{
-						$query->whereHas('sources', function ($subQuery) use ($email)
-						{
-						    $subQuery->where('source_id', 1)
-						        ->where('value', $email);
+				->where(function ($query) use ($email, $phone) {
+					if ($email) {
+						$query->whereHas('sources', function ($subQuery) use ($email) {
+							$subQuery
+								->where('source_id', 1)
+								->where('value', $email);
 						});
 					}
-					if ($phone)
-					{
-						$query->orWhereHas('sources', function ($subQuery) use ($phone)
-						{
-						    $subQuery->where('source_id', 2)
-						        ->where('value', $phone);
+					if ($phone) {
+						$query->orWhereHas('sources', function ($subQuery) use ($phone) {
+							$subQuery
+								->where('source_id', 2)
+								->where('value', $phone);
 						});
 					}
 				})
 				->firstOrFail();
-		} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e)
-		{
+		} catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
 			$contact = Contact::create($contactData);
 
-			foreach ($contactSources as $source)
-			{
+			foreach ($contactSources as $source) {
 				ContactSource::create([
 					'contact_id' => $contact->id,
 					'source_id' => $source['source_id'],
@@ -607,10 +566,8 @@ class ContactController extends Controller
 
 		$sources = Source::all()->keyBy('id');
 
-		foreach ($values as $index => $value)
-		{
-			if (filter_var($value, FILTER_VALIDATE_EMAIL))
-			{
+		foreach ($values as $index => $value) {
+			if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
 				$contact['email'] = $value;
 				unset($values[$index]);
 
@@ -618,10 +575,8 @@ class ContactController extends Controller
 			}
 		}
 
-		foreach ($values as $index => $value)
-		{
-			if (preg_match('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/', $value))
-			{
+		foreach ($values as $index => $value) {
+			if (preg_match('/^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\.\/0-9]*$/', $value)) {
 				$contact['phone'] = $value;
 				unset($values[$index]);
 
@@ -629,19 +584,14 @@ class ContactController extends Controller
 			}
 		}
 
-		foreach ($values as $value)
-		{
-			if (! empty($value) && $value !== $contact['email'] && $value !== $contact['phone'])
-			{
-				foreach ($sources as $source)
-				{
-					if (strpos($value, $source->base_url) === 0)
-					{
+		foreach ($values as $value) {
+			if (!empty($value) && $value !== $contact['email'] && $value !== $contact['phone']) {
+				foreach ($sources as $source) {
+					if (strpos($value, $source->base_url) === 0) {
 						$contact['socials'][$source->id] = str_replace($source->base_url, '', $value);
 					}
 				}
-				if (is_null($contact['name']))
-				{
+				if (is_null($contact['name'])) {
 					$contact['name'] = $value;
 				}
 			}
@@ -652,10 +602,8 @@ class ContactController extends Controller
 
 	private function isHeaderRow($row)
 	{
-		foreach ($row as $value)
-		{
-			if (! is_string($value))
-			{
+		foreach ($row as $value) {
+			if (!is_string($value)) {
 				return false;
 			}
 		}
@@ -674,18 +622,15 @@ class ContactController extends Controller
 
 	public function endAction($trackingId)
 	{
-		if (! $trackingId)
-		{
+		if (!$trackingId) {
 			return response()->json(['success' => false, 'message' => 'No tracking ID provided']);
 		}
 
-		try
-		{
+		try {
 			$this->endActionTracking($trackingId);
 
 			return response()->json(['success' => true]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json(['success' => false, 'message' => 'Error ending tracking']);
 		}
 	}
@@ -698,7 +643,7 @@ class ContactController extends Controller
 		$data = [
 			'pages' => [
 				[
-					'name' => config('variables.templateName').' CRM',
+					'name' => config('variables.templateName') . ' CRM',
 					'icon' => 'ti-layout-grid',
 					'url' => 'dashboard/',
 				],
@@ -740,16 +685,14 @@ class ContactController extends Controller
 		];
 
 		// Only search contacts if the contacts module is active
-		if ($team && $team->hasModule('contacts'))
-		{
+		if ($team && $team->hasModule('contacts')) {
 			$data['members'] = Contact::where('name', 'like', "%{$query}%")
 				->select('id', 'name', 'created_at')
 				->get()
-				->map(function ($contact)
-				{
+				->map(function ($contact) {
 					return [
 						'name' => $contact->name,
-						'subtitle' => 'Creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs',
+						'subtitle' => 'Creado el ' . $contact->created_at->format('d-m-Y H:i:s') . ' hs',
 						'src' => 'img/avatars/guru-meditating.jpg',
 						'url' => route('contact.show', $contact->id),
 					];
@@ -764,16 +707,14 @@ class ContactController extends Controller
 		}
 
 		// Only search enterprises if the enterprises module is active
-		if ($team && $team->hasModule('enterprises'))
-		{
+		if ($team && $team->hasModule('enterprises')) {
 			$data['enterprises'] = \App\Models\Enterprise::where('name', 'like', "%{$query}%")
 				->select('id', 'name', 'created_at', 'responsible_id')
 				->get()
-				->map(function ($enterprise)
-				{
+				->map(function ($enterprise) {
 					return [
 						'name' => $enterprise->name,
-						'subtitle' => 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs',
+						'subtitle' => 'Empresa creada el ' . $enterprise->created_at->format('d-m-Y H:i:s') . ' hs',
 						'src' => 'img/icons/brands/enterprise.png',
 						'url' => $enterprise->responsible_id ? route('contact.show', $enterprise->responsible_id) : '#',
 					];
@@ -781,27 +722,25 @@ class ContactController extends Controller
 		}
 
 		// Only search services if the services module is active
-		if ($team && $team->hasModule('services'))
-		{
-			$data['services'] = \App\Models\Service::where(function ($q) use ($query)
-			{
+		if ($team && $team->hasModule('services')) {
+			$data['services'] = \App\Models\Service::where(function ($q) use ($query) {
 				// Search for domain in the JSON data
-				$q->whereRaw("JSON_EXTRACT(data, '$.domain') LIKE ?", ["%{$query}%"])
-				  // Search for user in the JSON data
-					->orWhereRaw("JSON_EXTRACT(data, '$.user') LIKE ?", ["%{$query}%"])
-				  // Search for IP in the JSON data
-					->orWhereRaw("JSON_EXTRACT(data, '$.ip') LIKE ?", ["%{$query}%"]);
+				$q
+					->whereRaw("JSON_EXTRACT(data, '\$.domain') LIKE ?", ["%{$query}%"])
+					// Search for user in the JSON data
+					->orWhereRaw("JSON_EXTRACT(data, '\$.user') LIKE ?", ["%{$query}%"])
+					// Search for IP in the JSON data
+					->orWhereRaw("JSON_EXTRACT(data, '\$.ip') LIKE ?", ["%{$query}%"]);
 			})
 				->select('id', 'enterprise_id', 'data', 'created_at')
 				->get()
-				->map(function ($service)
-				{
+				->map(function ($service) {
 					$domain = isset($service->data->domain) ? $service->data->domain : 'No domain';
 					$user = isset($service->data->user) ? $service->data->user : '';
 
 					return [
 						'name' => $domain,
-						'subtitle' => ! empty($user) ? "Usuario: {$user}" : 'Servicio creado el '.$service->created_at->format('d-m-Y'),
+						'subtitle' => !empty($user) ? "Usuario: {$user}" : 'Servicio creado el ' . $service->created_at->format('d-m-Y'),
 						'src' => 'img/icons/brands/web.png',
 						'url' => route('service.show', $service->id),
 					];
@@ -809,19 +748,17 @@ class ContactController extends Controller
 		}
 
 		// Only search projects if the projects module is active
-		if ($team && $team->hasModule('projects'))
-		{
-			$data['projects'] = \App\Models\Project::where(function ($q) use ($query)
-			{
-				$q->where('name', 'like', "%{$query}%")
+		if ($team && $team->hasModule('projects')) {
+			$data['projects'] = \App\Models\Project::where(function ($q) use ($query) {
+				$q
+					->where('name', 'like', "%{$query}%")
 					->orWhere('real_name', 'like', "%{$query}%")
 					->orWhere('description', 'like', "%{$query}%");
 			})
 				->with(['client', 'status'])
 				->select('id', 'name', 'real_name', 'enterprise_id', 'status_id', 'created_at')
 				->get()
-				->map(function ($project)
-				{
+				->map(function ($project) {
 					$clientName = $project->client ? $project->client->name : 'Sin cliente';
 					$statusName = $project->status ? $project->status->name : 'Sin estado';
 
@@ -842,18 +779,16 @@ class ContactController extends Controller
 		}
 
 		// Only search collaborators if the collaborators module is active
-		if ($team && $team->hasModule('collaborators'))
-		{
+		if ($team && $team->hasModule('collaborators')) {
 			$data['collaborators'] = Contact::where('name', 'like', "%{$query}%")
-				->whereHas('languageVariants') // Only contacts with language variants (collaborators)
-				->whereHas('fares') // Only contacts with services/fares
+				->whereHas('languageVariants')  // Only contacts with language variants (collaborators)
+				->whereHas('fares')  // Only contacts with services/fares
 				->select('id', 'name', 'created_at')
 				->get()
-				->map(function ($contact)
-				{
+				->map(function ($contact) {
 					return [
 						'name' => $contact->name,
-						'subtitle' => 'Colaborador creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs',
+						'subtitle' => 'Colaborador creado el ' . $contact->created_at->format('d-m-Y H:i:s') . ' hs',
 						'src' => 'img/avatars/collaborator.png',
 						'url' => route('collaborator.show', $contact->id),
 					];
@@ -868,17 +803,14 @@ class ContactController extends Controller
 		}
 
 		// Only search invoices if the invoices module is active
-		if ($team && $team->hasModule('invoices'))
-		{
-			$data['invoices'] = \App\Models\Invoice::where(function ($q) use ($query)
-			{
+		if ($team && $team->hasModule('invoices')) {
+			$data['invoices'] = \Idoneo\HumanoBilling\Models\Invoice::where(function ($q) use ($query) {
 				$q->where('number', 'like', "%{$query}%");
 			})
 				->with(['enterprise'])
 				->select('id', 'number', 'enterprise_id', 'created_at')
 				->get()
-				->map(function ($invoice)
-				{
+				->map(function ($invoice) {
 					$clientName = $invoice->enterprise ? $invoice->enterprise->name : 'Sin cliente';
 
 					return [
@@ -898,8 +830,7 @@ class ContactController extends Controller
 		}
 
 		// Add client-related pages only if clients module is active
-		if ($team && $team->hasModule('clients'))
-		{
+		if ($team && $team->hasModule('clients')) {
 			$data['pages'][] = [
 				'name' => 'Clientes',
 				'icon' => 'ti-user-heart',
@@ -908,8 +839,7 @@ class ContactController extends Controller
 		}
 
 		// Add list60-related pages only if list60 module is active
-		if ($team && $team->hasModule('list60'))
-		{
+		if ($team && $team->hasModule('list60')) {
 			$data['pages'][] = [
 				'name' => 'Lista de 60',
 				'icon' => 'ti-list-check',
@@ -950,22 +880,20 @@ class ContactController extends Controller
 		]);
 
 		$file = $request->file('file');
-		$teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
+		$teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
 
 		$file->storeAs('contact/import', $teamUserId);
 
-		$filePath = storage_path('app/contact/import/'.$teamUserId);
+		$filePath = storage_path('app/contact/import/' . $teamUserId);
 		$spreadsheet = IOFactory::load($filePath);
 		$worksheet = $spreadsheet->getActiveSheet();
 
 		$rows = $worksheet->toArray();
 		$headers = array_shift($rows);
 
-		$rows = array_filter($rows, function ($row)
-		{
-			return array_filter($row, function ($cell)
-			{
-				return ! empty($cell) && $cell !== '' && $cell !== null;
+		$rows = array_filter($rows, function ($row) {
+			return array_filter($row, function ($cell) {
+				return !empty($cell) && $cell !== '' && $cell !== null;
 			});
 		});
 
@@ -983,8 +911,8 @@ class ContactController extends Controller
 
 	public function processMapping(Request $request)
 	{
-		$teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
-		$filePath = storage_path('app/contact/import/'.$teamUserId);
+		$teamUserId = auth()->user()->currentTeam->id . '-' . auth()->user()->id;
+		$filePath = storage_path('app/contact/import/' . $teamUserId);
 
 		$spreadsheet = IOFactory::load($filePath);
 		$worksheet = $spreadsheet->getActiveSheet();
@@ -995,54 +923,44 @@ class ContactController extends Controller
 
 		$contactsCreated = 0;
 
-		foreach ($rows as $row)
-		{
+		foreach ($rows as $row) {
 			$mappedRow = [];
 			$sources = [];
 			$nameParts = [];
 
-			foreach ($mapping as $columnIndex => $field)
-			{
-				if (! empty($field))
-				{
+			foreach ($mapping as $columnIndex => $field) {
+				if (!empty($field)) {
 					$value = $row[$columnIndex] ?? null;
 
-					if ($field === 'name')
-					{
+					if ($field === 'name') {
 						$nameParts[] = trim($value);
-					} elseif ($field === 'email' && ! empty($value))
-					{
+					} elseif ($field === 'email' && !empty($value)) {
 						$sources[] = [
-						    'source_id' => 1,
-						    'value' => $value,
+							'source_id' => 1,
+							'value' => $value,
 						];
-					} elseif ($field === 'phone' && ! empty($value))
-					{
+					} elseif ($field === 'phone' && !empty($value)) {
 						$sources[] = [
-						    'source_id' => 2,
-						    'value' => $value,
+							'source_id' => 2,
+							'value' => $value,
 						];
 					}
 				}
 			}
 
-			if (! empty($nameParts))
-			{
+			if (!empty($nameParts)) {
 				$mappedRow['name'] = implode(' ', array_filter($nameParts));
 			}
 
 			$additionalData = ['import' => []];
-			foreach ($headers as $index => $header)
-			{
+			foreach ($headers as $index => $header) {
 				$value = $row[$index] ?? null;
-				if (! empty($value))
-				{
+				if (!empty($value)) {
 					$additionalData['import'][$header] = $value;
 				}
 			}
 
-			if (! empty($mappedRow['name']))
-			{
+			if (!empty($mappedRow['name'])) {
 				$contact = Contact::create(array_merge($mappedRow, [
 					'team_id' => auth()->user()->currentTeam->id,
 					'creator_id' => auth()->user()->id,
@@ -1050,8 +968,7 @@ class ContactController extends Controller
 					'data' => $additionalData,
 				]));
 
-				foreach ($sources as $source)
-				{
+				foreach ($sources as $source) {
 					ContactSource::create([
 						'contact_id' => $contact->id,
 						'source_id' => $source['source_id'],
@@ -1063,8 +980,9 @@ class ContactController extends Controller
 			}
 		}
 
-		return redirect()->route('contact-list')
-			->with('success', $contactsCreated.' contactos importados correctamente.');
+		return redirect()
+			->route('contact-list')
+			->with('success', $contactsCreated . ' contactos importados correctamente.');
 	}
 
 	/**
@@ -1080,8 +998,7 @@ class ContactController extends Controller
 		$user = \App\Models\User::findOrFail($request->user_id);
 
 		// Check if user belongs to the same team
-		if (! $user->teams->contains(auth()->user()->currentTeam->id))
-		{
+		if (!$user->teams->contains(auth()->user()->currentTeam->id)) {
 			return response()->json([
 				'success' => false,
 				'message' => 'El usuario no pertenece al equipo actual',
@@ -1090,8 +1007,7 @@ class ContactController extends Controller
 
 		// Check if user is already linked to another contact
 		$existingContact = Contact::where('user_id', $user->id)->first();
-		if ($existingContact && $existingContact->id !== $contact->id)
-		{
+		if ($existingContact && $existingContact->id !== $contact->id) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Este usuario ya está vinculado a otro contacto',
@@ -1141,8 +1057,7 @@ class ContactController extends Controller
 
 		$contact = Contact::findOrFail($id);
 
-		try
-		{
+		try {
 			// Create the user
 			$user = \App\Models\User::create([
 				'name' => $request->name,
@@ -1150,7 +1065,7 @@ class ContactController extends Controller
 				'phone' => $request->phone ? preg_replace('/[^0-9]/', '', $request->phone) : null,
 				'password' => \Hash::make($request->password),
 				'current_team_id' => auth()->user()->currentTeam->id,
-				'email_verified_at' => null, // Force email verification
+				'email_verified_at' => null,  // Force email verification
 			]);
 
 			// Assign role
@@ -1172,11 +1087,10 @@ class ContactController extends Controller
 					'role' => $request->role,
 				],
 			]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'success' => false,
-				'message' => 'Error al crear el usuario: '.$e->getMessage(),
+				'message' => 'Error al crear el usuario: ' . $e->getMessage(),
 			], 500);
 		}
 	}
@@ -1187,16 +1101,14 @@ class ContactController extends Controller
 	public function showUserLinkPage($type, $id)
 	{
 		// Validate type
-		if (! in_array($type, ['contact', 'collaborator']))
-		{
+		if (!in_array($type, ['contact', 'collaborator'])) {
 			abort(404);
 		}
 
 		$contact = Contact::findOrFail($id);
 
 		// Get available users for the current team
-		$users = \App\Models\User::whereHas('teams', function ($q)
-		{
+		$users = \App\Models\User::whereHas('teams', function ($q) {
 			$q->where('team_id', auth()->user()->currentTeam->id);
 		})->orderBy('name')->get();
 
@@ -1219,15 +1131,13 @@ class ContactController extends Controller
 		$user = \App\Models\User::findOrFail($request->user_id);
 
 		// Check if user belongs to the same team
-		if (! $user->teams->contains(auth()->user()->currentTeam->id))
-		{
+		if (!$user->teams->contains(auth()->user()->currentTeam->id)) {
 			return back()->withErrors(['user_id' => 'El usuario no pertenece al equipo actual']);
 		}
 
 		// Check if user is already linked to another contact
 		$existingContact = Contact::where('user_id', $user->id)->first();
-		if ($existingContact && $existingContact->id !== $contact->id)
-		{
+		if ($existingContact && $existingContact->id !== $contact->id) {
 			return back()->withErrors(['user_id' => 'Este usuario ya está vinculado a otro contacto']);
 		}
 
@@ -1253,8 +1163,7 @@ class ContactController extends Controller
 
 		$contact = Contact::findOrFail($id);
 
-		try
-		{
+		try {
 			// Create the user
 			$user = \App\Models\User::create([
 				'name' => $request->name,
@@ -1262,7 +1171,7 @@ class ContactController extends Controller
 				'phone' => $request->phone ? preg_replace('/[^0-9]/', '', $request->phone) : null,
 				'password' => \Hash::make($request->password),
 				'current_team_id' => auth()->user()->currentTeam->id,
-				'email_verified_at' => null, // Force email verification
+				'email_verified_at' => null,  // Force email verification
 			]);
 
 			// Assign role
@@ -1277,9 +1186,8 @@ class ContactController extends Controller
 			$redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';
 
 			return redirect()->route($redirectRoute, $id)->with('success', 'Usuario creado y vinculado correctamente');
-		} catch (\Exception $e)
-		{
-			return back()->withErrors(['general' => 'Error al crear el usuario: '.$e->getMessage()]);
+		} catch (\Exception $e) {
+			return back()->withErrors(['general' => 'Error al crear el usuario: ' . $e->getMessage()]);
 		}
 	}
 
@@ -1289,19 +1197,17 @@ class ContactController extends Controller
 	public function showUserUnlinkPage($type, $id)
 	{
 		// Validate type
-		if (! in_array($type, ['contact', 'collaborator']))
-		{
+		if (!in_array($type, ['contact', 'collaborator'])) {
 			abort(404);
 		}
 
 		$contact = Contact::findOrFail($id);
 
 		// Check if contact has a linked user
-		if (! $contact->user_id)
-		{
+		if (!$contact->user_id) {
 			$redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';
 
-			return redirect()->route($redirectRoute, $id)->with('warning', 'Este '.$type.' no tiene un usuario vinculado');
+			return redirect()->route($redirectRoute, $id)->with('warning', 'Este ' . $type . ' no tiene un usuario vinculado');
 		}
 
 		$linkedUser = \App\Models\User::find($contact->user_id);
@@ -1327,13 +1233,11 @@ class ContactController extends Controller
 	 */
 	public function resendDelivery(Request $request, $deliveryId)
 	{
-		try
-		{
+		try {
 			$delivery = MessageDelivery::findOrFail($deliveryId);
 
 			// Only allow resending if the delivery was actually sent
-			if (! $delivery->sent_at || $delivery->sent_at->isFuture())
-			{
+			if (!$delivery->sent_at || $delivery->sent_at->isFuture()) {
 				return response()->json([
 					'success' => false,
 					'message' => 'Solo se pueden reenviar emails que ya han sido enviados',
@@ -1342,12 +1246,12 @@ class ContactController extends Controller
 
 			// Reset the existing delivery for resend (immediate sending)
 			$delivery->update([
-				'status_id' => 1, // pending
-				'sent_at' => now(), // Send immediately for resend
-				'delivered_at' => null, // Reset delivery status
-				'delivery_status' => null, // Reset delivery status
-				'email_provider' => null, // Reset provider info
-				'provider_message_id' => null, // Reset provider message ID
+				'status_id' => 1,  // pending
+				'sent_at' => now(),  // Send immediately for resend
+				'delivered_at' => null,  // Reset delivery status
+				'delivery_status' => null,  // Reset delivery status
+				'email_provider' => null,  // Reset provider info
+				'provider_message_id' => null,  // Reset provider message ID
 			]);
 
 			// Dispatch the job to send the email immediately
@@ -1355,13 +1259,12 @@ class ContactController extends Controller
 
 			return response()->json([
 				'success' => true,
-				'message' => 'Email reenviado correctamente a '.$delivery->contact->email,
+				'message' => 'Email reenviado correctamente a ' . $delivery->contact->email,
 			]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'success' => false,
-				'message' => 'Error al reenviar email: '.$e->getMessage(),
+				'message' => 'Error al reenviar email: ' . $e->getMessage(),
 			], 500);
 		}
 	}

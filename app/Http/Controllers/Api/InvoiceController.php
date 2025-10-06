@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Invoice;
 use App\Policies\InvoicePolicy;
+use Idoneo\HumanoBilling\Models\Invoice;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
@@ -17,8 +17,7 @@ class InvoiceController extends Controller
 		$user = auth()->user();
 
 		// Check if user can view any invoices
-		if (! $user->can('viewAny', Invoice::class))
-		{
+		if (!$user->can('viewAny', Invoice::class)) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Unauthorized to view invoices',
@@ -31,7 +30,8 @@ class InvoiceController extends Controller
 		$filter = InvoicePolicy::getQueryFilter($user);
 		$filter($query);
 
-		$invoices = $query->with(['enterprise:id,name', 'type:id,name'])
+		$invoices = $query
+			->with(['enterprise:id,name', 'type:id,name'])
 			->orderBy('created_at', 'desc')
 			->paginate(20);
 
@@ -61,8 +61,7 @@ class InvoiceController extends Controller
 	{
 		$user = auth()->user();
 
-		if (! $user->can('create', Invoice::class))
-		{
+		if (!$user->can('create', Invoice::class)) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Unauthorized to create invoices',
@@ -85,8 +84,7 @@ class InvoiceController extends Controller
 			'status' => 'required|integer|min:1|max:8',
 		]);
 
-		try
-		{
+		try {
 			$invoice = Invoice::create($validatedData);
 
 			return response()->json([
@@ -100,11 +98,10 @@ class InvoiceController extends Controller
 					'role' => $user->roles->first()->name ?? 'No role',
 				],
 			], 201);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'success' => false,
-				'message' => 'Error creating invoice: '.$e->getMessage(),
+				'message' => 'Error creating invoice: ' . $e->getMessage(),
 			], 500);
 		}
 	}
@@ -117,16 +114,14 @@ class InvoiceController extends Controller
 		$user = auth()->user();
 		$invoice = Invoice::with(['enterprise:id,name', 'type:id,name'])->find($id);
 
-		if (! $invoice)
-		{
+		if (!$invoice) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Invoice not found',
 			], 404);
 		}
 
-		if (! $user->can('view', $invoice))
-		{
+		if (!$user->can('view', $invoice)) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Unauthorized to view this invoice',
@@ -154,16 +149,14 @@ class InvoiceController extends Controller
 		$user = auth()->user();
 		$invoice = Invoice::find($id);
 
-		if (! $invoice)
-		{
+		if (!$invoice) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Invoice not found',
 			], 404);
 		}
 
-		if (! $user->can('update', $invoice))
-		{
+		if (!$user->can('update', $invoice)) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Unauthorized to update this invoice',
@@ -186,8 +179,7 @@ class InvoiceController extends Controller
 			'status' => 'sometimes|required|integer|min:1|max:8',
 		]);
 
-		try
-		{
+		try {
 			$invoice->update($validatedData);
 
 			return response()->json([
@@ -201,11 +193,10 @@ class InvoiceController extends Controller
 					'role' => $user->roles->first()->name ?? 'No role',
 				],
 			]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'success' => false,
-				'message' => 'Error updating invoice: '.$e->getMessage(),
+				'message' => 'Error updating invoice: ' . $e->getMessage(),
 			], 500);
 		}
 	}
@@ -218,24 +209,21 @@ class InvoiceController extends Controller
 		$user = auth()->user();
 		$invoice = Invoice::find($id);
 
-		if (! $invoice)
-		{
+		if (!$invoice) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Invoice not found',
 			], 404);
 		}
 
-		if (! $user->can('delete', $invoice))
-		{
+		if (!$user->can('delete', $invoice)) {
 			return response()->json([
 				'success' => false,
 				'message' => 'Unauthorized to delete this invoice',
 			], 403);
 		}
 
-		try
-		{
+		try {
 			$invoice->delete();
 
 			return response()->json([
@@ -248,11 +236,10 @@ class InvoiceController extends Controller
 					'role' => $user->roles->first()->name ?? 'No role',
 				],
 			]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			return response()->json([
 				'success' => false,
-				'message' => 'Error deleting invoice: '.$e->getMessage(),
+				'message' => 'Error deleting invoice: ' . $e->getMessage(),
 			], 500);
 		}
 	}

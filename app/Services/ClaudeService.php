@@ -37,13 +37,12 @@ class ClaudeService
 	 */
 	public function chat($message, $history = [], $customSystemPrompt = null)
 	{
-		try
-		{
+		try {
 			// Log history structure for debugging
 			Log::info('Chat history structure:', [
 				'history_count' => count($history),
-				'history_sample' => ! empty($history) ? json_encode(array_slice($history, 0, 1)) : 'empty',
-				'history_keys' => ! empty($history) && isset($history[0]) ? array_keys($history[0]) : [],
+				'history_sample' => !empty($history) ? json_encode(array_slice($history, 0, 1)) : 'empty',
+				'history_keys' => !empty($history) && isset($history[0]) ? array_keys($history[0]) : [],
 				'message' => $message,
 			]);
 
@@ -65,7 +64,7 @@ class ClaudeService
 				'max_tokens' => $maxTokens,
 				'message_count' => count($messages),
 				'system_prompt_length' => strlen($systemPrompt),
-				'system_prompt_preview' => substr($systemPrompt, 0, 100).'...',
+				'system_prompt_preview' => substr($systemPrompt, 0, 100) . '...',
 				'has_user_info' => strpos($systemPrompt, '===== IMPORTANT USER INFORMATION =====') !== false,
 			]);
 
@@ -77,8 +76,7 @@ class ClaudeService
 			];
 
 			// Solo agregar el campo system si el systemPrompt no está vacío
-			if (! empty($systemPrompt))
-			{
+			if (!empty($systemPrompt)) {
 				$payload['system'] = $systemPrompt;
 			}
 
@@ -88,28 +86,24 @@ class ClaudeService
 				'Content-Type' => 'application/json',
 			])->post("{$this->baseUrl}/messages", $payload);
 
-			if (! $response->successful())
-			{
-				Log::error('Claude API Error: '.$response->body());
+			if (!$response->successful()) {
+				Log::error('Claude API Error: ' . $response->body());
 
 				return [
 					'success' => false,
-					'message' => 'Error communicating with Claude API: '.$response->status(),
+					'message' => 'Error communicating with Claude API: ' . $response->status(),
 					'error' => $response->json(),
 				];
 			}
 
 			$data = $response->json();
-			Log::info('Claude API Response: '.json_encode($data));
+			Log::info('Claude API Response: ' . json_encode($data));
 
 			// Adapt to the response structure in the current Claude API
 			$responseText = '';
-			if (isset($data['content']) && is_array($data['content']))
-			{
-				foreach ($data['content'] as $content)
-				{
-					if (isset($content['type']) && $content['type'] === 'text' && isset($content['text']))
-					{
+			if (isset($data['content']) && is_array($data['content'])) {
+				foreach ($data['content'] as $content) {
+					if (isset($content['type']) && $content['type'] === 'text' && isset($content['text'])) {
 						$responseText .= $content['text'];
 					}
 				}
@@ -122,13 +116,12 @@ class ClaudeService
 				'usage' => $data['usage'] ?? null,
 				'raw_response' => $data,
 			];
-		} catch (\Exception $e)
-		{
-			Log::error('Claude Service Error: '.$e->getMessage());
+		} catch (\Exception $e) {
+			Log::error('Claude Service Error: ' . $e->getMessage());
 
 			return [
 				'success' => false,
-				'message' => 'Error processing Claude request: '.$e->getMessage(),
+				'message' => 'Error processing Claude request: ' . $e->getMessage(),
 			];
 		}
 	}
@@ -145,8 +138,7 @@ class ClaudeService
 		$formattedMessages = [];
 
 		// Add history messages if provided
-		foreach ($history as $message)
-		{
+		foreach ($history as $message) {
 			$role = $message['direction'] === 'inbound' ? 'user' : 'assistant';
 			$formattedMessages[] = [
 				'role' => $role,
@@ -172,8 +164,7 @@ class ClaudeService
 	{
 		$defaultPromptPath = storage_path('app/claude_prompts/default.txt');
 
-		if (file_exists($defaultPromptPath))
-		{
+		if (file_exists($defaultPromptPath)) {
 			return file_get_contents($defaultPromptPath);
 		}
 
@@ -214,8 +205,7 @@ class ClaudeService
 	 */
 	private function extractPhoneNumberFromHistory($history = [])
 	{
-		if (empty($history))
-		{
+		if (empty($history)) {
 			Log::info('No history provided for phone extraction');
 
 			return null;
@@ -226,32 +216,27 @@ class ClaudeService
 		$clientPhones = [];
 
 		// Look through history to find client phone numbers
-		foreach ($history as $message)
-		{
-			if (isset($message['direction']) && $message['direction'] === 'inbound' && isset($message['from']) && ! empty($message['from']))
-			{
+		foreach ($history as $message) {
+			if (isset($message['direction']) && $message['direction'] === 'inbound' && isset($message['from']) && !empty($message['from'])) {
 				// This is an incoming message, so 'from' is the client
 				$fromNumber = $message['from'];
 				$cleanNumber = preg_replace('/^whatsapp:\+?/', '', $fromNumber);
 				$cleanNumber = preg_replace('/[^0-9]/', '', $cleanNumber);
 
 				// Skip if it's from the system phone
-				if (in_array($fromNumber, $systemPhones) || $cleanNumber === '12202137800')
-				{
+				if (in_array($fromNumber, $systemPhones) || $cleanNumber === '12202137800') {
 					continue;
 				}
 
 				$clientPhones[$cleanNumber] = $fromNumber;  // Use as key to avoid duplicates
-			} elseif (isset($message['direction']) && $message['direction'] === 'outbound' && isset($message['to']) && ! empty($message['to']))
-			{
+			} elseif (isset($message['direction']) && $message['direction'] === 'outbound' && isset($message['to']) && !empty($message['to'])) {
 				// This is an outgoing message, so 'to' is the client
 				$toNumber = $message['to'];
 				$cleanNumber = preg_replace('/^whatsapp:\+?/', '', $toNumber);
 				$cleanNumber = preg_replace('/[^0-9]/', '', $cleanNumber);
 
 				// Skip if it's to the system phone
-				if (in_array($toNumber, $systemPhones) || $cleanNumber === '12202137800')
-				{
+				if (in_array($toNumber, $systemPhones) || $cleanNumber === '12202137800') {
 					continue;
 				}
 
@@ -266,36 +251,30 @@ class ClaudeService
 		]);
 
 		// If we found client phones, try to identify the contact
-		if (! empty($clientPhones))
-		{
-			foreach ($clientPhones as $cleanNumber => $originalNumber)
-			{
+		if (!empty($clientPhones)) {
+			foreach ($clientPhones as $cleanNumber => $originalNumber) {
 				// Try to find a user with this phone number
 				$user = \App\Models\User::where('phone', (int) $cleanNumber)->first();
-				if ($user)
-				{
+				if ($user) {
 					Log::info('Found user with phone number', ['phone' => $cleanNumber, 'user_id' => $user->id]);
 
 					return $cleanNumber;
 				}
 
 				// Try fuzzy search
-				$user = \App\Models\User::where('phone', 'like', '%'.$cleanNumber.'%')->first();
-				if ($user)
-				{
+				$user = \App\Models\User::where('phone', 'like', '%' . $cleanNumber . '%')->first();
+				if ($user) {
 					Log::info('Found user with fuzzy phone match', ['phone' => $cleanNumber, 'user_id' => $user->id]);
 
 					return $cleanNumber;
 				}
 
 				// Try looking in contacts directly
-				$contact = \App\Models\Contact::whereHas('sources', function ($query) use ($cleanNumber)
-				{
-					$query->where('source_id', 2)->where('value', 'like', '%'.$cleanNumber.'%');
+				$contact = \App\Models\Contact::whereHas('sources', function ($query) use ($cleanNumber) {
+					$query->where('source_id', 2)->where('value', 'like', '%' . $cleanNumber . '%');
 				})->first();
 
-				if ($contact)
-				{
+				if ($contact) {
 					Log::info('Found contact with phone number in sources', ['phone' => $cleanNumber, 'contact_id' => $contact->id]);
 
 					return $cleanNumber;
@@ -326,8 +305,7 @@ class ClaudeService
 		$user = null;
 
 		// Try to find user and contact by phone number
-		if ($phoneNumber)
-		{
+		if ($phoneNumber) {
 			// Cast to bigint for database comparison (if numeric)
 			$phoneAsInt = is_numeric($phoneNumber) ? (int) $phoneNumber : null;
 
@@ -342,31 +320,26 @@ class ClaudeService
 			]);
 
 			// Find the user by phone number
-			if ($phoneAsInt)
-			{
+			if ($phoneAsInt) {
 				$user = \App\Models\User::where('phone', $phoneAsInt)->first();
 				Log::info('User lookup result by int', ['found' => (bool) $user, 'phone_int' => $phoneAsInt]);
 			}
 
 			// If not found, try with the string version (this handles any formatting issues)
-			if (! $user)
-			{
-				$user = \App\Models\User::where('phone', 'like', '%'.$phoneNumber.'%')->first();
+			if (!$user) {
+				$user = \App\Models\User::where('phone', 'like', '%' . $phoneNumber . '%')->first();
 				Log::info('User lookup result by like', ['found' => (bool) $user, 'phone_str' => $phoneNumber]);
 			}
 
-			if ($user)
-			{
+			if ($user) {
 				// Get associated contact info
 				$contact = \App\Models\Contact::where('user_id', $user->id)->first();
 				Log::info('Contact lookup result', ['found' => (bool) $contact, 'user_id' => $user->id]);
 
-				if (! $contact)
-				{
+				if (!$contact) {
 					// Try a different approach - maybe the phone number is stored directly on the contact
-					$contact = \App\Models\Contact::whereHas('sources', function ($query) use ($phoneNumber)
-					{
-						$query->where('source_id', 2)->where('value', 'like', '%'.$phoneNumber.'%');
+					$contact = \App\Models\Contact::whereHas('sources', function ($query) use ($phoneNumber) {
+						$query->where('source_id', 2)->where('value', 'like', '%' . $phoneNumber . '%');
 					})->first();
 
 					Log::info('Alternative contact lookup result', ['found' => (bool) $contact]);
@@ -375,49 +348,42 @@ class ClaudeService
 		}
 
 		// HARDCODED FALLBACK: If we still don't have a contact, use contact ID 300550 or try with known phone number
-		if (! $contact)
-		{
+		if (!$contact) {
 			// Try with the known client phone number if it wasn't detected from the conversation
 			$knownClientPhone = '34722372858';
 			Log::info('Trying with known client number', ['phone' => $knownClientPhone]);
 
 			// Try to find user with this specific phone
 			$user = \App\Models\User::where('phone', (int) $knownClientPhone)->first();
-			if ($user)
-			{
+			if ($user) {
 				Log::info('Found user with known phone', ['user_id' => $user->id]);
 				$contact = \App\Models\Contact::where('user_id', $user->id)->first();
 				Log::info('Found contact from known phone user', ['found' => (bool) $contact]);
 			}
 
 			// If still no contact, try the phone number in the contacts' sources
-			if (! $contact)
-			{
-				$contact = \App\Models\Contact::whereHas('sources', function ($query) use ($knownClientPhone)
-				{
-					$query->where('source_id', 2)->where('value', 'like', '%'.$knownClientPhone.'%');
+			if (!$contact) {
+				$contact = \App\Models\Contact::whereHas('sources', function ($query) use ($knownClientPhone) {
+					$query->where('source_id', 2)->where('value', 'like', '%' . $knownClientPhone . '%');
 				})->first();
 				Log::info('Contact lookup by known phone in sources', ['found' => (bool) $contact]);
 			}
 
 			// Final fallback to ID 300550
-			if (! $contact)
-			{
+			if (!$contact) {
 				Log::info('Looking up hardcoded contact 300550 as final fallback');
 				$contact = \App\Models\Contact::find(300550);
 				Log::info('Hardcoded contact lookup result', ['found' => (bool) $contact]);
 			}
 
-			if (! $contact)
-			{
+			if (!$contact) {
 				Log::error('Critical: Cannot find contact by phone or ID 300550');
 
 				return $systemPrompt;
 			}
 
 			// Get the associated user if not set
-			if (! $user && $contact->user_id)
-			{
+			if (!$user && $contact->user_id) {
 				$user = \App\Models\User::find($contact->user_id);
 				Log::info('Obtained user from contact', ['found' => (bool) $user, 'user_id' => $contact->user_id]);
 			}
@@ -436,26 +402,23 @@ class ClaudeService
 		$userContext .= "The following is personal information about the user you are talking to.\n";
 		$userContext .= "You MUST use this information to respond to any questions about the user's personal data.\n\n";
 
-		$userContext .= 'USER NAME: '.($contact->name ?? $user->name)."\n";
+		$userContext .= 'USER NAME: ' . ($contact->name ?? $user->name) . "\n";
 
-		if ($contact->birthday)
-		{
-			$userContext .= 'USER BIRTHDAY: '.$contact->birthday->format('Y-m-d')."\n";
+		if ($contact->birthday) {
+			$userContext .= 'USER BIRTHDAY: ' . $contact->birthday->format('Y-m-d') . "\n";
 		}
 
 		// Add user identifiers for clarity
-		$userContext .= 'USER ID: '.$user->id."\n";
-		$userContext .= 'CONTACT ID: '.$contact->id."\n";
+		$userContext .= 'USER ID: ' . $user->id . "\n";
+		$userContext .= 'CONTACT ID: ' . $contact->id . "\n";
 
 		// Add more user data as needed
-		if ($contact->email)
-		{
-			$userContext .= 'USER EMAIL: '.$contact->email."\n";
+		if ($contact->email) {
+			$userContext .= 'USER EMAIL: ' . $contact->email . "\n";
 		}
 
-		if ($contact->phone)
-		{
-			$userContext .= 'USER PHONE: '.$contact->phone."\n";
+		if ($contact->phone) {
+			$userContext .= 'USER PHONE: ' . $contact->phone . "\n";
 		}
 
 		// Get enterprises from contact_enterprise table
@@ -465,61 +428,53 @@ class ClaudeService
 		$enterprises = [];
 		$enterpriseInvoices = [];  // Array para almacenar las facturas por empresa
 
-		try
-		{
+		try {
 			// Cargar el contacto con sus empresas usando eager loading - solo enterprises()
 			$contactWithEnterprises = \App\Models\Contact::with('enterprises')->find($contact->id);
 
-			if ($contactWithEnterprises && $contactWithEnterprises->enterprises)
-			{
+			if ($contactWithEnterprises && $contactWithEnterprises->enterprises) {
 				// Map enterprises to the desired format
-				$enterprises = $contactWithEnterprises->enterprises->map(function ($enterprise) use (&$enterpriseInvoices)
-				{
+				$enterprises = $contactWithEnterprises->enterprises->map(function ($enterprise) use (&$enterpriseInvoices) {
 					// Cargar facturas para esta empresa
-					try
-					{
+					try {
 						// Get all recent invoices
-						$allInvoices = \App\Models\Invoice::where('enterprise_id', $enterprise->id)
-						    ->orderBy('date', 'desc')
-						    ->take(20)  // Get more to filter from
-						    ->get();
+						$allInvoices = \Idoneo\HumanoBilling\Models\Invoice::where('enterprise_id', $enterprise->id)
+							->orderBy('date', 'desc')
+							->take(20)  // Get more to filter from
+							->get();
 
 						// Filter unpaid invoices - assuming balance > 0 means unpaid
-						$unpaidInvoices = $allInvoices->filter(function ($invoice)
-						{
-						    return $invoice->balance > 0;
+						$unpaidInvoices = $allInvoices->filter(function ($invoice) {
+							return $invoice->balance > 0;
 						});
 
 						// If we have unpaid invoices, use those (all of them)
-						if ($unpaidInvoices->count() > 0)
-						{
-						    $invoices = $unpaidInvoices;  // Use all unpaid invoices without limiting to 5
-						    Log::info('Found unpaid invoices for enterprise', [
-						        'enterprise_id' => $enterprise->id,
-						        'unpaid_count' => $unpaidInvoices->count(),
-						    ]);
-						} else
-						{
-						    // Otherwise use the 3 most recent invoices
-						    $invoices = $allInvoices->take(3);
-						    Log::info('No unpaid invoices, using latest 3 for enterprise', [
-						        'enterprise_id' => $enterprise->id,
-						        'invoice_count' => $invoices->count(),
-						    ]);
+						if ($unpaidInvoices->count() > 0) {
+							$invoices = $unpaidInvoices;  // Use all unpaid invoices without limiting to 5
+							Log::info('Found unpaid invoices for enterprise', [
+								'enterprise_id' => $enterprise->id,
+								'unpaid_count' => $unpaidInvoices->count(),
+							]);
+						} else {
+							// Otherwise use the 3 most recent invoices
+							$invoices = $allInvoices->take(3);
+							Log::info('No unpaid invoices, using latest 3 for enterprise', [
+								'enterprise_id' => $enterprise->id,
+								'invoice_count' => $invoices->count(),
+							]);
 						}
 
 						// Guardar facturas en el array por ID de empresa
 						$enterpriseInvoices[$enterprise->id] = $invoices;
 
 						Log::info('Invoices loaded for enterprise', [
-						    'enterprise_id' => $enterprise->id,
-						    'invoice_count' => $invoices->count(),
+							'enterprise_id' => $enterprise->id,
+							'invoice_count' => $invoices->count(),
 						]);
-					} catch (\Exception $e)
-					{
+					} catch (\Exception $e) {
 						Log::error('Error loading invoices', [
-						    'enterprise_id' => $enterprise->id,
-						    'error' => $e->getMessage(),
+							'enterprise_id' => $enterprise->id,
+							'error' => $e->getMessage(),
 						]);
 						$enterpriseInvoices[$enterprise->id] = collect([]);  // Colección vacía como fallback
 					}
@@ -533,8 +488,7 @@ class ClaudeService
 			}
 
 			// Special handling for contact ID 300550 - log extra details for this specific contact
-			if ($contact->id == 300550)
-			{
+			if ($contact->id == 300550) {
 				Log::info('Special contact 300550 check', [
 					'contact_id' => $contact->id,
 					'enterprises_relation_count' => count($enterprises),
@@ -546,8 +500,7 @@ class ClaudeService
 				'enterprise_count' => count($enterprises),
 				'enterprises' => $enterprises,
 			]);
-		} catch (\Exception $e)
-		{
+		} catch (\Exception $e) {
 			Log::error('Error loading enterprises', [
 				'contact_id' => $contact->id,
 				'error' => $e->getMessage(),
@@ -556,77 +509,63 @@ class ClaudeService
 		}
 
 		// Add enterprise and services information
-		if (! empty($enterprises))
-		{
+		if (!empty($enterprises)) {
 			$userContext .= "\n===== USER ENTERPRISES AND SERVICES =====\n";
 			$userContext .= "IMPORTANTE: El usuario está asociado con las siguientes empresas y servicios:\n\n";
 
-			foreach ($enterprises as $index => $enterprise)
-			{
-				$userContext .= 'EMPRESA #'.($index + 1).":\n";
-				$userContext .= '- NOMBRE: '.$enterprise['name']."\n";
-				$userContext .= '- ID: '.$enterprise['id']."\n";
-				if (! empty($enterprise['position']))
-				{
-					$userContext .= '- POSICIÓN: '.$enterprise['position']."\n";
+			foreach ($enterprises as $index => $enterprise) {
+				$userContext .= 'EMPRESA #' . ($index + 1) . ":\n";
+				$userContext .= '- NOMBRE: ' . $enterprise['name'] . "\n";
+				$userContext .= '- ID: ' . $enterprise['id'] . "\n";
+				if (!empty($enterprise['position'])) {
+					$userContext .= '- POSICIÓN: ' . $enterprise['position'] . "\n";
 				}
 
 				// Obtener servicios asociados a esta empresa
-				try
-				{
+				try {
 					$services = \App\Models\Service::where('enterprise_id', $enterprise['id'])
 						->with(['category', 'currency'])
 						->orderBy('status', 'desc')
 						->orderBy('next_billing', 'asc')
 						->get();
 
-					if ($services && $services->count() > 0)
-					{
-						$userContext .= '- SERVICIOS ACTIVOS ('.$services->count()."):\n";
+					if ($services && $services->count() > 0) {
+						$userContext .= '- SERVICIOS ACTIVOS (' . $services->count() . "):\n";
 
-						foreach ($services as $service)
-						{
-						    $statusText = $service->status == 1 ? 'Activo' : 'Inactivo';
-						    $userContext .= '  * '.$service->description.' - Estado: '.$statusText;
+						foreach ($services as $service) {
+							$statusText = $service->status == 1 ? 'Activo' : 'Inactivo';
+							$userContext .= '  * ' . $service->description . ' - Estado: ' . $statusText;
 
-						    if ($service->category)
-						    {
-						        $userContext .= ' - Categoría: '.$service->category->name;
-						    }
+							if ($service->category) {
+								$userContext .= ' - Categoría: ' . $service->category->name;
+							}
 
-						    if ($service->price)
-						    {
-						        $currency = $service->currency ? $service->currency->symbol : '$';
-						        $userContext .= ' - Precio: '.$currency.number_format($service->price, 2);
-						    }
+							if ($service->price) {
+								$currency = $service->currency ? $service->currency->symbol : '$';
+								$userContext .= ' - Precio: ' . $currency . number_format($service->price, 2);
+							}
 
-						    if ($service->next_billing)
-						    {
-						        $nextBilling = \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y');
-						        $userContext .= ' - Próxima facturación: '.$nextBilling;
-						    }
+							if ($service->next_billing) {
+								$nextBilling = \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y');
+								$userContext .= ' - Próxima facturación: ' . $nextBilling;
+							}
 
-						    if ($service->expires_at)
-						    {
-						        $expiresAt = \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y');
-						        $daysUntilExpiry = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($service->expires_at), false);
+							if ($service->expires_at) {
+								$expiresAt = \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y');
+								$daysUntilExpiry = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($service->expires_at), false);
 
-						        if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0)
-						        {
-						            $userContext .= ' - ⚠️ Expira en '.$daysUntilExpiry.' días ('.$expiresAt.')';
-						        } elseif ($daysUntilExpiry < 0)
-						        {
-						            $userContext .= ' - 🔴 EXPIRADO ('.$expiresAt.')';
-						        } else
-						        {
-						            $userContext .= ' - Expira: '.$expiresAt;
-						        }
-						    }
+								if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0) {
+									$userContext .= ' - ⚠️ Expira en ' . $daysUntilExpiry . ' días (' . $expiresAt . ')';
+								} elseif ($daysUntilExpiry < 0) {
+									$userContext .= ' - 🔴 EXPIRADO (' . $expiresAt . ')';
+								} else {
+									$userContext .= ' - Expira: ' . $expiresAt;
+								}
+							}
 
-						    $userContext .= "\n";
+							$userContext .= "\n";
 						}
-					} else
-					{
+					} else {
 						$userContext .= "- SERVICIOS: No hay servicios registrados para esta empresa\n";
 					}
 
@@ -634,8 +573,7 @@ class ClaudeService
 						'enterprise_id' => $enterprise['id'],
 						'service_count' => $services ? $services->count() : 0,
 					]);
-				} catch (\Exception $e)
-				{
+				} catch (\Exception $e) {
 					Log::error('Error loading services for enterprise', [
 						'enterprise_id' => $enterprise['id'],
 						'error' => $e->getMessage(),
@@ -644,58 +582,47 @@ class ClaudeService
 				}
 
 				// Obtener facturas asociadas a esta empresa
-				try
-				{
+				try {
 					$invoices = $enterpriseInvoices[$enterprise['id']] ?? collect();
 
-					if ($invoices && $invoices->count() > 0)
-					{
+					if ($invoices && $invoices->count() > 0) {
 						// Check if we have unpaid invoices
-						$unpaidInvoices = $invoices->filter(function ($invoice)
-						{
-						    return $invoice->balance > 0;
+						$unpaidInvoices = $invoices->filter(function ($invoice) {
+							return $invoice->balance > 0;
 						});
 
-						if ($unpaidInvoices->count() > 0)
-						{
-						    $userContext .= '- FACTURAS PENDIENTES DE PAGO ('.$unpaidInvoices->count()."):\n";
-						    // Show ALL unpaid invoices
-						    foreach ($unpaidInvoices as $i => $invoice)
-						    {
-						        $userContext .= '  * Factura #'.$invoice->number
-						        	.' - Fecha: '.($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A')
-						        	.' - Importe Total: $'.number_format($invoice->total_amount, 2)
-						        	.' - Pendiente: $'.number_format($invoice->balance, 2)."\n";
-						    }
+						if ($unpaidInvoices->count() > 0) {
+							$userContext .= '- FACTURAS PENDIENTES DE PAGO (' . $unpaidInvoices->count() . "):\n";
+							// Show ALL unpaid invoices
+							foreach ($unpaidInvoices as $i => $invoice) {
+								$userContext .= '  * Factura #' . $invoice->number
+									. ' - Fecha: ' . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A')
+									. ' - Importe Total: $' . number_format($invoice->total_amount, 2)
+									. ' - Pendiente: $' . number_format($invoice->balance, 2) . "\n";
+							}
 
-						    // Also show the 3 most recent invoices if different from the unpaid ones
-						    $paidInvoices = $invoices->reject(function ($invoice)
-						    {
-						        return $invoice->balance > 0;
-						    })->take(3);
+							// Also show the 3 most recent invoices if different from the unpaid ones
+							$paidInvoices = $invoices->reject(function ($invoice) {
+								return $invoice->balance > 0;
+							})->take(3);
 
-						    if ($paidInvoices->count() > 0)
-						    {
-						        $userContext .= '- ÚLTIMAS FACTURAS PAGADAS ('.$paidInvoices->count()."):\n";
-						        foreach ($paidInvoices as $i => $invoice)
-						        {
-						            $userContext .= '  * Factura #'.$invoice->number
-						            	.' - Fecha: '.($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A')
-						            	.' - Importe: $'.number_format($invoice->total_amount, 2)."\n";
-						        }
-						    }
-						} else
-						{
-						    $userContext .= '- ÚLTIMAS FACTURAS (Todas pagadas) ('.$invoices->count()."):\n";
-						    foreach ($invoices as $i => $invoice)
-						    {
-						        $userContext .= '  * Factura #'.$invoice->number
-						        	.' - Fecha: '.($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A')
-						        	.' - Importe: $'.number_format($invoice->total_amount, 2)."\n";
-						    }
+							if ($paidInvoices->count() > 0) {
+								$userContext .= '- ÚLTIMAS FACTURAS PAGADAS (' . $paidInvoices->count() . "):\n";
+								foreach ($paidInvoices as $i => $invoice) {
+									$userContext .= '  * Factura #' . $invoice->number
+										. ' - Fecha: ' . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A')
+										. ' - Importe: $' . number_format($invoice->total_amount, 2) . "\n";
+								}
+							}
+						} else {
+							$userContext .= '- ÚLTIMAS FACTURAS (Todas pagadas) (' . $invoices->count() . "):\n";
+							foreach ($invoices as $i => $invoice) {
+								$userContext .= '  * Factura #' . $invoice->number
+									. ' - Fecha: ' . ($invoice->date ? date('d/m/Y', strtotime($invoice->date)) : 'N/A')
+									. ' - Importe: $' . number_format($invoice->total_amount, 2) . "\n";
+							}
 						}
-					} else
-					{
+					} else {
 						$userContext .= "- FACTURAS: No hay facturas recientes para esta empresa\n";
 					}
 
@@ -705,8 +632,7 @@ class ClaudeService
 						'invoice_count' => $invoices ? $invoices->count() : 0,
 						'unpaid_count' => isset($unpaidInvoices) ? $unpaidInvoices->count() : 0,
 					]);
-				} catch (\Exception $e)
-				{
+				} catch (\Exception $e) {
 					Log::error('Error loading invoices for enterprise', [
 						'enterprise_id' => $enterprise['id'],
 						'error' => $e->getMessage(),
@@ -742,34 +668,28 @@ class ClaudeService
 		// Example responses
 		$userContext .= "\nEXAMPLE RESPONSES:\n";
 		$userContext .= "User: '¿Con qué empresa estoy registrado?'\n";
-		if (! empty($enterprises))
-		{
-			$userContext .= "Correct response: 'Estás asociado con ".count($enterprises).' empresa(s): ';
+		if (!empty($enterprises)) {
+			$userContext .= "Correct response: 'Estás asociado con " . count($enterprises) . ' empresa(s): ';
 			$companyNames = [];
-			foreach ($enterprises as $e)
-			{
+			foreach ($enterprises as $e) {
 				$companyNames[] = $e['name'];
 			}
-			$userContext .= implode(', ', $companyNames).".'\n";
-		} else
-		{
+			$userContext .= implode(', ', $companyNames) . ".'\n";
+		} else {
 			$userContext .= "Correct response: 'No tengo registros de que estés asociado con alguna empresa en este momento.'\n";
 		}
 		$userContext .= "Incorrect response: 'No puedo acceder a esa información.' o 'No tengo esa información.'\n\n";
 
 		// Example for services
 		$userContext .= "User: '¿Qué servicios tengo contratados?' o '¿Cuáles son mis servicios?' o 'Información de mi hosting'\n";
-		if (! empty($enterprises))
-		{
+		if (!empty($enterprises)) {
 			$userContext .= "Correct response: 'Aquí tienes la información de tus servicios por empresa:'\n";
-			foreach ($enterprises as $e)
-			{
-				$userContext .= 'Para '.$e['name'].': ';
+			foreach ($enterprises as $e) {
+				$userContext .= 'Para ' . $e['name'] . ': ';
 				$userContext .= 'Tienes X servicios activos. Por ejemplo: hosting, dominio, etc. (usar la información real de SERVICIOS ACTIVOS)';
 				$userContext .= "\n";
 			}
-		} else
-		{
+		} else {
 			$userContext .= "Correct response: 'No tienes servicios registrados actualmente en nuestro sistema.'\n";
 		}
 		$userContext .= "Incorrect response: 'No puedo ver tus servicios.' o 'No tengo acceso a esa información.'\n\n";
@@ -784,72 +704,58 @@ class ClaudeService
 		$userContext .= "Correct response cuando hay facturas pendientes: 'Aquí están todas tus facturas pendientes de pago por empresa:'\n";
 		$userContext .= "Correct response cuando NO hay facturas pendientes: 'No tienes facturas pendientes de pago. Aquí están tus últimas 3 facturas:'\n";
 
-		if (! empty($enterprises))
-		{
+		if (!empty($enterprises)) {
 			$hasUnpaidInvoices = false;
-			foreach ($enterprises as $e)
-			{
-				$userContext .= 'Para '.$e['name'].': ';
+			foreach ($enterprises as $e) {
+				$userContext .= 'Para ' . $e['name'] . ': ';
 				// Add example invoice response
 				$invoices = $enterpriseInvoices[$e['id']] ?? collect();
 
 				// Filter for unpaid invoices
-				$unpaidInvoices = $invoices->filter(function ($invoice)
-				{
+				$unpaidInvoices = $invoices->filter(function ($invoice) {
 					return $invoice->balance > 0;
 				});
 
-				if ($unpaidInvoices && $unpaidInvoices->count() > 0)
-				{
+				if ($unpaidInvoices && $unpaidInvoices->count() > 0) {
 					$hasUnpaidInvoices = true;
-					$userContext .= 'Tienes '.$unpaidInvoices->count().' facturas pendientes. ';
+					$userContext .= 'Tienes ' . $unpaidInvoices->count() . ' facturas pendientes. ';
 
 					// If there's just one unpaid invoice
-					if ($unpaidInvoices->count() == 1)
-					{
-						$userContext .= 'La factura pendiente es #'.$unpaidInvoices->first()->number
-							.' por un importe pendiente de $'.number_format($unpaidInvoices->first()->balance, 2).".\n";
-					} else
-					{
+					if ($unpaidInvoices->count() == 1) {
+						$userContext .= 'La factura pendiente es #' . $unpaidInvoices->first()->number
+							. ' por un importe pendiente de $' . number_format($unpaidInvoices->first()->balance, 2) . ".\n";
+					} else {
 						// List a couple of examples if there are multiple
-						$userContext .= 'Por ejemplo, la factura #'.$unpaidInvoices->first()->number
-							.' por $'.number_format($unpaidInvoices->first()->balance, 2);
+						$userContext .= 'Por ejemplo, la factura #' . $unpaidInvoices->first()->number
+							. ' por $' . number_format($unpaidInvoices->first()->balance, 2);
 
-						if ($unpaidInvoices->count() > 1)
-						{
-						    $userContext .= ' y la factura #'.$unpaidInvoices[1]->number
-						    	.' por $'.number_format($unpaidInvoices[1]->balance, 2);
+						if ($unpaidInvoices->count() > 1) {
+							$userContext .= ' y la factura #' . $unpaidInvoices[1]->number
+								. ' por $' . number_format($unpaidInvoices[1]->balance, 2);
 						}
 
 						$userContext .= ".\n";
 					}
-				} else
-				{
+				} else {
 					$userContext .= 'No tienes facturas pendientes de pago. ';
-					if ($invoices && $invoices->count() > 0)
-					{
+					if ($invoices && $invoices->count() > 0) {
 						$userContext .= 'Tus últimas facturas son: ';
-						foreach ($invoices as $index => $invoice)
-						{
-						    if ($index > 0)
-						    {
-						        $userContext .= ', ';
-						    }
-						    $userContext .= '#'.$invoice->number.' ($'.number_format($invoice->total_amount, 2).')';
+						foreach ($invoices as $index => $invoice) {
+							if ($index > 0) {
+								$userContext .= ', ';
+							}
+							$userContext .= '#' . $invoice->number . ' ($' . number_format($invoice->total_amount, 2) . ')';
 						}
 						$userContext .= ".\n";
-					} else
-					{
+					} else {
 						$userContext .= "No hay facturas recientes.\n";
 					}
 				}
 			}
 
-			if (! $hasUnpaidInvoices)
-			{
+			if (!$hasUnpaidInvoices) {
 				$userContext .= "\nRECORDATORIO IMPORTANTE: Cuando un usuario pregunte por sus facturas y NO tenga facturas pendientes, siempre mostrar las últimas 3 facturas pagadas.\n";
-			} else
-			{
+			} else {
 				$userContext .= "\nRECORDATORIO IMPORTANTE: Cuando un usuario pregunte por sus facturas y tenga facturas pendientes, SIEMPRE mostrar TODAS las facturas pendientes sin importar cuántas sean.\n";
 			}
 		}
@@ -859,27 +765,23 @@ class ClaudeService
 		$userContext .= "EXAMPLE FOR INVOICE DOWNLOADS:\n";
 		$userContext .= "User: '¿Puedes enviarme el link para descargar mis facturas?' o '¿Dónde puedo descargar mi factura?'\n";
 
-		if ($user && $user->email)
-		{
+		if ($user && $user->email) {
 			// Generate a signed token that works across different databases
 			$accessToken = TokenHelper::generateSignedToken($user, 'claude_autologin', 24);
-			$clientAreaUrl = 'https://revisionalpha.com/login/token/'.$accessToken;
-			$userContext .= "Correct response: 'Para descargar tus facturas, accede a nuestra área de clientes donde tendrás disponible el historial completo de facturación: ".$clientAreaUrl."'\n";
-		} else
-		{
+			$clientAreaUrl = 'https://revisionalpha.com/login/token/' . $accessToken;
+			$userContext .= "Correct response: 'Para descargar tus facturas, accede a nuestra área de clientes donde tendrás disponible el historial completo de facturación: " . $clientAreaUrl . "'\n";
+		} else {
 			$userContext .= "Correct response: 'Para descargar tus facturas, accede a nuestra área de clientes: https://revisionalpha.com/login'\n";
 		}
 
 		// User asking for specific invoice download
 		$userContext .= "\nUser: '¿Me puedes dar el link para descargar la factura #12345?'\n";
-		if ($user && $user->email)
-		{
+		if ($user && $user->email) {
 			// Generate a signed token that works across different databases
 			$accessToken = TokenHelper::generateSignedToken($user, 'claude_autologin', 24);
-			$clientAreaUrl = 'https://revisionalpha.com/login/token/'.$accessToken;
-			$userContext .= "Correct response: 'Para descargar la factura #12345, accede a tu área de clientes donde encontrarás todas tus facturas disponibles para descarga: ".$clientAreaUrl."'\n";
-		} else
-		{
+			$clientAreaUrl = 'https://revisionalpha.com/login/token/' . $accessToken;
+			$userContext .= "Correct response: 'Para descargar la factura #12345, accede a tu área de clientes donde encontrarás todas tus facturas disponibles para descarga: " . $clientAreaUrl . "'\n";
+		} else {
 			$userContext .= "Correct response: 'Para descargar la factura #12345, accede a tu área de clientes: https://revisionalpha.com/login'\n";
 		}
 
@@ -889,15 +791,14 @@ class ClaudeService
 		$userContext .= "\n===== ÁREA DE CLIENTES Y CONTACTO =====\n";
 		$userContext .= "IMPORTANTE: Para gestiones más específicas o complejas, dirige al usuario a nuestros canales oficiales:\n\n";
 
-		if ($user && $user->email)
-		{
+		if ($user && $user->email) {
 			// Generate a signed token that works across different databases
 			$accessToken = TokenHelper::generateSignedToken($user, 'claude_autologin', 24);
-			$clientAreaUrl = 'https://revisionalpha.com/login/token/'.$accessToken;
+			$clientAreaUrl = 'https://revisionalpha.com/login/token/' . $accessToken;
 
 			$userContext .= "ÁREA DE CLIENTES:\n";
 			$userContext .= "- Si el usuario necesita gestionar servicios, facturación o soporte técnico avanzado\n";
-			$userContext .= '- Proporciona este enlace directo: '.$clientAreaUrl."\n";
+			$userContext .= '- Proporciona este enlace directo: ' . $clientAreaUrl . "\n";
 			$userContext .= "- Este enlace permite acceso automático con su email registrado\n\n";
 		}
 
@@ -913,14 +814,12 @@ class ClaudeService
 
 		$userContext .= "EJEMPLO DE RESPUESTA:\n";
 		$userContext .= "User: 'Necesito cambiar la configuración de mi hosting'\n";
-		if ($user && $user->email)
-		{
+		if ($user && $user->email) {
 			// Generate a signed token that works across different databases
 			$accessToken = TokenHelper::generateSignedToken($user, 'claude_autologin', 24);
-			$clientAreaUrl = 'https://revisionalpha.com/login/token/'.$accessToken;
-			$userContext .= "Correct response: 'Para cambios técnicos en tu hosting, te recomiendo acceder a nuestra área de clientes donde tendrás acceso completo a todas las configuraciones: ".$clientAreaUrl."'\n";
-		} else
-		{
+			$clientAreaUrl = 'https://revisionalpha.com/login/token/' . $accessToken;
+			$userContext .= "Correct response: 'Para cambios técnicos en tu hosting, te recomiendo acceder a nuestra área de clientes donde tendrás acceso completo a todas las configuraciones: " . $clientAreaUrl . "'\n";
+		} else {
 			$userContext .= "Correct response: 'Para cambios técnicos en tu hosting, te recomiendo acceder a nuestra área de clientes: https://revisionalpha.com/login'\n";
 		}
 
@@ -941,7 +840,7 @@ class ClaudeService
 		]);
 
 		// Append this context to the system prompt
-		return $systemPrompt.$userContext;
+		return $systemPrompt . $userContext;
 	}
 
 	/**
@@ -953,53 +852,46 @@ class ClaudeService
 
 		// Try to get team from current user
 		$team = null;
-		if (auth()->check() && auth()->user()->currentTeam)
-		{
+		if (auth()->check() && auth()->user()->currentTeam) {
 			$team = auth()->user()->currentTeam;
 		}
 		// If no authenticated user or team, $team stays null to use global .env config
 
-		if ($team && $team->hasTwilioConfig())
-		{
+		if ($team && $team->hasTwilioConfig()) {
 			$config = $team->getTwilioConfig();
 
-			if (isset($config['sms_from']))
-			{
+			if (isset($config['sms_from'])) {
 				$cleanSms = preg_replace('/[^0-9]/', '', $config['sms_from']);
 				$systemPhones[] = $cleanSms;
 				$systemPhones[] = $config['sms_from'];
 			}
 
-			if (isset($config['whatsapp_from']))
-			{
+			if (isset($config['whatsapp_from'])) {
 				$cleanWhatsapp = preg_replace('/[^0-9]/', '', $config['whatsapp_from']);
 				$systemPhones[] = $cleanWhatsapp;
 				$systemPhones[] = $config['whatsapp_from'];
-				$systemPhones[] = 'whatsapp:'.$config['whatsapp_from'];
-				$systemPhones[] = 'whatsapp:+'.$config['whatsapp_from'];
+				$systemPhones[] = 'whatsapp:' . $config['whatsapp_from'];
+				$systemPhones[] = 'whatsapp:+' . $config['whatsapp_from'];
 			}
-		} else
-		{
+		} else {
 			// Fallback to global .env configuration if no team configuration
 			$systemPhones = [];
 
 			$envSms = config('services.twilio.from');
 			$envWhatsapp = config('services.twilio.whatsapp_from');
 
-			if ($envSms)
-			{
+			if ($envSms) {
 				$cleanSms = preg_replace('/[^0-9]/', '', $envSms);
 				$systemPhones[] = $cleanSms;
 				$systemPhones[] = $envSms;
 			}
 
-			if ($envWhatsapp)
-			{
+			if ($envWhatsapp) {
 				$cleanWhatsapp = preg_replace('/[^0-9]/', '', $envWhatsapp);
 				$systemPhones[] = $cleanWhatsapp;
 				$systemPhones[] = $envWhatsapp;
-				$systemPhones[] = 'whatsapp:'.$envWhatsapp;
-				$systemPhones[] = 'whatsapp:+'.$envWhatsapp;
+				$systemPhones[] = 'whatsapp:' . $envWhatsapp;
+				$systemPhones[] = 'whatsapp:+' . $envWhatsapp;
 			}
 		}
 

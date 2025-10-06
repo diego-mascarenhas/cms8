@@ -31,13 +31,13 @@ class PaymentSeeder extends Seeder
             // Create some sample payments
             for ($i = 0; $i < 10; $i++) {
                 $account = $team->paymentAccounts->random();
-                $transactionType = rand(0, 1) ? 'I' : 'E'; // Random Income or Expense
+                $transactionType = rand(0, 1) ? 'income' : 'expense'; // Random Income or Expense
 
-                \App\Models\Payment::create([
+                \Idoneo\HumanoBilling\Models\Payment::create([
                     'team_id' => $team->id,
                     'enterprise_id' => null, // No enterprises yet
                     'transaction_type' => $transactionType,
-                    'date' => now()->subDays(rand(0, 90)), // Random date in last 90 days
+                    'date' => now()->subDays(rand(0, 90))->toDateString(), // Random date in last 90 days
                     'invoice_id' => null, // No invoices yet
                     'account_id' => $account->id,
                     'type_id' => 1, // Assuming payment type 1 exists

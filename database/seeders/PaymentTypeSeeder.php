@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\PaymentType;
+use Idoneo\HumanoBilling\Models\PaymentType;
 use Illuminate\Database\Seeder;
 
 class PaymentTypeSeeder extends Seeder

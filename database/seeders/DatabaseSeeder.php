@@ -20,6 +20,9 @@ class DatabaseSeeder extends Seeder
 	{
 		$this->command->info('🚀 HUMANO Installer - Starting Core System Setup...');
 
+		// Publish billing migrations if not already published
+		$this->publishBillingMigrations();
+
 		// ============================================
 		// PHASE 1: System Foundation
 		// ============================================
@@ -51,6 +54,7 @@ class DatabaseSeeder extends Seeder
 			ContactStatusSeeder::class,  // Contact statuses
 			ContactSentimentSeeder::class,  // Sentiments
 			ContactValorationSeeder::class,  // Valuations
+			List60StatusesSeeder::class,  // List60 statuses
 			ProjectStatusSeeder::class,  // Project statuses
 			UnitsSeeder::class,  // Units (words, minutes, etc)
 			FareTypesSeeder::class,  // Fare types
@@ -58,39 +62,46 @@ class DatabaseSeeder extends Seeder
 		]);
 
 		// ============================================
-		// PHASE 3: Demo Data (Optional - for testing/demos)
-		// Uncomment to create complete demo ecosystem with:
-		// - Demo Team with users
-		// - Clients, Projects, Services
-		// - Language variants, Collaborators
-		// - Invoices, Payments, Products
-		// - Templates, Messages, Task boards
+		// PHASE 3: Team Data (Optional - for production/testing)
+		// Uncomment the seeder you want to run:
+		// - TeamDemoSeeder: Creates demo team with sample data
+		// - TeamRevisionAlphaSeeder: Imports Revision Alpha team and data from remote DB
 		// ============================================
-		// $this->command->info('');
-		// $this->command->info('🎭 Phase 3: Demo Data & Ecosystem');
-		// $this->call([
-		//     TeamDemoSeeder::class,
-		// ]);
-
-		// ============================================
-		// PHASE 3: Countries & Languages (Optional - can be added later)
-		// ============================================
-		// $this->command->info('');
-		// $this->command->info('🌍 Phase 3: Countries & Languages');
-		// $this->call([
-		//     CountrySeeder::class,
-		//     LanguageSeeder::class,
-		// ]);
+		$this->command->info('');
+		$this->command->info('🎭 Phase 3: Team Data & Ecosystem');
+		$this->call([
+			TeamRevisionAlphaSeeder::class,  // Production data import
+			// TeamDemoSeeder::class,  // Demo data (alternative)
+		]);
 
 		// Clear activity log entries generated during seeding
 		$this->clearAllActivities();
 
 		$this->command->info('');
-		$this->command->info('✅ HUMANO Core System installed successfully!');
+		$this->command->info('✅ HUMANO System installed successfully!');
 		$this->command->info('');
 		$this->command->info('📝 Next steps:');
-		$this->command->info('   1. Run specific module seeders as needed');
-		$this->command->info('   2. Install packages via: php artisan module:install <module-key>');
-		$this->command->info('   3. Create your team and enable modules from the UI');
+		$this->command->info('   1. Import data: php artisan import:interactive --auto');
+		$this->command->info('   2. Access at: ' . config('app.url'));
+	}
+
+	/**
+	 * Publish billing migrations if needed
+	 */
+	private function publishBillingMigrations(): void
+	{
+		// Check if billing tables exist
+		if (!\Illuminate\Support\Facades\Schema::hasTable('invoices') || !\Illuminate\Support\Facades\Schema::hasTable('payments')) {
+			$this->command->info('📦 Publishing billing package migrations...');
+			$this->command->call('vendor:publish', [
+				'--tag' => 'humano-billing-migrations',
+				'--force' => true,
+			]);
+			$this->command->info('✅ Billing migrations published');
+
+			$this->command->info('🔧 Running billing migrations...');
+			$this->command->call('migrate');
+			$this->command->info('✅ Billing migrations completed');
+		}
 	}
 }
