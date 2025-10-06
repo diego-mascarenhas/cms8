@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\Message;
 use App\Models\Module;
 use App\Models\Payment;
+use App\Models\Project;
 use App\Models\Service;
 use App\Models\Team;
 use App\Models\Template;
@@ -55,6 +56,7 @@ class TeamRevisionAlphaSeeder extends Seeder
 		$this->command->info('📊 Importing data from remote database...');
 		$this->importRevisionAlphaCategories();
 		$this->importRevisionAlphaServices();
+		$this->importRevisionAlphaProjects();
 		$this->importRevisionAlphaInvoices();
 		$this->importRevisionAlphaPaymentAccounts();
 		$this->importRevisionAlphaPayments();
@@ -883,6 +885,50 @@ class TeamRevisionAlphaSeeder extends Seeder
 			}
 
 			$this->command->info("✅ Imported {$imported} service categories");
+
+			// Import project categories from the 'categorias' table
+			$this->command->info('📂 Importing project categories...');
+			$projectModule = \App\Models\Module::where('key', 'projects')->first();
+
+			if ($projectModule) {
+				// Get all unique category IDs used by projects
+				$usedCategoryIds = DB::connection('mysql_tmp')
+					->table('proyectos')
+					->where('grupo', $cmsGroup)
+					->where('estado', '>', 0)
+					->whereNotNull('id_categoria')
+					->distinct()
+					->pluck('id_categoria');
+
+				$projectCategories = DB::connection('mysql_tmp')
+					->table('categorias')
+					->where('grupo', $cmsGroup)
+					->whereIn('id', $usedCategoryIds)
+					->get();
+
+				$projectImported = 0;
+				foreach ($projectCategories as $category) {
+					try {
+						\App\Models\Category::updateOrCreate(
+							['id' => $category->id],
+							[
+								'team_id' => $this->teamId,
+								'name' => $category->categoria ?? 'Sin nombre',
+								'module_id' => $projectModule->id,
+								'parent_id' => $category->padre == 10 ? 10 : null,
+								'description' => null,
+								'status' => 1,
+								'created_at' => $category->fecha_alta ?? now(),
+								'updated_at' => $category->fecha_modificacion ?? now(),
+							]
+						);
+						$projectImported++;
+					} catch (\Exception $e) {
+						$this->command->warn("     Skipped project category {$category->id}: " . $e->getMessage());
+					}
+				}
+				$this->command->info("✅ Imported {$projectImported} project categories");
+			}
 		} catch (\Exception $e) {
 			$this->command->warn('⚠️  Could not import categories: ' . $e->getMessage());
 		}
@@ -1019,6 +1065,80 @@ class TeamRevisionAlphaSeeder extends Seeder
 			$this->command->info("✅ Imported {$imported} invoices");
 		} catch (\Exception $e) {
 			$this->command->warn('⚠️  Could not import invoices: ' . $e->getMessage());
+		}
+	}
+
+	/**
+	 * Import projects from remote database for Revision Alpha
+	 */
+	private function importRevisionAlphaProjects(): void
+	{
+		$this->command->info('📁 Importing Revision Alpha projects from remote database...');
+
+		try {
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group for Revision Alpha
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->command->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			$projects = DB::connection('mysql_tmp')
+				->table('proyectos')
+				->where('grupo', $cmsGroup)
+				->where('estado', '>', 0)
+				->get();
+
+			$imported = 0;
+			$skipped = 0;
+			foreach ($projects as $project) {
+				try {
+					// Get responsible user - default to the team owner if not found
+					$responsibleId = \App\Models\User::where('email', 'diego.mascarenhas@icloud.com')->first()->id;
+
+					// Check if enterprise exists
+					if (!DB::table('enterprises')->where('id', $project->id_empresa)->exists()) {
+						$skipped++;
+						continue;
+					}
+
+					\App\Models\Project::updateOrCreate(
+						['id' => $project->id],
+						[
+							'team_id' => $this->teamId,
+							'enterprise_id' => $project->id_empresa,
+							'category_id' => $project->id_categoria ?? null,
+							'responsible_id' => $responsibleId,
+							'name' => $project->titulo ?? 'Proyecto ' . $project->id,
+							'real_name' => null,
+							'description' => $project->descripcion ?? null,
+							'date_material' => null,
+							'date_start' => $project->desde ?? null,
+							'date_end' => $project->hasta ?? null,
+							'cost' => $project->costo ?? 0,
+							'price' => $project->valor ?? 0,
+							'discount' => $project->descuento ?? 0,
+							'status_id' => $project->estado ?? 1,
+							'created_at' => $project->fecha_alta ?? now(),
+							'updated_at' => $project->fecha_modificacion ?? now(),
+						]
+					);
+					$imported++;
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->command->warn("     Skipped project {$project->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->command->warn("   ⚠️  Skipped {$skipped} projects due to errors");
+			}
+
+			$this->command->info("✅ Imported {$imported} projects");
+		} catch (\Exception $e) {
+			$this->command->warn('⚠️  Could not import projects: ' . $e->getMessage());
 		}
 	}
 
