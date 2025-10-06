@@ -6,8 +6,11 @@ use App\Helpers\GrapesJsHelper;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Enterprise;
+use App\Models\Invoice;
 use App\Models\Message;
 use App\Models\Module;
+use App\Models\Payment;
+use App\Models\Service;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
@@ -47,6 +50,14 @@ class TeamRevisionAlphaSeeder extends Seeder
 
 		// 8. Configure email settings
 		$this->configureRevisionAlphaEmailSettings($team);
+
+		// 9. Import data from remote database
+		$this->command->info('📊 Importing data from remote database...');
+		$this->importRevisionAlphaCategories();
+		$this->importRevisionAlphaServices();
+		$this->importRevisionAlphaInvoices();
+		$this->importRevisionAlphaPaymentAccounts();
+		$this->importRevisionAlphaPayments();
 
 		// Asignar módulos CORE por defecto al equipo
 		// Estos son los módulos fundamentales que se activan automáticamente
@@ -781,5 +792,409 @@ class TeamRevisionAlphaSeeder extends Seeder
 		}
 
 		$this->command->info('✅ Message types ensured');
+	}
+
+	/**
+	 * Import service categories from remote database for Revision Alpha
+	 */
+	private function importRevisionAlphaCategories(): void
+	{
+		$this->command->info('📂 Importing Revision Alpha service categories from remote database...');
+
+		try {
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group for Revision Alpha
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->command->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			// Get the services module
+			$serviceModule = \App\Models\Module::where('key', 'services')->first();
+
+			if (!$serviceModule) {
+				$this->command->warn('⚠️  Services module not found, skipping categories import');
+				return;
+			}
+
+			// First, import the parent category (ID 10)
+			$parentCategory = DB::connection('mysql_tmp')
+				->table('categorias_generales')
+				->where('id', 10)
+				->first();
+
+			if ($parentCategory) {
+				try {
+					\App\Models\Category::updateOrCreate(
+						['id' => $parentCategory->id],
+						[
+							'team_id' => $this->teamId,
+							'name' => $parentCategory->categoria ?? 'Servicios',
+							'module_id' => $serviceModule->id,
+							'parent_id' => null,
+							'description' => strip_tags($parentCategory->descripcion ?? ''),
+							'status' => $parentCategory->estado > 0 ? 1 : 0,
+							'created_at' => $parentCategory->fecha_alta ?? now(),
+							'updated_at' => $parentCategory->fecha_modificacion ?? now(),
+						]
+					);
+					$this->command->info("   ✅ Imported parent category: {$parentCategory->categoria}");
+				} catch (\Exception $e) {
+					$this->command->warn('   ⚠️  Could not import parent category: ' . $e->getMessage());
+				}
+			}
+
+			// Import categories with parent_id = 10 (service categories)
+			$categories = DB::connection('mysql_tmp')
+				->table('categorias_generales')
+				->where('grupo', $cmsGroup)
+				->where('padre', 10)
+				->where('estado', '>', 0)
+				->get();
+
+			$imported = 0;
+			$skipped = 0;
+			foreach ($categories as $category) {
+				try {
+					\App\Models\Category::updateOrCreate(
+						['id' => $category->id],
+						[
+							'team_id' => $this->teamId,
+							'name' => $category->categoria ?? 'Sin nombre',
+							'module_id' => $serviceModule->id,
+							'parent_id' => $category->padre > 0 ? $category->padre : null,
+							'description' => strip_tags($category->descripcion ?? ''),
+							'status' => $category->estado > 0 ? 1 : 0,
+							'created_at' => $category->fecha_alta ?? now(),
+							'updated_at' => $category->fecha_modificacion ?? now(),
+						]
+					);
+					$imported++;
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->command->warn("     Skipped category {$category->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->command->warn("   ⚠️  Skipped {$skipped} categories due to errors");
+			}
+
+			$this->command->info("✅ Imported {$imported} service categories");
+		} catch (\Exception $e) {
+			$this->command->warn('⚠️  Could not import categories: ' . $e->getMessage());
+		}
+	}
+
+	/**
+	 * Import services from remote database for Revision Alpha
+	 */
+	private function importRevisionAlphaServices(): void
+	{
+		$this->command->info('📦 Importing Revision Alpha services from remote database...');
+
+		try {
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group for Revision Alpha
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->command->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			$services = DB::connection('mysql_tmp')
+				->table('servicios')
+				->where('servicios.grupo', $cmsGroup)
+				->where('servicios.estado', '>', 0)
+				->where('servicios.operacion', 'V')  // Only sales
+				->get();
+
+			$imported = 0;
+			$skipped = 0;
+			foreach ($services as $service) {
+				try {
+					// Map operation codes: V=sell (Venta), C=buy (Compra)
+					$operation = ($service->operacion ?? 'V') === 'V' ? 'sell' : 'buy';
+
+					Service::updateOrCreate(
+						['id' => $service->id],
+						[
+							'enterprise_id' => $service->id_empresa,
+							'category_id' => $service->id_categoria ?? null,
+							'operation' => $operation,
+							'description' => strip_tags($service->descripcion ?? ''),
+							'price' => $service->valor ?? 0,
+							'frequency' => $service->frecuencia ?? 'M',
+							'currency_id' => $service->id_moneda ?? 1,
+							'discount' => $service->descuento ?? 0,
+							'status' => $service->estado ?? 1,
+							'next_billing' => $service->proxima ?? null,
+							'last_billed' => $service->ultima ?? null,
+							'expires_at' => $service->caduca ?? null,
+							'created_at' => $service->fecha_alta ?? now(),
+							'updated_at' => $service->fecha_modificacion ?? now(),
+						]
+					);
+					$imported++;
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->command->warn("     Skipped service {$service->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->command->warn("   ⚠️  Skipped {$skipped} services due to errors");
+			}
+
+			$this->command->info("✅ Imported {$imported} services");
+		} catch (\Exception $e) {
+			$this->command->warn('⚠️  Could not import services: ' . $e->getMessage());
+		}
+	}
+
+	/**
+	 * Import invoices from remote database for Revision Alpha
+	 */
+	private function importRevisionAlphaInvoices(): void
+	{
+		$this->command->info('📄 Importing Revision Alpha invoices from remote database...');
+
+		try {
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group for Revision Alpha
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->command->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			$invoices = DB::connection('mysql_tmp')
+				->table('facturas')
+				->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
+				->where('facturas.grupo', $cmsGroup)
+				->where('facturas.estado', '>', 0)
+				->select('facturas.*', 'empresas_fiscales.id_empresa as enterprise_id')
+				->get();
+
+			$imported = 0;
+			$skipped = 0;
+			foreach ($invoices as $invoice) {
+				try {
+					// Map operation codes: V=sell (Venta), C=buy (Compra)
+					$operation = ($invoice->operacion ?? 'V') === 'V' ? 'sell' : 'buy';
+
+					Invoice::updateOrCreate(
+						['id' => $invoice->id],
+						[
+							'enterprise_id' => $invoice->enterprise_id,
+							'type_id' => $invoice->id_tipo_factura ?? 1,
+							'number' => (string) ($invoice->numero_factura ?? ''),
+							'date' => $invoice->fecha ?? now(),
+							'due_date' => $invoice->vencimiento ?? null,
+							'operation' => $operation,
+							'gross_amount' => $invoice->bruto ?? 0,
+							'total_amount' => $invoice->total_neto ?? 0,
+							'discount' => $invoice->descuento ?? 0,
+							'balance' => $invoice->saldo ?? 0,
+							'status' => $invoice->estado ?? 1,
+							'created_at' => $invoice->fecha_alta ?? now(),
+							'updated_at' => $invoice->fecha_modificacion ?? now(),
+						]
+					);
+					$imported++;
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->command->warn("     Skipped invoice {$invoice->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->command->warn("   ⚠️  Skipped {$skipped} invoices due to errors");
+			}
+
+			$this->command->info("✅ Imported {$imported} invoices");
+		} catch (\Exception $e) {
+			$this->command->warn('⚠️  Could not import invoices: ' . $e->getMessage());
+		}
+	}
+
+	/**
+	 * Import payment accounts from remote database for Revision Alpha
+	 */
+	private function importRevisionAlphaPaymentAccounts(): void
+	{
+		$this->command->info('🏦 Importing Revision Alpha payment accounts from remote database...');
+
+		try {
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group for Revision Alpha
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->command->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			$accounts = DB::connection('mysql_tmp')
+				->table('cuentas')
+				->where('grupo', $cmsGroup)
+				->where('estado', 1)
+				->get();
+
+			// Currency mapping: legacy ID to ISO code
+			$currencyMap = [
+				1 => 840,  // USD (assuming legacy 1 is USD or local currency)
+				2 => 840,  // USD
+				3 => 978,  // EUR
+			];
+
+			$imported = 0;
+			$skipped = 0;
+			foreach ($accounts as $account) {
+				try {
+					// Map legacy currency ID to ISO currency ID
+					$legacyCurrencyId = $account->id_moneda ?? 1;
+					$currencyId = $currencyMap[$legacyCurrencyId] ?? 840;  // Default to USD
+
+					\App\Models\PaymentAccount::updateOrCreate(
+						['id' => $account->id],
+						[
+							'team_id' => $this->teamId,
+							'code' => substr($account->numero_cuenta ?? $account->id, 0, 10),
+							'name' => $account->nombre_cuenta ?? 'Cuenta ' . $account->id,
+							'symbol' => null,
+							'currency_id' => $currencyId,
+							'status' => $account->estado ?? 1,
+							'created_at' => $account->fecha_alta ?? now(),
+							'updated_at' => $account->fecha_modificacion ?? now(),
+						]
+					);
+					$imported++;
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->command->warn("     Skipped account {$account->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->command->warn("   ⚠️  Skipped {$skipped} accounts due to errors");
+			}
+
+			$this->command->info("✅ Imported {$imported} payment accounts");
+		} catch (\Exception $e) {
+			$this->command->warn('⚠️  Could not import payment accounts: ' . $e->getMessage());
+		}
+	}
+
+	/**
+	 * Import payments from remote database for Revision Alpha
+	 */
+	private function importRevisionAlphaPayments(): void
+	{
+		$this->command->info('💰 Importing Revision Alpha payments from remote database...');
+
+		try {
+			// Test connection
+			DB::connection('mysql_tmp')->getPdo();
+
+			// Get the CMS group for Revision Alpha
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->command->info("   Using CMS_GROUP: {$cmsGroup}");
+
+			// Payment type mapping from legacy to new IDs
+			$paymentTypeMap = [
+				1 => 1,  // Cash
+				2 => 2,  // Bank Transfer
+				3 => 3,  // Bank Deposit
+				4 => 4,  // Check
+				5 => 5,  // Debit
+				10 => 6,  // Credit Card
+				7 => 7,  // PayPal
+				17 => 8,  // Stripe
+				6 => 12,  // MercadoPago
+				13 => 12,  // MercadoPago
+				14 => 12,  // MercadoPago
+			];
+
+			$payments = DB::connection('mysql_tmp')
+				->table('movimientos')
+				->join('facturas', 'movimientos.id_factura', '=', 'facturas.id')
+				->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
+				->where('movimientos.grupo', $cmsGroup)
+				->where('movimientos.estado', '>', 0)
+				->select('movimientos.*', 'empresas_fiscales.id_empresa as enterprise_id')
+				->get();
+
+			$imported = 0;
+			$skipped = 0;
+			foreach ($payments as $payment) {
+				try {
+					// Only import if the invoice exists
+					if ($payment->id_factura) {
+						$invoiceExists = DB::table('invoices')->where('id', $payment->id_factura)->exists();
+						if (!$invoiceExists) {
+							$skipped++;
+							continue;
+						}
+					}
+
+					// Get account ID - if not exists, use default account for this team
+					$accountId = $payment->id_cuenta;
+					if (!$accountId || !DB::table('payment_accounts')->where('id', $accountId)->exists()) {
+						// Get the first account for this team as default
+						$defaultAccount = DB::table('payment_accounts')
+							->where('team_id', $this->teamId)
+							->first();
+
+						if (!$defaultAccount) {
+							$skipped++;
+							continue;  // Skip if no accounts exist for this team
+						}
+
+						$accountId = $defaultAccount->id;
+					}
+
+					// Map legacy payment type ID to new ID
+					$legacyTypeId = $payment->id_forma_pago ?? 1;
+					$typeId = $paymentTypeMap[$legacyTypeId] ?? 1;  // Default to Cash if not mapped
+
+					Payment::updateOrCreate(
+						['id' => $payment->id],
+						[
+							'team_id' => $this->teamId,
+							'enterprise_id' => $payment->enterprise_id,
+							'invoice_id' => $payment->id_factura ?? null,
+							'transaction_type' => (string) (($payment->operacion ?? 'I') === 'V' ? 'I' : 'E'),
+							'date' => $payment->fecha ?? now(),
+							'amount' => $payment->importe ?? 0,
+							'type_id' => $typeId,
+							'account_id' => $accountId,
+							'remarks' => $payment->comentario ?? null,
+							'status' => $payment->estado ?? 1,
+							'created_at' => $payment->fecha_alta ?? now(),
+							'updated_at' => $payment->fecha_modificacion ?? now(),
+						]
+					);
+					$imported++;
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->command->warn("     Skipped payment {$payment->id}: " . $e->getMessage());
+					}
+				}
+			}
+
+			if ($skipped > 0) {
+				$this->command->warn("   ⚠️  Skipped {$skipped} payments due to errors");
+			}
+
+			$this->command->info("✅ Imported {$imported} payments");
+		} catch (\Exception $e) {
+			$this->command->warn('⚠️  Could not import payments: ' . $e->getMessage());
+		}
 	}
 }

@@ -24,6 +24,7 @@ class PaymentTypeSeeder extends Seeder
 			['id' => 9, 'name' => 'Wise Transfer'],
 			['id' => 10, 'name' => 'Cryptocurrency'],
 			['id' => 11, 'name' => 'Bizum'],
+			['id' => 12, 'name' => 'MercadoPago'],
 		];
 
 		foreach ($paymentTypes as $type) {
