@@ -1285,35 +1285,42 @@ class TeamRevisionAlphaSeeder extends Seeder
 				3 => 978,  // EUR
 			];
 
-			$imported = 0;
-			$skipped = 0;
-			foreach ($accounts as $account) {
-				try {
-					// Map legacy currency ID to ISO currency ID
-					$legacyCurrencyId = $account->id_moneda ?? 1;
-					$currencyId = $currencyMap[$legacyCurrencyId] ?? 840;  // Default to USD
+		$imported = 0;
+		$skipped = 0;
+		foreach ($accounts as $account) {
+			try {
+				// Map legacy currency ID to ISO currency ID
+				$legacyCurrencyId = $account->id_moneda ?? 1;
+				$currencyId = $currencyMap[$legacyCurrencyId] ?? 840;  // Default to USD
 
-					PaymentAccount::updateOrCreate(
-						['id' => $account->id],
-						[
-							'team_id' => $this->teamId,
-							'code' => substr($account->numero_cuenta ?? $account->id, 0, 10),
-							'name' => $account->nombre_cuenta ?? 'Cuenta ' . $account->id,
-							'symbol' => null,
-							'currency_id' => $currencyId,
-							'status' => $account->estado ?? 1,
-							'created_at' => $account->fecha_alta ?? now(),
-							'updated_at' => $account->fecha_modificacion ?? now(),
-						]
-					);
-					$imported++;
-				} catch (\Exception $e) {
-					$skipped++;
-					if ($skipped <= 10) {
-						$this->command->warn("     Skipped account {$account->id}: " . $e->getMessage());
-					}
+				// Generate unique code: use numero_cuenta if available, otherwise use ID
+				$rawCode = trim($account->numero_cuenta ?? '');
+				$code = !empty($rawCode) ? substr($rawCode, 0, 10) : 'ACC-' . $account->id;
+
+				// Use team_id + code as unique key (matching the database constraint)
+				PaymentAccount::updateOrCreate(
+					[
+						'team_id' => $this->teamId,
+						'code' => $code,
+					],
+					[
+						'id' => $account->id,
+						'name' => $account->nombre_cuenta ?? 'Cuenta ' . $account->id,
+						'symbol' => null,
+						'currency_id' => $currencyId,
+						'status' => $account->estado ?? 1,
+						'created_at' => $account->fecha_alta ?? now(),
+						'updated_at' => $account->fecha_modificacion ?? now(),
+					]
+				);
+				$imported++;
+			} catch (\Exception $e) {
+				$skipped++;
+				if ($skipped <= 10) {
+					$this->command->warn("     Skipped account {$account->id}: " . $e->getMessage());
 				}
 			}
+		}
 
 			if ($skipped > 0) {
 				$this->command->warn("   ⚠️  Skipped {$skipped} accounts due to errors");
