@@ -130,27 +130,19 @@
                 </div>
             @endif
 
-            {{-- Critical Errors Alert --}}
-            @if($wasPausedForErrors)
-                <div class="alert alert-danger d-flex align-items-center mt-4" role="alert">
-                    <i class="ti ti-alert-triangle me-2"></i>
-                    <div>
-                        <strong>Campaign Paused Automatically</strong><br>
-                        <small>
-                            {{ $criticalErrorsCount }} critical error(s) detected in the last hour.
-                            <br>The campaign has been paused to prevent further issues.
-                        </small>
-                    </div>
-                </div>
-            @elseif($criticalErrorsCount > 0 && $message && $message->status_id == 1)
-                <div class="alert alert-warning d-flex align-items-center mt-4" role="alert">
-                    <i class="ti ti-alert-circle me-2"></i>
-                    <div>
-                        <strong>Critical Errors Detected</strong><br>
-                        <small>
-                            {{ $criticalErrorsCount }} critical error(s) in the last hour.
-                            Campaign may be paused automatically if errors continue.
-                        </small>
+            <!-- SMTP Status Indicator -->
+            @if($isUsingSystemSmtp)
+                <div class="mt-4 p-3 bg-light border-start border-primary border-4 rounded-end">
+                    <div class="d-flex align-items-center">
+                        <i class="ti ti-info-circle text-primary me-2"></i>
+                        <div>
+                            <small class="fw-medium text-primary">Powered by REVISION ALPHA Emailer</small>
+                            <br>
+                            <small class="text-muted">
+                                Email Marketing fácil, rápido y seguro -
+                                <a href="https://revisionalpha.com/emailer" class="text-decoration-none" target="_blank">¡Empieza ahora!</a>
+                            </small>
+                        </div>
                     </div>
                 </div>
             @endif

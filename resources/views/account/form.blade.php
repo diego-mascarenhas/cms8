@@ -63,42 +63,36 @@
                         <div class="col-12 mb-3">
                             <label class="form-label">Additional Modules</label>
                             <p class="text-muted small">These are optional modules that can be enabled based on your needs.</p>
-
                             @foreach($additionalModules as $groupKey => $modules)
-                                @php
-                                    $groupInfo = $groupLabels[$groupKey] ?? ['name' => 'Other Modules', 'icon' => 'puzzle', 'description' => 'Other modules'];
-                                @endphp
-
-                                {{-- Group Header --}}
-                                <div class="mb-3 mt-4">
-                                    <h6 class="text-uppercase text-muted mb-1" style="font-size: 0.75rem; letter-spacing: 0.5px;">
-                                        <i class="ti ti-{{ $groupInfo['icon'] }} me-2"></i>{{ $groupInfo['name'] }}
-                                    </h6>
-                                    <p class="text-muted small mb-2">{{ $groupInfo['description'] }}</p>
-                                    <hr class="mt-0 mb-3">
-                                </div>
-
-                                {{-- Modules in this group --}}
-                                <div class="row mb-4">
-                                    @foreach($modules as $module)
-                                        <div class="col-md-4 mb-3">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox"
-                                                    name="modules[]"
-                                                    value="{{ $module->key }}"
-                                                    id="module_{{ $module->key }}"
-                                                    {{ $team->hasModule($module->key) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="module_{{ $module->key }}">
-                                                    <i class="ti ti-{{ $module->icon }} me-2"></i>
-                                                    {{ $module->name }}
-                                                    @if($module->description)
-                                                        <small class="text-muted d-block">{{ $module->description }}</small>
-                                                    @endif
-                                                </label>
-                                            </div>
+                                @if(isset($groupLabels[$groupKey]))
+                                    <div class="mb-4">
+                                        <h6 class="text-primary mb-3">
+                                            <i class="ti ti-{{ $groupLabels[$groupKey]['icon'] }} me-2"></i>
+                                            {{ $groupLabels[$groupKey]['name'] }}
+                                        </h6>
+                                        <p class="text-muted small mb-3">{{ $groupLabels[$groupKey]['description'] }}</p>
+                                        <div class="row">
+                                            @foreach($modules as $module)
+                                                <div class="col-md-4 mb-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox"
+                                                            name="modules[]"
+                                                            value="{{ $module->key }}"
+                                                            id="module_{{ $module->key }}"
+                                                            {{ $team->hasModule($module->key) ? 'checked' : '' }}>
+                                                        <label class="form-check-label" for="module_{{ $module->key }}">
+                                                            <i class="ti ti-{{ $module->icon }} me-2"></i>
+                                                            {{ $module->name }}
+                                                            @if($module->description)
+                                                                <small class="text-muted d-block">{{ $module->description }}</small>
+                                                            @endif
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            @endforeach
                                         </div>
-                                    @endforeach
-                                </div>
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     </div>

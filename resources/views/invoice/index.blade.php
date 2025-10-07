@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('Tasks'))
+@section('title', 'Invoices')
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -43,8 +43,8 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">{{ __('Tasks') }}</h4>
-        <p class="text-muted">{{ __('Task Management') }}</p>
+        <h4 class="mb-1 mt-3">Invoices</h4>
+        <p class="text-muted">Manage your receipts</p>
     </div>
 </div>
 
@@ -73,6 +73,66 @@
         {{ $dataTable->table() }}
     </div>
 </div>
+
+<script>
+    function deleteRecord(id, element) {
+        Swal.fire({
+            title: 'Are you sure you want to delete this record?',
+            text: 'This action cannot be undone',
+            icon: 'warning',
+            showCloseButton: false,
+            showCancelButton: false,
+            confirmButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch("{{ route('invoice.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                }).then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok.');
+                    }
+                    return response.json();
+                }).then(data => {
+                    console.log('Response data:', data);
+
+                    const toastHTML = `
+                        <div id="toast-container" class="toast-top-right">
+                            <div class="toast toast-success" aria-live="polite" style="display: block;">
+                                <div class="toast-message">${data.success}</div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.insertAdjacentHTML('beforeend', toastHTML);
+                    var toastElement = document.getElementById('toast-container');
+                    var toast = new bootstrap.Toast(toastElement, {
+                        animation: true,
+                        delay: 3000,
+                        autohide: true
+                    });
+                    toast.show();
+
+                    const row = element.closest('tr');
+                    if (row) {
+                        row.classList.add('fade-out');
+                        row.addEventListener('transitionend', () => {
+                            row.remove();
+                        });
+                    } else {
+                        console.error('No se encontró la fila correspondiente.');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire('Error', 'Ha ocurrido un error al eliminar el registro', 'error');
+                });
+            }
+        });
+    }
+</script>
 @endsection
 
 @push('scripts')

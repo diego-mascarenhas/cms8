@@ -140,12 +140,6 @@
             <!--/ Style Switcher -->
         @endif
 
-        <!-- Notification -->
-        @if ($configData['showNotifications'] == true)
-            <x-task-notifications />
-        @endif
-        <!--/ Notification -->
-
         <!-- Quick links  -->
         @if ($configData['showQuickAccess'] == true || Auth::user()->hasRole('developer'))
             <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
@@ -202,26 +196,20 @@
         @endif
         <!-- Quick links -->
 
-        <!-- Mailbox -->
-        @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('mailbox'))
-        @can('mailbox.list')
-        <li class="nav-item me-2 me-xl-0">
-            <a class="nav-link" href="{{ url('mailbox') }}">
-                <i class="ti ti-mail ti-md"></i>
-            </a>
-        </li>
-        @endcan
+        <!-- Notification -->
+        @if ($configData['showNotifications'] == true)
+            <x-task-notifications />
         @endif
+        <!--/ Notification -->
 
-        <!-- Tickets -->
-        @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('tickets'))
-        @can('ticket.list')
-        <li class="nav-item me-2 me-xl-0">
-            <a class="nav-link" href="{{ url('tickets') }}">
-                <i class="ti ti-ticket ti-md"></i>
-            </a>
-        </li>
-        @endcan
+        <!-- WhatsApp Support -->
+        @if(config('app.whatsapp_support'))
+            <li class="nav-item me-3 me-xl-1">
+                <a class="nav-link" href="https://wa.me/{{ trim(config('app.whatsapp_support')) }}" target="_blank"
+                   data-bs-toggle="tooltip" data-bs-placement="bottom" title="Soporte por WhatsApp">
+                    <i class="ti ti-brand-whatsapp ti-md"></i>
+                </a>
+            </li>
         @endif
 
         <!-- Help Center -->
@@ -280,7 +268,7 @@
 
                 @if (Auth::check() && auth()->user()->currentTeam && auth()->user()->ownsTeam(auth()->user()->currentTeam))
                     <li>
-                        <a class="dropdown-item" href="{{ route('team-settings.edit', auth()->user()->currentTeam->id) }}">
+                        <a class="dropdown-item" href="{{ route('team-settings.index', auth()->user()->currentTeam) }}">
                             <i class="ti ti-settings-automation me-2 ti-sm"></i>
                             <span class="align-middle">Settings</span>
                         </a>
