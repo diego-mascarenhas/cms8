@@ -41,6 +41,14 @@ class ServiceType extends Model
 	}
 
 	/**
+	 * Get services of this service type.
+	 */
+	public function services()
+	{
+		return $this->hasMany(Service::class, 'service_type_id');
+	}
+
+	/**
 	 * Get categories of this service type.
 	 */
 	public function categories()

@@ -785,8 +785,15 @@ class ImportDataCommand extends Command
 			// Buscar el módulo de servicios para asignar a las categorías
 			$serviceModule = \App\Models\Module::where('key', 'services')->first();
 
+			// Buscar el módulo de proyectos para categorías de proyectos
+			$projectModule = \App\Models\Module::where('key', 'projects')->first();
+
 			if (!$serviceModule) {
 				$this->warn("El módulo 'services' no existe. Las categorías se importarán sin módulo asignado.");
+			}
+
+			if (!$projectModule) {
+				$this->warn("El módulo 'projects' no existe. Las categorías de proyectos se importarán sin módulo asignado.");
 			}
 
 			// Obtener todas las categorías del sistema antiguo
@@ -825,7 +832,7 @@ class ImportDataCommand extends Command
 
 				foreach ($parentCategories as $data) {
 					$categoryData = [
-						'id' => $data->id,
+						'id' => $data->id, // Mantener ID original
 						'name' => $data->categoria,
 						'module_id' => $serviceModule ? $serviceModule->id : null,
 						'team_id' => $teamId,
@@ -1197,7 +1204,7 @@ class ImportDataCommand extends Command
 						['id' => $service->id],
 						[
 							'enterprise_id' => $service->id_empresa,
-							'category_id' => $service->id_categoria ?? null,
+							'service_type_id' => $service->id_categoria ?? null,
 							'operation' => $operation,
 							'description' => strip_tags($service->descripcion ?? ''),
 							'price' => $service->valor ?? 0,
@@ -1278,11 +1285,8 @@ class ImportDataCommand extends Command
 			$skipped = 0;
 			foreach ($projects as $project) {
 				try {
-					// Get team ID
-					$team = \App\Models\Team::where('name', 'REVISION ALPHA')->first();
-					if (!$team) {
-						throw new \Exception('Revision Alpha team not found');
-					}
+					// Get team ID - REVISION ALPHA team
+					$teamId = 2;
 
 					// Get responsible user - default to the team owner if not found
 					$responsibleId = \App\Models\User::where('email', 'diego.mascarenhas@icloud.com')->first()->id;
@@ -1293,14 +1297,23 @@ class ImportDataCommand extends Command
 						continue;
 					}
 
+					// Verificar si la categoría existe en categories, si no, usar NULL
+					$categoryId = null;
+					if ($project->id_categoria) {
+						$categoryExists = DB::table('categories')->where('id', $project->id_categoria)->exists();
+						if ($categoryExists) {
+							$categoryId = $project->id_categoria;
+						}
+					}
+
 					$existingProject = \App\Models\Project::where('id', $project->id)->first();
 
 					\App\Models\Project::updateOrCreate(
 						['id' => $project->id],
 						[
-							'team_id' => $team->id,
+							'team_id' => $teamId,
 							'enterprise_id' => $project->id_empresa,
-							'category_id' => $project->id_categoria ?? null,
+							'category_id' => $categoryId,
 							'responsible_id' => $responsibleId,
 							'name' => $project->titulo ?? 'Proyecto ' . $project->id,
 							'real_name' => null,

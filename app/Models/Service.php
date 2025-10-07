@@ -18,7 +18,7 @@ class Service extends Model
 
 	protected $fillable = [
 		'enterprise_id',
-		'category_id',
+		'service_type_id',
 		'operation',
 		'description',
 		'data',
@@ -72,9 +72,15 @@ class Service extends Model
 		return is_array($decoded) ? $decoded : [];
 	}
 
+	public function serviceType()
+	{
+		return $this->belongsTo(ServiceType::class, 'service_type_id');
+	}
+
+	// Backward compatibility - alias for serviceType
 	public function category()
 	{
-		return $this->belongsTo(Category::class);
+		return $this->serviceType();
 	}
 
 	public function client()
