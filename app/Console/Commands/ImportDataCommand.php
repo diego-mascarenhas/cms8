@@ -160,6 +160,10 @@ class ImportDataCommand extends Command
 				->where('padre', 10)
 				->select('id', 'categoria', 'padre', 'estado'),
 
+			'3. Service Types' => DB::connection('mysql_tmp')
+				->table('categorias_generales_tipo')
+				->select('id', 'tipo', 'descripcion', 'caracteristicas', 'id_moneda', 'valor', 'descuento', 'frecuencia', 'template_alta_de_servicio', 'orden', 'estado'),
+
 			'5. Enterprises' => DB::connection('mysql_tmp')
 				->table('empresas')
 				->where('grupo', env('CMS_GROUP'))
@@ -258,39 +262,35 @@ class ImportDataCommand extends Command
 			$this->newLine();
 
 			// Import in order to respect foreign key constraints
-			$this->info('📂 Step 1/9: Importing Categories...');
+			$this->info('📂 Step 1/8: Importing Categories & Service Types...');
 			$this->processImport('2. Categories');
 			$this->newLine();
 
-			$this->info('💳 Step 2/9: Importing Payment Types...');
-			$this->processImport('3. Payment Types');
-			$this->newLine();
-
-			$this->info('🏢 Step 3/9: Importing Enterprises...');
+			$this->info('🏢 Step 2/8: Importing Enterprises...');
 			$this->processImport('5. Enterprises');
 			$this->newLine();
 
-			$this->info('🏦 Step 4/9: Importing Payment Accounts...');
-			$this->processImport('4. Payment Accounts');
-			$this->newLine();
-
-			$this->info('📦 Step 5/9: Importing Services...');
+			$this->info('📦 Step 3/8: Importing Services...');
 			$this->processImport('6. Services');
 			$this->newLine();
 
-			$this->info('📁 Step 6/9: Importing Projects...');
+			$this->info('📁 Step 4/8: Importing Projects...');
 			$this->processImport('7. Projects');
 			$this->newLine();
 
-			$this->info('📄 Step 7/9: Importing Invoices...');
+			$this->info('📄 Step 5/8: Importing Invoices...');
 			$this->processImport('8. Invoices');
 			$this->newLine();
 
-			$this->info('💰 Step 8/9: Updating Payments (linking enterprises & invoices)...');
+			$this->info('💰 Step 6/8: Updating Payments (linking enterprises & invoices)...');
 			$this->processImport('9. Payments');
 			$this->newLine();
 
-			$this->info('👥 Step 9/9: Importing Users...');
+			$this->info('📞 Step 7/8: Importing Communications...');
+			$this->processImport('10. Communications');
+			$this->newLine();
+
+			$this->info('👥 Step 8/8: Importing Users...');
 			$this->processImport('1. Users');
 			$this->newLine();
 
@@ -327,6 +327,7 @@ class ImportDataCommand extends Command
 			$result = match ($type) {
 				'1. Users' => $this->importUsers($id),
 				'2. Categories' => $this->importCategories($id),
+				'3. Service Types' => $this->importServiceTypes($id),
 				'5. Enterprises' => $this->importEnterprises($id),
 				'6. Services' => $this->importServices($id),
 				'7. Projects' => $this->importProjects($id),
@@ -766,6 +767,8 @@ class ImportDataCommand extends Command
 
 	/**
 	 * Importa las categorías desde el sistema antiguo
+	 * Las categorías padre van a 'categories'
+	 * Las categorías hijas van a 'service_types' con category_id = padre
 	 */
 	protected function importCategories($id = null)
 	{
@@ -776,6 +779,9 @@ class ImportDataCommand extends Command
 		];
 
 		try {
+			// Get team ID - REVISION ALPHA team
+			$teamId = 2;
+
 			// Buscar el módulo de servicios para asignar a las categorías
 			$serviceModule = \App\Models\Module::where('key', 'services')->first();
 
@@ -783,56 +789,204 @@ class ImportDataCommand extends Command
 				$this->warn("El módulo 'services' no existe. Las categorías se importarán sin módulo asignado.");
 			}
 
+			// Obtener todas las categorías del sistema antiguo
 			$query = DB::connection('mysql_tmp')
 				->table('categorias_generales')
 				->where('grupo', env('CMS_GROUP'))
-				->where('padre', 10)
 				->where('estado', '>', 0);
 
 			if ($id) {
 				$query->where('id', $id);
 			}
 
-			$categories = $query->get();
+			$allCategories = $query->get();
 
-			if ($categories->isEmpty()) {
+			if ($allCategories->isEmpty()) {
 				$stats['message'] = 'No se encontraron categorías para importar.';
-
 				return $stats;
 			}
 
-			$bar = $this->output->createProgressBar(count($categories));
+			// Separar categorías padre e hijas
+			$parentCategories = $allCategories->filter(function($cat) {
+				return is_null($cat->padre) || $cat->padre == 0;
+			});
+
+			$childCategories = $allCategories->filter(function($cat) {
+				return !is_null($cat->padre) && $cat->padre > 0;
+			});
+
+			$this->info("📊 Total categorías: {$allCategories->count()} (Padres → categories: {$parentCategories->count()}, Hijas → service_types: {$childCategories->count()})");
+
+			// Primero importar categorías padre a la tabla 'categories'
+			if ($parentCategories->isNotEmpty()) {
+				$this->info("\n🔹 Importando categorías padre a tabla 'categories'...");
+				$bar = $this->output->createProgressBar($parentCategories->count());
+				$bar->start();
+
+				foreach ($parentCategories as $data) {
+					$categoryData = [
+						'id' => $data->id,
+						'name' => $data->categoria,
+						'module_id' => $serviceModule ? $serviceModule->id : null,
+						'team_id' => $teamId,
+						'parent_id' => null,
+						'description' => strip_tags($data->descripcion ?? ''),
+						'data' => json_encode([
+							'currency_id' => $data->id_moneda ?? null,
+							'price' => $data->valor ?? null,
+							'discount' => $data->descuento ?? null,
+							'frequency' => $data->frecuencia ?? null,
+							'type_id' => $data->id_tipo ?? null,
+						]),
+						'order' => $data->orden ?? 0,
+						'status' => $data->estado ?? 1,
+						'created_at' => $data->fecha_alta ?? now(),
+						'updated_at' => $data->fecha_modificacion ?? now(),
+					];
+
+					$existingCategory = DB::table('categories')->where('id', $data->id)->first();
+
+					if (!$existingCategory) {
+						DB::table('categories')->insert($categoryData);
+						$stats['imported']++;
+					} else {
+						DB::table('categories')->where('id', $existingCategory->id)->update($categoryData);
+						$stats['updated']++;
+					}
+
+					$bar->advance();
+				}
+
+				$bar->finish();
+				$this->newLine();
+			}
+
+			// Luego importar categorías hijas a la tabla 'service_types'
+			if ($childCategories->isNotEmpty()) {
+				$this->info("\n🔹 Importando categorías hijas a tabla 'service_types'...");
+				$bar = $this->output->createProgressBar($childCategories->count());
+				$bar->start();
+
+				$serviceTypesImported = 0;
+				$serviceTypesUpdated = 0;
+
+				foreach ($childCategories as $data) {
+					// Verificar que el padre existe en categories
+					$parentExists = DB::table('categories')->where('id', $data->padre)->exists();
+
+					if (!$parentExists) {
+						$this->warn("\n⚠️  Padre {$data->padre} no existe para categoría {$data->id}: {$data->categoria}");
+						continue;
+					}
+
+					$serviceTypeData = [
+						'id' => $data->id,
+						'name' => $data->categoria,
+						'category_id' => $data->padre, // El padre es el category_id
+						'description' => strip_tags($data->descripcion ?? ''),
+						'data' => json_encode([
+							'characteristics' => $data->caracteristicas ?? null,
+						]),
+						'currency_id' => $data->id_moneda ?? 1,
+						'convert_to' => $data->convertir ?? null,
+						'price' => $data->valor ?? null,
+						'discount' => $data->descuento ?? 0.00,
+						'frequency' => $data->frecuencia ?? 1,
+						'order' => $data->orden ?? 0,
+						'status' => $data->estado ?? 1,
+						'created_at' => $data->fecha_alta ?? now(),
+						'updated_at' => $data->fecha_modificacion ?? now(),
+					];
+
+					$existingServiceType = DB::table('service_types')->where('id', $data->id)->first();
+
+					if (!$existingServiceType) {
+						DB::table('service_types')->insert($serviceTypeData);
+						$serviceTypesImported++;
+					} else {
+						DB::table('service_types')->where('id', $existingServiceType->id)->update($serviceTypeData);
+						$serviceTypesUpdated++;
+					}
+
+					$bar->advance();
+				}
+
+				$bar->finish();
+				$this->newLine();
+				$this->info("✅ Service types importados: {$serviceTypesImported}, actualizados: {$serviceTypesUpdated}");
+			}
+
+			$this->info("✅ Categorías padre importadas: {$stats['imported']}, actualizadas: {$stats['updated']}");
+
+		} catch (\Exception $e) {
+			$this->newLine();
+			throw new \Exception('Error importando categorías: ' . $e->getMessage());
+		}
+
+		return $stats;
+	}
+
+	/**
+	 * Importa los tipos de servicio desde el sistema antiguo
+	 */
+	protected function importServiceTypes($id = null)
+	{
+		$stats = [
+			'imported' => 0,
+			'updated' => 0,
+			'message' => null,
+		];
+
+		try {
+			// Obtener todos los tipos de servicio del sistema antiguo
+			$query = DB::connection('mysql_tmp')
+				->table('categorias_generales_tipo');
+
+			if ($id) {
+				$query->where('id', $id);
+			}
+
+			$serviceTypes = $query->get();
+
+			if ($serviceTypes->isEmpty()) {
+				$stats['message'] = 'No se encontraron tipos de servicio para importar.';
+				return $stats;
+			}
+
+			$this->info("📊 Total tipos de servicio: {$serviceTypes->count()}");
+
+			$bar = $this->output->createProgressBar($serviceTypes->count());
 			$bar->start();
 
-			foreach ($categories as $data) {
-				$existingCategory = DB::table('categories')->where('id', $data->id)->first();
-
-				$categoryData = [
+			foreach ($serviceTypes as $data) {
+				$serviceTypeData = [
 					'id' => $data->id,
-					'name' => $data->categoria,
-					'module_id' => $serviceModule ? $serviceModule->id : null,
-					'parent_id' => $data->padre > 0 ? $data->padre : null,
-					'description' => strip_tags($data->descripcion ?? ''),
+					'name' => $data->tipo,
+					'category_id' => null, // Se puede asignar manualmente después si es necesario
+					'description' => $data->descripcion ?? null,
 					'data' => json_encode([
-						'currency_id' => $data->id_moneda ?? null,
-						'price' => $data->valor ?? null,
-						'discount' => $data->descuento ?? null,
-						'frequency' => $data->frecuencia ?? null,
+						'characteristics' => $data->caracteristicas ?? null,
+						'template_alta_de_servicio' => $data->template_alta_de_servicio ?? null,
 					]),
+					'currency_id' => $data->id_moneda ?? 1,
+					'convert_to' => $data->convertir ?? null,
+					'price' => $data->valor ?? null,
+					'discount' => $data->descuento ?? 0.00,
+					'frequency' => $data->frecuencia ?? 1,
 					'order' => $data->orden ?? 0,
 					'status' => $data->estado ?? 1,
 					'created_at' => $data->fecha_alta ?? now(),
 					'updated_at' => $data->fecha_modificacion ?? now(),
 				];
 
-				if (!$existingCategory) {
-					DB::table('categories')->insert($categoryData);
+				$existingServiceType = DB::table('service_types')->where('id', $data->id)->first();
+
+				if (!$existingServiceType) {
+					DB::table('service_types')->insert($serviceTypeData);
 					$stats['imported']++;
-					$this->info("Categoría {$data->id} importada: {$data->categoria}");
 				} else {
-					DB::table('categories')->where('id', $existingCategory->id)->update($categoryData);
+					DB::table('service_types')->where('id', $existingServiceType->id)->update($serviceTypeData);
 					$stats['updated']++;
-					$this->info("Categoría {$data->id} actualizada: {$data->categoria}");
 				}
 
 				$bar->advance();
@@ -840,9 +994,12 @@ class ImportDataCommand extends Command
 
 			$bar->finish();
 			$this->newLine();
+
+			$this->info("✅ Tipos de servicio importados: {$stats['imported']}, actualizados: {$stats['updated']}");
+
 		} catch (\Exception $e) {
 			$this->newLine();
-			throw new \Exception('Error importando categorías: ' . $e->getMessage());
+			throw new \Exception('Error importando tipos de servicio: ' . $e->getMessage());
 		}
 
 		return $stats;
