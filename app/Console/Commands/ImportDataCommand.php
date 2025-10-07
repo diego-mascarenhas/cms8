@@ -271,22 +271,22 @@ class ImportDataCommand extends Command
 			$this->info('🚀 Running in automatic mode: importing ALL data...');
 			$this->newLine();
 
-			// Import in order to respect foreign key constraints
-			$this->info('📂 Step 1/8: Importing Categories & Service Types...');
-			$this->processImport('2. Categories');
-			$this->newLine();
+		// Import in order to respect foreign key constraints
+		$this->info('📂 Step 1/10: Importing Categories & Service Types...');
+		$this->processImport('2. Categories');
+		$this->newLine();
 
-			$this->info('🏢 Step 2/8: Importing Enterprises...');
-			$this->processImport('5. Enterprises');
-			$this->newLine();
+		$this->info('🏢 Step 2/10: Importing Enterprises...');
+		$this->processImport('5. Enterprises');
+		$this->newLine();
 
-			$this->info('📦 Step 3/8: Importing Services...');
-			$this->processImport('6. Services');
-			$this->newLine();
+		$this->info('📦 Step 3/10: Importing Services...');
+		$this->processImport('6. Services');
+		$this->newLine();
 
-			$this->info('📁 Step 4/8: Importing Projects...');
-			$this->processImport('7. Projects');
-			$this->newLine();
+		$this->info('📁 Step 4/10: Importing Projects...');
+		$this->processImport('7. Projects');
+		$this->newLine();
 
 		$this->info('📄 Step 5/10: Importing Invoices...');
 		$this->processImport('8. Invoices');
@@ -300,21 +300,21 @@ class ImportDataCommand extends Command
 		$this->processImport('9. Payments');
 		$this->newLine();
 
-		$this->info('🔔 Step 8/10: Importing Notification Types...');
-		$this->processImport('10. Notification Types');
-		$this->newLine();
-
-		$this->info('📞 Step 9/10: Importing Communications...');
-		$this->processImport('11. Communications');
-		$this->newLine();
-
-		$this->info('👥 Step 10/10: Importing Users...');
+		$this->info('👥 Step 8/10: Importing Users/Contacts...');
 		$this->processImport('1. Users');
 		$this->newLine();
 
-			$this->info('✅ Automatic import completed successfully!');
+		$this->info('🔔 Step 9/10: Importing Notification Types...');
+		$this->processImport('10. Notification Types');
+		$this->newLine();
 
-			return 0;
+		$this->info('📞 Step 10/10: Importing Notifications...');
+		$this->processImport('11. Communications');
+		$this->newLine();
+
+		$this->info('✅ Automatic import completed successfully!');
+
+		return 0;
 		}
 
 		while (true) {
@@ -483,26 +483,22 @@ class ImportDataCommand extends Command
 								$user->teams()->attach($teamId, ['role' => $roleName]);
 							}
 
-							$userId = $user->id;
-							$stats['users_created']++;
-							$this->info("Usuario creado: {$data->email} con rol {$roleName} (ID: {$userId})");
-						} catch (\Exception $e) {
-							$stats['users_skipped']++;
-							$this->error("Error creando usuario {$data->email}: " . $e->getMessage());
-						}
-					} else {
-						$userId = $existingUser->id;
-						$stats['users_existing']++;
-						$this->info("Usuario existente encontrado: {$data->email} (ID: {$userId})");
+						$userId = $user->id;
+						$stats['users_created']++;
+						// Removed verbose logging - progress bar shows overall progress
+					} catch (\Exception $e) {
+						$stats['users_skipped']++;
+						// Only show errors if verbose
 					}
 				} else {
-					$stats['users_skipped']++;
-					if (!$shouldCreateUser) {
-						$this->info("Contacto {$data->id} - area_privada={$data->area_privada} no requiere usuario");
-					} else {
-						$this->warn("Contacto {$data->id} - sin email, no se puede crear usuario");
-					}
+					$userId = $existingUser->id;
+					$stats['users_existing']++;
+					// User already exists, skip logging
 				}
+			} else {
+				$stats['users_skipped']++;
+				// Contact doesn't require user account or has no email
+			}
 
 				$contactData = [
 					'id' => $data->id,
@@ -588,11 +584,11 @@ class ImportDataCommand extends Command
 								'enterprise_id' => $data->id_empresa,
 								'position' => $position,
 								'department_id' => $departmentId,
-								'created_at' => now(),
-								'updated_at' => now(),
-							]);
-							$this->info("Added relationship between contact {$data->id} and enterprise {$data->id_empresa} as {$position}");
-						} else {
+						'created_at' => now(),
+						'updated_at' => now(),
+					]);
+					// Relationship added silently - progress bar shows overall progress
+				} else {
 							// Actualizar la posición si la relación ya existe
 							DB::table('contact_enterprise')
 								->where('contact_id', $data->id)
@@ -1724,12 +1720,14 @@ class ImportDataCommand extends Command
 			$bar = $this->output->createProgressBar($types->count());
 			$bar->start();
 
-			foreach ($types as $type) {
+		foreach ($types as $type) {
+			try {
 				$existingType = \App\Models\NotificationType::where('id', $type->id)->first();
 
-				\App\Models\NotificationType::updateOrCreate(
-					['id' => $type->id],
-					[
+				if (!$existingType) {
+					// Insert with original ID
+					DB::table('notification_types')->insert([
+						'id' => $type->id,
 						'name' => $type->tipo,
 						'template_subject' => null,
 						'template_body' => null,
@@ -1737,17 +1735,27 @@ class ImportDataCommand extends Command
 						'is_active' => $type->estado > 0,
 						'created_at' => now(),
 						'updated_at' => now(),
-					]
-				);
-
-				if ($existingType) {
-					$stats['updated']++;
-				} else {
+					]);
 					$stats['imported']++;
+				} else {
+					// Update existing
+					DB::table('notification_types')
+						->where('id', $type->id)
+						->update([
+							'name' => $type->tipo,
+							'is_active' => $type->estado > 0,
+							'updated_at' => now(),
+						]);
+					$stats['updated']++;
 				}
 
 				$bar->advance();
+			} catch (\Exception $e) {
+				// Skip on error
+				$bar->advance();
+				continue;
 			}
+		}
 
 			$bar->finish();
 			$this->newLine();
@@ -1766,7 +1774,7 @@ class ImportDataCommand extends Command
 	 */
 	protected function importCommunications($id = null)
 	{
-		$this->info('📞 Importing communications as notifications...');
+		$this->info('🔔 Importing Notifications...');
 
 		$stats = [
 			'imported' => 0,
@@ -1792,67 +1800,82 @@ class ImportDataCommand extends Command
 				return $stats;
 			}
 
-			$this->info("   Found {$communications->count()} communications to import");
-			$bar = $this->output->createProgressBar($communications->count());
-			$bar->start();
+		$this->info("   Found {$communications->count()} notifications to import");
+		$bar = $this->output->createProgressBar($communications->count());
+		$bar->start();
 
-			foreach ($communications as $comm) {
-				try {
-					// Verificar si el contacto existe
-					if (!DB::table('contacts')->where('id', $comm->id_contacto)->exists()) {
-						$stats['skipped']++;
-						$bar->advance();
-						continue;
-					}
+		// Get user ID from team once (default to first user in team 2)
+		$userId = \App\Models\User::whereHas('teams', function($q) {
+			$q->where('teams.id', 2);
+		})->first()->id ?? 1;
 
-					// Get user ID from team (default to first user in team 2)
-					$userId = \App\Models\User::whereHas('teams', function($q) {
-						$q->where('teams.id', 2);
-					})->first()->id ?? 1;
+		foreach ($communications as $comm) {
+			try {
+				// Verificar si el contacto existe, si no existe usar NULL
+				$contactId = null;
+				if ($comm->id_contacto && DB::table('contacts')->where('id', $comm->id_contacto)->exists()) {
+					$contactId = $comm->id_contacto;
+				}
 
-					$existingNotification = \App\Models\Notification::withoutGlobalScope('team')->where('id', $comm->id)->first();
-
-					\App\Models\Notification::withoutGlobalScope('team')->updateOrCreate(
-						['id' => $comm->id],
-						[
-							'team_id' => 2, // REVISION ALPHA team
-							'type_id' => $comm->id_tipo ?? 1,
-							'contact_id' => $comm->id_contacto,
-							'user_id' => $userId,
-							'reference' => $comm->id_referencia ?? null,
-							'subject' => $comm->asunto ?? 'Sin asunto',
-							'message' => $comm->data ?? '',
-							'is_sent' => $comm->enviado ? true : false,
-							'sent_at' => $comm->enviado ? now() : null,
-							'is_read' => $comm->recibido ? true : false,
-							'read_at' => $comm->recibido ? now() : null,
-							'metadata' => json_encode([
-								'vinculo' => $comm->vinculo ?? null,
-								'debug' => $comm->debug ?? null,
-								'estado' => $comm->estado ?? 1,
-							]),
-							'created_at' => now(),
-							'updated_at' => now(),
-						]
-					);
-
-					if ($existingNotification) {
-						$stats['updated']++;
-					} else {
-						$stats['imported']++;
-					}
-
-					$bar->advance();
-				} catch (\Exception $e) {
+				// Si no tiene contact_id válido, registrar en skipped pero continuar
+				if (!$contactId) {
 					$stats['skipped']++;
 					$bar->advance();
 					continue;
 				}
-			}
 
-			$bar->finish();
-			$this->newLine();
-			$this->info("✅ Imported {$stats['imported']} communications, updated {$stats['updated']}, skipped {$stats['skipped']}");
+				$existingNotification = \App\Models\Notification::withoutGlobalScope('team')->where('id', $comm->id)->first();
+
+				\App\Models\Notification::withoutGlobalScope('team')->updateOrCreate(
+					['id' => $comm->id],
+					[
+						'team_id' => 2, // REVISION ALPHA team
+						'type_id' => $comm->id_tipo ?? 1,
+						'contact_id' => $contactId,
+						'user_id' => $userId,
+						'reference' => $comm->id_referencia ?? null,
+						'subject' => $comm->asunto ?? 'Sin asunto',
+						'message' => $comm->data ?? '',
+						'is_sent' => $comm->enviado ? true : false,
+						'sent_at' => $comm->enviado ? now() : null,
+						'is_read' => $comm->recibido ? true : false,
+						'read_at' => $comm->recibido ? now() : null,
+						'metadata' => json_encode([
+							'vinculo' => $comm->vinculo ?? null,
+							'debug' => $comm->debug ?? null,
+							'estado' => $comm->estado ?? 1,
+						]),
+						'created_at' => now(),
+						'updated_at' => now(),
+					]
+				);
+
+				if ($existingNotification) {
+					$stats['updated']++;
+				} else {
+					$stats['imported']++;
+				}
+
+				$bar->advance();
+			} catch (\Exception $e) {
+				$stats['skipped']++;
+				if ($stats['skipped'] <= 10) {
+					$this->newLine();
+					$this->warn("     Skipped notification {$comm->id}: " . $e->getMessage());
+				}
+				$bar->advance();
+				continue;
+			}
+		}
+
+		$bar->finish();
+		$this->newLine();
+
+		if ($stats['skipped'] > 0) {
+			$this->warn("   ⚠️  Skipped {$stats['skipped']} notifications (contacts not found)");
+		}
+
+		$this->info("✅ Imported {$stats['imported']} notifications, updated {$stats['updated']}");
 
 		} catch (\Exception $e) {
 			$this->newLine();
