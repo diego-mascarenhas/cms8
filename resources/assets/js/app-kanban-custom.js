@@ -162,7 +162,7 @@
 			const items = Array.from(target.children);
 			const newOrder = items.indexOf(el);
 
-			// Send update to backend
+			// Send status update to backend
 			fetch(updateStatusUrl, {
 				method: 'POST',
 				headers: {
@@ -178,18 +178,39 @@
 			})
 				.then((response) => response.json())
 				.then((data) => {
-					if (data.success)
-					{
-						console.log('Task status updated successfully');
-					} else
-					{
-						console.error('Failed to update task status');
-						// Optionally reload the page or revert the change
+					if (!data.success) {
+						throw new Error('status update failed');
+					}
+
+					// After status update, send full order list for the target column
+					const orderPayload = Array.from(target.children)
+						.map((node, index) => {
+							const inner = node.querySelector('.kanban-task');
+							const id = inner ? parseInt(inner.getAttribute('data-task-id')) : null;
+							return id ? { id, order: index } : null;
+						})
+						.filter(Boolean);
+
+					return fetch(updateOrderUrl, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'X-CSRF-TOKEN': csrfToken,
+							'Accept': 'application/json'
+						},
+						body: JSON.stringify({ tasks: orderPayload })
+					});
+				})
+				.then((response) => response ? response.json() : { success: true })
+				.then((data) => {
+					if (!data || data.success) {
+						console.log('Task order updated successfully');
+					} else {
+						console.error('Failed to update task order');
 					}
 				})
 				.catch((error) => {
-					console.error('Error updating task status:', error);
-					// Optionally reload the page or revert the change
+					console.error('Error updating task status/order:', error);
 				});
 		}
 	});
@@ -268,8 +289,73 @@
 				return;
 			}
 
-			// Redirect to edit page
-			window.location.href = `/task/${taskId}/edit`;
+            // Open offcanvas and preload data from DOM
+            const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
+            if (!sidebarEl) return;
+            const offcanvas = new bootstrap.Offcanvas(sidebarEl);
+
+            // Prefill title and due date
+            const titleEl = taskDiv.querySelector('.kanban-text');
+            const dateBadge = taskDiv.querySelector('.badge');
+            const inputTitle = sidebarEl.querySelector('#title');
+            const inputDue = sidebarEl.querySelector('#due-date');
+            inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
+            inputDue.value = dateBadge ? dateBadge.textContent.replace(/^[^\d]*/, '').trim() : '';
+
+            // Flatpickr init on demand
+            if (window.flatpickr)
+            {
+                window.flatpickr(inputDue, { dateFormat: 'Y-m-d' });
+            }
+
+            // Save handler
+            const saveBtn = sidebarEl.querySelector('#offcanvas-save');
+            const onSave = () => {
+                const newTitle = inputTitle.value.trim();
+                const newDue = inputDue.value ? `${inputDue.value} 00:00:00` : null;
+
+                fetch(storeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: parseInt(taskId),
+                        title: newTitle || 'Sin título',
+                        description: newTitle || '',
+                        responsible_id: currentUserId,
+                        start_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
+                        due_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
+                        status_id: parseInt(taskElement.parentElement.parentElement.getAttribute('data-id')),
+                        board_id: boardId,
+                        view: 'kanban',
+                        project_id: projectId || null
+                    })
+                })
+                    .then(r => r.json())
+                    .then(() => {
+                        // Update DOM
+                        if (newTitle && titleEl) titleEl.textContent = newTitle;
+                        if (newDue)
+                        {
+                            let badge = taskDiv.querySelector('.badge');
+                            if (!badge)
+                            {
+                                badge = document.createElement('span');
+                                badge.className = 'badge bg-label-secondary';
+                                taskDiv.querySelector('.d-flex.justify-content-between').appendChild(badge);
+                            }
+                            badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${newDue.slice(0,10)}`;
+                        }
+                        offcanvas.hide();
+                        saveBtn.removeEventListener('click', onSave);
+                    })
+                    .catch(() => alert('No se pudo guardar'));
+            };
+            saveBtn.addEventListener('click', onSave, { once: true });
+            offcanvas.show();
 		}
 	});
 

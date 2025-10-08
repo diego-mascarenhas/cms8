@@ -99,7 +99,7 @@
     </form>
 
     <!-- Edit Task Sidebar (template original) -->
-    <div class="offcanvas offcanvas-end kanban-update-item-sidebar">
+    <div class="offcanvas offcanvas-end kanban-update-item-sidebar" tabindex="-1">
         <div class="offcanvas-header border-bottom">
             <h5 class="offcanvas-title">{{ __('Edit Task') }}</h5>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
@@ -129,6 +129,10 @@
                 <label class="form-label">Comentarios</label>
                 <div class="comment-toolbar border-bottom pb-1"></div>
                 <div class="comment-editor"></div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary" id="offcanvas-save">{{ __('Save') }}</button>
+                <button type="button" class="btn btn-label-secondary" data-bs-dismiss="offcanvas">{{ __('Cancel') }}</button>
             </div>
         </div>
     </div>
