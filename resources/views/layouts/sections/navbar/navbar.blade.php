@@ -279,7 +279,7 @@
                 {{-- Root-only: Account Management --}}
                 @if (Auth::check() && (Auth::user()->hasRole('root') || Auth::user()->can('user.management')))
                     <li>
-                        <a class="dropdown-item" href="{{ url('account-management') }}" target="_blank">
+                        <a class="dropdown-item" href="{{ url('account-management') }}">
                             <i class="ti ti-shield-lock me-2 ti-sm"></i>
                             <span class="align-middle">{{ __('app.profile.team.account_management') }}</span>
                         </a>
