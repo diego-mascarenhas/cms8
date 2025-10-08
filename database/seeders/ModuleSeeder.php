@@ -176,20 +176,6 @@ class ModuleSeeder extends Seeder
 			'description' => 'Communications management module',
 			'order' => 9,
 		],
-		'chat' => [
-			'name' => 'Chat',
-			'icon' => 'lifebuoy',
-			'description' => 'Live chat module',
-			'group' => 'support',
-			'order' => 3,
-		],
-		'mailbox' => [
-			'name' => 'Mailbox',
-			'icon' => 'mail',
-			'description' => 'Team mailbox management',
-			'group' => 'support',
-			'order' => 4,
-		],
 		// CAMPAIGNS GROUP
 		'mailer' => [
 			'name' => 'Mailer',
@@ -236,19 +222,26 @@ class ModuleSeeder extends Seeder
 			'order' => 3,
 		],
 		// SUPPORT & TICKETS
-		'mailbox' => [
-			'name' => 'Mailbox',
-			'icon' => 'mail',
-			'description' => 'Team mailbox management',
-			'group' => 'support',
-			'order' => 1,
-		],
 		'tickets' => [
 			'name' => 'Tickets',
 			'icon' => 'ticket',
 			'description' => 'Support ticket management module',
 			'group' => 'support',
+			'order' => 1,
+		],
+		'mailbox' => [
+			'name' => 'Mailbox',
+			'icon' => 'mail',
+			'description' => 'Team mailbox management',
+			'group' => 'support',
 			'order' => 2,
+		],
+		'chat' => [
+			'name' => 'Chat',
+			'icon' => 'lifebuoy',
+			'description' => 'Live chat module',
+			'group' => 'support',
+			'order' => 3,
 		],
 		// GENERAL MANAGEMENT
 		'enterprises' => [
@@ -275,17 +268,23 @@ class ModuleSeeder extends Seeder
 			'description' => 'Time tracking module',
 			'order' => 4,
 		],
+		'attendances' => [
+			'name' => 'Attendance',
+			'icon' => 'clock',
+			'description' => 'Attendance tracking module',
+			'order' => 5,
+		],
 		'documentation' => [
 			'name' => 'Documentation',
 			'icon' => 'files',
 			'description' => 'Documentation management module',
-			'order' => 5,
+			'order' => 6,
 		],
 		'departments' => [
 			'name' => 'Departments',
 			'icon' => 'users-group',
 			'description' => 'Department management module',
-			'order' => 6,
+			'order' => 7,
 		],
 		// LEARNING & DEVELOPMENT
 		'languages' => [
@@ -333,7 +332,7 @@ class ModuleSeeder extends Seeder
 	];
 
 	protected $teamModules = [
-		1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'accounting', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
+		1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'marketing', 'hosting', 'mail', 'chat', 'enterprises', 'projects', 'services', 'times', 'documentation', 'earnings', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
 	];
 
 	public function run()

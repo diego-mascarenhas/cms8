@@ -156,7 +156,22 @@ class TeamRevisionAlphaSeeder extends Seeder
                 'current_team_id' => $team->id,
             ],
         );
-        $fernando->assignRole(2);
+        //$fernando->assignRole(2);
+		$fernando->assignRole('collaborator');
+
+        // Create Cecilia - collaborator (Revision Alpha)
+        $cecilia = User::updateOrCreate(
+            ['email' => 'cecilia@revisionalpha.com'],
+            [
+                'name' => 'Cecilia Nuñez',
+                'email' => 'cecilia@revisionalpha.com',
+                'phone' => '34625447817',
+                'password' => Hash::make('@PabloHDP!'),
+                'email_verified_at' => now(),
+                'current_team_id' => $team->id,
+            ],
+        );
+        $cecilia->assignRole('collaborator');
     }
 
     /**
@@ -523,9 +538,10 @@ class TeamRevisionAlphaSeeder extends Seeder
             'services',  // Service catalog
             'projects',  // Project management
             'tasks',  // Task system (Kanban)
+            'times',  // Time tracking
             'invoices',  // Invoice management
             'payments',  // Payment management
-            'accounting',  // Accounting
+            // 'accounting',  // Accounting (disabled by default)
         ];
 
         foreach ($defaultModuleKeys as $moduleKey)
