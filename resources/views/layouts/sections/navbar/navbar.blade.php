@@ -56,6 +56,29 @@
         <!-- /Search -->
     @endif
     <ul class="navbar-nav flex-row align-items-center ms-auto">
+        {{-- Quick Time Tracker (attendance clock-in/out) --}}
+        @auth
+        <li class="nav-item dropdown me-2" id="quick-timer"
+            data-running-url="{{ route('attendance.running') }}"
+            data-start-url="{{ route('attendance.start') }}"
+            data-stop-url="/attendance/:ID/stop">
+            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
+               aria-expanded="false" aria-label="{{ __('Attendance clock') }}">
+                <i class="ti ti-clock ti-md text-muted" id="quick-timer-icon"></i>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 280px;">
+                <li class="px-3 py-2 d-flex align-items-center">
+                    <i class="ti ti-clock me-2" id="quick-timer-icon-inline"></i>
+                    <span id="quick-timer-display" class="fw-semibold" style="font-variant-numeric: tabular-nums;">00:00:00</span>
+                </li>
+                <li><div class="dropdown-divider"></div></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-start"><i class="ti ti-player-play me-2"></i>{{ __('Inicio de jornada') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-pause"><i class="ti ti-player-pause me-2"></i>{{ __('Pausar') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-resume"><i class="ti ti-player-track-next me-2"></i>{{ __('Reanudar') }}</a></li>
+                <li><a class="dropdown-item text-danger" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>{{ __('Fin de jornada') }}</a></li>
+            </ul>
+        </li>
+        @endauth
         <!-- Language -->
         @if ($configData['showLanguageSelector'] == true && Auth::user()->hasRole('developer'))
         <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
@@ -377,6 +400,176 @@
         <!--/ User -->
     </ul>
 </div>
+
+@auth
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('quick-timer');
+    if (!container) return;
+
+    const displayEl = document.getElementById('quick-timer-display');
+    const startEl = document.getElementById('att-start');
+    const pauseEl = document.getElementById('att-pause');
+    const resumeEl = document.getElementById('att-resume');
+    const stopEl = document.getElementById('att-stop');
+    const runningUrl = container.getAttribute('data-running-url');
+    const startUrl = container.getAttribute('data-start-url');
+    const stopUrlTpl = container.getAttribute('data-stop-url');
+
+    let running = false;
+    let paused = false;
+    let startTs = null;
+    let pausedTs = null;
+    let timerId = null;
+    let timerInterval = null;
+
+    function fmt(n){ return String(n).padStart(2,'0'); }
+    function render(){
+        if (!running || !startTs) { displayEl.textContent = '00:00:00'; return; }
+        const now = Math.floor(Date.now() / 1000);
+        const effectiveNow = paused && pausedTs ? pausedTs : now;
+        const elapsed = Math.max(0, effectiveNow - startTs);
+        const h = Math.floor(elapsed / 3600);
+        const m = Math.floor((elapsed % 3600) / 60);
+        const s = elapsed % 60;
+        displayEl.textContent = `${fmt(h)}:${fmt(m)}:${fmt(s)}`;
+    }
+
+    function startTick(){ if (timerInterval) clearInterval(timerInterval); timerInterval = setInterval(render, 1000); render(); }
+    function stopTick(){ if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
+
+    function setButton(){
+        const icon = document.getElementById('quick-timer-icon');
+        const iconInline = document.getElementById('quick-timer-icon-inline');
+        const applyIconState = (el) => {
+            if (!el) return;
+            el.classList.remove('text-success', 'text-muted', 'text-warning');
+            if (!running) {
+                el.classList.add('text-muted');
+            } else if (paused) {
+                el.classList.add('text-warning');
+            } else {
+                el.classList.add('text-success');
+            }
+        };
+        applyIconState(icon);
+        applyIconState(iconInline);
+        if (startEl) startEl.classList.toggle('disabled', running);
+        if (pauseEl) pauseEl.classList.toggle('disabled', !running || paused);
+        if (resumeEl) resumeEl.classList.toggle('disabled', !running || !paused);
+        if (stopEl) stopEl.classList.toggle('disabled', !running);
+    }
+
+    function fetchRunning(){
+        fetch(runningUrl, { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.running && data.attendance) {
+                    running = true;
+                    timerId = data.attendance.id;
+                    startTs = Math.floor(new Date(data.attendance.start_at).getTime() / 1000);
+                    paused = !!data.attendance.paused_at;
+                    pausedTs = paused ? Math.floor(new Date(data.attendance.paused_at).getTime() / 1000) : null;
+                    startTick();
+                } else {
+                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; stopTick(); render();
+                }
+                setButton();
+            })
+            .catch(() => {});
+    }
+
+    if (startEl) startEl.addEventListener('click', function(){
+        if (!running) {
+            fetch(startUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success && data.attendance) {
+                    running = true;
+                    paused = false;
+                    timerId = data.attendance.id;
+                    startTs = Math.floor(new Date(data.attendance.start_at).getTime() / 1000);
+                    pausedTs = null;
+                    setButton();
+                    startTick();
+                }
+            });
+        }
+    });
+
+    if (pauseEl) pauseEl.addEventListener('click', function(){
+        if (running && timerId) {
+            const pauseUrl = '{{ route('attendance.pause', [ 'id' => ':ID' ]) }}'.replace(':ID', timerId);
+            fetch(pauseUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            }).then(r => r.json()).then(data => {
+                if (data && data.success && data.attendance) {
+                    paused = true;
+                    pausedTs = data.attendance.paused_at ? Math.floor(new Date(data.attendance.paused_at).getTime() / 1000) : Math.floor(Date.now()/1000);
+                    setButton();
+                    render();
+                }
+            });
+        }
+    });
+
+    if (resumeEl) resumeEl.addEventListener('click', function(){
+        if (running && timerId) {
+            const resumeUrl = '{{ route('attendance.resume', [ 'id' => ':ID' ]) }}'.replace(':ID', timerId);
+            fetch(resumeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            }).then(r => r.json()).then(data => {
+                if (data && data.success && data.attendance) {
+                    paused = false;
+                    pausedTs = null;
+                    setButton();
+                }
+            });
+        }
+    });
+
+    if (stopEl) stopEl.addEventListener('click', function(){
+        if (running && timerId) {
+            const stopUrl = stopUrlTpl.replace(':ID', timerId);
+            fetch(stopUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success) {
+                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; stopTick(); render(); setButton();
+                }
+            });
+        }
+    });
+
+    fetchRunning();
+});
+</script>
+@endauth
 
 <!-- Search Small Screens -->
 <div class="navbar-search-wrapper search-input-wrapper {{ isset($menuHorizontal) ? $containerNav : '' }} d-none">

@@ -142,6 +142,8 @@ class TimeController extends Controller
 			'description' => 'nullable|string|max:255',
 		]);
 
+		$isAttendance = empty($validated['project_id'] ?? null) && empty($validated['task_id'] ?? null);
+
 		$time = Time::create([
 			'team_id' => auth()->user()->currentTeam->id,
 			'user_id' => auth()->id(),
@@ -149,7 +151,7 @@ class TimeController extends Controller
 			'task_id' => $validated['task_id'] ?? null,
 			'description' => $validated['description'] ?? null,
 			'start_time' => now(),
-			'is_billable' => true,
+			'is_billable' => $isAttendance ? false : true,
 		]);
 
 		return response()->json([

@@ -46,6 +46,7 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TimeController;
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
@@ -338,6 +339,13 @@ Route::middleware(['auth'])->group(function () {
 	Route::post('/time/start', [TimeController::class, 'start'])->name('time.start');
 	Route::post('/time/{id}/stop', [TimeController::class, 'stop'])->name('time.stop');
 	Route::get('/time/running', [TimeController::class, 'running'])->name('time.running');
+
+	// Attendance Routes (global in/out)
+	Route::post('/attendance/start', [AttendanceController::class, 'start'])->name('attendance.start');
+	Route::post('/attendance/{id}/pause', [AttendanceController::class, 'pause'])->name('attendance.pause');
+	Route::post('/attendance/{id}/resume', [AttendanceController::class, 'resume'])->name('attendance.resume');
+	Route::post('/attendance/{id}/stop', [AttendanceController::class, 'stop'])->name('attendance.stop');
+	Route::get('/attendance/running', [AttendanceController::class, 'running'])->name('attendance.running');
 
 	// Task Routes
 	Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');
