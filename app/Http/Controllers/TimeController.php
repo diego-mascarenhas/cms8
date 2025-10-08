@@ -20,7 +20,10 @@ class TimeController extends Controller
 
 	public function create()
 	{
-		$projects = Project::select('id', 'name')->orderBy('name')->get();
+		$projects = Project::select('id', 'name')
+			->whereIn('status_id', [3, 7, 8, 9]) // Active/In-progress statuses
+			->orderBy('name')
+			->get();
 		$tasks = Task::select('id', 'title')->orderBy('title')->get();
 		$users = auth()->user()->currentTeam->allUsers();
 
@@ -62,7 +65,10 @@ class TimeController extends Controller
 			abort(403, 'Unauthorized action.');
 		}
 
-		$projects = Project::select('id', 'name')->orderBy('name')->get();
+		$projects = Project::select('id', 'name')
+			->whereIn('status_id', [3, 7, 8, 9]) // Active/In-progress statuses
+			->orderBy('name')
+			->get();
 		$tasks = Task::select('id', 'title')->orderBy('title')->get();
 		$users = auth()->user()->currentTeam->allUsers();
 

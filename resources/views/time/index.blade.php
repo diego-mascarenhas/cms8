@@ -87,7 +87,7 @@
 					@else
 						<select class="form-select mb-2" id="timer-project">
 							<option value="">{{ __('Select Project (Optional)') }}</option>
-							@foreach(\App\Models\Project::select('id', 'name')->orderBy('name')->get() as $project)
+						@foreach(\App\Models\Project::select('id', 'name')->whereIn('status_id', [3,7,8,9])->orderBy('name')->get() as $project)
 								<option value="{{ $project->id }}">{{ $project->name }}</option>
 							@endforeach
 						</select>
