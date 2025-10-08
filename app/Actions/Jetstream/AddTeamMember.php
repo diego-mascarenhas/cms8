@@ -33,6 +33,22 @@ class AddTeamMember implements AddsTeamMembers
 			['role' => $role],
 		);
 
+		// Sync Spatie role with Jetstream team role (simple mapping)
+		$roleMap = [
+			'admin' => 'admin',
+			'editor' => 'editor',
+		];
+		if ($role && isset($roleMap[$role])) {
+			// Remove mapped roles then assign the selected one
+			try {
+				$newTeamMember->removeRole('admin');
+			} catch (\Throwable $e) {}
+			try {
+				$newTeamMember->removeRole('editor');
+			} catch (\Throwable $e) {}
+			$newTeamMember->assignRole($roleMap[$role]);
+		}
+
 		TeamMemberAdded::dispatch($team, $newTeamMember);
 	}
 

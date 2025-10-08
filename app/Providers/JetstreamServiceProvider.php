@@ -43,19 +43,51 @@ class JetstreamServiceProvider extends ServiceProvider
 	 */
 	protected function configurePermissions(): void
 	{
-		Jetstream::defaultApiTokenPermissions(['read']);
+        Jetstream::defaultApiTokenPermissions(['read']);
 
-		Jetstream::role('admin', 'Administrator', [
-			'create',
-			'read',
-			'update',
-			'delete',
-		])->description('Administrator users can perform any action.');
+        // Register roles in hierarchical order (top → bottom)
+        Jetstream::role('root', 'Root', [
+            'create', 'read', 'update', 'delete',
+        ])->description('Root users can perform any action.');
 
-		Jetstream::role('editor', 'Editor', [
-			'read',
-			'create',
-			'update',
-		])->description('Editor users have the ability to read, create, and update.');
+        Jetstream::role('admin', 'Administrator', [
+            'create', 'read', 'update', 'delete',
+        ])->description('Administrator users can perform any action.');
+
+        Jetstream::role('developer', 'Developer', [
+            'read', 'create', 'update', 'delete',
+        ])->description('Developer users can manage technical resources.');
+
+        Jetstream::role('technical', 'Technical', [
+            'read', 'create', 'update',
+        ])->description('Technical users can read, create, and update technical resources.');
+
+        Jetstream::role('editor', 'Editor', [
+            'read', 'create', 'update',
+        ])->description('Editor users have the ability to read, create, and update.');
+
+        Jetstream::role('collaborator', 'Collaborator', [
+            'read', 'create', 'update',
+        ])->description('Collaborator users can read, create, and update.');
+
+        Jetstream::role('employee', 'Employee', [
+            'read',
+        ])->description('Employee users have limited access.');
+
+        Jetstream::role('client', 'Client', [
+            'read',
+        ])->description('Client users can view assigned resources.');
+
+        Jetstream::role('auditor', 'Auditor', [
+            'read',
+        ])->description('Auditor users can view only.');
+
+        Jetstream::role('guest', 'Guest', [
+            'read',
+        ])->description('Guest users can view public resources.');
+
+        Jetstream::role('user', 'User', [
+            'read',
+        ])->description('Standard user role with read access.');
 	}
 }
