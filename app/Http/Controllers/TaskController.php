@@ -100,6 +100,8 @@ class TaskController extends Controller
         $statuses = TaskStatus::getOptions();
         $boards = TaskBoard::getOptions();
         $defaultBoardId = null;
+        $projectId = $request->input('project_id');
+        $defaultStatusId = $request->integer('status_id') ?: 1;
 
         // If coming from kanban view, get the board_id
         if ($request->has('board_id'))
@@ -111,7 +113,7 @@ class TaskController extends Controller
             $defaultBoardId = $defaultBoard->id;
         }
 
-        return view('task.form', compact('statuses', 'boards', 'defaultBoardId'));
+        return view('task.form', compact('statuses', 'boards', 'defaultBoardId', 'projectId', 'defaultStatusId'));
     }
 
     public function store(Request $request)
@@ -137,7 +139,7 @@ class TaskController extends Controller
             $boardId = $board->id;
         }
 
-        Task::updateOrCreate(
+        $task = Task::updateOrCreate(
             ['id' => $request->id],
             [
                 'title' => $data['title'],
@@ -153,8 +155,19 @@ class TaskController extends Controller
             ],
         );
 
+        if ($request->expectsJson())
+        {
+            return response()->json(['success' => true, 'id' => $task->id]);
+        }
+
         if ($request->has('view') && $request->view === 'kanban')
         {
+            // Check if we have a project_id to redirect back to project kanban
+            $projectId = $request->input('project_id');
+            if ($projectId)
+            {
+                return redirect()->route('task.index', ['view' => 'kanban', 'project_id' => $projectId])->with('success', 'Record saved successfully.');
+            }
             return redirect()->route('task.index', ['view' => 'kanban', 'board_id' => $boardId])->with('success', 'Record saved successfully.');
         }
 
@@ -214,5 +227,19 @@ class TaskController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    public function destroy(string $id)
+    {
+        try
+        {
+            $task = Task::findOrFail($id);
+            $task->delete();
+
+            return response()->json(['success' => true, 'message' => 'Task deleted successfully']);
+        } catch (\Exception $e)
+        {
+            return response()->json(['success' => false, 'message' => 'Error deleting task'], 500);
+        }
     }
 }

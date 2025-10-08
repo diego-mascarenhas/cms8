@@ -27,7 +27,21 @@
 @endsection
 
 @section('page-script')
-<script src="{{ asset('assets/js/app-kanban.js') }}"></script>
+<script>
+    // Pass data from Laravel to JavaScript
+    window.kanbanData = {
+        statuses: @json($statuses),
+        tasksByStatus: @json($tasksByStatus),
+        boardId: {{ $board->id }},
+        projectId: {{ $project->id ?? 'null' }},
+        storeUrl: '{{ route('task.store') }}',
+        updateStatusUrl: '{{ route('task.update-status') }}',
+        updateOrderUrl: '{{ route('task.update-order') }}',
+        csrfToken: '{{ csrf_token() }}',
+        currentUserId: {{ auth()->id() }}
+    };
+</script>
+<script src="{{ asset('assets/js/app-kanban-custom.js') }}"></script>
 @endsection
 
 @section('content')
@@ -35,16 +49,36 @@
     <!-- Header -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">Tareas</h4>
-            <p class="text-muted">Gestiona las tareas de forma visual</p>
+            <h4 class="mb-1 mt-3">
+                @if($project)
+                    {{ $project->name }} - Tareas Kanban
+                @else
+                    Tareas Kanban
+                @endif
+            </h4>
+            <p class="text-muted">
+                @if($project)
+                    Tablero: {{ $board->name }}
+                @else
+                    Gestiona las tareas de forma visual
+                @endif
+            </p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3 mt-3 mt-md-0">
-            <button type="button" class="btn btn-primary kanban-add-board-btn">
-                <i class="ti ti-plus me-1"></i>Añadir tablero
-            </button>
-            <a href="{{ route('task.index') }}" class="btn btn-label-secondary waves-effect" id="view-list-btn">
-                <i class="ti ti-list me-1"></i>Vista de lista
-            </a>
+            @can('task.edit')
+                <a href="{{ route('task.create', array_merge(['board_id' => $board->id, 'view' => 'kanban'], $project ? ['project_id' => $project->id] : [])) }}" class="btn btn-primary waves-effect">
+                    <i class="ti ti-plus me-1"></i>Añadir tarea
+                </a>
+            @endcan
+            @if($project)
+                <a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary waves-effect">
+                    <i class="ti ti-arrow-left me-1"></i>Volver al proyecto
+                </a>
+            @else
+                <a href="{{ route('task.index') }}" class="btn btn-label-secondary waves-effect" id="view-list-btn">
+                    <i class="ti ti-list me-1"></i>Vista de lista
+                </a>
+            @endif
         </div>
     </div>
 

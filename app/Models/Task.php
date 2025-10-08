@@ -55,6 +55,11 @@ class Task extends Model
 		return $this->belongsTo(TaskBoard::class);
 	}
 
+	public function category()
+	{
+		return $this->belongsTo(Category::class, 'category_id');
+	}
+
 	public function getStatusLabelAttribute()
 	{
 		if ($this->status)
