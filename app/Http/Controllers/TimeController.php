@@ -66,7 +66,7 @@ class TimeController extends Controller
 		}
 
 		$projects = Project::select('id', 'name')
-			->whereIn('status_id', [3, 7, 8, 9]) // Active/In-progress statuses
+			->whereIn('status_id', [7, 8, 9]) // Active/In-progress statuses
 			->orderBy('name')
 			->get();
 		$tasks = Task::select('id', 'title')->orderBy('title')->get();
