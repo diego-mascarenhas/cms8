@@ -160,7 +160,13 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="attachments">{{ __('Adjuntos') }}</label>
-                            <input type="file" class="form-control" id="attachments" />
+                            <input type="file" class="form-control" id="attachments" accept="image/*" />
+                            <div id="attachment-preview" class="mt-3" style="display: none;">
+                                <img id="preview-image" src="" alt="Vista previa" class="img-fluid rounded" style="max-height: 200px; object-fit: cover;" />
+                                <button type="button" class="btn btn-sm btn-danger mt-2" id="remove-attachment">
+                                    <i class="ti ti-x me-1"></i>{{ __('Eliminar imagen') }}
+                                </button>
+                            </div>
                         </div>
                         <div class="mb-4">
                             <label class="form-label" for="description">{{ __('Descripción') }}</label>

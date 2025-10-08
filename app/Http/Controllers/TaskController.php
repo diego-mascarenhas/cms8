@@ -96,10 +96,13 @@ class TaskController extends Controller
             });
         }
 
-        // Options for offcanvas editing
+        // Options for offcanvas editing - Only admin and collaborators
         $users = User::query()
             ->whereHas('teams', function ($q) {
                 $q->where('team_id', auth()->user()->currentTeam->id);
+            })
+            ->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['admin', 'collaborator']);
             })
             ->get(['id', 'name'])
             ->map(fn($u) => ['id' => $u->id, 'name' => $u->name]);

@@ -59,14 +59,14 @@
 				html += `<span class="d-flex align-items-center me-2"><i class="ti ti-calendar ti-xs me-1"></i><span class="badge ${badgeColor} date-badge">${formattedDate}</span></span>`;
 			}
 			html += `</div>`;
-                if (task.responsible)
-                {
+				if (task.responsible)
+				{
                     html += `<div class="avatar-group d-flex align-items-center assigned-avatar">`;
                     html += `<div class="avatar avatar-xs" data-bs-toggle="tooltip" data-bs-placement="top" title="${task.responsible.name}">`;
                     html += `<span class="avatar-initial rounded-circle bg-label-primary pull-up">${task.responsible.name.charAt(0).toUpperCase()}</span>`;
                     html += `</div>`;
-                    html += `</div>`;
-                }
+					html += `</div>`;
+				}
 				html += `</div>`;  // Cierra div.d-flex.justify-content-between.align-items-center
 
                 return {
@@ -402,7 +402,7 @@
 		}
 
 		if (window.flatpickr)
-        {
+		{
             const opts = {
                 dateFormat: 'Y-m-d',
                 altInput: true,
@@ -427,6 +427,37 @@
                 settingsBtn.dataset.fpBound = '1';
             }
         }
+
+		// Handle image preview for attachments
+		const attachmentInput = sidebarEl.querySelector('#attachments');
+		const previewContainer = sidebarEl.querySelector('#attachment-preview');
+		const previewImage = sidebarEl.querySelector('#preview-image');
+		const removeAttachmentBtn = sidebarEl.querySelector('#remove-attachment');
+
+		if (attachmentInput && previewContainer && previewImage)
+		{
+			// Show preview when file is selected
+			attachmentInput.addEventListener('change', function(e) {
+				const file = e.target.files[0];
+				if (file && file.type.startsWith('image/')) {
+					const reader = new FileReader();
+					reader.onload = function(event) {
+						previewImage.src = event.target.result;
+						previewContainer.style.display = 'block';
+					};
+					reader.readAsDataURL(file);
+				}
+			});
+
+			// Remove preview and clear input
+			if (removeAttachmentBtn) {
+				removeAttachmentBtn.addEventListener('click', function() {
+					attachmentInput.value = '';
+					previewImage.src = '';
+					previewContainer.style.display = 'none';
+				});
+			}
+		}
 
 		// Submit on Enter: intercept form submit and route to onSave
 		const formEl = sidebarEl.querySelector('#tab-update form');
@@ -536,7 +567,7 @@
 				}
 
 				// Update date badge with color based on days remaining
-				if (newDue)
+					if (newDue)
 				{
 					// Calculate days remaining
 					const today = new Date();
@@ -556,9 +587,9 @@
 					}
 
 					let badge = taskDiv.querySelector('.date-badge');
-					if (!badge)
-					{
-						badge = document.createElement('span');
+						if (!badge)
+						{
+							badge = document.createElement('span');
 						badge.className = `badge ${badgeColor} date-badge`;
 						const bottomRow = taskDiv.querySelector('.d-flex.justify-content-between.align-items-center');
 						if (bottomRow) bottomRow.insertBefore(badge, bottomRow.firstChild);
@@ -602,13 +633,28 @@
 							avatar.setAttribute('title', responsibleName);
 							avatar.innerHTML = `<span class="avatar-initial rounded-circle bg-label-primary pull-up">${initial}</span>`;
 							avatarGroup.appendChild(avatar);
+
+							// Initialize tooltip for new avatar
+							if (window.bootstrap && bootstrap.Tooltip) {
+								new bootstrap.Tooltip(avatar);
+							}
 						}
 						else if (avatar)
 						{
 							// Update existing avatar
 							avatar.setAttribute('title', responsibleName);
+							avatar.setAttribute('data-bs-original-title', responsibleName); // Bootstrap stores original title here
 							const avatarInitial = avatar.querySelector('.avatar-initial');
 							if (avatarInitial) avatarInitial.textContent = initial;
+
+							// Update tooltip instance
+							if (window.bootstrap && bootstrap.Tooltip) {
+								let tooltipInstance = bootstrap.Tooltip.getInstance(avatar);
+								if (tooltipInstance) {
+									tooltipInstance.dispose();
+								}
+								new bootstrap.Tooltip(avatar);
+							}
 						}
 					}
 
@@ -620,7 +666,7 @@
 			if (saveBtn) {
 				// Prevent bootstrap auto-dismiss before saving
 				saveBtn.removeAttribute('data-bs-dismiss');
-				saveBtn.addEventListener('click', onSave, { once: true });
+		saveBtn.addEventListener('click', onSave, { once: true });
 			}
 		offcanvas.show();
 	}
