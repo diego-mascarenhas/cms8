@@ -267,10 +267,11 @@
                 </li>
 
                 @if (Auth::check() && auth()->user()->currentTeam && auth()->user()->ownsTeam(auth()->user()->currentTeam))
+                    {{-- Variables de configuración (Team Settings module) --}}
                     <li>
                         <a class="dropdown-item" href="{{ route('team-settings.index', auth()->user()->currentTeam) }}">
-                            <i class="ti ti-settings-automation me-2 ti-sm"></i>
-                            <span class="align-middle">{{ __('app.profile.team.settings') }}</span>
+                            <i class="ti ti-adjustments-alt me-2 ti-sm"></i>
+                            <span class="align-middle">{{ __('app.profile.team.variables') }}</span>
                         </a>
                     </li>
                 @endif
