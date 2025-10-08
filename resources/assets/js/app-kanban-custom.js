@@ -297,6 +297,8 @@
 				: new bootstrap.Offcanvas(sidebarEl, { backdrop: true, scroll: true });
 		}
 
+		console.log('[Kanban] Offcanvas opening');
+
         // Prefill fields
 		const titleEl = taskDiv.querySelector('.kanban-text');
 		const dateBadge = taskDiv.querySelector('.badge');
@@ -306,21 +308,62 @@
 		inputDue.value = dateBadge ? dateBadge.textContent.replace(/^[^\d]*/, '').trim() : '';
 
 		// Populate select2 with categories if present
-		const labelSelect = sidebarEl.querySelector('select.select2');
+		const labelSelect = sidebarEl.querySelector('#label');
 		if (labelSelect && window.$ && $.fn.select2)
 		{
 			$(labelSelect).empty();
+			// Add empty option
+			$(labelSelect).append(new Option('Selecciona una categoría', '', false, false));
+			// Add categories from backend
 			(categories || []).forEach(c => {
 				const opt = new Option(c.name, c.id, false, false);
 				$(labelSelect).append(opt);
 			});
-			$(labelSelect).select2({ dropdownParent: $(sidebarEl) });
+			$(labelSelect).select2({
+				dropdownParent: $(sidebarEl),
+				placeholder: 'Selecciona una categoría',
+				allowClear: true
+			});
 		}
 
-        if (window.flatpickr)
+		if (window.flatpickr)
         {
-            window.flatpickr(inputDue, { dateFormat: 'Y-m-d' });
+            const opts = {
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'j F, Y'
+            };
+            try {
+                if (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.es) {
+                    opts.locale = window.flatpickr.l10ns.es;
+                }
+            } catch (e) {}
+            const datepicker = window.flatpickr(inputDue, opts);
+
+            // Open calendar when clicking the settings/gear button
+            const settingsBtn = sidebarEl.querySelector('#due-date-settings');
+            if (settingsBtn && !settingsBtn.dataset.fpBound)
+            {
+                settingsBtn.addEventListener('click', function () {
+                    if (datepicker && typeof datepicker.open === 'function') {
+                        datepicker.open();
+                    }
+                });
+                settingsBtn.dataset.fpBound = '1';
+            }
         }
+
+		// Submit on Enter: intercept form submit and route to onSave
+		const formEl = sidebarEl.querySelector('#tab-update form');
+		if (formEl && !formEl.dataset.submitBound)
+		{
+			formEl.addEventListener('submit', function (e) {
+				e.preventDefault();
+				e.stopPropagation();
+				onSave(e);
+			}, { once: false });
+			formEl.dataset.submitBound = '1';
+		}
 
         // Populate assigned avatars (simple single responsible for now)
         const assignedWrap = sidebarEl.querySelector('.assigned');
@@ -339,10 +382,21 @@
             assignedWrap.appendChild(addBtn);
         }
 
-		const saveBtn = sidebarEl.querySelector('#offcanvas-save');
-		const onSave = () => {
+		const saveBtn = sidebarEl.querySelector('#offcanvas-save') || sidebarEl.querySelector('#tab-update .btn.btn-primary');
+		console.log('[Kanban] Found elements', {
+			inputTitleFound: !!inputTitle,
+			inputDueFound: !!inputDue,
+			saveBtnFound: !!saveBtn
+		});
+		const onSave = (ev) => {
+			if (ev) { ev.preventDefault(); ev.stopPropagation(); }
 			const newTitle = inputTitle.value.trim();
 			const newDue = inputDue.value ? `${inputDue.value} 00:00:00` : null;
+			const categorySelect = sidebarEl.querySelector('#label');
+			const categoryId = categorySelect && categorySelect.value ? parseInt(categorySelect.value) : null;
+			const boardEl = taskElement.closest('.kanban-board');
+			const statusId = boardEl ? parseInt(boardEl.getAttribute('data-id')) : null;
+			console.log('[Kanban] Saving task...', { taskId, newTitle, newDue, categoryId, statusId, boardId, projectId });
 
 			fetch(storeUrl, {
 				method: 'POST',
@@ -358,14 +412,25 @@
 					responsible_id: currentUserId,
 					start_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
 					due_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
-					status_id: parseInt(taskElement.parentElement.parentElement.getAttribute('data-id')),
+					status_id: statusId,
+					category_id: categoryId,
 					board_id: boardId,
 					view: 'kanban',
 					project_id: projectId || null
 				})
 			})
-				.then(r => r.json())
-				.then(() => {
+				.then(async r => {
+					const text = await r.text();
+					let data;
+					try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { raw: text }; }
+					if (!r.ok) {
+						console.error('[Kanban] Save failed', r.status, data);
+						throw new Error('Save failed');
+					}
+					return data;
+				})
+				.then((data) => {
+					console.log('[Kanban] Saved', data);
 					if (newTitle && titleEl) titleEl.textContent = newTitle;
 					if (newDue)
 					{
@@ -379,11 +444,15 @@
 						badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${newDue.slice(0,10)}`;
 					}
 					offcanvas.hide();
-					saveBtn.removeEventListener('click', onSave);
+					if (saveBtn) saveBtn.removeEventListener('click', onSave);
 				})
-				.catch(() => alert('No se pudo guardar'));
+				.catch((err) => { console.error(err); alert('No se pudo guardar'); });
 		};
-		saveBtn.addEventListener('click', onSave, { once: true });
+			if (saveBtn) {
+				// Prevent bootstrap auto-dismiss before saving
+				saveBtn.removeAttribute('data-bs-dismiss');
+				saveBtn.addEventListener('click', onSave, { once: true });
+			}
 		offcanvas.show();
 	}
 

@@ -52,47 +52,6 @@
         }
     });
     </script>
-<script>
-    // Fallback: open editor offcanvas when clicking a task or its "Editar" action
-    (function () {
-        function openOffcanvasFromItem(itemEl) {
-            var taskDiv = itemEl ? itemEl.querySelector('.kanban-task') : null;
-            if (!taskDiv) return;
-            var off = document.querySelector('.kanban-update-item-sidebar');
-            if (!off) return;
-            if (off.parentElement !== document.body) document.body.appendChild(off);
-            var OffcanvasCtor = (window.bootstrap && window.bootstrap.Offcanvas) ? window.bootstrap.Offcanvas : null;
-            var oc = OffcanvasCtor && OffcanvasCtor.getOrCreateInstance
-                ? OffcanvasCtor.getOrCreateInstance(off)
-                : (OffcanvasCtor ? new OffcanvasCtor(off) : null);
-            var titleEl = taskDiv.querySelector('.kanban-text');
-            var inputTitle = off.querySelector('#title');
-            var inputDue = off.querySelector('#due-date');
-            var dateBadge = taskDiv.querySelector('.badge');
-            if (inputTitle) inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
-            if (inputDue) inputDue.value = dateBadge ? dateBadge.textContent.replace(/^[^\d]*/, '').trim() : '';
-            if (oc && typeof oc.show === 'function') oc.show();
-        }
-
-        document.addEventListener('click', function (e) {
-            var isDropdown = e.target.closest('.kanban-tasks-item-dropdown');
-            if (isDropdown) return; // ignore clicks inside dropdown toggle
-
-            var editAction = e.target.closest('.edit-task');
-            if (editAction) {
-                e.preventDefault();
-                var item = editAction.closest('.kanban-item');
-                if (item) openOffcanvasFromItem(item);
-                return;
-            }
-
-            var itemEl = e.target.closest('.kanban-item');
-            if (itemEl) {
-                openOffcanvasFromItem(itemEl);
-            }
-        }, true);
-    })();
-</script>
 <script src="{{ asset('assets/js/app-kanban-custom.js') }}"></script>
 @endsection
 
@@ -176,34 +135,34 @@
                 <div class="tab-pane fade show active" id="tab-update" role="tabpanel">
                     <form>
                         <div class="mb-3">
-                            <label class="form-label" for="title">Title</label>
-                            <input type="text" id="title" class="form-control" placeholder="Enter Title" />
+                            <label class="form-label" for="title">{{ __('Título') }}</label>
+                            <input type="text" id="title" class="form-control" placeholder="{{ __('Ingresa el título') }}" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="due-date">Due Date</label>
-                            <input type="text" id="due-date" class="form-control" placeholder="Enter Due Date" />
+                            <label class="form-label" for="due-date">{{ __('Fecha de Entrega') }}</label>
+                            <div class="input-group">
+                                <input type="text" id="due-date" class="form-control" placeholder="{{ __('Selecciona una fecha') }}" />
+                                <button type="button" class="btn btn-icon btn-label-primary" id="due-date-settings" title="Settings">
+                                    <i class="ti ti-settings"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="label"> Label</label>
+                            <label class="form-label" for="label">{{ __('Categoría') }}</label>
                             <select class="select2 select2-label form-select" id="label">
-                                <option data-color="bg-label-success" value="UX">UX</option>
-                                <option data-color="bg-label-warning" value="Images">Images</option>
-                                <option data-color="bg-label-info" value="Info">Info</option>
-                                <option data-color="bg-label-danger" value="Code Review">Code Review</option>
-                                <option data-color="bg-label-secondary" value="App">App</option>
-                                <option data-color="bg-label-primary" value="Charts & Maps">Charts & Maps</option>
+                                <option value="">{{ __('Selecciona una categoría') }}</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Assigned</label>
+                            <label class="form-label">{{ __('Asignado') }}</label>
                             <div class="assigned d-flex flex-wrap"></div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="attachments">Attachments</label>
+                            <label class="form-label" for="attachments">{{ __('Adjuntos') }}</label>
                             <input type="file" class="form-control" id="attachments" />
                         </div>
                         <div class="mb-4">
-                            <label class="form-label">Comment</label>
+                            <label class="form-label">{{ __('Comentario') }}</label>
                             <div class="comment-editor border-bottom-0"></div>
                             <div class="d-flex justify-content-end">
                                 <div class="comment-toolbar">
@@ -218,8 +177,8 @@
                             </div>
                         </div>
                         <div class="d-flex flex-wrap">
-                            <button type="button" class="btn btn-primary me-3" data-bs-dismiss="offcanvas">Update</button>
-                            <button type="button" class="btn btn-label-danger" data-bs-dismiss="offcanvas">Delete</button>
+                            <button type="button" id="offcanvas-save" class="btn btn-primary me-3">{{ __('Guardar') }}</button>
+                            <button type="button" class="btn btn-label-danger" data-bs-dismiss="offcanvas">{{ __('Eliminar') }}</button>
                         </div>
                     </form>
                 </div>
