@@ -16,8 +16,10 @@ return new class extends Migration
             $table->unsignedBigInteger('responsible_id');
             $table->string('title');
             $table->text('description')->nullable();
-            $table->dateTime('start_date');
-            $table->dateTime('due_date');
+            $table->string('attachment')->nullable();
+            $table->decimal('estimated_hours', 8, 2)->nullable();
+            $table->date('start_date');
+            $table->date('due_date');
             $table->integer('order')->default(0);
             $table->unsignedTinyInteger('status_id')->default(1);
             $table->timestamps();

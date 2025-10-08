@@ -18,6 +18,8 @@ class Task extends Model
 		'responsible_id',
 		'title',
 		'description',
+		'attachment',
+		'estimated_hours',
 		'start_date',
 		'due_date',
 		'status_id',
@@ -25,8 +27,9 @@ class Task extends Model
 	];
 
 	protected $casts = [
-		'start_date' => 'datetime',
-		'due_date' => 'datetime',
+		'start_date' => 'date',
+		'due_date' => 'date',
+		'estimated_hours' => 'decimal:2',
 	];
 
 	protected static function booted()

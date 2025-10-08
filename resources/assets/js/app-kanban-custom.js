@@ -18,22 +18,42 @@
 			id: status.id.toString(),
 			title: status.name,
             item: tasks.map((task) => {
-                let html = `<div class="kanban-task" data-task-id="${task.id}">`;
+                let html = `<div class="kanban-task" data-task-id="${task.id}" data-category-id="${task.category ? task.category.id : ''}" data-due-date="${task.due_date || ''}" data-responsible-id="${task.responsible ? task.responsible.id : ''}" data-estimated-hours="${task.estimated_hours || ''}" data-description="${(task.description || '').replace(/"/g, '&quot;')}">`;
 				html += `<div class="d-flex justify-content-between align-items-start mb-2">`;
-				html += `<span class="kanban-text fw-semibold">${task.title}</span>`;
-				html += renderDropdown();
+				html += `<div class="d-flex flex-column flex-grow-1">`;
+			if (task.category)
+			{
+				html += `<div class="item-badges mb-1">`;
+				html += `<div class="badge rounded-pill bg-label-warning category-badge">${task.category.name}</div>`;
 				html += `</div>`;
+			}
+			html += `<span class="kanban-text">${task.title}</span>`;
+			html += `</div>`;
+			html += renderDropdown();
+			html += `</div>`;
 
-				if (task.description)
+			html += `<div class="d-flex justify-content-between align-items-center">`;
+			if (task.due_date)
+			{
+				// Calculate days remaining
+				const today = new Date();
+				today.setHours(0, 0, 0, 0);
+				const dueDate = new Date(task.due_date);
+				dueDate.setHours(0, 0, 0, 0);
+				const daysRemaining = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+				let badgeColor = 'bg-label-secondary';
+				if (daysRemaining < 2)
 				{
-					html += `<p class="text-muted mb-2 small">${task.description.substring(0, 100)}${task.description.length > 100 ? '...' : ''}</p>`;
+					badgeColor = 'bg-label-danger';
+				}
+				else if (daysRemaining <= 7)
+				{
+					badgeColor = 'bg-label-warning';
 				}
 
-				html += `<div class="d-flex justify-content-between align-items-center">`;
-				if (task.due_date)
-				{
-					html += `<span class="badge bg-label-secondary"><i class="ti ti-calendar ti-xs me-1"></i>${task.due_date}</span>`;
-				}
+				html += `<span class="badge ${badgeColor} date-badge"><i class="ti ti-calendar ti-xs me-1"></i>${task.due_date}</span>`;
+			}
                 if (task.responsible)
                 {
                     html += `<div class="avatar avatar-xs" data-bs-toggle="tooltip" title="${task.responsible.name}">`;
@@ -299,30 +319,53 @@
 
 		console.log('[Kanban] Offcanvas opening');
 
-        // Prefill fields
+        // Prefill fields from data attributes
 		const titleEl = taskDiv.querySelector('.kanban-text');
-		const dateBadge = taskDiv.querySelector('.badge');
 		const inputTitle = sidebarEl.querySelector('#title');
 		const inputDue = sidebarEl.querySelector('#due-date');
-		inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
-		inputDue.value = dateBadge ? dateBadge.textContent.replace(/^[^\d]*/, '').trim() : '';
+		const inputEstimated = sidebarEl.querySelector('#estimated-hours');
+		const inputDescription = sidebarEl.querySelector('#description');
 
-		// Populate select2 with categories if present
+		inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
+		inputDue.value = taskDiv.getAttribute('data-due-date') || '';
+		if (inputEstimated) inputEstimated.value = taskDiv.getAttribute('data-estimated-hours') || '';
+		if (inputDescription) inputDescription.value = taskDiv.getAttribute('data-description') || '';
+
+		// Populate select2 with categories if present and pre-select current category
 		const labelSelect = sidebarEl.querySelector('#label');
+		const currentCategoryId = taskDiv ? taskDiv.getAttribute('data-category-id') : null;
 		if (labelSelect && window.$ && $.fn.select2)
 		{
 			$(labelSelect).empty();
-			// Add empty option
 			$(labelSelect).append(new Option('Selecciona una categoría', '', false, false));
-			// Add categories from backend
 			(categories || []).forEach(c => {
-				const opt = new Option(c.name, c.id, false, false);
+				const isSelected = currentCategoryId && parseInt(currentCategoryId) === c.id;
+				const opt = new Option(c.name, c.id, isSelected, isSelected);
 				$(labelSelect).append(opt);
 			});
 			$(labelSelect).select2({
 				dropdownParent: $(sidebarEl),
 				placeholder: 'Selecciona una categoría',
 				allowClear: true
+			});
+		}
+
+		// Populate select2 with responsible users and pre-select current responsible
+		const responsibleSelect = sidebarEl.querySelector('#responsible');
+		const currentResponsibleId = taskDiv ? taskDiv.getAttribute('data-responsible-id') : null;
+		if (responsibleSelect && window.$ && $.fn.select2)
+		{
+			$(responsibleSelect).empty();
+			$(responsibleSelect).append(new Option('Selecciona un responsable', '', false, false));
+			(users || []).forEach(u => {
+				const isSelected = currentResponsibleId && parseInt(currentResponsibleId) === u.id;
+				const opt = new Option(u.name, u.id, isSelected, isSelected);
+				$(responsibleSelect).append(opt);
+			});
+			$(responsibleSelect).select2({
+				dropdownParent: $(sidebarEl),
+				placeholder: 'Selecciona un responsable',
+				allowClear: false
 			});
 		}
 
@@ -365,23 +408,6 @@
 			formEl.dataset.submitBound = '1';
 		}
 
-        // Populate assigned avatars (simple single responsible for now)
-        const assignedWrap = sidebarEl.querySelector('.assigned');
-        if (assignedWrap)
-        {
-            assignedWrap.innerHTML = '';
-            const name = (titleEl && titleEl.textContent) ? titleEl.textContent.trim().charAt(0).toUpperCase() : 'U';
-            const avatar = document.createElement('div');
-            avatar.className = 'avatar avatar-sm';
-            avatar.innerHTML = `<span class="avatar-initial rounded-circle bg-label-primary">${name}</span>`;
-            assignedWrap.appendChild(avatar);
-            const addBtn = document.createElement('button');
-            addBtn.type = 'button';
-            addBtn.className = 'btn btn-sm btn-icon btn-label-secondary';
-            addBtn.innerHTML = '<i class="ti ti-plus"></i>';
-            assignedWrap.appendChild(addBtn);
-        }
-
 		const saveBtn = sidebarEl.querySelector('#offcanvas-save') || sidebarEl.querySelector('#tab-update .btn.btn-primary');
 		console.log('[Kanban] Found elements', {
 			inputTitleFound: !!inputTitle,
@@ -391,12 +417,17 @@
 		const onSave = (ev) => {
 			if (ev) { ev.preventDefault(); ev.stopPropagation(); }
 			const newTitle = inputTitle.value.trim();
-			const newDue = inputDue.value ? `${inputDue.value} 00:00:00` : null;
+			const newDue = inputDue.value || null;
+			const newDescription = inputDescription ? inputDescription.value.trim() : '';
+			const newEstimatedHours = inputEstimated ? parseFloat(inputEstimated.value) || null : null;
 			const categorySelect = sidebarEl.querySelector('#label');
 			const categoryId = categorySelect && categorySelect.value ? parseInt(categorySelect.value) : null;
+			const responsibleSelect = sidebarEl.querySelector('#responsible');
+			const responsibleId = responsibleSelect && responsibleSelect.value ? parseInt(responsibleSelect.value) : currentUserId;
 			const boardEl = taskElement.closest('.kanban-board');
 			const statusId = boardEl ? parseInt(boardEl.getAttribute('data-id')) : null;
-			console.log('[Kanban] Saving task...', { taskId, newTitle, newDue, categoryId, statusId, boardId, projectId });
+
+			console.log('[Kanban] Saving task...', { taskId, newTitle, newDue, newDescription, newEstimatedHours, categoryId, responsibleId, statusId, boardId, projectId });
 
 			fetch(storeUrl, {
 				method: 'POST',
@@ -408,10 +439,11 @@
 				body: JSON.stringify({
 					id: parseInt(taskId),
 					title: newTitle || 'Sin título',
-					description: newTitle || '',
-					responsible_id: currentUserId,
-					start_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
-					due_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
+					description: newDescription,
+					responsible_id: responsibleId,
+					estimated_hours: newEstimatedHours,
+					start_date: newDue,
+					due_date: newDue,
 					status_id: statusId,
 					category_id: categoryId,
 					board_id: boardId,
@@ -432,17 +464,109 @@
 				.then((data) => {
 					console.log('[Kanban] Saved', data);
 					if (newTitle && titleEl) titleEl.textContent = newTitle;
-					if (newDue)
+
+					// Update data attributes
+					if (newDue) taskDiv.setAttribute('data-due-date', newDue);
+					if (newDescription) taskDiv.setAttribute('data-description', newDescription.replace(/"/g, '&quot;'));
+					if (newEstimatedHours) taskDiv.setAttribute('data-estimated-hours', newEstimatedHours);
+					if (categoryId) taskDiv.setAttribute('data-category-id', categoryId);
+					if (responsibleId) taskDiv.setAttribute('data-responsible-id', responsibleId);
+
+				// Update category badge if changed
+				if (categoryId)
+				{
+					let itemBadges = taskDiv.querySelector('.item-badges');
+					const categoryBadge = itemBadges ? itemBadges.querySelector('.category-badge') : null;
+					const selectedOption = categorySelect ? categorySelect.options[categorySelect.selectedIndex] : null;
+
+					if (categoryBadge && selectedOption && selectedOption.text)
 					{
-						let badge = taskDiv.querySelector('.badge');
-						if (!badge)
-						{
-							badge = document.createElement('span');
-							badge.className = 'badge bg-label-secondary';
-							taskDiv.querySelector('.d-flex.justify-content-between').appendChild(badge);
-						}
-						badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${newDue.slice(0,10)}`;
+						categoryBadge.textContent = selectedOption.text;
 					}
+					else if (!categoryBadge && selectedOption && selectedOption.text)
+					{
+						// Add category badge if it didn't exist
+						const contentColumn = taskDiv.querySelector('.d-flex.flex-column.flex-grow-1');
+						if (contentColumn)
+						{
+							if (!itemBadges)
+							{
+								itemBadges = document.createElement('div');
+								itemBadges.className = 'item-badges mb-1';
+								contentColumn.insertBefore(itemBadges, contentColumn.firstChild);
+							}
+							const newCategoryBadge = document.createElement('div');
+							newCategoryBadge.className = 'badge rounded-pill bg-label-warning category-badge';
+							newCategoryBadge.textContent = selectedOption.text;
+							itemBadges.appendChild(newCategoryBadge);
+						}
+					}
+				}
+
+				// Update date badge with color based on days remaining
+				if (newDue)
+				{
+					// Calculate days remaining
+					const today = new Date();
+					today.setHours(0, 0, 0, 0);
+					const dueDate = new Date(newDue);
+					dueDate.setHours(0, 0, 0, 0);
+					const daysRemaining = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+					let badgeColor = 'bg-label-secondary';
+					if (daysRemaining < 2)
+					{
+						badgeColor = 'bg-label-danger';
+					}
+					else if (daysRemaining <= 7)
+					{
+						badgeColor = 'bg-label-warning';
+					}
+
+					let badge = taskDiv.querySelector('.date-badge');
+					if (!badge)
+					{
+						badge = document.createElement('span');
+						badge.className = `badge ${badgeColor} date-badge`;
+						const bottomRow = taskDiv.querySelector('.d-flex.justify-content-between.align-items-center');
+						if (bottomRow) bottomRow.insertBefore(badge, bottomRow.firstChild);
+					}
+					else
+					{
+						// Update existing badge color classes
+						badge.className = `badge ${badgeColor} date-badge`;
+					}
+					if (badge) badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${newDue}`;
+				}
+
+					// Update responsible avatar
+					if (responsibleId)
+					{
+						const bottomRow = taskDiv.querySelector('.d-flex.justify-content-between.align-items-center');
+						let avatar = taskDiv.querySelector('.avatar');
+						const selectedResponsible = responsibleSelect ? responsibleSelect.options[responsibleSelect.selectedIndex] : null;
+						const responsibleName = selectedResponsible && selectedResponsible.text ? selectedResponsible.text : 'U';
+						const initial = responsibleName.charAt(0).toUpperCase();
+
+						if (!avatar && bottomRow)
+						{
+							// Create avatar if it doesn't exist
+							avatar = document.createElement('div');
+							avatar.className = 'avatar avatar-xs';
+							avatar.setAttribute('data-bs-toggle', 'tooltip');
+							avatar.setAttribute('title', responsibleName);
+							avatar.innerHTML = `<span class="avatar-initial rounded-circle bg-label-primary">${initial}</span>`;
+							bottomRow.appendChild(avatar);
+						}
+						else if (avatar)
+						{
+							// Update existing avatar
+							avatar.setAttribute('title', responsibleName);
+							const avatarInitial = avatar.querySelector('.avatar-initial');
+							if (avatarInitial) avatarInitial.textContent = initial;
+						}
+					}
+
 					offcanvas.hide();
 					if (saveBtn) saveBtn.removeEventListener('click', onSave);
 				})

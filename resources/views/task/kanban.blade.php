@@ -77,8 +77,8 @@
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3 mt-3 mt-md-0">
             @can('task.edit')
-                <a href="{{ route('task.create', array_merge(['board_id' => $board->id, 'view' => 'kanban'], $project ? ['project_id' => $project->id] : [])) }}" class="btn btn-primary waves-effect">
-                    <i class="ti ti-plus me-1"></i>Añadir tarea
+                <a href="{{ route('task.create', array_merge(['board_id' => $board->id, 'view' => 'kanban'], $project ? ['project_id' => $project->id] : [])) }}" class="kanban-title-button btn">
+                    + Agregar Nueva Tarea
                 </a>
             @endcan
             @if($project)
@@ -104,7 +104,7 @@
             <input type="text" class="form-control kanban-add-board-input d-none" placeholder="Título del tablero">
         </div>
         <div class="mb-3">
-            <button type="submit" class="btn btn-primary me-2 waves-effect waves-light">Añadir</button>
+            <button type="submit" class="kanban-title-button btn me-2">+ Agregar</button>
             <button type="button" class="btn btn-label-secondary kanban-add-board-cancel-btn waves-effect waves-light">Cancelar</button>
         </div>
     </form>
@@ -142,8 +142,8 @@
                             <label class="form-label" for="due-date">{{ __('Fecha de Entrega') }}</label>
                             <div class="input-group">
                                 <input type="text" id="due-date" class="form-control" placeholder="{{ __('Selecciona una fecha') }}" />
-                                <button type="button" class="btn btn-icon btn-label-primary" id="due-date-settings" title="Settings">
-                                    <i class="ti ti-settings"></i>
+                                <button type="button" class="btn btn-icon btn-label-primary" id="due-date-settings" title="Calendario">
+                                    <i class="ti ti-calendar"></i>
                                 </button>
                             </div>
                         </div>
@@ -154,27 +154,22 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">{{ __('Asignado') }}</label>
-                            <div class="assigned d-flex flex-wrap"></div>
+                            <label class="form-label" for="responsible">{{ __('Responsable') }}</label>
+                            <select class="select2 form-select" id="responsible">
+                                <option value="">{{ __('Selecciona un responsable') }}</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="estimated-hours">{{ __('Tiempo Estimado (horas)') }}</label>
+                            <input type="number" id="estimated-hours" class="form-control" placeholder="{{ __('Ej: 8.5') }}" step="0.5" min="0" />
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="attachments">{{ __('Adjuntos') }}</label>
                             <input type="file" class="form-control" id="attachments" />
                         </div>
                         <div class="mb-4">
-                            <label class="form-label">{{ __('Comentario') }}</label>
-                            <div class="comment-editor border-bottom-0"></div>
-                            <div class="d-flex justify-content-end">
-                                <div class="comment-toolbar">
-                                    <span class="ql-formats me-0">
-                                        <button class="ql-bold"></button>
-                                        <button class="ql-italic"></button>
-                                        <button class="ql-underline"></button>
-                                        <button class="ql-link"></button>
-                                        <button class="ql-image"></button>
-                                    </span>
-                                </div>
-                            </div>
+                            <label class="form-label" for="description">{{ __('Descripción') }}</label>
+                            <textarea id="description" class="form-control" rows="4" placeholder="{{ __('Ingresa una descripción') }}"></textarea>
                         </div>
                         <div class="d-flex flex-wrap">
                             <button type="button" id="offcanvas-save" class="btn btn-primary me-3">{{ __('Guardar') }}</button>
