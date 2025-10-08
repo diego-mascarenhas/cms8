@@ -150,41 +150,92 @@
         </div>
     </form>
 
-    <!-- Edit Task Sidebar (template original) -->
-    <div class="offcanvas offcanvas-end kanban-update-item-sidebar" tabindex="-1">
+    <!-- Edit Task & Activities (Exact Vuexy markup) -->
+    <div class="offcanvas offcanvas-end kanban-update-item-sidebar">
         <div class="offcanvas-header border-bottom">
-            <h5 class="offcanvas-title">{{ __('Edit Task') }}</h5>
+            <h5 class="offcanvas-title">Edit Task</h5>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body">
-            <div class="mb-3">
-                <label class="form-label" for="title">Título</label>
-                <input type="text" id="title" class="form-control" placeholder="Título de la tarea" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label" for="due-date">Fecha límite</label>
-                <input type="text" id="due-date" class="form-control" placeholder="Selecciona una fecha" />
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Etiquetas</label>
-                <select class="select2 form-select" multiple>
-                    <option data-color="bg-label-primary">Nuevo</option>
-                    <option data-color="bg-label-success">En progreso</option>
-                    <option data-color="bg-label-danger">Bloqueado</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Asignados</label>
-                <div class="assigned d-flex align-items-center"></div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Comentarios</label>
-                <div class="comment-toolbar border-bottom pb-1"></div>
-                <div class="comment-editor"></div>
-            </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-primary" id="offcanvas-save">{{ __('Save') }}</button>
-                <button type="button" class="btn btn-label-secondary" data-bs-dismiss="offcanvas">{{ __('Cancel') }}</button>
+            <ul class="nav nav-tabs tabs-line">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-update">
+                        <i class="ti ti-edit me-2"></i>
+                        <span class="align-middle">Edit</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-activity">
+                        <i class="ti ti-trending-up me-2"></i>
+                        <span class="align-middle">Activity</span>
+                    </button>
+                </li>
+            </ul>
+            <div class="tab-content px-0 pb-0">
+                <!-- Update item/tasks -->
+                <div class="tab-pane fade show active" id="tab-update" role="tabpanel">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label" for="title">Title</label>
+                            <input type="text" id="title" class="form-control" placeholder="Enter Title" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="due-date">Due Date</label>
+                            <input type="text" id="due-date" class="form-control" placeholder="Enter Due Date" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="label"> Label</label>
+                            <select class="select2 select2-label form-select" id="label">
+                                <option data-color="bg-label-success" value="UX">UX</option>
+                                <option data-color="bg-label-warning" value="Images">Images</option>
+                                <option data-color="bg-label-info" value="Info">Info</option>
+                                <option data-color="bg-label-danger" value="Code Review">Code Review</option>
+                                <option data-color="bg-label-secondary" value="App">App</option>
+                                <option data-color="bg-label-primary" value="Charts & Maps">Charts & Maps</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Assigned</label>
+                            <div class="assigned d-flex flex-wrap"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="attachments">Attachments</label>
+                            <input type="file" class="form-control" id="attachments" />
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Comment</label>
+                            <div class="comment-editor border-bottom-0"></div>
+                            <div class="d-flex justify-content-end">
+                                <div class="comment-toolbar">
+                                    <span class="ql-formats me-0">
+                                        <button class="ql-bold"></button>
+                                        <button class="ql-italic"></button>
+                                        <button class="ql-underline"></button>
+                                        <button class="ql-link"></button>
+                                        <button class="ql-image"></button>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap">
+                            <button type="button" class="btn btn-primary me-3" data-bs-dismiss="offcanvas">Update</button>
+                            <button type="button" class="btn btn-label-danger" data-bs-dismiss="offcanvas">Delete</button>
+                        </div>
+                    </form>
+                </div>
+                <!-- Activities -->
+                <div class="tab-pane fade" id="tab-activity" role="tabpanel">
+                    <div class="media mb-4 d-flex align-items-start">
+                        <div class="avatar me-2 flex-shrink-0 mt-1">
+                            <span class="avatar-initial bg-label-success rounded-circle">HJ</span>
+                        </div>
+                        <div class="media-body">
+                            <p class="mb-0"><span class="fw-medium">Jordan</span> Left the board.</p>
+                            <small class="text-muted">Today 11:00 AM</small>
+                        </div>
+                    </div>
+                    <!-- Additional sample activities intentionally kept from Vuexy template -->
+                </div>
             </div>
         </div>
     </div>

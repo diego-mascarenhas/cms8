@@ -34,13 +34,14 @@
 				{
 					html += `<span class="badge bg-label-secondary"><i class="ti ti-calendar ti-xs me-1"></i>${task.due_date}</span>`;
 				}
-				if (task.responsible)
-				{
-					html += `<div class="avatar avatar-xs" data-bs-toggle="tooltip" title="${task.responsible.name}">`;
-					html += `<span class="avatar-initial rounded-circle bg-label-primary">${task.responsible.name.charAt(0).toUpperCase()}</span>`;
-					html += `</div>`;
-				}
+                if (task.responsible)
+                {
+                    html += `<div class="avatar avatar-xs" data-bs-toggle="tooltip" title="${task.responsible.name}">`;
+                    html += `<span class="avatar-initial rounded-circle bg-label-primary">${task.responsible.name.charAt(0).toUpperCase()}</span>`;
+                    html += `</div>`;
+                }
 				html += `</div>`;
+                // store metadata for offcanvas population
                 html += `</div>`;
 
                 return { id: `task-${task.id}`, title: html };
@@ -296,7 +297,7 @@
 				: new bootstrap.Offcanvas(sidebarEl, { backdrop: true, scroll: true });
 		}
 
-		// Prefill fields
+        // Prefill fields
 		const titleEl = taskDiv.querySelector('.kanban-text');
 		const dateBadge = taskDiv.querySelector('.badge');
 		const inputTitle = sidebarEl.querySelector('#title');
@@ -316,10 +317,27 @@
 			$(labelSelect).select2({ dropdownParent: $(sidebarEl) });
 		}
 
-		if (window.flatpickr)
-		{
-			window.flatpickr(inputDue, { dateFormat: 'Y-m-d' });
-		}
+        if (window.flatpickr)
+        {
+            window.flatpickr(inputDue, { dateFormat: 'Y-m-d' });
+        }
+
+        // Populate assigned avatars (simple single responsible for now)
+        const assignedWrap = sidebarEl.querySelector('.assigned');
+        if (assignedWrap)
+        {
+            assignedWrap.innerHTML = '';
+            const name = (titleEl && titleEl.textContent) ? titleEl.textContent.trim().charAt(0).toUpperCase() : 'U';
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar avatar-sm';
+            avatar.innerHTML = `<span class="avatar-initial rounded-circle bg-label-primary">${name}</span>`;
+            assignedWrap.appendChild(avatar);
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'btn btn-sm btn-icon btn-label-secondary';
+            addBtn.innerHTML = '<i class="ti ti-plus"></i>';
+            assignedWrap.appendChild(addBtn);
+        }
 
 		const saveBtn = sidebarEl.querySelector('#offcanvas-save');
 		const onSave = () => {
