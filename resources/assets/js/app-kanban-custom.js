@@ -6,7 +6,7 @@
 
 (function () {
     // Get data from Laravel
-    const { statuses, tasksByStatus, boardId, projectId, storeUrl, updateStatusUrl, updateOrderUrl, csrfToken, currentUserId } = window.kanbanData;
+    const { statuses, tasksByStatus, boardId, projectId, storeUrl, updateStatusUrl, updateOrderUrl, csrfToken, currentUserId, users, categories } = window.kanbanData;
 
 	const kanbanWrapper = document.querySelector('.kanban-wrapper');
 
@@ -215,8 +215,8 @@
 		}
 	});
 
-	// Initialize PerfectScrollbar
-	if (kanbanWrapper)
+	// Initialize PerfectScrollbar (guard if library missing)
+	if (kanbanWrapper && window.PerfectScrollbar)
 	{
 		new PerfectScrollbar(kanbanWrapper);
 	}
@@ -270,93 +270,123 @@
 		}
 	});
 
-	// Handle edit task
+	// Helper to open the edit offcanvas from a kanban item
+	function openOffcanvasFromItem(taskElement)
+	{
+		const taskDiv = taskElement.querySelector('.kanban-task');
+		const taskId = taskDiv ? taskDiv.getAttribute('data-task-id') : null;
+		if (!taskId)
+		{
+			console.error('Task ID not found');
+			return;
+		}
+
+		const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
+		if (!sidebarEl) return;
+		if (sidebarEl.parentElement !== document.body)
+		{
+			document.body.appendChild(sidebarEl);
+		}
+		const OffcanvasCtor = window.bootstrap && window.bootstrap.Offcanvas ? window.bootstrap.Offcanvas : null;
+		let offcanvas = OffcanvasCtor && OffcanvasCtor.getInstance ? OffcanvasCtor.getInstance(sidebarEl) : null;
+		if (!offcanvas)
+		{
+			offcanvas = OffcanvasCtor && OffcanvasCtor.getOrCreateInstance
+				? OffcanvasCtor.getOrCreateInstance(sidebarEl, { backdrop: true, scroll: true })
+				: new bootstrap.Offcanvas(sidebarEl, { backdrop: true, scroll: true });
+		}
+
+		// Prefill fields
+		const titleEl = taskDiv.querySelector('.kanban-text');
+		const dateBadge = taskDiv.querySelector('.badge');
+		const inputTitle = sidebarEl.querySelector('#title');
+		const inputDue = sidebarEl.querySelector('#due-date');
+		inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
+		inputDue.value = dateBadge ? dateBadge.textContent.replace(/^[^\d]*/, '').trim() : '';
+
+		// Populate select2 with categories if present
+		const labelSelect = sidebarEl.querySelector('select.select2');
+		if (labelSelect && window.$ && $.fn.select2)
+		{
+			$(labelSelect).empty();
+			(categories || []).forEach(c => {
+				const opt = new Option(c.name, c.id, false, false);
+				$(labelSelect).append(opt);
+			});
+			$(labelSelect).select2({ dropdownParent: $(sidebarEl) });
+		}
+
+		if (window.flatpickr)
+		{
+			window.flatpickr(inputDue, { dateFormat: 'Y-m-d' });
+		}
+
+		const saveBtn = sidebarEl.querySelector('#offcanvas-save');
+		const onSave = () => {
+			const newTitle = inputTitle.value.trim();
+			const newDue = inputDue.value ? `${inputDue.value} 00:00:00` : null;
+
+			fetch(storeUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRF-TOKEN': csrfToken,
+					'Accept': 'application/json'
+				},
+				body: JSON.stringify({
+					id: parseInt(taskId),
+					title: newTitle || 'Sin título',
+					description: newTitle || '',
+					responsible_id: currentUserId,
+					start_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
+					due_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
+					status_id: parseInt(taskElement.parentElement.parentElement.getAttribute('data-id')),
+					board_id: boardId,
+					view: 'kanban',
+					project_id: projectId || null
+				})
+			})
+				.then(r => r.json())
+				.then(() => {
+					if (newTitle && titleEl) titleEl.textContent = newTitle;
+					if (newDue)
+					{
+						let badge = taskDiv.querySelector('.badge');
+						if (!badge)
+						{
+							badge = document.createElement('span');
+							badge.className = 'badge bg-label-secondary';
+							taskDiv.querySelector('.d-flex.justify-content-between').appendChild(badge);
+						}
+						badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${newDue.slice(0,10)}`;
+					}
+					offcanvas.hide();
+					saveBtn.removeEventListener('click', onSave);
+				})
+				.catch(() => alert('No se pudo guardar'));
+		};
+		saveBtn.addEventListener('click', onSave, { once: true });
+		offcanvas.show();
+	}
+
+	// Handle edit task option
 	document.addEventListener('click', function (e) {
 		if (e.target.classList.contains('edit-task') || e.target.closest('.edit-task'))
 		{
 			e.preventDefault();
 			e.stopPropagation();
-
 			const taskElement = e.target.closest('.kanban-item');
-			if (!taskElement) return;
-
-			const taskDiv = taskElement.querySelector('.kanban-task');
-			const taskId = taskDiv ? taskDiv.getAttribute('data-task-id') : null;
-
-			if (!taskId)
-			{
-				console.error('Task ID not found');
-				return;
-			}
-
-            // Open offcanvas and preload data from DOM
-            const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
-            if (!sidebarEl) return;
-            const offcanvas = new bootstrap.Offcanvas(sidebarEl);
-
-            // Prefill title and due date
-            const titleEl = taskDiv.querySelector('.kanban-text');
-            const dateBadge = taskDiv.querySelector('.badge');
-            const inputTitle = sidebarEl.querySelector('#title');
-            const inputDue = sidebarEl.querySelector('#due-date');
-            inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
-            inputDue.value = dateBadge ? dateBadge.textContent.replace(/^[^\d]*/, '').trim() : '';
-
-            // Flatpickr init on demand
-            if (window.flatpickr)
-            {
-                window.flatpickr(inputDue, { dateFormat: 'Y-m-d' });
-            }
-
-            // Save handler
-            const saveBtn = sidebarEl.querySelector('#offcanvas-save');
-            const onSave = () => {
-                const newTitle = inputTitle.value.trim();
-                const newDue = inputDue.value ? `${inputDue.value} 00:00:00` : null;
-
-                fetch(storeUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        id: parseInt(taskId),
-                        title: newTitle || 'Sin título',
-                        description: newTitle || '',
-                        responsible_id: currentUserId,
-                        start_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
-                        due_date: newDue || new Date().toISOString().slice(0, 19).replace('T', ' '),
-                        status_id: parseInt(taskElement.parentElement.parentElement.getAttribute('data-id')),
-                        board_id: boardId,
-                        view: 'kanban',
-                        project_id: projectId || null
-                    })
-                })
-                    .then(r => r.json())
-                    .then(() => {
-                        // Update DOM
-                        if (newTitle && titleEl) titleEl.textContent = newTitle;
-                        if (newDue)
-                        {
-                            let badge = taskDiv.querySelector('.badge');
-                            if (!badge)
-                            {
-                                badge = document.createElement('span');
-                                badge.className = 'badge bg-label-secondary';
-                                taskDiv.querySelector('.d-flex.justify-content-between').appendChild(badge);
-                            }
-                            badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${newDue.slice(0,10)}`;
-                        }
-                        offcanvas.hide();
-                        saveBtn.removeEventListener('click', onSave);
-                    })
-                    .catch(() => alert('No se pudo guardar'));
-            };
-            saveBtn.addEventListener('click', onSave, { once: true });
-            offcanvas.show();
+			if (taskElement) openOffcanvasFromItem(taskElement);
 		}
+	});
+
+	// Click anywhere on a card opens the editor (like the original)
+	document.addEventListener('click', function (e) {
+		// Ignore clicks on the dropdown trigger/menu inside the card
+		if (e.target.closest('.kanban-tasks-item-dropdown')) return;
+		const item = e.target.closest('.kanban-item');
+		if (!item) return;
+		openOffcanvasFromItem(item);
 	});
 
 	// Initialize tooltips

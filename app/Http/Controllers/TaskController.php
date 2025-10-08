@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\DataTables\TaskDataTable;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\User;
+use App\Models\Category;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use Illuminate\Http\Request;
@@ -92,7 +94,19 @@ class TaskController extends Controller
             });
         }
 
-        return view('task.kanban', compact('statuses', 'tasksByStatus', 'project', 'board'));
+        // Options for offcanvas editing
+        $users = User::query()
+            ->whereHas('teams', function ($q) {
+                $q->where('team_id', auth()->user()->currentTeam->id);
+            })
+            ->get(['id', 'name'])
+            ->map(fn($u) => ['id' => $u->id, 'name' => $u->name]);
+
+        $categories = class_exists(Category::class)
+            ? Category::query()->get(['id', 'name'])->map(fn($c) => ['id' => $c->id, 'name' => $c->name])
+            : collect();
+
+        return view('task.kanban', compact('statuses', 'tasksByStatus', 'project', 'board', 'users', 'categories'));
     }
 
     public function create(Request $request)

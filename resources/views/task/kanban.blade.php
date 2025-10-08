@@ -38,8 +38,60 @@
         updateStatusUrl: '{{ route('task.update-status') }}',
         updateOrderUrl: '{{ route('task.update-order') }}',
         csrfToken: '{{ csrf_token() }}',
-        currentUserId: {{ auth()->id() }}
+        currentUserId: {{ auth()->id() }},
+        users: @json($users ?? []),
+        categories: @json($categories ?? [])
     };
+</script>
+<script>
+    // Ensure offcanvas lives under <body> to avoid transform/overflow clipping
+    document.addEventListener('DOMContentLoaded', function () {
+        var el = document.querySelector('.kanban-update-item-sidebar');
+        if (el && el.parentElement !== document.body) {
+            document.body.appendChild(el);
+        }
+    });
+    </script>
+<script>
+    // Fallback: open editor offcanvas when clicking a task or its "Editar" action
+    (function () {
+        function openOffcanvasFromItem(itemEl) {
+            var taskDiv = itemEl ? itemEl.querySelector('.kanban-task') : null;
+            if (!taskDiv) return;
+            var off = document.querySelector('.kanban-update-item-sidebar');
+            if (!off) return;
+            if (off.parentElement !== document.body) document.body.appendChild(off);
+            var OffcanvasCtor = (window.bootstrap && window.bootstrap.Offcanvas) ? window.bootstrap.Offcanvas : null;
+            var oc = OffcanvasCtor && OffcanvasCtor.getOrCreateInstance
+                ? OffcanvasCtor.getOrCreateInstance(off)
+                : (OffcanvasCtor ? new OffcanvasCtor(off) : null);
+            var titleEl = taskDiv.querySelector('.kanban-text');
+            var inputTitle = off.querySelector('#title');
+            var inputDue = off.querySelector('#due-date');
+            var dateBadge = taskDiv.querySelector('.badge');
+            if (inputTitle) inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
+            if (inputDue) inputDue.value = dateBadge ? dateBadge.textContent.replace(/^[^\d]*/, '').trim() : '';
+            if (oc && typeof oc.show === 'function') oc.show();
+        }
+
+        document.addEventListener('click', function (e) {
+            var isDropdown = e.target.closest('.kanban-tasks-item-dropdown');
+            if (isDropdown) return; // ignore clicks inside dropdown toggle
+
+            var editAction = e.target.closest('.edit-task');
+            if (editAction) {
+                e.preventDefault();
+                var item = editAction.closest('.kanban-item');
+                if (item) openOffcanvasFromItem(item);
+                return;
+            }
+
+            var itemEl = e.target.closest('.kanban-item');
+            if (itemEl) {
+                openOffcanvasFromItem(itemEl);
+            }
+        }, true);
+    })();
 </script>
 <script src="{{ asset('assets/js/app-kanban-custom.js') }}"></script>
 @endsection
