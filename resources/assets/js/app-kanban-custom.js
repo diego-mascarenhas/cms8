@@ -18,21 +18,21 @@
 			id: status.id.toString(),
 			title: status.name,
             item: tasks.map((task) => {
-                let html = `<div class="kanban-task" data-task-id="${task.id}" data-category-id="${task.category ? task.category.id : ''}" data-due-date="${task.due_date || ''}" data-responsible-id="${task.responsible ? task.responsible.id : ''}" data-estimated-hours="${task.estimated_hours || ''}" data-description="${(task.description || '').replace(/"/g, '&quot;')}">`;
-				html += `<div class="d-flex justify-content-between align-items-start mb-2">`;
-				html += `<div class="d-flex flex-column flex-grow-1">`;
+                // jKanban adds the .kanban-item wrapper automatically, so we only return the inner content
+                // We store task data in the data attributes that will be added to the .kanban-item by jKanban
+                let html = `<div class="d-flex justify-content-between flex-wrap align-items-center mb-2 pb-1">`;
 			if (task.category)
 			{
-				html += `<div class="item-badges mb-1">`;
+				html += `<div class="item-badges">`;
 				html += `<div class="badge rounded-pill bg-label-warning category-badge">${task.category.name}</div>`;
 				html += `</div>`;
 			}
+			html += renderStartTimer();
+			html += `</div>`;
 			html += `<span class="kanban-text">${task.title}</span>`;
-			html += `</div>`;
-			html += renderDropdown();
-			html += `</div>`;
 
-			html += `<div class="d-flex justify-content-between align-items-center">`;
+			html += `<div class="d-flex justify-content-between align-items-center flex-wrap mt-2 pt-1">`;
+			html += `<div class="d-flex">`;
 			if (task.due_date)
 			{
 				// Calculate days remaining
@@ -52,34 +52,47 @@
 					badgeColor = 'bg-label-warning';
 				}
 
-				html += `<span class="badge ${badgeColor} date-badge"><i class="ti ti-calendar ti-xs me-1"></i>${task.due_date}</span>`;
+				// Format date as DD/MM/YYYY
+				const [year, month, day] = task.due_date.split('-');
+				const formattedDate = `${day}/${month}/${year}`;
+
+				html += `<span class="d-flex align-items-center me-2"><i class="ti ti-calendar ti-xs me-1"></i><span class="badge ${badgeColor} date-badge">${formattedDate}</span></span>`;
 			}
+			html += `</div>`;
                 if (task.responsible)
                 {
-                    html += `<div class="avatar avatar-xs" data-bs-toggle="tooltip" title="${task.responsible.name}">`;
-                    html += `<span class="avatar-initial rounded-circle bg-label-primary">${task.responsible.name.charAt(0).toUpperCase()}</span>`;
+                    html += `<div class="avatar-group d-flex align-items-center assigned-avatar">`;
+                    html += `<div class="avatar avatar-xs" data-bs-toggle="tooltip" data-bs-placement="top" title="${task.responsible.name}">`;
+                    html += `<span class="avatar-initial rounded-circle bg-label-primary pull-up">${task.responsible.name.charAt(0).toUpperCase()}</span>`;
+                    html += `</div>`;
                     html += `</div>`;
                 }
-				html += `</div>`;
-                // store metadata for offcanvas population
-                html += `</div>`;
+				html += `</div>`;  // Cierra div.d-flex.justify-content-between.align-items-center
 
-                return { id: `task-${task.id}`, title: html };
+                return {
+                    id: `task-${task.id}`,
+                    title: html,
+                    // Store task data for later use (jKanban doesn't support custom data attributes directly)
+                    _taskData: {
+                        taskId: task.id,
+                        categoryId: task.category ? task.category.id : '',
+                        dueDate: task.due_date || '',
+                        responsibleId: task.responsible ? task.responsible.id : '',
+                        estimatedHours: task.estimated_hours || '',
+                        description: task.description || ''
+                    }
+                };
 			})
 		};
 	});
 
-	// Render item dropdown
-	function renderDropdown()
+	// Render start timer button
+	function renderStartTimer()
 	{
 		return (
-			"<div class='dropdown kanban-tasks-item-dropdown'>" +
-			"<i class='dropdown-toggle ti ti-dots-vertical cursor-pointer' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'></i>" +
-			"<div class='dropdown-menu dropdown-menu-end'>" +
-			"<a class='dropdown-item edit-task' href='javascript:void(0)'>Editar</a>" +
-			"<a class='dropdown-item delete-task' href='javascript:void(0)'>Eliminar</a>" +
-			'</div>' +
-			'</div>'
+			"<button class='btn btn-icon btn-sm btn-label-primary start-timer-btn' type='button' title='Iniciar Timer'>" +
+			"<i class='ti ti-clock-play'></i>" +
+			'</button>'
 		);
 	}
 
@@ -236,6 +249,23 @@
 		}
 	});
 
+	// After jKanban initializes, manually add data attributes to each .kanban-item
+	// because jKanban doesn't support custom data attributes directly
+	boards.forEach(board => {
+		board.item.forEach((taskItem) => {
+			const taskElement = document.querySelector(`.kanban-item[data-eid="${taskItem.id}"]`);
+			if (taskElement && taskItem._taskData) {
+				taskElement.setAttribute('data-task-id', taskItem._taskData.taskId);
+				taskElement.setAttribute('data-category-id', taskItem._taskData.categoryId);
+				taskElement.setAttribute('data-due-date', taskItem._taskData.dueDate);
+				taskElement.setAttribute('data-responsible-id', taskItem._taskData.responsibleId);
+				taskElement.setAttribute('data-estimated-hours', taskItem._taskData.estimatedHours);
+				taskElement.setAttribute('data-description', taskItem._taskData.description.replace(/"/g, '&quot;'));
+				console.log('[Kanban] Added data attributes to task:', taskItem._taskData.taskId, taskElement);
+			}
+		});
+	});
+
 	// Initialize PerfectScrollbar (guard if library missing)
 	if (kanbanWrapper && window.PerfectScrollbar)
 	{
@@ -294,11 +324,13 @@
 	// Helper to open the edit offcanvas from a kanban item
 	function openOffcanvasFromItem(taskElement)
 	{
-		const taskDiv = taskElement.querySelector('.kanban-task');
+		// taskElement is the .kanban-item itself
+		const taskDiv = taskElement.classList.contains('kanban-item') ? taskElement : taskElement.querySelector('.kanban-item');
 		const taskId = taskDiv ? taskDiv.getAttribute('data-task-id') : null;
+		console.log('[Kanban] openOffcanvasFromItem - taskDiv:', taskDiv, 'taskId:', taskId);
 		if (!taskId)
 		{
-			console.error('Task ID not found');
+			console.error('Task ID not found in element:', taskElement);
 			return;
 		}
 
@@ -486,14 +518,14 @@
 					else if (!categoryBadge && selectedOption && selectedOption.text)
 					{
 						// Add category badge if it didn't exist
-						const contentColumn = taskDiv.querySelector('.d-flex.flex-column.flex-grow-1');
-						if (contentColumn)
+						const topRow = taskDiv.querySelector('.d-flex.justify-content-between.flex-wrap.align-items-center.mb-2.pb-1');
+						if (topRow)
 						{
 							if (!itemBadges)
 							{
 								itemBadges = document.createElement('div');
-								itemBadges.className = 'item-badges mb-1';
-								contentColumn.insertBefore(itemBadges, contentColumn.firstChild);
+								itemBadges.className = 'item-badges';
+								topRow.insertBefore(itemBadges, topRow.firstChild);
 							}
 							const newCategoryBadge = document.createElement('div');
 							newCategoryBadge.className = 'badge rounded-pill bg-label-warning category-badge';
@@ -536,27 +568,40 @@
 						// Update existing badge color classes
 						badge.className = `badge ${badgeColor} date-badge`;
 					}
-					if (badge) badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${newDue}`;
+					// Format date as DD/MM/YYYY
+					const [year, month, day] = newDue.split('-');
+					const formattedDate = `${day}/${month}/${year}`;
+					if (badge) badge.innerHTML = `<i class="ti ti-calendar ti-xs me-1"></i>${formattedDate}`;
 				}
 
 					// Update responsible avatar
 					if (responsibleId)
 					{
-						const bottomRow = taskDiv.querySelector('.d-flex.justify-content-between.align-items-center');
-						let avatar = taskDiv.querySelector('.avatar');
+						const bottomRow = taskDiv.querySelector('.d-flex.justify-content-between.align-items-center.flex-wrap.mt-2.pt-1');
+						let avatarGroup = taskDiv.querySelector('.assigned-avatar');
+						let avatar = avatarGroup ? avatarGroup.querySelector('.avatar') : null;
 						const selectedResponsible = responsibleSelect ? responsibleSelect.options[responsibleSelect.selectedIndex] : null;
 						const responsibleName = selectedResponsible && selectedResponsible.text ? selectedResponsible.text : 'U';
 						const initial = responsibleName.charAt(0).toUpperCase();
 
-						if (!avatar && bottomRow)
+						if (!avatarGroup && bottomRow)
+						{
+							// Create avatar group if it doesn't exist
+							avatarGroup = document.createElement('div');
+							avatarGroup.className = 'avatar-group d-flex align-items-center assigned-avatar';
+							bottomRow.appendChild(avatarGroup);
+						}
+
+						if (!avatar && avatarGroup)
 						{
 							// Create avatar if it doesn't exist
 							avatar = document.createElement('div');
 							avatar.className = 'avatar avatar-xs';
 							avatar.setAttribute('data-bs-toggle', 'tooltip');
+							avatar.setAttribute('data-bs-placement', 'top');
 							avatar.setAttribute('title', responsibleName);
-							avatar.innerHTML = `<span class="avatar-initial rounded-circle bg-label-primary">${initial}</span>`;
-							bottomRow.appendChild(avatar);
+							avatar.innerHTML = `<span class="avatar-initial rounded-circle bg-label-primary pull-up">${initial}</span>`;
+							avatarGroup.appendChild(avatar);
 						}
 						else if (avatar)
 						{

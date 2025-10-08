@@ -76,11 +76,6 @@
             </p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3 mt-3 mt-md-0">
-            @can('task.edit')
-                <a href="{{ route('task.create', array_merge(['board_id' => $board->id, 'view' => 'kanban'], $project ? ['project_id' => $project->id] : [])) }}" class="kanban-title-button btn">
-                    + Agregar Nueva Tarea
-                </a>
-            @endcan
             @if($project)
                 <a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary waves-effect">
                     <i class="ti ti-arrow-left me-1"></i>Volver al proyecto

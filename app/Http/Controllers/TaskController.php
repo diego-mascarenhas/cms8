@@ -82,6 +82,8 @@ class TaskController extends Controller
                     'title' => $task->title,
                     'description' => $task->description,
                     'due_date' => $task->due_date ? $task->due_date->format('Y-m-d') : null,
+                    'estimated_hours' => $task->estimated_hours,
+                    'attachment' => $task->attachment,
                     'responsible' => $task->responsible ? [
                         'id' => $task->responsible->id,
                         'name' => $task->responsible->name,
@@ -136,13 +138,15 @@ class TaskController extends Controller
 
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'nullable|string',
             'responsible_id' => 'required|exists:users,id',
             'start_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:start_date',
             'status_id' => 'required|exists:task_statuses,id',
             'category_id' => 'nullable|exists:categories,id',
             'board_id' => 'nullable|exists:task_boards,id',
+            'estimated_hours' => 'nullable|numeric|min:0',
+            'attachment' => 'nullable|string',
         ]);
 
         $boardId = $data['board_id'] ?? null;
@@ -157,11 +161,13 @@ class TaskController extends Controller
             ['id' => $request->id],
             [
                 'title' => $data['title'],
-                'description' => $data['description'],
+                'description' => $data['description'] ?? '',
                 'category_id' => $data['category_id'] ?? null,
                 'responsible_id' => $data['responsible_id'],
                 'start_date' => $data['start_date'] ?? null,
                 'due_date' => $data['due_date'] ?? null,
+                'estimated_hours' => $data['estimated_hours'] ?? null,
+                'attachment' => $data['attachment'] ?? null,
                 'order' => 0,
                 'status_id' => $data['status_id'] ?? 1,
                 'board_id' => $boardId,
