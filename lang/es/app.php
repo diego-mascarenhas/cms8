@@ -52,6 +52,7 @@ return [
         'team' => [
             'manage' => 'Gestionar Equipo',
             'settings' => 'Ajustes del Equipo',
+            'account_management' => 'Gestión de Cuentas',
             'create' => 'Crear Nuevo Equipo',
             'switch' => 'Cambiar de Equipo',
         ],

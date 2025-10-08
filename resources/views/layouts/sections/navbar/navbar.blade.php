@@ -270,7 +270,17 @@
                     <li>
                         <a class="dropdown-item" href="{{ route('team-settings.index', auth()->user()->currentTeam) }}">
                             <i class="ti ti-settings-automation me-2 ti-sm"></i>
-                            <span class="align-middle">Settings</span>
+                            <span class="align-middle">{{ __('app.profile.team.settings') }}</span>
+                        </a>
+                    </li>
+                @endif
+
+                {{-- Root-only: Account Management --}}
+                @if (Auth::check() && (Auth::user()->hasRole('root') || Auth::user()->can('user.management')))
+                    <li>
+                        <a class="dropdown-item" href="{{ url('account-management') }}" target="_blank">
+                            <i class="ti ti-shield-lock me-2 ti-sm"></i>
+                            <span class="align-middle">{{ __('app.profile.team.account_management') }}</span>
                         </a>
                     </li>
                 @endif
