@@ -66,10 +66,16 @@
                aria-expanded="false" aria-label="{{ __('Attendance clock') }}">
                 <i class="ti ti-clock ti-md text-muted" id="quick-timer-icon"></i>
             </a>
-            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 280px;">
-                <li class="px-3 py-2 d-flex align-items-center">
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
+                <li class="px-3 pt-2 pb-1 d-flex align-items-center">
                     <i class="ti ti-clock me-2" id="quick-timer-icon-inline"></i>
                     <span id="quick-timer-display" class="fw-semibold" style="font-variant-numeric: tabular-nums;">00:00:00</span>
+                </li>
+                <li class="px-3 pb-2 small text-muted d-none" id="project-running-row">
+                    <a href="{{ route('time.index') }}" class="text-decoration-none">
+                        <i class="ti ti-hourglass-low me-1"></i>
+                        <span id="project-running-name">—</span>
+                    </a>
                 </li>
                 <li><div class="dropdown-divider"></div></li>
                 <li><a class="dropdown-item" href="javascript:;" id="att-start"><i class="ti ti-player-play me-2"></i>{{ __('Inicio de jornada') }}</a></li>
@@ -415,20 +421,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const runningUrl = container.getAttribute('data-running-url');
     const startUrl = container.getAttribute('data-start-url');
     const stopUrlTpl = container.getAttribute('data-stop-url');
+    const timeRunningUrl = '{{ route('time.running') }}';
 
     let running = false;
     let paused = false;
     let startTs = null;
     let pausedTs = null;
+    let pausedSeconds = 0;
     let timerId = null;
     let timerInterval = null;
 
     function fmt(n){ return String(n).padStart(2,'0'); }
+    function ts(input){
+        if (!input) return null;
+        if (typeof input === 'number') return Math.floor(input);
+        // Try native ISO first
+        let d = new Date(input);
+        if (!isNaN(d.getTime())) return Math.floor(d.getTime()/1000);
+        // Fallback for 'YYYY-MM-DD HH:MM:SS'
+        const m = String(input).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+        if (m){
+            const year = parseInt(m[1],10), mon = parseInt(m[2],10)-1, day = parseInt(m[3],10);
+            const hh = parseInt(m[4],10), mm = parseInt(m[5],10), ss = parseInt(m[6],10);
+            const local = new Date(year, mon, day, hh, mm, ss);
+            return Math.floor(local.getTime()/1000);
+        }
+        return null;
+    }
     function render(){
         if (!running || !startTs) { displayEl.textContent = '00:00:00'; return; }
         const now = Math.floor(Date.now() / 1000);
         const effectiveNow = paused && pausedTs ? pausedTs : now;
-        const elapsed = Math.max(0, effectiveNow - startTs);
+        const elapsedRaw = Math.max(0, effectiveNow - startTs);
+        const elapsed = Math.max(0, elapsedRaw - (pausedSeconds || 0));
         const h = Math.floor(elapsed / 3600);
         const m = Math.floor((elapsed % 3600) / 60);
         const s = elapsed % 60;
@@ -454,10 +479,26 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         applyIconState(icon);
         applyIconState(iconInline);
-        if (startEl) startEl.classList.toggle('disabled', running);
-        if (pauseEl) pauseEl.classList.toggle('disabled', !running || paused);
-        if (resumeEl) resumeEl.classList.toggle('disabled', !running || !paused);
-        if (stopEl) stopEl.classList.toggle('disabled', !running);
+		const setDisabled = (el, isDisabled) => {
+			if (!el) return;
+			if (isDisabled) {
+				el.classList.add('disabled');
+				el.classList.add('text-muted');
+				if (el.id === 'att-stop') el.classList.remove('text-danger');
+				el.setAttribute('aria-disabled', 'true');
+				el.setAttribute('tabindex', '-1');
+			} else {
+				el.classList.remove('disabled');
+				el.classList.remove('text-muted');
+				if (el.id === 'att-stop') el.classList.add('text-danger');
+				el.removeAttribute('aria-disabled');
+				el.removeAttribute('tabindex');
+			}
+		};
+        setDisabled(startEl, running);
+        setDisabled(pauseEl, !running || paused);
+        setDisabled(resumeEl, !running || !paused);
+        setDisabled(stopEl, !running);
     }
 
     function fetchRunning(){
@@ -467,14 +508,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data && data.running && data.attendance) {
                     running = true;
                     timerId = data.attendance.id;
-                    startTs = Math.floor(new Date(data.attendance.start_at).getTime() / 1000);
+                    startTs = ts(data.attendance.start_at);
                     paused = !!data.attendance.paused_at;
                     pausedTs = paused ? Math.floor(new Date(data.attendance.paused_at).getTime() / 1000) : null;
+                    pausedSeconds = parseInt(data.attendance.paused_seconds || 0, 10);
                     startTick();
                 } else {
-                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; stopTick(); render();
+                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; pausedSeconds = 0; stopTick(); render();
                 }
                 setButton();
+            })
+            .catch(() => {});
+
+        // Fetch running project time and show above
+        fetch(timeRunningUrl, { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(data => {
+                const row = document.getElementById('project-running-row');
+                const nameEl = document.getElementById('project-running-name');
+                if (data && data.running && data.time) {
+                    const projName = data.time.project ? data.time.project.name : '{{ __('Tiempo en proyecto') }}';
+                    if (row && nameEl) {
+                        nameEl.textContent = projName;
+                        row.classList.remove('d-none');
+                    }
+                } else if (row) {
+                    row.classList.add('d-none');
+                }
             })
             .catch(() => {});
     }
@@ -498,6 +558,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     timerId = data.attendance.id;
                     startTs = Math.floor(new Date(data.attendance.start_at).getTime() / 1000);
                     pausedTs = null;
+                    pausedSeconds = 0;
                     setButton();
                     startTick();
                 }
@@ -518,7 +579,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }).then(r => r.json()).then(data => {
                 if (data && data.success && data.attendance) {
                     paused = true;
-                    pausedTs = data.attendance.paused_at ? Math.floor(new Date(data.attendance.paused_at).getTime() / 1000) : Math.floor(Date.now()/1000);
+                    pausedTs = data.attendance.paused_at ? ts(data.attendance.paused_at) : Math.floor(Date.now()/1000);
+                    // pausedSeconds remains the cumulative value before this pause
                     setButton();
                     render();
                 }
@@ -540,6 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data && data.success && data.attendance) {
                     paused = false;
                     pausedTs = null;
+                    pausedSeconds = parseInt(data.attendance.paused_seconds || 0, 10);
                     setButton();
                 }
             });
@@ -560,7 +623,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(r => r.json())
             .then(data => {
                 if (data && data.success) {
-                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; stopTick(); render(); setButton();
+                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; pausedSeconds = 0; stopTick(); render(); setButton();
                 }
             });
         }

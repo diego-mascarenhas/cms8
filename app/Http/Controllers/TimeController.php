@@ -198,7 +198,10 @@ class TimeController extends Controller
 	 */
 	public function running()
 	{
-		$runningTimer = Time::getRunningTimer();
+        $runningTimer = Time::getRunningTimer();
+        if ($runningTimer) {
+            $runningTimer->load('project');
+        }
 
 		return response()->json([
 			'running' => $runningTimer ? true : false,
