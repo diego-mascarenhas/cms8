@@ -18,19 +18,10 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
         });
-
-        // Add board_id column to tasks table
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->foreignId('board_id')->nullable()->after('team_id');
-        });
     }
 
     public function down()
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->dropColumn('board_id');
-        });
-        
         Schema::dropIfExists('task_boards');
     }
 };

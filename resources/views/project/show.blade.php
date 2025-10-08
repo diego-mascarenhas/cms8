@@ -62,6 +62,9 @@
 			<a href="{{ route('project.select-collaborators', $project->id) }}" class="btn btn-success waves-effect waves-light">
 				<i class="ti ti-users me-1"></i>{{ __('Manage Collaborators') }}
 			</a>
+			<a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="btn btn-info waves-effect waves-light">
+				<i class="ti ti-layout-kanban me-1"></i>{{ __('Kanban Board') }}
+			</a>
 			@can('project.index')
 				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back to Projects') }}</a>
 			@endcan

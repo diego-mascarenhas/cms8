@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('projects', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('board_id')->nullable();
             $table->unsignedBigInteger('team_id');
             $table->unsignedBigInteger('enterprise_id');
             $table->unsignedBigInteger('category_id')->nullable();
@@ -27,6 +28,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
+            $table->foreign('board_id')->references('id')->on('task_boards')->onDelete('set null');
             $table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
             $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('cascade');
             $table->foreign('category_id')->references('id')->on('categories')->onDelete('set null');
