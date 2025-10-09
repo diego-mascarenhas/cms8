@@ -357,6 +357,7 @@ Route::middleware(['auth'])->group(function () {
 	Route::delete('/task/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
 	Route::post('/task/update-status', [TaskController::class, 'updateStatus'])->name('task.update-status');
 	Route::post('/task/update-order', [TaskController::class, 'updateOrder'])->name('task.update-order');
+	Route::get('/task/{id}/activities', [TaskController::class, 'getActivities'])->name('task.activities');
 
 	// Task Board Routes
 	Route::get('/task-board', [App\Http\Controllers\TaskBoardController::class, 'index'])->name('task-board.index');

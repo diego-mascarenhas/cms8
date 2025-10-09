@@ -367,6 +367,9 @@
 
 		console.log('[Kanban] Offcanvas opening');
 
+		// Store taskId in sidebar element for activity loading
+		sidebarEl.setAttribute('data-current-task-id', taskId);
+
         // Prefill fields from data attributes
 		const titleEl = taskDiv.querySelector('.kanban-text');
 		const inputTitle = sidebarEl.querySelector('#title');
@@ -808,5 +811,100 @@
 			e.stopPropagation();
 		});
 	});
+
+	// Load activity log when Activity tab is clicked
+	const activityTab = document.querySelector('[data-bs-target="#tab-activity"]');
+	if (activityTab)
+	{
+		activityTab.addEventListener('click', function() {
+			loadActivityLog();
+		});
+	}
+
+	function loadActivityLog()
+	{
+		const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
+		const taskId = sidebarEl ? sidebarEl.getAttribute('data-current-task-id') : null;
+		const activityContainer = document.querySelector('#activity-log-container');
+
+		if (!taskId || !activityContainer) return;
+
+		// Show loading spinner
+		activityContainer.innerHTML = `
+			<div class="text-center py-4">
+				<div class="spinner-border spinner-border-sm text-primary" role="status">
+					<span class="visually-hidden">Cargando...</span>
+				</div>
+			</div>
+		`;
+
+		// Fetch activities from backend
+		fetch(`/task/${taskId}/activities`, {
+			method: 'GET',
+			headers: {
+				'Accept': 'application/json',
+				'X-CSRF-TOKEN': window.kanbanData.csrfToken
+			}
+		})
+		.then(response => response.json())
+		.then(activities => {
+			if (activities.length === 0)
+			{
+				activityContainer.innerHTML = `
+					<div class="text-center py-4 text-muted">
+						<i class="ti ti-info-circle mb-2" style="font-size: 2rem;"></i>
+						<p class="mb-0">No hay actividad registrada para esta tarea.</p>
+					</div>
+				`;
+				return;
+			}
+
+			// Render activities
+			let html = '';
+			activities.forEach(activity => {
+				const initials = activity.causer ? activity.causer.initials : 'SY';
+				const name = activity.causer ? activity.causer.name : 'Sistema';
+				const bgColor = activity.causer ? 'bg-label-primary' : 'bg-label-secondary';
+
+				html += `
+					<div class="media mb-4 d-flex align-items-start">
+						<div class="avatar me-2 flex-shrink-0 mt-1">
+							<span class="avatar-initial ${bgColor} rounded-circle">${initials}</span>
+						</div>
+						<div class="media-body">
+							<p class="mb-0">
+								<span class="fw-medium">${name}</span>
+								${translateActivityDescription(activity.description, activity.properties)}
+							</p>
+							<small class="text-muted">${activity.created_at}</small>
+						</div>
+					</div>
+				`;
+			});
+
+			activityContainer.innerHTML = html;
+		})
+		.catch(error => {
+			console.error('Error loading activities:', error);
+			activityContainer.innerHTML = `
+				<div class="text-center py-4 text-danger">
+					<i class="ti ti-alert-circle mb-2" style="font-size: 2rem;"></i>
+					<p class="mb-0">Error al cargar las actividades.</p>
+				</div>
+			`;
+		});
+	}
+
+	function translateActivityDescription(description, properties)
+	{
+		// Translate common activity descriptions to Spanish
+		const translations = {
+			'created': 'creó la tarea',
+			'updated': 'actualizó la tarea',
+			'deleted': 'eliminó la tarea'
+		};
+
+		return translations[description] || description;
+	}
 })();
 

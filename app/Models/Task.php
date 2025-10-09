@@ -6,12 +6,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 class Task extends Model implements HasMedia
 {
-	use HasFactory, SoftDeletes, InteractsWithMedia;
+	use HasFactory, SoftDeletes, InteractsWithMedia, LogsActivity;
 
 	protected $fillable = [
 		'team_id',
@@ -106,5 +108,16 @@ class Task extends Model implements HasMedia
 	public function registerMediaCollections(): void
 	{
 		$this->addMediaCollection('attachments');
+	}
+
+	/**
+	 * Configure activity logging options
+	 */
+	public function getActivitylogOptions(): LogOptions
+	{
+		return LogOptions::defaults()
+			->logOnly(['title', 'description', 'due_date', 'status_id', 'responsible_id', 'category_id', 'estimated_hours'])
+			->logOnlyDirty()
+			->dontSubmitEmptyLogs();
 	}
 }

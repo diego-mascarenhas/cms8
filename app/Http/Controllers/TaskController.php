@@ -115,6 +115,29 @@ class TaskController extends Controller
         return view('task.kanban', compact('statuses', 'tasksByStatus', 'project', 'board', 'users', 'categories'));
     }
 
+    public function getActivities($taskId)
+    {
+        $task = Task::findOrFail($taskId);
+        $activities = $task->activities()
+            ->with('causer')
+            ->latest()
+            ->get()
+            ->map(function($activity) {
+                return [
+                    'id' => $activity->id,
+                    'description' => $activity->description,
+                    'causer' => $activity->causer ? [
+                        'name' => $activity->causer->name,
+                        'initials' => strtoupper(substr($activity->causer->name, 0, 2)),
+                    ] : null,
+                    'created_at' => $activity->created_at->format('d/m/Y H:i'),
+                    'properties' => $activity->properties,
+                ];
+            });
+
+        return response()->json($activities);
+    }
+
     public function create(Request $request)
     {
         $statuses = TaskStatus::getOptions();

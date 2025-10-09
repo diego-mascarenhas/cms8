@@ -62,14 +62,14 @@
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">
                 @if($project)
-                    {{ $project->name }} - Tareas Kanban
+                    Tareas/ {{ $board->name }}
                 @else
                     Tareas Kanban
                 @endif
             </h4>
             <p class="text-muted">
                 @if($project)
-                    Tablero: {{ $board->name }}
+                    {{ $project->name }}
                 @else
                     Gestiona las tareas de forma visual
                 @endif
@@ -107,7 +107,7 @@
     <!-- Edit Task & Activities (Exact Vuexy markup) -->
     <div class="offcanvas offcanvas-end kanban-update-item-sidebar">
         <div class="offcanvas-header border-bottom">
-            <h5 class="offcanvas-title">Edit Task</h5>
+            <h5 class="offcanvas-title">{{ __('Editar Tarea') }}</h5>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body">
@@ -115,13 +115,13 @@
                 <li class="nav-item">
                     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-update">
                         <i class="ti ti-edit me-2"></i>
-                        <span class="align-middle">Edit</span>
+                        <span class="align-middle">{{ __('Editar') }}</span>
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-activity">
                         <i class="ti ti-trending-up me-2"></i>
-                        <span class="align-middle">Activity</span>
+                        <span class="align-middle">{{ __('Actividad') }}</span>
                     </button>
                 </li>
             </ul>
@@ -159,7 +159,7 @@
                             <input type="number" id="estimated-hours" class="form-control" placeholder="{{ __('Ej: 8.5') }}" step="0.5" min="0" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="attachments">{{ __('Adjuntos') }}</label>
+                            <label class="form-label" for="attachments">{{ __('Adjunto') }}</label>
                             <input type="file" class="form-control" id="attachments" accept="image/*" />
                             <div id="attachment-preview" class="mt-3" style="display: none;">
                                 <img id="preview-image" src="" alt="Vista previa" class="img-fluid rounded" style="max-height: 200px; object-fit: cover;" />
@@ -180,16 +180,13 @@
                 </div>
                 <!-- Activities -->
                 <div class="tab-pane fade" id="tab-activity" role="tabpanel">
-                    <div class="media mb-4 d-flex align-items-start">
-                        <div class="avatar me-2 flex-shrink-0 mt-1">
-                            <span class="avatar-initial bg-label-success rounded-circle">HJ</span>
-                        </div>
-                        <div class="media-body">
-                            <p class="mb-0"><span class="fw-medium">Jordan</span> Left the board.</p>
-                            <small class="text-muted">Today 11:00 AM</small>
+                    <div id="activity-log-container">
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">{{ __('Cargando...') }}</span>
+                            </div>
                         </div>
                     </div>
-                    <!-- Additional sample activities intentionally kept from Vuexy template -->
                 </div>
             </div>
         </div>
