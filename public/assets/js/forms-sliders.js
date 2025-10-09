@@ -1,1 +1,328 @@
-"use strict";!function(){const e=document.getElementById("slider-basic"),t=document.getElementById("slider-handles"),n=document.getElementById("slider-steps"),i=document.getElementById("slider-tap"),r=document.getElementById("slider-drag"),d=document.getElementById("slider-fixed-drag"),l=document.getElementById("slider-combined-options"),a=document.getElementById("slider-hover"),o=document.getElementById("slider-pips");e&&noUiSlider.create(e,{start:[50],connect:[!0,!1],direction:isRtl?"rtl":"ltr",range:{min:0,max:100}}),t&&noUiSlider.create(t,{start:[0,50],direction:isRtl?"rtl":"ltr",step:5,connect:!0,range:{min:0,max:100},pips:{mode:"range",density:5,stepped:!0}}),n&&noUiSlider.create(n,{start:[0,30],snap:!0,connect:!0,direction:isRtl?"rtl":"ltr",range:{min:0,"10%":10,"20%":20,"30%":30,"40%":40,"50%":50,max:100}}),i&&noUiSlider.create(i,{start:[10,30],behaviour:"tap",direction:isRtl?"rtl":"ltr",connect:!0,range:{min:10,max:100}}),r&&noUiSlider.create(r,{start:[40,60],limit:20,behaviour:"drag",direction:isRtl?"rtl":"ltr",connect:!0,range:{min:20,max:80}}),d&&noUiSlider.create(d,{start:[40,60],behaviour:"drag-fixed",direction:isRtl?"rtl":"ltr",connect:!0,range:{min:20,max:80}}),l&&noUiSlider.create(l,{start:[40,60],behaviour:"drag-tap",direction:isRtl?"rtl":"ltr",connect:!0,range:{min:20,max:80}}),a&&(noUiSlider.create(a,{start:20,behaviour:"hover-snap-tap",direction:isRtl?"rtl":"ltr",range:{min:0,max:100}}),a.noUiSlider.on("hover",(function(e){document.getElementById("slider-val").innerHTML=e}))),o&&noUiSlider.create(o,{start:[10],behaviour:"tap-drag",step:10,tooltips:!0,range:{min:0,max:100},pips:{mode:"steps",stepped:!0,density:5},direction:isRtl?"rtl":"ltr"});const c=document.getElementById("slider-primary"),s=document.getElementById("slider-success"),m=document.getElementById("slider-danger"),g=document.getElementById("slider-info"),u=document.getElementById("slider-warning"),p={start:[30,50],connect:!0,behaviour:"tap-drag",step:10,tooltips:!0,range:{min:0,max:100},pips:{mode:"steps",stepped:!0,density:5},direction:isRtl?"rtl":"ltr"};c&&noUiSlider.create(c,p),s&&noUiSlider.create(s,p),m&&noUiSlider.create(m,p),g&&noUiSlider.create(g,p),u&&noUiSlider.create(u,p);const y=document.getElementById("slider-dynamic"),h=document.getElementById("slider-select"),v=document.getElementById("slider-input");if(y&&(noUiSlider.create(y,{start:[10,30],connect:!0,direction:isRtl?"rtl":"ltr",range:{min:-20,max:40}}),y.noUiSlider.on("update",(function(e,t){const n=e[t];t?v.value=n:h.value=Math.round(n)}))),h){for(let e=-20;e<=40;e++){let t=document.createElement("option");t.text=e,t.value=e,h.appendChild(t)}h.addEventListener("change",(function(){y.noUiSlider.set([this.value,null])}))}v&&v.addEventListener("change",(function(){y.noUiSlider.set([null,this.value])}));const E=document.getElementById("slider-vertical"),S=document.getElementById("slider-connect-upper"),U=document.getElementById("slider-vertical-tooltip"),x=document.getElementById("slider-vertical-limit");E&&(E.style.height="200px",noUiSlider.create(E,{start:[40,60],orientation:"vertical",behaviour:"drag",connect:!0,range:{min:0,max:100}})),S&&(S.style.height="200px",noUiSlider.create(S,{start:40,orientation:"vertical",behaviour:"drag",connect:"upper",range:{min:0,max:100}})),U&&(U.style.height="200px",noUiSlider.create(U,{start:10,orientation:"vertical",behaviour:"drag",tooltips:!0,range:{min:0,max:100}})),x&&(x.style.height="200px",noUiSlider.create(x,{start:[0,40],orientation:"vertical",behaviour:"drag",limit:60,tooltips:!0,connect:!0,range:{min:0,max:100}}))}();
+/**
+ * Sliders
+ */
+'use strict';
+
+(function () {
+  const sliderBasic = document.getElementById('slider-basic'),
+    sliderHandles = document.getElementById('slider-handles'),
+    sliderSteps = document.getElementById('slider-steps'),
+    sliderTap = document.getElementById('slider-tap'),
+    sliderDrag = document.getElementById('slider-drag'),
+    sliderFixedDrag = document.getElementById('slider-fixed-drag'),
+    sliderCombined = document.getElementById('slider-combined-options'),
+    sliderHover = document.getElementById('slider-hover'),
+    sliderPips = document.getElementById('slider-pips');
+
+  // Basic
+  // --------------------------------------------------------------------
+
+  if (sliderBasic) {
+    noUiSlider.create(sliderBasic, {
+      start: [50],
+      connect: [true, false],
+      direction: isRtl ? 'rtl' : 'ltr',
+      range: {
+        min: 0,
+        max: 100
+      }
+    });
+  }
+
+  // Handles
+  // --------------------------------------------------------------------
+  if (sliderHandles) {
+    noUiSlider.create(sliderHandles, {
+      start: [0, 50],
+      direction: isRtl ? 'rtl' : 'ltr',
+      step: 5,
+      connect: true,
+      range: {
+        min: 0,
+        max: 100
+      },
+      pips: {
+        mode: 'range',
+        density: 5,
+        stepped: true
+      }
+    });
+  }
+
+  // Steps
+  // --------------------------------------------------------------------
+  if (sliderSteps) {
+    noUiSlider.create(sliderSteps, {
+      start: [0, 30],
+      snap: true,
+      connect: true,
+      direction: isRtl ? 'rtl' : 'ltr',
+      range: {
+        min: 0,
+        '10%': 10,
+        '20%': 20,
+        '30%': 30,
+        '40%': 40,
+        '50%': 50,
+        max: 100
+      }
+    });
+  }
+
+  // Tap
+  // --------------------------------------------------------------------
+  if (sliderTap) {
+    noUiSlider.create(sliderTap, {
+      start: [10, 30],
+      behaviour: 'tap',
+      direction: isRtl ? 'rtl' : 'ltr',
+      connect: true,
+      range: {
+        min: 10,
+        max: 100
+      }
+    });
+  }
+
+  // Drag
+  // --------------------------------------------------------------------
+  if (sliderDrag) {
+    noUiSlider.create(sliderDrag, {
+      start: [40, 60],
+      limit: 20,
+      behaviour: 'drag',
+      direction: isRtl ? 'rtl' : 'ltr',
+      connect: true,
+      range: {
+        min: 20,
+        max: 80
+      }
+    });
+  }
+
+  // Fixed Drag
+  // --------------------------------------------------------------------
+  if (sliderFixedDrag) {
+    noUiSlider.create(sliderFixedDrag, {
+      start: [40, 60],
+      behaviour: 'drag-fixed',
+      direction: isRtl ? 'rtl' : 'ltr',
+      connect: true,
+      range: {
+        min: 20,
+        max: 80
+      }
+    });
+  }
+
+  // Combined Options
+  // --------------------------------------------------------------------
+  if (sliderCombined) {
+    noUiSlider.create(sliderCombined, {
+      start: [40, 60],
+      behaviour: 'drag-tap',
+      direction: isRtl ? 'rtl' : 'ltr',
+      connect: true,
+      range: {
+        min: 20,
+        max: 80
+      }
+    });
+  }
+
+  // Hover
+  // --------------------------------------------------------------------
+  if (sliderHover) {
+    noUiSlider.create(sliderHover, {
+      start: 20,
+      behaviour: 'hover-snap-tap',
+      direction: isRtl ? 'rtl' : 'ltr',
+      range: {
+        min: 0,
+        max: 100
+      }
+    });
+
+    sliderHover.noUiSlider.on('hover', function (value) {
+      document.getElementById('slider-val').innerHTML = value;
+    });
+  }
+
+  // Scale and Pips
+  // --------------------------------------------------------------------
+  if (sliderPips) {
+    noUiSlider.create(sliderPips, {
+      start: [10],
+      behaviour: 'tap-drag',
+      step: 10,
+      tooltips: true,
+      range: {
+        min: 0,
+        max: 100
+      },
+      pips: {
+        mode: 'steps',
+        stepped: true,
+        density: 5
+      },
+      direction: isRtl ? 'rtl' : 'ltr'
+    });
+  }
+
+  // colors
+  // --------------------------------------------------------------------
+  const sliderPrimary = document.getElementById('slider-primary'),
+    sliderSuccess = document.getElementById('slider-success'),
+    sliderDanger = document.getElementById('slider-danger'),
+    sliderInfo = document.getElementById('slider-info'),
+    sliderWarning = document.getElementById('slider-warning'),
+    colorOptions = {
+      start: [30, 50],
+      connect: true,
+      behaviour: 'tap-drag',
+      step: 10,
+      tooltips: true,
+      range: {
+        min: 0,
+        max: 100
+      },
+      pips: {
+        mode: 'steps',
+        stepped: true,
+        density: 5
+      },
+      direction: isRtl ? 'rtl' : 'ltr'
+    };
+
+  if (sliderPrimary) {
+    noUiSlider.create(sliderPrimary, colorOptions);
+  }
+  if (sliderSuccess) {
+    noUiSlider.create(sliderSuccess, colorOptions);
+  }
+  if (sliderDanger) {
+    noUiSlider.create(sliderDanger, colorOptions);
+  }
+  if (sliderInfo) {
+    noUiSlider.create(sliderInfo, colorOptions);
+  }
+  if (sliderWarning) {
+    noUiSlider.create(sliderWarning, colorOptions);
+  }
+
+  // Dynamic Slider
+  // --------------------------------------------------------------------
+  const dynamicSlider = document.getElementById('slider-dynamic'),
+    sliderSelect = document.getElementById('slider-select'),
+    sliderInput = document.getElementById('slider-input');
+
+  if (dynamicSlider) {
+    noUiSlider.create(dynamicSlider, {
+      start: [10, 30],
+      connect: true,
+      direction: isRtl ? 'rtl' : 'ltr',
+      range: {
+        min: -20,
+        max: 40
+      }
+    });
+
+    dynamicSlider.noUiSlider.on('update', function (values, handle) {
+      const value = values[handle];
+
+      if (handle) {
+        sliderInput.value = value;
+      } else {
+        sliderSelect.value = Math.round(value);
+      }
+    });
+  }
+
+  if (sliderSelect) {
+    for (let i = -20; i <= 40; i++) {
+      let option = document.createElement('option');
+      option.text = i;
+      option.value = i;
+
+      sliderSelect.appendChild(option);
+    }
+    sliderSelect.addEventListener('change', function () {
+      dynamicSlider.noUiSlider.set([this.value, null]);
+    });
+  }
+
+  if (sliderInput) {
+    sliderInput.addEventListener('change', function () {
+      dynamicSlider.noUiSlider.set([null, this.value]);
+    });
+  }
+
+  // Vertical
+  // --------------------------------------------------------------------
+  const defaultVertical = document.getElementById('slider-vertical'),
+    connectVertical = document.getElementById('slider-connect-upper'),
+    tooltipVertical = document.getElementById('slider-vertical-tooltip'),
+    limitVertical = document.getElementById('slider-vertical-limit');
+
+  // Default
+  if (defaultVertical) {
+    defaultVertical.style.height = '200px';
+    noUiSlider.create(defaultVertical, {
+      start: [40, 60],
+      orientation: 'vertical',
+      behaviour: 'drag',
+      connect: true,
+      range: {
+        min: 0,
+        max: 100
+      }
+    });
+  }
+
+  // Connect Upper
+  if (connectVertical) {
+    connectVertical.style.height = '200px';
+    noUiSlider.create(connectVertical, {
+      start: 40,
+      orientation: 'vertical',
+      behaviour: 'drag',
+      connect: 'upper',
+      range: {
+        min: 0,
+        max: 100
+      }
+    });
+  }
+
+  // Vertical Tooltip
+  if (tooltipVertical) {
+    tooltipVertical.style.height = '200px';
+    noUiSlider.create(tooltipVertical, {
+      start: 10,
+      orientation: 'vertical',
+      behaviour: 'drag',
+      tooltips: true,
+      range: {
+        min: 0,
+        max: 100
+      }
+    });
+  }
+
+  // Limit
+  if (limitVertical) {
+    limitVertical.style.height = '200px';
+    noUiSlider.create(limitVertical, {
+      start: [0, 40],
+      orientation: 'vertical',
+      behaviour: 'drag',
+      limit: 60,
+      tooltips: true,
+      connect: true,
+      range: {
+        min: 0,
+        max: 100
+      }
+    });
+  }
+})();

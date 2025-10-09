@@ -109,7 +109,22 @@ class TaskController extends Controller
             ->map(fn($u) => ['id' => $u->id, 'name' => $u->name]);
 
         $categories = class_exists(Category::class)
-            ? Category::query()->get(['id', 'name'])->map(fn($c) => ['id' => $c->id, 'name' => $c->name])
+            ? Category::query()
+                ->whereHas('module', function ($q) {
+                    $q->where('key', 'tasks');
+                })
+                ->where('team_id', auth()->user()->currentTeam->id)
+                ->with('parent')
+                ->get(['id', 'name', 'parent_id'])
+                ->whereNotNull('parent_id') // Only get subcategories
+                ->groupBy('parent.name') // Group by parent category name
+                ->map(function ($group, $parentName) {
+                    return [
+                        'name' => $parentName,
+                        'categories' => $group->map(fn($c) => ['id' => $c->id, 'name' => $c->name])->values()
+                    ];
+                })
+                ->values()
             : collect();
 
         return view('task.kanban', compact('statuses', 'tasksByStatus', 'project', 'board', 'users', 'categories'));

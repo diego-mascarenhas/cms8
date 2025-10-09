@@ -1,1 +1,57 @@
-"use strict";!function(){const e=document.querySelector(".cancel-subscription");e&&(e.onclick=function(){Swal.fire({text:"Are you sure you would like to cancel your subscription?",icon:"warning",showCancelButton:!0,confirmButtonText:"Yes",customClass:{confirmButton:"btn btn-primary me-2 waves-effect waves-light",cancelButton:"btn btn-label-secondary waves-effect waves-light"},buttonsStyling:!1}).then((function(e){e.value?Swal.fire({icon:"success",title:"Unsubscribed!",text:"Your subscription cancelled successfully.",customClass:{confirmButton:"btn btn-success waves-effect waves-light"}}):e.dismiss===Swal.DismissReason.cancel&&Swal.fire({title:"Cancelled",text:"Unsubscription Cancelled!!",icon:"error",customClass:{confirmButton:"btn btn-success waves-effect waves-light"}})}))});const t=document.querySelector(".edit-address"),s=document.querySelector(".address-title"),n=document.querySelector(".address-subtitle");t.onclick=function(){s.innerHTML="Edit Address",n.innerHTML="Edit your current address"}}();
+/**
+ * App User View - Billing
+ */
+
+'use strict';
+
+(function () {
+  // Cancel Subscription alert
+  const cancelSubscription = document.querySelector('.cancel-subscription');
+
+  // Alert With Functional Confirm Button
+  if (cancelSubscription) {
+    cancelSubscription.onclick = function () {
+      Swal.fire({
+        text: 'Are you sure you would like to cancel your subscription?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes',
+        customClass: {
+          confirmButton: 'btn btn-primary me-2 waves-effect waves-light',
+          cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+        },
+        buttonsStyling: false
+      }).then(function (result) {
+        if (result.value) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Unsubscribed!',
+            text: 'Your subscription cancelled successfully.',
+            customClass: {
+              confirmButton: 'btn btn-success waves-effect waves-light'
+            }
+          });
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+          Swal.fire({
+            title: 'Cancelled',
+            text: 'Unsubscription Cancelled!!',
+            icon: 'error',
+            customClass: {
+              confirmButton: 'btn btn-success waves-effect waves-light'
+            }
+          });
+        }
+      });
+    };
+  }
+
+  // On edit address click, update text of add address modal
+  const addressEdit = document.querySelector('.edit-address'),
+    addressTitle = document.querySelector('.address-title'),
+    addressSubTitle = document.querySelector('.address-subtitle');
+
+  addressEdit.onclick = function () {
+    addressTitle.innerHTML = 'Edit Address'; // reset text
+    addressSubTitle.innerHTML = 'Edit your current address';
+  };
+})();

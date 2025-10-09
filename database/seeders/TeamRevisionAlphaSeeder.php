@@ -68,6 +68,9 @@ class TeamRevisionAlphaSeeder extends Seeder
         // 3. Create Revision Alpha categories
         $this->createRevisionAlphaCategories();
 
+        // 3.1. Create Revision Alpha task categories
+        $this->createRevisionAlphaTaskCategories();
+
         // 4. Create professional email template
         $this->createProfessionalEmailTemplate();
 
@@ -156,8 +159,8 @@ class TeamRevisionAlphaSeeder extends Seeder
                 'current_team_id' => $team->id,
             ],
         );
-        //$fernando->assignRole(2);
-		$fernando->assignRole('collaborator');
+        // $fernando->assignRole(2);
+        $fernando->assignRole('collaborator');
 
         // Create Cecilia - collaborator (Revision Alpha)
         $cecilia = User::updateOrCreate(
@@ -256,6 +259,136 @@ class TeamRevisionAlphaSeeder extends Seeder
         ]);
 
         $this->getCommand()->info('✅ Created Revision Alpha categories');
+    }
+
+    /**
+     * Create Revision Alpha task categories
+     */
+    private function createRevisionAlphaTaskCategories()
+    {
+        $this->getCommand()->info('📋 Creating Revision Alpha task categories...');
+
+        // Get the tasks module
+        $tasksModuleId = Module::where('key', 'tasks')->first()?->id;
+
+        if (! $tasksModuleId)
+        {
+            $this->getCommand()->warn('⚠️  Tasks module not found. Skipping task categories creation.');
+
+            return;
+        }
+
+        // Create main categories for different areas
+        $administracionCategory = Category::updateOrCreate([
+            'name' => 'Administración',
+            'module_id' => $tasksModuleId,
+            'team_id' => $this->teamId,
+            'parent_id' => null,
+        ], [
+            'description' => 'Tareas administrativas y de gestión empresarial',
+            'status' => 1,
+        ]);
+
+        $proyectosCategory = Category::updateOrCreate([
+            'name' => 'Proyectos',
+            'module_id' => $tasksModuleId,
+            'team_id' => $this->teamId,
+            'parent_id' => null,
+        ], [
+            'description' => 'Tareas relacionadas con proyectos de desarrollo y tecnología',
+            'status' => 1,
+        ]);
+
+        // Create subcategories for Administración
+        $administracionSubcategories = [
+            [
+                'name' => 'Cobranza',
+                'description' => 'Tareas relacionadas con gestión de cobros y facturación',
+            ],
+            [
+                'name' => 'Pagos',
+                'description' => 'Tareas de procesamiento y seguimiento de pagos',
+            ],
+            [
+                'name' => 'Alta de servicio',
+                'description' => 'Tareas para dar de alta nuevos servicios a clientes',
+            ],
+            [
+                'name' => 'Baja de servicio',
+                'description' => 'Tareas para dar de baja servicios de clientes',
+            ],
+            [
+                'name' => 'Presentaciones a hacienda',
+                'description' => 'Tareas relacionadas con obligaciones fiscales y presentaciones',
+            ],
+            [
+                'name' => 'Presupuestos',
+                'description' => 'Tareas de elaboración y seguimiento de presupuestos',
+            ],
+        ];
+
+        // Create subcategories for Proyectos
+        $proyectosSubcategories = [
+            [
+                'name' => 'Diseño',
+                'description' => 'Tareas de diseño gráfico, UX/UI y creatividad visual',
+            ],
+            [
+                'name' => 'Maquetado',
+                'description' => 'Tareas de maquetación y estructura de sitios web',
+            ],
+            [
+                'name' => 'Programación',
+                'description' => 'Tareas de desarrollo y programación de aplicaciones',
+            ],
+            [
+                'name' => 'Migraciones',
+                'description' => 'Tareas de migración de datos y sistemas',
+            ],
+            [
+                'name' => 'Mantenimiento',
+                'description' => 'Tareas de mantenimiento y actualización de sistemas',
+            ],
+            [
+                'name' => 'Configuraciones',
+                'description' => 'Tareas de configuración de servidores y aplicaciones',
+            ],
+        ];
+
+        // Create Administración subcategories
+        foreach ($administracionSubcategories as $categoryData)
+        {
+            Category::updateOrCreate([
+                'name' => $categoryData['name'],
+                'module_id' => $tasksModuleId,
+                'team_id' => $this->teamId,
+            ], [
+                'description' => $categoryData['description'],
+                'parent_id' => $administracionCategory->id,
+                'status' => 1,
+            ]);
+        }
+
+        // Create Proyectos subcategories
+        foreach ($proyectosSubcategories as $categoryData)
+        {
+            Category::updateOrCreate([
+                'name' => $categoryData['name'],
+                'module_id' => $tasksModuleId,
+                'team_id' => $this->teamId,
+            ], [
+                'description' => $categoryData['description'],
+                'parent_id' => $proyectosCategory->id,
+                'status' => 1,
+            ]);
+        }
+
+        $this->getCommand()->info('✅ Created Revision Alpha task categories');
+        $this->getCommand()->info("   - Administración: {$administracionCategory->name} (ID: {$administracionCategory->id})");
+        $this->getCommand()->info('     Subcategories: '.count($administracionSubcategories).' categories');
+        $this->getCommand()->info("   - Proyectos: {$proyectosCategory->name} (ID: {$proyectosCategory->id})");
+        $this->getCommand()->info('     Subcategories: '.count($proyectosSubcategories).' categories');
+        $this->getCommand()->info('   - Total subcategories: '.(count($administracionSubcategories) + count($proyectosSubcategories)).' categories created');
     }
 
     /**

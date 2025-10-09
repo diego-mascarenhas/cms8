@@ -492,7 +492,7 @@
 						if (taskDiv) taskDiv.setAttribute('data-attachment', '');
 
 						// Remove image from Kanban card
-						const contentDiv = taskElement.firstElementChild;
+						const contentDiv = taskElement;
 						const imgElement = contentDiv ? contentDiv.querySelector('.kanban-image') : null;
 						if (imgElement) {
 							imgElement.remove();
@@ -529,25 +529,61 @@
 		});
 	}
 
-	// Populate select2 with categories if present and pre-select current category
+	// Populate select2 with grouped categories
 		const labelSelect = sidebarEl.querySelector('#label');
 		const currentCategoryId = taskDiv ? taskDiv.getAttribute('data-category-id') : null;
 		if (labelSelect && window.$ && $.fn.select2)
 		{
 			$(labelSelect).empty();
 			$(labelSelect).append(new Option('Selecciona una categoría', '', false, false));
-			(categories || []).forEach(c => {
-				const isSelected = currentCategoryId && parseInt(currentCategoryId) === c.id;
-				const opt = new Option(c.name, c.id, isSelected, isSelected);
-				$(labelSelect).append(opt);
-			});
-			$(labelSelect).select2({
-				dropdownParent: $(sidebarEl),
-				placeholder: 'Selecciona una categoría',
-				allowClear: true,
-				// Add passive event listeners to improve performance
-				scrollAfterSelect: false
-			});
+
+			// Wait for kanbanData to be available
+			const populateCategories = () => {
+				if (!window.kanbanData || !window.kanbanData.categories) {
+					console.log('kanbanData not available yet, retrying...');
+					setTimeout(populateCategories, 100);
+					return;
+				}
+
+				console.log('Categories data:', window.kanbanData.categories);
+
+				// Handle grouped categories structure - using prefixed options instead of optgroups
+				window.kanbanData.categories.forEach(group => {
+					console.log('Processing group:', group);
+					if (group.categories && group.categories.length > 0) {
+						console.log('Adding group header for:', group.name);
+
+						// Add group header as disabled option
+						const groupHeader = new Option(`── ${group.name} ──`, '', false, false);
+						groupHeader.disabled = true;
+						groupHeader.style.fontWeight = 'bold';
+						groupHeader.style.color = '#666';
+						$(labelSelect).append(groupHeader);
+
+						// Add subcategories with indentation
+						group.categories.forEach(category => {
+							console.log('Adding subcategory:', category.name, 'ID:', category.id);
+							const isSelected = currentCategoryId && parseInt(currentCategoryId) === category.id;
+							const opt = new Option(`  ${category.name}`, category.id, isSelected, isSelected);
+							$(labelSelect).append(opt);
+						});
+
+						console.log('Group added to select');
+					} else {
+						console.log('No subcategories found for group:', group.name);
+					}
+				});
+
+				$(labelSelect).select2({
+					dropdownParent: $(sidebarEl),
+					placeholder: 'Selecciona una categoría',
+					allowClear: true,
+					// Add passive event listeners to improve performance
+					scrollAfterSelect: false
+				});
+			};
+
+			populateCategories();
 		}
 
 		// Populate select2 with responsible users and pre-select current responsible
@@ -846,7 +882,19 @@
 						imgElement.style.maxHeight = '120px';
 						imgElement.style.width = '100%';
 						imgElement.style.objectFit = 'cover';
-						textSpan.parentNode.insertBefore(imgElement, textSpan.nextSibling);
+
+						// Find the next element after the text span (should be the bottom div)
+						const nextElement = textSpan.nextElementSibling;
+						if (nextElement)
+						{
+							// Insert before the bottom div
+							textSpan.parentNode.insertBefore(imgElement, nextElement);
+						}
+						else
+						{
+							// Insert after the text span if no next element
+							textSpan.parentNode.insertBefore(imgElement, textSpan.nextSibling);
+						}
 						console.log('[Kanban] Created new image element:', imgElement);
 					}
 					else
@@ -876,6 +924,19 @@
 				{
 					console.error('[Kanban] Could not find or create image element');
 				}
+			}
+			else
+			{
+				// No attachment in response, remove existing image if any
+				const contentDiv = taskElement;
+				const imgElement = contentDiv ? contentDiv.querySelector('.kanban-image') : null;
+				if (imgElement) {
+					imgElement.remove();
+					console.log('[Kanban] Removed existing image (no attachment in response)');
+				}
+
+				// Clear data attribute
+				taskElement.setAttribute('data-attachment', '');
 			}
 
 				offcanvas.hide();
