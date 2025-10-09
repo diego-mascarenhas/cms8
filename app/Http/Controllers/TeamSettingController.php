@@ -1168,4 +1168,48 @@ class TeamSettingController extends Controller
             ]);
         }
     }
+
+    /**
+     * Show team shortcuts configuration
+     */
+    public function shortcuts(Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $shortcuts = $team->getSetting('team_shortcuts', []);
+
+        return view('team-settings.shortcuts', compact('team', 'shortcuts'));
+    }
+
+    /**
+     * Store team shortcuts configuration
+     */
+    public function storeShortcuts(Request $request, Team $team)
+    {
+        $this->authorize('update', $team);
+
+        $request->validate([
+            'shortcuts' => 'array|max:6',
+            'shortcuts.*.title' => 'required|string|max:50',
+            'shortcuts.*.subtitle' => 'nullable|string|max:100',
+            'shortcuts.*.url' => 'required|string|max:255',
+            'shortcuts.*.icon' => 'required|string|max:50',
+        ]);
+
+        $shortcuts = $request->input('shortcuts', []);
+
+        // Filter out empty shortcuts
+        $shortcuts = array_filter($shortcuts, function ($shortcut) {
+            return !empty($shortcut['title']) && !empty($shortcut['url']) && !empty($shortcut['icon']);
+        });
+
+        $team->setSetting('team_shortcuts', $shortcuts, [
+            'type' => 'json',
+            'group' => 'shortcuts',
+        ]);
+
+        return redirect()
+            ->back()
+            ->with('success', 'Team shortcuts updated successfully');
+    }
 }

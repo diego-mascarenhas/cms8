@@ -145,6 +145,10 @@ Route::middleware(['auth'])->group(function () {
 	Route::delete('/team/{team}/custom-translations/{translation}', [TeamSettingController::class, 'destroyCustomTranslation'])->name('team-settings.custom-translations.destroy');
 	Route::post('/team/{team}/custom-translations/import', [TeamSettingController::class, 'importCustomTranslations'])->name('team-settings.custom-translations.import');
 
+	// Team Shortcuts
+	Route::get('/team/{team}/shortcuts', [TeamSettingController::class, 'shortcuts'])->name('team-settings.shortcuts');
+	Route::post('/team/{team}/shortcuts', [TeamSettingController::class, 'storeShortcuts'])->name('team-settings.shortcuts.store');
+
 	// Categories Management
 	Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
 	Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
