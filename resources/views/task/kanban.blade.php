@@ -52,7 +52,7 @@
         }
     });
     </script>
-<script src="{{ asset('assets/js/app-kanban-custom.js') }}"></script>
+    <script src="{{ mix('assets/js/app-kanban-custom.js') }}"></script>
 @endsection
 
 @section('content')
