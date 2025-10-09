@@ -34,8 +34,8 @@
 		}
 		html += `</div>`;
 
-		// Timer button always on the right
-		html += renderStartTimer(task.id);
+        // Timer button always on the right (initially gray)
+        html += renderStartTimer('text-secondary');
 
 	html += `</div>`;
 	html += `<span class="kanban-text">${task.title}</span>`;
@@ -102,15 +102,16 @@
 		};
 	});
 
-	// Render start timer button
-	function renderStartTimer()
-	{
-		return (
-			"<button class='btn btn-icon btn-sm btn-label-primary start-timer-btn' type='button' title='Iniciar Timer'>" +
-			"<i class='ti ti-clock-play'></i>" +
-			'</button>'
-		);
-	}
+    // Render start timer button
+    function renderStartTimer(colorClass)
+    {
+        const iconClass = colorClass || 'text-secondary';
+        return (
+            "<button class='start-timer-btn' type='button' title='Iniciar Timer' style=\"background:transparent;border:0;box-shadow:none;padding:6px;border-radius:8px;\">" +
+            `<i class="ti ti-clock-play ${iconClass}" style="font-size:20px;"></i>` +
+            '</button>'
+        );
+    }
 
 	// Initialize jKanban
     const kanban = new jKanban({
@@ -186,7 +187,7 @@
                         html += `</div>`;
 
                         // Timer button
-                        html += renderStartTimer(resp.task?.id || 'new');
+                        html += renderStartTimer('text-secondary');
                         html += `</div>`;
 
                         // Task title
@@ -423,6 +424,19 @@
 
 		// Store taskId in sidebar element for activity loading
 		sidebarEl.setAttribute('data-current-task-id', taskId);
+		// Also propagate to the Start/Stop buttons for safer reads
+		const startBtnRef = sidebarEl.querySelector('#task-start-timer');
+		const stopBtnRef = sidebarEl.querySelector('#task-stop-timer');
+		if (startBtnRef) startBtnRef.setAttribute('data-task-id', taskId);
+		if (stopBtnRef) stopBtnRef.setAttribute('data-task-id', taskId);
+
+		// Show debug ID box
+		const dbgBox = sidebarEl.querySelector('#task-debug-id');
+		const dbgVal = sidebarEl.querySelector('#task-debug-id-value');
+		if (dbgBox && dbgVal) {
+			dbgVal.textContent = String(taskId);
+			dbgBox.style.display = 'block';
+		}
 
         // Prefill fields from data attributes
 		const titleEl = taskDiv.querySelector('.kanban-text');
@@ -692,14 +706,19 @@
 
 	// Submit on Enter: intercept form submit and route to onSave
 		const formEl = sidebarEl.querySelector('#tab-update form');
-		if (formEl && !formEl.dataset.submitBound)
+		if (formEl)
 		{
-			formEl.addEventListener('submit', function (e) {
+			// Always rebind to current task; remove previous handler if any
+			if (formEl._kanbanSubmitHandler) {
+				formEl.removeEventListener('submit', formEl._kanbanSubmitHandler);
+			}
+			const submitHandler = function (e) {
 				e.preventDefault();
 				e.stopPropagation();
 				onSave(e);
-			}, { once: false });
-			formEl.dataset.submitBound = '1';
+			};
+			formEl.addEventListener('submit', submitHandler);
+			formEl._kanbanSubmitHandler = submitHandler;
 		}
 
 		const saveBtn = sidebarEl.querySelector('#offcanvas-save') || sidebarEl.querySelector('#tab-update .btn.btn-primary');
@@ -768,6 +787,11 @@
 				})
 				.then((data) => {
 					console.log('[Kanban] Saved', data);
+					// Guard: ensure backend echoes same task id
+					if (data && data.id && parseInt(data.id) !== parseInt(taskId)) {
+						console.warn('[Kanban] Mismatching IDs on save; ignoring UI update for safety', { returned: data.id, current: taskId });
+						return; // avoid updating wrong card
+					}
 					if (newTitle && titleEl) titleEl.textContent = newTitle;
 
 					// Update data attributes
@@ -916,13 +940,12 @@
 				// Update data attribute on the .kanban-item element
 				taskElement.setAttribute('data-attachment', data.attachment);
 
-				// Find the content div inside the kanban-item (where our HTML is)
-				// The content is directly inside the .kanban-item, not in a wrapper div
-				const contentDiv = taskElement;
+				// Work strictly within this card element
+				const contentDiv = taskDiv;
 				console.log('[Kanban] contentDiv:', contentDiv);
 
-				// Update or create image in the card
-				let imgElement = contentDiv ? contentDiv.querySelector('.kanban-image') : null;
+					// Update or create image in the card (strictly within this card)
+					let imgElement = contentDiv ? contentDiv.querySelector('.kanban-image') : null;
 				console.log('[Kanban] Found existing image:', imgElement);
 
 				if (!imgElement && contentDiv)
@@ -965,7 +988,7 @@
 							imgElement.style.width = '100%';
 							imgElement.style.objectFit = 'cover';
 							firstDiv.parentNode.insertBefore(imgElement, firstDiv.nextSibling);
-							console.log('[Kanban] Created new image element after first div:', imgElement);
+						console.log('[Kanban] Created new image element after first div:', imgElement);
 						}
 					}
 				}
@@ -973,7 +996,8 @@
 				if (imgElement)
 				{
 					console.log('[Kanban] Setting image src to:', data.attachment);
-					imgElement.src = data.attachment;
+					const cacheBust = (data.attachment.indexOf('?') > -1 ? '&' : '?') + 'v=' + Date.now();
+					imgElement.src = data.attachment + cacheBust;
 					imgElement.alt = newTitle;
 				}
 				else
@@ -1004,7 +1028,13 @@
 		if (saveBtn) {
 			// Prevent bootstrap auto-dismiss before saving
 			saveBtn.removeAttribute('data-bs-dismiss');
-			saveBtn.addEventListener('click', onSave, { once: true });
+			// Always rebind to current task; remove previous click handler if any
+			if (saveBtn._kanbanClickHandler) {
+				saveBtn.removeEventListener('click', saveBtn._kanbanClickHandler);
+			}
+			const clickHandler = function (ev) { onSave(ev); };
+			saveBtn.addEventListener('click', clickHandler, false);
+			saveBtn._kanbanClickHandler = clickHandler;
 		}
 
 		// Handle delete button
@@ -1087,52 +1117,23 @@
 			.then(data => {
 				const currentId = data?.time?.task_id ? parseInt(data.time.task_id) : null;
 				setTimerButtons(currentId === parseInt(taskId));
+				// Paint card icon accordingly
+				const currentItem = document.querySelector(`.kanban-item[data-task-id='${taskId}']`);
+				const icon = currentItem ? currentItem.querySelector('.start-timer-btn i') : null;
+				if (icon) {
+					icon.classList.remove('text-secondary','text-warning','text-success');
+					if (currentId === parseInt(taskId)) icon.classList.add('text-success');
+					else {
+						// If taskDiv had previous attachment/time? As heuristic, set orange if any duration_seconds present isn't available here; default gray
+						icon.classList.add('text-secondary');
+					}
+				}
 			})
 			.catch(() => setTimerButtons(false));
 
-		if (startTimerBtn && !startTimerBtn.dataset.bound) {
-			startTimerBtn.addEventListener('click', function(ev) {
-				ev.preventDefault(); ev.stopPropagation();
-				fetch('/time/start', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-					body: JSON.stringify({ task_id: parseInt(taskId) })
-				})
-				.then(r => r.json())
-				.then(data => {
-					if (data && data.success) {
-						setTimerButtons(true);
-						if (typeof toastr !== 'undefined') toastr.success('Timer iniciado');
-					} else {
-						if (typeof toastr !== 'undefined') toastr.error(data?.message || 'No se pudo iniciar');
-					}
-				})
-				.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al iniciar'); });
-			}, false);
-			startTimerBtn.dataset.bound = '1';
-		}
-
-		if (stopTimerBtn && !stopTimerBtn.dataset.bound) {
-			stopTimerBtn.addEventListener('click', function(ev) {
-				ev.preventDefault(); ev.stopPropagation();
-				fetch('/time/running', { headers: { 'Accept': 'application/json' } })
-					.then(r => r.json())
-					.then(data => {
-						const id = data?.time?.id;
-						if (!id) { if (typeof toastr !== 'undefined') toastr.info('No hay timer corriendo'); return; }
-						return fetch(`/time/${id}/stop`, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' } });
-					})
-					.then(r => r ? r.json() : null)
-					.then(resp => {
-						if (resp && resp.success) {
-							setTimerButtons(false);
-							if (typeof toastr !== 'undefined') toastr.success('Timer detenido');
-						}
-					})
-					.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al detener'); });
-			}, false);
-			stopTimerBtn.dataset.bound = '1';
-		}
+		// Ensure buttons carry current task id; actual click handling is delegated below
+		if (startTimerBtn) startTimerBtn.setAttribute('data-task-id', String(taskId));
+		if (stopTimerBtn) stopTimerBtn.setAttribute('data-task-id', String(taskId));
 
 		offcanvas.show();
 	}
@@ -1187,6 +1188,9 @@
 				if (typeof toastr !== 'undefined') {
 					toastr.success('Timer iniciado');
 				}
+				// Color the icon based on state (green when running)
+				const icon = btn.querySelector('i');
+				if (icon) { icon.classList.remove('text-secondary','text-warning'); icon.classList.add('text-success'); }
 			} else {
 				if (typeof toastr !== 'undefined') toastr.error(data?.message || 'No se pudo iniciar');
 			}
@@ -1194,13 +1198,17 @@
 		.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al iniciar'); });
 	});
 
-	// Sidebar timer controls
-	document.addEventListener('click', function(e) {
-		const startBtn = e.target.closest('#task-start-timer');
-		const stopBtn = e.target.closest('#task-stop-timer');
-		const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
-		const taskId = sidebarEl ? parseInt(sidebarEl.getAttribute('data-current-task-id')) : null;
-		if (startBtn && taskId) {
+    // Sidebar timer controls (single request at a time)
+    let sidebarTimerBusy = false;
+    document.addEventListener('click', function(e) {
+        const startBtn = e.target.closest('#task-start-timer');
+        const stopBtn = e.target.closest('#task-stop-timer');
+        const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
+        // Prefer data-task-id on the button; fallback to sidebar attr
+        const btnTaskId = startBtn?.getAttribute('data-task-id') || stopBtn?.getAttribute('data-task-id');
+        const taskId = btnTaskId ? parseInt(btnTaskId) : (sidebarEl ? parseInt(sidebarEl.getAttribute('data-current-task-id')) : null);
+        if (startBtn && taskId) {
+            if (sidebarTimerBusy) return; sidebarTimerBusy = true;
 			fetch('/time/start', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
@@ -1217,9 +1225,11 @@
 					if (typeof toastr !== 'undefined') toastr.error(data?.message || 'No se pudo iniciar');
 				}
 			})
-			.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al iniciar'); });
+            .catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al iniciar'); })
+            .finally(() => { sidebarTimerBusy = false; });
 		}
 		if (stopBtn && taskId) {
+            if (sidebarTimerBusy) return; sidebarTimerBusy = true;
 			// Need running timer id; fetch running and stop
 			fetch('/time/running')
 				.then(r => r.json())
@@ -1232,12 +1242,17 @@
 				.then(resp => {
 					if (resp && resp.success) {
 						stopBtn.classList.add('d-none');
-						const start = document.querySelector('#task-start-timer');
+                        const start = sidebarEl.querySelector('#task-start-timer');
 						if (start) start.classList.remove('d-none');
 						if (typeof toastr !== 'undefined') toastr.success('Timer detenido');
+						// Reset icon in the card to orange (has history)
+						const currentItem = document.querySelector(`.kanban-item[data-task-id='${taskId}']`);
+						const btnInCard = currentItem ? currentItem.querySelector('.start-timer-btn i') : null;
+						if (btnInCard) { btnInCard.classList.remove('text-success','text-secondary'); btnInCard.classList.add('text-warning'); }
 					}
 				})
-				.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al detener'); });
+                .catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al detener'); })
+                .finally(() => { sidebarTimerBusy = false; });
 		}
 	});
 

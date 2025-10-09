@@ -549,16 +549,16 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(() => {});
 
-        // Fetch running project time and show above
+                // Fetch running time and show task title above
         fetch(timeRunningUrl, { headers: { 'Accept': 'application/json' } })
             .then(r => r.json())
             .then(data => {
                 const row = document.getElementById('project-running-row');
                 const nameEl = document.getElementById('project-running-name');
                 if (data && data.running && data.time) {
-                    const projName = data.time.project ? data.time.project.name : '{{ __('Tiempo en proyecto') }}';
+                    const taskTitle = data.time.task ? data.time.task.title : '{{ __('Tiempo en proyecto') }}';
                     if (row && nameEl) {
-                        nameEl.textContent = projName;
+                        nameEl.textContent = taskTitle;
                         row.classList.remove('d-none');
                     }
                 } else if (row) {

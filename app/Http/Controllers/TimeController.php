@@ -134,16 +134,26 @@ class TimeController extends Controller
 	 */
 	public function start(Request $request)
 	{
-		// If user already has a running timer, stop it automatically
-		$runningTimer = Time::getRunningTimer();
-		if ($runningTimer) {
-			$runningTimer->stop();
-		}
-
-		$validated = $request->validate([
+        $validated = $request->validate([
 			'task_id' => 'required|exists:tasks,id',
 			'description' => 'nullable|string|max:255',
 		]);
+
+        // Idempotency: if the current running timer is for the same task, just return it
+        $runningTimer = Time::getRunningTimer();
+        if ($runningTimer && (int)$runningTimer->task_id === (int)$validated['task_id']) {
+            return response()->json([
+                'success' => true,
+                'message' => __('Timer already running.'),
+                'time' => $runningTimer,
+                'previousStopped' => false,
+            ]);
+        }
+
+        // If another task is running, stop it and start the new one
+        if ($runningTimer) {
+            $runningTimer->stop();
+        }
 
 		$isAttendance = false; // Since task_id is now required, it's never attendance
 
@@ -160,7 +170,7 @@ class TimeController extends Controller
 			'success' => true,
 			'message' => __('Timer started successfully.'),
 			'time' => $time,
-			'previousStopped' => (bool) $runningTimer,
+            'previousStopped' => (bool) $runningTimer,
 		]);
 	}
 

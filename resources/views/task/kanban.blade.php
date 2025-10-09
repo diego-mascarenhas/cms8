@@ -129,6 +129,10 @@
                 <!-- Update item/tasks -->
                 <div class="tab-pane fade show active" id="tab-update" role="tabpanel">
                     <form>
+                        <div class="alert alert-info py-2 px-3 mb-3" id="task-debug-id" style="display:none">
+                            <small class="text-muted">ID:</small>
+                            <span class="fw-medium" id="task-debug-id-value">—</span>
+                        </div>
                         <div class="d-flex gap-2 mb-3">
                             <button type="button" class="btn btn-success" id="task-start-timer">
                                 <i class="ti ti-player-play me-1"></i>{{ __('Start Timer') }}
