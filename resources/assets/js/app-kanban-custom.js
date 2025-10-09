@@ -698,34 +698,54 @@
 					}
 				}
 
-				// Update attachment image
-				if (data.attachment)
-				{
-					// Update data attribute
-					taskElement.setAttribute('data-attachment', data.attachment);
+			// Update attachment image
+			if (data.attachment)
+			{
+				console.log('[Kanban] Updating attachment for task', taskId, 'attachment:', data.attachment);
+				console.log('[Kanban] taskDiv:', taskDiv);
+				console.log('[Kanban] taskElement:', taskElement);
 
-					// Update or create image in the card
-					let imgElement = taskDiv.querySelector('.kanban-image');
-					if (!imgElement)
+				// Update data attribute on the .kanban-item element
+				taskElement.setAttribute('data-attachment', data.attachment);
+
+				// Find the content div inside the kanban-item (where our HTML is)
+				// taskElement is the .kanban-item, its direct child contains our custom HTML
+				const contentDiv = taskElement.firstElementChild;
+				console.log('[Kanban] contentDiv:', contentDiv);
+
+				// Update or create image in the card
+				let imgElement = contentDiv ? contentDiv.querySelector('.kanban-image') : null;
+				console.log('[Kanban] Found existing image:', imgElement);
+
+				if (!imgElement && contentDiv)
+				{
+					// Create image element if it doesn't exist
+					const textSpan = contentDiv.querySelector('.kanban-text');
+					console.log('[Kanban] textSpan:', textSpan);
+
+					if (textSpan)
 					{
-						// Create image element if it doesn't exist
-						const textSpan = taskDiv.querySelector('.kanban-text');
-						if (textSpan)
-						{
-							imgElement = document.createElement('img');
-							imgElement.className = 'img-fluid rounded kanban-image my-2';
-							imgElement.style.maxHeight = '120px';
-							imgElement.style.width = '100%';
-							imgElement.style.objectFit = 'cover';
-							textSpan.parentNode.insertBefore(imgElement, textSpan.nextSibling);
-						}
-					}
-					if (imgElement)
-					{
-						imgElement.src = data.attachment;
-						imgElement.alt = newTitle;
+						imgElement = document.createElement('img');
+						imgElement.className = 'img-fluid rounded kanban-image my-2';
+						imgElement.style.maxHeight = '120px';
+						imgElement.style.width = '100%';
+						imgElement.style.objectFit = 'cover';
+						textSpan.parentNode.insertBefore(imgElement, textSpan.nextSibling);
+						console.log('[Kanban] Created new image element:', imgElement);
 					}
 				}
+
+				if (imgElement)
+				{
+					console.log('[Kanban] Setting image src to:', data.attachment);
+					imgElement.src = data.attachment;
+					imgElement.alt = newTitle;
+				}
+				else
+				{
+					console.error('[Kanban] Could not find or create image element');
+				}
+			}
 
 				offcanvas.hide();
 				if (saveBtn) saveBtn.removeEventListener('click', onSave);
