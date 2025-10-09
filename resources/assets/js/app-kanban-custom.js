@@ -27,11 +27,17 @@
 				html += `<div class="badge rounded-pill bg-label-warning category-badge">${task.category.name}</div>`;
 				html += `</div>`;
 			}
-			html += renderStartTimer();
-			html += `</div>`;
-			html += `<span class="kanban-text">${task.title}</span>`;
+		html += renderStartTimer(task.id);
+	html += `</div>`;
+	html += `<span class="kanban-text">${task.title}</span>`;
 
-			html += `<div class="d-flex justify-content-between align-items-center flex-wrap mt-2 pt-1">`;
+		// Add image if attachment exists
+		if (task.attachment)
+		{
+			html += `<img src="${task.attachment}" alt="${task.title}" class="img-fluid rounded kanban-image my-2" style="max-height: 120px; width: 100%; object-fit: cover;">`;
+		}
+
+		html += `<div class="d-flex justify-content-between align-items-center flex-wrap mt-2 pt-1">`;
 			html += `<div class="d-flex">`;
 			if (task.due_date)
 			{
@@ -73,14 +79,15 @@
                     id: `task-${task.id}`,
                     title: html,
                     // Store task data for later use (jKanban doesn't support custom data attributes directly)
-                    _taskData: {
-                        taskId: task.id,
-                        categoryId: task.category ? task.category.id : '',
-                        dueDate: task.due_date || '',
-                        responsibleId: task.responsible ? task.responsible.id : '',
-                        estimatedHours: task.estimated_hours || '',
-                        description: task.description || ''
-                    }
+                _taskData: {
+                    taskId: task.id,
+                    categoryId: task.category ? task.category.id : '',
+                    dueDate: task.due_date || '',
+                    responsibleId: task.responsible ? task.responsible.id : '',
+                    estimatedHours: task.estimated_hours || '',
+                    description: task.description || '',
+                    attachment: task.attachment || ''
+                }
                 };
 			})
 		};
@@ -260,6 +267,7 @@
 				taskElement.setAttribute('data-responsible-id', taskItem._taskData.responsibleId);
 				taskElement.setAttribute('data-estimated-hours', taskItem._taskData.estimatedHours);
 				taskElement.setAttribute('data-description', taskItem._taskData.description.replace(/"/g, '&quot;'));
+				taskElement.setAttribute('data-attachment', taskItem._taskData.attachment);
 				console.log('[Kanban] Added data attributes to task:', taskItem._taskData.taskId, taskElement);
 			}
 		});
@@ -357,12 +365,65 @@
 		const inputEstimated = sidebarEl.querySelector('#estimated-hours');
 		const inputDescription = sidebarEl.querySelector('#description');
 
-		inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
-		inputDue.value = taskDiv.getAttribute('data-due-date') || '';
-		if (inputEstimated) inputEstimated.value = taskDiv.getAttribute('data-estimated-hours') || '';
-		if (inputDescription) inputDescription.value = taskDiv.getAttribute('data-description') || '';
+	inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
+	inputDue.value = taskDiv.getAttribute('data-due-date') || '';
+	if (inputEstimated) inputEstimated.value = taskDiv.getAttribute('data-estimated-hours') || '';
+	if (inputDescription) inputDescription.value = taskDiv.getAttribute('data-description') || '';
 
-		// Populate select2 with categories if present and pre-select current category
+	// Handle attachment preview
+	const currentAttachment = taskDiv.getAttribute('data-attachment');
+	const attachmentInput = sidebarEl.querySelector('#attachments');
+	const previewContainer = sidebarEl.querySelector('#attachment-preview');
+	const previewImage = sidebarEl.querySelector('#preview-image');
+	const removeAttachmentBtn = sidebarEl.querySelector('#remove-attachment');
+
+	// Show existing attachment preview if exists
+	if (currentAttachment && previewContainer && previewImage)
+	{
+		previewImage.src = currentAttachment;
+		previewContainer.style.display = 'block';
+	}
+	else if (previewContainer)
+	{
+		previewContainer.style.display = 'none';
+	}
+
+	// Handle image preview when file is selected
+	if (attachmentInput && previewContainer && previewImage)
+	{
+		// Remove old event listeners by cloning the node
+		const newAttachmentInput = attachmentInput.cloneNode(true);
+		attachmentInput.parentNode.replaceChild(newAttachmentInput, attachmentInput);
+
+		newAttachmentInput.addEventListener('change', function(e) {
+			const file = e.target.files[0];
+			if (file && file.type.startsWith('image/')) {
+				const reader = new FileReader();
+				reader.onload = function(event) {
+					previewImage.src = event.target.result;
+					previewContainer.style.display = 'block';
+				};
+				reader.readAsDataURL(file);
+			}
+		});
+	}
+
+	// Handle remove attachment button
+	if (removeAttachmentBtn && attachmentInput && previewContainer && previewImage)
+	{
+		// Remove old event listeners by cloning the node
+		const newRemoveBtn = removeAttachmentBtn.cloneNode(true);
+		removeAttachmentBtn.parentNode.replaceChild(newRemoveBtn, removeAttachmentBtn);
+
+		newRemoveBtn.addEventListener('click', function() {
+			const input = sidebarEl.querySelector('#attachments');
+			if (input) input.value = '';
+			previewImage.src = '';
+			previewContainer.style.display = 'none';
+		});
+	}
+
+	// Populate select2 with categories if present and pre-select current category
 		const labelSelect = sidebarEl.querySelector('#label');
 		const currentCategoryId = taskDiv ? taskDiv.getAttribute('data-category-id') : null;
 		if (labelSelect && window.$ && $.fn.select2)
@@ -427,38 +488,7 @@
             }
         }
 
-		// Handle image preview for attachments
-		const attachmentInput = sidebarEl.querySelector('#attachments');
-		const previewContainer = sidebarEl.querySelector('#attachment-preview');
-		const previewImage = sidebarEl.querySelector('#preview-image');
-		const removeAttachmentBtn = sidebarEl.querySelector('#remove-attachment');
-
-		if (attachmentInput && previewContainer && previewImage)
-		{
-			// Show preview when file is selected
-			attachmentInput.addEventListener('change', function(e) {
-				const file = e.target.files[0];
-				if (file && file.type.startsWith('image/')) {
-					const reader = new FileReader();
-					reader.onload = function(event) {
-						previewImage.src = event.target.result;
-						previewContainer.style.display = 'block';
-					};
-					reader.readAsDataURL(file);
-				}
-			});
-
-			// Remove preview and clear input
-			if (removeAttachmentBtn) {
-				removeAttachmentBtn.addEventListener('click', function() {
-					attachmentInput.value = '';
-					previewImage.src = '';
-					previewContainer.style.display = 'none';
-				});
-			}
-		}
-
-		// Submit on Enter: intercept form submit and route to onSave
+	// Submit on Enter: intercept form submit and route to onSave
 		const formEl = sidebarEl.querySelector('#tab-update form');
 		if (formEl && !formEl.dataset.submitBound)
 		{
