@@ -177,11 +177,42 @@
                         return data;
                     })
                     .then((resp) => {
-                        // Add visually to column
-                        const currentItems = [].slice.call(document.querySelectorAll(`.kanban-board[data-id="${columnStatusId}"] .kanban-item`));
+                        // Create the full HTML structure for the new task
+                        let html = `<div class="d-flex justify-content-between flex-wrap align-items-center mb-2 pb-1">`;
+
+                        // Category badge (default to "Sin categorizar")
+                        html += `<div class="item-badges">`;
+                        html += `<div class="badge rounded-pill bg-label-secondary category-badge">Sin categorizar</div>`;
+                        html += `</div>`;
+
+                        // Timer button
+                        html += renderStartTimer(resp.task?.id || 'new');
+                        html += `</div>`;
+
+                        // Task title
+                        html += `<span class="kanban-text">${title}</span>`;
+
+                        // Bottom section with due date and responsible
+                        html += `<div class="d-flex justify-content-between align-items-center flex-wrap mt-2 pt-1">`;
+                        html += `<div class="d-flex">`;
+                        html += `<div class="d-flex align-items-center me-3">`;
+                        html += `<i class="ti ti-clock me-1"></i>`;
+                        html += `<small class="text-muted">Sin fecha</small>`;
+                        html += `</div>`;
+                        html += `</div>`;
+                        html += `<div class="d-flex align-items-center">`;
+                        html += `<div class="avatar avatar-sm me-2">`;
+                        html += `<span class="avatar-initial rounded-circle bg-label-primary">${users.find(u => u.id === currentUserId)?.name?.charAt(0) || 'U'}</span>`;
+                        html += `</div>`;
+                        html += `</div>`;
+                        html += `</div>`;
+
+                        // Add the new task with full HTML structure
                         kanban.addElement(columnStatusId, {
-                            title: `<span class='kanban-text'>${title}</span>`
+                            title: html,
+                            id: resp.task?.id || `new-${Date.now()}`
                         });
+
                         // close form
                         form.remove();
                     })
