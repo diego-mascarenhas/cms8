@@ -105,7 +105,6 @@ class Task extends Model implements HasMedia
 	 */
 	public function registerMediaCollections(): void
 	{
-		$this->addMediaCollection('attachments')
-			->singleFile(); // Only one attachment per task
+		$this->addMediaCollection('attachments');
 	}
 }

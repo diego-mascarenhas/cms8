@@ -106,11 +106,11 @@
         dragBoards: false,
         // Show an add button per column (Vuexy/jKanban style)
         addItemButton: true,
-        buttonContent: '+ Añadir',
+        buttonContent: '+ Agregar Nueva Tarea',
         itemAddOptions: {
             enabled: true,
-            content: '+ Añadir',
-            class: 'kanban-title-button btn btn-sm btn-label-primary',
+            content: '+ Agregar Nueva Tarea',
+            class: 'kanban-title-button btn',
             footer: false
         },
         // When clicking the add button on a column, show inline form like Vuexy demo
@@ -489,29 +489,40 @@
 			const boardEl = taskElement.closest('.kanban-board');
 			const statusId = boardEl ? parseInt(boardEl.getAttribute('data-id')) : null;
 
-			console.log('[Kanban] Saving task...', { taskId, newTitle, newDue, newDescription, newEstimatedHours, categoryId, responsibleId, statusId, boardId, projectId });
+			// Handle image attachment using FormData
+			const attachmentInput = sidebarEl.querySelector('#attachments');
+			const hasNewFile = attachmentInput && attachmentInput.files && attachmentInput.files[0];
+
+			console.log('[Kanban] Saving task...', { taskId, newTitle, newDue, newDescription, newEstimatedHours, categoryId, responsibleId, statusId, boardId, projectId, hasNewFile });
+
+			// Use FormData to support file uploads
+			const formData = new FormData();
+			formData.append('id', parseInt(taskId));
+			formData.append('title', newTitle || 'Sin título');
+			formData.append('description', newDescription);
+			formData.append('responsible_id', responsibleId);
+			formData.append('estimated_hours', newEstimatedHours || '');
+			formData.append('start_date', newDue);
+			formData.append('due_date', newDue);
+			formData.append('status_id', statusId);
+			formData.append('category_id', categoryId || '');
+			formData.append('board_id', boardId);
+			formData.append('view', 'kanban');
+			formData.append('project_id', projectId || '');
+
+			// Add file if present
+			if (hasNewFile)
+			{
+				formData.append('attachment', attachmentInput.files[0]);
+			}
 
 			fetch(storeUrl, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
 					'X-CSRF-TOKEN': csrfToken,
 					'Accept': 'application/json'
 				},
-				body: JSON.stringify({
-					id: parseInt(taskId),
-					title: newTitle || 'Sin título',
-					description: newDescription,
-					responsible_id: responsibleId,
-					estimated_hours: newEstimatedHours,
-					start_date: newDue,
-					due_date: newDue,
-					status_id: statusId,
-					category_id: categoryId,
-					board_id: boardId,
-					view: 'kanban',
-					project_id: projectId || null
-				})
+				body: formData
 			})
 				.then(async r => {
 					const text = await r.text();
@@ -654,13 +665,42 @@
 								}
 								new bootstrap.Tooltip(avatar);
 							}
+					}
+				}
+
+				// Update attachment image
+				if (data.attachment)
+				{
+					// Update data attribute
+					taskElement.setAttribute('data-attachment', data.attachment);
+
+					// Update or create image in the card
+					let imgElement = taskDiv.querySelector('.kanban-image');
+					if (!imgElement)
+					{
+						// Create image element if it doesn't exist
+						const textSpan = taskDiv.querySelector('.kanban-text');
+						if (textSpan)
+						{
+							imgElement = document.createElement('img');
+							imgElement.className = 'img-fluid rounded kanban-image my-2';
+							imgElement.style.maxHeight = '120px';
+							imgElement.style.width = '100%';
+							imgElement.style.objectFit = 'cover';
+							textSpan.parentNode.insertBefore(imgElement, textSpan.nextSibling);
 						}
 					}
+					if (imgElement)
+					{
+						imgElement.src = data.attachment;
+						imgElement.alt = newTitle;
+					}
+				}
 
-					offcanvas.hide();
-					if (saveBtn) saveBtn.removeEventListener('click', onSave);
-				})
-				.catch((err) => { console.error(err); alert('No se pudo guardar'); });
+				offcanvas.hide();
+				if (saveBtn) saveBtn.removeEventListener('click', onSave);
+			})
+			.catch((err) => { console.error(err); alert('No se pudo guardar'); });
 		};
 			if (saveBtn) {
 				// Prevent bootstrap auto-dismiss before saving

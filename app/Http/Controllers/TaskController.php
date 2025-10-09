@@ -179,10 +179,36 @@ class TaskController extends Controller
         );
 
         // Handle file upload using Spatie Media Library
+        \Log::info('TaskController Store - Request has file?', [
+            'hasFile' => $request->hasFile('attachment'),
+            'allFiles' => $request->allFiles(),
+            'all' => $request->all()
+        ]);
+
         if ($request->hasFile('attachment'))
         {
-            // singleFile() will automatically replace the existing file
-            $task->addMediaFromRequest('attachment')->toMediaCollection('attachments');
+            \Log::info('Processing attachment upload', [
+                'file' => $request->file('attachment')->getClientOriginalName()
+            ]);
+
+            // Delete old attachments first (safely)
+            try {
+                $existingMedia = $task->getMedia('attachments');
+                foreach ($existingMedia as $media) {
+                    $media->delete();
+                }
+            } catch (\Exception $e) {
+                // Ignore errors when deleting old files
+                \Log::warning('Could not delete old attachment: ' . $e->getMessage());
+            }
+
+            // Add new attachment
+            try {
+                $task->addMediaFromRequest('attachment')->toMediaCollection('attachments');
+                \Log::info('Attachment uploaded successfully');
+            } catch (\Exception $e) {
+                \Log::error('Error uploading attachment: ' . $e->getMessage());
+            }
         }
 
         if ($request->expectsJson())
@@ -198,6 +224,11 @@ class TaskController extends Controller
                     $attachmentUrl = $media->getUrl();
                 }
             }
+
+            \Log::info('Returning attachment URL', [
+                'attachmentUrl' => $attachmentUrl,
+                'task_id' => $task->id
+            ]);
 
             return response()->json([
                 'success' => true,
