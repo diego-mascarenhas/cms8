@@ -16,6 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('responsible_id');
             $table->string('title');
             $table->text('description')->nullable();
+            $table->string('attachment')->nullable();
             $table->decimal('estimated_hours', 8, 2)->nullable();
             $table->date('start_date');
             $table->date('due_date');
