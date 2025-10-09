@@ -4,6 +4,63 @@
 
 @section('page-style')
 <meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.css">
+<style>
+    .shortcut-item {
+        cursor: move;
+        transition: all 0.3s ease;
+    }
+    .shortcut-item:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .shortcut-item.sortable-ghost {
+        opacity: 0.4;
+    }
+    .shortcut-item.sortable-chosen {
+        transform: scale(1.02);
+    }
+    .icon-picker {
+        position: relative;
+    }
+    .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        gap: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        background: white;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        display: none;
+    }
+    .icon-option {
+        padding: 8px;
+        text-align: center;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    .icon-option:hover {
+        background-color: #f0f0f0;
+    }
+    .icon-option.selected {
+        background-color: #007bff;
+        color: white;
+    }
+    .drag-handle {
+        cursor: move;
+        color: #6c757d;
+    }
+    .drag-handle:hover {
+        color: #495057;
+    }
+</style>
 @endsection
 
 @section('content')
@@ -39,16 +96,35 @@
                     @foreach($shortcuts as $index => $shortcut)
                         <div class="shortcut-item card mb-3" data-index="{{ $index }}">
                             <div class="card-body">
+                                <div class="row align-items-center mb-3">
+                                    <div class="col-auto">
+                                        <i class="ti ti-grip-vertical drag-handle" style="font-size: 1.2rem;"></i>
+                                    </div>
+                                    <div class="col">
+                                        <h6 class="mb-0">Shortcut #{{ $index + 1 }}</h6>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-shortcut">
+                                            <i class="ti ti-trash me-1"></i>Remove
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div class="row">
                                     <div class="col-md-3">
                                         <label class="form-label">Icon <span class="text-danger">*</span></label>
-                                        <input type="text"
-                                               name="shortcuts[{{ $index }}][icon]"
-                                               class="form-control"
-                                               placeholder="ti ti-calendar"
-                                               value="{{ old('shortcuts.'.$index.'.icon', $shortcut['icon'] ?? '') }}"
-                                               required>
-                                        <small class="text-muted">Use Tabler Icons format: ti ti-icon-name</small>
+                                        <div class="icon-picker">
+                                            <input type="text"
+                                                   name="shortcuts[{{ $index }}][icon]"
+                                                   class="form-control icon-input"
+                                                   placeholder="ti ti-calendar"
+                                                   value="{{ old('shortcuts.'.$index.'.icon', $shortcut['icon'] ?? '') }}"
+                                                   required>
+                                            <div class="icon-grid" id="icon-grid-{{ $index }}">
+                                                <!-- Icons will be populated by JavaScript -->
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Click to select from popular icons</small>
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label">Title <span class="text-danger">*</span></label>
@@ -77,11 +153,24 @@
                                                value="{{ old('shortcuts.'.$index.'.subtitle', $shortcut['subtitle'] ?? '') }}">
                                     </div>
                                 </div>
-                                <div class="row mt-2">
-                                    <div class="col-12">
-                                        <button type="button" class="btn btn-sm btn-outline-danger remove-shortcut">
-                                            <i class="ti ti-trash me-1"></i>Remove
-                                        </button>
+
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   name="shortcuts[{{ $index }}][open_in_new_tab]"
+                                                   value="1"
+                                                   id="new_tab_{{ $index }}"
+                                                   {{ old('shortcuts.'.$index.'.open_in_new_tab', $shortcut['open_in_new_tab'] ?? false) ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="new_tab_{{ $index }}">
+                                                Open in new tab/window
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="hidden" name="shortcuts[{{ $index }}][order]" value="{{ $index }}">
+                                        <small class="text-muted">Order: {{ $index + 1 }}</small>
                                     </div>
                                 </div>
                             </div>
@@ -109,29 +198,52 @@
     </div>
 </div>
 
-<!-- Preview Card -->
-<div class="card mt-4">
-    <div class="card-header">
-        <h5 class="card-title mb-0">Preview</h5>
-        <p class="text-muted mb-0">This is how your shortcuts will appear in the navbar</p>
-    </div>
-    <div class="card-body">
-        <div class="dropdown-shortcuts-list">
-            <div class="row row-bordered overflow-visible g-0" id="preview-container">
-                <!-- Preview will be generated here -->
-            </div>
-        </div>
-    </div>
-</div>
+
 @endsection
 
 @section('page-script')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let shortcutIndex = {{ count($shortcuts) }};
     const container = document.getElementById('shortcuts-container');
     const addButton = document.getElementById('add-shortcut');
-    const previewContainer = document.getElementById('preview-container');
+
+    // Popular Tabler Icons for the picker
+    const popularIcons = [
+        'ti ti-calendar', 'ti ti-users', 'ti ti-file-invoice', 'ti ti-settings',
+        'ti ti-dashboard', 'ti ti-chart-bar', 'ti ti-mail', 'ti ti-phone',
+        'ti ti-bell', 'ti ti-star', 'ti ti-heart', 'ti ti-bookmark',
+        'ti ti-folder', 'ti ti-file', 'ti ti-download', 'ti ti-upload',
+        'ti ti-edit', 'ti ti-trash', 'ti ti-plus', 'ti ti-minus',
+        'ti ti-check', 'ti ti-x', 'ti ti-arrow-right', 'ti ti-arrow-left',
+        'ti ti-search', 'ti ti-filter', 'ti ti-refresh', 'ti ti-save',
+        'ti ti-share', 'ti ti-link', 'ti ti-external-link', 'ti ti-copy',
+        'ti ti-printer', 'ti ti-camera', 'ti ti-video', 'ti ti-music',
+        'ti ti-image', 'ti ti-palette', 'ti ti-brush', 'ti ti-paint',
+        'ti ti-code', 'ti ti-terminal', 'ti ti-database', 'ti ti-server',
+        'ti ti-cloud', 'ti ti-wifi', 'ti ti-bluetooth', 'ti ti-battery',
+        'ti ti-lock', 'ti ti-key', 'ti ti-shield', 'ti ti-eye',
+        'ti ti-eye-off', 'ti ti-user', 'ti ti-user-plus', 'ti ti-user-minus',
+        'ti ti-home', 'ti ti-building', 'ti ti-map-pin', 'ti ti-navigation',
+        'ti ti-car', 'ti ti-plane', 'ti ti-train', 'ti ti-bike',
+        'ti ti-coffee', 'ti ti-utensils', 'ti ti-shopping-cart', 'ti ti-credit-card',
+        'ti ti-wallet', 'ti ti-piggy-bank', 'ti ti-coins', 'ti ti-receipt',
+        'ti ti-gift', 'ti ti-party-horn', 'ti ti-cake', 'ti ti-balloon',
+        'ti ti-sun', 'ti ti-moon', 'ti ti-weather-sunny', 'ti ti-weather-rainy',
+        'ti ti-weather-snow', 'ti ti-thermometer', 'ti ti-droplet', 'ti ti-flame'
+    ];
+
+    // Initialize Sortable for drag and drop
+    let sortable = Sortable.create(container, {
+        handle: '.drag-handle',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: function(evt) {
+            updateOrder();
+        }
+    });
 
     // Add shortcut functionality
     addButton.addEventListener('click', function() {
@@ -143,7 +255,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const shortcutHtml = createShortcutHtml(shortcutIndex);
         container.insertAdjacentHTML('beforeend', shortcutHtml);
         shortcutIndex++;
-        updatePreview();
+        updateOrder();
+        initializeIconPickers();
     });
 
     // Remove shortcut functionality
@@ -151,30 +264,43 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.classList.contains('remove-shortcut') || e.target.closest('.remove-shortcut')) {
             const shortcutItem = e.target.closest('.shortcut-item');
             shortcutItem.remove();
-            updatePreview();
+            updateOrder();
         }
     });
 
-    // Update preview on input change
-    container.addEventListener('input', function(e) {
-        if (e.target.matches('input[name*="[title]"], input[name*="[subtitle]"], input[name*="[url]"], input[name*="[icon]"]')) {
-            updatePreview();
-        }
-    });
 
     function createShortcutHtml(index) {
         return `
             <div class="shortcut-item card mb-3" data-index="${index}">
                 <div class="card-body">
+                    <div class="row align-items-center mb-3">
+                        <div class="col-auto">
+                            <i class="ti ti-grip-vertical drag-handle" style="font-size: 1.2rem;"></i>
+                        </div>
+                        <div class="col">
+                            <h6 class="mb-0">Shortcut #${index + 1}</h6>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-sm btn-outline-danger remove-shortcut">
+                                <i class="ti ti-trash me-1"></i>Remove
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-3">
                             <label class="form-label">Icon <span class="text-danger">*</span></label>
-                            <input type="text"
-                                   name="shortcuts[${index}][icon]"
-                                   class="form-control"
-                                   placeholder="ti ti-calendar"
-                                   required>
-                            <small class="text-muted">Use Tabler Icons format: ti ti-icon-name</small>
+                            <div class="icon-picker">
+                                <input type="text"
+                                       name="shortcuts[${index}][icon]"
+                                       class="form-control icon-input"
+                                       placeholder="ti ti-calendar"
+                                       required>
+                                <div class="icon-grid" id="icon-grid-${index}">
+                                    <!-- Icons will be populated by JavaScript -->
+                                </div>
+                            </div>
+                            <small class="text-muted">Click to select from popular icons</small>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Title <span class="text-danger">*</span></label>
@@ -200,11 +326,23 @@ document.addEventListener('DOMContentLoaded', function() {
                                    placeholder="Appointments">
                         </div>
                     </div>
-                    <div class="row mt-2">
-                        <div class="col-12">
-                            <button type="button" class="btn btn-sm btn-outline-danger remove-shortcut">
-                                <i class="ti ti-trash me-1"></i>Remove
-                            </button>
+
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       name="shortcuts[${index}][open_in_new_tab]"
+                                       value="1"
+                                       id="new_tab_${index}">
+                                <label class="form-check-label" for="new_tab_${index}">
+                                    Open in new tab/window
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="hidden" name="shortcuts[${index}][order]" value="${index}">
+                            <small class="text-muted">Order: ${index + 1}</small>
                         </div>
                     </div>
                 </div>
@@ -212,50 +350,87 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
-    function updatePreview() {
-        const shortcuts = [];
+    function updateOrder() {
         const shortcutItems = container.querySelectorAll('.shortcut-item');
+        shortcutItems.forEach((item, index) => {
+            // Update data-index
+            item.setAttribute('data-index', index);
 
-        shortcutItems.forEach(item => {
-            const title = item.querySelector('input[name*="[title]"]')?.value || '';
-            const subtitle = item.querySelector('input[name*="[subtitle]"]')?.value || '';
-            const url = item.querySelector('input[name*="[url]"]')?.value || '';
-            const icon = item.querySelector('input[name*="[icon]"]')?.value || '';
+            // Update order input
+            const orderInput = item.querySelector('input[name*="[order]"]');
+            if (orderInput) {
+                orderInput.value = index;
+            }
 
-            if (title && url && icon) {
-                shortcuts.push({ title, subtitle, url, icon });
+            // Update shortcut number
+            const shortcutNumber = item.querySelector('h6');
+            if (shortcutNumber) {
+                shortcutNumber.textContent = `Shortcut #${index + 1}`;
+            }
+
+            // Update order display
+            const orderDisplay = item.querySelector('.text-muted');
+            if (orderDisplay && orderDisplay.textContent.includes('Order:')) {
+                orderDisplay.textContent = `Order: ${index + 1}`;
             }
         });
-
-        let previewHtml = '';
-        shortcuts.forEach((shortcut, index) => {
-            const isEven = index % 2 === 0;
-            const isLast = index === shortcuts.length - 1;
-
-            if (isEven) {
-                previewHtml += '<div class="row row-bordered overflow-visible g-0">';
-            }
-
-            previewHtml += `
-                <div class="dropdown-shortcuts-item col">
-                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                        <i class="${shortcut.icon} fs-4"></i>
-                    </span>
-                    <a href="${shortcut.url}" class="stretched-link">${shortcut.title}</a>
-                    <small class="text-muted mb-0">${shortcut.subtitle || ''}</small>
-                </div>
-            `;
-
-            if (!isEven || isLast) {
-                previewHtml += '</div>';
-            }
-        });
-
-        previewContainer.innerHTML = previewHtml || '<div class="text-center text-muted py-4">No shortcuts to preview</div>';
     }
 
-    // Initial preview update
-    updatePreview();
+
+    function initializeIconPickers() {
+        // Initialize icon pickers for all icon inputs
+        document.querySelectorAll('.icon-input').forEach(input => {
+            if (!input.dataset.initialized) {
+                input.dataset.initialized = 'true';
+
+                input.addEventListener('click', function() {
+                    const gridId = this.parentNode.querySelector('.icon-grid').id;
+                    const grid = document.getElementById(gridId);
+
+                    if (grid.style.display === 'none' || grid.style.display === '') {
+                        // Show grid and populate with icons
+                        grid.style.display = 'block';
+                        populateIconGrid(grid, this);
+                    } else {
+                        grid.style.display = 'none';
+                    }
+                });
+
+                // Close icon grid when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.icon-picker')) {
+                        document.querySelectorAll('.icon-grid').forEach(grid => {
+                            grid.style.display = 'none';
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    function populateIconGrid(grid, input) {
+        if (grid.dataset.populated) return;
+
+        grid.innerHTML = '';
+        popularIcons.forEach(iconClass => {
+            const iconOption = document.createElement('div');
+            iconOption.className = 'icon-option';
+            iconOption.innerHTML = `<i class="${iconClass}"></i>`;
+            iconOption.title = iconClass;
+
+            iconOption.addEventListener('click', function() {
+                input.value = iconClass;
+                grid.style.display = 'none';
+            });
+
+            grid.appendChild(iconOption);
+        });
+
+        grid.dataset.populated = 'true';
+    }
+
+    // Initial setup
+    initializeIconPickers();
 });
 </script>
 @endsection

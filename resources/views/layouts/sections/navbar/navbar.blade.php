@@ -197,7 +197,11 @@
                                     <span class="dropdown-shortcuts-icon rounded-circle mb-2">
                                         <i class="{{ $shortcut['icon'] ?? 'ti ti-link' }} fs-4"></i>
                                     </span>
-                                    <a href="{{ $shortcut['url'] ?? '#' }}" class="stretched-link">{{ $shortcut['title'] ?? 'Shortcut' }}</a>
+                                    <a href="{{ $shortcut['url'] ?? '#' }}"
+                                       class="stretched-link"
+                                       @if(isset($shortcut['open_in_new_tab']) && $shortcut['open_in_new_tab']) target="_blank" @endif>
+                                        {{ $shortcut['title'] ?? 'Shortcut' }}
+                                    </a>
                                     <small class="text-muted mb-0">{{ $shortcut['subtitle'] ?? '' }}</small>
                                 </div>
 

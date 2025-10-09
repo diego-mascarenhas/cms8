@@ -87,6 +87,9 @@ class TeamRevisionAlphaSeeder extends Seeder
         // 8. Assign core modules to team
         $this->assignCoreModules($team);
 
+        // 9. Configure team shortcuts
+        $this->configureTeamShortcuts($team);
+
         $this->getCommand()->info('✅ REVISION ALPHA setup completed successfully');
     }
 
@@ -717,5 +720,55 @@ class TeamRevisionAlphaSeeder extends Seeder
         }
 
         $this->getCommand()->info('✅ Message types ensured');
+    }
+
+    /**
+     * Configure team shortcuts for Revision Alpha
+     */
+    private function configureTeamShortcuts(Team $team): void
+    {
+        $this->getCommand()->info('🔗 Configuring team shortcuts...');
+
+        $shortcuts = [
+            [
+                'title' => 'CMS',
+                'subtitle' => 'CMS7',
+                'url' => 'https://cms.revisionalpha.com',
+                'icon' => 'ti ti-link',
+                'open_in_new_tab' => true,
+            ],
+            [
+                'title' => 'Odín',
+                'subtitle' => 'Server',
+                'url' => 'https://odin.revisionalpha.cloud:2087',
+                'icon' => 'ti ti-cloud',
+                'open_in_new_tab' => true,
+            ],
+            [
+                'title' => 'Huginn',
+                'subtitle' => 'Server',
+                'url' => 'https://huginn.revisionalpha.cloud:2087',
+                'icon' => 'ti ti-cloud',
+                'open_in_new_tab' => true,
+            ],
+            [
+                'title' => 'Muninn',
+                'subtitle' => 'Server',
+                'url' => 'https://muninn.revisionalpha.cloud:2087',
+                'icon' => 'ti ti-cloud',
+                'open_in_new_tab' => true,
+            ],
+        ];
+
+        $team->setSetting('team_shortcuts', $shortcuts, [
+            'type' => 'json',
+            'group' => 'shortcuts',
+        ]);
+
+        $this->getCommand()->info('✅ Team shortcuts configured successfully!');
+        $this->getCommand()->info('   - CMS: CMS7 management system');
+        $this->getCommand()->info('   - Odín: Server management');
+        $this->getCommand()->info('   - Huginn: Server management');
+        $this->getCommand()->info('   - Muninn: Server management');
     }
 }

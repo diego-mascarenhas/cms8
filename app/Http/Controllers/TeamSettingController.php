@@ -1194,6 +1194,8 @@ class TeamSettingController extends Controller
             'shortcuts.*.subtitle' => 'nullable|string|max:100',
             'shortcuts.*.url' => 'required|string|max:255',
             'shortcuts.*.icon' => 'required|string|max:50',
+            'shortcuts.*.open_in_new_tab' => 'boolean',
+            'shortcuts.*.order' => 'integer|min:0',
         ]);
 
         $shortcuts = $request->input('shortcuts', []);
@@ -1202,6 +1204,17 @@ class TeamSettingController extends Controller
         $shortcuts = array_filter($shortcuts, function ($shortcut) {
             return !empty($shortcut['title']) && !empty($shortcut['url']) && !empty($shortcut['icon']);
         });
+
+        // Sort shortcuts by order
+        usort($shortcuts, function ($a, $b) {
+            return ($a['order'] ?? 0) - ($b['order'] ?? 0);
+        });
+
+        // Remove order field from final data
+        $shortcuts = array_map(function ($shortcut) {
+            unset($shortcut['order']);
+            return $shortcut;
+        }, $shortcuts);
 
         $team->setSetting('team_shortcuts', $shortcuts, [
             'type' => 'json',
