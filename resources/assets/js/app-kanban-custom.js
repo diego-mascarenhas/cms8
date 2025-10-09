@@ -421,7 +421,7 @@
 	}
 
 	// Handle remove attachment button
-	if (removeAttachmentBtn && attachmentInput && previewContainer && previewImage)
+	if (removeAttachmentBtn)
 	{
 		// Remove old event listeners by cloning the node
 		const newRemoveBtn = removeAttachmentBtn.cloneNode(true);
@@ -429,9 +429,15 @@
 
 		newRemoveBtn.addEventListener('click', function() {
 			const input = sidebarEl.querySelector('#attachments');
+			const preview = sidebarEl.querySelector('#attachment-preview');
+			const img = sidebarEl.querySelector('#preview-image');
+
 			if (input) input.value = '';
-			previewImage.src = '';
-			previewContainer.style.display = 'none';
+			if (img) img.src = '';
+			if (preview) preview.style.display = 'none';
+
+			// Clear the attachment from the task data
+			if (taskDiv) taskDiv.setAttribute('data-attachment', '');
 		});
 	}
 
@@ -770,11 +776,71 @@
 			})
 			.catch((err) => { console.error(err); alert('No se pudo guardar'); });
 		};
-			if (saveBtn) {
-				// Prevent bootstrap auto-dismiss before saving
-				saveBtn.removeAttribute('data-bs-dismiss');
-		saveBtn.addEventListener('click', onSave, { once: true });
-			}
+
+		if (saveBtn) {
+			// Prevent bootstrap auto-dismiss before saving
+			saveBtn.removeAttribute('data-bs-dismiss');
+			saveBtn.addEventListener('click', onSave, { once: true });
+		}
+
+		// Handle delete button
+		const deleteBtn = sidebarEl.querySelector('#offcanvas-delete');
+		if (deleteBtn) {
+			deleteBtn.removeAttribute('data-bs-dismiss');
+			deleteBtn.addEventListener('click', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+
+				if (confirm('¿Estás seguro de que deseas eliminar esta tarea?')) {
+					fetch(`/task/${taskId}`, {
+						method: 'DELETE',
+						headers: {
+							'X-CSRF-TOKEN': csrfToken,
+							'Accept': 'application/json'
+						}
+					})
+					.then(response => response.json())
+					.then(data => {
+						if (data.success) {
+							// Remove element from kanban
+							const elementId = taskElement.getAttribute('data-eid');
+							if (elementId && kanban) {
+								kanban.removeElement(elementId);
+							}
+							offcanvas.hide();
+							console.log('[Kanban] Task deleted successfully');
+						} else {
+							alert('Error al eliminar la tarea');
+						}
+					})
+					.catch(error => {
+						console.error('Error deleting task:', error);
+						alert('Error al eliminar la tarea');
+					});
+				}
+			}, { once: true });
+		}
+
+		// Reset activity tab to show loading state (fix for problem 3)
+		const activityTab = document.querySelector('[data-bs-target="#tab-activity"]');
+		const activityContainer = document.querySelector('#activity-log-container');
+		if (activityContainer) {
+			activityContainer.innerHTML = `
+				<div class="text-center py-4">
+					<div class="spinner-border spinner-border-sm text-primary" role="status">
+						<span class="visually-hidden">Cargando...</span>
+					</div>
+				</div>
+			`;
+		}
+
+		// Switch to Edit tab when opening offcanvas
+		const editTab = document.querySelector('[data-bs-target="#tab-update"]');
+		if (editTab) {
+			const bsTab = new bootstrap.Tab(editTab);
+			bsTab.show();
+		}
+
 		offcanvas.show();
 	}
 

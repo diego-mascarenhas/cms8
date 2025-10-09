@@ -174,7 +174,7 @@
                         </div>
                         <div class="d-flex flex-wrap">
                             <button type="button" id="offcanvas-save" class="btn btn-primary me-3">{{ __('Guardar') }}</button>
-                            <button type="button" class="btn btn-label-danger" data-bs-dismiss="offcanvas">{{ __('Eliminar') }}</button>
+                            <button type="button" id="offcanvas-delete" class="btn btn-label-danger">{{ __('Eliminar') }}</button>
                         </div>
                     </form>
                 </div>
