@@ -181,13 +181,24 @@ class TaskController extends Controller
         // Handle file upload using Spatie Media Library
         if ($request->hasFile('attachment'))
         {
-            $task->clearMediaCollection('attachments');
+            // singleFile() will automatically replace the existing file
             $task->addMediaFromRequest('attachment')->toMediaCollection('attachments');
         }
 
         if ($request->expectsJson())
         {
+            // Refresh task to get latest media
+            $task->refresh();
             $attachmentUrl = $task->getFirstMediaUrl('attachments');
+
+            // If no URL, try to get the full media object
+            if (empty($attachmentUrl)) {
+                $media = $task->getFirstMedia('attachments');
+                if ($media) {
+                    $attachmentUrl = $media->getUrl();
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'id' => $task->id,
