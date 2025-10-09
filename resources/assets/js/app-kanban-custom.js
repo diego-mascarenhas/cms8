@@ -179,13 +179,12 @@
             });
         },
 		dropEl: function (el, target, source, sibling) {
-			// Get task ID from element
-			const taskElement = el.querySelector('.kanban-task');
-			const taskId = taskElement ? taskElement.getAttribute('data-task-id') : null;
+			// Get task ID from element - el is the .kanban-item itself
+			const taskId = el.getAttribute('data-task-id');
 
 			if (!taskId)
 			{
-				console.error('Task ID not found');
+				console.error('Task ID not found in element:', el);
 				return;
 			}
 
@@ -219,9 +218,9 @@
 					// After status update, send full order list for the target column
 					const orderPayload = Array.from(target.children)
 						.map((node, index) => {
-							const inner = node.querySelector('.kanban-task');
-							const id = inner ? parseInt(inner.getAttribute('data-task-id')) : null;
-							return id ? { id, order: index } : null;
+							// node is the .kanban-item itself
+							const id = node.getAttribute('data-task-id');
+							return id ? { id: parseInt(id), order: index } : null;
 						})
 						.filter(Boolean);
 
@@ -279,17 +278,17 @@
 			e.preventDefault();
 			e.stopPropagation();
 
-			const taskElement = e.target.closest('.kanban-item');
-			if (!taskElement) return;
+		const taskElement = e.target.closest('.kanban-item');
+		if (!taskElement) return;
 
-			const taskDiv = taskElement.querySelector('.kanban-task');
-			const taskId = taskDiv ? taskDiv.getAttribute('data-task-id') : null;
+		// taskElement is the .kanban-item itself
+		const taskId = taskElement.getAttribute('data-task-id');
 
-			if (!taskId)
-			{
-				console.error('Task ID not found');
-				return;
-			}
+		if (!taskId)
+		{
+			console.error('Task ID not found in element:', taskElement);
+			return;
+		}
 
 			if (confirm('¿Estás seguro de que deseas eliminar esta tarea?'))
 			{
