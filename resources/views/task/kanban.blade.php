@@ -62,14 +62,14 @@
         <div class="d-flex flex-column justify-content-center">
             <h4 class="mb-1 mt-3">
                 @if($project)
-                    Tareas/ {{ $board->name }}
+                    Tareas/ {{ str_replace('Project: ', '', $board->name) }}
                 @else
                     Tareas Kanban
                 @endif
             </h4>
             <p class="text-muted">
                 @if($project)
-                    {{ $project->name }}
+                    {{ $project->enterprise ? $project->enterprise->name : $project->name }}
                 @else
                     Gestiona las tareas de forma visual
                 @endif
