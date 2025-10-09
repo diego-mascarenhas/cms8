@@ -21,13 +21,22 @@
                 // jKanban adds the .kanban-item wrapper automatically, so we only return the inner content
                 // We store task data in the data attributes that will be added to the .kanban-item by jKanban
                 let html = `<div class="d-flex justify-content-between flex-wrap align-items-center mb-2 pb-1">`;
-			if (task.category)
-			{
-				html += `<div class="item-badges">`;
-				html += `<div class="badge rounded-pill bg-label-warning category-badge">${task.category.name}</div>`;
-				html += `</div>`;
-			}
+
+		// Category badge (or "Sin categorizar" if no category)
+		html += `<div class="item-badges">`;
+		if (task.category)
+		{
+			html += `<div class="badge rounded-pill bg-label-warning category-badge">${task.category.name}</div>`;
+		}
+		else
+		{
+			html += `<div class="badge rounded-pill bg-label-secondary category-badge">Sin categorizar</div>`;
+		}
+		html += `</div>`;
+
+		// Timer button always on the right
 		html += renderStartTimer(task.id);
+
 	html += `</div>`;
 	html += `<span class="kanban-text">${task.title}</span>`;
 
@@ -575,36 +584,42 @@
 					if (categoryId) taskDiv.setAttribute('data-category-id', categoryId);
 					if (responsibleId) taskDiv.setAttribute('data-responsible-id', responsibleId);
 
-				// Update category badge if changed
-				if (categoryId)
-				{
-					let itemBadges = taskDiv.querySelector('.item-badges');
-					const categoryBadge = itemBadges ? itemBadges.querySelector('.category-badge') : null;
-					const selectedOption = categorySelect ? categorySelect.options[categorySelect.selectedIndex] : null;
+			// Update category badge (always exists now, show "Sin categorizar" if no category)
+			let itemBadges = taskDiv.querySelector('.item-badges');
+			const categoryBadge = itemBadges ? itemBadges.querySelector('.category-badge') : null;
+			const selectedOption = categorySelect ? categorySelect.options[categorySelect.selectedIndex] : null;
 
-					if (categoryBadge && selectedOption && selectedOption.text)
-					{
-						categoryBadge.textContent = selectedOption.text;
-					}
-					else if (!categoryBadge && selectedOption && selectedOption.text)
-					{
-						// Add category badge if it didn't exist
-						const topRow = taskDiv.querySelector('.d-flex.justify-content-between.flex-wrap.align-items-center.mb-2.pb-1');
-						if (topRow)
-						{
-							if (!itemBadges)
-							{
-								itemBadges = document.createElement('div');
-								itemBadges.className = 'item-badges';
-								topRow.insertBefore(itemBadges, topRow.firstChild);
-							}
-							const newCategoryBadge = document.createElement('div');
-							newCategoryBadge.className = 'badge rounded-pill bg-label-warning category-badge';
-							newCategoryBadge.textContent = selectedOption.text;
-							itemBadges.appendChild(newCategoryBadge);
-						}
-					}
+			if (categoryBadge)
+			{
+				if (categoryId && selectedOption && selectedOption.text)
+				{
+					// Update to selected category
+					categoryBadge.textContent = selectedOption.text;
+					categoryBadge.className = 'badge rounded-pill bg-label-warning category-badge';
 				}
+				else
+				{
+					// No category selected, show "Sin categorizar"
+					categoryBadge.textContent = 'Sin categorizar';
+					categoryBadge.className = 'badge rounded-pill bg-label-secondary category-badge';
+				}
+			}
+			else if (itemBadges)
+			{
+				// Create category badge if it doesn't exist
+				const newCategoryBadge = document.createElement('div');
+				if (categoryId && selectedOption && selectedOption.text)
+				{
+					newCategoryBadge.className = 'badge rounded-pill bg-label-warning category-badge';
+					newCategoryBadge.textContent = selectedOption.text;
+				}
+				else
+				{
+					newCategoryBadge.className = 'badge rounded-pill bg-label-secondary category-badge';
+					newCategoryBadge.textContent = 'Sin categorizar';
+				}
+				itemBadges.appendChild(newCategoryBadge);
+			}
 
 				// Update date badge with color based on days remaining
 					if (newDue)
