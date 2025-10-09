@@ -64,7 +64,7 @@
                 @if($project)
                     Tareas/ {{ str_replace('Project: ', '', $board->name) }}
                 @else
-                    Tareas Kanban
+                    Tareas
                 @endif
             </h4>
             <p class="text-muted">

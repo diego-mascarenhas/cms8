@@ -213,6 +213,21 @@
                             id: resp.task?.id || `new-${Date.now()}`
                         });
 
+                        // Add data attributes to the new task element after it's added to DOM
+                        setTimeout(() => {
+                            const newTaskElement = document.querySelector(`.kanban-item[data-eid="${resp.task?.id || `new-${Date.now()}`}"]`);
+                            if (newTaskElement && resp.task) {
+                                newTaskElement.setAttribute('data-task-id', resp.task.id);
+                                newTaskElement.setAttribute('data-category-id', '');
+                                newTaskElement.setAttribute('data-due-date', '');
+                                newTaskElement.setAttribute('data-responsible-id', currentUserId);
+                                newTaskElement.setAttribute('data-estimated-hours', '');
+                                newTaskElement.setAttribute('data-description', title);
+                                newTaskElement.setAttribute('data-attachment', '');
+                                console.log('[Kanban] Added data attributes to new task:', resp.task.id, newTaskElement);
+                            }
+                        }, 100);
+
                         // close form
                         form.remove();
                     })
@@ -570,6 +585,10 @@
 
 			// Wait for kanbanData to be available
 			const populateCategories = () => {
+				console.log('Checking kanbanData availability...');
+				console.log('window.kanbanData:', window.kanbanData);
+				console.log('window.kanbanData?.categories:', window.kanbanData?.categories);
+
 				if (!window.kanbanData || !window.kanbanData.categories) {
 					console.log('kanbanData not available yet, retrying...');
 					setTimeout(populateCategories, 100);
@@ -578,28 +597,26 @@
 
 				console.log('Categories data:', window.kanbanData.categories);
 
-				// Handle grouped categories structure - using prefixed options instead of optgroups
+				// Handle grouped categories structure - using optgroups for better Select2 compatibility
 				window.kanbanData.categories.forEach(group => {
 					console.log('Processing group:', group);
 					if (group.categories && group.categories.length > 0) {
-						console.log('Adding group header for:', group.name);
+						console.log('Creating optgroup for:', group.name, 'with', group.categories.length, 'subcategories');
 
-						// Add group header as disabled option
-						const groupHeader = new Option(`── ${group.name} ──`, '', false, false);
-						groupHeader.disabled = true;
-						groupHeader.style.fontWeight = 'bold';
-						groupHeader.style.color = '#666';
-						$(labelSelect).append(groupHeader);
+						// Create optgroup for this parent category
+						const optgroup = document.createElement('optgroup');
+						optgroup.label = group.name;
 
-						// Add subcategories with indentation
+						// Add subcategories to the optgroup
 						group.categories.forEach(category => {
 							console.log('Adding subcategory:', category.name, 'ID:', category.id);
 							const isSelected = currentCategoryId && parseInt(currentCategoryId) === category.id;
-							const opt = new Option(`  ${category.name}`, category.id, isSelected, isSelected);
-							$(labelSelect).append(opt);
+							const opt = new Option(category.name, category.id, isSelected, isSelected);
+							optgroup.appendChild(opt);
 						});
 
-						console.log('Group added to select');
+						$(labelSelect).append(optgroup);
+						console.log('Optgroup added to select');
 					} else {
 						console.log('No subcategories found for group:', group.name);
 					}
