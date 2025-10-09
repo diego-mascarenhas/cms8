@@ -28,7 +28,7 @@
             "control_structures_opening_brace": "next_line_unless_newline_at_signature_end",
             "anonymous_functions_opening_brace": "next_line_unless_newline_at_signature_end"
         },
-        "indentation_type": false
+        "indentation_type": true
     },
     "exclude": [
         "bootstrap/cache",
