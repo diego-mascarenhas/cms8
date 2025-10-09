@@ -430,13 +430,7 @@
 		if (startBtnRef) startBtnRef.setAttribute('data-task-id', taskId);
 		if (stopBtnRef) stopBtnRef.setAttribute('data-task-id', taskId);
 
-		// Show debug ID box
-		const dbgBox = sidebarEl.querySelector('#task-debug-id');
-		const dbgVal = sidebarEl.querySelector('#task-debug-id-value');
-		if (dbgBox && dbgVal) {
-			dbgVal.textContent = String(taskId);
-			dbgBox.style.display = 'block';
-		}
+		// (debug ID removed)
 
         // Prefill fields from data attributes
 		const titleEl = taskDiv.querySelector('.kanban-text');
