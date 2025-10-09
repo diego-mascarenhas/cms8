@@ -80,23 +80,8 @@
 			<div class="col-md-4 text-end">
 				<div id="timer-controls">
 					@if($runningTimer)
-						<input type="text" id="timer-description" class="form-control mb-2" placeholder="{{ __('What are you working on?') }}" value="{{ $runningTimer->description }}">
 						<button type="button" class="btn btn-danger" id="stop-timer-btn" data-timer-id="{{ $runningTimer->id }}">
 							<i class="ti ti-player-stop me-1"></i>{{ __('Stop Timer') }}
-						</button>
-					@else
-						<select class="form-select mb-2" id="timer-project">
-							<option value="">{{ __('Select Project (Optional)') }}</option>
-						@foreach(\App\Models\Project::select('id', 'name')->whereIn('status_id', [3,7,8,9])->orderBy('name')->get() as $project)
-								<option value="{{ $project->id }}">{{ $project->name }}</option>
-							@endforeach
-						</select>
-						<select class="form-select mb-2" id="timer-task" required>
-							<option value="">{{ __('Select Task') }} *</option>
-						</select>
-						<input type="text" id="timer-description" class="form-control mb-2" placeholder="{{ __('What are you working on?') }}">
-						<button type="button" class="btn btn-success" id="start-timer-btn">
-							<i class="ti ti-player-play me-1"></i>{{ __('Start Timer') }}
 						</button>
 					@endif
 				</div>
@@ -132,35 +117,7 @@ function updateTimer() {
 		`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-// Load tasks function
-function loadTasks(projectId = null) {
-	const url = '{{ route("time.tasks") }}';
-	const params = projectId ? { project_id: projectId } : {};
-
-	fetch(url + '?' + new URLSearchParams(params))
-		.then(response => response.json())
-		.then(tasks => {
-			const taskSelect = $('#timer-task');
-
-			// Destroy existing Select2 if present
-			if (taskSelect.hasClass('select2-hidden-accessible')) {
-				taskSelect.select2('destroy');
-			}
-
-			// Clear and populate options
-			taskSelect.empty().append('<option value="">{{ __("Select Task") }} *</option>');
-
-			tasks.forEach(task => {
-				taskSelect.append(new Option(task.title, task.id));
-			});
-
-			// Reinitialize Select2
-			taskSelect.select2();
-		})
-		.catch(error => {
-			console.error('Error loading tasks:', error);
-		});
-}
+// (Quick timer controls removed on this page)
 
 // Start timer
 document.addEventListener('DOMContentLoaded', function() {
@@ -169,72 +126,11 @@ document.addEventListener('DOMContentLoaded', function() {
 		updateTimer();
 	}
 
-	// Load initial tasks
-	loadTasks();
-
-	// Load tasks when project changes
-	const projectSelect = document.getElementById('timer-project');
-	if (projectSelect) {
-		projectSelect.addEventListener('change', function() {
-			loadTasks(this.value);
-		});
-	}
-
-	// Initialize Select2 after page fully loads
-	$(window).on('load', function() {
-		setTimeout(function() {
-			if ($.fn.select2) {
-				$('#timer-project, #timer-task').select2();
-			}
-		}, 500);
-	});
-
-	// Start button
-	const startBtn = document.getElementById('start-timer-btn');
-	if (startBtn) {
-		startBtn.addEventListener('click', function() {
-			const projectId = document.getElementById('timer-project').value;
-			const taskId = document.getElementById('timer-task').value;
-			const description = document.getElementById('timer-description').value;
-
-			// Validate required fields
-			if (!taskId) {
-				toastr.error('{{ __("Please select a task") }}');
-				return;
-			}
-
-			fetch('{{ route("time.start") }}', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRF-TOKEN': '{{ csrf_token() }}'
-				},
-				body: JSON.stringify({
-					task_id: taskId,
-					description: description || null
-				})
-			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
-					location.reload();
-				} else {
-					toastr.error(data.message);
-				}
-			})
-			.catch(error => {
-				console.error('Error:', error);
-				toastr.error('{{ __("An error occurred") }}');
-			});
-		});
-	}
-
-	// Stop button
+	// Stop button only (quick start removed)
 	const stopBtn = document.getElementById('stop-timer-btn');
 	if (stopBtn) {
 		stopBtn.addEventListener('click', function() {
 			const timerId = this.dataset.timerId;
-
 			fetch(`/time/${timerId}/stop`, {
 				method: 'POST',
 				headers: {
@@ -246,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			.then(data => {
 				if (data.success) {
 					toastr.success(`{{ __("Timer stopped") }}: ${data.duration}`);
-					setTimeout(() => location.reload(), 1500);
+					setTimeout(() => location.reload(), 1000);
 				} else {
 					toastr.error(data.message);
 				}
