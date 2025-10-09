@@ -11,7 +11,6 @@ return new class extends Migration {
 			$table->id();
 			$table->unsignedBigInteger('team_id');
 			$table->unsignedBigInteger('user_id');
-			$table->unsignedBigInteger('project_id')->nullable();
 			$table->unsignedBigInteger('task_id')->nullable();
 			$table->string('description')->nullable();
 			$table->dateTime('start_time');
@@ -24,11 +23,9 @@ return new class extends Migration {
 
 			$table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
 			$table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-			$table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
 			$table->foreign('task_id')->references('id')->on('tasks')->onDelete('cascade');
 
 			$table->index(['team_id', 'user_id']);
-			$table->index(['project_id']);
 			$table->index(['start_time', 'end_time']);
 		});
 	}

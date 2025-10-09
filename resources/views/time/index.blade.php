@@ -91,6 +91,9 @@
 								<option value="{{ $project->id }}">{{ $project->name }}</option>
 							@endforeach
 						</select>
+						<select class="form-select mb-2" id="timer-task" required>
+							<option value="">{{ __('Select Task') }} *</option>
+						</select>
 						<input type="text" id="timer-description" class="form-control mb-2" placeholder="{{ __('What are you working on?') }}">
 						<button type="button" class="btn btn-success" id="start-timer-btn">
 							<i class="ti ti-player-play me-1"></i>{{ __('Start Timer') }}
@@ -129,6 +132,36 @@ function updateTimer() {
 		`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+// Load tasks function
+function loadTasks(projectId = null) {
+	const url = '{{ route("time.tasks") }}';
+	const params = projectId ? { project_id: projectId } : {};
+
+	fetch(url + '?' + new URLSearchParams(params))
+		.then(response => response.json())
+		.then(tasks => {
+			const taskSelect = $('#timer-task');
+
+			// Destroy existing Select2 if present
+			if (taskSelect.hasClass('select2-hidden-accessible')) {
+				taskSelect.select2('destroy');
+			}
+
+			// Clear and populate options
+			taskSelect.empty().append('<option value="">{{ __("Select Task") }} *</option>');
+
+			tasks.forEach(task => {
+				taskSelect.append(new Option(task.title, task.id));
+			});
+
+			// Reinitialize Select2
+			taskSelect.select2();
+		})
+		.catch(error => {
+			console.error('Error loading tasks:', error);
+		});
+}
+
 // Start timer
 document.addEventListener('DOMContentLoaded', function() {
 	if (timerRunning) {
@@ -136,12 +169,39 @@ document.addEventListener('DOMContentLoaded', function() {
 		updateTimer();
 	}
 
+	// Load initial tasks
+	loadTasks();
+
+	// Load tasks when project changes
+	const projectSelect = document.getElementById('timer-project');
+	if (projectSelect) {
+		projectSelect.addEventListener('change', function() {
+			loadTasks(this.value);
+		});
+	}
+
+	// Initialize Select2 after page fully loads
+	$(window).on('load', function() {
+		setTimeout(function() {
+			if ($.fn.select2) {
+				$('#timer-project, #timer-task').select2();
+			}
+		}, 500);
+	});
+
 	// Start button
 	const startBtn = document.getElementById('start-timer-btn');
 	if (startBtn) {
 		startBtn.addEventListener('click', function() {
 			const projectId = document.getElementById('timer-project').value;
+			const taskId = document.getElementById('timer-task').value;
 			const description = document.getElementById('timer-description').value;
+
+			// Validate required fields
+			if (!taskId) {
+				toastr.error('{{ __("Please select a task") }}');
+				return;
+			}
 
 			fetch('{{ route("time.start") }}', {
 				method: 'POST',
@@ -150,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
 					'X-CSRF-TOKEN': '{{ csrf_token() }}'
 				},
 				body: JSON.stringify({
-					project_id: projectId || null,
+					task_id: taskId,
 					description: description || null
 				})
 			})

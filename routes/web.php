@@ -335,6 +335,7 @@ Route::middleware(['auth'])->group(function () {
 
 	// Time Tracking Routes
 	Route::get('/time/list', [TimeController::class, 'index'])->name('time.index');
+	Route::get('/time/timer', [TimeController::class, 'timer'])->name('time.timer');
 	Route::get('/time/create', [TimeController::class, 'create'])->name('time.create');
 	Route::post('/time', [TimeController::class, 'store'])->name('time.store');
 	Route::get('/time/{id}/edit', [TimeController::class, 'edit'])->name('time.edit');
@@ -343,6 +344,7 @@ Route::middleware(['auth'])->group(function () {
 	Route::post('/time/start', [TimeController::class, 'start'])->name('time.start');
 	Route::post('/time/{id}/stop', [TimeController::class, 'stop'])->name('time.stop');
 	Route::get('/time/running', [TimeController::class, 'running'])->name('time.running');
+	Route::get('/time/tasks', [TimeController::class, 'getTasks'])->name('time.tasks');
 
 	// Attendance Routes (global in/out)
 	Route::post('/attendance/start', [AttendanceController::class, 'start'])->name('attendance.start');

@@ -25,17 +25,6 @@ class TimeDataTable extends DataTable
 					$q->where('name', 'like', "%{$keyword}%");
 				});
 			})
-			->editColumn('project_id', function ($data) {
-				if ($data->project) {
-					return '<a href="' . route('project.show', $data->project_id) . '">' . $data->project->name . '</a>';
-				}
-				return '<span class="text-muted">-</span>';
-			})
-			->filterColumn('project_id', function ($query, $keyword) {
-				$query->whereHas('project', function ($q) use ($keyword) {
-					$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
-				});
-			})
 			->editColumn('task_id', function ($data) {
 				return $data->task ? $data->task->title : '<span class="text-muted">-</span>';
 			})
@@ -76,14 +65,14 @@ class TimeDataTable extends DataTable
 					? '<span class="badge bg-label-success">Yes</span>'
 					: '<span class="badge bg-label-secondary">No</span>';
 			})
-			->rawColumns(['action', 'project_id', 'task_id', 'end_time', 'duration', 'earnings', 'is_billable', 'user_id']);
+			->rawColumns(['action', 'task_id', 'end_time', 'duration', 'earnings', 'is_billable', 'user_id']);
 	}
 
 	public function query(Time $model): QueryBuilder
 	{
 		return $model
 			->newQuery()
-			->with(['user:id,name', 'project:id,name', 'task:id,title'])
+			->with(['user:id,name', 'task:id,title'])
 			->orderBy('start_time', 'desc');
 	}
 
@@ -95,7 +84,7 @@ class TimeDataTable extends DataTable
 			->columns($this->getColumns())
 			->minifiedAjax()
 			->dom('frtip')
-			->orderBy(3, 'desc')
+			->orderBy(2, 'desc')
 			->responsive(true)
 			->processing(false)
 			->language(['url' => '/js/datatables/' . session()->get('locale', app()->getLocale()) . '.json'])
@@ -122,8 +111,8 @@ class TimeDataTable extends DataTable
 				->addClass('min-tablet')
 				->searchable(true)
 				->orderable(false),
-			Column::make('project_id')
-				->title(__('Project'))
+			Column::make('task_id')
+				->title(__('Task'))
 				->addClass('min-tablet')
 				->searchable(true)
 				->orderable(false),

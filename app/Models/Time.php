@@ -18,7 +18,6 @@ class Time extends Model
 	protected $fillable = [
 		'team_id',
 		'user_id',
-		'project_id',
 		'task_id',
 		'description',
 		'start_time',
@@ -54,10 +53,6 @@ class Time extends Model
 		return $this->belongsTo(User::class);
 	}
 
-	public function project()
-	{
-		return $this->belongsTo(Project::class);
-	}
 
 	public function task()
 	{
@@ -154,7 +149,7 @@ class Time extends Model
 	public function getActivitylogOptions(): LogOptions
 	{
 		return LogOptions::defaults()
-			->logOnly(['project_id', 'task_id', 'description', 'start_time', 'end_time', 'duration_seconds', 'is_billable'])
+			->logOnly(['task_id', 'description', 'start_time', 'end_time', 'duration_seconds', 'is_billable'])
 			->logOnlyDirty()
 			->dontSubmitEmptyLogs();
 	}

@@ -18,6 +18,16 @@ class TimeController extends Controller
 		return $dataTable->render('time.index', compact('runningTimer'));
 	}
 
+	public function timer()
+	{
+		$projects = Project::select('id', 'name')
+			->whereIn('status_id', [7, 8, 9]) // Active/In-progress statuses
+			->orderBy('name')
+			->get();
+
+		return view('time.timer', compact('projects'));
+	}
+
 	public function create()
 	{
 		$projects = Project::select('id', 'name')
@@ -33,7 +43,6 @@ class TimeController extends Controller
 	public function store(Request $request)
 	{
 		$validated = $request->validate([
-			'project_id' => 'nullable|exists:projects,id',
 			'task_id' => 'nullable|exists:tasks,id',
 			'description' => 'nullable|string|max:255',
 			'start_time' => 'required|date',
@@ -85,7 +94,6 @@ class TimeController extends Controller
 		}
 
 		$validated = $request->validate([
-			'project_id' => 'nullable|exists:projects,id',
 			'task_id' => 'nullable|exists:tasks,id',
 			'description' => 'nullable|string|max:255',
 			'start_time' => 'required|date',
@@ -137,17 +145,15 @@ class TimeController extends Controller
 		}
 
 		$validated = $request->validate([
-			'project_id' => 'nullable|exists:projects,id',
-			'task_id' => 'nullable|exists:tasks,id',
+			'task_id' => 'required|exists:tasks,id',
 			'description' => 'nullable|string|max:255',
 		]);
 
-		$isAttendance = empty($validated['project_id'] ?? null) && empty($validated['task_id'] ?? null);
+		$isAttendance = false; // Since task_id is now required, it's never attendance
 
 		$time = Time::create([
 			'team_id' => auth()->user()->currentTeam->id,
 			'user_id' => auth()->id(),
-			'project_id' => $validated['project_id'] ?? null,
 			'task_id' => $validated['task_id'] ?? null,
 			'description' => $validated['description'] ?? null,
 			'start_time' => now(),
@@ -194,13 +200,33 @@ class TimeController extends Controller
 	}
 
 	/**
+	 * Get tasks filtered by project (optional)
+	 */
+    public function getTasks(Request $request)
+    {
+        $projectId = $request->get('project_id');
+
+        $query = Task::select('id', 'title')
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->whereIn('status_id', [1, 2]); // Only "Pendiente" and "En progreso" statuses
+
+        if ($projectId) {
+            $query->where('project_id', $projectId);
+        }
+
+        $tasks = $query->orderBy('title')->get();
+
+        return response()->json($tasks);
+    }
+
+	/**
 	 * Get currently running timer
 	 */
 	public function running()
 	{
         $runningTimer = Time::getRunningTimer();
         if ($runningTimer) {
-            $runningTimer->load('project');
+            $runningTimer->load('task');
         }
 
 		return response()->json([
