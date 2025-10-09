@@ -129,6 +129,14 @@
                 <!-- Update item/tasks -->
                 <div class="tab-pane fade show active" id="tab-update" role="tabpanel">
                     <form>
+                        <div class="d-flex gap-2 mb-3">
+                            <button type="button" class="btn btn-success" id="task-start-timer">
+                                <i class="ti ti-player-play me-1"></i>{{ __('Start Timer') }}
+                            </button>
+                            <button type="button" class="btn btn-danger d-none" id="task-stop-timer">
+                                <i class="ti ti-player-stop me-1"></i>{{ __('Stop Timer') }}
+                            </button>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label" for="title">{{ __('Título') }}</label>
                             <input type="text" id="title" class="form-control" placeholder="{{ __('Ingresa el título') }}" />

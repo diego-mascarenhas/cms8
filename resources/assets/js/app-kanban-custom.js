@@ -1065,6 +1065,75 @@
 			bsTab.show();
 		}
 
+		// Wire timer buttons inside sidebar (bind once per render)
+		const startTimerBtn = sidebarEl.querySelector('#task-start-timer');
+		const stopTimerBtn = sidebarEl.querySelector('#task-stop-timer');
+
+		function setTimerButtons(isRunningForThisTask) {
+			if (startTimerBtn && stopTimerBtn) {
+				if (isRunningForThisTask) {
+					startTimerBtn.classList.add('d-none');
+					stopTimerBtn.classList.remove('d-none');
+				} else {
+					stopTimerBtn.classList.add('d-none');
+					startTimerBtn.classList.remove('d-none');
+				}
+			}
+		}
+
+		// Determine initial state
+		fetch('/time/running', { headers: { 'Accept': 'application/json' } })
+			.then(r => r.json())
+			.then(data => {
+				const currentId = data?.time?.task_id ? parseInt(data.time.task_id) : null;
+				setTimerButtons(currentId === parseInt(taskId));
+			})
+			.catch(() => setTimerButtons(false));
+
+		if (startTimerBtn && !startTimerBtn.dataset.bound) {
+			startTimerBtn.addEventListener('click', function(ev) {
+				ev.preventDefault(); ev.stopPropagation();
+				fetch('/time/start', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+					body: JSON.stringify({ task_id: parseInt(taskId) })
+				})
+				.then(r => r.json())
+				.then(data => {
+					if (data && data.success) {
+						setTimerButtons(true);
+						if (typeof toastr !== 'undefined') toastr.success('Timer iniciado');
+					} else {
+						if (typeof toastr !== 'undefined') toastr.error(data?.message || 'No se pudo iniciar');
+					}
+				})
+				.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al iniciar'); });
+			}, false);
+			startTimerBtn.dataset.bound = '1';
+		}
+
+		if (stopTimerBtn && !stopTimerBtn.dataset.bound) {
+			stopTimerBtn.addEventListener('click', function(ev) {
+				ev.preventDefault(); ev.stopPropagation();
+				fetch('/time/running', { headers: { 'Accept': 'application/json' } })
+					.then(r => r.json())
+					.then(data => {
+						const id = data?.time?.id;
+						if (!id) { if (typeof toastr !== 'undefined') toastr.info('No hay timer corriendo'); return; }
+						return fetch(`/time/${id}/stop`, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' } });
+					})
+					.then(r => r ? r.json() : null)
+					.then(resp => {
+						if (resp && resp.success) {
+							setTimerButtons(false);
+							if (typeof toastr !== 'undefined') toastr.success('Timer detenido');
+						}
+					})
+					.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al detener'); });
+			}, false);
+			stopTimerBtn.dataset.bound = '1';
+		}
+
 		offcanvas.show();
 	}
 
@@ -1096,6 +1165,80 @@
 		requestAnimationFrame(() => {
 			openOffcanvasFromItem(item);
 		});
+	});
+
+	// Timer button inside cards
+	document.addEventListener('click', function (e) {
+		const btn = e.target.closest('.start-timer-btn');
+		if (!btn) return;
+		e.stopPropagation();
+		const item = btn.closest('.kanban-item');
+		if (!item) return;
+		const taskId = parseInt(item.getAttribute('data-task-id'));
+		if (!taskId) return;
+		fetch('/time/start', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+			body: JSON.stringify({ task_id: taskId })
+		})
+		.then(r => r.json())
+		.then(data => {
+			if (data && data.success) {
+				if (typeof toastr !== 'undefined') {
+					toastr.success('Timer iniciado');
+				}
+			} else {
+				if (typeof toastr !== 'undefined') toastr.error(data?.message || 'No se pudo iniciar');
+			}
+		})
+		.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al iniciar'); });
+	});
+
+	// Sidebar timer controls
+	document.addEventListener('click', function(e) {
+		const startBtn = e.target.closest('#task-start-timer');
+		const stopBtn = e.target.closest('#task-stop-timer');
+		const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
+		const taskId = sidebarEl ? parseInt(sidebarEl.getAttribute('data-current-task-id')) : null;
+		if (startBtn && taskId) {
+			fetch('/time/start', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+				body: JSON.stringify({ task_id: taskId })
+			})
+			.then(r => r.json())
+			.then(data => {
+				if (data && data.success) {
+					startBtn.classList.add('d-none');
+					const stop = sidebarEl.querySelector('#task-stop-timer');
+					if (stop) stop.classList.remove('d-none');
+					if (typeof toastr !== 'undefined') toastr.success('Timer iniciado');
+				} else {
+					if (typeof toastr !== 'undefined') toastr.error(data?.message || 'No se pudo iniciar');
+				}
+			})
+			.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al iniciar'); });
+		}
+		if (stopBtn && taskId) {
+			// Need running timer id; fetch running and stop
+			fetch('/time/running')
+				.then(r => r.json())
+				.then(data => {
+					const id = data?.time?.id;
+					if (!id) { if (typeof toastr !== 'undefined') toastr.info('No hay timer corriendo'); return; }
+					return fetch(`/time/${id}/stop`, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' } });
+				})
+				.then(r => r ? r.json() : null)
+				.then(resp => {
+					if (resp && resp.success) {
+						stopBtn.classList.add('d-none');
+						const start = document.querySelector('#task-start-timer');
+						if (start) start.classList.remove('d-none');
+						if (typeof toastr !== 'undefined') toastr.success('Timer detenido');
+					}
+				})
+				.catch(() => { if (typeof toastr !== 'undefined') toastr.error('Error al detener'); });
+		}
 	});
 
 	// Initialize tooltips

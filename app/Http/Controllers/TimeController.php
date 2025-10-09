@@ -134,14 +134,10 @@ class TimeController extends Controller
 	 */
 	public function start(Request $request)
 	{
-		// Check if user already has a running timer
+		// If user already has a running timer, stop it automatically
 		$runningTimer = Time::getRunningTimer();
-
 		if ($runningTimer) {
-			return response()->json([
-				'success' => false,
-				'message' => __('You already have a running timer. Please stop it first.'),
-			], 400);
+			$runningTimer->stop();
 		}
 
 		$validated = $request->validate([
@@ -164,6 +160,7 @@ class TimeController extends Controller
 			'success' => true,
 			'message' => __('Timer started successfully.'),
 			'time' => $time,
+			'previousStopped' => (bool) $runningTimer,
 		]);
 	}
 
