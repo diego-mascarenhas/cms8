@@ -225,6 +225,14 @@
                                 newTaskElement.setAttribute('data-description', title);
                                 newTaskElement.setAttribute('data-attachment', '');
                                 console.log('[Kanban] Added data attributes to new task:', resp.task.id, newTaskElement);
+
+                                // Automatically open the sidebar for the new task
+                                setTimeout(() => {
+                                    console.log('[Kanban] Auto-opening sidebar for new task:', resp.task.id);
+                                    requestAnimationFrame(() => {
+                                        openOffcanvasFromItem(newTaskElement);
+                                    });
+                                }, 200); // Small delay to ensure DOM is ready
                             }
                         }, 100);
 
