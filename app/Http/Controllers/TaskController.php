@@ -204,11 +204,28 @@ class TaskController extends Controller
         // Handle file upload using Spatie Media Library
         \Log::info('TaskController Store - Request has file?', [
             'hasFile' => $request->hasFile('attachment'),
+            'removeAttachment' => $request->has('remove_attachment'),
             'allFiles' => $request->allFiles(),
             'all' => $request->all()
         ]);
 
-        if ($request->hasFile('attachment'))
+        // Check if we need to remove attachment
+        if ($request->has('remove_attachment') && $request->input('remove_attachment') == '1')
+        {
+            \Log::info('Removing attachment for task', ['task_id' => $task->id]);
+
+            // Delete all attachments
+            try {
+                $existingMedia = $task->getMedia('attachments');
+                foreach ($existingMedia as $media) {
+                    $media->delete();
+                }
+                \Log::info('Attachment removed successfully');
+            } catch (\Exception $e) {
+                \Log::error('Error removing attachment: ' . $e->getMessage());
+            }
+        }
+        elseif ($request->hasFile('attachment'))
         {
             \Log::info('Processing attachment upload', [
                 'file' => $request->file('attachment')->getClientOriginalName()

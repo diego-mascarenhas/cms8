@@ -428,16 +428,104 @@
 		removeAttachmentBtn.parentNode.replaceChild(newRemoveBtn, removeAttachmentBtn);
 
 		newRemoveBtn.addEventListener('click', function() {
-			const input = sidebarEl.querySelector('#attachments');
-			const preview = sidebarEl.querySelector('#attachment-preview');
-			const img = sidebarEl.querySelector('#preview-image');
+			// Use SweetAlert2 for confirmation dialog
+			if (typeof Swal !== 'undefined') {
+				Swal.fire({
+					title: '¿Eliminar imagen?',
+					text: 'Esta acción no se puede deshacer',
+					icon: 'warning',
+					showCancelButton: true,
+					confirmButtonColor: '#d33',
+					cancelButtonColor: '#3085d6',
+					confirmButtonText: 'Sí, eliminar',
+					cancelButtonText: 'Cancelar'
+				}).then((result) => {
+					if (result.isConfirmed) {
+						deleteAttachment();
+					}
+				});
+			} else {
+				// Fallback to native confirm
+				if (confirm('¿Estás seguro de que deseas eliminar la imagen?')) {
+					deleteAttachment();
+				}
+			}
 
-			if (input) input.value = '';
-			if (img) img.src = '';
-			if (preview) preview.style.display = 'none';
+			function deleteAttachment() {
+				const input = sidebarEl.querySelector('#attachments');
+				const preview = sidebarEl.querySelector('#attachment-preview');
+				const img = sidebarEl.querySelector('#preview-image');
 
-			// Clear the attachment from the task data
-			if (taskDiv) taskDiv.setAttribute('data-attachment', '');
+				// Send request to backend to delete the attachment
+				const formData = new FormData();
+				formData.append('id', parseInt(taskId));
+				formData.append('title', sidebarEl.querySelector('#title').value);
+				formData.append('description', sidebarEl.querySelector('#description') ? sidebarEl.querySelector('#description').value : '');
+				formData.append('responsible_id', sidebarEl.querySelector('#responsible') ? sidebarEl.querySelector('#responsible').value : currentUserId);
+				formData.append('estimated_hours', sidebarEl.querySelector('#estimated-hours') ? sidebarEl.querySelector('#estimated-hours').value : '');
+				formData.append('start_date', sidebarEl.querySelector('#due-date').value);
+				formData.append('due_date', sidebarEl.querySelector('#due-date').value);
+				formData.append('status_id', taskElement.closest('.kanban-board') ? taskElement.closest('.kanban-board').getAttribute('data-id') : '');
+				formData.append('category_id', sidebarEl.querySelector('#label') && sidebarEl.querySelector('#label').value ? sidebarEl.querySelector('#label').value : '');
+				formData.append('board_id', boardId);
+				formData.append('view', 'kanban');
+				formData.append('project_id', projectId || '');
+				formData.append('remove_attachment', '1'); // Flag to indicate attachment removal
+
+				fetch('/task', {
+					method: 'POST',
+					headers: {
+						'X-CSRF-TOKEN': csrfToken,
+						'Accept': 'application/json'
+					},
+					body: formData
+				})
+				.then(res => res.json())
+				.then(data => {
+					if (data.success) {
+						// Clear UI elements in offcanvas
+						if (input) input.value = '';
+						if (img) img.src = '';
+						if (preview) preview.style.display = 'none';
+
+						// Clear the attachment from the task data
+						if (taskDiv) taskDiv.setAttribute('data-attachment', '');
+
+						// Remove image from Kanban card
+						const contentDiv = taskElement.firstElementChild;
+						const imgElement = contentDiv ? contentDiv.querySelector('.kanban-image') : null;
+						if (imgElement) {
+							imgElement.remove();
+						}
+
+						console.log('[Kanban] Attachment deleted successfully');
+
+						// Show success message
+						if (typeof Swal !== 'undefined') {
+							Swal.fire({
+								icon: 'success',
+								title: 'Imagen eliminada',
+								showConfirmButton: false,
+								timer: 1500
+							});
+						}
+					} else {
+						if (typeof Swal !== 'undefined') {
+							Swal.fire('Error', 'No se pudo eliminar la imagen', 'error');
+						} else {
+							alert('Error al eliminar la imagen');
+						}
+					}
+				})
+				.catch(err => {
+					console.error('[Kanban] Error deleting attachment:', err);
+					if (typeof Swal !== 'undefined') {
+						Swal.fire('Error', 'No se pudo eliminar la imagen', 'error');
+					} else {
+						alert('Error al eliminar la imagen');
+					}
+				});
+			}
 		});
 	}
 
@@ -456,7 +544,9 @@
 			$(labelSelect).select2({
 				dropdownParent: $(sidebarEl),
 				placeholder: 'Selecciona una categoría',
-				allowClear: true
+				allowClear: true,
+				// Add passive event listeners to improve performance
+				scrollAfterSelect: false
 			});
 		}
 
@@ -475,7 +565,9 @@
 			$(responsibleSelect).select2({
 				dropdownParent: $(sidebarEl),
 				placeholder: 'Selecciona un responsable',
-				allowClear: false
+				allowClear: false,
+				// Add passive event listeners to improve performance
+				scrollAfterSelect: false
 			});
 		}
 
@@ -733,8 +825,8 @@
 				taskElement.setAttribute('data-attachment', data.attachment);
 
 				// Find the content div inside the kanban-item (where our HTML is)
-				// taskElement is the .kanban-item, its direct child contains our custom HTML
-				const contentDiv = taskElement.firstElementChild;
+				// The content is directly inside the .kanban-item, not in a wrapper div
+				const contentDiv = taskElement;
 				console.log('[Kanban] contentDiv:', contentDiv);
 
 				// Update or create image in the card
@@ -756,6 +848,21 @@
 						imgElement.style.objectFit = 'cover';
 						textSpan.parentNode.insertBefore(imgElement, textSpan.nextSibling);
 						console.log('[Kanban] Created new image element:', imgElement);
+					}
+					else
+					{
+						// If no textSpan found, try to find the first div and insert after it
+						const firstDiv = contentDiv.querySelector('div');
+						if (firstDiv)
+						{
+							imgElement = document.createElement('img');
+							imgElement.className = 'img-fluid rounded kanban-image my-2';
+							imgElement.style.maxHeight = '120px';
+							imgElement.style.width = '100%';
+							imgElement.style.objectFit = 'cover';
+							firstDiv.parentNode.insertBefore(imgElement, firstDiv.nextSibling);
+							console.log('[Kanban] Created new image element after first div:', imgElement);
+						}
 					}
 				}
 
@@ -851,17 +958,27 @@
 			e.preventDefault();
 			e.stopPropagation();
 			const taskElement = e.target.closest('.kanban-item');
-			if (taskElement) openOffcanvasFromItem(taskElement);
+			if (taskElement) {
+				// Use requestAnimationFrame to optimize performance
+				requestAnimationFrame(() => {
+					openOffcanvasFromItem(taskElement);
+				});
+			}
 		}
 	});
 
 	// Click anywhere on a card opens the editor (like the original)
+	// Use requestAnimationFrame to optimize performance
 	document.addEventListener('click', function (e) {
 		// Ignore clicks on the dropdown trigger/menu inside the card
 		if (e.target.closest('.kanban-tasks-item-dropdown')) return;
 		const item = e.target.closest('.kanban-item');
 		if (!item) return;
-		openOffcanvasFromItem(item);
+
+		// Use requestAnimationFrame to defer the execution and improve performance
+		requestAnimationFrame(() => {
+			openOffcanvasFromItem(item);
+		});
 	});
 
 	// Initialize tooltips
