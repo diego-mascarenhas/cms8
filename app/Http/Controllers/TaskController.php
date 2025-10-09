@@ -77,13 +77,14 @@ class TaskController extends Controller
 
             $tasksByStatus[$status['id']] = $tasks->map(function ($task)
             {
+                $attachment = $task->getFirstMediaUrl('attachments');
                 return [
                     'id' => $task->id,
                     'title' => $task->title,
                     'description' => $task->description,
                     'due_date' => $task->due_date ? $task->due_date->format('Y-m-d') : null,
                     'estimated_hours' => $task->estimated_hours,
-                    'attachment' => $task->attachment,
+                    'attachment' => $attachment ?: null,
                     'responsible' => $task->responsible ? [
                         'id' => $task->responsible->id,
                         'name' => $task->responsible->name,
@@ -137,7 +138,7 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->except(['id', '_token']);
+        $data = $request->except(['id', '_token', 'attachment']);
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -149,7 +150,7 @@ class TaskController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'board_id' => 'nullable|exists:task_boards,id',
             'estimated_hours' => 'nullable|numeric|min:0',
-            'attachment' => 'nullable|string',
+            'attachment' => 'nullable|file|image|max:10240', // Max 10MB
         ]);
 
         $boardId = $data['board_id'] ?? null;
@@ -170,7 +171,6 @@ class TaskController extends Controller
                 'start_date' => $data['start_date'] ?? null,
                 'due_date' => $data['due_date'] ?? null,
                 'estimated_hours' => $data['estimated_hours'] ?? null,
-                'attachment' => $data['attachment'] ?? null,
                 'order' => 0,
                 'status_id' => $data['status_id'] ?? 1,
                 'board_id' => $boardId,
@@ -178,9 +178,21 @@ class TaskController extends Controller
             ],
         );
 
+        // Handle file upload using Spatie Media Library
+        if ($request->hasFile('attachment'))
+        {
+            $task->clearMediaCollection('attachments');
+            $task->addMediaFromRequest('attachment')->toMediaCollection('attachments');
+        }
+
         if ($request->expectsJson())
         {
-            return response()->json(['success' => true, 'id' => $task->id]);
+            $attachmentUrl = $task->getFirstMediaUrl('attachments');
+            return response()->json([
+                'success' => true,
+                'id' => $task->id,
+                'attachment' => $attachmentUrl ?: null
+            ]);
         }
 
         if ($request->has('view') && $request->view === 'kanban')

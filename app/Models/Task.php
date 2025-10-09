@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Task extends Model
+class Task extends Model implements HasMedia
 {
-	use HasFactory, SoftDeletes;
+	use HasFactory, SoftDeletes, InteractsWithMedia;
 
 	protected $fillable = [
 		'team_id',
@@ -18,7 +20,6 @@ class Task extends Model
 		'responsible_id',
 		'title',
 		'description',
-		'attachment',
 		'estimated_hours',
 		'start_date',
 		'due_date',
@@ -97,5 +98,14 @@ class Task extends Model
 	public function scopeDefaultOrder($query)
 	{
 		return $query->orderBy('status_id', 'asc')->orderBy('due_date', 'asc');
+	}
+
+	/**
+	 * Register media collections for this model
+	 */
+	public function registerMediaCollections(): void
+	{
+		$this->addMediaCollection('attachments')
+			->singleFile(); // Only one attachment per task
 	}
 }
