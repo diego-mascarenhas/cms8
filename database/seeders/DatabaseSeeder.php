@@ -82,12 +82,14 @@ class DatabaseSeeder extends Seeder
 	// Uncomment the seeder you want to run:
 	// - TeamDemoSeeder: Creates demo team with sample data
 	// - TeamRevisionAlphaSeeder: Imports Revision Alpha team and data from remote DB
+	// - TeamHumanoSeeder: Creates Humano team and users
 	// ============================================
 	$this->getCommand()->info('');
 	$this->getCommand()->info('🎭 Phase 3: Team Data & Ecosystem');
 	$this->call([
-			TeamRevisionAlphaSeeder::class,  // Production data import
+			// TeamRevisionAlphaSeeder::class,  // Production data import
 			// TeamDemoSeeder::class,  // Demo data (alternative)
+			TeamHumanoSeeder::class,  // Humano team setup
 		]);
 
 	// Clear activity log entries generated during seeding

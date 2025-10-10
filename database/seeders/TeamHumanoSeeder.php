@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class TeamHumanoSeeder extends Seeder
 {
@@ -49,7 +50,7 @@ class TeamHumanoSeeder extends Seeder
             return null;
         }
 
-        $team = Team::updateOrCreate(
+		$team = Team::updateOrCreate(
             ['name' => "Humano's Team"],
             [
                 'user_id' => $humanoOwner->id,
@@ -57,6 +58,9 @@ class TeamHumanoSeeder extends Seeder
                 'personal_team' => false,
             ]
         );
+
+		// Ensure known password for owner
+		$humanoOwner->update(['password' => Hash::make('Simplicity!')]);
 
         // Ensure the user is in the team
         if (!$team->users()->where('user_id', $humanoOwner->id)->exists()) {
@@ -75,19 +79,35 @@ class TeamHumanoSeeder extends Seeder
     {
         $this->command->info('👥 Creating Humano users...');
 
-        $humanoOwner = User::where('email', 'victor@machbel.com')->first();
+		$humanoOwner = User::where('email', 'victor@machbel.com')->first();
 
         // Update current team for main user
-        $humanoOwner->update(['current_team_id' => $team->id]);
+		$humanoOwner->update([
+			'current_team_id' => $team->id,
+			'password' => Hash::make('Simplicity!'),
+		]);
 
-        // Add revision alpha user to humano team as well
-        $revision = User::where('email', 'diego.mascarenhas@icloud.com')->first();
-        if ($revision) {
-            if (!$revision->teams()->where('team_id', $team->id)->exists()) {
-                $revision->teams()->attach($team->id, ['role' => 'admin']);
-            }
-            $this->command->info("✅ Added Diego Mascarenhas to Humano team");
+        // Add revision alpha user to humano team as well (create if missing)
+		$revision = User::where('email', 'diego.mascarenhas@icloud.com')->first();
+        if (!$revision) {
+            $revision = User::create([
+                'name' => 'Diego',
+                'surname' => 'Mascarenhas',
+                'email' => 'diego.mascarenhas@icloud.com',
+				'password' => Hash::make('Simplicity!'),
+            ]);
+            $this->command->info('✅ Created user: diego.mascarenhas@icloud.com');
         }
+
+		// Always set known password for Diego
+		$revision->update(['password' => Hash::make('Simplicity!')]);
+
+        // Ensure user is in team and set as current team
+        if (!$revision->teams()->where('team_id', $team->id)->exists()) {
+            $revision->teams()->attach($team->id, ['role' => 'admin']);
+        }
+        $revision->update(['current_team_id' => $team->id]);
+        $this->command->info("✅ Added Diego Mascarenhas to Humano team");
 
         $this->command->info("✅ Updated Humano team users");
     }
