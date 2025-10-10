@@ -52,6 +52,7 @@ return [
         'team' => [
             'manage' => 'Manage Team',
             'settings' => 'Team Settings',
+            'account_management' => 'Account Management',
             'create' => 'Create New Team',
             'switch' => 'Switch Teams',
         ],

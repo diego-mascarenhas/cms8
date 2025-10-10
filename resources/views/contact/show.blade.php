@@ -60,16 +60,12 @@
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @can('project.create')
-                @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('projects'))
                 <a href="{{ route('project.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-success waves-effect waves-light"><i
                         class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
-                @endif
             @endcan
             @can('service.create')
-                @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('services'))
                 <a href="{{ route('service.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-info waves-effect waves-light ms-2"><i
                         class="ti ti-server me-1"></i>Crear servicio</a>
-                @endif
             @endcan
             @can('chat.list')
                 @if ($data->getWhatsAppNumber())
@@ -94,7 +90,7 @@
                     <div class="user-avatar-section">
                         <div class=" d-flex align-items-center flex-column">
                             <img class="img-fluid rounded mb-3 pt-1 mt-4"
-                                src="https://ui-avatars.com/api/?format=svg&name={{ $data->name }}" height="100"
+                                src="{{ \App\Helpers\AvatarHelper::generate($data->name, 100) }}" height="100"
                                 width="100" alt="User avatar" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>

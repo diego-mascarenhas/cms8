@@ -56,6 +56,35 @@
         <!-- /Search -->
     @endif
     <ul class="navbar-nav flex-row align-items-center ms-auto">
+        {{-- Quick Time Tracker (attendance clock-in/out) --}}
+        @auth
+        <li class="nav-item dropdown me-2" id="quick-timer"
+            data-running-url="{{ route('attendance.running') }}"
+            data-start-url="{{ route('attendance.start') }}"
+            data-stop-url="/attendance/:ID/stop">
+            <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown"
+               aria-expanded="false" aria-label="{{ __('Attendance clock') }}">
+                <i class="ti ti-clock ti-md text-muted" id="quick-timer-icon"></i>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
+                <li class="px-3 pt-2 pb-1 d-flex align-items-center">
+                    <i class="ti ti-clock me-2" id="quick-timer-icon-inline"></i>
+                    <span id="quick-timer-display" class="fw-semibold" style="font-variant-numeric: tabular-nums;">00:00:00</span>
+                </li>
+                <li class="px-3 pb-2 small text-muted d-none" id="project-running-row">
+                    <a href="{{ route('time.index') }}" class="text-decoration-none">
+                        <i class="ti ti-hourglass-low me-1"></i>
+                        <span id="project-running-name">—</span>
+                    </a>
+                </li>
+                <li><div class="dropdown-divider"></div></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-start"><i class="ti ti-player-play me-2"></i>{{ __('Inicio de jornada') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-pause"><i class="ti ti-player-pause me-2"></i>{{ __('Pausar') }}</a></li>
+                <li><a class="dropdown-item" href="javascript:;" id="att-resume"><i class="ti ti-player-track-next me-2"></i>{{ __('Reanudar') }}</a></li>
+                <li><a class="dropdown-item text-danger" href="javascript:;" id="att-stop"><i class="ti ti-player-stop me-2"></i>{{ __('Fin de jornada') }}</a></li>
+            </ul>
+        </li>
+        @endauth
         <!-- Language -->
         @if ($configData['showLanguageSelector'] == true && Auth::user()->hasRole('developer'))
         <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
@@ -154,42 +183,71 @@
                         </div>
                     </div>
                     <div class="dropdown-shortcuts-list scrollable-container">
-                        <div class="row row-bordered overflow-visible g-0">
-                            <div class="dropdown-shortcuts-item col">
-                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                    <i class="ti ti-calendar fs-4"></i>
-                                </span>
-                                <a href="{{ url('app/calendar') }}"
-                                    class="stretched-link">{{ __('app.shortcuts.calendar') }}</a>
-                                <small class="text-muted mb-0">{{ __('app.shortcuts.appointments') }}</small>
+                        @php
+                            $teamShortcuts = auth()->user()->currentTeam ? auth()->user()->currentTeam->getSetting('team_shortcuts', []) : [];
+                        @endphp
+
+                        @if(count($teamShortcuts) > 0)
+                            @foreach($teamShortcuts as $index => $shortcut)
+                                @if($index % 2 === 0)
+                                    <div class="row row-bordered overflow-visible g-0">
+                                @endif
+
+                                <div class="dropdown-shortcuts-item col">
+                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                        <i class="{{ $shortcut['icon'] ?? 'ti ti-link' }} fs-4"></i>
+                                    </span>
+                                    <a href="{{ $shortcut['url'] ?? '#' }}"
+                                       class="stretched-link"
+                                       @if(isset($shortcut['open_in_new_tab']) && $shortcut['open_in_new_tab']) target="_blank" @endif>
+                                        {{ $shortcut['title'] ?? 'Shortcut' }}
+                                    </a>
+                                    <small class="text-muted mb-0">{{ $shortcut['subtitle'] ?? '' }}</small>
+                                </div>
+
+                                @if($index % 2 === 1 || $index === count($teamShortcuts) - 1)
+                                    </div>
+                                @endif
+                            @endforeach
+                        @else
+                            <!-- Default shortcuts when no team shortcuts are configured -->
+                            <div class="row row-bordered overflow-visible g-0">
+                                <div class="dropdown-shortcuts-item col">
+                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                        <i class="ti ti-calendar fs-4"></i>
+                                    </span>
+                                    <a href="{{ url('app/calendar') }}"
+                                        class="stretched-link">{{ __('app.shortcuts.calendar') }}</a>
+                                    <small class="text-muted mb-0">{{ __('app.shortcuts.appointments') }}</small>
+                                </div>
+                                <div class="dropdown-shortcuts-item col">
+                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                        <i class="ti ti-file-invoice fs-4"></i>
+                                    </span>
+                                    <a href="{{ url('app/invoice/list') }}"
+                                        class="stretched-link">{{ __('app.shortcuts.invoice_app') }}</a>
+                                    <small class="text-muted mb-0">{{ __('app.shortcuts.manage_accounts') }}</small>
+                                </div>
                             </div>
-                            <div class="dropdown-shortcuts-item col">
-                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                    <i class="ti ti-file-invoice fs-4"></i>
-                                </span>
-                                <a href="{{ url('app/invoice/list') }}"
-                                    class="stretched-link">{{ __('app.shortcuts.invoice_app') }}</a>
-                                <small class="text-muted mb-0">{{ __('app.shortcuts.manage_accounts') }}</small>
+                            <div class="row row-bordered overflow-visible g-0">
+                                <div class="dropdown-shortcuts-item col">
+                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                        <i class="ti ti-users fs-4"></i>
+                                    </span>
+                                    <a href="{{ url('user-management') }}"
+                                        class="stretched-link">{{ __('app.shortcuts.user_app') }}</a>
+                                    <small class="text-muted mb-0">{{ __('app.shortcuts.manage_users') }}</small>
+                                </div>
+                                <div class="dropdown-shortcuts-item col">
+                                    <span class="dropdown-shortcuts-icon rounded-circle mb-2">
+                                        <i class="ti ti-settings fs-4"></i>
+                                    </span>
+                                    <a href="{{ url('account-management') }}"
+                                        class="stretched-link">{{ __('app.shortcuts.accounts') }}</a>
+                                    <small class="text-muted mb-0">{{ __('app.shortcuts.accounts_settings') }}</small>
+                                </div>
                             </div>
-                        </div>
-                        <div class="row row-bordered overflow-visible g-0">
-                            <div class="dropdown-shortcuts-item col">
-                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                    <i class="ti ti-users fs-4"></i>
-                                </span>
-                                <a href="{{ url('user-management') }}"
-                                    class="stretched-link">{{ __('app.shortcuts.user_app') }}</a>
-                                <small class="text-muted mb-0">{{ __('app.shortcuts.manage_users') }}</small>
-                            </div>
-                            <div class="dropdown-shortcuts-item col">
-                                <span class="dropdown-shortcuts-icon rounded-circle mb-2">
-                                    <i class="ti ti-settings fs-4"></i>
-                                </span>
-                                <a href="{{ url('account-management') }}"
-                                    class="stretched-link">{{ __('app.shortcuts.accounts') }}</a>
-                                <small class="text-muted mb-0">{{ __('app.shortcuts.accounts_settings') }}</small>
-                            </div>
-                        </div>
+                        @endif
                     </div>
                 </div>
             </li>
@@ -267,10 +325,21 @@
                 </li>
 
                 @if (Auth::check() && auth()->user()->currentTeam && auth()->user()->ownsTeam(auth()->user()->currentTeam))
+                    {{-- Variables de configuración (Team Settings module) --}}
                     <li>
-                        <a class="dropdown-item" href="{{ route('team-settings.edit', auth()->user()->currentTeam->id) }}">
-                            <i class="ti ti-settings-automation me-2 ti-sm"></i>
-                            <span class="align-middle">Settings</span>
+                        <a class="dropdown-item" href="{{ route('team-settings.index', auth()->user()->currentTeam) }}">
+                            <i class="ti ti-adjustments-alt me-2 ti-sm"></i>
+                            <span class="align-middle">{{ __('app.profile.team.variables') }}</span>
+                        </a>
+                    </li>
+                @endif
+
+                {{-- Root-only: Account Management --}}
+                @if (Auth::check() && (Auth::user()->hasRole('root') || Auth::user()->can('user.management')))
+                    <li>
+                        <a class="dropdown-item" href="{{ url('account-management') }}">
+                            <i class="ti ti-shield-lock me-2 ti-sm"></i>
+                            <span class="align-middle">{{ __('app.profile.team.account_management') }}</span>
                         </a>
                     </li>
                 @endif
@@ -366,6 +435,233 @@
         <!--/ User -->
     </ul>
 </div>
+
+@auth
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('quick-timer');
+    if (!container) return;
+
+    const displayEl = document.getElementById('quick-timer-display');
+    const startEl = document.getElementById('att-start');
+    const pauseEl = document.getElementById('att-pause');
+    const resumeEl = document.getElementById('att-resume');
+    const stopEl = document.getElementById('att-stop');
+    const runningUrl = container.getAttribute('data-running-url');
+    const startUrl = container.getAttribute('data-start-url');
+    const stopUrlTpl = container.getAttribute('data-stop-url');
+    const timeRunningUrl = '{{ route('time.running') }}';
+
+    let running = false;
+    let paused = false;
+    let startTs = null;
+    let pausedTs = null;
+    let pausedSeconds = 0;
+    let timerId = null;
+    let timerInterval = null;
+
+    function fmt(n){ return String(n).padStart(2,'0'); }
+    function ts(input){
+        if (!input) return null;
+        if (typeof input === 'number') return Math.floor(input);
+        // Try native ISO first
+        let d = new Date(input);
+        if (!isNaN(d.getTime())) return Math.floor(d.getTime()/1000);
+        // Fallback for 'YYYY-MM-DD HH:MM:SS'
+        const m = String(input).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+        if (m){
+            const year = parseInt(m[1],10), mon = parseInt(m[2],10)-1, day = parseInt(m[3],10);
+            const hh = parseInt(m[4],10), mm = parseInt(m[5],10), ss = parseInt(m[6],10);
+            const local = new Date(year, mon, day, hh, mm, ss);
+            return Math.floor(local.getTime()/1000);
+        }
+        return null;
+    }
+    function render(){
+        if (!running || !startTs) { displayEl.textContent = '00:00:00'; return; }
+        const now = Math.floor(Date.now() / 1000);
+        const effectiveNow = paused && pausedTs ? pausedTs : now;
+        const elapsedRaw = Math.max(0, effectiveNow - startTs);
+        const elapsed = Math.max(0, elapsedRaw - (pausedSeconds || 0));
+        const h = Math.floor(elapsed / 3600);
+        const m = Math.floor((elapsed % 3600) / 60);
+        const s = elapsed % 60;
+        displayEl.textContent = `${fmt(h)}:${fmt(m)}:${fmt(s)}`;
+    }
+
+    function startTick(){ if (timerInterval) clearInterval(timerInterval); timerInterval = setInterval(render, 1000); render(); }
+    function stopTick(){ if (timerInterval) clearInterval(timerInterval); timerInterval = null; }
+
+    function setButton(){
+        const icon = document.getElementById('quick-timer-icon');
+        const iconInline = document.getElementById('quick-timer-icon-inline');
+        const applyIconState = (el) => {
+            if (!el) return;
+            el.classList.remove('text-success', 'text-muted', 'text-warning');
+            if (!running) {
+                el.classList.add('text-muted');
+            } else if (paused) {
+                el.classList.add('text-warning');
+            } else {
+                el.classList.add('text-success');
+            }
+        };
+        applyIconState(icon);
+        applyIconState(iconInline);
+		const setDisabled = (el, isDisabled) => {
+			if (!el) return;
+			if (isDisabled) {
+				el.classList.add('disabled');
+				el.classList.add('text-muted');
+				if (el.id === 'att-stop') el.classList.remove('text-danger');
+				el.setAttribute('aria-disabled', 'true');
+				el.setAttribute('tabindex', '-1');
+			} else {
+				el.classList.remove('disabled');
+				el.classList.remove('text-muted');
+				if (el.id === 'att-stop') el.classList.add('text-danger');
+				el.removeAttribute('aria-disabled');
+				el.removeAttribute('tabindex');
+			}
+		};
+        setDisabled(startEl, running);
+        setDisabled(pauseEl, !running || paused);
+        setDisabled(resumeEl, !running || !paused);
+        setDisabled(stopEl, !running);
+    }
+
+    function fetchRunning(){
+        fetch(runningUrl, { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.running && data.attendance) {
+                    running = true;
+                    timerId = data.attendance.id;
+                    startTs = ts(data.attendance.start_at);
+                    paused = !!data.attendance.paused_at;
+                    pausedTs = paused ? Math.floor(new Date(data.attendance.paused_at).getTime() / 1000) : null;
+                    pausedSeconds = parseInt(data.attendance.paused_seconds || 0, 10);
+                    startTick();
+                } else {
+                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; pausedSeconds = 0; stopTick(); render();
+                }
+                setButton();
+            })
+            .catch(() => {});
+
+                // Fetch running time and show task title above
+        fetch(timeRunningUrl, { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(data => {
+                const row = document.getElementById('project-running-row');
+                const nameEl = document.getElementById('project-running-name');
+                if (data && data.running && data.time) {
+                    const taskTitle = data.time.task ? data.time.task.title : '{{ __('Tiempo en proyecto') }}';
+                    if (row && nameEl) {
+                        nameEl.textContent = taskTitle;
+                        row.classList.remove('d-none');
+                    }
+                } else if (row) {
+                    row.classList.add('d-none');
+                }
+            })
+            .catch(() => {});
+    }
+
+    if (startEl) startEl.addEventListener('click', function(){
+        if (!running) {
+            fetch(startUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success && data.attendance) {
+                    running = true;
+                    paused = false;
+                    timerId = data.attendance.id;
+                    startTs = Math.floor(new Date(data.attendance.start_at).getTime() / 1000);
+                    pausedTs = null;
+                    pausedSeconds = 0;
+                    setButton();
+                    startTick();
+                }
+            });
+        }
+    });
+
+    if (pauseEl) pauseEl.addEventListener('click', function(){
+        if (running && timerId) {
+            const pauseUrl = '{{ route('attendance.pause', [ 'id' => ':ID' ]) }}'.replace(':ID', timerId);
+            fetch(pauseUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            }).then(r => r.json()).then(data => {
+                if (data && data.success && data.attendance) {
+                    paused = true;
+                    pausedTs = data.attendance.paused_at ? ts(data.attendance.paused_at) : Math.floor(Date.now()/1000);
+                    // pausedSeconds remains the cumulative value before this pause
+                    setButton();
+                    render();
+                }
+            });
+        }
+    });
+
+    if (resumeEl) resumeEl.addEventListener('click', function(){
+        if (running && timerId) {
+            const resumeUrl = '{{ route('attendance.resume', [ 'id' => ':ID' ]) }}'.replace(':ID', timerId);
+            fetch(resumeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            }).then(r => r.json()).then(data => {
+                if (data && data.success && data.attendance) {
+                    paused = false;
+                    pausedTs = null;
+                    pausedSeconds = parseInt(data.attendance.paused_seconds || 0, 10);
+                    setButton();
+                }
+            });
+        }
+    });
+
+    if (stopEl) stopEl.addEventListener('click', function(){
+        if (running && timerId) {
+            const stopUrl = stopUrlTpl.replace(':ID', timerId);
+            fetch(stopUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success) {
+                    running = false; paused = false; timerId = null; startTs = null; pausedTs = null; pausedSeconds = 0; stopTick(); render(); setButton();
+                }
+            });
+        }
+    });
+
+    fetchRunning();
+});
+</script>
+@endauth
 
 <!-- Search Small Screens -->
 <div class="navbar-search-wrapper search-input-wrapper {{ isset($menuHorizontal) ? $containerNav : '' }} d-none">

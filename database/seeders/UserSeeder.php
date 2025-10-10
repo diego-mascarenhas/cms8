@@ -3,83 +3,102 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Hash;
 use Illuminate\Database\Seeder;
+use Hash;
 
 class UserSeeder extends Seeder
 {
-    public function run()
-    {
-        // Core system users - these will be assigned to teams by their respective seeders
+	/**
+	 * Create the default admin user for HUMANO system.
+	 *
+	 * This seeder creates ONLY the essential admin user needed to access the system.
+	 * Additional users should be created via UI or team-specific seeders.
+	 */
+	public function run()
+	{
+		$this->command->info('   👤 Creating admin user...');
 
-        // Administrator revision alpha - will be handled by RevisionAlphaSeeder
-        $revision = User::factory()->create([
-            'name' => 'Diego Mascarenhas',
-            // 'phone' => 34722372858,
-            'email' => 'diego.mascarenhas@icloud.com',
-            'password' => '$2y$10$9His4IIPh5nFp0TSilz.h.0DLLE4DzhX1Os2y0QHwt.a19s6whxyC',
-        ]);
-        $revision->assignRole([1, 2, 10]);
+		// Check if admin already exists
+		$existingAdmin = User::where('email', 'admin@humano.app')->first();
 
-        // Administrator humano - will be handled by HumanoSeeder
-        $humano = User::factory()->create([
-            'name' => 'Victor Gómez',
-            'phone' => 34665086080,
-            'email' => 'victor@machbel.com',
-            'password' => '$2y$10$FcK76MqjsbRMzQeDyqSO3ujezrf7NLQWoZlQuxtvlWHogq9ULJKoi',
-        ]);
-        $humano->assignRole([1, 2]);
+		if ($existingAdmin) {
+			$this->command->warn('   ⏭️  Admin user already exists, skipping...');
+			return;
+		}
 
-        // Demo Admin - creates Demo team (Team 1)
-        $user = User::factory()->create([
-            'name' => 'Admin',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('Simplicity!'),
-            'email_verified_at' => now(),
-        ]);
-        $user->assignRole([2]);
+		// Create Admin User
+		$admin = User::factory()->create([
+			'name' => 'Admin',
+			'email' => 'admin@humano.app',
+			'password' => Hash::make('Simplicity!'),
+			'email_verified_at' => now(),
+		]);
 
-        // Create Demo Team (Team 1)
-        $demoTeam = $user->ownedTeams()->create([
-            'name' => "Demo's Team",
-            'personal_team' => false,
-        ]);
-        $user->teams()->attach($demoTeam->id, [
-            'role' => 'admin',
-            'created_at' => now(),
-        ]);
-        $user->update(['current_team_id' => $demoTeam->id]);
+		// Assign admin role (role ID 2 = Admin)
+		$admin->assignRole([2]);
 
-        // Demo team role-based users - these will be assigned to Team 1
-        $demoUsers = [
-            ['name' => 'Collaborator', 'email' => 'collaborator@example.com', 'role' => 3],
-            ['name' => 'Editor', 'email' => 'editor@example.com', 'role' => 4],
-            ['name' => 'Auditor', 'email' => 'auditor@example.com', 'role' => 5],
-            ['name' => 'Technical', 'email' => 'technical@example.com', 'role' => 6],
-            ['name' => 'Client', 'email' => 'client@example.com', 'role' => 7],
-            ['name' => 'User', 'email' => 'user@example.com', 'role' => 8],
-            ['name' => 'Guest', 'email' => 'guest@example.com', 'role' => 9],
-            ['name' => 'Tester', 'email' => 'bitcoder@idoneo.dev', 'role' => 2],
-        ];
+		// Create default team
+		$team = $admin->ownedTeams()->create([
+			'name' => 'Demo',
+			'personal_team' => false,
+		]);
 
-        foreach ($demoUsers as $userData) {
-            $user = User::factory()->create([
-                'name' => $userData['name'],
-                'phone' => $userData['phone'] ?? null,
-                'email' => $userData['email'],
-                'password' => Hash::make('Passw0rd!'),
-                'email_verified_at' => $userData['email'] === 'bitcoder@idoneo.dev' ? now() : null,
-                'current_team_id' => $demoTeam->id,
-            ]);
-            $user->assignRole($userData['role']);
-            $user->teams()->attach($demoTeam->id);
-        }
+		// Attach user to team
+		$admin->teams()->attach($team->id, [
+			'role' => 'admin',
+			'created_at' => now(),
+		]);
 
-        // Note: Teams are created as follows:
-        // - Team 1 (Demo) -> TeamDemoSeeder
-        // - Team 2 (Revision Alpha) -> TeamRevisionAlphaSeeder
-        // - Team 3 (Humano) -> TeamHumanoSeeder
-        // - Team 4 (BBO) -> TeamBboSeeder
-		// - Team 5 (JagerPro) -> TeamJagerSeeder
-    }
+		// Set as current team
+		$admin->update(['current_team_id' => $team->id]);
+
+		// Enable core modules based on configuration
+		$this->enableCoreModulesForTeam($team);
+
+		$this->command->info('   ✅ Admin user created successfully!');
+		$this->command->info('      Email: admin@humano.app');
+		$this->command->info('      Password: Simplicity!');
+		$this->command->info('      Team: ' . $team->name);
+
+		// Note: Additional users can be created via:
+		// - Team-specific seeders (TeamDemoSeeder, TeamRevisionAlphaSeeder, etc.)
+		// - UI user management
+		// - Custom seeders for specific deployments
+	}
+
+	/**
+	 * Enable core modules for a team based on their default configuration
+	 */
+	private function enableCoreModulesForTeam($team)
+	{
+		$this->command->info('   🔧 Enabling core modules...');
+
+		// Core modules configuration (must match ModuleSeeder)
+		$coreModulesConfig = [
+			'dashboard' => true,
+			'users' => true,
+			'settings' => false,
+			'contacts' => true,
+			'clients' => true,
+			'list60' => false,
+			'services' => true,
+			'projects' => true,
+			'tasks' => true,
+			'templates' => false,
+			'notifications' => true,
+		];
+
+		$coreModules = \App\Models\Module::where('is_core', true)->get();
+
+		foreach ($coreModules as $module) {
+			$shouldEnable = $coreModulesConfig[$module->key] ?? true;
+
+			if ($shouldEnable) {
+				$team->enableModule($module->key);
+				$this->command->info("      ✓ {$module->name} enabled");
+			} else {
+				$this->command->info("      ⊗ {$module->name} registered (disabled by default)");
+			}
+		}
+	}
 }

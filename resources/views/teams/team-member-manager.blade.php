@@ -38,6 +38,19 @@
               <x-input-error for="role" />
             </div>
 
+            {{-- Mostrar todos los roles del sistema (Spatie) como referencia --}}
+            @php
+              $allSpatieRoles = \Spatie\Permission\Models\Role::pluck('name');
+            @endphp
+            @if($allSpatieRoles->count())
+              <div class="mb-2 small text-muted">
+                {{ __('Available system roles:') }}
+                @foreach($allSpatieRoles as $r)
+                  <span class="badge bg-label-secondary me-1">{{ ucfirst($r) }}</span>
+                @endforeach
+              </div>
+            @endif
+
             <div class="list-group">
               @foreach ($this->roles as $index => $role)
                 <a href="#" class="list-group-item list-group-item-action"
@@ -66,7 +79,7 @@
       </x-slot>
 
       <x-slot name="actions">
-        <x-button>
+        <x-button wire:click="$set('addTeamMemberForm.role', $addTeamMemberForm['role'] ?? 'editor')">
           {{ __('Add') }}
         </x-button>
       </x-slot>
@@ -107,7 +120,11 @@
     </div>
   @endif
 
-  @if ($team->users->isNotEmpty())
+  @php
+    $adminUsers = $team->users()->wherePivot('role', 'admin')->orderBy('users.name')->get();
+  @endphp
+
+  @if ($adminUsers->isNotEmpty())
 
     <div class="mt-4">
       <!-- Manage Team Members -->
@@ -122,7 +139,7 @@
 
       <!-- Team Member List -->
       <x-slot name="content">
-        @foreach ($team->users->sortBy('name') as $user)
+        @foreach ($adminUsers as $user)
           <div class="d-flex justify-content-between mt-2 mb-2">
             <div class="d-flex align-items-center">
               <div class="pe-2">
@@ -133,13 +150,19 @@
 
             <div class="d-flex">
               <!-- Manage Team Member Role -->
+              @php
+                $roleKey = optional($user->membership)->role;
+                $roleObj = $roleKey ? Laravel\Jetstream\Jetstream::findRole($roleKey) : null;
+                $roleName = $roleObj->name ?? __('Member');
+              @endphp
+
               @if (Gate::check('addTeamMember', $team) && Laravel\Jetstream\Jetstream::hasRoles())
                 <button class="btn btn-link text-secondary" wire:click="manageRole({{ $user->id }})">
-                  {{ Laravel\Jetstream\Jetstream::findRole($user->membership->role)->name }}
+                  {{ $roleName }}
                 </button>
               @elseif (Laravel\Jetstream\Jetstream::hasRoles())
                 <button class="btn btn-link text-secondary disabled text-decoration-none ms-2">
-                  {{ Laravel\Jetstream\Jetstream::findRole($user->membership->role)->name }}
+                  {{ $roleName }}
                 </button>
               @endif
 
@@ -156,6 +179,16 @@
                   wire:click="confirmTeamMemberRemoval('{{ $user->id }}')">
                   {{ __('Remove') }}
                 </button>
+              @endif
+
+              {{-- Badges con TODOS los roles Spatie que posee el usuario --}}
+              @php($userSpatieRoles = method_exists($user,'getRoleNames') ? $user->getRoleNames() : collect())
+              @if($userSpatieRoles->count())
+                <div class="ms-3 align-self-center">
+                  @foreach($userSpatieRoles as $sr)
+                    <span class="badge bg-label-primary me-1">{{ ucfirst($sr) }}</span>
+                  @endforeach
+                </div>
               @endif
             </div>
           </div>

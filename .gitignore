@@ -419,21 +419,48 @@ yarn-error.log
 .phpunit.result.cache
 *.homestead.php
 Homestea
-package-lock.json
+# package-lock.json - Now tracked for npm ci in production
 composer.lock
 # yarn.lock
 
-# NPM Compiled
+# =============================================================================
+# DEPLOYMENT STRATEGY: Choose one
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# OPTION 1: Build in Production (ACTIVE)
+# Use this when deploying via Forge with: npm ci && npm run build
+# Compiled assets are generated on the server during deployment
+# -----------------------------------------------------------------------------
 /public/hot
-/public/storage
+/public/mix-manifest.json
+/public/css
+/public/js/laravel-user-management.js
+/public/js/openai.js
+/public/js/helpdesk-chat.js
+/public/js/datatables/
 /public/assets/
+
+# -----------------------------------------------------------------------------
+# OPTION 2: Build Locally and Upload via FTP (INACTIVE)
+# Use this when you need to compile locally and upload via FTP
+# To activate: Comment lines 435-442 above, then uncomment lines below
+# -----------------------------------------------------------------------------
+# /public/hot
+# # DO NOT ignore these - they must be tracked in git for FTP upload:
+# # /public/mix-manifest.json
+# # /public/css
+# # /public/js/laravel-user-management.js
+# # /public/js/openai.js
+# # /public/js/helpdesk-chat.js
+# # /public/js/datatables/
+# # /public/assets/
+
+# =============================================================================
+
+# Public directories (keep structure, ignore uploaded/generated content)
 /public/vendor/
 /public/storage/
-/public/mix-manifest.json
-# public/js/laravel-user-management.js
-# public/assets/js/
-# public/assets/vendor/
-# public/assets/css/
 
 # Scripts
 /scripts/
@@ -449,3 +476,4 @@ backup-original-controllers/
 *.old
 *.tmp
 *.temp
+composer.local.json

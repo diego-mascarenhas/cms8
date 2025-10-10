@@ -44,8 +44,7 @@ class AuthServiceProvider extends ServiceProvider
 	{
 		$this->registerPolicies();
 
-		Gate::define('view-language-variants', function ($user)
-		{
+		Gate::define('view-language-variants', function ($user) {
 			return $user->hasRole('admin');
 		});
 	}

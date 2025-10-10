@@ -1,10 +1,10 @@
-@props(['id', 'label', 'selected' => null, 'showNull' => true, 'allowEmpty' => false, 'emptyText' => 'Seleccione una categoría', 'moduleKey' => null])
+@props(['id', 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null])
 
 <div class="form-group">
     <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-    <select id="{{ $id }}" name="{{ $id }}" class="select2 form-select @error($id) is-invalid @enderror" data-allow-clear="true" {{ $allowEmpty ? '' : 'required' }}>
+    <select id="{{ $id }}" name="{{ $id }}" class="select2 form-select @error($id) is-invalid @enderror" data-allow-clear="true" required>
         @if($showNull)
-            <option value="">{{ $emptyText }}</option>
+            <option value="">Seleccione una categoría</option>
         @endif
 
         @php

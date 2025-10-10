@@ -43,7 +43,7 @@ $scheduledMessages = [
                         <td>{{ Str::limit($message['message'], 35) }}</td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <img src="https://ui-avatars.com/api/?name={{ urlencode($message['sender']) }}&background=random" alt="{{ $message['sender'] }}" class="rounded-circle me-2" width="32" height="32">
+                                <img src="{{ \App\Helpers\AvatarHelper::generate($message['sender'], 32) }}" alt="{{ $message['sender'] }}" class="rounded-circle me-2" width="32" height="32">
                                 {{ $message['sender'] }}
                             </div>
                         </td>

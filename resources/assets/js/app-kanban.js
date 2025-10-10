@@ -50,7 +50,7 @@
     select2.each(function () {
       var $this = $(this);
       $this.wrap("<div class='position-relative'></div>").select2({
-        placeholder: 'Select Label',
+        placeholder: 'Seleccionar etiqueta',
         dropdownParent: $this.parent(),
         templateResult: renderLabels,
         templateSelection: renderLabels,
@@ -67,7 +67,7 @@
       modules: {
         toolbar: '.comment-toolbar'
       },
-      placeholder: 'Write a Comment... ',
+      placeholder: 'Escribe un comentario... ',
       theme: 'snow'
     });
   }
@@ -78,9 +78,9 @@
       "<div class='dropdown'>" +
       "<i class='dropdown-toggle ti ti-dots-vertical cursor-pointer' id='board-dropdown' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'></i>" +
       "<div class='dropdown-menu dropdown-menu-end' aria-labelledby='board-dropdown'>" +
-      "<a class='dropdown-item delete-board' href='javascript:void(0)'> <i class='ti ti-trash ti-xs' me-1></i> <span class='align-middle'>Delete</span></a>" +
-      "<a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-edit ti-xs' me-1></i> <span class='align-middle'>Rename</span></a>" +
-      "<a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-archive ti-xs' me-1></i> <span class='align-middle'>Archive</span></a>" +
+      "<a class='dropdown-item delete-board' href='javascript:void(0)'> <i class='ti ti-trash ti-xs' me-1></i> <span class='align-middle'>Eliminar</span></a>" +
+      "<a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-edit ti-xs' me-1></i> <span class='align-middle'>Renombrar</span></a>" +
+      "<a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-archive ti-xs' me-1></i> <span class='align-middle'>Archivar</span></a>" +
       '</div>' +
       '</div>'
     );
@@ -91,9 +91,9 @@
       "<div class='dropdown kanban-tasks-item-dropdown'>" +
       "<i class='dropdown-toggle ti ti-dots-vertical' id='kanban-tasks-item-dropdown' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'></i>" +
       "<div class='dropdown-menu dropdown-menu-end' aria-labelledby='kanban-tasks-item-dropdown'>" +
-      "<a class='dropdown-item' href='javascript:void(0)'>Copy task link</a>" +
-      "<a class='dropdown-item' href='javascript:void(0)'>Duplicate task</a>" +
-      "<a class='dropdown-item delete-task' href='javascript:void(0)'>Delete</a>" +
+      "<a class='dropdown-item' href='javascript:void(0)'>Copiar enlace</a>" +
+      "<a class='dropdown-item' href='javascript:void(0)'>Duplicar</a>" +
+      "<a class='dropdown-item delete-task' href='javascript:void(0)'>Eliminar</a>" +
       '</div>' +
       '</div>'
     );
@@ -178,10 +178,10 @@
     boards: boards,
     dragBoards: true,
     addItemButton: true,
-    buttonContent: '+ Add Item',
+    buttonContent: '+ Añadir elemento',
     itemAddOptions: {
       enabled: true, // add a button to board for easy item creation
-      content: '+ Add New Item', // text or html content of the board button
+      content: '+ Añadir nuevo elemento', // text or html content of the board button
       class: 'kanban-title-button btn', // default class of the button
       footer: false // position the button on footer
     },
@@ -195,7 +195,7 @@
         year = dateObj.getFullYear(),
         dateToUse = date
           ? date + ', ' + year
-          : dateObj.getDate() + ' ' + dateObj.toLocaleString('en', { month: 'long' }) + ', ' + year,
+          : dateObj.getDate() + ' ' + dateObj.toLocaleString('es', { month: 'long' }) + ', ' + year,
         label = element.getAttribute('data-badge-text'),
         avatars = element.getAttribute('data-assigned');
 
@@ -227,11 +227,11 @@
       addNew.setAttribute('class', 'new-item-form');
       addNew.innerHTML =
         '<div class="mb-3">' +
-        '<textarea class="form-control add-new-item" rows="2" placeholder="Add Content" autofocus required></textarea>' +
+        '<textarea class="form-control add-new-item" rows="2" placeholder="Añade contenido" autofocus required></textarea>' +
         '</div>' +
         '<div class="mb-3">' +
-        '<button type="submit" class="btn btn-primary btn-sm me-2 waves-effect waves-light">Add</button>' +
-        '<button type="button" class="btn btn-label-secondary btn-sm cancel-add-item waves-effect waves-light">Cancel</button>' +
+        '<button type="submit" class="btn btn-primary btn-sm me-2 waves-effect waves-light">Añadir</button>' +
+        '<button type="button" class="btn btn-label-secondary btn-sm cancel-add-item waves-effect waves-light">Cancelar</button>' +
         '</div>';
       kanban.addForm(boardId, addNew);
 

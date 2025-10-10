@@ -13,8 +13,7 @@ class InvoicePolicy
 	 */
 	public function viewAny(User $user): bool
 	{
-		if ($user->hasRole(['admin', 'collaborator', 'client']))
-		{
+		if ($user->hasRole(['admin', 'collaborator', 'client'])) {
 			return true;
 		}
 
@@ -27,26 +26,22 @@ class InvoicePolicy
 	public function view(User $user, Invoice $invoice): bool
 	{
 		// Admin can see all invoices
-		if ($user->hasRole('admin'))
-		{
+		if ($user->hasRole('admin')) {
 			return true;
 		}
 
 		// Collaborator can see invoices of enterprises they are responsible for
-		if ($user->hasRole('collaborator'))
-		{
+		if ($user->hasRole('collaborator')) {
 			$enterprise = $invoice->enterprise;
 
 			return $enterprise && $enterprise->responsible_id === $user->id;
 		}
 
 		// Client can see invoices of their enterprise
-		if ($user->hasRole('client'))
-		{
+		if ($user->hasRole('client')) {
 			// Get user's contact
 			$contact = $user->contact;
-			if (! $contact)
-			{
+			if (!$contact) {
 				return false;
 			}
 
@@ -73,14 +68,12 @@ class InvoicePolicy
 	public function update(User $user, Invoice $invoice): bool
 	{
 		// Admin can update all invoices
-		if ($user->hasRole('admin'))
-		{
+		if ($user->hasRole('admin')) {
 			return true;
 		}
 
 		// Collaborator can update invoices of enterprises they are responsible for
-		if ($user->hasRole('collaborator'))
-		{
+		if ($user->hasRole('collaborator')) {
 			$enterprise = $invoice->enterprise;
 
 			return $enterprise && $enterprise->responsible_id === $user->id;
@@ -118,33 +111,26 @@ class InvoicePolicy
 	 */
 	public static function getQueryFilter(User $user): \Closure
 	{
-		return function (Builder $query) use ($user)
-		{
-			if ($user->hasRole('admin'))
-			{
+		return function (Builder $query) use ($user) {
+			if ($user->hasRole('admin')) {
 				// Admin can see all invoices in their team
-				return $query->whereHas('enterprise', function ($q) use ($user)
-				{
+				return $query->whereHas('enterprise', function ($q) use ($user) {
 					$q->where('team_id', $user->current_team_id);
 				});
 			}
 
-			if ($user->hasRole('collaborator'))
-			{
+			if ($user->hasRole('collaborator')) {
 				// Collaborator can see invoices of enterprises they are responsible for
-				return $query->whereHas('enterprise', function ($q) use ($user)
-				{
+				return $query->whereHas('enterprise', function ($q) use ($user) {
 					$q->where('responsible_id', $user->id);
 				});
 			}
 
-			if ($user->hasRole('client'))
-			{
+			if ($user->hasRole('client')) {
 				// Client can see invoices of their enterprises
 				$contact = $user->contact;
-				if (! $contact)
-				{
-					return $query->whereRaw('1 = 0'); // Return no results
+				if (!$contact) {
+					return $query->whereRaw('1 = 0');  // Return no results
 				}
 
 				$enterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();

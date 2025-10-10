@@ -270,6 +270,17 @@
 		</div>
 	</div>
 
+	<!-- Add New Collaborator Button -->
+	<div class="d-flex justify-content-start mb-3">
+		@can('collaborator.create')
+			<a href="{{ route('collaborator.create') }}"
+				class="btn btn-primary d-flex align-items-center gap-1">
+				<i class="ti ti-plus"></i>
+				<span>{{ __('Añadir nuevo') }}</span>
+			</a>
+		@endcan
+	</div>
+
 	<div class="card shadow">
 		<div class="card-body">
 			<h5 class="mb-3">Filtros</h5>
@@ -290,6 +301,15 @@
 						placeholder="{{ __('Servicio') }}" />
 				</div>
 				<div class="col">
+					<label for="status" class="form-label">{{ __('Estado') }}</label>
+					<select class="form-select" id="status">
+						<option value="" selected>{{ __('Todos los estados') }}</option>
+						<option value="1">✅ Revisado</option>
+						<option value="2">❓ Para revisión</option>
+						<option value="3">⚠️ Pendiente</option>
+					</select>
+				</div>
+				<div class="col" style="display: none;">
 					<label for="days" class="form-label">{{ __('Días') }}</label>
 					<select class="form-select" id="days">
 						<option value="" selected>{{ __('Días') }}</option>
@@ -299,7 +319,7 @@
 						<option value="30">30 días</option>
 					</select>
 				</div>
-				<div class="col">
+				<div class="col" style="display: none;">
 					<x-input-date id="delivery-date" label="{{ __('Fecha entrega') }}" value="" />
 				</div>
 			</div>
@@ -328,12 +348,6 @@
 										class="ti ti-file-text me-2"></i>PDF</a></li>
 						</ul>
 					</div>
-					<a href="{{ route('collaborator.create') }}"
-						class="btn btn-primary ms-2 d-flex align-items-center gap-1"
-						style="height: 40px; min-width: 170px;">
-						<i class="ti ti-plus"></i>
-						<span style="white-space: nowrap;">{{ __('Añadir nuevo') }}</span>
-					</a>
 					<button class="btn btn-outline-secondary ms-2" id="clear-filters" style="height: 40px;" title="{{ __('Limpiar filtros') }}">
 						<i class="ti ti-refresh"></i>
 					</button>
@@ -352,6 +366,10 @@
 							<i class="ti ti-chart-bar me-2"></i>
 							<span id="statistics-service-name">Estadísticas del servicio</span>
 						</h5>
+						<small class="text-muted">
+							<i class="ti ti-check text-success ti-xs me-1"></i>
+							Calculadas únicamente sobre colaboradores con estado "Revisado"
+						</small>
 					</div>
 					<div class="card-body">
 						<div class="row">
@@ -548,6 +566,7 @@
 					var sourceLanguage = $('#source-language').val();
 					var targetLanguage = $('#target-language').val();
 					var service = $('#service').val();
+					var status = $('#status').val();
 					var days = $('#days').val();
 					var deliveryDate = $('#delivery-date').val();
 
@@ -559,6 +578,7 @@
 						d.source_language = sourceLanguage;
 						d.target_language = targetLanguage;
 						d.service = service;
+						d.status = status;
 						d.days = days;
 						d.delivery_date = deliveryDate;
 						// Don't include dashboard_filter when using regular filters
@@ -578,7 +598,7 @@
 			}
 
 			// Table filters
-			$('#source-language, #target-language, #service, #days, #delivery-date').on('change', function () {
+			$('#source-language, #target-language, #service, #status, #days, #delivery-date').on('change', function () {
 				// Add event listener for delivery date changes (for date picker)
 				if (this.id === 'delivery-date') {
 					console.log('Delivery date changed:', $(this).val());
@@ -604,7 +624,7 @@
 				var table = $('#collaborator-table').DataTable();
 
 				// Clear other filters first
-				$('#source-language, #target-language, #service, #days, #delivery-date').val('');
+				$('#source-language, #target-language, #service, #status, #days, #delivery-date').val('');
 
 				// Add the custom filter parameter
 				table.settings()[0].ajax.data = function (d) {
@@ -628,7 +648,7 @@
 				var table = $('#collaborator-table').DataTable();
 
 				// Clear all form filters
-				$('#source-language, #target-language, #service, #days, #delivery-date').val('');
+				$('#source-language, #target-language, #service, #status, #days, #delivery-date').val('');
 				$('#search').val('');
 
 				// Clear dashboard filter active state
@@ -646,10 +666,17 @@
 				hideServiceStatistics();
 			});
 
-			// Re-initialize tooltips after table draw
-			$('#collaborator-table').on('draw.dt', function () {
-				initializeTooltips();
+		// Re-initialize tooltips and dropdowns after table draw
+		$('#collaborator-table').on('draw.dt', function () {
+			initializeTooltips();
+			// Initialize Bootstrap dropdowns
+			var dropdowns = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+			dropdowns.forEach(function(dropdown) {
+				if (!dropdown._dropdown) {
+					dropdown._dropdown = new bootstrap.Dropdown(dropdown);
+				}
 			});
+		});
 
 
 
@@ -731,6 +758,16 @@
 				deleteRecord(id, this);
 			});
 
+		// Event delegation for status change
+		$(document).on('click', '.change-status', function (e) {
+			e.preventDefault();
+			e.stopPropagation(); // Prevent event bubbling
+			var contactId = $(this).data('contact-id');
+			var statusId = $(this).data('status-id');
+			console.log('Status change clicked:', { contactId, statusId }); // Debug log
+			changeCollaboratorStatus(contactId, statusId);
+		});
+
 							// Function to fetch service statistics
 		function fetchServiceStatistics(serviceId) {
 			console.log('Fetching statistics for service ID:', serviceId);
@@ -738,6 +775,7 @@
 			// Get current filter values to pass to statistics API
 			var sourceLanguage = $('#source-language').val();
 			var targetLanguage = $('#target-language').val();
+			var status = $('#status').val();
 			var days = $('#days').val();
 			var deliveryDate = $('#delivery-date').val();
 
@@ -749,6 +787,7 @@
 					team_id: {{ auth()->user()->currentTeam->id ?? 4 }}, // Use current team or default to 4
 					source_language: sourceLanguage,
 					target_language: targetLanguage,
+					status: status,
 					days: days,
 					delivery_date: deliveryDate
 				},
@@ -977,6 +1016,73 @@
 				}
 			});
 		}
+
+	// Function to change collaborator status
+	function changeCollaboratorStatus(contactId, statusId) {
+		console.log('Attempting to change status:', { contactId, statusId }); // Debug log
+
+		// Verify CSRF token exists
+		var csrfToken = $('meta[name="csrf-token"]').attr('content');
+		if (!csrfToken) {
+			console.error('CSRF token not found');
+			toastr['error']('', 'Error de seguridad: Token CSRF no encontrado', {
+				closeButton: true,
+				tapToDismiss: false,
+				rtl: false
+			});
+			return;
+		}
+
+		$.ajax({
+			url: '/collaborator/' + contactId + '/update-status',
+			type: 'POST',
+			data: {
+				_token: csrfToken,
+				status_id: statusId
+			},
+			beforeSend: function() {
+				console.log('Sending request to update status...'); // Debug log
+			},
+			success: function (response) {
+				console.log('Status update response:', response); // Debug log
+				if (response.success) {
+					toastr['success']('', response.message, {
+						closeButton: true,
+						tapToDismiss: false,
+						rtl: false
+					});
+					// Reload the table to show updated status
+					$('#collaborator-table').DataTable().ajax.reload();
+				} else {
+					toastr['error']('', response.message || 'Error desconocido', {
+						closeButton: true,
+						tapToDismiss: false,
+						rtl: false
+					});
+				}
+			},
+			error: function (xhr, status, error) {
+				console.error('Status update error:', { xhr, status, error }); // Debug log
+				var message = 'Error al actualizar el estado';
+
+				if (xhr.responseJSON && xhr.responseJSON.message) {
+					message = xhr.responseJSON.message;
+				} else if (xhr.status === 403) {
+					message = 'No tienes permisos para realizar esta acción';
+				} else if (xhr.status === 404) {
+					message = 'Recurso no encontrado';
+				} else if (xhr.status === 500) {
+					message = 'Error interno del servidor';
+				}
+
+				toastr['error']('', message, {
+					closeButton: true,
+					tapToDismiss: false,
+					rtl: false
+				});
+			}
+		});
+	}
 	</script>
 
 			<script>

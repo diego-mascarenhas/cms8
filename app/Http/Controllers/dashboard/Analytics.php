@@ -21,7 +21,7 @@ class Analytics extends Controller
 		$endOfLastMonth = $now->clone()->subMonth()->endOfMonth();
 
 		// Define the column to use for date calculations
-		$dateColumn = 'created_at'; // or 'date'
+		$dateColumn = 'created_at';  // or 'date'
 
 		// Calculate current month's earnings
 		$currentMonthEarnings = Payment::where('transaction_type', 'I')
@@ -62,8 +62,7 @@ class Analytics extends Controller
 
 		// Create an array with daily earnings for the current month
 		$monthDays = [];
-		for ($i = 0; $i < $now->daysInMonth; $i++)
-		{
+		for ($i = 0; $i < $now->daysInMonth; $i++) {
 			$date = $startOfMonth->clone()->addDays($i)->toDateString();
 			$monthDays[$date] = isset($dailyEarnings[$date]) ? $dailyEarnings[$date]['total'] : 0;
 		}
@@ -74,8 +73,7 @@ class Analytics extends Controller
 			->orderBy('id', 'desc')
 			->limit(25)
 			->get()
-			->map(function ($project)
-			{
+			->map(function ($project) {
 				return (object) [
 					'id' => $project->id,
 					'name' => $project->name,
@@ -89,7 +87,7 @@ class Analytics extends Controller
 						<i class="ti ti-dots-vertical ti-sm text-muted"></i>
 					</button>
 					<div class="dropdown-menu dropdown-menu-end" aria-labelledby="sourceVisits">
-						<a class="dropdown-item" href="'.route('project.edit', $project->id).'">Edit Project</a>
+						<a class="dropdown-item" href="' . route('project.edit', $project->id) . '">Edit Project</a>
 					</div>
 				</div>',
 				];

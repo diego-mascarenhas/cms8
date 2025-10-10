@@ -12,7 +12,7 @@
             background-color: #f8f9fa;
         }
         .preview-container {
-            max-width: 900px;
+            max-width: 600px;
             margin: 0 auto;
             background: white;
             border-radius: 8px;
@@ -45,10 +45,28 @@
             color: #6c757d;
             text-align: center;
         }
-
+        .close-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 1000;
+        }
+        .close-btn:hover {
+            background: #c82333;
+        }
     </style>
 </head>
 <body>
+    <button class="close-btn" onclick="window.close()" title="Close Preview">&times;</button>
+
     <div class="preview-container">
         <div class="preview-header">
             📧 Email Preview: {{ $message ? $message->name : 'Message Preview' }}

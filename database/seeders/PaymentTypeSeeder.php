@@ -4,94 +4,47 @@ namespace Database\Seeders;
 
 use App\Models\PaymentType;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 class PaymentTypeSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
-    {
-        $paymentTypes = [
-            [
-                'id' => 1,
-                'name' => 'Cash',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 2,
-                'name' => 'Bank Transfer',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 3,
-                'name' => 'Bank Deposit',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 4,
-                'name' => 'Check',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 5,
-                'name' => 'Debit',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 6,
-                'name' => 'Credit Card',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 7,
-                'name' => 'PayPal',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 8,
-                'name' => 'Stripe',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 9,
-                'name' => 'Wise Transfer',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 10,
-                'name' => 'Cryptocurrency',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-            [
-                'id' => 11,
-                'name' => 'Bizum',
-                'discount' => 0.00,
-                'status' => 1,
-            ],
-        ];
+	/**
+	 * Run the database seeds.
+	 */
+	public function run(): void
+	{
+		// Check if is_active column exists
+		$hasIsActive = Schema::hasColumn('payment_types', 'is_active');
 
-        foreach ($paymentTypes as $type) {
-            PaymentType::updateOrCreate(
-                ['id' => $type['id']],
-                [
-                    'name' => $type['name'],
-                    'discount' => $type['discount'],
-                    'status' => $type['status'],
-                ]
-            );
-        }
+		$paymentTypes = [
+			['id' => 1, 'name' => 'Cash'],
+			['id' => 2, 'name' => 'Bank Transfer'],
+			['id' => 3, 'name' => 'Bank Deposit'],
+			['id' => 4, 'name' => 'Check'],
+			['id' => 5, 'name' => 'Debit'],
+			['id' => 6, 'name' => 'Credit Card'],
+			['id' => 7, 'name' => 'PayPal'],
+			['id' => 8, 'name' => 'Stripe'],
+			['id' => 9, 'name' => 'Wise Transfer'],
+			['id' => 10, 'name' => 'Cryptocurrency'],
+			['id' => 11, 'name' => 'Bizum'],
+			['id' => 12, 'name' => 'MercadoPago'],
+		];
 
-        $this->command->info('PaymentTypeSeeder completed successfully!');
-    }
+		foreach ($paymentTypes as $type) {
+			$data = ['name' => $type['name']];
+
+			// Only add is_active if column exists
+			if ($hasIsActive) {
+				$data['is_active'] = true;
+			}
+
+			PaymentType::updateOrCreate(
+				['id' => $type['id']],
+				$data
+			);
+		}
+
+		$this->command->info('PaymentTypeSeeder completed successfully!');
+	}
 }

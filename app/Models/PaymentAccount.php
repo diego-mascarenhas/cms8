@@ -17,16 +17,13 @@ class PaymentAccount extends Model
 
 	protected static function booted()
 	{
-		static::addGlobalScope('team', function ($builder)
-		{
-			if (auth()->check())
-			{
+		static::addGlobalScope('team', function ($builder) {
+			if (auth()->check()) {
 				$builder->where('team_id', auth()->user()->currentTeam->id);
 			}
 		});
 
-		static::addGlobalScope('activeStatus', function ($builder)
-		{
+		static::addGlobalScope('activeStatus', function ($builder) {
 			$builder->where('status', 1);
 		});
 	}
@@ -48,8 +45,7 @@ class PaymentAccount extends Model
 
 	public static function getOptions()
 	{
-		return self::all()->map(function ($data)
-		{
+		return self::all()->map(function ($data) {
 			return [
 				'id' => $data->id,
 				'name' => $data->name,
@@ -59,8 +55,8 @@ class PaymentAccount extends Model
 
 	public function getTotalAmountAttribute()
 	{
-		$income = $this->payments()->where('transaction_type', 'I')->sum('amount');
-		$expense = $this->payments()->where('transaction_type', 'E')->sum('amount');
+		$income = $this->payments()->where('transaction_type', 'income')->sum('amount');
+		$expense = $this->payments()->where('transaction_type', 'expense')->sum('amount');
 
 		return $income - $expense;
 	}

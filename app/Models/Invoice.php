@@ -46,26 +46,34 @@ class Invoice extends Model
 
 	public function getStatusLabelAttribute()
 	{
-		switch ($this->status)
-		{
-			case 1:
-				return '<span class="badge rounded-pill bg-label-primary">Print</span>';
-			case 2:
-				return '<span class="badge rounded-pill bg-label-warning">Printed</span>';
-			case 3:
-				return '<span class="badge rounded-pill bg-label-danger">Cancelled</span>';
-			case 4:
-				return '<span class="badge rounded-pill bg-label-info">Credit Note</span>';
-			case 5:
-				return '<span class="badge rounded-pill bg-label-success">Bonified</span>';
-			case 6:
-				return '<span class="badge rounded-pill bg-label-success">Bonified (Credit Note)</span>';
-			case 7:
-				return '<span class="badge rounded-pill bg-label-danger">Error</span>';
-			case 8:
-				return '<span class="badge rounded-pill bg-label-warning">Issuing</span>';
-			default:
-				return '<span class="badge rounded-pill bg-label-secondary">Unknown</span>';
-		}
+		return match ($this->status) {
+			1 => 'Imprimir',
+			2 => 'Impresa',
+			3 => 'Anulada',
+			4 => 'Nota de Crédito',
+			5 => 'Bonificada',
+			6 => 'Bonificada (Nota de Crédito)',
+			7 => 'Error',
+			8 => 'Emitiendo',
+			default => 'Desconocido',
+		};
+	}
+
+	public function getStatusBadgeAttribute()
+	{
+		$label = $this->status_label;
+		$color = match ($this->status) {
+			1 => 'primary',
+			2 => 'warning',
+			3 => 'danger',
+			4 => 'info',
+			5 => 'success',
+			6 => 'success',
+			7 => 'danger',
+			8 => 'warning',
+			default => 'secondary',
+		};
+
+		return '<span class="badge rounded-pill bg-label-' . $color . '">' . $label . '</span>';
 	}
 }

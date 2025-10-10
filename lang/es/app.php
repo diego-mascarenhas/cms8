@@ -51,7 +51,9 @@ return [
         'api_tokens' => 'Tokens API',
         'team' => [
             'manage' => 'Gestionar Equipo',
+            'variables' => 'Variables de Entorno',
             'settings' => 'Ajustes del Equipo',
+            'account_management' => 'Gestión de Cuentas',
             'create' => 'Crear Nuevo Equipo',
             'switch' => 'Cambiar de Equipo',
         ],

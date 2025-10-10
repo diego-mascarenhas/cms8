@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/animate-css/animate.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
 @endsection
 
 @section('vendor-script')
@@ -19,12 +18,8 @@
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
 @endsection
 
-@section('page-script')
-    <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
-@endsection
 
 <style>
     .fade-out {
@@ -34,25 +29,6 @@
 </style>
 
 @section('content')
-    @if (session('success'))
-        <div id="toast-container" class="toast-top-right">
-            <div class="toast toast-success" aria-live="polite" style="display: block;">
-                <div class="toast-client">{{ session('success') }}</div>
-            </div>
-        </div>
-
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var toastElement = document.getElementById('toast-container');
-                var toast = new bootstrap.Toast(toastElement, {
-                    animation: true,
-                    delay: 1000,
-                    autohide: true
-                });
-                toast.show();
-            });
-        </script>
-    @endif
 
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
@@ -116,22 +92,6 @@
                         return response.json();
                     }).then(data => {
                         console.log('Response data:', data);
-
-                        const toastHTML = `
-                    <div id="toast-container" class="toast-top-right">
-                        <div class="toast toast-success" aria-live="polite" style="display: block;">
-                            <div class="toast-client">${data.success}</div>
-                        </div>
-                    </div>
-                `;
-                        document.body.insertAdjacentHTML('beforeend', toastHTML);
-                        var toastElement = document.getElementById('toast-container');
-                        var toast = new bootstrap.Toast(toastElement, {
-                            animation: true,
-                            delay: 3000,
-                            autohide: true
-                        });
-                        toast.show();
 
                         const row = element.closest('tr');
                         if (row) {

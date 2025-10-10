@@ -27,186 +27,43 @@
                 </a>
             @endcan
             @can('project.create')
-                @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('projects'))
                 <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-success waves-effect waves-light">
                     <i class="ti ti-folder-plus me-1"></i>{{ __('Create') }} {{ __('Project') }}
                 </a>
-                @endif
             @endcan
         </div>
     </div>
 
-    <div class="row">
-        <!-- Client Information -->
-        <div class="col-xl-4 col-lg-5 col-md-5">
-            <!-- Client Details Card -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <div class="user-avatar-section">
-                        <div class="d-flex align-items-center flex-column">
-                            <div class="user-info w-100">
-                                <h4 class="mb-2">{{ $client->name }}</h4>
-                                <div class="d-flex flex-wrap">
-                                    {!! $client->status_label !!}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="info-container">
-                        <h5 class="mb-3">{{ __('Details') }}</h5>
-                        <ul class="list-unstyled">
-                            @if($client->email)
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">Email:</span>
-                                <span><a href="mailto:{{ $client->email }}">{{ $client->email }}</a></span>
-                            </li>
-                            @endif
-                            @if($client->phone)
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">{{ __('Phone') }}:</span>
-                                <span><a href="tel:{{ $client->phone }}">{{ $client->phone }}</a></span>
-                            </li>
-                            @endif
-                            @if($client->whatsapp)
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">{{ __('WhatsApp') }}:</span>
-                                <span><a href="https://wa.me/{{ str_replace(['+', ' ', '-'], '', $client->whatsapp) }}" target="_blank">{{ $client->whatsapp }}</a></span>
-                            </li>
-                            @endif
-                            @if($client->website)
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">{{ __('Website') }}:</span>
-                                <span><a href="{{ $client->website }}" target="_blank">{{ $client->website }}</a></span>
-                            </li>
-                            @endif
-                            @if($client->responsible)
-                            <li class="mb-2 pt-1">
-                                <span class="fw-medium me-1">{{ __('Contact') }}:</span>
-                                <span><a href="{{ route('contact.show', $client->responsible->id) }}">{{ $client->responsible->name }}</a></span>
-                            </li>
-                            @endif
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Address Information -->
-            @if($client->address || $client->locality || $client->province || $client->postal_code)
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h5 class="mb-3">{{ __('Address') }}</h5>
-                    <ul class="list-unstyled">
-                        @if($client->address)
-                        <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">{{ __('Address') }}:</span>
-                            <span>{{ $client->address }}</span>
-                        </li>
-                        @endif
-                        @if($client->postal_code)
-                        <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">{{ __('Postal Code') }}:</span>
-                            <span>{{ $client->postal_code }}</span>
-                        </li>
-                        @endif
-                        @if($client->locality)
-                        <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">{{ __('Locality') }}:</span>
-                            <span>{{ $client->locality }}</span>
-                        </li>
-                        @endif
-                        @if($client->province)
-                        <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">{{ __('Province') }}:</span>
-                            <span>{{ $client->province }}</span>
-                        </li>
-                        @endif
-                        @if($client->country)
-                        <li class="mb-2 pt-1">
-                            <span class="fw-medium me-1">{{ __('Country') }}:</span>
-                            <span>{{ $client->country }}</span>
-                        </li>
-                        @endif
-                    </ul>
-                </div>
-            </div>
-            @endif
-
-            <!-- Social Networks -->
-            @if($client->data && (
-                $client->data->facebook ??
-                $client->data->instagram ??
-                $client->data->twitter ??
-                $client->data->linkedin ??
-                $client->data->youtube ??
-                $client->data->tiktok ??
-                $client->data->pinterest ??
-                $client->data->snapchat ?? null
-            ))
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h5 class="mb-3">{{ __('Social Networks') }}</h5>
-                    <div class="info-container">
-                        @if($client->data->facebook ?? null)
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="ti ti-brand-facebook text-primary me-2"></i>
-                            <a href="{{ $client->data->facebook }}" target="_blank">Facebook</a>
-                        </div>
-                        @endif
-                        @if($client->data->instagram ?? null)
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="ti ti-brand-instagram text-danger me-2"></i>
-                            <a href="{{ $client->data->instagram }}" target="_blank">Instagram</a>
-                        </div>
-                        @endif
-                        @if($client->data->twitter ?? null)
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="ti ti-brand-twitter text-info me-2"></i>
-                            <a href="{{ $client->data->twitter }}" target="_blank">Twitter</a>
-                        </div>
-                        @endif
-                        @if($client->data->linkedin ?? null)
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="ti ti-brand-linkedin text-primary me-2"></i>
-                            <a href="{{ $client->data->linkedin }}" target="_blank">LinkedIn</a>
-                        </div>
-                        @endif
-                        @if($client->data->youtube ?? null)
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="ti ti-brand-youtube text-danger me-2"></i>
-                            <a href="{{ $client->data->youtube }}" target="_blank">YouTube</a>
-                        </div>
-                        @endif
-                        @if($client->data->tiktok ?? null)
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="ti ti-brand-tiktok text-dark me-2"></i>
-                            <a href="{{ $client->data->tiktok }}" target="_blank">TikTok</a>
-                        </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-            @endif
-        </div>
-
         <!-- Projects & Services Section -->
-        <div class="col-xl-8 col-lg-7 col-md-7">
-            <div class="card">
+        <div class="col-12">
+            <!-- Style Guide Section -->
+            @if($client->data && ($client->data->style_guide ?? null))
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Guía de estilo</h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ $client->data->style_guide }}</p>
+                </div>
+            </div>
+            @endif
+
+            <!-- Active Projects -->
+            <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{{ __('Projects') }} ({{ $client->projects->count() }})</h5>
+                    <h5 class="mb-0">Proyectos activos</h5>
                     @can('project.create')
-                        @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('projects'))
-                        <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
-                            <i class="ti ti-plus me-1"></i>{{ __('New Project') }}
-                        </a>
-                        @endif
+                    <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
+                        <i class="ti ti-plus me-1"></i>Nuevo proyecto
+                    </a>
                     @endcan
                 </div>
                 <div class="card-body">
-                    @if($client->projects->count() > 0)
+                    @if($activeProjects->count() > 0)
                         <div class="row">
-                            @foreach($client->projects as $project)
+                            @foreach($activeProjects as $project)
                             <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="card h-100">
+                                <div class="card h-100 border-success">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <h6 class="card-title mb-1">
@@ -215,7 +72,7 @@
                                                 </a>
                                             </h6>
                                             @if($project->status)
-                                                <span class="badge bg-label-{{ $project->status->color ?? 'secondary' }} rounded-pill">
+                                                <span class="badge bg-success rounded-pill">
                                                     {{ $project->status->name }}
                                                 </span>
                                             @endif
@@ -263,112 +120,181 @@
                             <div class="mb-3">
                                 <i class="ti ti-folder-off display-4 text-muted"></i>
                             </div>
-                            <h6 class="mb-1">{{ __('No ongoing projects') }}</h6>
-                            <p class="text-muted mb-3">{{ __('This client has no projects assigned yet.') }}</p>
-                            @can('project.create')
-                                @if(auth()->user()->currentTeam && auth()->user()->currentTeam->hasModule('projects'))
-                                <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-primary">
-                                    <i class="ti ti-plus me-1"></i>{{ __('Add Project') }}
-                                </a>
-                                @endif
-                            @endcan
+                            <h6 class="mb-1">Sin proyectos activos</h6>
+                            <p class="text-muted mb-3">Este cliente no tiene proyectos activos.</p>
                         </div>
                     @endif
                 </div>
             </div>
 
-            <div class="card mt-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{{ __('Services') }} ({{ $client->services->count() }})</h5>
-                    @can('service.create')
-                    <a href="{{ route('service.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
-                        <i class="ti ti-plus me-1"></i>{{ __('New Service') }}
-                    </a>
-                    @endcan
+            <!-- Past Projects -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Proyectos pasados</h5>
                 </div>
                 <div class="card-body">
-                    @if($client->services->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>{{ __('Description') }}</th>
-                                        <th>{{ __('Operation') }}</th>
-                                        <th>{{ __('Price') }}</th>
-                                        <th>{{ __('Frequency') }}</th>
-                                        <th>{{ __('Next Billing') }}</th>
-                                        <th>{{ __('Status') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($client->services as $service)
-                                    <tr>
-                                        <td>{{ Str::limit($service->description, 60) }}</td>
-                                        <td><span class="badge bg-label-info">{{ strtoupper($service->operation) }}</span></td>
-                                        <td>{{ $service->currency?->code ?? 'EUR' }} {{ number_format($service->price, 2) }}</td>
-                                        <td>{{ $service->frequency }} {{ __('months') }}</td>
-                                        <td>{{ optional($service->next_billing)->format('Y-m-d') }}</td>
-                                        <td>{!! $service->status_label !!}</td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <p class="text-muted mb-0">{{ __('This client has no services yet.') }}</p>
-                    @endif
-                </div>
-            </div>
-
-            <div class="card mt-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">{{ __('Invoices') }} ({{ $client->invoices->count() }})</h5>
-                    @can('invoice.create')
-                    <a href="{{ route('invoice.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary">
-                        <i class="ti ti-plus me-1"></i>{{ __('New Invoice') }}
-                    </a>
-                    @endcan
-                </div>
-                <div class="card-body">
-                    @if($client->invoices->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>{{ __('Date') }}</th>
-                                        <th>{{ __('Billing Address') }}</th>
-                                        <th class="text-end">{{ __('Total') }}</th>
-                                        <th class="text-end">{{ __('Balance') }}</th>
-                                        <th>{{ __('Status') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($client->invoices as $invoice)
-                                    <tr>
-                                        <td><a href="{{ route('invoice.show', $invoice->id) }}">{{ $invoice->number }}</a></td>
-                                        <td>{{ \Carbon\Carbon::parse($invoice->date)->format('Y-m-d') }}</td>
-                                        <td>
-                                            @if($invoice->billingAddress)
-                                                {{ $invoice->billingAddress->name }}<br>
-                                                <small class="text-muted">{{ $invoice->billingAddress->address }}, {{ $invoice->billingAddress->locality }}</small>
-                                            @else
-                                                <span class="text-muted">—</span>
+                    @if($pastProjects->count() > 0)
+                        <div class="row">
+                            @foreach($pastProjects->take(6) as $project)
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card h-100 border-secondary">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="card-title mb-1">
+                                                <a href="{{ route('project.show', $project->id) }}" class="text-decoration-none text-muted">
+                                                    {{ $project->name }}
+                                                </a>
+                                            </h6>
+                                            @if($project->status)
+                                                <span class="badge bg-secondary rounded-pill">
+                                                    {{ $project->status->name }}
+                                                </span>
                                             @endif
-                                        </td>
-                                        <td class="text-end">{{ number_format($invoice->total_amount, 2) }}</td>
-                                        <td class="text-end">{{ number_format($invoice->balance, 2) }}</td>
-                                        <td>{!! $invoice->status_label !!}</td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                        </div>
+
+                                        @if($project->description)
+                                        <p class="card-text small text-muted mb-2">
+                                            {{ Str::limit($project->description, 80) }}
+                                        </p>
+                                        @endif
+
+                                        <div class="small text-muted">
+                                            @if($project->responsible)
+                                                <div class="mb-1">
+                                                    <i class="ti ti-user me-1"></i>
+                                                    {{ $project->responsible->name }}
+                                                </div>
+                                            @endif
+                                            @if($project->category)
+                                                <div class="mb-1">
+                                                    <i class="ti ti-category me-1"></i>
+                                                    {{ $project->category->name }}
+                                                </div>
+                                            @endif
+                                            @if($project->date_end)
+                                                <div class="mb-1">
+                                                    <i class="ti ti-calendar-check me-1"></i>
+                                                    {{ Carbon\Carbon::parse($project->date_end)->format('d/m/Y') }}
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
                         </div>
+                        @if($pastProjects->count() > 6)
+                            <div class="text-center">
+                                <small class="text-muted">Mostrando 6 de {{ $pastProjects->count() }} proyectos pasados</small>
+                            </div>
+                        @endif
                     @else
-                        <p class="text-muted mb-0">{{ __('This client has no invoices yet.') }}</p>
+                        <div class="text-center py-4">
+                            <div class="mb-3">
+                                <i class="ti ti-folder-check display-4 text-muted"></i>
+                            </div>
+                            <h6 class="mb-1">Sin proyectos pasados</h6>
+                            <p class="text-muted mb-3">Este cliente no tiene proyectos completados aún.</p>
+                        </div>
                     @endif
                 </div>
             </div>
+
+            <!-- Collaborators Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Colaboradores</h5>
+                </div>
+                <div class="card-body">
+                    @if($collaborators->count() > 0)
+                        <div class="row">
+                            @foreach($collaborators as $collaborator)
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar avatar-sm">
+                                            <span class="avatar-initial rounded-circle bg-label-primary">
+                                                {{ strtoupper(substr($collaborator->name, 0, 2)) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">
+                                            <a href="{{ route('contact.show', $collaborator->id) }}" class="text-decoration-none">
+                                                {{ $collaborator->name }}
+                                            </a>
+                                        </h6>
+                                        <small class="text-muted">
+                                            {{ $collaborator->projects->count() }} proyectos
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <div class="mb-3">
+                                <i class="ti ti-users display-4 text-muted"></i>
+                            </div>
+                            <h6 class="mb-1">Sin colaboradores</h6>
+                            <p class="text-muted mb-0">Ningún colaborador ha trabajado en proyectos para este cliente aún.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Language Combinations Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Combinaciones de idiomas</h5>
+                </div>
+                <div class="card-body">
+                    @if($languageCombinations->count() > 0)
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($languageCombinations as $combination)
+                            <span class="badge rounded-pill bg-label-info">
+                                {{ $combination }}
+                            </span>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <div class="mb-3">
+                                <i class="ti ti-language display-4 text-muted"></i>
+                            </div>
+                            <h6 class="mb-1">Sin combinaciones de idiomas</h6>
+                            <p class="text-muted mb-0">No hay combinaciones de idiomas disponibles para este cliente aún.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Services Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Servicios utilizados</h5>
+                </div>
+                <div class="card-body">
+                    @if($services->count() > 0)
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach($services as $service)
+                            <span class="badge rounded-pill bg-label-primary">
+                                {{ $service->name }}
+                            </span>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <div class="mb-3">
+                                <i class="ti ti-tools display-4 text-muted"></i>
+                            </div>
+                            <h6 class="mb-1">Sin servicios</h6>
+                            <p class="text-muted mb-0">No se han utilizado servicios para este cliente aún.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
         </div>
-    </div>
 @endsection

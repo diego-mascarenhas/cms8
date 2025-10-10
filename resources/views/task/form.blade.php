@@ -66,39 +66,48 @@
 	<form class="card-body" action="{{ route('task.store') }}" method="POST">
 		@csrf
 		<input type="hidden" name="id" value="{{ $data->id ?? '' }}">
-		
+		@if(isset($defaultBoardId))
+			<input type="hidden" name="board_id" value="{{ $defaultBoardId }}">
+		@endif
+		@if(isset($projectId))
+			<input type="hidden" name="project_id" value="{{ $projectId }}">
+		@endif
+		@if(request()->has('view'))
+			<input type="hidden" name="view" value="{{ request()->get('view') }}">
+		@endif
+
 		<div class="row g-3">
 			<div class="col-md-6">
 				<x-input-general id="title" label="Título (*)" value="{{ old('title', $data->title?? '') }}" />
 			</div>
 			<div class="col-md-3">
-				<x-module-categories-select 
-					id="category_id" 
-					label="Categoría" 
+				<x-module-categories-select
+					id="category_id"
+					label="Categoría"
 					moduleKey="tasks"
-					:selected="old('category_id', $data->category_id ?? '')" 
+					:selected="old('category_id', $data->category_id ?? '')"
 				/>
 			</div>
 			<div class="col-md-3">
-				<x-input-select id="status_id" label="Estado (*)" :options="$statuses" value="{{ old('status_id', $data->status_id ?? '1') }}" />
+				<x-input-select id="status_id" label="Estado (*)" :options="$statuses" value="{{ old('status_id', $data->status_id ?? ($defaultStatusId ?? '1')) }}" />
 			</div>
 
 			@if(auth()->user()->hasRole('admin'))
 			<div class="col-md-3">
-				<x-input-date id="start_date" label="Fecha inicio (*)" 
+				<x-input-date id="start_date" label="Fecha inicio (*)"
 					value="{{ old('start_date', $data->start_date ?? '') }}" />
 			</div>
-			
+
 			<div class="col-md-3">
-				<x-input-date id="due_date" label="Fecha finalización (*)" 
+				<x-input-date id="due_date" label="Fecha finalización (*)"
 					value="{{ old('due_date', $data->due_date ?? '') }}" />
 			</div>
-			
+
 			<div class="col-md-6">
-				<x-team-users-select 
-					id="responsible_id" 
-					label="Responsible (*)" 
-					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())" 
+				<x-team-users-select
+					id="responsible_id"
+					label="Responsible (*)"
+					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
 				/>
 			</div>
 			@endif
@@ -107,7 +116,7 @@
 				<x-input-textarea id="description" label="Description (*)" value="{{ old('description', $data->description?? '') }}" />
 			</div>
 		</div>
-		
+
 		<div class="pt-4">
 			<div class="col-12 d-flex">
 				<button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>

@@ -6,17 +6,23 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Task extends Model
+class Task extends Model implements HasMedia
 {
-	use HasFactory, SoftDeletes;
+	use HasFactory, SoftDeletes, InteractsWithMedia, LogsActivity;
 
 	protected $fillable = [
 		'team_id',
+		'board_id',
 		'category_id',
 		'responsible_id',
 		'title',
 		'description',
+		'estimated_hours',
 		'start_date',
 		'due_date',
 		'status_id',
@@ -24,8 +30,9 @@ class Task extends Model
 	];
 
 	protected $casts = [
-		'start_date' => 'datetime',
-		'due_date' => 'datetime',
+		'start_date' => 'date',
+		'due_date' => 'date',
+		'estimated_hours' => 'decimal:2',
 	];
 
 	protected static function booted()
@@ -47,6 +54,16 @@ class Task extends Model
 	public function status()
 	{
 		return $this->belongsTo(TaskStatus::class);
+	}
+
+	public function board()
+	{
+		return $this->belongsTo(TaskBoard::class);
+	}
+
+	public function category()
+	{
+		return $this->belongsTo(Category::class, 'category_id');
 	}
 
 	public function getStatusLabelAttribute()
@@ -83,5 +100,24 @@ class Task extends Model
 	public function scopeDefaultOrder($query)
 	{
 		return $query->orderBy('status_id', 'asc')->orderBy('due_date', 'asc');
+	}
+
+	/**
+	 * Register media collections for this model
+	 */
+	public function registerMediaCollections(): void
+	{
+		$this->addMediaCollection('attachments');
+	}
+
+	/**
+	 * Configure activity logging options
+	 */
+	public function getActivitylogOptions(): LogOptions
+	{
+		return LogOptions::defaults()
+			->logOnly(['title', 'description', 'due_date', 'status_id', 'responsible_id', 'category_id', 'estimated_hours'])
+			->logOnlyDirty()
+			->dontSubmitEmptyLogs();
 	}
 }

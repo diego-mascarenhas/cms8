@@ -28,7 +28,7 @@ class Helpers
 			'footerFixed' => false,
 			'showSearch' => true,
 			'showLanguageSelector' => true,
-			'showQuickAccess' => false,
+			'showQuickAccess' => true,
 			'showNotifications' => true,
 			'defaultLanguage' => 'es',
 			'customizerControls' => [

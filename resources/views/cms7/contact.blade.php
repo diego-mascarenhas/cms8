@@ -39,7 +39,7 @@
                     <div class="user-avatar-section">
                         <div class="d-flex align-items-center flex-column">
                             <img class="img-fluid rounded mb-3 pt-1 mt-4"
-                                src="https://ui-avatars.com/api/?format=svg&name={{ $contact->nombre }}+{{ $contact->apellido }}" height="100"
+                                src="{{ \App\Helpers\AvatarHelper::generate($contact->nombre . ' ' . $contact->apellido, 100) }}" height="100"
                                 width="100" alt="User avatar" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $contact->nombre }} {{ $contact->apellido }}</h4>
@@ -47,7 +47,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="mt-4 info-container">
                         <ul class="list-unstyled">
                             <li class="mb-2 pt-1">
@@ -202,4 +202,4 @@
         </div>
         <!--/ User Content -->
     </div>
-@endsection 
+@endsection

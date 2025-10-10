@@ -35,21 +35,25 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::middleware('auth:sanctum')->get('/user', function (Request $request)
+{
     return $request->user();
 });
 
 // Mailgun Webhook (sin autenticación para recibir eventos)
-Route::post('/mailgun/webhook', function (Request $request) {
+Route::post('/mailgun/webhook', function (Request $request)
+{
     // Support both webhook formats: direct fields and event-data wrapper
     $eventData = $request->input('event-data');
 
-    if ($eventData) {
+    if ($eventData)
+    {
         // New Mailgun format with event-data wrapper
         $event = $eventData['event'] ?? null;
         $recipient = $eventData['recipient'] ?? null;
         $messageId = $eventData['message']['headers']['message-id'] ?? null;
-    } else {
+    } else
+    {
         // Legacy/test format with direct fields
         $event = $request->input('event');
         $recipient = $request->input('recipient');
@@ -73,13 +77,16 @@ Route::post('/mailgun/webhook', function (Request $request) {
     $delivery = null;
 
     // First try to find by provider_message_id
-    if ($messageId) {
+    if ($messageId)
+    {
         $delivery = MessageDelivery::where('provider_message_id', $messageId)->first();
     }
 
     // If not found, try by recipient email
-    if (! $delivery && $recipient) {
-        $delivery = MessageDelivery::whereHas('contact', function ($q) use ($recipient) {
+    if (! $delivery && $recipient)
+    {
+        $delivery = MessageDelivery::whereHas('contact', function ($q) use ($recipient)
+        {
             $q->where('email', $recipient);
         })
             ->where('sent_at', '>=', now()->subDays(7)) // Only recent deliveries
@@ -87,13 +94,15 @@ Route::post('/mailgun/webhook', function (Request $request) {
             ->first();
     }
 
-    if ($delivery) {
+    if ($delivery)
+    {
         Log::info('📧 Found MessageDelivery for webhook', [
             'delivery_id' => $delivery->id,
             'message_id' => $delivery->message_id,
             'contact_email' => $delivery->contact->email,
         ]);
-    } else {
+    } else
+    {
         Log::warning('📧 No MessageDelivery found for webhook', [
             'event' => $event,
             'recipient' => $recipient,
@@ -102,7 +111,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
     }
 
     // Process events and update delivery if found
-    switch ($event) {
+    switch ($event)
+    {
         case 'accepted':
             Log::info("📨 EMAIL ACCEPTED by Mailgun for {$recipient}");
             // No need to update delivery for accepted - just logging
@@ -110,7 +120,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
 
         case 'delivered':
             Log::info("✅ EMAIL DELIVERED successfully to {$recipient}");
-            if ($delivery) {
+            if ($delivery)
+            {
                 $delivery->update([
                     'delivered_at' => now(),
                     'status_id' => 2, // 2 = delivered
@@ -124,7 +135,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
                 'user_agent' => $request->input('user-agent'),
                 'client_info' => $request->input('client-info'),
             ]);
-            if ($delivery && ! $delivery->opened_at) {
+            if ($delivery && ! $delivery->opened_at)
+            {
                 $delivery->update([
                     'opened_at' => now(),
                     'status_id' => 3, // 3 = opened
@@ -141,9 +153,11 @@ Route::post('/mailgun/webhook', function (Request $request) {
                 'user_agent' => $request->input('user-agent'),
             ]);
 
-            if ($delivery) {
+            if ($delivery)
+            {
                 // Update clicked_at timestamp only if first click
-                if (! $delivery->clicked_at) {
+                if (! $delivery->clicked_at)
+                {
                     $delivery->update([
                         'clicked_at' => now(),
                         // Keep current status_id, just add clicked_at timestamp
@@ -152,7 +166,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
                 }
 
                 // ✅ ALWAYS Create Lead Conversion Link record for each click
-                if ($clickedUrl) {
+                if ($clickedUrl)
+                {
                     MessageDeliveryLink::create([
                         'message_delivery_id' => $delivery->id,
                         'link' => $clickedUrl,
@@ -163,7 +178,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
                         'url' => $clickedUrl,
                         'click_number' => MessageDeliveryLink::where('message_delivery_id', $delivery->id)->count(),
                     ]);
-                } else {
+                } else
+                {
                     Log::warning('🔗 No URL provided for click event', ['delivery_id' => $delivery->id]);
                 }
             }
@@ -178,7 +194,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
 
         case 'complained':
             Log::warning("📢 SPAM COMPLAINT from {$recipient}");
-            if ($delivery) {
+            if ($delivery)
+            {
                 $delivery->update([
                     'status_id' => 5, // 5 = complained
                     'provider_data' => array_merge($delivery->provider_data ?? [], [
@@ -196,7 +213,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
                 'description' => $request->input('description'),
                 'code' => $request->input('code'),
             ]);
-            if ($delivery) {
+            if ($delivery)
+            {
                 $delivery->update([
                     'status_id' => 6, // 6 = permanent failure
                     'bounced_at' => now(),
@@ -217,7 +235,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
                 'description' => $request->input('description'),
                 'code' => $request->input('code'),
             ]);
-            if ($delivery) {
+            if ($delivery)
+            {
                 $delivery->update([
                     'provider_data' => array_merge($delivery->provider_data ?? [], [
                         'last_temporary_failure' => now()->toISOString(),
@@ -236,7 +255,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
                 'reason' => $request->input('reason'),
                 'description' => $request->input('description'),
             ]);
-            if ($delivery) {
+            if ($delivery)
+            {
                 $delivery->update([
                     'status_id' => 6, // 6 = failed
                     'bounced_at' => now(),
@@ -248,7 +268,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
             Log::warning("⚠️ EMAIL BOUNCED from {$recipient}", [
                 'error' => $request->input('error'),
             ]);
-            if ($delivery) {
+            if ($delivery)
+            {
                 $delivery->update([
                     'status_id' => 6, // 6 = bounced
                     'bounced_at' => now(),
@@ -261,7 +282,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
                 'reason' => $request->input('reason'),
                 'description' => $request->input('description'),
             ]);
-            if ($delivery) {
+            if ($delivery)
+            {
                 $delivery->update([
                     'status_id' => 6, // 6 = dropped
                     'provider_data' => array_merge($delivery->provider_data ?? [], [
@@ -278,7 +300,8 @@ Route::post('/mailgun/webhook', function (Request $request) {
     }
 
     // Update aggregate statistics if delivery was found and updated
-    if ($delivery && in_array($event, ['delivered', 'opened', 'clicked', 'permanent_fail', 'failed', 'bounced', 'dropped'])) {
+    if ($delivery && in_array($event, ['delivered', 'opened', 'clicked', 'permanent_fail', 'failed', 'bounced', 'dropped']))
+    {
         // Update MessageDeliveryStat
         $stats = MessageDeliveryStat::firstOrCreate(['message_id' => $delivery->message_id], [
             'subscribers' => 0,
@@ -313,17 +336,20 @@ Route::post('/mailgun/webhook', function (Request $request) {
     return response()->json(['status' => 'success']);
 });
 
-Route::group(['prefix' => 'auth'], function () {
+Route::group(['prefix' => 'auth'], function ()
+{
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware('auth:sanctum')->group(function ()
+    {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
     });
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum')->group(function ()
+{
     // Category
     Route::get('category', [CategoryController::class, 'index']);
 
@@ -404,7 +430,8 @@ Route::post('/register-application', [LicenseController::class, 'register']);
 Route::get('/roles-permissions', [RolePermissionController::class, 'index']);
 
 // Team API routes protected by team token
-Route::middleware('team.token')->prefix('team')->group(function () {
+Route::middleware('team.token')->prefix('team')->group(function ()
+{
     // Team information
     Route::get('/', [TeamController::class, 'index']);
     Route::get('/settings', [TeamController::class, 'settings']);
@@ -420,3 +447,17 @@ Route::get('/fetch-html', [TemplateImportController::class, 'fetchHtml']);
 
 // Public statistics route (no authentication required)
 Route::get('/collaborator/service-statistics', [App\Http\Controllers\Api\CollaboratorController::class, 'getServiceStatistics']);
+
+// Avatar generation endpoint (no authentication required)
+Route::get('/avatar', function (Request $request)
+{
+    $name = $request->input('name', 'User');
+    $size = (int) $request->input('size', 100);
+
+    // Validate size to prevent abuse
+    $size = max(16, min($size, 500));
+
+    $avatar = \App\Helpers\AvatarHelper::generate($name, $size);
+
+    return response()->json(['avatar' => $avatar]);
+});

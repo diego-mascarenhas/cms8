@@ -32,7 +32,7 @@
 			<div class="card-body">
 				<div class="d-flex align-items-center flex-column">
 					<img class="img-fluid rounded mb-3 pt-1 mt-4"
-						src="https://ui-avatars.com/api/?format=svg&name={{ $contact->name }}" height="100"
+						src="{{ \App\Helpers\AvatarHelper::generate($contact->name, 100) }}" height="100"
 						width="100" alt="Employee avatar" />
 					<div class="user-info text-center">
 						<h4 class="mb-2">{{ $contact->name }}</h4>

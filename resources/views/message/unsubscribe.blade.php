@@ -1,6 +1,6 @@
 @extends('layouts/blankLayout')
 
-@section('title', __('Unsubscribe'))
+@section('title', 'Unsubscribe')
 
 @section('page-style')
   {{-- Page Css files --}}
@@ -19,8 +19,8 @@
     <!-- /Logo -->
     <div class="card">
       <div class="card-body">
-        <h1>{{ __('Unsubscribe') }}</h1>
-        <p>{{ __('You have been unsubscribed from our mailing list') }}: {{ $email }}</p>
+        <h1>Unsubscribe</h1>
+        <p>You have been unsubscribed from our mailing list: {{ $email }}</p>
       </div>
     </div>
   </div>
