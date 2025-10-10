@@ -3,9 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\Enterprise;
+use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class TeamHumanoSeeder extends Seeder
@@ -30,6 +32,9 @@ class TeamHumanoSeeder extends Seeder
 
 		// 5. Create Humano categories
 		// $this->createHumanoCategories();
+
+		// 6. Assign core modules to team
+		$this->assignCoreModules($team);
 
 		$this->command->info('✅ Humano setup completed successfully');
 	}
@@ -111,5 +116,47 @@ class TeamHumanoSeeder extends Seeder
 		$this->command->info('✅ Added Diego Mascarenhas to Humano team');
 
 		$this->command->info('✅ Updated Humano team users');
+	}
+
+	/**
+	 * Assign core modules to Humano team
+	 */
+	private function assignCoreModules($team)
+	{
+		$this->command->info('📦 Assigning core modules to Humano team...');
+
+		// Define default active module keys for Humano
+		$defaultModuleKeys = [
+			'contacts',  // Contact management
+			'enterprises',  // Enterprise management
+			'services',  // Service management
+			'projects',  // Project management
+			'tasks',  // Task management
+			'times',  // Time tracking
+			'invoices',  // Invoice management
+			'payments',  // Payment management
+			'attendances',  // Attendance tracking
+			'collaborators',  // Team collaboration
+			'notifications',  // Notification system
+		];
+
+		// Get all modules by their keys
+		$modules = Module::whereIn('key', $defaultModuleKeys)->get();
+
+		if ($modules->isEmpty()) {
+			$this->command->warn('⚠️  No modules found with the specified keys');
+			return;
+		}
+
+		// Attach modules to team (using sync to avoid duplicates)
+		$moduleIds = $modules->pluck('id')->toArray();
+		$team->modules()->syncWithoutDetaching($moduleIds);
+
+		$this->command->info("✅ Assigned {$modules->count()} modules to Humano team");
+
+		// Display assigned modules
+		foreach ($modules as $module) {
+			$this->command->line("   • {$module->name} ({$module->key})");
+		}
 	}
 }

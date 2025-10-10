@@ -63,16 +63,16 @@ class ModuleSeeder extends Seeder
 			'description' => 'Task management module',
 			'is_enabled' => true,  // On by default
 		],
-		'templates' => [
-			'name' => 'Templates',
-			'icon' => 'template',
-			'description' => 'Templates management module',
-			'is_enabled' => false,  // Off by default
-		],
 		'notifications' => [
 			'name' => 'Notifications',
 			'icon' => 'speakerphone',
 			'description' => 'Notifications and alerts module',
+			'is_enabled' => true,  // On by default
+		],
+		'templates' => [
+			'name' => 'Templates',
+			'icon' => 'template',
+			'description' => 'Templates management module',
 			'is_enabled' => true,  // On by default
 		],
 	];
@@ -85,6 +85,7 @@ class ModuleSeeder extends Seeder
 			'description' => 'Invoice management module',
 			'group' => 'billing',
 			'order' => 1,
+			'is_enabled' => true,  // On by default
 		],
 		'payments' => [
 			'name' => 'Payments',
@@ -92,6 +93,7 @@ class ModuleSeeder extends Seeder
 			'description' => 'Payment management module',
 			'group' => 'billing',
 			'order' => 2,
+			'is_enabled' => true,  // On by default
 		],
 		'accounting' => [
 			'name' => 'Accounting',
@@ -122,6 +124,13 @@ class ModuleSeeder extends Seeder
 			'order' => 6,
 		],
 		// ECOMMERCE GROUP
+		'stores' => [
+			'name' => 'Stores',
+			'icon' => 'building-store',
+			'description' => 'Online stores management module',
+			'group' => 'ecommerce',
+			'order' => 3,
+		],
 		'products' => [
 			'name' => 'Products',
 			'icon' => 'package',
@@ -135,13 +144,6 @@ class ModuleSeeder extends Seeder
 			'description' => 'Orders management module',
 			'group' => 'ecommerce',
 			'order' => 2,
-		],
-		'stores' => [
-			'name' => 'Stores',
-			'icon' => 'building-store',
-			'description' => 'Online stores management module',
-			'group' => 'ecommerce',
-			'order' => 3,
 		],
 		// INFRASTRUCTURE GROUP
 		'servers' => [
@@ -267,6 +269,7 @@ class ModuleSeeder extends Seeder
 			'icon' => 'hourglass',
 			'description' => 'Time tracking module',
 			'order' => 4,
+			'is_enabled' => true,  // On by default
 		],
 		'attendances' => [
 			'name' => 'Attendance',
