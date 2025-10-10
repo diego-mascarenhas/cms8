@@ -7,7 +7,7 @@ use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\AcademyController;
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\AccountingController;
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChatController;
@@ -46,7 +46,6 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamSettingController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TimeController;
-use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
@@ -374,9 +373,38 @@ Route::middleware(['auth'])->group(function () {
 	Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
 
 	// Invoice & Payment Routes
-	// NOTE: These routes are now handled by the humano-billing package
-	// See: packages/humano-billing/routes/web.php
-	// The package routes use /invoices and /payments with redirects from /invoice/list and /payment/list
+	Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+	Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
+	Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoices.data');
+
+	// Legacy aliases for invoices
+	Route::prefix('invoice')->group(function () {
+		Route::get('/list', function () {
+			return redirect()->route('invoices.index');
+		})->name('invoice.index');
+
+		Route::get('/create', function () {
+			return redirect()->route('invoices.index');
+		})->name('invoice.create');
+
+		Route::get('/show/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
+
+		Route::get('/edit/{id}', [InvoiceController::class, 'show'])->name('invoice.edit');
+
+		Route::delete('/destroy/{id}', function ($id) {
+			return redirect()->route('invoices.index');
+		})->name('invoice.destroy');
+	});
+
+	// Payments
+	Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+	Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
+
+	Route::prefix('payment')->group(function () {
+		Route::get('/list', function () {
+			return redirect()->route('payments.index');
+		})->name('payment.index');
+	});
 
 	// Hosting
 	Route::resource('hosting', HostingController::class);

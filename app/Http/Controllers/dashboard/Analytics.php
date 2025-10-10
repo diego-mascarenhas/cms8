@@ -4,9 +4,9 @@ namespace App\Http\Controllers\dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Host;
+use App\Models\Payment;
 use App\Models\Project;
 use Carbon\Carbon;
-use Idoneo\HumanoBilling\Models\Payment;
 
 class Analytics extends Controller
 {

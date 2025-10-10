@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-use Idoneo\HumanoBilling\Models\PaymentType;
+use App\Models\PaymentType;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 class PaymentTypeSeeder extends Seeder
 {
@@ -12,6 +13,9 @@ class PaymentTypeSeeder extends Seeder
 	 */
 	public function run(): void
 	{
+		// Check if is_active column exists
+		$hasIsActive = Schema::hasColumn('payment_types', 'is_active');
+
 		$paymentTypes = [
 			['id' => 1, 'name' => 'Cash'],
 			['id' => 2, 'name' => 'Bank Transfer'],
@@ -28,12 +32,16 @@ class PaymentTypeSeeder extends Seeder
 		];
 
 		foreach ($paymentTypes as $type) {
+			$data = ['name' => $type['name']];
+
+			// Only add is_active if column exists
+			if ($hasIsActive) {
+				$data['is_active'] = true;
+			}
+
 			PaymentType::updateOrCreate(
 				['id' => $type['id']],
-				[
-					'name' => $type['name'],
-					'is_active' => true,
-				]
+				$data
 			);
 		}
 

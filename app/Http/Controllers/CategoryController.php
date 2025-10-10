@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\DataTables\CategoryDataTable;
 use App\Models\Category;
+use App\Models\InvoiceItem;
 use App\Models\Module;
 use App\Models\Team;
-use Idoneo\HumanoBilling\Models\InvoiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 

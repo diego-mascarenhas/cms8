@@ -2,9 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Models\PaymentAccount;
 use App\Models\User;
 use App\Traits\ConfiguresTeamMail;
-use Idoneo\HumanoBilling\Models\PaymentAccount;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

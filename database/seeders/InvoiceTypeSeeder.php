@@ -2,39 +2,39 @@
 
 namespace Database\Seeders;
 
-use Idoneo\HumanoBilling\Models\InvoiceType;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class InvoiceTypeSeeder extends Seeder
 {
-	/**
-	 * Run the database seeds.
-	 */
 	public function run(): void
 	{
-		$invoiceTypes = [
-			[
-				'id' => 1,
-				'name' => 'Factura',
-			],
-			[
-				'id' => 2,
-				'name' => 'Presupuesto',
-			],
-			[
-				'id' => 3,
-				'name' => 'Nota de crédito',
-			],
-			[
-				'id' => 4,
-				'name' => 'Nota de débito',
-			],
-		];
-
-		foreach ($invoiceTypes as $type) {
-			InvoiceType::create($type);
+		if (!Schema::hasTable('invoice_types')) {
+			return;
 		}
 
-		$this->command->info('InvoiceTypeSeeder completed successfully!');
+		// Check if is_active column exists
+		$hasIsActive = Schema::hasColumn('invoice_types', 'is_active');
+
+		$types = [
+			['id' => 1, 'name' => 'Invoice'],
+			['id' => 2, 'name' => 'Credit Note'],
+			['id' => 3, 'name' => 'Debit Note'],
+		];
+
+		foreach ($types as $type) {
+			$data = ['name' => $type['name']];
+
+			// Only add is_active if column exists
+			if ($hasIsActive) {
+				$data['is_active'] = true;
+			}
+
+			DB::table('invoice_types')->updateOrInsert(
+				['id' => $type['id']],
+				$data
+			);
+		}
 	}
 }

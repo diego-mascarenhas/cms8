@@ -271,50 +271,50 @@ class ImportDataCommand extends Command
 			$this->info('🚀 Running in automatic mode: importing ALL data...');
 			$this->newLine();
 
-		// Import in order to respect foreign key constraints
-		$this->info('📂 Step 1/10: Importing Categories & Service Types...');
-		$this->processImport('2. Categories');
-		$this->newLine();
+			// Import in order to respect foreign key constraints
+			$this->info('📂 Step 1/10: Importing Categories & Service Types...');
+			$this->processImport('2. Categories');
+			$this->newLine();
 
-		$this->info('🏢 Step 2/10: Importing Enterprises...');
-		$this->processImport('5. Enterprises');
-		$this->newLine();
+			$this->info('🏢 Step 2/10: Importing Enterprises...');
+			$this->processImport('5. Enterprises');
+			$this->newLine();
 
-		$this->info('📦 Step 3/10: Importing Services...');
-		$this->processImport('6. Services');
-		$this->newLine();
+			$this->info('📦 Step 3/10: Importing Services...');
+			$this->processImport('6. Services');
+			$this->newLine();
 
-		$this->info('📁 Step 4/10: Importing Projects...');
-		$this->processImport('7. Projects');
-		$this->newLine();
+			$this->info('📁 Step 4/10: Importing Projects...');
+			$this->processImport('7. Projects');
+			$this->newLine();
 
-		$this->info('📄 Step 5/10: Importing Invoices...');
-		$this->processImport('8. Invoices');
-		$this->newLine();
+			$this->info('📄 Step 5/10: Importing Invoices...');
+			$this->processImport('8. Invoices');
+			$this->newLine();
 
-		$this->info('💳 Step 6/10: Importing Payment Accounts...');
-		$this->processImport('4. Payment Accounts');
-		$this->newLine();
+			$this->info('💳 Step 6/10: Importing Payment Accounts...');
+			$this->processImport('4. Payment Accounts');
+			$this->newLine();
 
-		$this->info('💰 Step 7/10: Importing Payments (linking enterprises & invoices)...');
-		$this->processImport('9. Payments');
-		$this->newLine();
+			$this->info('💰 Step 7/10: Importing Payments (linking enterprises & invoices)...');
+			$this->processImport('9. Payments');
+			$this->newLine();
 
-		$this->info('👥 Step 8/10: Importing Users/Contacts...');
-		$this->processImport('1. Users');
-		$this->newLine();
+			$this->info('👥 Step 8/10: Importing Users/Contacts...');
+			$this->processImport('1. Users');
+			$this->newLine();
 
-		$this->info('🔔 Step 9/10: Importing Notification Types...');
-		$this->processImport('10. Notification Types');
-		$this->newLine();
+			$this->info('🔔 Step 9/10: Importing Notification Types...');
+			$this->processImport('10. Notification Types');
+			$this->newLine();
 
-		$this->info('📞 Step 10/10: Importing Notifications...');
-		$this->processImport('11. Communications');
-		$this->newLine();
+			$this->info('📞 Step 10/10: Importing Notifications...');
+			$this->processImport('11. Communications');
+			$this->newLine();
 
-		$this->info('✅ Automatic import completed successfully!');
+			$this->info('✅ Automatic import completed successfully!');
 
-		return 0;
+			return 0;
 		}
 
 		while (true) {
@@ -342,21 +342,21 @@ class ImportDataCommand extends Command
 		$this->info('Starting import...');
 
 		try {
-		$result = match ($type) {
-			'1. Users' => $this->importUsers($id),
-			'2. Categories' => $this->importCategories($id),
-			'3. Service Types' => $this->importServiceTypes($id),
-			'4. Payment Accounts' => $this->importPaymentAccounts($id),
-			'5. Enterprises' => $this->importEnterprises($id),
-			'6. Services' => $this->importServices($id),
-			'7. Projects' => $this->importProjects($id),
-			'8. Invoices' => $this->importInvoices($id),
-			'9. Payments' => $this->importPayments($id),
-			'10. Notification Types' => $this->importNotificationTypes($id),
-			'11. Communications' => $this->importCommunications($id),
-			'12. Products (CMS7)' => $this->importProductsWithTeam($id),
-			default => throw new \Exception('Invalid type selected'),
-		};
+			$result = match ($type) {
+				'1. Users' => $this->importUsers($id),
+				'2. Categories' => $this->importCategories($id),
+				'3. Service Types' => $this->importServiceTypes($id),
+				'4. Payment Accounts' => $this->importPaymentAccounts($id),
+				'5. Enterprises' => $this->importEnterprises($id),
+				'6. Services' => $this->importServices($id),
+				'7. Projects' => $this->importProjects($id),
+				'8. Invoices' => $this->importInvoices($id),
+				'9. Payments' => $this->importPayments($id),
+				'10. Notification Types' => $this->importNotificationTypes($id),
+				'11. Communications' => $this->importCommunications($id),
+				'12. Products (CMS7)' => $this->importProductsWithTeam($id),
+				default => throw new \Exception('Invalid type selected'),
+			};
 
 			if ($result['imported'] === 0) {
 				$this->warn('No records were imported.');
@@ -483,22 +483,22 @@ class ImportDataCommand extends Command
 								$user->teams()->attach($teamId, ['role' => $roleName]);
 							}
 
-						$userId = $user->id;
-						$stats['users_created']++;
-						// Removed verbose logging - progress bar shows overall progress
-					} catch (\Exception $e) {
-						$stats['users_skipped']++;
-						// Only show errors if verbose
+							$userId = $user->id;
+							$stats['users_created']++;
+							// Removed verbose logging - progress bar shows overall progress
+						} catch (\Exception $e) {
+							$stats['users_skipped']++;
+							// Only show errors if verbose
+						}
+					} else {
+						$userId = $existingUser->id;
+						$stats['users_existing']++;
+						// User already exists, skip logging
 					}
 				} else {
-					$userId = $existingUser->id;
-					$stats['users_existing']++;
-					// User already exists, skip logging
+					$stats['users_skipped']++;
+					// Contact doesn't require user account or has no email
 				}
-			} else {
-				$stats['users_skipped']++;
-				// Contact doesn't require user account or has no email
-			}
 
 				$contactData = [
 					'id' => $data->id,
@@ -584,11 +584,11 @@ class ImportDataCommand extends Command
 								'enterprise_id' => $data->id_empresa,
 								'position' => $position,
 								'department_id' => $departmentId,
-						'created_at' => now(),
-						'updated_at' => now(),
-					]);
-					// Relationship added silently - progress bar shows overall progress
-				} else {
+								'created_at' => now(),
+								'updated_at' => now(),
+							]);
+							// Relationship added silently - progress bar shows overall progress
+						} else {
 							// Actualizar la posición si la relación ya existe
 							DB::table('contact_enterprise')
 								->where('contact_id', $data->id)
@@ -672,64 +672,63 @@ class ImportDataCommand extends Command
 				return $stats;
 			}
 
-		$this->info("   Found {$accounts->count()} payment accounts to import");
-		$bar = $this->output->createProgressBar($accounts->count());
-		$bar->start();
+			$this->info("   Found {$accounts->count()} payment accounts to import");
+			$bar = $this->output->createProgressBar($accounts->count());
+			$bar->start();
 
-		$skipped = 0;
-		foreach ($accounts as $account) {
-			try {
-				$existingAccount = DB::table('payment_accounts')->where('id', $account->id)->first();
+			$skipped = 0;
+			foreach ($accounts as $account) {
+				try {
+					$existingAccount = DB::table('payment_accounts')->where('id', $account->id)->first();
 
-			// Generate unique code
-			$code = 'PA-' . str_pad($account->id, 6, '0', STR_PAD_LEFT);
+					// Generate unique code
+					$code = 'PA-' . str_pad($account->id, 6, '0', STR_PAD_LEFT);
 
-			// Generate account name
-			$name = $account->nombre_cuenta ?? 'Account #' . $account->id;
+					// Generate account name
+					$name = $account->nombre_cuenta ?? 'Account #' . $account->id;
 
-			// Map currency ID from old to new
-			$oldCurrencyId = $account->id_moneda ?? 1;
-			$newCurrencyId = $currencyMap[$oldCurrencyId] ?? 840; // Default to USD if not mapped
+					// Map currency ID from old to new
+					$oldCurrencyId = $account->id_moneda ?? 1;
+					$newCurrencyId = $currencyMap[$oldCurrencyId] ?? 840;  // Default to USD if not mapped
 
-			DB::table('payment_accounts')->insert([
-				'id' => $account->id,
-				'team_id' => 2, // REVISION ALPHA team
-				'code' => $code,
-				'name' => $name,
-				'symbol' => null,
-				'currency_id' => $newCurrencyId,
-				'status' => $account->estado > 0 ? 1 : 0,
-				'created_at' => now(),
-				'updated_at' => now(),
-			]);
+					DB::table('payment_accounts')->insert([
+						'id' => $account->id,
+						'team_id' => 2,  // REVISION ALPHA team
+						'code' => $code,
+						'name' => $name,
+						'symbol' => null,
+						'currency_id' => $newCurrencyId,
+						'status' => $account->estado > 0 ? 1 : 0,
+						'created_at' => now(),
+						'updated_at' => now(),
+					]);
 
-				if ($existingAccount) {
-					$stats['updated']++;
-				} else {
-					$stats['imported']++;
+					if ($existingAccount) {
+						$stats['updated']++;
+					} else {
+						$stats['imported']++;
+					}
+
+					$bar->advance();
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->newLine();
+						$this->warn("     Skipped account {$account->id}: " . $e->getMessage());
+					}
+					$bar->advance();
+					continue;
 				}
-
-				$bar->advance();
-			} catch (\Exception $e) {
-				$skipped++;
-				if ($skipped <= 10) {
-					$this->newLine();
-					$this->warn("     Skipped account {$account->id}: " . $e->getMessage());
-				}
-				$bar->advance();
-				continue;
 			}
-		}
 
-		$bar->finish();
-		$this->newLine();
+			$bar->finish();
+			$this->newLine();
 
-		if ($skipped > 0) {
-			$this->warn("   ⚠️  Skipped {$skipped} accounts due to errors");
-		}
+			if ($skipped > 0) {
+				$this->warn("   ⚠️  Skipped {$skipped} accounts due to errors");
+			}
 
-		$this->info("✅ Imported {$stats['imported']} payment accounts, updated {$stats['updated']}");
-
+			$this->info("✅ Imported {$stats['imported']} payment accounts, updated {$stats['updated']}");
 		} catch (\Exception $e) {
 			$this->newLine();
 			throw new \Exception('Error importing payment accounts: ' . $e->getMessage());
@@ -936,11 +935,11 @@ class ImportDataCommand extends Command
 			}
 
 			// Separar categorías padre e hijas
-			$parentCategories = $allCategories->filter(function($cat) {
+			$parentCategories = $allCategories->filter(function ($cat) {
 				return is_null($cat->padre) || $cat->padre == 0;
 			});
 
-			$childCategories = $allCategories->filter(function($cat) {
+			$childCategories = $allCategories->filter(function ($cat) {
 				return !is_null($cat->padre) && $cat->padre > 0;
 			});
 
@@ -954,7 +953,7 @@ class ImportDataCommand extends Command
 
 				foreach ($parentCategories as $data) {
 					$categoryData = [
-						'id' => $data->id, // Mantener ID original
+						'id' => $data->id,  // Mantener ID original
 						'name' => $data->categoria,
 						'module_id' => $serviceModule ? $serviceModule->id : null,
 						'team_id' => $teamId,
@@ -1011,7 +1010,7 @@ class ImportDataCommand extends Command
 					$serviceTypeData = [
 						'id' => $data->id,
 						'name' => $data->categoria,
-						'category_id' => $data->padre, // El padre es el category_id
+						'category_id' => $data->padre,  // El padre es el category_id
 						'description' => strip_tags($data->descripcion ?? ''),
 						'data' => json_encode([
 							'characteristics' => $data->caracteristicas ?? null,
@@ -1019,7 +1018,7 @@ class ImportDataCommand extends Command
 						'currency_id' => $data->id_moneda ?? 1,
 						'convert_to' => $data->convertir ?? null,
 						'price' => $data->valor ?? null,
-						'discount' => $data->descuento ?? 0.00,
+						'discount' => $data->descuento ?? 0.0,
 						'frequency' => $data->frecuencia ?? 1,
 						'order' => $data->orden ?? 0,
 						'status' => $data->estado ?? 1,
@@ -1046,7 +1045,6 @@ class ImportDataCommand extends Command
 			}
 
 			$this->info("✅ Categorías padre importadas: {$stats['imported']}, actualizadas: {$stats['updated']}");
-
 		} catch (\Exception $e) {
 			$this->newLine();
 			throw new \Exception('Error importando categorías: ' . $e->getMessage());
@@ -1091,7 +1089,7 @@ class ImportDataCommand extends Command
 				$serviceTypeData = [
 					'id' => $data->id,
 					'name' => $data->tipo,
-					'category_id' => null, // Se puede asignar manualmente después si es necesario
+					'category_id' => null,  // Se puede asignar manualmente después si es necesario
 					'description' => $data->descripcion ?? null,
 					'data' => json_encode([
 						'characteristics' => $data->caracteristicas ?? null,
@@ -1100,7 +1098,7 @@ class ImportDataCommand extends Command
 					'currency_id' => $data->id_moneda ?? 1,
 					'convert_to' => $data->convertir ?? null,
 					'price' => $data->valor ?? null,
-					'discount' => $data->descuento ?? 0.00,
+					'discount' => $data->descuento ?? 0.0,
 					'frequency' => $data->frecuencia ?? 1,
 					'order' => $data->orden ?? 0,
 					'status' => $data->estado ?? 1,
@@ -1125,7 +1123,6 @@ class ImportDataCommand extends Command
 			$this->newLine();
 
 			$this->info("✅ Tipos de servicio importados: {$stats['imported']}, actualizados: {$stats['updated']}");
-
 		} catch (\Exception $e) {
 			$this->newLine();
 			throw new \Exception('Error importando tipos de servicio: ' . $e->getMessage());
@@ -1309,17 +1306,17 @@ class ImportDataCommand extends Command
 
 			$services = $query->get();
 
-		if ($services->isEmpty()) {
-			$stats['message'] = 'No services found matching the criteria.';
-			return $stats;
-		}
+			if ($services->isEmpty()) {
+				$stats['message'] = 'No services found matching the criteria.';
+				return $stats;
+			}
 
-		$this->info("   Found {$services->count()} services to import");
-		$bar = $this->output->createProgressBar($services->count());
-		$bar->start();
+			$this->info("   Found {$services->count()} services to import");
+			$bar = $this->output->createProgressBar($services->count());
+			$bar->start();
 
-		$skipped = 0;
-		foreach ($services as $service) {
+			$skipped = 0;
+			foreach ($services as $service) {
 				try {
 					// Map operation codes: V=sell (Venta), C=buy (Compra)
 					$operation = ($service->operacion ?? 'V') === 'V' ? 'sell' : 'buy';
@@ -1348,28 +1345,28 @@ class ImportDataCommand extends Command
 
 					if ($existingService) {
 						$stats['updated']++;
-				} else {
-					$stats['imported']++;
+					} else {
+						$stats['imported']++;
+					}
+					$bar->advance();
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->newLine();
+						$this->warn("     Skipped service {$service->id}: " . $e->getMessage());
+					}
+					$bar->advance();
 				}
-				$bar->advance();
-			} catch (\Exception $e) {
-				$skipped++;
-				if ($skipped <= 10) {
-					$this->newLine();
-					$this->warn("     Skipped service {$service->id}: " . $e->getMessage());
-				}
-				$bar->advance();
 			}
-		}
 
-		$bar->finish();
-		$this->newLine();
+			$bar->finish();
+			$this->newLine();
 
-		if ($skipped > 0) {
-			$this->warn("   ⚠️  Skipped {$skipped} services due to errors");
-		}
+			if ($skipped > 0) {
+				$this->warn("   ⚠️  Skipped {$skipped} services due to errors");
+			}
 
-		$this->info("✅ Imported {$stats['imported']} services, updated {$stats['updated']}");
+			$this->info("✅ Imported {$stats['imported']} services, updated {$stats['updated']}");
 		} catch (\Exception $e) {
 			$this->warn('⚠️  Could not import services: ' . $e->getMessage());
 		}
@@ -1409,17 +1406,17 @@ class ImportDataCommand extends Command
 
 			$projects = $query->get();
 
-		if ($projects->isEmpty()) {
-			$stats['message'] = 'No projects found matching the criteria.';
-			return $stats;
-		}
+			if ($projects->isEmpty()) {
+				$stats['message'] = 'No projects found matching the criteria.';
+				return $stats;
+			}
 
-		$this->info("   Found {$projects->count()} projects to import");
-		$bar = $this->output->createProgressBar($projects->count());
-		$bar->start();
+			$this->info("   Found {$projects->count()} projects to import");
+			$bar = $this->output->createProgressBar($projects->count());
+			$bar->start();
 
-		$skipped = 0;
-		foreach ($projects as $project) {
+			$skipped = 0;
+			foreach ($projects as $project) {
 				try {
 					// Get team ID - REVISION ALPHA team
 					$teamId = 2;
@@ -1466,30 +1463,30 @@ class ImportDataCommand extends Command
 						]
 					);
 
-				if ($existingProject) {
-					$stats['updated']++;
-				} else {
-					$stats['imported']++;
+					if ($existingProject) {
+						$stats['updated']++;
+					} else {
+						$stats['imported']++;
+					}
+					$bar->advance();
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->newLine();
+						$this->warn("     Skipped project {$project->id}: " . $e->getMessage());
+					}
+					$bar->advance();
 				}
-				$bar->advance();
-			} catch (\Exception $e) {
-				$skipped++;
-				if ($skipped <= 10) {
-					$this->newLine();
-					$this->warn("     Skipped project {$project->id}: " . $e->getMessage());
-				}
-				$bar->advance();
 			}
-		}
 
-		$bar->finish();
-		$this->newLine();
+			$bar->finish();
+			$this->newLine();
 
-		if ($skipped > 0) {
-			$this->warn("   ⚠️  Skipped {$skipped} projects due to errors");
-		}
+			if ($skipped > 0) {
+				$this->warn("   ⚠️  Skipped {$skipped} projects due to errors");
+			}
 
-		$this->info("✅ Imported {$stats['imported']} projects, updated {$stats['updated']}");
+			$this->info("✅ Imported {$stats['imported']} projects, updated {$stats['updated']}");
 		} catch (\Exception $e) {
 			$this->warn('⚠️  Could not import projects: ' . $e->getMessage());
 		}
@@ -1521,14 +1518,14 @@ class ImportDataCommand extends Command
 			// Test connection
 			DB::connection('mysql_tmp')->getPdo();
 
-		// Get the CMS group
-		$cmsGroup = env('CMS_GROUP', 502);
-		$this->info("   Using CMS_GROUP: {$cmsGroup}");
+			// Get the CMS group
+			$cmsGroup = env('CMS_GROUP', 502);
+			$this->info("   Using CMS_GROUP: {$cmsGroup}");
 
-		// Use team_id directly
-		$teamId = 2; // REVISION ALPHA team
+			// Use team_id directly
+			$teamId = 2;  // REVISION ALPHA team
 
-		// Payment type mapping from legacy to new IDs
+			// Payment type mapping from legacy to new IDs
 			$paymentTypeMap = [
 				1 => 1,  // Cash
 				2 => 2,  // Bank Transfer
@@ -1543,23 +1540,24 @@ class ImportDataCommand extends Command
 				14 => 12,  // MercadoPago
 			];
 
-		$query = DB::connection('mysql_tmp')
-			->table('movimientos')
-			->leftJoin('facturas', 'movimientos.id_factura', '=', 'facturas.id')
-			->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
-			->where('movimientos.grupo', $cmsGroup)
-			->where('movimientos.estado', '>', 0)
-			->where(function($q) {
-				// Si tiene factura, la factura debe tener estado > 0
-				// Si no tiene factura, permitir el pago
-				$q->whereNull('movimientos.id_factura')
-				  ->orWhere('facturas.estado', '>', 0);
-			})
-			->select(
-				'movimientos.*',
-				'empresas_fiscales.id_empresa as enterprise_id',
-				'facturas.id_empresa_fiscal'
-			);
+			$query = DB::connection('mysql_tmp')
+				->table('movimientos')
+				->leftJoin('facturas', 'movimientos.id_factura', '=', 'facturas.id')
+				->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
+				->where('movimientos.grupo', $cmsGroup)
+				->where('movimientos.estado', '>', 0)
+				->where(function ($q) {
+					// Si tiene factura, la factura debe tener estado > 0
+					// Si no tiene factura, permitir el pago
+					$q
+						->whereNull('movimientos.id_factura')
+						->orWhere('facturas.estado', '>', 0);
+				})
+				->select(
+					'movimientos.*',
+					'empresas_fiscales.id_empresa as enterprise_id',
+					'facturas.id_empresa_fiscal'
+				);
 
 			if ($id) {
 				$query->where('movimientos.id', $id);
@@ -1567,27 +1565,27 @@ class ImportDataCommand extends Command
 
 			$payments = $query->get();
 
-		if ($payments->isEmpty()) {
-			$stats['message'] = 'No payments found matching the criteria.';
-			return $stats;
-		}
+			if ($payments->isEmpty()) {
+				$stats['message'] = 'No payments found matching the criteria.';
+				return $stats;
+			}
 
-	$this->info("   Found {$payments->count()} payments to import");
-	$bar = $this->output->createProgressBar($payments->count());
-	$bar->start();
+			$this->info("   Found {$payments->count()} payments to import");
+			$bar = $this->output->createProgressBar($payments->count());
+			$bar->start();
 
-	// Get default account for team (we ensured it exists above)
-	$defaultTeamAccount = DB::table('payment_accounts')->where('team_id', $teamId)->first();
+			// Get default account for team (we ensured it exists above)
+			$defaultTeamAccount = DB::table('payment_accounts')->where('team_id', $teamId)->first();
 
-	$skipped = 0;
-	foreach ($payments as $payment) {
-			try {
-				// Get account ID - if not exists, use default account for this team
-				$accountId = $payment->id_cuenta;
-			if (!$accountId || !DB::table('payment_accounts')->where('id', $accountId)->exists()) {
-				// Use the default team account
-				$accountId = $defaultTeamAccount->id;
-				}
+			$skipped = 0;
+			foreach ($payments as $payment) {
+				try {
+					// Get account ID - if not exists, use default account for this team
+					$accountId = $payment->id_cuenta;
+					if (!$accountId || !DB::table('payment_accounts')->where('id', $accountId)->exists()) {
+						// Use the default team account
+						$accountId = $defaultTeamAccount->id;
+					}
 
 					// Map legacy payment type ID to new ID
 					$legacyTypeId = $payment->id_forma_pago ?? 1;
@@ -1626,22 +1624,22 @@ class ImportDataCommand extends Command
 					}
 
 					// 3. If still null and we have id_empresa_fiscal, try to find the enterprise
-				if (!$enterpriseId && isset($payment->id_empresa_fiscal)) {
-					$enterpriseFromFiscal = DB::table('enterprises')
-						->where('id', $payment->id_empresa_fiscal)
-						->where('team_id', $teamId)
-						->first();
+					if (!$enterpriseId && isset($payment->id_empresa_fiscal)) {
+						$enterpriseFromFiscal = DB::table('enterprises')
+							->where('id', $payment->id_empresa_fiscal)
+							->where('team_id', $teamId)
+							->first();
 						if ($enterpriseFromFiscal) {
 							$enterpriseId = $enterpriseFromFiscal->id;
 						}
 					}
 
-					$existingPayment = \Idoneo\HumanoBilling\Models\Payment::where('id', $payment->id)->first();
+					$existingPayment = \App\Models\Payment::where('id', $payment->id)->first();
 
-				\Idoneo\HumanoBilling\Models\Payment::updateOrCreate(
-					['id' => $payment->id],
-					[
-						'team_id' => $teamId,
+					\App\Models\Payment::updateOrCreate(
+						['id' => $payment->id],
+						[
+							'team_id' => $teamId,
 							'enterprise_id' => $enterpriseId,
 							'invoice_id' => $invoiceId,
 							'transaction_type' => $transactionType,
@@ -1656,30 +1654,30 @@ class ImportDataCommand extends Command
 						]
 					);
 
-				if ($existingPayment) {
-					$stats['updated']++;
-				} else {
-					$stats['imported']++;
+					if ($existingPayment) {
+						$stats['updated']++;
+					} else {
+						$stats['imported']++;
+					}
+					$bar->advance();
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->newLine();
+						$this->warn("     Skipped payment {$payment->id}: " . $e->getMessage());
+					}
+					$bar->advance();
 				}
-				$bar->advance();
-			} catch (\Exception $e) {
-				$skipped++;
-				if ($skipped <= 10) {
-					$this->newLine();
-					$this->warn("     Skipped payment {$payment->id}: " . $e->getMessage());
-				}
-				$bar->advance();
 			}
-		}
 
-		$bar->finish();
-		$this->newLine();
+			$bar->finish();
+			$this->newLine();
 
-		if ($skipped > 0) {
-			$this->warn("   ⚠️  Skipped {$skipped} payments due to errors");
-		}
+			if ($skipped > 0) {
+				$this->warn("   ⚠️  Skipped {$skipped} payments due to errors");
+			}
 
-		$this->info("✅ Imported {$stats['imported']} payments, updated {$stats['updated']}");
+			$this->info("✅ Imported {$stats['imported']} payments, updated {$stats['updated']}");
 		} catch (\Exception $e) {
 			$this->warn('⚠️  Could not import payments: ' . $e->getMessage());
 		}
@@ -1720,47 +1718,46 @@ class ImportDataCommand extends Command
 			$bar = $this->output->createProgressBar($types->count());
 			$bar->start();
 
-		foreach ($types as $type) {
-			try {
-				$existingType = \App\Models\NotificationType::where('id', $type->id)->first();
+			foreach ($types as $type) {
+				try {
+					$existingType = \App\Models\NotificationType::where('id', $type->id)->first();
 
-				if (!$existingType) {
-					// Insert with original ID
-					DB::table('notification_types')->insert([
-						'id' => $type->id,
-						'name' => $type->tipo,
-						'template_subject' => null,
-						'template_body' => null,
-						'is_customizable' => true,
-						'is_active' => $type->estado > 0,
-						'created_at' => now(),
-						'updated_at' => now(),
-					]);
-					$stats['imported']++;
-				} else {
-					// Update existing
-					DB::table('notification_types')
-						->where('id', $type->id)
-						->update([
+					if (!$existingType) {
+						// Insert with original ID
+						DB::table('notification_types')->insert([
+							'id' => $type->id,
 							'name' => $type->tipo,
+							'template_subject' => null,
+							'template_body' => null,
+							'is_customizable' => true,
 							'is_active' => $type->estado > 0,
+							'created_at' => now(),
 							'updated_at' => now(),
 						]);
-					$stats['updated']++;
-				}
+						$stats['imported']++;
+					} else {
+						// Update existing
+						DB::table('notification_types')
+							->where('id', $type->id)
+							->update([
+								'name' => $type->tipo,
+								'is_active' => $type->estado > 0,
+								'updated_at' => now(),
+							]);
+						$stats['updated']++;
+					}
 
-				$bar->advance();
-			} catch (\Exception $e) {
-				// Skip on error
-				$bar->advance();
-				continue;
+					$bar->advance();
+				} catch (\Exception $e) {
+					// Skip on error
+					$bar->advance();
+					continue;
+				}
 			}
-		}
 
 			$bar->finish();
 			$this->newLine();
 			$this->info("✅ Imported {$stats['imported']} notification types, updated {$stats['updated']}");
-
 		} catch (\Exception $e) {
 			$this->newLine();
 			throw new \Exception('Error importing notification types: ' . $e->getMessage());
@@ -1800,83 +1797,82 @@ class ImportDataCommand extends Command
 				return $stats;
 			}
 
-		$this->info("   Found {$communications->count()} notifications to import");
-		$bar = $this->output->createProgressBar($communications->count());
-		$bar->start();
+			$this->info("   Found {$communications->count()} notifications to import");
+			$bar = $this->output->createProgressBar($communications->count());
+			$bar->start();
 
-		// Get user ID from team once (default to first user in team 2)
-		$userId = \App\Models\User::whereHas('teams', function($q) {
-			$q->where('teams.id', 2);
-		})->first()->id ?? 1;
+			// Get user ID from team once (default to first user in team 2)
+			$userId = \App\Models\User::whereHas('teams', function ($q) {
+				$q->where('teams.id', 2);
+			})->first()->id ?? 1;
 
-		foreach ($communications as $comm) {
-			try {
-				// Verificar si el contacto existe, si no existe usar NULL
-				$contactId = null;
-				if ($comm->id_contacto && DB::table('contacts')->where('id', $comm->id_contacto)->exists()) {
-					$contactId = $comm->id_contacto;
-				}
+			foreach ($communications as $comm) {
+				try {
+					// Verificar si el contacto existe, si no existe usar NULL
+					$contactId = null;
+					if ($comm->id_contacto && DB::table('contacts')->where('id', $comm->id_contacto)->exists()) {
+						$contactId = $comm->id_contacto;
+					}
 
-				// Si no tiene contact_id válido, registrar en skipped pero continuar
-				if (!$contactId) {
+					// Si no tiene contact_id válido, registrar en skipped pero continuar
+					if (!$contactId) {
+						$stats['skipped']++;
+						$bar->advance();
+						continue;
+					}
+
+					$existingNotification = \App\Models\Notification::withoutGlobalScope('team')->where('id', $comm->id)->first();
+
+					\App\Models\Notification::withoutGlobalScope('team')->updateOrCreate(
+						['id' => $comm->id],
+						[
+							'team_id' => 2,  // REVISION ALPHA team
+							'type_id' => $comm->id_tipo ?? 1,
+							'contact_id' => $contactId,
+							'user_id' => $userId,
+							'reference' => $comm->id_referencia ?? null,
+							'subject' => $comm->asunto ?? 'Sin asunto',
+							'message' => $comm->data ?? '',
+							'is_sent' => $comm->enviado ? true : false,
+							'sent_at' => $comm->enviado ? now() : null,
+							'is_read' => $comm->recibido ? true : false,
+							'read_at' => $comm->recibido ? now() : null,
+							'metadata' => json_encode([
+								'vinculo' => $comm->vinculo ?? null,
+								'debug' => $comm->debug ?? null,
+								'estado' => $comm->estado ?? 1,
+							]),
+							'created_at' => now(),
+							'updated_at' => now(),
+						]
+					);
+
+					if ($existingNotification) {
+						$stats['updated']++;
+					} else {
+						$stats['imported']++;
+					}
+
+					$bar->advance();
+				} catch (\Exception $e) {
 					$stats['skipped']++;
+					if ($stats['skipped'] <= 10) {
+						$this->newLine();
+						$this->warn("     Skipped notification {$comm->id}: " . $e->getMessage());
+					}
 					$bar->advance();
 					continue;
 				}
-
-				$existingNotification = \App\Models\Notification::withoutGlobalScope('team')->where('id', $comm->id)->first();
-
-				\App\Models\Notification::withoutGlobalScope('team')->updateOrCreate(
-					['id' => $comm->id],
-					[
-						'team_id' => 2, // REVISION ALPHA team
-						'type_id' => $comm->id_tipo ?? 1,
-						'contact_id' => $contactId,
-						'user_id' => $userId,
-						'reference' => $comm->id_referencia ?? null,
-						'subject' => $comm->asunto ?? 'Sin asunto',
-						'message' => $comm->data ?? '',
-						'is_sent' => $comm->enviado ? true : false,
-						'sent_at' => $comm->enviado ? now() : null,
-						'is_read' => $comm->recibido ? true : false,
-						'read_at' => $comm->recibido ? now() : null,
-						'metadata' => json_encode([
-							'vinculo' => $comm->vinculo ?? null,
-							'debug' => $comm->debug ?? null,
-							'estado' => $comm->estado ?? 1,
-						]),
-						'created_at' => now(),
-						'updated_at' => now(),
-					]
-				);
-
-				if ($existingNotification) {
-					$stats['updated']++;
-				} else {
-					$stats['imported']++;
-				}
-
-				$bar->advance();
-			} catch (\Exception $e) {
-				$stats['skipped']++;
-				if ($stats['skipped'] <= 10) {
-					$this->newLine();
-					$this->warn("     Skipped notification {$comm->id}: " . $e->getMessage());
-				}
-				$bar->advance();
-				continue;
 			}
-		}
 
-		$bar->finish();
-		$this->newLine();
+			$bar->finish();
+			$this->newLine();
 
-		if ($stats['skipped'] > 0) {
-			$this->warn("   ⚠️  Skipped {$stats['skipped']} notifications (contacts not found)");
-		}
+			if ($stats['skipped'] > 0) {
+				$this->warn("   ⚠️  Skipped {$stats['skipped']} notifications (contacts not found)");
+			}
 
-		$this->info("✅ Imported {$stats['imported']} notifications, updated {$stats['updated']}");
-
+			$this->info("✅ Imported {$stats['imported']} notifications, updated {$stats['updated']}");
 		} catch (\Exception $e) {
 			$this->newLine();
 			throw new \Exception('Error importing communications: ' . $e->getMessage());

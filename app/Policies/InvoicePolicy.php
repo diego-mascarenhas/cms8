@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
+use App\Models\Invoice;
 use App\Models\User;
-use Idoneo\HumanoBilling\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
 
 class InvoicePolicy

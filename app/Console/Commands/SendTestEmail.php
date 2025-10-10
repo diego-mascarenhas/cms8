@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Mail\BalanceMail;
-use Idoneo\HumanoBilling\Models\PaymentAccount;
+use App\Models\PaymentAccount;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 

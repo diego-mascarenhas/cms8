@@ -6,6 +6,7 @@ use App\Models\Certification;
 use App\Models\Contact;
 use App\Models\Enterprise;
 use App\Models\Fare;
+use App\Models\Invoice;
 use App\Models\LanguageVariant;
 use App\Models\Project;
 use App\Models\Service;
@@ -21,7 +22,6 @@ use App\Policies\ProjectPolicy;
 use App\Policies\ServicePolicy;
 use App\Policies\SoftwarePolicy;
 use App\Policies\StyleBookPolicy;
-use Idoneo\HumanoBilling\Models\Invoice;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 

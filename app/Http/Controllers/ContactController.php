@@ -804,7 +804,7 @@ class ContactController extends Controller
 
 		// Only search invoices if the invoices module is active
 		if ($team && $team->hasModule('invoices')) {
-			$data['invoices'] = \Idoneo\HumanoBilling\Models\Invoice::where(function ($q) use ($query) {
+			$data['invoices'] = \App\Models\Invoice::where(function ($q) use ($query) {
 				$q->where('number', 'like', "%{$query}%");
 			})
 				->with(['enterprise'])

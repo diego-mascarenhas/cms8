@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Invoice;
 use App\Policies\InvoicePolicy;
-use Idoneo\HumanoBilling\Models\Invoice;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller

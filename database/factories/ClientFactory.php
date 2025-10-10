@@ -5,9 +5,9 @@ namespace Database\Factories;
 use App\Models\Enterprise;
 use App\Models\EnterpriseStatus;
 use App\Models\EnterpriseType;
+use App\Models\InvoiceType;
+use App\Models\PaymentType;
 use App\Models\User;
-use Idoneo\HumanoBilling\Models\InvoiceType;
-use Idoneo\HumanoBilling\Models\PaymentType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ClientFactory extends Factory

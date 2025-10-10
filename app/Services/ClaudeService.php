@@ -438,7 +438,7 @@ class ClaudeService
 					// Cargar facturas para esta empresa
 					try {
 						// Get all recent invoices
-						$allInvoices = \Idoneo\HumanoBilling\Models\Invoice::where('enterprise_id', $enterprise->id)
+						$allInvoices = \App\Models\Invoice::where('enterprise_id', $enterprise->id)
 							->orderBy('date', 'desc')
 							->take(20)  // Get more to filter from
 							->get();
