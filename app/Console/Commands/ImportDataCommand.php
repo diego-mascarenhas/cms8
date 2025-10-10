@@ -146,7 +146,7 @@ class ImportDataCommand extends Command
 			'1. Users' => DB::connection('mysql_tmp')
 				->table('contactos')
 				->whereNotNull('email')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->whereNotNull('id_empresa')
 				->where('area_privada', '!=', 6)
 				->where('id', '>', 2)
@@ -157,7 +157,7 @@ class ImportDataCommand extends Command
 
 			'2. Categories' => DB::connection('mysql_tmp')
 				->table('categorias_generales')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->where('padre', 10)
 				->select('id', 'categoria', 'padre', 'estado'),
 
@@ -167,31 +167,31 @@ class ImportDataCommand extends Command
 
 			'4. Payment Accounts' => DB::connection('mysql_tmp')
 				->table('cuentas')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'nombre_cuenta', 'id_empresa', 'id_moneda', 'estado'),
 
 			'5. Enterprises' => DB::connection('mysql_tmp')
 				->table('empresas')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'empresa', 'id_categoria', 'telefono', 'email', 'estado', 'fecha_modificacion'),
 
 			'6. Services' => DB::connection('mysql_tmp')
 				->table('servicios')
 				->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
-				->where('servicios.grupo', env('CMS_GROUP'))
+				->where('servicios.grupo', env('CMS_GROUP', 502))
 				->where('servicios.estado', '>', 0)
 				->where('servicios.operacion', 'V')
 				->select('servicios.*', 'servicios_hosting.*'),
 
 			'7. Projects' => DB::connection('mysql_tmp')
 				->table('proyectos')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'nombre', 'id_empresa', 'estado'),
 
 			'8. Invoices' => DB::connection('mysql_tmp')
 				->table('facturas')
 				->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
-				->where('facturas.grupo', env('CMS_GROUP'))
+				->where('facturas.grupo', env('CMS_GROUP', 502))
 				->where('facturas.estado', '>', 0)
 				->select(
 					'facturas.id',
@@ -221,7 +221,7 @@ class ImportDataCommand extends Command
 
 			'9. Payments' => DB::connection('mysql_tmp')
 				->table('pagos')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'id_empresa', 'id_forma_pago', 'estado'),
 
 			'10. Notification Types' => DB::connection('mysql_tmp')
@@ -230,12 +230,12 @@ class ImportDataCommand extends Command
 
 			'11. Communications' => DB::connection('mysql_tmp')
 				->table('comunicaciones')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'id_contacto', 'id_tipo', 'asunto', 'estado'),
 
 			'12. Products (CMS7)' => DB::connection('mysql_tmp')
 				->table('categorias_generales')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->whereNull('padre')
 				->where('estado', 1)
 				->select('id', 'categoria', 'descripcion', 'caracteristicas', 'valor', 'id_moneda', 'estado', 'fecha_alta'),
@@ -259,6 +259,14 @@ class ImportDataCommand extends Command
 	public function handle()
 	{
 		$this->info('=== Database Import Tool ===');
+
+		// Show configuration
+		$cmsGroup = env('CMS_GROUP', 502);
+		$cmsTeamId = env('CMS_TEAM_ID', 2);
+		$this->info('📋 Configuration:');
+		$this->info("   CMS_GROUP: {$cmsGroup}");
+		$this->info("   CMS_TEAM_ID: {$cmsTeamId}");
+		$this->newLine();
 
 		// Test database connection first
 		if (!$this->testDatabaseConnection()) {
@@ -396,7 +404,7 @@ class ImportDataCommand extends Command
 			$query = DB::connection('mysql_tmp')
 				->table('contactos')
 				->whereNotNull('email')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->whereNotNull('id_empresa')
 				->where('area_privada', '!=', 6)
 				->where('id', '>', 2)
@@ -425,7 +433,7 @@ class ImportDataCommand extends Command
 			$importedCategory = DB::table('categories')
 				->where('name', 'CMS+')
 				->where('module_id', $contactsModuleId)
-				->where('team_id', env('CMS_TEAM_ID'))
+				->where('team_id', env('CMS_TEAM_ID', 2))
 				->first();
 			$importedCategoryId = $importedCategory ? $importedCategory->id : null;
 
@@ -478,7 +486,7 @@ class ImportDataCommand extends Command
 							$user->assignRole($roleName);
 
 							// Asignar al equipo CMS
-							$teamId = env('CMS_TEAM_ID');
+							$teamId = env('CMS_TEAM_ID', 2);
 							if ($teamId) {
 								$user->teams()->attach($teamId, ['role' => $roleName]);
 							}
@@ -502,7 +510,7 @@ class ImportDataCommand extends Command
 
 				$contactData = [
 					'id' => $data->id,
-					'team_id' => env('CMS_TEAM_ID'),
+					'team_id' => env('CMS_TEAM_ID', 2),
 					'user_id' => $userId,
 					'name' => $data->nombre,
 					'surname' => $data->apellido,
@@ -658,7 +666,7 @@ class ImportDataCommand extends Command
 
 			$query = DB::connection('mysql_tmp')
 				->table('cuentas')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->where('estado', '>', 0);
 
 			if ($id) {
@@ -748,7 +756,7 @@ class ImportDataCommand extends Command
 		try {
 			$query = DB::connection('mysql_tmp')
 				->table('empresas')
-				->where('grupo', env('CMS_GROUP'));
+				->where('grupo', env('CMS_GROUP', 502));
 
 			if ($id) {
 				$query->where('id', $id);
@@ -804,7 +812,7 @@ class ImportDataCommand extends Command
 
 				//				 $newContactData = [
 				//					 'id' => $contactData->id,
-				//					 'team_id' => env('CMS_TEAM_ID'),
+				//					 'team_id' => env('CMS_TEAM_ID', 2),
 				//					 'user_id' => null,
 				//					 'name' => $contactData->nombre.' '.$contactData->apellido,
 				//					 'source_id' => null,
@@ -862,7 +870,7 @@ class ImportDataCommand extends Command
 					'created_at' => $data->fecha_alta,
 					'updated_at' => $data->fecha_modificacion,
 					'deleted_at' => null,  // Never soft-delete, preserve history
-					'team_id' => env('CMS_TEAM_ID'),
+					'team_id' => env('CMS_TEAM_ID', 2),
 				];
 
 				if (!$existingEnterprise) {
@@ -920,7 +928,7 @@ class ImportDataCommand extends Command
 			// Obtener todas las categorías del sistema antiguo
 			$query = DB::connection('mysql_tmp')
 				->table('categorias_generales')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->where('estado', '>', 0);
 
 			if ($id) {
@@ -1157,7 +1165,7 @@ class ImportDataCommand extends Command
 			$query = DB::connection('mysql_tmp')
 				->table('facturas')
 				->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
-				->where('facturas.grupo', env('CMS_GROUP'))
+				->where('facturas.grupo', env('CMS_GROUP', 502))
 				->where('facturas.estado', '>', 0)
 				->select(
 					'facturas.id',
@@ -1783,7 +1791,7 @@ class ImportDataCommand extends Command
 		try {
 			$query = DB::connection('mysql_tmp')
 				->table('comunicaciones')
-				->where('grupo', env('CMS_GROUP'))
+				->where('grupo', env('CMS_GROUP', 502))
 				->where('estado', '>', 0);
 
 			if ($id) {
@@ -1965,7 +1973,7 @@ class ImportDataCommand extends Command
 
 		$query = DB::connection('mysql_tmp')
 			->table('categorias_generales')
-			->where('grupo', env('CMS_GROUP'))
+			->where('grupo', env('CMS_GROUP', 502))
 			->whereNull('padre')  // Only parent categories
 			->whereIn('estado', [1, 2])  // Include active states 1 and 2
 			->select('id', 'categoria', 'descripcion', 'caracteristicas', 'fecha_alta', 'fecha_modificacion');
@@ -2035,7 +2043,7 @@ class ImportDataCommand extends Command
 
 		$query = DB::connection('mysql_tmp')
 			->table('categorias_generales')
-			->where('grupo', env('CMS_GROUP'))
+			->where('grupo', env('CMS_GROUP', 502))
 			->whereNotNull('padre')  // Only child products
 			->whereIn('estado', [1, 2])  // Include active states 1 and 2
 			->select('id', 'categoria', 'descripcion', 'caracteristicas', 'valor', 'id_moneda', 'padre', 'estado', 'fecha_alta', 'fecha_modificacion', 'username_alta');
