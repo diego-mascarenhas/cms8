@@ -69,12 +69,14 @@ class ImportDataCommand extends Command
 			6 => '6. Services',
 			7 => '7. Projects',
 			8 => '8. Invoices',
-			9 => '9. Payments',
-			10 => '10. Notification Types',
-			11 => '11. Communications',
-			12 => '12. Products (CMS7)',
-			13 => '13. Import All',
-			14 => '14. Exit',
+			9 => '9. Billing Addresses',
+			10 => '10. Invoice Items',
+			11 => '11. Payments',
+			12 => '12. Notification Types',
+			13 => '13. Communications',
+			14 => '14. Products (CMS7)',
+			15 => '15. Import All',
+			16 => '16. Exit',
 		]);
 	}
 
@@ -219,21 +221,32 @@ class ImportDataCommand extends Command
 					'facturas.EXENTO',
 				),
 
-			'9. Payments' => DB::connection('mysql_tmp')
+			'9. Billing Addresses' => DB::connection('mysql_tmp')
+				->table('empresas_fiscales')
+				->where('grupo', env('CMS_GROUP', 502))
+				->where('estado', 1)
+				->select('id', 'id_empresa', 'razon_social', 'cuit', 'ingresos_brutos', 'id_condicion_iva', 'domicilio', 'codigo_postal', 'localidad', 'provincia', 'pais', 'estado', 'fecha_alta', 'fecha_modificacion'),
+
+			'10. Invoice Items' => DB::connection('mysql_tmp')
+				->table('facturas_items')
+				->where('grupo', env('CMS_GROUP', 502))
+				->select('id', 'id_factura', 'id_categoria', 'descripcion', 'valor', 'descuento', 'fecha_alta', 'fecha_modificacion'),
+
+			'11. Payments' => DB::connection('mysql_tmp')
 				->table('pagos')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'id_empresa', 'id_forma_pago', 'estado'),
 
-			'10. Notification Types' => DB::connection('mysql_tmp')
+			'12. Notification Types' => DB::connection('mysql_tmp')
 				->table('comunicaciones_tipo')
 				->select('id', 'tipo', 'estado'),
 
-			'11. Communications' => DB::connection('mysql_tmp')
+			'13. Communications' => DB::connection('mysql_tmp')
 				->table('comunicaciones')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'id_contacto', 'id_tipo', 'asunto', 'estado'),
 
-			'12. Products (CMS7)' => DB::connection('mysql_tmp')
+			'14. Products (CMS7)' => DB::connection('mysql_tmp')
 				->table('categorias_generales')
 				->where('grupo', env('CMS_GROUP', 502))
 				->whereNull('padre')
@@ -280,44 +293,52 @@ class ImportDataCommand extends Command
 			$this->newLine();
 
 			// Import in order to respect foreign key constraints
-			$this->info('📂 Step 1/10: Importing Categories & Service Types...');
+			$this->info('📂 Step 1/12: Importing Categories & Service Types...');
 			$this->processImport('2. Categories');
 			$this->newLine();
 
-			$this->info('🏢 Step 2/10: Importing Enterprises...');
+			$this->info('🏢 Step 2/12: Importing Enterprises...');
 			$this->processImport('5. Enterprises');
 			$this->newLine();
 
-			$this->info('📦 Step 3/10: Importing Services...');
+			$this->info('📦 Step 3/12: Importing Services...');
 			$this->processImport('6. Services');
 			$this->newLine();
 
-			$this->info('📁 Step 4/10: Importing Projects...');
+			$this->info('📁 Step 4/12: Importing Projects...');
 			$this->processImport('7. Projects');
 			$this->newLine();
 
-			$this->info('📄 Step 5/10: Importing Invoices...');
+			$this->info('📄 Step 5/12: Importing Invoices...');
 			$this->processImport('8. Invoices');
 			$this->newLine();
 
-			$this->info('💳 Step 6/10: Importing Payment Accounts...');
+			$this->info('📋 Step 6/12: Importing Billing Addresses...');
+			$this->processImport('9. Billing Addresses');
+			$this->newLine();
+
+			$this->info('📝 Step 7/12: Importing Invoice Items...');
+			$this->processImport('10. Invoice Items');
+			$this->newLine();
+
+			$this->info('💳 Step 8/12: Importing Payment Accounts...');
 			$this->processImport('4. Payment Accounts');
 			$this->newLine();
 
-			$this->info('💰 Step 7/10: Importing Payments (linking enterprises & invoices)...');
-			$this->processImport('9. Payments');
+			$this->info('💰 Step 9/12: Importing Payments (linking enterprises & invoices)...');
+			$this->processImport('11. Payments');
 			$this->newLine();
 
-			$this->info('👥 Step 8/10: Importing Users/Contacts...');
+			$this->info('👥 Step 10/12: Importing Users/Contacts...');
 			$this->processImport('1. Users');
 			$this->newLine();
 
-			$this->info('🔔 Step 9/10: Importing Notification Types...');
-			$this->processImport('10. Notification Types');
+			$this->info('🔔 Step 11/12: Importing Notification Types...');
+			$this->processImport('12. Notification Types');
 			$this->newLine();
 
-			$this->info('📞 Step 10/10: Importing Notifications...');
-			$this->processImport('11. Communications');
+			$this->info('📞 Step 12/12: Importing Notifications...');
+			$this->processImport('13. Communications');
 			$this->newLine();
 
 			$this->info('✅ Automatic import completed successfully!');
@@ -328,12 +349,12 @@ class ImportDataCommand extends Command
 		while (true) {
 			$choice = $this->showMainMenu();
 
-			if ($choice === '14. Exit') {
+			if ($choice === '16. Exit') {
 				$this->info('Goodbye!');
 				break;
 			}
 
-			if ($choice === '13. Import All') {
+			if ($choice === '15. Import All') {
 				if ($this->confirm('Are you sure you want to import ALL data?')) {
 					$this->importAll();
 				}
@@ -359,10 +380,12 @@ class ImportDataCommand extends Command
 				'6. Services' => $this->importServices($id),
 				'7. Projects' => $this->importProjects($id),
 				'8. Invoices' => $this->importInvoices($id),
-				'9. Payments' => $this->importPayments($id),
-				'10. Notification Types' => $this->importNotificationTypes($id),
-				'11. Communications' => $this->importCommunications($id),
-				'12. Products (CMS7)' => $this->importProductsWithTeam($id),
+				'9. Billing Addresses' => $this->importBillingAddresses($id),
+				'10. Invoice Items' => $this->importInvoiceItems($id),
+				'11. Payments' => $this->importPayments($id),
+				'12. Notification Types' => $this->importNotificationTypes($id),
+				'13. Communications' => $this->importCommunications($id),
+				'14. Products (CMS7)' => $this->importProductsWithTeam($id),
 				default => throw new \Exception('Invalid type selected'),
 			};
 
@@ -677,6 +700,7 @@ class ImportDataCommand extends Command
 
 			if ($accounts->isEmpty()) {
 				$stats['message'] = 'No payment accounts found.';
+
 				return $stats;
 			}
 
@@ -725,6 +749,7 @@ class ImportDataCommand extends Command
 						$this->warn("     Skipped account {$account->id}: " . $e->getMessage());
 					}
 					$bar->advance();
+
 					continue;
 				}
 			}
@@ -939,6 +964,7 @@ class ImportDataCommand extends Command
 
 			if ($allCategories->isEmpty()) {
 				$stats['message'] = 'No se encontraron categorías para importar.';
+
 				return $stats;
 			}
 
@@ -1012,6 +1038,7 @@ class ImportDataCommand extends Command
 
 					if (!$parentExists) {
 						$this->warn("\n⚠️  Padre {$data->padre} no existe para categoría {$data->id}: {$data->categoria}");
+
 						continue;
 					}
 
@@ -1085,6 +1112,7 @@ class ImportDataCommand extends Command
 
 			if ($serviceTypes->isEmpty()) {
 				$stats['message'] = 'No se encontraron tipos de servicio para importar.';
+
 				return $stats;
 			}
 
@@ -1170,6 +1198,7 @@ class ImportDataCommand extends Command
 				->select(
 					'facturas.id',
 					'empresas_fiscales.id_empresa as enterprise_id',
+					'facturas.id_empresa_fiscal as billing_id',
 					'facturas.fecha',
 					'facturas.vencimiento',
 					'facturas.operacion',
@@ -1245,7 +1274,7 @@ class ImportDataCommand extends Command
 					'id' => $data->id,
 					'enterprise_id' => $data->enterprise_id,
 					'type_id' => 1,  // Set to 1 (fixed value) since original types may not exist
-					'billing_id' => null,  // Set to null for now
+					'billing_id' => $data->billing_id,  // Use original empresas_fiscales.id
 					'operation' => $operation,
 					'number' => $invoiceNumber,
 					'date' => $data->fecha,
@@ -1276,6 +1305,183 @@ class ImportDataCommand extends Command
 		} catch (\Exception $e) {
 			$this->newLine();
 			throw new \Exception('Error importing invoices: ' . $e->getMessage());
+		}
+
+		return $stats;
+	}
+
+	/**
+	 * Import billing addresses from remote database
+	 */
+	protected function importBillingAddresses($id = null)
+	{
+		$stats = [
+			'imported' => 0,
+			'updated' => 0,
+			'message' => null,
+		];
+
+		try {
+			$query = DB::connection('mysql_tmp')
+				->table('empresas_fiscales')
+				->where('grupo', env('CMS_GROUP', 502))
+				->select('id', 'id_empresa', 'razon_social', 'cuit', 'ingresos_brutos', 'id_condicion_iva', 'domicilio', 'codigo_postal', 'localidad', 'provincia', 'pais', 'estado', 'fecha_alta', 'fecha_modificacion');
+
+			if ($id) {
+				$query->where('id', $id);
+			}
+
+			$billingAddresses = $query->get();
+
+			if ($billingAddresses->isEmpty()) {
+				$stats['message'] = 'No billing addresses found matching the criteria.';
+
+				return $stats;
+			}
+
+			$bar = $this->output->createProgressBar(count($billingAddresses));
+			$bar->start();
+
+			foreach ($billingAddresses as $data) {
+				// Check if enterprise exists in the local database
+				$enterpriseExists = DB::table('enterprises')->where('id', $data->id_empresa)->exists();
+				if (!$enterpriseExists) {
+					$bar->advance();
+
+					continue;
+				}
+
+				$existingBillingAddress = DB::table('enterprise_billing_addresses')->where('id', $data->id)->first();
+
+				$billingAddressData = [
+					'id' => $data->id,
+					'enterprise_id' => $data->id_empresa,
+					'name' => $data->razon_social ?? 'N/A',
+					'identification_number' => $data->cuit,
+					'tax_status_type_id' => $data->id_condicion_iva ?? 1,
+					'address' => $data->domicilio,
+					'postal_code' => $data->codigo_postal,
+					'locality' => $data->localidad,
+					'province' => $data->provincia,
+					'country' => $data->pais,
+					'status' => $data->estado,
+					'created_at' => $data->fecha_alta ?? now(),
+					'updated_at' => $data->fecha_modificacion ?? now(),
+				];
+
+				if (!$existingBillingAddress) {
+					DB::table('enterprise_billing_addresses')->insert($billingAddressData);
+					$stats['imported']++;
+				} else {
+					DB::table('enterprise_billing_addresses')->where('id', $existingBillingAddress->id)->update($billingAddressData);
+					$stats['updated']++;
+				}
+
+				$bar->advance();
+			}
+
+			$bar->finish();
+			$this->newLine();
+		} catch (\Exception $e) {
+			$this->newLine();
+			throw new \Exception('Error importing billing addresses: ' . $e->getMessage());
+		}
+
+		return $stats;
+	}
+
+	/**
+	 * Import invoice items from remote database
+	 */
+	protected function importInvoiceItems($id = null)
+	{
+		$stats = [
+			'imported' => 0,
+			'updated' => 0,
+			'message' => null,
+		];
+
+		try {
+			$query = DB::connection('mysql_tmp')
+				->table('facturas_items')
+				->where('grupo', env('CMS_GROUP', 502))
+				->select('id', 'id_factura', 'id_categoria', 'descripcion', 'valor', 'descuento', 'fecha_alta', 'fecha_modificacion');
+
+			if ($id) {
+				$query->where('id', $id);
+			}
+
+			$invoiceItems = $query->get();
+
+			if ($invoiceItems->isEmpty()) {
+				$stats['message'] = 'No invoice items found matching the criteria.';
+
+				return $stats;
+			}
+
+			$bar = $this->output->createProgressBar(count($invoiceItems));
+			$bar->start();
+
+			$skipped = 0;
+			foreach ($invoiceItems as $data) {
+				try {
+					// Check if invoice exists in the local database
+					$invoiceExists = DB::table('invoices')->where('id', $data->id_factura)->exists();
+					if (!$invoiceExists) {
+						$bar->advance();
+
+						continue;
+					}
+
+					$existingInvoiceItem = DB::table('invoice_items')->where('id', $data->id)->first();
+
+					// Check if category exists, if not set to null
+					$categoryId = null;
+					if ($data->id_categoria) {
+						$categoryExists = DB::table('categories')->where('id', $data->id_categoria)->exists();
+						$categoryId = $categoryExists ? $data->id_categoria : null;
+					}
+
+					$invoiceItemData = [
+						'id' => $data->id,
+						'invoice_id' => $data->id_factura,
+						'category_id' => $categoryId,
+						'description' => $data->descripcion,
+						'quantity' => 1.0,  // Default quantity from CMS7
+						'unit_price' => $data->valor ?? 0,
+						'discount' => $data->descuento ?? 0,
+						'tax_percentage' => 0,  // Default tax from CMS7
+						'created_at' => $data->fecha_alta ?? now(),
+						'updated_at' => $data->fecha_modificacion ?? now(),
+					];
+
+					if (!$existingInvoiceItem) {
+						DB::table('invoice_items')->insert($invoiceItemData);
+						$stats['imported']++;
+					} else {
+						DB::table('invoice_items')->where('id', $existingInvoiceItem->id)->update($invoiceItemData);
+						$stats['updated']++;
+					}
+				} catch (\Exception $e) {
+					$skipped++;
+					if ($skipped <= 10) {
+						$this->newLine();
+						$this->warn("     Skipped invoice item {$data->id}: " . $e->getMessage());
+					}
+				}
+
+				$bar->advance();
+			}
+
+			$bar->finish();
+			$this->newLine();
+
+			if ($skipped > 0) {
+				$this->warn("   ⚠️  Skipped {$skipped} invoice items due to errors");
+			}
+		} catch (\Exception $e) {
+			$this->newLine();
+			throw new \Exception('Error importing invoice items: ' . $e->getMessage());
 		}
 
 		return $stats;
@@ -1316,6 +1522,7 @@ class ImportDataCommand extends Command
 
 			if ($services->isEmpty()) {
 				$stats['message'] = 'No services found matching the criteria.';
+
 				return $stats;
 			}
 
@@ -1348,7 +1555,7 @@ class ImportDataCommand extends Command
 							'expires_at' => $service->caduca ?? null,
 							'created_at' => $service->fecha_alta ?? now(),
 							'updated_at' => $service->fecha_modificacion ?? now(),
-						]
+						],
 					);
 
 					if ($existingService) {
@@ -1416,6 +1623,7 @@ class ImportDataCommand extends Command
 
 			if ($projects->isEmpty()) {
 				$stats['message'] = 'No projects found matching the criteria.';
+
 				return $stats;
 			}
 
@@ -1435,6 +1643,7 @@ class ImportDataCommand extends Command
 					// Check if enterprise exists
 					if (!DB::table('enterprises')->where('id', $project->id_empresa)->exists()) {
 						$skipped++;
+
 						continue;
 					}
 
@@ -1468,7 +1677,7 @@ class ImportDataCommand extends Command
 							'status_id' => $project->estado ?? 1,
 							'created_at' => $project->fecha_alta ?? now(),
 							'updated_at' => $project->fecha_modificacion ?? now(),
-						]
+						],
 					);
 
 					if ($existingProject) {
@@ -1520,6 +1729,7 @@ class ImportDataCommand extends Command
 			if (!\Illuminate\Support\Facades\Schema::hasTable('payments')) {
 				$this->warn('⚠️  Payments table does not exist. Skipping payment import.');
 				$this->info('   Run: php artisan vendor:publish --tag="humano-billing-migrations" && php artisan migrate');
+
 				return $stats;
 			}
 
@@ -1564,7 +1774,7 @@ class ImportDataCommand extends Command
 				->select(
 					'movimientos.*',
 					'empresas_fiscales.id_empresa as enterprise_id',
-					'facturas.id_empresa_fiscal'
+					'facturas.id_empresa_fiscal',
 				);
 
 			if ($id) {
@@ -1575,6 +1785,7 @@ class ImportDataCommand extends Command
 
 			if ($payments->isEmpty()) {
 				$stats['message'] = 'No payments found matching the criteria.';
+
 				return $stats;
 			}
 
@@ -1659,7 +1870,7 @@ class ImportDataCommand extends Command
 							'status' => $payment->estado ?? 1,
 							'created_at' => $payment->fecha_alta ?? now(),
 							'updated_at' => $payment->fecha_modificacion ?? now(),
-						]
+						],
 					);
 
 					if ($existingPayment) {
@@ -1719,6 +1930,7 @@ class ImportDataCommand extends Command
 
 			if ($types->isEmpty()) {
 				$stats['message'] = 'No notification types found.';
+
 				return $stats;
 			}
 
@@ -1759,6 +1971,7 @@ class ImportDataCommand extends Command
 				} catch (\Exception $e) {
 					// Skip on error
 					$bar->advance();
+
 					continue;
 				}
 			}
@@ -1802,6 +2015,7 @@ class ImportDataCommand extends Command
 
 			if ($communications->isEmpty()) {
 				$stats['message'] = 'No communications found.';
+
 				return $stats;
 			}
 
@@ -1826,6 +2040,7 @@ class ImportDataCommand extends Command
 					if (!$contactId) {
 						$stats['skipped']++;
 						$bar->advance();
+
 						continue;
 					}
 
@@ -1852,7 +2067,7 @@ class ImportDataCommand extends Command
 							]),
 							'created_at' => now(),
 							'updated_at' => now(),
-						]
+						],
 					);
 
 					if ($existingNotification) {
@@ -1869,6 +2084,7 @@ class ImportDataCommand extends Command
 						$this->warn("     Skipped notification {$comm->id}: " . $e->getMessage());
 					}
 					$bar->advance();
+
 					continue;
 				}
 			}
@@ -2275,6 +2491,66 @@ class ImportDataCommand extends Command
 				$this->info("✅ Created category: {$categoryData['name']}");
 			}
 		}
+	}
+
+	/**
+	 * Import all data in the correct order
+	 */
+	protected function importAll()
+	{
+		$this->info('🚀 Starting full import process...');
+		$this->newLine();
+
+		// Import in order to respect foreign key constraints
+		$this->info('📂 Step 1/12: Importing Categories & Service Types...');
+		$this->processImport('2. Categories');
+		$this->newLine();
+
+		$this->info('🏢 Step 2/12: Importing Enterprises...');
+		$this->processImport('5. Enterprises');
+		$this->newLine();
+
+		$this->info('📦 Step 3/12: Importing Services...');
+		$this->processImport('6. Services');
+		$this->newLine();
+
+		$this->info('📁 Step 4/12: Importing Projects...');
+		$this->processImport('7. Projects');
+		$this->newLine();
+
+		$this->info('📋 Step 5/12: Importing Billing Addresses...');
+		$this->processImport('9. Billing Addresses');
+		$this->newLine();
+
+		$this->info('📄 Step 6/12: Importing Invoices...');
+		$this->processImport('8. Invoices');
+		$this->newLine();
+
+		$this->info('📝 Step 7/12: Importing Invoice Items...');
+		$this->processImport('10. Invoice Items');
+		$this->newLine();
+
+		$this->info('💳 Step 8/12: Importing Payment Accounts...');
+		$this->processImport('4. Payment Accounts');
+		$this->newLine();
+
+		$this->info('💰 Step 9/12: Importing Payments (linking enterprises & invoices)...');
+		$this->processImport('11. Payments');
+		$this->newLine();
+
+		$this->info('👥 Step 10/12: Importing Users/Contacts...');
+		$this->processImport('1. Users');
+		$this->newLine();
+
+		$this->info('🔔 Step 11/12: Importing Notification Types...');
+		$this->processImport('12. Notification Types');
+		$this->newLine();
+
+		$this->info('📞 Step 12/12: Importing Notifications...');
+		$this->processImport('13. Communications');
+		$this->newLine();
+
+		$this->info('✅ Full import completed successfully!');
 	}
 
 	// Add other import methods...

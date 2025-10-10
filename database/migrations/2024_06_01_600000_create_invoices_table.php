@@ -24,6 +24,7 @@ return new class extends Migration {
 			$table->timestamps();
 
 			$table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('cascade');
+			$table->foreign('billing_id')->references('id')->on('enterprise_billing_addresses')->onDelete('set null');
 			$table->foreign('type_id')->references('id')->on('invoice_types')->onDelete('cascade');
 		});
 	}
