@@ -637,7 +637,7 @@ class ContactController extends Controller
 
 	public function search(Request $request)
 	{
-		$query = $request->input('q');
+		$query = trim($request->input('q'));
 		$team = auth()->user()->currentTeam;
 
 		$data = [
@@ -684,10 +684,16 @@ class ContactController extends Controller
 			'invoices' => [],
 		];
 
+		// Return empty results if no search query provided
+		if (empty($query)) {
+			return response()->json($data);
+		}
+
 		// Only search contacts if the contacts module is active
 		if ($team && $team->hasModule('contacts')) {
 			$data['members'] = Contact::where('name', 'like', "%{$query}%")
 				->select('id', 'name', 'created_at')
+				->limit(20)
 				->get()
 				->map(function ($contact) {
 					return [
@@ -710,6 +716,7 @@ class ContactController extends Controller
 		if ($team && $team->hasModule('enterprises')) {
 			$data['enterprises'] = \App\Models\Enterprise::where('name', 'like', "%{$query}%")
 				->select('id', 'name', 'created_at', 'responsible_id')
+				->limit(20)
 				->get()
 				->map(function ($enterprise) {
 					return [
@@ -757,6 +764,7 @@ class ContactController extends Controller
 			})
 				->with(['client', 'status'])
 				->select('id', 'name', 'real_name', 'enterprise_id', 'status_id', 'created_at')
+				->limit(20)
 				->get()
 				->map(function ($project) {
 					$clientName = $project->client ? $project->client->name : 'Sin cliente';
