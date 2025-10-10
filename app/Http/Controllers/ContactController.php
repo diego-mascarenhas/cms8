@@ -684,21 +684,36 @@ class ContactController extends Controller
 			'invoices' => [],
 		];
 
-		// Return empty results if no search query provided
-		if (empty($query)) {
-			return response()->json($data);
-		}
+		// Load initial data (all records) or filter by query
+		$isInitialLoad = empty($query);
 
 		// Only search contacts if the contacts module is active
 		if ($team && $team->hasModule('contacts')) {
-			$data['members'] = Contact::where('name', 'like', "%{$query}%")
-				->select('id', 'name', 'created_at')
-				->limit(20)
+			$contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at')
+				->where('status_id', '!=', 3); // Exclude finalized contacts (status_id = 3)
+
+			if (!$isInitialLoad) {
+				$contactsQuery->where(function ($q) use ($query) {
+					$q->where('name', 'like', "%{$query}%")
+						->orWhere('surname', 'like', "%{$query}%")
+						->orWhere('phone', 'like', "%{$query}%")
+						->orWhere('email', 'like', "%{$query}%");
+				});
+			}
+
+			$data['members'] = $contactsQuery
+				->limit(50) // Limit for dynamic search
 				->get()
 				->map(function ($contact) {
+					$displayName = trim($contact->name . ' ' . $contact->surname);
+					$subtitle = 'Creado el ' . $contact->created_at->format('d-m-Y H:i:s') . ' hs';
+					if ($contact->email) {
+						$subtitle = $contact->email;
+					}
+
 					return [
-						'name' => $contact->name,
-						'subtitle' => 'Creado el ' . $contact->created_at->format('d-m-Y H:i:s') . ' hs',
+						'name' => $displayName,
+						'subtitle' => $subtitle,
 						'src' => 'img/avatars/guru-meditating.jpg',
 						'url' => route('contact.show', $contact->id),
 					];
@@ -714,14 +729,30 @@ class ContactController extends Controller
 
 		// Only search enterprises if the enterprises module is active
 		if ($team && $team->hasModule('enterprises')) {
-			$data['enterprises'] = \App\Models\Enterprise::where('name', 'like', "%{$query}%")
-				->select('id', 'name', 'created_at', 'responsible_id')
-				->limit(20)
+			$enterprisesQuery = \App\Models\Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at', 'responsible_id');
+			// No filter on enterprises - show all
+
+			if (!$isInitialLoad) {
+				$enterprisesQuery->where(function ($q) use ($query) {
+					$q->where('name', 'like', "%{$query}%")
+						->orWhere('code', 'like', "%{$query}%")
+						->orWhere('phone', 'like', "%{$query}%")
+						->orWhere('email', 'like', "%{$query}%");
+				});
+			}
+
+			$data['enterprises'] = $enterprisesQuery
+				->limit(50) // Limit for dynamic search
 				->get()
 				->map(function ($enterprise) {
+					$subtitle = 'Empresa creada el ' . $enterprise->created_at->format('d-m-Y H:i:s') . ' hs';
+					if ($enterprise->code) {
+						$subtitle = 'Código: ' . $enterprise->code;
+					}
+
 					return [
 						'name' => $enterprise->name,
-						'subtitle' => 'Empresa creada el ' . $enterprise->created_at->format('d-m-Y H:i:s') . ' hs',
+						'subtitle' => $subtitle,
 						'src' => 'img/icons/brands/enterprise.png',
 						'url' => $enterprise->responsible_id ? route('contact.show', $enterprise->responsible_id) : '#',
 					];
@@ -730,19 +761,22 @@ class ContactController extends Controller
 
 		// Only search services if the services module is active
 		if ($team && $team->hasModule('services')) {
-			$data['services'] = \App\Models\Service::where(function ($q) use ($query) {
-				// Search for domain in the JSON data
-				$q
-					->whereRaw("JSON_EXTRACT(data, '\$.domain') LIKE ?", ["%{$query}%"])
-					// Search for user in the JSON data
-					->orWhereRaw("JSON_EXTRACT(data, '\$.user') LIKE ?", ["%{$query}%"])
-					// Search for IP in the JSON data
-					->orWhereRaw("JSON_EXTRACT(data, '\$.ip') LIKE ?", ["%{$query}%"]);
-			})
-				->select('id', 'enterprise_id', 'data', 'created_at')
+			$servicesQuery = \App\Models\Service::select('id', 'enterprise_id', 'description', 'data', 'status', 'created_at')
+				->where('status', 1); // Only active services
+
+			if (!$isInitialLoad) {
+				$servicesQuery->where(function ($q) use ($query) {
+					$q->where('description', 'like', "%{$query}%")
+						// Search in all JSON data fields
+						->orWhereRaw("JSON_SEARCH(data, 'one', ?) IS NOT NULL", ["%{$query}%"]);
+				});
+			}
+
+			$data['services'] = $servicesQuery
+				->limit(50)
 				->get()
 				->map(function ($service) {
-					$domain = isset($service->data->domain) ? $service->data->domain : 'No domain';
+					$domain = isset($service->data->domain) ? $service->data->domain : ($service->description ?: 'No domain');
 					$user = isset($service->data->user) ? $service->data->user : '';
 
 					return [
@@ -756,15 +790,18 @@ class ContactController extends Controller
 
 		// Only search projects if the projects module is active
 		if ($team && $team->hasModule('projects')) {
-			$data['projects'] = \App\Models\Project::where(function ($q) use ($query) {
-				$q
-					->where('name', 'like', "%{$query}%")
-					->orWhere('real_name', 'like', "%{$query}%")
-					->orWhere('description', 'like', "%{$query}%");
-			})
-				->with(['client', 'status'])
-				->select('id', 'name', 'real_name', 'enterprise_id', 'status_id', 'created_at')
-				->limit(20)
+			$projectsQuery = \App\Models\Project::with(['client', 'status'])
+				->select('id', 'name', 'real_name', 'description', 'enterprise_id', 'status_id', 'created_at');
+
+			if (!$isInitialLoad) {
+				$projectsQuery->where(function ($q) use ($query) {
+					$q->where('name', 'like', "%{$query}%")
+						->orWhere('description', 'like', "%{$query}%");
+				});
+			}
+
+			$data['projects'] = $projectsQuery
+				->limit(50)
 				->get()
 				->map(function ($project) {
 					$clientName = $project->client ? $project->client->name : 'Sin cliente';
@@ -812,11 +849,15 @@ class ContactController extends Controller
 
 		// Only search invoices if the invoices module is active
 		if ($team && $team->hasModule('invoices')) {
-			$data['invoices'] = \App\Models\Invoice::where(function ($q) use ($query) {
-				$q->where('number', 'like', "%{$query}%");
-			})
-				->with(['enterprise'])
-				->select('id', 'number', 'enterprise_id', 'created_at')
+			$invoicesQuery = \App\Models\Invoice::with(['enterprise'])
+				->select('id', 'number', 'enterprise_id', 'created_at');
+
+			if (!$isInitialLoad) {
+				$invoicesQuery->where('number', 'like', "%{$query}%");
+			}
+
+			$data['invoices'] = $invoicesQuery
+				->limit(50)
 				->get()
 				->map(function ($invoice) {
 					$clientName = $invoice->enterprise ? $invoice->enterprise->name : 'Sin cliente';
@@ -835,6 +876,36 @@ class ContactController extends Controller
 				'icon' => 'ti-file-invoice',
 				'url' => 'invoice/list',
 			];
+		}
+
+		// Search billing addresses
+		if ($team && $team->hasModule('enterprises')) {
+			$billingAddressesQuery = \App\Models\EnterpriseBillingAddress::with(['enterprise'])
+				->select('id', 'name', 'identification_number', 'enterprise_id', 'created_at');
+
+			if (!$isInitialLoad) {
+				$billingAddressesQuery->where(function ($q) use ($query) {
+					$q->where('name', 'like', "%{$query}%")
+						->orWhere('identification_number', 'like', "%{$query}%");
+				});
+			}
+
+			$billingAddresses = $billingAddressesQuery
+				->limit(50)
+				->get()
+				->map(function ($address) {
+					$enterpriseName = $address->enterprise ? $address->enterprise->name : 'Sin empresa';
+
+					return [
+						'name' => $address->name,
+						'subtitle' => "Empresa: {$enterpriseName} - ID: {$address->identification_number}",
+						'src' => 'img/icons/brands/enterprise.png',
+						'url' => $address->enterprise ? route('contact.show', $address->enterprise->responsible_id) : '#',
+					];
+				});
+
+			// Merge billing addresses into enterprises array
+			$data['enterprises'] = $data['enterprises']->concat($billingAddresses);
 		}
 
 		// Add client-related pages only if clients module is active

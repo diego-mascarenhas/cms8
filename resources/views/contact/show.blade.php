@@ -90,7 +90,7 @@
                     <div class="user-avatar-section">
                         <div class=" d-flex align-items-center flex-column">
                             <img class="img-fluid rounded mb-3 pt-1 mt-4"
-                                src="https://ui-avatars.com/api/?format=svg&name={{ $data->name }}" height="100"
+                                src="{{ \App\Helpers\AvatarHelper::generate($data->name, 100) }}" height="100"
                                 width="100" alt="User avatar" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>

@@ -4,7 +4,7 @@
         <div class="card-body">
             <div class="d-flex align-items-center flex-column mb-3">
                 <img class="img-fluid rounded-circle mb-3"
-                    src="https://ui-avatars.com/api/?format=svg&name={{ $collaborator->name }}" height="100"
+                    src="{{ \App\Helpers\AvatarHelper::generate($collaborator->name, 100) }}" height="100"
                     width="100" alt="User avatar" />
                 <h4 class="mb-2">{{ $collaborator->name ?? 'Colaborador' }}</h4>
                 @if ($collaborator->valoration)

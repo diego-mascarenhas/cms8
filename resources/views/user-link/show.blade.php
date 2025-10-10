@@ -16,7 +16,7 @@
         <div class="card shadow-sm">
             <div class="card-header text-center bg-light">
                 <h4 class="mb-1 mt-3">
-                    <span class="text-muted fw-light">{{ ucfirst($type) }}/</span> 
+                    <span class="text-muted fw-light">{{ ucfirst($type) }}/</span>
                     {{ $contact->name }} / Vincular Usuario
                 </h4>
                 <p class="text-muted">Vincular o crear un usuario para este {{ $type }}</p>
@@ -26,8 +26,8 @@
                 <!-- Contact/Collaborator Info -->
                 <div class="text-center mb-4">
                     <div class="avatar avatar-xl mx-auto mb-3">
-                        <img class="rounded-circle" 
-                             src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($contact->name) }}" 
+                        <img class="rounded-circle"
+                             src="{{ \App\Helpers\AvatarHelper::generate($contact->name, 120) }}"
                              alt="{{ $contact->name }}">
                     </div>
                     <h5 class="mb-2">{{ $contact->name }}</h5>
@@ -38,13 +38,13 @@
                 <!-- Tabs -->
                 <ul class="nav nav-pills nav-fill mb-4" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="existing-user-tab" data-bs-toggle="pill" 
+                        <button class="nav-link active" id="existing-user-tab" data-bs-toggle="pill"
                                 data-bs-target="#existing-user" type="button" role="tab">
                             <i class="ti ti-user-search me-2"></i>Usuario Existente
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="create-user-tab" data-bs-toggle="pill" 
+                        <button class="nav-link" id="create-user-tab" data-bs-toggle="pill"
                                 data-bs-target="#create-user" type="button" role="tab">
                             <i class="ti ti-user-plus me-2"></i>Crear Usuario
                         </button>
@@ -62,8 +62,8 @@
                                 <select id="user_id" name="user_id" class="form-select" required>
                                     <option value="">Seleccionar usuario...</option>
                                     @foreach($users as $user)
-                                        <option value="{{ $user->id }}" 
-                                                data-email="{{ $user->email }}" 
+                                        <option value="{{ $user->id }}"
+                                                data-email="{{ $user->email }}"
                                                 data-role="{{ $user->roles->first()->name ?? 'Sin rol' }}">
                                             {{ $user->name }} - {{ $user->email }}
                                         </option>
@@ -89,7 +89,7 @@
                             </div>
 
                             <div class="d-flex justify-content-center gap-3">
-                                <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}" 
+                                <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}"
                                    class="btn btn-outline-secondary">
                                     <i class="ti ti-x me-1"></i>Cancelar
                                 </a>
@@ -107,7 +107,7 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="name" class="form-label">Nombre *</label>
-                                    <input type="text" id="name" name="name" class="form-control" 
+                                    <input type="text" id="name" name="name" class="form-control"
                                            value="{{ old('name', $contact->name) }}" required>
                                     @error('name')
                                         <div class="text-danger mt-1"><small>{{ $message }}</small></div>
@@ -115,7 +115,7 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="email" class="form-label">Email *</label>
-                                    <input type="email" id="email" name="email" class="form-control" 
+                                    <input type="email" id="email" name="email" class="form-control"
                                            value="{{ old('email', $contact->email) }}" required>
                                     @error('email')
                                         <div class="text-danger mt-1"><small>{{ $message }}</small></div>
@@ -138,7 +138,7 @@
                                     <select id="role" name="role" class="form-select" required>
                                         <option value="">Seleccionar rol...</option>
                                         @foreach($roles as $role)
-                                            <option value="{{ $role->name }}" 
+                                            <option value="{{ $role->name }}"
                                                     {{ old('role', $type === 'collaborator' ? 'collaborator' : 'client') === $role->name ? 'selected' : '' }}>
                                                 {{ ucfirst($role->name) }}
                                             </option>
@@ -151,7 +151,7 @@
                             </div>
 
                             <div class="d-flex justify-content-center gap-3 mt-4">
-                                <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}" 
+                                <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}"
                                    class="btn btn-outline-secondary">
                                     <i class="ti ti-x me-1"></i>Cancelar
                                 </a>
@@ -167,7 +167,7 @@
 
         <!-- Back Button -->
         <div class="text-center mt-3">
-            <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}" 
+            <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}"
                class="btn btn-link">
                 <i class="ti ti-arrow-left me-1"></i>Volver
             </a>
@@ -192,12 +192,17 @@ $(document).ready(function() {
         const userName = selectedOption.text().split(' - ')[0];
         const userEmail = selectedOption.data('email');
         const userRole = selectedOption.data('role');
-        
+
         if ($(this).val()) {
             $('#preview-name').text(userName);
             $('#preview-email').text(userEmail);
             $('#preview-role').text(userRole);
-            $('#preview-avatar').html(`<img class="rounded-circle w-100" src="https://ui-avatars.com/api/?format=svg&name=${encodeURIComponent(userName)}" alt="${userName}">`);
+
+            // Generate avatar server-side via AJAX
+            $.get(`/api/avatar?name=${encodeURIComponent(userName)}&size=80`, function(data) {
+                $('#preview-avatar').html(`<img class="rounded-circle w-100" src="${data.avatar}" alt="${userName}">`);
+            });
+
             $('#user-preview').removeClass('d-none');
         } else {
             $('#user-preview').addClass('d-none');
@@ -214,4 +219,4 @@ function generatePassword() {
     document.getElementById('password').value = password;
 }
 </script>
-@endpush 
+@endpush

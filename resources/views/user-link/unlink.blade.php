@@ -8,29 +8,29 @@
         <div class="card shadow-sm">
             <div class="card-header text-center bg-light">
                 <h4 class="mb-1 mt-3">
-                    <span class="text-muted fw-light">{{ ucfirst($type) }}/</span> 
+                    <span class="text-muted fw-light">{{ ucfirst($type) }}/</span>
                     {{ $contact->name }} / Desvincular Usuario
                 </h4>
                 <p class="text-muted">Confirmar desvinculación de usuario</p>
             </div>
-            
+
             <div class="card-body p-4">
                 <!-- Current Link Section -->
                 <div class="d-flex justify-content-center align-items-center mb-4">
                     <div class="text-center">
                         <div class="avatar avatar-lg">
-                            <img class="rounded-circle" 
-                                 src="https://ui-avatars.com/api/?format=svg&name={{ urlencode($contact->name) }}" 
+                            <img class="rounded-circle"
+                                 src="{{ \App\Helpers\AvatarHelper::generate($contact->name, 100) }}"
                                  alt="{{ $contact->name }}">
                         </div>
                         <div class="fw-medium mt-2">{{ $contact->name }}</div>
                         <small class="d-block text-muted">{{ ucfirst($type) }}</small>
                     </div>
-                    
+
                     <div class="mx-4">
                         <i class="ti ti-x text-danger" style="font-size: 2rem;"></i>
                     </div>
-                    
+
                     <div class="text-center">
                         <div class="fw-medium">{{ $linkedUser->name }}</div>
                         <small class="d-block text-muted">{{ $linkedUser->email }}</small>
@@ -56,12 +56,12 @@
 
                 <!-- Action Buttons -->
                 <div class="d-flex justify-content-center gap-3 mt-4">
-                    <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}" 
+                    <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}"
                        class="btn btn-outline-secondary">
                         <i class="ti ti-x me-1"></i>Cancelar
                     </a>
-                    <form method="POST" 
-                          action="{{ route('user-unlink.process', [$type, $contact->id]) }}" 
+                    <form method="POST"
+                          action="{{ route('user-unlink.process', [$type, $contact->id]) }}"
                           class="d-inline">
                         @csrf
                         <button type="submit" class="btn btn-danger">
@@ -74,11 +74,11 @@
 
         <!-- Back Button -->
         <div class="text-center mt-3">
-            <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}" 
+            <a href="{{ $type === 'contact' ? route('contact.show', $contact->id) : route('collaborator.show', $contact->id) }}"
                class="btn btn-link">
                 <i class="ti ti-arrow-left me-1"></i>Volver
             </a>
         </div>
     </div>
 </div>
-@endsection 
+@endsection

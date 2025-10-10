@@ -407,56 +407,43 @@ if (typeof $ !== 'undefined') {
     }, 10);
 
     if (searchInput.length) {
-      // Shared search results cache to avoid multiple AJAX calls
-      var searchCache = {};
-      var searchInProgress = {};
-
-      // Dynamic filter config - reuses single AJAX call for all datasets
-      var filterConfig = function (dataKey) {
+      // Filter config
+      var filterConfig = function (data) {
         return function findMatches(q, cb) {
-          if (!q || q.length < 1) {
-            cb([]);
-            return;
-          }
-
-          // Check cache first
-          if (searchCache[q]) {
-            var matches = searchCache[q][dataKey] || [];
-            console.log('[Search Debug] From cache - Query:', q, 'DataKey:', dataKey, 'Matches:', matches.length);
-            cb(matches);
-            return;
-          }
-
-          // If search already in progress, wait for it
-          if (searchInProgress[q]) {
-            searchInProgress[q].done(function() {
-              var matches = searchCache[q][dataKey] || [];
-              console.log('[Search Debug] From pending - Query:', q, 'DataKey:', dataKey, 'Matches:', matches.length);
-              cb(matches);
-            });
-            return;
-          }
-
-          // Make new AJAX request
-          searchInProgress[q] = $.ajax({
-            url: '/contact/search',
-            method: 'GET',
-            data: { q: q },
-            dataType: 'json'
-          }).done(function(response) {
-            console.log('[Search Debug] New request - Query:', q, 'Response:', response);
-            searchCache[q] = response;
-            delete searchInProgress[q];
-            var matches = response[dataKey] || [];
-            console.log('[Search Debug] Matches found:', matches.length, 'for', dataKey);
-            cb(matches);
-          }).fail(function(error) {
-            console.error('Search error:', error);
-            delete searchInProgress[q];
-            cb([]);
+          let matches;
+          matches = [];
+          data.filter(function (i) {
+            if (i.name.toLowerCase().startsWith(q.toLowerCase())) {
+              matches.push(i);
+            } else if (
+              !i.name.toLowerCase().startsWith(q.toLowerCase()) &&
+              i.name.toLowerCase().includes(q.toLowerCase())
+            ) {
+              matches.push(i);
+              matches.sort(function (a, b) {
+                return b.name < a.name ? 1 : -1;
+              });
+            } else {
+              return [];
+            }
           });
+          cb(matches);
         };
       };
+
+      // Search API AJAX call - load filtered data synchronously
+      var searchData = $.ajax({
+        url: '/contact/search',
+        dataType: 'json',
+        async: false,
+        data: { q: '' }, // Empty query to load all initial data (with filters applied)
+        success: function(searchData) {
+          console.log('Search data received:', searchData);
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error('Error loading search data:', textStatus, errorThrown);
+        }
+      }).responseJSON;
 
       // Init typeahead on searchInput
       searchInput.each(function () {
@@ -465,6 +452,7 @@ if (typeof $ !== 'undefined') {
           .typeahead(
             {
               hint: false,
+              minLength: 1,
               classNames: {
                 menu: 'tt-menu navbar-search-suggestion',
                 cursor: 'active',
@@ -548,8 +536,8 @@ if (typeof $ !== 'undefined') {
             {
               name: 'members',
               display: 'name',
-              limit: 20,
-              source: filterConfig('members'),
+              limit: 4,
+              source: filterConfig(searchData.members),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function ({ name, src, subtitle, url }) {
@@ -586,12 +574,11 @@ if (typeof $ !== 'undefined') {
             {
               name: 'enterprises',
               display: 'name',
-              limit: 20,
-              source: filterConfig('enterprises'),
+              limit: 4,
+              source: filterConfig(searchData.enterprises),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
                 suggestion: function ({ name, src, subtitle, url }) {
-                  console.log('[Search Debug] Rendering enterprise suggestion:', name, url);
                   return (
                     '<a href="' +
                     url + '">' +
@@ -619,8 +606,8 @@ if (typeof $ !== 'undefined') {
             {
               name: 'services',
               display: 'name',
-              limit: 20,
-              source: filterConfig('services'),
+              limit: 4,
+              source: filterConfig(searchData.services),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',
                 suggestion: function ({ name, src, subtitle, url }) {
@@ -652,8 +639,8 @@ if (typeof $ !== 'undefined') {
             {
               name: 'projects',
               display: 'name',
-              limit: 20,
-              source: filterConfig('projects'),
+              limit: 4,
+              source: filterConfig(searchData.projects),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',
                 suggestion: function ({ name, src, subtitle, url }) {
@@ -678,6 +665,39 @@ if (typeof $ !== 'undefined') {
                   '<div class="not-found px-3 py-2">' +
                   '<h6 class="suggestions-header text-primary mb-2">Proyectos</h6>' +
                   '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Proyecto no encontrado</p>' +
+                  '</div>'
+              }
+            },
+            // Invoices
+            {
+              name: 'invoices',
+              display: 'name',
+              limit: 4,
+              source: filterConfig(searchData.invoices),
+              templates: {
+                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',
+                suggestion: function ({ name, src, subtitle, url }) {
+                  return (
+                    '<a href="' +
+                    url + '">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="ti ti-file-invoice me-2"></i>' +
+                    '<div class="user-info">' +
+                    '<h6 class="mb-0">' +
+                    name +
+                    '</h6>' +
+                    '<small class="text-muted">' +
+                    subtitle +
+                    '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    '</a>'
+                  );
+                },
+                notFound:
+                  '<div class="not-found px-3 py-2">' +
+                  '<h6 class="suggestions-header text-primary mb-2">Facturas</h6>' +
+                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Factura no encontrada</p>' +
                   '</div>'
               }
             }
