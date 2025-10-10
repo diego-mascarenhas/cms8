@@ -16,7 +16,7 @@
     "doctrine/dbal": "^3.5.1",
     "fakerphp/faker": "^1.23",
     "guzzlehttp/guzzle": "^7.9",
-    "idoneo/humano-billing": "^1.0 || dev-main",
+    "idoneo/humano-billing": "^1.1",
     "jd-dotlogics/laravel-grapesjs": "^3.4",
     "laravel/cashier": "^15.4",
     "laravel/framework": "^10.23",
