@@ -14,28 +14,34 @@ class CurrencySeeder extends Seeder
      */
     public function run()
     {
-        Currency::create([
-            'id' => 840,
-            'code' => 'USD',
-            'name' => 'United States Dollar',
-            'symbol' => '$',
-            'status' => true,
-        ]);
+        Currency::firstOrCreate(
+            ['id' => 840],
+            [
+                'code' => 'USD',
+                'name' => 'United States Dollar',
+                'symbol' => '$',
+                'status' => true,
+            ],
+        );
 
-        Currency::create([
-            'id' => 978,
-            'code' => 'EUR',
-            'name' => 'Euro',
-            'symbol' => '€',
-            'status' => true,
-        ]);
+        Currency::firstOrCreate(
+            ['id' => 978],
+            [
+                'code' => 'EUR',
+                'name' => 'Euro',
+                'symbol' => '€',
+                'status' => true,
+            ],
+        );
 
-        Currency::create([
-            'id' => 826,
-            'code' => 'GBP',
-            'name' => 'British Pound Sterling',
-            'symbol' => '£',
-            'status' => true,
-        ]);
+        Currency::firstOrCreate(
+            ['id' => 826],
+            [
+                'code' => 'GBP',
+                'name' => 'British Pound Sterling',
+                'symbol' => '£',
+                'status' => true,
+            ],
+        );
     }
 }

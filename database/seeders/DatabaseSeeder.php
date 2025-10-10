@@ -16,10 +16,25 @@ class DatabaseSeeder extends Seeder
 	{
 		if ($this->command === null) {
 			return new class {
-				public function info($message) { echo "[INFO] $message\n"; }
-				public function warn($message) { echo "[WARN] $message\n"; }
-				public function error($message) { echo "[ERROR] $message\n"; }
-				public function call($command, $args = []) { return 0; }
+				public function info($message)
+				{
+					echo "[INFO] $message\n";
+				}
+
+				public function warn($message)
+				{
+					echo "[WARN] $message\n";
+				}
+
+				public function error($message)
+				{
+					echo "[ERROR] $message\n";
+				}
+
+				public function call($command, $args = [])
+				{
+					return 0;
+				}
 			};
 		}
 		return $this->command;
@@ -39,12 +54,12 @@ class DatabaseSeeder extends Seeder
 		// Publish billing migrations if not already published
 		$this->publishBillingMigrations();
 
-	// ============================================
-	// PHASE 1: System Foundation
-	// ============================================
-	$this->getCommand()->info('');
-	$this->getCommand()->info('📦 Phase 1: System Foundation');
-	$this->call([
+		// ============================================
+		// PHASE 1: System Foundation
+		// ============================================
+		$this->getCommand()->info('');
+		$this->getCommand()->info('📦 Phase 1: System Foundation');
+		$this->call([
 			RolesAndPermissionsSeeder::class,  // Roles básicos (admin, user, developer)
 			ModuleSeeder::class,  // Módulos disponibles del sistema
 			UserSeeder::class,  // Usuario admin inicial
@@ -52,12 +67,12 @@ class DatabaseSeeder extends Seeder
 			CoreModulesPermissionsSeeder::class,  // Permisos para módulos core
 		]);
 
-	// ============================================
-	// PHASE 2: Base Data (Required for modules to work)
-	// ============================================
-	$this->getCommand()->info('');
-	$this->getCommand()->info('📊 Phase 2: Base System Data');
-	$this->call([
+		// ============================================
+		// PHASE 2: Base Data (Required for modules to work)
+		// ============================================
+		$this->getCommand()->info('');
+		$this->getCommand()->info('📊 Phase 2: Base System Data');
+		$this->call([
 			CurrencySeeder::class,  // Currencies (EUR, USD, etc)
 			CountrySeeder::class,  // Countries
 			LanguageSeeder::class,  // Base languages
@@ -77,29 +92,31 @@ class DatabaseSeeder extends Seeder
 			CategorySeeder::class,  // Base categories
 		]);
 
-	// ============================================
-	// PHASE 3: Team Data (Optional - for production/testing)
-	// Uncomment the seeder you want to run:
-	// - TeamDemoSeeder: Creates demo team with sample data
-	// - TeamRevisionAlphaSeeder: Imports Revision Alpha team and data from remote DB
-	// ============================================
-	$this->getCommand()->info('');
-	$this->getCommand()->info('🎭 Phase 3: Team Data & Ecosystem');
-	$this->call([
+		// ============================================
+		// PHASE 3: Team Data (Optional - for production/testing)
+		// Uncomment the seeder you want to run:
+		// - TeamDemoSeeder: Creates demo team with sample data
+		// - TeamRevisionAlphaSeeder: Imports Revision Alpha team and data from remote DB
+		// - TeamHumanoSeeder: Creates Humano team and users
+		// ============================================
+		$this->getCommand()->info('');
+		$this->getCommand()->info('🎭 Phase 3: Team Data & Ecosystem');
+		$this->call([
 			TeamRevisionAlphaSeeder::class,  // Production data import
 			// TeamDemoSeeder::class,  // Demo data (alternative)
+			TeamHumanoSeeder::class,  // Humano team setup
 		]);
 
-	// Clear activity log entries generated during seeding
-	$this->clearAllActivities();
+		// Clear activity log entries generated during seeding
+		$this->clearAllActivities();
 
-	$this->getCommand()->info('');
-	$this->getCommand()->info('✅ HUMANO System installed successfully!');
-	$this->getCommand()->info('');
-	$this->getCommand()->info('📝 Next steps:');
-	$this->getCommand()->info('   1. Import data: php artisan import:interactive --auto');
-	$this->getCommand()->info('   2. Access at: ' . config('app.url'));
-}
+		$this->getCommand()->info('');
+		$this->getCommand()->info('✅ HUMANO System installed successfully!');
+		$this->getCommand()->info('');
+		$this->getCommand()->info('📝 Next steps:');
+		$this->getCommand()->info('   1. Import data: php artisan import:interactive --auto');
+		$this->getCommand()->info('   2. Access at: ' . config('app.url'));
+	}
 
 	/**
 	 * Publish billing migrations if needed
