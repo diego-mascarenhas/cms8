@@ -309,12 +309,12 @@ class ImportDataCommand extends Command
 			$this->processImport('7. Projects');
 			$this->newLine();
 
-			$this->info('📄 Step 5/12: Importing Invoices...');
-			$this->processImport('8. Invoices');
+			$this->info('📋 Step 5/12: Importing Billing Addresses...');
+			$this->processImport('9. Billing Addresses');
 			$this->newLine();
 
-			$this->info('📋 Step 6/12: Importing Billing Addresses...');
-			$this->processImport('9. Billing Addresses');
+			$this->info('📄 Step 6/12: Importing Invoices...');
+			$this->processImport('8. Invoices');
 			$this->newLine();
 
 			$this->info('📝 Step 7/12: Importing Invoice Items...');
