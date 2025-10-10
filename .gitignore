@@ -419,7 +419,7 @@ yarn-error.log
 .phpunit.result.cache
 *.homestead.php
 Homestea
-package-lock.json
+# package-lock.json - Now tracked for npm ci in production
 composer.lock
 # yarn.lock
 
