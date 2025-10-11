@@ -4,2792 +4,1288 @@ namespace Database\Seeders;
 
 use App\Helpers\GrapesJsHelper;
 use App\Models\Category;
-use App\Models\Certification;
 use App\Models\Contact;
-use App\Models\ContactLanguageVariant;
-use App\Models\ContactPortfolio;
-use App\Models\ContactProject;
-use App\Models\ContactSentiment;
-use App\Models\ContactSentimentHistory;
-use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\EnterpriseTaxStatusType;
-use App\Models\Fare;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceType;
-use App\Models\LanguageVariant;
 use App\Models\Message;
 use App\Models\Module;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
-use App\Models\Product;
 use App\Models\Project;
-use App\Models\ProjectFare;
 use App\Models\Service;
-use App\Models\Software;
 use App\Models\Team;
 use App\Models\Template;
-use App\Models\Unit;
 use App\Models\User;
-use Database\Factories\ClientFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class TeamDemoSeeder extends Seeder
 {
-	/**
-	 * Run the database seeds.
-	 */
+	private $teamId = 1;
+
 	public function run(): void
 	{
-		$this->command->info('Seeding Team Demo data...');
+		$this->command->info('🚀 Setting up Demo Team Data...');
 
-		// Ensure team 1 exists first
-		$this->ensureDemoTeamExists();
+		// 1. Ensure team 1 exists
+		$team = $this->ensureDemoTeamExists();
+		$this->teamId = $team->id;
 
-		// Create demo clients (enterprises)
-		$this->command->info('Creating demo clients...');
-		ClientFactory::new()
-			->count(15)
-			->client()
-			->create();
+		// 2. Assign core modules to team
+		$this->assignCoreModules($team);
 
-		// Create demo projects (reduced to half)
-		$this->command->info('Creating demo projects...');
-		Project::factory()
-			->count(12)
-			->withFares()
-			->create();
+		// 3. Create demo categories
+		$this->createDemoCategories();
 
-		// Create demo fares with units (reduced to half)
-		$this->command->info('Creating demo fares with units...');
-		Fare::factory()
-			->count(6)
-			->withUnits()
-			->create();
+		// 4. Create demo task categories
+		$this->createDemoTaskCategories();
 
-		// Create fare-unit relationships for demo team
-		$this->createDemoFareUnits();
-
-		// Create demo language variants
-		$this->createDemoLanguageVariants();
-
-		// Create demo collaborators with language variants
-		$this->createDemoCollaboratorsWithLanguages();
-
-		// Assign language variants to project services
-		$this->assignLanguageVariantsToServices();
-
-		// Update basic language codes to specific variants
-		$this->updateBasicLanguageCodesToVariants();
-
-		// Ensure each service language combination has at least one collaborator
-		$this->ensureServiceLanguageCoverage();
-
-		// Assign collaborators to projects (95% acceptance rate)
-		$this->assignCollaboratorsToProjects();
-
-		// Create collaborator ratings and services
-		$this->createCollaboratorRatingsAndServices();
-
-		// Create demo software
-		$this->command->info('Creating demo software...');
-		Software::factory()
-			->count(30)
-			->create();
-
-		// Create demo certifications
-		$this->command->info('Creating demo certifications...');
-		Certification::factory()
-			->count(20)
-			->create();
-
-		// Create demo experience/portfolio items
-		$this->command->info('Creating demo experience/portfolio items...');
-		ContactPortfolio::factory()
-			->count(40)
-			->create();
-
-		$this->command->info('Team Demo data seeded successfully!');
-
-		// Also seed team-scoped payments for the demo team
-		$this->seedDemoPayments();
-
-		// Seed demo billing addresses and invoices
-		$this->seedDemoBillingAndInvoices();
-
-		// Seed demo services for Team 1
-		$this->seedDemoServices();
-
-		// Seed demo products for Team 1
-		$this->seedDemoProducts();
-
-		// Seed demo contacts
-		$this->seedDemoContacts();
-
-		// Create demo template and messages for team 1
-		$this->createSimpleDemoTemplate();
-
-		// Create professional email template with logos
+		// 5. Create professional email template
 		$this->createProfessionalEmailTemplate();
 
-		// Fix GrapesJS structure for all templates after creation
-		$this->fixGrapesJsStructure();
-
-		// Create Staff category and contacts FIRST
+		// 6. Create Staff category and contacts
 		$this->createStaffCategoryAndContacts();
 
-		// Create demo messages WITH Staff category assigned
-		$this->createDemoMessages();
+		// 7. Create demo message
+		$this->createDemoMessage();
 
-		// Create task boards for team 1
+		// 8. Configure email settings
+		$this->configureDemoEmailSettings($team);
+
+		// 9. Configure team shortcuts
+		$this->configureTeamShortcuts($team);
+
+		// 10. Create task boards
 		$this->createTaskBoards();
+
+		// 11. Create demo users with different roles
+		$this->createDemoUsers($team);
+
+		// 12. Seed demo data
+		$this->seedDemoEnterprises();
+		$this->createServiceCategoriesAndTypes();
+		$this->seedDemoServices();
+		$this->createClientContactsWithInvoicesAndPayments();
+		$this->createFinalizedContacts();
+		$this->createProjectCategoriesAndProjects();
+		$this->createProjectBoardsWithTasks();
+
+		// 12. Fix GrapesJS structure
+		$this->fixGrapesJsStructure();
+
+		$this->command->info('✅ Demo Team setup completed successfully');
+	}
+
+	private function ensureDemoTeamExists(): Team
+	{
+		$team = Team::find(1);
+		if (!$team) {
+			$this->command->info('🏢 Creating Demo team...');
+
+			// Create the owner user: admin@humano.app
+			$user = User::firstOrCreate(
+				['email' => 'admin@humano.app'],
+				[
+					'name' => 'Admin Humano',
+					'password' => bcrypt('Simplicity!'),
+					'email_verified_at' => now(),
+				]
+			);
+
+			// Assign admin role
+			if (!$user->hasRole('admin')) {
+				$user->assignRole('admin');
+			}
+
+			$team = $user->ownedTeams()->firstOrCreate(
+				['name' => "Demo's Team"],
+				[
+					'name' => "Demo's Team",
+					'personal_team' => false,
+				]
+			);
+
+			$user->update(['current_team_id' => $team->id]);
+		}
+
+		return $team;
+	}
+
+	private function assignCoreModules(Team $team): void
+	{
+		$this->command->info('🔧 Assigning core modules to Demo team...');
+
+		$defaultModuleKeys = [
+			'dashboard',
+			'users',
+			'contacts',
+			'clients',
+			'services',
+			'projects',
+			'tasks',
+			'times',
+			'invoices',
+			'payments',
+			'attendances',
+		];
+
+		foreach ($defaultModuleKeys as $moduleKey) {
+			$module = Module::where('key', $moduleKey)->first();
+			if ($module) {
+				DB::table('module_team')->updateOrInsert([
+					'module_id' => $module->id,
+					'team_id' => $team->id,
+				], [
+					'status' => 1,
+					'created_at' => now(),
+					'updated_at' => now(),
+				]);
+				$this->command->info("✅ Enabled module: {$module->name} ({$moduleKey})");
+			}
+		}
+	}
+
+	private function createDemoCategories(): void
+	{
+		$this->command->info('📂 Creating Demo categories...');
+
+		$contactsModuleId = Module::where('key', 'contacts')->first()?->id;
+		$enterprisesModuleId = Module::where('key', 'enterprises')->first()?->id;
+
+		// Main contact category
+		$mainContactCategory = Category::updateOrCreate([
+			'name' => 'Contactos',
+			'module_id' => $contactsModuleId,
+			'team_id' => $this->teamId,
+			'parent_id' => null,
+		], [
+			'description' => 'Categoría principal para contactos',
+			'status' => 1,
+		]);
+
+		// Subcategories
+		Category::updateOrCreate([
+			'name' => 'Staff',
+			'module_id' => $contactsModuleId,
+			'team_id' => $this->teamId,
+		], [
+			'description' => 'Contactos internos del equipo',
+			'parent_id' => $mainContactCategory->id,
+			'status' => 1,
+		]);
+
+		Category::updateOrCreate([
+			'name' => 'Contacto Potencial',
+			'module_id' => $contactsModuleId,
+			'team_id' => $this->teamId,
+		], [
+			'description' => 'Contactos interesados',
+			'parent_id' => $mainContactCategory->id,
+			'status' => 1,
+		]);
+
+		// Enterprise categories
+		Category::updateOrCreate([
+			'name' => 'Cliente Premium',
+			'module_id' => $enterprisesModuleId,
+		], [
+			'team_id' => $this->teamId,
+			'description' => 'Empresas con contrato premium',
+			'parent_id' => null,
+			'status' => 1,
+		]);
+
+		$this->command->info('✅ Created Demo categories');
+	}
+
+	private function createDemoTaskCategories(): void
+	{
+		$this->command->info('📋 Creating Demo task categories...');
+
+		$tasksModuleId = Module::where('key', 'tasks')->first()?->id;
+		if (!$tasksModuleId) {
+			$this->command->warn('⚠️  Tasks module not found.');
+			return;
+		}
+
+		$administracionCategory = Category::updateOrCreate([
+			'name' => 'Administración',
+			'module_id' => $tasksModuleId,
+			'team_id' => $this->teamId,
+			'parent_id' => null,
+		], [
+			'description' => 'Tareas administrativas',
+			'status' => 1,
+		]);
+
+		$proyectosCategory = Category::updateOrCreate([
+			'name' => 'Proyectos',
+			'module_id' => $tasksModuleId,
+			'team_id' => $this->teamId,
+			'parent_id' => null,
+		], [
+			'description' => 'Tareas de proyectos',
+			'status' => 1,
+		]);
+
+		// Subcategories
+		$adminSubs = ['Cobranza', 'Pagos', 'Presupuestos'];
+		foreach ($adminSubs as $sub) {
+			Category::updateOrCreate([
+				'name' => $sub,
+				'module_id' => $tasksModuleId,
+				'team_id' => $this->teamId,
+			], [
+				'parent_id' => $administracionCategory->id,
+				'status' => 1,
+			]);
+		}
+
+		$projectSubs = ['Diseño', 'Programación', 'Mantenimiento'];
+		foreach ($projectSubs as $sub) {
+			Category::updateOrCreate([
+				'name' => $sub,
+				'module_id' => $tasksModuleId,
+				'team_id' => $this->teamId,
+			], [
+				'parent_id' => $proyectosCategory->id,
+				'status' => 1,
+			]);
+		}
+
+		$this->command->info('✅ Created Demo task categories');
+	}
+
+	private function createProfessionalEmailTemplate(): void
+	{
+		$this->command->info('🎨 Creating professional email template...');
+
+		$template = Template::updateOrCreate(
+			[
+				'name' => 'Email Marketing fácil, rápido y seguro',
+				'team_id' => $this->teamId,
+			],
+			[
+				'status_id' => 1,
+				'gjs_data' => [
+					'css' => '* { box-sizing: border-box; } body {margin: 0; font-family: Arial, sans-serif;}',
+					'html' => '<body><h1>Welcome Demo</h1><p>This is a demo email template.</p></body>',
+					'styles' => json_encode([]),
+					'components' => json_encode([]),
+				],
+			]
+		);
+
+		$this->command->info("✅ Template created: {$template->name}");
+
+		try {
+			$result = GrapesJsHelper::fixTemplateStructure($template);
+			if ($result) {
+				$this->command->info('✅ Fixed GrapesJS structure');
+			}
+		} catch (\Exception $e) {
+			$this->command->error('❌ Error fixing template: ' . $e->getMessage());
+		}
+	}
+
+	private function createStaffCategoryAndContacts(): void
+	{
+		$this->command->info('👥 Creating 30 demo contacts (staff and clients)...');
+
+		$contactsModule = Module::where('key', 'contacts')->first();
+		if (!$contactsModule) {
+			return;
+		}
+
+		$staffCategory = Category::where('name', 'Staff')
+			->where('team_id', $this->teamId)
+			->first();
+
+		$clientCategory = Category::where('name', 'Contacto Potencial')
+			->where('team_id', $this->teamId)
+			->first();
+
+		// Get enterprises for client contacts
+		$enterprises = Enterprise::where('team_id', $this->teamId)->get();
+
+		// Staff contacts (10)
+		$staffContacts = [
+			['name' => 'Admin', 'surname' => 'Demo', 'email' => 'admin@humano.app', 'phone' => '34600111001', 'is_staff' => true],
+			['name' => 'Demo', 'surname' => 'User', 'email' => 'demo@example.com', 'phone' => '34600111002', 'is_staff' => true],
+			['name' => 'Internal', 'surname' => 'Manager', 'email' => 'manager@humano.app', 'phone' => '34600111003', 'is_staff' => true],
+			['name' => 'Team', 'surname' => 'Lead', 'email' => 'lead@humano.app', 'phone' => '34600111004', 'is_staff' => true],
+			['name' => 'Support', 'surname' => 'Admin', 'email' => 'support@humano.app', 'phone' => '34600111005', 'is_staff' => true],
+			['name' => 'Sales', 'surname' => 'Director', 'email' => 'sales@humano.app', 'phone' => '34600111006', 'is_staff' => true],
+			['name' => 'Marketing', 'surname' => 'Director', 'email' => 'marketing@humano.app', 'phone' => '34600111007', 'is_staff' => true],
+			['name' => 'HR', 'surname' => 'Manager', 'email' => 'hr@humano.app', 'phone' => '34600111008', 'is_staff' => true],
+			['name' => 'Finance', 'surname' => 'Manager', 'email' => 'finance@humano.app', 'phone' => '34600111009', 'is_staff' => true],
+			['name' => 'Operations', 'surname' => 'Manager', 'email' => 'operations@humano.app', 'phone' => '34600111010', 'is_staff' => true],
+		];
+
+		// Client contacts (20) - with Spanish names
+		$clientContacts = [
+			['name' => 'Carlos', 'surname' => 'García López', 'email' => 'carlos.garcia@cliente1.com', 'phone' => '34600222001', 'profile' => 'Director General', 'is_staff' => false],
+			['name' => 'María', 'surname' => 'Rodríguez Sánchez', 'email' => 'maria.rodriguez@cliente2.com', 'phone' => '34600222002', 'profile' => 'CEO', 'is_staff' => false],
+			['name' => 'Juan', 'surname' => 'Martínez Pérez', 'email' => 'juan.martinez@cliente3.com', 'phone' => '34600222003', 'profile' => 'CTO', 'is_staff' => false],
+			['name' => 'Ana', 'surname' => 'López Fernández', 'email' => 'ana.lopez@cliente4.com', 'phone' => '34600222004', 'profile' => 'Directora de Marketing', 'is_staff' => false],
+			['name' => 'Pedro', 'surname' => 'González Martín', 'email' => 'pedro.gonzalez@cliente5.com', 'phone' => '34600222005', 'profile' => 'Gerente de Operaciones', 'is_staff' => false],
+			['name' => 'Laura', 'surname' => 'Sánchez Ruiz', 'email' => 'laura.sanchez@cliente6.com', 'phone' => '34600222006', 'profile' => 'Directora Financiera', 'is_staff' => false],
+			['name' => 'Miguel', 'surname' => 'Hernández Díaz', 'email' => 'miguel.hernandez@cliente7.com', 'phone' => '34600222007', 'profile' => 'Director de Ventas', 'is_staff' => false],
+			['name' => 'Carmen', 'surname' => 'Jiménez Moreno', 'email' => 'carmen.jimenez@cliente8.com', 'phone' => '34600222008', 'profile' => 'Gerente de Proyecto', 'is_staff' => false],
+			['name' => 'David', 'surname' => 'Ruiz Álvarez', 'email' => 'david.ruiz@cliente9.com', 'phone' => '34600222009', 'profile' => 'Jefe de Producto', 'is_staff' => false],
+			['name' => 'Isabel', 'surname' => 'Moreno Torres', 'email' => 'isabel.moreno@cliente10.com', 'phone' => '34600222010', 'profile' => 'Directora de RRHH', 'is_staff' => false],
+			['name' => 'Antonio', 'surname' => 'Romero Castro', 'email' => 'antonio.romero@cliente11.com', 'phone' => '34600222011', 'profile' => 'Director Comercial', 'is_staff' => false],
+			['name' => 'Cristina', 'surname' => 'Navarro Ortiz', 'email' => 'cristina.navarro@cliente12.com', 'phone' => '34600222012', 'profile' => 'Gerente General', 'is_staff' => false],
+			['name' => 'Francisco', 'surname' => 'Serrano Gil', 'email' => 'francisco.serrano@cliente13.com', 'phone' => '34600222013', 'profile' => 'Director de Sistemas', 'is_staff' => false],
+			['name' => 'Lucía', 'surname' => 'Blanco Vega', 'email' => 'lucia.blanco@cliente14.com', 'phone' => '34600222014', 'profile' => 'Responsable de Compras', 'is_staff' => false],
+			['name' => 'Javier', 'surname' => 'Castro Ramos', 'email' => 'javier.castro@cliente15.com', 'phone' => '34600222015', 'profile' => 'Director de Logística', 'is_staff' => false],
+			['name' => 'Elena', 'surname' => 'Iglesias Suárez', 'email' => 'elena.iglesias@cliente16.com', 'phone' => '34600222016', 'profile' => 'Directora de Calidad', 'is_staff' => false],
+			['name' => 'Roberto', 'surname' => 'Vargas Delgado', 'email' => 'roberto.vargas@cliente17.com', 'phone' => '34600222017', 'profile' => 'Gerente de Innovación', 'is_staff' => false],
+			['name' => 'Patricia', 'surname' => 'Ortiz Pascual', 'email' => 'patricia.ortiz@cliente18.com', 'phone' => '34600222018', 'profile' => 'Directora de Comunicación', 'is_staff' => false],
+			['name' => 'Ricardo', 'surname' => 'Medina Santos', 'email' => 'ricardo.medina@cliente19.com', 'phone' => '34600222019', 'profile' => 'Director de Expansión', 'is_staff' => false],
+			['name' => 'Silvia', 'surname' => 'Campos Núñez', 'email' => 'silvia.campos@cliente20.com', 'phone' => '34600222020', 'profile' => 'Directora de Desarrollo', 'is_staff' => false],
+		];
+
+		$created = 0;
+		$existing = 0;
+
+		// Create staff contacts
+		foreach ($staffContacts as $contactData) {
+			$contact = Contact::firstOrCreate(
+				['email' => $contactData['email'], 'team_id' => $this->teamId],
+				[
+					'name' => $contactData['name'],
+					'surname' => $contactData['surname'],
+					'phone' => $contactData['phone'],
+					'creator_id' => 1,
+					'responsible_id' => 1,
+					'status_id' => 1,
+					'country' => 724,  // Spain
+					'language' => 'es',
+					'engagment' => 'temperate',
+				]
+			);
+
+			if ($staffCategory && !$contact->categories()->where('category_id', $staffCategory->id)->exists()) {
+				$contact->categories()->attach($staffCategory->id);
+			}
+
+			$created++;
+			$this->command->info("✅ Staff: {$contactData['name']} {$contactData['surname']}");
+		}
+
+		// Create client contacts
+		foreach ($clientContacts as $index => $contactData) {
+			// Assign to an enterprise if available
+			$enterprise = $enterprises->isNotEmpty() ? $enterprises->random() : null;
+
+			$contact = Contact::firstOrCreate(
+				['email' => $contactData['email'], 'team_id' => $this->teamId],
+				[
+					'name' => $contactData['name'],
+					'surname' => $contactData['surname'],
+					'phone' => $contactData['phone'],
+					'profile' => $contactData['profile'],
+					'creator_id' => 1,
+					'responsible_id' => 1,
+					'status_id' => rand(1, 2),  // Active or In Progress
+					'country' => 724,  // Spain
+					'language' => 'es',
+					'engagment' => collect(['cold', 'temperate', 'hot'])->random(),
+					'current_enterprise_id' => $enterprise?->id,
+				]
+			);
+
+			if ($clientCategory && !$contact->categories()->where('category_id', $clientCategory->id)->exists()) {
+				$contact->categories()->attach($clientCategory->id);
+			}
+
+			// Link contact to enterprise in pivot table
+			if ($enterprise) {
+				DB::table('contact_enterprise')->updateOrInsert(
+					['contact_id' => $contact->id, 'enterprise_id' => $enterprise->id],
+					['position' => $contactData['profile'], 'created_at' => now(), 'updated_at' => now()]
+				);
+			}
+
+			$created++;
+			$this->command->info("✅ Client: {$contactData['name']} {$contactData['surname']} - {$contactData['profile']}");
+		}
+
+		$this->command->info("📊 Summary: {$created} contacts created (10 staff, 20 clients)");
+	}
+
+	private function createDemoMessage(): void
+	{
+		$this->command->info('📧 Creating demo message...');
+
+		$this->ensureMessageTypesExist();
+
+		$template = Template::where('name', 'Email Marketing fácil, rápido y seguro')
+			->where('team_id', $this->teamId)
+			->first();
+
+		$staffCategory = Category::where('name', 'Staff')
+			->where('team_id', $this->teamId)
+			->first();
+
+		if ($template && $staffCategory) {
+			\App\Models\Message::firstOrCreate(
+				['name' => 'Newsletter Demo', 'team_id' => $this->teamId],
+				[
+					'text' => 'Hola {{name}}, bienvenido a nuestra plataforma.',
+					'type_id' => 1,
+					'template_id' => $template->id,
+					'category_id' => $staffCategory->id,
+					'status_id' => 0,
+				]
+			);
+			$this->command->info('✅ Demo message created');
+		}
+	}
+
+	private function configureDemoEmailSettings(Team $team): void
+	{
+		$this->command->info('📧 Configuring email settings...');
+
+		$team->setSetting('mail_from_name', 'Demo Team', [
+			'type' => 'string',
+			'group' => 'email',
+			'is_encrypted' => false,
+		]);
+
+		$team->setSetting('mail_from_address', 'demo@example.com', [
+			'type' => 'string',
+			'group' => 'email',
+			'is_encrypted' => false,
+		]);
+
+		$this->command->info('✅ Email settings configured');
+	}
+
+	private function configureTeamShortcuts(Team $team): void
+	{
+		$this->command->info('🔗 Configuring team shortcuts...');
+
+		$shortcuts = [
+			[
+				'title' => 'Documentation',
+				'subtitle' => 'Help Center',
+				'url' => 'https://docs.example.com',
+				'icon' => 'ti ti-book',
+				'open_in_new_tab' => true,
+			],
+		];
+
+		$team->setSetting('team_shortcuts', $shortcuts, [
+			'type' => 'json',
+			'group' => 'shortcuts',
+		]);
+
+		$this->command->info('✅ Shortcuts configured');
+	}
+
+	private function createDemoUsers(Team $team): void
+	{
+		$this->command->info('👥 Creating 30 demo users with different roles...');
+
+		// Ensure Victor and Diego exist and are added as admins
+		$victor = User::firstOrCreate(
+			['email' => 'victor@machbel.com'],
+			[
+				'name' => 'Victor Machbel',
+				'password' => bcrypt('Simplicity!'),
+				'email_verified_at' => now(),
+			]
+		);
+		if (!$victor->hasRole('admin')) {
+			$victor->assignRole('admin');
+		}
+		if (!$victor->teams()->where('team_id', $team->id)->exists()) {
+			$victor->teams()->attach($team->id, ['role' => 'admin']);
+			$this->command->info('✅ Added Victor as admin to Demo team');
+		}
+
+		$diego = User::firstOrCreate(
+			['email' => 'diego.mascarenhas@icloud.com'],
+			[
+				'name' => 'Diego Mascarenhas',
+				'password' => bcrypt('Simplicity!'),
+				'email_verified_at' => now(),
+			]
+		);
+		if (!$diego->hasRole('admin')) {
+			$diego->assignRole('admin');
+		}
+		if (!$diego->teams()->where('team_id', $team->id)->exists()) {
+			$diego->teams()->attach($team->id, ['role' => 'admin']);
+			$this->command->info('✅ Added Diego as admin to Demo team');
+		}
+
+		// Demo users with different roles (using existing roles: admin, employee, collaborator, developer, editor, user)
+		$demoUsers = [
+			// Employees (5 users) - Senior staff
+			['name' => 'Sarah Johnson', 'email' => 'sarah.johnson@humano.app', 'role' => 'employee', 'position' => 'Project Manager'],
+			['name' => 'Michael Chen', 'email' => 'michael.chen@humano.app', 'role' => 'employee', 'position' => 'Operations Manager'],
+			['name' => 'Emma Wilson', 'email' => 'emma.wilson@humano.app', 'role' => 'employee', 'position' => 'HR Manager'],
+			['name' => 'David Rodriguez', 'email' => 'david.rodriguez@humano.app', 'role' => 'employee', 'position' => 'Sales Manager'],
+			['name' => 'Lisa Anderson', 'email' => 'lisa.anderson@humano.app', 'role' => 'employee', 'position' => 'Marketing Manager'],
+			// Developers (5 users)
+			['name' => 'John Smith', 'email' => 'john.smith@humano.app', 'role' => 'developer', 'position' => 'Senior Developer'],
+			['name' => 'Maria Garcia', 'email' => 'maria.garcia@humano.app', 'role' => 'developer', 'position' => 'Frontend Developer'],
+			['name' => 'James Brown', 'email' => 'james.brown@humano.app', 'role' => 'developer', 'position' => 'Backend Developer'],
+			['name' => 'Robert Taylor', 'email' => 'robert.taylor@humano.app', 'role' => 'developer', 'position' => 'DevOps Engineer'],
+			['name' => 'William Davis', 'email' => 'william.davis@humano.app', 'role' => 'developer', 'position' => 'Full Stack Developer'],
+			// Editors (3 users)
+			['name' => 'Anna Martinez', 'email' => 'anna.martinez@humano.app', 'role' => 'editor', 'position' => 'UX Designer'],
+			['name' => 'Patricia White', 'email' => 'patricia.white@humano.app', 'role' => 'editor', 'position' => 'Product Designer'],
+			['name' => 'Barbara Walker', 'email' => 'barbara.walker@humano.app', 'role' => 'editor', 'position' => 'Content Writer'],
+			// Collaborators (7 users)
+			['name' => 'Jennifer Lee', 'email' => 'jennifer.lee@humano.app', 'role' => 'collaborator', 'position' => 'QA Engineer'],
+			['name' => 'Daniel Harris', 'email' => 'daniel.harris@humano.app', 'role' => 'collaborator', 'position' => 'Mobile Developer'],
+			['name' => 'Linda Clark', 'email' => 'linda.clark@humano.app', 'role' => 'collaborator', 'position' => 'Business Analyst'],
+			['name' => 'Thomas Lewis', 'email' => 'thomas.lewis@humano.app', 'role' => 'collaborator', 'position' => 'System Administrator'],
+			['name' => 'Christopher Hall', 'email' => 'christopher.hall@humano.app', 'role' => 'collaborator', 'position' => 'Data Analyst'],
+			['name' => 'Jessica Allen', 'email' => 'jessica.allen@humano.app', 'role' => 'collaborator', 'position' => 'Customer Success'],
+			['name' => 'Matthew Young', 'email' => 'matthew.young@humano.app', 'role' => 'collaborator', 'position' => 'Technical Support'],
+			// Users (10 users) - Junior staff and support
+			['name' => 'Karen King', 'email' => 'karen.king@humano.app', 'role' => 'user', 'position' => 'Junior Developer'],
+			['name' => 'Steven Wright', 'email' => 'steven.wright@humano.app', 'role' => 'user', 'position' => 'Intern Developer'],
+			['name' => 'Nancy Lopez', 'email' => 'nancy.lopez@humano.app', 'role' => 'user', 'position' => 'Marketing Coordinator'],
+			['name' => 'Kevin Hill', 'email' => 'kevin.hill@humano.app', 'role' => 'user', 'position' => 'Sales Representative'],
+			['name' => 'Betty Scott', 'email' => 'betty.scott@humano.app', 'role' => 'user', 'position' => 'Administrative Assistant'],
+			['name' => 'George Green', 'email' => 'george.green@humano.app', 'role' => 'user', 'position' => 'Customer Support'],
+			['name' => 'Helen Adams', 'email' => 'helen.adams@humano.app', 'role' => 'user', 'position' => 'Receptionist'],
+			['name' => 'Edward Baker', 'email' => 'edward.baker@humano.app', 'role' => 'user', 'position' => 'Office Manager'],
+			['name' => 'Sandra Nelson', 'email' => 'sandra.nelson@humano.app', 'role' => 'user', 'position' => 'Accountant'],
+			['name' => 'Brian Carter', 'email' => 'brian.carter@humano.app', 'role' => 'user', 'position' => 'HR Assistant'],
+		];
+
+		$created = 0;
+		$existing = 0;
+
+		foreach ($demoUsers as $userData) {
+			$user = User::firstOrCreate(
+				['email' => $userData['email']],
+				[
+					'name' => $userData['name'],
+					'password' => bcrypt('Simplicity!'),
+					'email_verified_at' => now(),
+				]
+			);
+
+			// Assign role
+			if (!$user->hasRole($userData['role'])) {
+				$user->assignRole($userData['role']);
+			}
+
+			// Add to team if not already
+			if (!$user->teams()->where('team_id', $team->id)->exists()) {
+				$user->teams()->attach($team->id, ['role' => $userData['role']]);
+				$created++;
+				$this->command->info("✅ Created: {$userData['name']} ({$userData['role']}) - {$userData['position']}");
+			} else {
+				$existing++;
+			}
+		}
+
+		$this->command->info("📊 Summary: {$created} new users created, {$existing} already existed");
+		$this->command->info('✅ Total team members: ' . ($team->users()->count()));
+	}
+
+	private function createTaskBoards(): void
+	{
+		$this->command->info('🎯 Creating task boards...');
+
+		$team = Team::find($this->teamId);
+		if (!$team) {
+			return;
+		}
+
+		$existingBoards = \App\Models\TaskBoard::withoutGlobalScopes()
+			->where('team_id', $team->id)
+			->count();
+
+		if ($existingBoards > 0) {
+			$this->command->warn("⏭️  Boards already exist ({$existingBoards})");
+			return;
+		}
+
+		\App\Models\TaskBoard::withoutGlobalScopes()->create([
+			'team_id' => $team->id,
+			'name' => 'General',
+			'description' => 'Tablero general',
+			'is_default' => true,
+			'order' => 0,
+		]);
+
+		\App\Models\TaskBoard::withoutGlobalScopes()->create([
+			'team_id' => $team->id,
+			'name' => 'Development',
+			'description' => 'Tablero de desarrollo',
+			'is_default' => false,
+			'order' => 1,
+		]);
+
+		$this->command->info('✅ Task boards created');
+	}
+
+	private function seedDemoContacts(): void
+	{
+		$this->command->info('👥 Creating demo contacts...');
+
+		$enterprises = Enterprise::where('team_id', $this->teamId)->get();
+		if ($enterprises->isEmpty()) {
+			// Create demo enterprise first
+			$enterprise = Enterprise::updateOrCreate(
+				['id' => 1],
+				[
+					'team_id' => $this->teamId,
+					'name' => 'Demo Technologies',
+					'website' => 'https://demo.com',
+					'email' => 'info@demo.com',
+					'type_id' => 1,
+					'status_id' => 1,
+				]
+			);
+
+			$this->command->info("✅ Created demo enterprise: {$enterprise->name}");
+		}
+	}
+
+	private function createServiceCategoriesAndTypes(): void
+	{
+		$this->command->info('🏷️  Creating service categories and types...');
+
+		$servicesModule = Module::where('key', 'services')->first();
+		if (!$servicesModule) {
+			$this->command->warn('⚠️  Services module not found');
+			return;
+		}
+
+		// Create service categories
+		$mainServiceCategory = Category::firstOrCreate(
+			['name' => 'Servicios IT', 'module_id' => $servicesModule->id, 'team_id' => $this->teamId],
+			['description' => 'Categoría principal de servicios IT', 'status' => 1]
+		);
+
+		$subcategories = [
+			['name' => 'Desarrollo', 'description' => 'Servicios de desarrollo de software'],
+			['name' => 'Consultoría', 'description' => 'Servicios de consultoría IT'],
+			['name' => 'Infraestructura', 'description' => 'Servicios de infraestructura y cloud'],
+			['name' => 'Diseño', 'description' => 'Servicios de diseño y UX'],
+		];
+
+		foreach ($subcategories as $subcat) {
+			Category::firstOrCreate(
+				['name' => $subcat['name'], 'module_id' => $servicesModule->id, 'team_id' => $this->teamId],
+				[
+					'description' => $subcat['description'],
+					'parent_id' => $mainServiceCategory->id,
+					'status' => 1,
+				]
+			);
+			$this->command->info("✅ Service category: {$subcat['name']}");
+		}
+
+		// Create service types
+		$serviceTypes = [
+			['name' => 'Desarrollo Web', 'description' => 'Desarrollo de aplicaciones web', 'category' => 'Desarrollo'],
+			['name' => 'Desarrollo Mobile', 'description' => 'Desarrollo de aplicaciones móviles', 'category' => 'Desarrollo'],
+			['name' => 'Consultoría Técnica', 'description' => 'Asesoría técnica especializada', 'category' => 'Consultoría'],
+			['name' => 'Consultoría Estratégica', 'description' => 'Asesoría estratégica IT', 'category' => 'Consultoría'],
+			['name' => 'Cloud Infrastructure', 'description' => 'Gestión de infraestructura cloud', 'category' => 'Infraestructura'],
+			['name' => 'DevOps', 'description' => 'Servicios de DevOps y CI/CD', 'category' => 'Infraestructura'],
+			['name' => 'UI/UX Design', 'description' => 'Diseño de interfaces y experiencia de usuario', 'category' => 'Diseño'],
+			['name' => 'Branding', 'description' => 'Diseño de identidad corporativa', 'category' => 'Diseño'],
+		];
+
+		foreach ($serviceTypes as $typeData) {
+			$category = Category::where('name', $typeData['category'])
+				->where('module_id', $servicesModule->id)
+				->where('team_id', $this->teamId)
+				->first();
+
+			\App\Models\ServiceType::firstOrCreate(
+				['name' => $typeData['name']],
+				[
+					'description' => $typeData['description'],
+					'category_id' => $category?->id,
+					'status' => 1,
+				]
+			);
+			$this->command->info("✅ Service type: {$typeData['name']}");
+		}
+
+		$this->command->info('✅ Service categories and types created');
+	}
+
+	private function seedDemoEnterprises(): void
+	{
+		$this->command->info('🏢 Creating demo enterprises...');
+
+		$enterpriseNames = [
+			['name' => 'TechCorp Solutions', 'code' => 'TECH001'],
+			['name' => 'Digital Innovations S.L.', 'code' => 'DIGI002'],
+			['name' => 'Consulting Group España', 'code' => 'CONS003'],
+			['name' => 'Marketing Pro Agency', 'code' => 'MARK004'],
+			['name' => 'Software Factory Madrid', 'code' => 'SOFT005'],
+			['name' => 'Cloud Services Iberia', 'code' => 'CLOU006'],
+			['name' => 'Business Intelligence Co.', 'code' => 'BUSI007'],
+			['name' => 'Data Analytics Partners', 'code' => 'DATA008'],
+			['name' => 'eCommerce Ventures', 'code' => 'ECOM009'],
+			['name' => 'Mobile Apps Studio', 'code' => 'MOBI010'],
+		];
+
+		foreach ($enterpriseNames as $enterpriseData) {
+			Enterprise::firstOrCreate(
+				['code' => $enterpriseData['code'], 'team_id' => $this->teamId],
+				[
+					'name' => $enterpriseData['name'],
+					'type_id' => 1,  // Cliente
+					'status_id' => 1,  // Activo
+					'responsible_id' => 1,
+					'phone' => '34' . rand(600000000, 699999999),
+					'email' => strtolower(str_replace(' ', '', explode(' ', $enterpriseData['name'])[0])) . '@example.com',
+				]
+			);
+			$this->command->info("✅ Enterprise: {$enterpriseData['name']}");
+		}
 	}
 
 	private function seedDemoServices(): void
 	{
-		$this->command->info('🛠️ Creating demo services for Team 1...');
+		$this->command->info('🛠️ Creating demo services...');
 
-		// Hosting services (annual, active)
-		Service::factory()
-			->forTeam1()
-			->active()
-			->hosting()
-			->count(5)
-			->create();
+		$enterprises = Enterprise::where('team_id', $this->teamId)->get();
+		if ($enterprises->isEmpty()) {
+			$this->command->warn('⚠️  No enterprises found');
+			return;
+		}
 
-		// Generic active services
-		Service::factory()
-			->forTeam1()
-			->active()
-			->count(15)
-			->create();
+		// Get or create a default service type
+		$serviceType = \App\Models\ServiceType::first();
+		if (!$serviceType) {
+			$this->command->warn('⚠️  No service types found, skipping services');
+			return;
+		}
 
-		// Mixed operation services (buy/sell)
-		Service::factory()
-			->forTeam1()
-			->count(10)
-			->create();
+		$serviceTypes = \App\Models\ServiceType::all();
+		if ($serviceTypes->isEmpty()) {
+			$this->command->warn('⚠️  No service types found, using default');
+			$serviceTypes = collect([$serviceType]);
+		}
 
-		$total = Service::whereHas('enterprise', function ($q) {
-			$q->where('team_id', 1);
-		})->count();
-		$this->command->info("✅ Demo services created for Team 1. Total services: {$total}");
+		$servicesModule = Module::where('key', 'services')->first();
+		$serviceCategory = Category::where('module_id', $servicesModule?->id)
+			->where('team_id', $this->teamId)
+			->first();
+
+		$servicesCreated = 0;
+
+		foreach ($enterprises as $enterprise) {
+			// Create 1-3 services per enterprise
+			$numServices = rand(1, 3);
+			for ($i = 0; $i < $numServices; $i++) {
+				$selectedType = $serviceTypes->random();
+
+				Service::firstOrCreate(
+					['enterprise_id' => $enterprise->id, 'service_type_id' => $selectedType->id],
+					[
+						'description' => $selectedType->name . ' para ' . $enterprise->name,
+						'price' => rand(500, 5000),
+						'status' => 1,
+						'operation' => 'sell',
+						'frequency' => rand(1, 4),
+						'responsible_id' => 1,
+					]
+				);
+				$servicesCreated++;
+			}
+		}
+
+		$this->command->info("✅ {$servicesCreated} demo services created");
+	}
+
+	private function createFinalizedContacts(): void
+	{
+		$this->command->info('✅ Creating finalized contacts...');
+
+		// Status 3 = Finalized
+		$finalizedEmails = [
+			'antonio.romero@cliente11.com',
+			'cristina.navarro@cliente12.com',
+			'francisco.serrano@cliente13.com',
+		];
+
+		Contact::whereIn('email', $finalizedEmails)
+			->where('team_id', $this->teamId)
+			->update(['status_id' => 3]);
+
+		$count = Contact::whereIn('email', $finalizedEmails)
+			->where('team_id', $this->teamId)
+			->count();
+
+		$this->command->info("✅ {$count} contacts marked as finalized");
+	}
+
+	private function createProjectCategoriesAndProjects(): void
+	{
+		$this->command->info('📁 Creating project categories and projects...');
+
+		$projectsModule = Module::where('key', 'projects')->first();
+		if (!$projectsModule) {
+			$this->command->warn('⚠️  Projects module not found');
+			return;
+		}
+
+		// Create project categories
+		$mainProjectCategory = Category::firstOrCreate(
+			['name' => 'Proyectos IT', 'module_id' => $projectsModule->id, 'team_id' => $this->teamId],
+			['description' => 'Categoría principal de proyectos IT', 'status' => 1]
+		);
+
+		$subcategories = [
+			['name' => 'Desarrollo Web', 'description' => 'Proyectos de desarrollo web'],
+			['name' => 'Desarrollo Mobile', 'description' => 'Proyectos de aplicaciones móviles'],
+			['name' => 'Infraestructura', 'description' => 'Proyectos de infraestructura'],
+			['name' => 'Consultoría', 'description' => 'Proyectos de consultoría'],
+		];
+
+		$projectCategories = [];
+		foreach ($subcategories as $subcat) {
+			$category = Category::firstOrCreate(
+				['name' => $subcat['name'], 'module_id' => $projectsModule->id, 'team_id' => $this->teamId],
+				[
+					'description' => $subcat['description'],
+					'parent_id' => $mainProjectCategory->id,
+					'status' => 1,
+				]
+			);
+			$projectCategories[] = $category;
+			$this->command->info("✅ Project category: {$subcat['name']}");
+		}
+
+		// Get enterprises
+		$enterprises = Enterprise::where('team_id', $this->teamId)->limit(5)->get();
+		if ($enterprises->isEmpty()) {
+			$this->command->warn('⚠️  No enterprises found for projects');
+			return;
+		}
+
+		// Create projects
+		$projectData = [
+			['name' => 'Portal Web Corporativo', 'real_name' => 'Corporate Website', 'description' => 'Desarrollo de portal web institucional con CMS', 'status_id' => 2],
+			['name' => 'App Móvil iOS/Android', 'real_name' => 'Mobile App', 'description' => 'Aplicación móvil nativa para iOS y Android', 'status_id' => 2],
+			['name' => 'Migración a Cloud', 'real_name' => 'Cloud Migration', 'description' => 'Migración de infraestructura local a AWS', 'status_id' => 3],
+			['name' => 'Sistema de Gestión', 'real_name' => 'Management System', 'description' => 'ERP personalizado para gestión empresarial', 'status_id' => 2],
+			['name' => 'Dashboard Analytics', 'real_name' => 'Analytics Dashboard', 'description' => 'Dashboard de analytics y reportes en tiempo real', 'status_id' => 4],
+			['name' => 'eCommerce Platform', 'real_name' => 'eCommerce', 'description' => 'Plataforma de comercio electrónico con pasarela de pagos', 'status_id' => 2],
+		];
+
+		foreach ($projectData as $index => $project) {
+			$enterprise = $enterprises->random();
+			$category = collect($projectCategories)->random();
+
+			Project::firstOrCreate(
+				['name' => $project['name'], 'team_id' => $this->teamId],
+				[
+					'real_name' => $project['real_name'],
+					'description' => $project['description'],
+					'enterprise_id' => $enterprise->id,
+					'category_id' => $category->id,
+					'status_id' => $project['status_id'],
+					'responsible_id' => 1,
+				]
+			);
+			$this->command->info("✅ Project: {$project['name']}");
+		}
+
+		$this->command->info('✅ Projects created');
+	}
+
+	private function createProjectBoardsWithTasks(): void
+	{
+		$this->command->info('📋 Creating project boards with tasks...');
+
+		// Get projects that need boards
+		$projects = Project::where('team_id', $this->teamId)
+			->whereIn('status_id', [2, 3, 4])  // In progress, testing, or active
+			->limit(3)
+			->get();
+
+		if ($projects->isEmpty()) {
+			$this->command->warn('⚠️  No projects found for boards');
+			return;
+		}
+
+		$tasksModule = Module::where('key', 'tasks')->first();
+		$taskCategories = Category::where('module_id', $tasksModule?->id)
+			->where('team_id', $this->teamId)
+			->get();
+
+		foreach ($projects as $project) {
+			// Create board for project
+			$board = \App\Models\TaskBoard::firstOrCreate(
+				['name' => 'Board: ' . $project->name, 'team_id' => $this->teamId],
+				[
+					'description' => 'Tablero de tareas para ' . $project->name,
+					'is_default' => false,
+					'order' => 10,
+				]
+			);
+
+			// Link board to project
+			$project->update(['board_id' => $board->id]);
+
+			// Create 5-10 tasks for this project
+			$numTasks = rand(5, 10);
+			$taskStatuses = [1, 2, 3, 4];  // Pending, In Progress, Completed, Cancelled
+
+			$taskTemplates = [
+				'Análisis de requisitos',
+				'Diseño de arquitectura',
+				'Desarrollo de backend',
+				'Desarrollo de frontend',
+				'Integración de APIs',
+				'Testing unitario',
+				'Testing de integración',
+				'Deployment a staging',
+				'Documentación técnica',
+				'Code review',
+				'Optimización de performance',
+				'Corrección de bugs',
+			];
+
+			for ($i = 0; $i < $numTasks; $i++) {
+				$taskName = $taskTemplates[$i % count($taskTemplates)] . ' - ' . $project->name;
+				$category = $taskCategories->isNotEmpty() ? $taskCategories->random() : null;
+
+				\App\Models\Task::firstOrCreate(
+					['title' => $taskName, 'board_id' => $board->id],
+					[
+						'description' => 'Tarea de ' . strtolower($taskTemplates[$i % count($taskTemplates)]) . ' para ' . $project->name,
+						'category_id' => $category?->id,
+						'status_id' => collect($taskStatuses)->random(),
+						'responsible_id' => 1,
+						'team_id' => $this->teamId,
+						'start_date' => now(),
+						'due_date' => now()->addDays(rand(7, 30)),
+					]
+				);
+			}
+
+			$this->command->info("✅ Board created for project: {$project->name} ({$numTasks} tasks)");
+		}
+
+		$this->command->info('✅ Project boards with tasks created');
+	}
+
+	private function createClientContactsWithInvoicesAndPayments(): void
+	{
+		$this->command->info('💼 Creating client contacts with billing addresses, invoices and payments...');
+
+		// Get all client contacts (the ones we created earlier)
+		$clientContacts = Contact::where('team_id', $this->teamId)
+			->whereIn('email', [
+				'carlos.garcia@cliente1.com',
+				'maria.rodriguez@cliente2.com',
+				'juan.martinez@cliente3.com',
+				'ana.lopez@cliente4.com',
+				'pedro.gonzalez@cliente5.com',
+				'laura.sanchez@cliente6.com',
+				'miguel.hernandez@cliente7.com',
+				'carmen.jimenez@cliente8.com',
+				'david.ruiz@cliente9.com',
+				'isabel.moreno@cliente10.com',
+			])
+			->get();
+
+		if ($clientContacts->isEmpty()) {
+			$this->command->warn('⚠️  No client contacts found');
+			return;
+		}
+
+		// Get enterprises
+		$enterprises = Enterprise::where('team_id', $this->teamId)->get();
+		if ($enterprises->isEmpty()) {
+			$this->command->warn('⚠️  No enterprises found');
+			return;
+		}
+
+		// Get invoice and payment types
+		$invoiceType = InvoiceType::first();
+		$paymentType = PaymentType::first();
+		$paymentAccount = PaymentAccount::where('team_id', $this->teamId)->first();
+
+		if (!$paymentAccount) {
+			$this->command->warn('⚠️  No payment account found, creating one...');
+			$paymentAccount = PaymentAccount::create([
+				'team_id' => $this->teamId,
+				'name' => 'Cuenta Principal',
+				'type' => 'bank',
+				'currency_id' => 840,  // USD
+				'balance' => 0,
+				'status' => 1,
+			]);
+		}
+
+		$taxStatuses = EnterpriseTaxStatusType::pluck('id')->all();
+		if (empty($taxStatuses)) {
+			$taxStatuses = [1];
+		}
+
+		$servicesModule = Module::where('key', 'services')->first();
+		$serviceCategory = null;
+		if ($servicesModule) {
+			$serviceCategory = Category::where('module_id', $servicesModule->id)
+				->where('team_id', $this->teamId)
+				->first();
+		}
+
+		$invoiceStatuses = [1, 2];  // Paid, Pending
+		$clientsCreated = 0;
+
+		foreach ($clientContacts as $contact) {
+			// 1. Update contact to status 5 (Cliente)
+			$contact->update(['status_id' => 5]);
+
+			// 2. Assign or create an enterprise for this contact
+			$enterprise = $enterprises->random();
+			$contact->update(['current_enterprise_id' => $enterprise->id]);
+
+			// Update pivot table
+			DB::table('contact_enterprise')->updateOrInsert(
+				['contact_id' => $contact->id, 'enterprise_id' => $enterprise->id],
+				['position' => $contact->profile, 'created_at' => now(), 'updated_at' => now()]
+			);
+
+			// 3. Create billing address for the enterprise
+			$billing = EnterpriseBillingAddress::firstOrCreate(
+				['enterprise_id' => $enterprise->id],
+				[
+					'name' => $enterprise->name,
+					'identification_number' => 'CIF-' . strtoupper(substr(md5($enterprise->name), 0, 9)),
+					'tax_status_type_id' => collect($taxStatuses)->random(),
+					'address' => 'Calle ' . fake()->streetName() . ', ' . rand(1, 200),
+					'postal_code' => rand(28001, 28999),
+					'locality' => 'Madrid',
+					'province' => 'Madrid',
+					'country' => 'ES',
+					'status' => 1,
+				]
+			);
+
+			// 4. Create 1-3 invoices for this client
+			$numInvoices = rand(1, 3);
+			for ($i = 0; $i < $numInvoices; $i++) {
+				$invoiceNumber = now()->format('Y') . '-' . str_pad($enterprise->id, 4, '0', STR_PAD_LEFT) . '-' . str_pad($i + 1, 3, '0', STR_PAD_LEFT);
+				$invoiceDate = now()->subDays(rand(1, 180));
+				$dueDate = $invoiceDate->copy()->addDays(30);
+
+				$grossAmount = rand(500, 5000);
+				$discount = rand(0, $grossAmount * 0.1);
+				$taxRate = 21;  // 21% IVA
+				$totalAmount = ($grossAmount - $discount) * (1 + $taxRate / 100);
+				$status = collect($invoiceStatuses)->random();
+				$balance = $status == 1 ? 0 : $totalAmount;  // If paid, balance is 0
+
+				$invoice = Invoice::firstOrCreate(
+					['number' => $invoiceNumber, 'enterprise_id' => $enterprise->id],
+					[
+						'billing_id' => $billing->id,
+						'type_id' => $invoiceType?->id ?? 1,
+						'operation' => 'sell',
+						'date' => $invoiceDate->toDateString(),
+						'due_date' => $dueDate->toDateString(),
+						'gross_amount' => $grossAmount,
+						'discount' => $discount,
+						'total_amount' => $totalAmount,
+						'balance' => $balance,
+						'status' => $status,
+					]
+				);
+
+				// 5. Create invoice items (2-4 items per invoice)
+				$numItems = rand(2, 4);
+				for ($j = 0; $j < $numItems; $j++) {
+					$itemDescriptions = [
+						'Desarrollo de Software',
+						'Consultoría IT',
+						'Diseño Web',
+						'Marketing Digital',
+						'Soporte Técnico',
+						'Análisis de Datos',
+						'Infraestructura Cloud',
+						'Formación y Capacitación',
+					];
+
+					InvoiceItem::firstOrCreate(
+						['invoice_id' => $invoice->id, 'description' => $itemDescriptions[$j % count($itemDescriptions)]],
+						[
+							'category_id' => $serviceCategory?->id,
+							'quantity' => rand(1, 10),
+							'unit_price' => rand(50, 500),
+							'discount' => rand(0, 50),
+							'tax_percentage' => $taxRate,
+						]
+					);
+				}
+
+				// 6. Create payment if invoice is paid
+				if ($status == 1 && $paymentType && $paymentAccount) {
+					Payment::firstOrCreate(
+						['invoice_id' => $invoice->id, 'enterprise_id' => $enterprise->id],
+						[
+							'team_id' => $this->teamId,
+							'transaction_type' => 'income',
+							'date' => $invoiceDate->copy()->addDays(rand(1, 15))->toDateString(),
+							'account_id' => $paymentAccount->id,
+							'type_id' => $paymentType->id,
+							'amount' => $totalAmount,
+							'remarks' => 'Pago de factura ' . $invoiceNumber,
+							'status' => 1,
+						]
+					);
+				}
+			}
+
+			$clientsCreated++;
+			$this->command->info("✅ Client: {$contact->name} {$contact->surname} - {$numInvoices} invoice(s) created");
+		}
+
+		$this->command->info("📊 Summary: {$clientsCreated} clients with billing addresses, invoices and payments");
 	}
 
 	private function seedDemoBillingAndInvoices(): void
 	{
-		$this->command->info('🏷️ Creating demo billing addresses and invoices...');
+		$this->command->info('💰 Creating demo invoices...');
 
-		// Ensure we have a tax status type to reference
 		$taxStatuses = EnterpriseTaxStatusType::pluck('id')->all();
 		if (empty($taxStatuses)) {
 			$this->call(EnterpriseTaxStatusTypeSeeder::class);
 			$taxStatuses = EnterpriseTaxStatusType::pluck('id')->all();
 		}
 
-		// Create one billing address per enterprise (team 1)
-		$enterprises = Enterprise::where('team_id', 1)->get();
-		foreach ($enterprises as $enterprise) {
-			EnterpriseBillingAddress::firstOrCreate(
+		$enterprises = Enterprise::where('team_id', $this->teamId)->get();
+		foreach ($enterprises->take(3) as $enterprise) {
+			$billing = EnterpriseBillingAddress::firstOrCreate(
+				['enterprise_id' => $enterprise->id],
 				[
-					'enterprise_id' => $enterprise->id,
 					'name' => $enterprise->name . ' Billing',
-				],
-				[
 					'identification_number' => 'ID' . str_pad((string) $enterprise->id, 6, '0', STR_PAD_LEFT),
 					'tax_status_type_id' => collect($taxStatuses)->random(),
 					'address' => 'Main St 123',
 					'postal_code' => '28001',
-					'locality' => collect(['Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Bilbao', 'Málaga'])->random(),
-					'province' => collect(['Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Vizcaya', 'Málaga'])->random(),
+					'locality' => 'Madrid',
+					'province' => 'Madrid',
 					'country' => 'ES',
 					'status' => 1,
-				],
+				]
+			);
+
+			$invoiceType = InvoiceType::first();
+			$invoice = Invoice::firstOrCreate(
+				['enterprise_id' => $enterprise->id, 'number' => '2024-' . $enterprise->id],
+				[
+					'billing_id' => $billing->id,
+					'type_id' => $invoiceType?->id ?? 1,
+					'operation' => 'sell',
+					'date' => now()->toDateString(),
+					'due_date' => now()->addDays(30)->toDateString(),
+					'gross_amount' => 1500.0,
+					'discount' => 0,
+					'total_amount' => 1815.0,
+					'balance' => 0,
+					'status' => 1,
+				]
+			);
+
+			InvoiceItem::firstOrCreate(
+				['invoice_id' => $invoice->id],
+				[
+					'description' => 'Software Development',
+					'quantity' => 1,
+					'unit_price' => 1500.0,
+					'discount' => 0,
+					'tax_percentage' => 21,
+				]
 			);
 		}
 
-		// Create invoices with items for 10 random enterprises
-		$invoiceType = InvoiceType::first();
-		$targets = $enterprises->random(min(10, max(1, $enterprises->count())));
-		foreach ($targets as $enterprise) {
-			$billing = EnterpriseBillingAddress::where('enterprise_id', $enterprise->id)->first();
-
-			// Build diverse items from fares (services) of the team when possible
-			$fares = Fare::where('team_id', 1)->inRandomOrder()->take(3)->get();
-			$items = [];
-			foreach ($fares as $fare) {
-				$items[] = [
-					'description' => $fare->name,
-					'quantity' => rand(1, 5) * 100,  // e.g., 100/200/300 words or minutes
-					'unit_price' => round(rand(8, 20) / 100, 2),  // e.g., 0.08 - 0.20
-					'discount' => 0,
-					'tax_percentage' => 21,
-				];
-			}
-			// fallback default items if no fares
-			if (empty($items)) {
-				$items = [
-					['description' => 'Translation service', 'quantity' => 1000, 'unit_price' => 0.08, 'discount' => 0, 'tax_percentage' => 21],
-					['description' => 'Review service', 'quantity' => 1000, 'unit_price' => 0.03, 'discount' => 0, 'tax_percentage' => 21],
-				];
-			}
-
-			$gross = 0;
-			foreach ($items as $it) {
-				$gross += ($it['quantity'] * $it['unit_price']) - $it['discount'];
-			}
-			$discount = 0;
-			$total = $gross;  // taxes not included in this simple example
-
-			$invoice = Invoice::create([
-				'enterprise_id' => $enterprise->id,
-				'billing_id' => $billing?->id,
-				'type_id' => $invoiceType?->id ?? 1,
-				'operation' => 'sell',
-				'number' => (string) now()->format('Ymd') . '-' . rand(100, 999),
-				'date' => now()->toDateString(),
-				'due_date' => now()->addDays(30)->toDateString(),
-				'gross_amount' => $gross,
-				'discount' => $discount,
-				'total_amount' => $total,
-				'balance' => $total,
-				'status' => 1,
-			]);
-
-			foreach ($items as $it) {
-				InvoiceItem::create(array_merge($it, [
-					'invoice_id' => $invoice->id,
-				]));
-			}
-		}
-
-		$count = Invoice::count();
-		$this->command->info("✅ Demo invoices created. Total invoices: {$count}");
+		$this->command->info('✅ Demo invoices created');
 	}
 
-	/**
-	 * Seed demo payment accounts and payments for Team 1
-	 */
 	private function seedDemoPayments(): void
 	{
-		$this->command->info('💳 Creating demo payment accounts and payments for Team 1...');
+		$this->command->info('💳 Creating demo payments...');
 
-		// Ensure payment accounts exist for Team 1
-		$accountsBefore = PaymentAccount::where('team_id', 1)->count();
+		$accountsBefore = PaymentAccount::where('team_id', $this->teamId)->count();
 		if ($accountsBefore === 0) {
 			$this->call(PaymentAccountSeeder::class);
 		}
 
-		// Create sample payments for Team 1
-		$this->call(PaymentSeeder::class);
-
-		$accountsAfter = PaymentAccount::where('team_id', 1)->count();
-		$payments = Payment::where('team_id', 1)->count();
-
-		$this->command->info("✅ Demo payments ready. Accounts: {$accountsAfter}, Payments: {$payments}");
-	}
-
-	/**
-	 * Create language variants for demo team
-	 */
-	private function createDemoLanguageVariants()
-	{
-		$this->command->info('🌍 Creating demo language variants...');
-
-		// Check if team 1 already has language variants
-		$existingVariants = LanguageVariant::where('team_id', 1)->count();
-		if ($existingVariants > 0) {
-			$this->command->warn("⚠️ Team 1 already has {$existingVariants} language variants. Skipping creation.");
-
-			return;
-		}
-
-		// Demo language variants for team 1
-		$demoVariants = [
-			['code' => 'en-US', 'name' => 'English (US)', 'country_code' => 'US'],
-			['code' => 'en-GB', 'name' => 'English (UK)', 'country_code' => 'GB'],
-			['code' => 'es-ES', 'name' => 'Spanish (Spain)', 'country_code' => 'ES'],
-			['code' => 'es-MX', 'name' => 'Spanish (Mexico)', 'country_code' => 'MX'],
-			['code' => 'es-AR', 'name' => 'Spanish (Argentina)', 'country_code' => 'AR'],
-			['code' => 'fr-FR', 'name' => 'French (France)', 'country_code' => 'FR'],
-			['code' => 'fr-CA', 'name' => 'French (Canada)', 'country_code' => 'CA'],
-			['code' => 'de-DE', 'name' => 'German (Germany)', 'country_code' => 'DE'],
-			['code' => 'it-IT', 'name' => 'Italian (Italy)', 'country_code' => 'IT'],
-			['code' => 'pt-BR', 'name' => 'Portuguese (Brazil)', 'country_code' => 'BR'],
-			['code' => 'pt-PT', 'name' => 'Portuguese (Portugal)', 'country_code' => 'PT'],
-			['code' => 'nl-NL', 'name' => 'Dutch (Netherlands)', 'country_code' => 'NL'],
-			['code' => 'sv-SE', 'name' => 'Swedish (Sweden)', 'country_code' => 'SE'],
-			['code' => 'no-NO', 'name' => 'Norwegian (Norway)', 'country_code' => 'NO'],
-			['code' => 'da-DK', 'name' => 'Danish (Denmark)', 'country_code' => 'DK'],
-		];
-
-		$created = 0;
-		$skipped = 0;
-
-		foreach ($demoVariants as $variant) {
-			// Check if variant already exists for team 1
-			$existingVariant = LanguageVariant::where('code', $variant['code'])
-				->where('team_id', 1)
-				->first();
-
-			if ($existingVariant) {
-				$skipped++;
-				$this->command->info("⏭️ Skipped existing variant: {$variant['code']}");
-			} else {
-				// Create new variant for team 1
-				LanguageVariant::create([
-					'code' => $variant['code'],
-					'name' => $variant['name'],
-					'country_code' => $variant['country_code'],
-					'team_id' => 1,
-					'created_at' => now(),
-					'updated_at' => now(),
-				]);
-				$created++;
-				$this->command->info("✅ Created demo variant: {$variant['code']}");
-			}
-		}
-
-		$this->command->info('📊 Demo language variants creation summary:');
-		$this->command->info("   - New variants created: {$created}");
-		$this->command->info("   - Variants skipped: {$skipped}");
-		$this->command->info('   - Total variants for team 1: ' . LanguageVariant::where('team_id', 1)->count());
-		$this->command->info('✅ Demo language variants creation completed successfully!');
-	}
-
-	/**
-	 * Assign language variants to project services
-	 */
-	private function assignLanguageVariantsToServices()
-	{
-		$this->command->info('🔗 Assigning language variants to project services...');
-
-		// Get common language variants for team 1
-		$enUS = LanguageVariant::where('code', 'en-US')->where('team_id', 1)->first();
-		$enGB = LanguageVariant::where('code', 'en-GB')->where('team_id', 1)->first();
-		$esES = LanguageVariant::where('code', 'es-ES')->where('team_id', 1)->first();
-		$esMX = LanguageVariant::where('code', 'es-MX')->where('team_id', 1)->first();
-		$frFR = LanguageVariant::where('code', 'fr-FR')->where('team_id', 1)->first();
-		$deDE = LanguageVariant::where('code', 'de-DE')->where('team_id', 1)->first();
-
-		// Check if variants exist
-		if (!$enUS || !$esES) {
-			$this->command->warn('⚠️ Required language variants not found. Skipping assignment.');
-
-			return;
-		}
-
-		// Get all project fares (services) for team 1 that don't have language variants
-		$projectFares = ProjectFare::whereHas('project', function ($query) {
-			$query->where('team_id', 1);
-		})
-			->whereNull('source_language_code')
-			->whereNull('target_language_code')
-			->get();
-
-		if ($projectFares->isEmpty()) {
-			$this->command->info('✅ All project services already have language variants assigned.');
-
-			return;
-		}
-
-		$updated = 0;
-		$skipped = 0;
-
-		// Common language combinations for demo
-		$languageCombinations = [
-			['source' => $enUS, 'target' => $esES],
-			['source' => $enGB, 'target' => $esES],
-			['source' => $enUS, 'target' => $esMX],
-			['source' => $frFR, 'target' => $esES],
-			['source' => $deDE, 'target' => $esES],
-			['source' => $esES, 'target' => $enUS],
-			['source' => $esMX, 'target' => $enUS],
-		];
-
-		foreach ($projectFares as $index => $projectFare) {
-			// Use different combinations to create variety
-			$combination = $languageCombinations[$index % count($languageCombinations)];
-
-			$projectFare->update([
-				'source_language_code' => $combination['source']->code,
-				'target_language_code' => $combination['target']->code,
-			]);
-
-			$updated++;
-			$this->command->info("✅ Updated service: {$projectFare->fare->name} ({$combination['source']->code} → {$combination['target']->code})");
-		}
-
-		$this->command->info('📊 Language variants assignment summary:');
-		$this->command->info("   - Services updated: {$updated}");
-		$this->command->info("   - Services skipped: {$skipped}");
-		$this->command->info('   - Total project services with variants: ' . ProjectFare::whereHas('project', function ($query) {
-			$query->where('team_id', 1);
-		})->whereNotNull('source_language_code')->whereNotNull('target_language_code')->count());
-		$this->command->info('✅ Language variants assignment completed successfully!');
-	}
-
-	/**
-	 * Update basic language codes to specific variants
-	 */
-	private function updateBasicLanguageCodesToVariants()
-	{
-		$this->command->info('🔄 Updating basic language codes to specific variants...');
-
-		// Mapping of basic codes to specific variants
-		$languageMapping = [
-			'en' => 'en-US',
-			'de' => 'de-DE',
-			'fr' => 'fr-FR',
-			'es' => 'es-ES',
-			'it' => 'it-IT',
-			'pt' => 'pt-PT',
-			'nl' => 'nl-NL',
-			'sv' => 'sv-SE',
-			'da' => 'da-DK',
-			'no' => 'nb-NO',
-			'fi' => 'fi-FI',
-			'pl' => 'pl-PL',
-			'ru' => 'ru-RU',
-			'ja' => 'ja-JP',
-			'ko' => 'ko-KR',
-			'zh' => 'zh-CN',
-			'ar' => 'ar-SA',
-			'tr' => 'tr-TR',
-		];
-
-		$updated = 0;
-		$skipped = 0;
-
-		// Get all project fares for team 1
-		$projectFares = ProjectFare::whereHas('project', function ($query) {
-			$query->where('team_id', 1);
-		})->get();
-
-		foreach ($projectFares as $projectFare) {
-			$sourceUpdated = false;
-			$targetUpdated = false;
-
-			// Update source language code
-			if (isset($languageMapping[$projectFare->source_language_code])) {
-				$newSourceCode = $languageMapping[$projectFare->source_language_code];
-				// Verify the variant exists for team 1
-				$variantExists = LanguageVariant::where('code', $newSourceCode)
-					->where('team_id', 1)
-					->exists();
-
-				if ($variantExists) {
-					$projectFare->source_language_code = $newSourceCode;
-					$sourceUpdated = true;
-				}
-			}
-
-			// Update target language code
-			if (isset($languageMapping[$projectFare->target_language_code])) {
-				$newTargetCode = $languageMapping[$projectFare->target_language_code];
-				// Verify the variant exists for team 1
-				$variantExists = LanguageVariant::where('code', $newTargetCode)
-					->where('team_id', 1)
-					->exists();
-
-				if ($variantExists) {
-					$projectFare->target_language_code = $newTargetCode;
-					$targetUpdated = true;
-				}
-			}
-
-			// Save if any changes were made
-			if ($sourceUpdated || $targetUpdated) {
-				$projectFare->save();
-				$updated++;
-				$this->command->info("✅ Updated service: {$projectFare->fare->name} ({$projectFare->source_language_code} → {$projectFare->target_language_code})");
-			} else {
-				$skipped++;
-			}
-		}
-
-		$this->command->info('📊 Language codes update summary:');
-		$this->command->info("   - Services updated: {$updated}");
-		$this->command->info("   - Services skipped: {$skipped}");
-		$this->command->info('✅ Language codes update completed successfully!');
-	}
-
-	/**
-	 * Create demo collaborators with language variants
-	 */
-	private function createDemoCollaboratorsWithLanguages()
-	{
-		$this->command->info('👥 Creating demo collaborators with language variants...');
-
-		// Get language variants for team 1
-		$languageVariants = LanguageVariant::where('team_id', 1)->get();
-		if ($languageVariants->isEmpty()) {
-			$this->command->warn('⚠️ No language variants found for team 1. Skipping collaborators creation.');
-
-			return;
-		}
-
-		// Demo collaborators with specific language combinations
-		$demoCollaborators = [
-			[
-				'name' => 'María García',
-				'email' => 'maria.garcia@demo.com',
-				'phone' => '34600123456',
-				'languages' => ['es-ES', 'en-US', 'fr-FR'],
-				'specialties' => ['Traducción', 'Subtitulado', 'Doblaje'],
-			],
-			[
-				'name' => 'Anna Müller',
-				'email' => 'anna.mueller@demo.com',
-				'phone' => '4930123456',
-				'languages' => ['de-DE', 'en-US', 'es-ES'],
-				'specialties' => ['Traducción técnica', 'Localización'],
-			],
-			[
-				'name' => 'Sophie Dubois',
-				'email' => 'sophie.dubois@demo.com',
-				'phone' => '331234567',
-				'languages' => ['fr-FR', 'en-GB', 'es-ES'],
-				'specialties' => ['Traducción literaria', 'Audiodescripción'],
-			],
-			[
-				'name' => 'Giulia Rossi',
-				'email' => 'giulia.rossi@demo.com',
-				'phone' => '3902123456',
-				'languages' => ['it-IT', 'en-US', 'fr-FR'],
-				'specialties' => ['Traducción médica', 'Subtitulado'],
-			],
-			[
-				'name' => 'Sarah Johnson',
-				'email' => 'sarah.johnson@demo.com',
-				'phone' => '1555123456',
-				'languages' => ['en-US', 'es-MX', 'pt-BR'],
-				'specialties' => ['Transcreación', 'Marketing'],
-			],
-			[
-				'name' => 'Emma Wilson',
-				'email' => 'emma.wilson@demo.com',
-				'phone' => '44201234567',
-				'languages' => ['en-GB', 'fr-FR', 'de-DE'],
-				'specialties' => ['Traducción jurídica', 'Revisión'],
-			],
-			[
-				'name' => 'Carmen López',
-				'email' => 'carmen.lopez@demo.com',
-				'phone' => '3491123456',
-				'languages' => ['es-ES', 'en-US', 'it-IT'],
-				'specialties' => ['Traducción audiovisual', 'Voice-over'],
-			],
-			[
-				'name' => 'Isabella Silva',
-				'email' => 'isabella.silva@demo.com',
-				'phone' => '55111234567',
-				'languages' => ['pt-BR', 'en-US', 'es-AR'],
-				'specialties' => ['Localización', 'Traducción técnica'],
-			],
-			[
-				'name' => 'Nina Andersson',
-				'email' => 'nina.andersson@demo.com',
-				'phone' => '468123456',
-				'languages' => ['sv-SE', 'en-US', 'de-DE'],
-				'specialties' => ['Traducción científica', 'Subtitulado'],
-			],
-			[
-				'name' => 'Elena Popov',
-				'email' => 'elena.popov@demo.com',
-				'phone' => '7495123456',
-				'languages' => ['ru-RU', 'en-US', 'es-ES'],
-				'specialties' => ['Traducción técnica', 'Revisión'],
-			],
-			[
-				'name' => 'Yuki Tanaka',
-				'email' => 'yuki.tanaka@demo.com',
-				'phone' => '8131234567',
-				'languages' => ['ja-JP', 'en-US', 'es-ES'],
-				'specialties' => ['Traducción técnica', 'Localización'],
-			],
-			[
-				'name' => 'Min-ji Kim',
-				'email' => 'minji.kim@demo.com',
-				'phone' => '822123456',
-				'languages' => ['ko-KR', 'en-US', 'ja-JP'],
-				'specialties' => ['Traducción audiovisual', 'Subtitulado'],
-			],
-			[
-				'name' => 'Li Wei',
-				'email' => 'li.wei@demo.com',
-				'phone' => '86101234567',
-				'languages' => ['zh-CN', 'en-US', 'es-ES'],
-				'specialties' => ['Traducción técnica', 'Localización'],
-			],
-			[
-				'name' => 'Fatima Al-Zahra',
-				'email' => 'fatima.alzahra@demo.com',
-				'phone' => '96611123456',
-				'languages' => ['ar-SA', 'en-US', 'fr-FR'],
-				'specialties' => ['Traducción técnica', 'Localización'],
-			],
-			[
-				'name' => 'Zeynep Kaya',
-				'email' => 'zeynep.kaya@demo.com',
-				'phone' => '90212123456',
-				'languages' => ['tr-TR', 'en-US', 'de-DE'],
-				'specialties' => ['Traducción técnica', 'Subtitulado'],
-			],
-		];
-
-		$created = 0;
-		$skipped = 0;
-
-		foreach ($demoCollaborators as $collaboratorData) {
-			// Check if collaborator already exists
-			$existingCollaborator = Contact::where('email', $collaboratorData['email'])
-				->where('team_id', 1)
-				->first();
-
-			if ($existingCollaborator) {
-				$skipped++;
-				$this->command->info("⏭️ Skipped existing collaborator: {$collaboratorData['name']}");
-
-				continue;
-			}
-
-			// Create collaborator
-			$collaborator = Contact::create([
-				'name' => $collaboratorData['name'],
-				'email' => $collaboratorData['email'],
-				'phone' => $collaboratorData['phone'],
-				'team_id' => 1,
-				'creator_id' => 1,
-				'responsible_id' => 1,
-				'status_id' => 1,
-				'language' => 'es',
-				'country' => 724,  // Spain
-				'created_at' => now(),
-				'updated_at' => now(),
-			]);
-
-			// Create language combinations for collaborator
-			$languages = $collaboratorData['languages'];
-			for ($i = 0; $i < count($languages); $i++) {
-				for ($j = 0; $j < count($languages); $j++) {
-					if ($i !== $j) {  // Don't create self-translations
-						$sourceCode = $languages[$i];
-						$targetCode = $languages[$j];
-
-						// Check if both variants exist
-						$sourceVariant = $languageVariants->where('code', $sourceCode)->first();
-						$targetVariant = $languageVariants->where('code', $targetCode)->first();
-
-						if ($sourceVariant && $targetVariant) {
-							ContactLanguageVariant::create([
-								'contact_id' => $collaborator->id,
-								'source_language_code' => $sourceCode,
-								'target_language_code' => $targetCode,
-								'proficiency_level' => rand(3, 5),  // Random proficiency level 3-5
-								'is_certified' => rand(0, 1),  // Random certification status
-								'created_at' => now(),
-								'updated_at' => now(),
-							]);
-						}
-					}
-				}
-			}
-
-			$created++;
-			$this->command->info("✅ Created collaborator: {$collaboratorData['name']} with " . count($collaboratorData['languages']) . ' languages');
-		}
-
-		$this->command->info('📊 Demo collaborators creation summary:');
-		$this->command->info("   - New collaborators created: {$created}");
-		$this->command->info("   - Collaborators skipped: {$skipped}");
-		$this->command->info('   - Total collaborators for team 1: ' . Contact::where('team_id', 1)->whereHas('languageVariants')->count());
-		$this->command->info('✅ Demo collaborators creation completed successfully!');
-	}
-
-	/**
-	 * Ensure each service language combination has at least one collaborator
-	 */
-	private function ensureServiceLanguageCoverage()
-	{
-		$this->command->info('🔍 Ensuring service language coverage...');
-
-		// Get all project services for team 1
-		$projectServices = ProjectFare::whereHas('project', function ($query) {
-			$query->where('team_id', 1);
-		})
-			->whereNotNull('source_language_code')
-			->whereNotNull('target_language_code')
-			->get();
-
-		// Get all collaborators with their language variants
-		$collaborators = Contact::with(['languageVariants'])
-			->where('team_id', 1)
-			->whereHas('languageVariants')
-			->get();
-
-		$uncoveredServices = [];
-		$coveredServices = [];
-
-		foreach ($projectServices as $service) {
-			$sourceCode = $service->source_language_code;
-			$targetCode = $service->target_language_code;
-
-			// Check if any collaborator has this language combination
-			$hasCoverage = false;
-			foreach ($collaborators as $collaborator) {
-				foreach ($collaborator->languageVariants as $variant) {
-					if ($variant->source_language_code === $sourceCode &&
-							$variant->target_language_code === $targetCode) {
-						$hasCoverage = true;
-						break 2;
-					}
-				}
-			}
-
-			if ($hasCoverage) {
-				$coveredServices[] = "{$sourceCode} → {$targetCode}";
-			} else {
-				$uncoveredServices[] = "{$sourceCode} → {$targetCode}";
-			}
-		}
-
-		$this->command->info('📊 Service language coverage summary:');
-		$this->command->info('   - Covered combinations: ' . count($coveredServices));
-		$this->command->info('   - Uncovered combinations: ' . count($uncoveredServices));
-
-		if (!empty($uncoveredServices)) {
-			$this->command->warn('⚠️ Uncovered language combinations:');
-			foreach (array_slice($uncoveredServices, 0, 10) as $combination) {
-				$this->command->warn("   - {$combination}");
-			}
-			if (count($uncoveredServices) > 10) {
-				$this->command->warn('   ... and ' . (count($uncoveredServices) - 10) . ' more');
-			}
-		}
-
-		$this->command->info('✅ Service language coverage check completed!');
-
-		// Create additional collaborators to cover missing combinations
-		if (!empty($uncoveredServices)) {
-			$this->createAdditionalCollaboratorsForCoverage($uncoveredServices);
-		}
-	}
-
-	/**
-	 * Assign collaborators to projects (95% acceptance rate)
-	 */
-	private function assignCollaboratorsToProjects()
-	{
-		$this->command->info('📋 Assigning collaborators to projects (95% acceptance rate)...');
-
-		// Get all projects for team 1
-		$projects = Project::where('team_id', 1)->get();
-
-		// Get all collaborators
-		$collaborators = Contact::where('team_id', 1)
-			->whereHas('languageVariants')
-			->get();
-
-		if ($projects->isEmpty() || $collaborators->isEmpty()) {
-			$this->command->warn('⚠️ No projects or collaborators found. Skipping assignment.');
-
-			return;
-		}
-
-		$totalAssignments = 0;
-		$acceptedAssignments = 0;
-		$rejectedAssignments = 0;
-
-		// For each project, assign 2-4 collaborators
-		foreach ($projects as $project) {
-			$numCollaborators = rand(2, 4);
-			$selectedCollaborators = $collaborators->random($numCollaborators);
-
-			foreach ($selectedCollaborators as $collaborator) {
-				// Check if assignment already exists
-				$existingAssignment = ContactProject::where('contact_id', $collaborator->id)
-					->where('project_id', $project->id)
-					->first();
-
-				if ($existingAssignment) {
-					continue;  // Skip if already assigned
-				}
-
-				// 95% acceptance rate
-				$isAccepted = rand(1, 100) <= 95;
-				$status = $isAccepted ? 'accepted' : 'rejected';
-
-				// Create project assignment
-				ContactProject::create([
-					'contact_id' => $collaborator->id,
-					'project_id' => $project->id,
-					'status' => $status,
-					'sent_at' => now(),
-					'viewed_at' => $isAccepted ? now() : null,
-					'responded_at' => $isAccepted ? now() : null,
-					'response_message' => $isAccepted ? 'Interesado en el proyecto' : 'No disponible en este momento',
-					'created_at' => now(),
-					'updated_at' => now(),
-				]);
-
-				$totalAssignments++;
-				if ($isAccepted) {
-					$acceptedAssignments++;
-				} else {
-					$rejectedAssignments++;
-				}
-			}
-		}
-
-		$acceptanceRate = $totalAssignments > 0 ? round(($acceptedAssignments / $totalAssignments) * 100, 1) : 0;
-
-		$this->command->info('📊 Project assignments summary:');
-		$this->command->info("   - Total assignments: {$totalAssignments}");
-		$this->command->info("   - Accepted: {$acceptedAssignments}");
-		$this->command->info("   - Rejected: {$rejectedAssignments}");
-		$this->command->info("   - Acceptance rate: {$acceptanceRate}%");
-		$this->command->info('✅ Project assignments completed successfully!');
-	}
-
-	/**
-	 * Create additional collaborators to cover missing language combinations
-	 */
-	private function createAdditionalCollaboratorsForCoverage($uncoveredServices)
-	{
-		$this->command->info('👥 Creating additional collaborators for missing language combinations...');
-
-		// Get language variants for team 1
-		$languageVariants = LanguageVariant::where('team_id', 1)->get();
-
-		// Analyze uncovered combinations to find the most common ones
-		$combinationCounts = [];
-		foreach ($uncoveredServices as $combination) {
-			$combinationCounts[$combination] = ($combinationCounts[$combination] ?? 0) + 1;
-		}
-
-		// Sort by frequency and take the top combinations
-		arsort($combinationCounts);
-		$topCombinations = array_slice($combinationCounts, 0, 10, true);
-
-		$created = 0;
-		$maxAdditionalCollaborators = 5;  // Limit to avoid too many
-
-		foreach ($topCombinations as $combination => $count) {
-			if ($created >= $maxAdditionalCollaborators) {
-				break;
-			}
-
-			// Parse the combination
-			$parts = explode(' → ', $combination);
-			if (count($parts) !== 2) {
-				continue;
-			}
-
-			$sourceCode = $parts[0];
-			$targetCode = $parts[1];
-
-			// Skip self-translations (same language)
-			if ($sourceCode === $targetCode) {
-				continue;
-			}
-
-			// Create a specialized collaborator for this combination
-			$collaboratorName = $this->generateCollaboratorName($sourceCode, $targetCode);
-			$email = strtolower(str_replace(' ', '.', $collaboratorName)) . '.specialist@demo.com';
-
-			// Check if collaborator already exists
-			$existingCollaborator = Contact::where('email', $email)
-				->where('team_id', 1)
-				->first();
-
-			if ($existingCollaborator) {
-				continue;
-			}
-
-			// Create collaborator
-			$collaborator = Contact::create([
-				'name' => $collaboratorName,
-				'email' => $email,
-				'phone' => '34600000000',  // Generic Spanish number
-				'team_id' => 1,
-				'creator_id' => 1,
-				'responsible_id' => 1,
-				'status_id' => 1,
-				'language' => 'es',
-				'country' => 724,  // Spain
-				'created_at' => now(),
-				'updated_at' => now(),
-			]);
-
-			// Create the specific language combination
-			ContactLanguageVariant::create([
-				'contact_id' => $collaborator->id,
-				'source_language_code' => $sourceCode,
-				'target_language_code' => $targetCode,
-				'proficiency_level' => 5,  // High proficiency for specialists
-				'is_certified' => 1,  // Certified for specialists
-				'created_at' => now(),
-				'updated_at' => now(),
-			]);
-
-			$created++;
-			$this->command->info("✅ Created specialist collaborator: {$collaboratorName} for {$combination}");
-		}
-
-		$this->command->info("📊 Additional collaborators created: {$created}");
-		$this->command->info('✅ Additional collaborators creation completed!');
-	}
-
-	/**
-	 * Generate a collaborator name based on language combination
-	 */
-	private function generateCollaboratorName($sourceCode, $targetCode)
-	{
-		$sourceName = $this->getLanguageName($sourceCode);
-		$targetName = $this->getLanguageName($targetCode);
-
-		$names = [
-			'Ana',
-			'María',
-			'Carmen',
-			'Isabel',
-			'Elena',
-			'Sofia',
-			'Laura',
-			'Patricia',
-			'Rosa',
-			'Teresa',
-		];
-
-		$surnames = [
-			'García',
-			'Rodríguez',
-			'González',
-			'Fernández',
-			'López',
-			'Martínez',
-			'Sánchez',
-			'Pérez',
-			'Gómez',
-			'Martin',
-		];
-
-		$name = $names[array_rand($names)];
-		$surname = $surnames[array_rand($surnames)];
-
-		return "{$name} {$surname} ({$sourceName}→{$targetName})";
-	}
-
-	/**
-	 * Get language name from code
-	 */
-	private function getLanguageName($code)
-	{
-		$languageMap = [
-			'en-US' => 'EN',
-			'en-GB' => 'EN',
-			'es-ES' => 'ES',
-			'es-MX' => 'ES',
-			'fr-FR' => 'FR',
-			'fr-CA' => 'FR',
-			'de-DE' => 'DE',
-			'de-AT' => 'DE',
-			'it-IT' => 'IT',
-			'pt-BR' => 'PT',
-			'pt-PT' => 'PT',
-			'nl-NL' => 'NL',
-			'sv-SE' => 'SV',
-			'da-DK' => 'DA',
-			'no-NO' => 'NO',
-			'fi-FI' => 'FI',
-			'pl-PL' => 'PL',
-			'ru-RU' => 'RU',
-			'ja-JP' => 'JA',
-			'ko-KR' => 'KO',
-			'zh-CN' => 'ZH',
-			'ar-SA' => 'AR',
-			'tr-TR' => 'TR',
-		];
-
-		return $languageMap[$code] ?? $code;
-	}
-
-	/**
-	 * Create collaborator ratings and services
-	 */
-	private function createCollaboratorRatingsAndServices()
-	{
-		$this->command->info('⭐ Creating collaborator ratings and services...');
-
-		// Get all collaborators
-		$collaborators = Contact::where('team_id', 1)
-			->whereHas('languageVariants')
-			->get();
-
-		// Get all fares (services) for team 1
-		$fares = Fare::where('team_id', 1)->get();
-
-		if ($collaborators->isEmpty() || $fares->isEmpty()) {
-			$this->command->warn('⚠️ No collaborators or fares found. Skipping ratings and services creation.');
-
-			return;
-		}
-
-		$ratingsCreated = 0;
-		$servicesCreated = 0;
-
-		foreach ($collaborators as $collaborator) {
-			// Assign rating with realistic distribution: 70% Validada, 20% Interesante, 10% others
-			// Ojo tiene prioridad sobre Lista negra (mayor probabilidad)
-			$random = rand(1, 100);
-			if ($random <= 70) {
-				$ratingId = 12;  // Validada
-			} elseif ($random <= 90) {
-				$ratingId = 13;  // Interesante
-			} elseif ($random <= 95) {
-				$ratingId = 14;  // Ojo (ID 14) - 5% probabilidad
-			} else {
-				$ratingId = 15;  // Lista negra (ID 15) - 5% probabilidad
-			}
-			$collaborator->update(['valoration_id' => $ratingId]);
-			$ratingsCreated++;
-
-			// Assign 3-6 random services to each collaborator
-			$numServices = rand(3, 6);
-			$selectedFares = $fares->random($numServices);
-
-			foreach ($selectedFares as $fare) {
-				// Check if service already exists for this collaborator
-				$existingService = DB::table('contact_fare')
-					->where('contact_id', $collaborator->id)
-					->where('fare_id', $fare->id)
-					->first();
-
-				if (!$existingService) {
-					// Get random language combination for this collaborator
-					$languageVariant = $collaborator->languageVariants->random();
-
-					// Create service with random price
-					DB::table('contact_fare')->insert([
-						'contact_id' => $collaborator->id,
-						'fare_id' => $fare->id,
-						'source_language_code' => $languageVariant->source_language_code,
-						'target_language_code' => $languageVariant->target_language_code,
-						'price' => rand(15, 50) + (rand(0, 99) / 100),  // Random price between 15-50 EUR
-						'unit_id' => $fare->units->first()?->id ?? null,
-						'currency_code' => 'EUR',
-						'created_at' => now(),
-						'updated_at' => now(),
-					]);
-					$servicesCreated++;
-				}
-			}
-		}
-
-		$this->command->info('📊 Collaborator ratings and services summary:');
-		$this->command->info("   - Ratings assigned: {$ratingsCreated}");
-		$this->command->info("   - Services created: {$servicesCreated}");
-		$this->command->info('✅ Collaborator ratings and services creation completed!');
-	}
-
-	/**
-	 * Create fare-unit relationships for demo team
-	 */
-	private function createDemoFareUnits()
-	{
-		$this->command->info('🔗 Creating demo fare-unit relationships...');
-
-		// Get all units
-		$minuteUnit = Unit::where('type', 'min')->first();
-		$tenMinutesUnit = Unit::where('type', '10 min')->first();
-		$hourUnit = Unit::where('type', 'h')->first();
-		$wordUnit = Unit::where('type', 'pal')->first();
-		$pageUnit = Unit::where('type', 'pág')->first();
-		$rollUnit = Unit::where('type', 'rollo')->first();
-
-		// Check if units exist
-		if (!$minuteUnit || !$tenMinutesUnit || !$hourUnit || !$wordUnit || !$pageUnit || !$rollUnit) {
-			$this->command->warn('Warning: Some units not found. Skipping demo fare units creation.');
-
-			return;
-		}
-
-		$minuteId = $minuteUnit->id;
-		$tenMinutesId = $tenMinutesUnit->id;
-		$hourId = $hourUnit->id;
-		$wordId = $wordUnit->id;
-		$pageId = $pageUnit->id;
-		$rollId = $rollUnit->id;
-
-		// Get all demo fares (team 1)
-		$demoFares = Fare::where('team_id', 1)->get();
-
-		if ($demoFares->isEmpty()) {
-			$this->command->warn('No demo fares found. Skipping fare-unit relationships.');
-
-			return;
-		}
-
-		$created = 0;
-		$skipped = 0;
-
-		// Assign units to demo fares based on their names
-		foreach ($demoFares as $fare) {
-			$unitIds = [];
-
-			// Determine units based on fare name
-			if (str_contains(strtolower($fare->name), 'traducción') || str_contains(strtolower($fare->name), 'translation')) {
-				if (str_contains(strtolower($fare->name), 'subtitulado') || str_contains(strtolower($fare->name), 'subtitling')) {
-					$unitIds = [$minuteId];
-				} elseif (str_contains(strtolower($fare->name), 'doblaje') || str_contains(strtolower($fare->name), 'dubbing')) {
-					$unitIds = [$minuteId, $rollId];
-				} elseif (str_contains(strtolower($fare->name), 'guion') || str_contains(strtolower($fare->name), 'script')) {
-					$unitIds = [$pageId];
-				} else {
-					$unitIds = [$wordId];
-				}
-			} elseif (str_contains(strtolower($fare->name), 'revisión') || str_contains(strtolower($fare->name), 'review')) {
-				$unitIds = [$wordId];
-			} elseif (str_contains(strtolower($fare->name), 'transcripción') || str_contains(strtolower($fare->name), 'transcription')) {
-				$unitIds = [$minuteId];
-			} elseif (str_contains(strtolower($fare->name), 'localización') || str_contains(strtolower($fare->name), 'localization')) {
-				$unitIds = [$wordId];
-			} elseif (str_contains(strtolower($fare->name), 'audiodescripción') || str_contains(strtolower($fare->name), 'audio description')) {
-				$unitIds = [$minuteId];
-			} else {
-				// Default to words for unknown fare types
-				$unitIds = [$wordId];
-			}
-
-			// Create relationships
-			foreach ($unitIds as $unitId) {
-				// Check if relationship already exists
-				$existingRelationship = \Illuminate\Support\Facades\DB::table('fare_unit')
-					->where('fare_id', $fare->id)
-					->where('unit_id', $unitId)
-					->first();
-
-				if (!$existingRelationship) {
-					\Illuminate\Support\Facades\DB::table('fare_unit')->insert([
-						'fare_id' => $fare->id,
-						'unit_id' => $unitId,
-						'created_at' => now(),
-						'updated_at' => now(),
-					]);
-					$created++;
-				} else {
-					$skipped++;
-				}
-			}
-		}
-
-		$this->command->info("✅ Created {$created} new demo fare-unit relationships");
-		if ($skipped > 0) {
-			$this->command->info("⏭️ Skipped {$skipped} existing relationships");
-		}
-	}
-
-	/**
-	 * Create specific types of demo data
-	 */
-	public function createTranslationFares(): void
-	{
-		Fare::factory()
-			->count(5)
-			->translation()
-			->withWordUnits()
-			->create();
-	}
-
-	public function createAudiovisualFares(): void
-	{
-		Fare::factory()
-			->count(4)
-			->audiovisual()
-			->withTimeUnits()
-			->create();
-	}
-
-	public function createSpecializedFares(): void
-	{
-		Fare::factory()
-			->count(3)
-			->specialized()
-			->withAudiovisualUnits()
-			->create();
-	}
-
-	public function createCatTools(): void
-	{
-		Software::factory()
-			->count(8)
-			->catTool()
-			->create();
-	}
-
-	public function createSubtitlingSoftware(): void
-	{
-		Software::factory()
-			->count(6)
-			->subtitling()
-			->create();
-	}
-
-	public function createAudioSoftware(): void
-	{
-		Software::factory()
-			->count(5)
-			->audioEditing()
-			->create();
-	}
-
-	public function createVideoSoftware(): void
-	{
-		Software::factory()
-			->count(5)
-			->videoEditing()
-			->create();
-	}
-
-	public function createDevelopmentSoftware(): void
-	{
-		Software::factory()
-			->count(6)
-			->development()
-			->create();
-	}
-
-	public function createTranslationCertifications(): void
-	{
-		Certification::factory()
-			->count(8)
-			->translation()
-			->create();
-	}
-
-	public function createLanguageCertifications(): void
-	{
-		Certification::factory()
-			->count(8)
-			->languageProficiency()
-			->create();
-	}
-
-	public function createAudiovisualCertifications(): void
-	{
-		Certification::factory()
-			->count(4)
-			->audiovisual()
-			->create();
-	}
-
-	public function createTranslationPortfolio(): void
-	{
-		ContactPortfolio::factory()
-			->count(15)
-			->translation()
-			->create();
-	}
-
-	public function createSubtitlingPortfolio(): void
-	{
-		ContactPortfolio::factory()
-			->count(10)
-			->subtitling()
-			->create();
-	}
-
-	public function createVoiceOverPortfolio(): void
-	{
-		ContactPortfolio::factory()
-			->count(8)
-			->voiceOver()
-			->create();
-	}
-
-	public function createLocalizationPortfolio(): void
-	{
-		ContactPortfolio::factory()
-			->count(7)
-			->localization()
-			->create();
-	}
-
-	/**
-	 * Create active projects
-	 */
-	public function createActiveProjects(): void
-	{
-		Project::factory()
-			->count(8)
-			->active()
-			->create();
-	}
-
-	/**
-	 * Create completed projects
-	 */
-	public function createCompletedProjects(): void
-	{
-		Project::factory()
-			->count(12)
-			->completed()
-			->create();
-	}
-
-	/**
-	 * Create pending projects
-	 */
-	public function createPendingProjects(): void
-	{
-		Project::factory()
-			->count(5)
-			->pending()
-			->create();
-	}
-
-	/**
-	 * Seed demo contacts for Team 1
-	 */
-	private function seedDemoContacts(): void
-	{
-		$this->command->info('👥 Creating demo contacts for Team 1...');
-
-		// Create demo enterprises first
-		$adminEnterprise = Enterprise::updateOrCreate(
-			['id' => 1],
-			[
-				'id' => 1,
-				'team_id' => 1,
-				'name' => 'Admin Enterprise',
-				'type_id' => 1,  // Cliente
-				'status_id' => 1,  // Activo
-				'created_at' => '2025-08-10 15:12:31',
-				'updated_at' => '2025-08-10 15:12:31',
-			],
-		);
-
-		$techEnterprise = Enterprise::updateOrCreate(
-			['id' => 2],
-			[
-				'id' => 2,
-				'team_id' => 1,
-				'name' => 'Idoneo Technologies',
-				'website' => 'https://idoneo.dev',
-				'email' => 'no-reply@idoneo.dev',
-				'type_id' => 1,  // Cliente
-				'status_id' => 1,  // Activo
-				'created_at' => '2025-08-10 15:12:31',
-				'updated_at' => '2025-08-10 15:12:31',
-			],
-		);
-
-		// Example contacts for Team 1 (Demo)
-		$exampleContacts = [
-			[
-				'team_id' => 1,
-				'name' => 'Admin Example',
-				'email' => 'admin@example.com',
-				'profile' => 'Example admin contact for demonstration',
-				'creator_id' => 1,
-				'responsible_id' => 1,
-				'status_id' => 5,
-				'current_enterprise_id' => $adminEnterprise->id,
-			],
-			[
-				'team_id' => 1,
-				'name' => 'Demo User',
-				'email' => 'demo@example.com',
-				'profile' => 'Example demo contact for testing - Idoneo Technologies',
-				'creator_id' => 1,
-				'responsible_id' => 1,
-				'user_id' => 8,
-				'status_id' => 5,
-				'current_enterprise_id' => $techEnterprise->id,
-			],
-		];
-
-		foreach ($exampleContacts as $contactData) {
-			$contact = Contact::updateOrCreate(
-				['email' => $contactData['email'], 'team_id' => $contactData['team_id']],
-				$contactData,
-			);
-
-			// Create relationship in contact_enterprise pivot table
-			if (isset($contactData['current_enterprise_id'])) {
-				\Illuminate\Support\Facades\DB::table('contact_enterprise')->updateOrInsert(
-					[
-						'contact_id' => $contact->id,
-						'enterprise_id' => $contactData['current_enterprise_id'],
-					],
-					[
-						'position' => 'Contact Person',
-						'department_id' => null,
-						'superior_id' => null,
-						'created_at' => now(),
-						'updated_at' => now(),
-					],
-				);
-			}
-
-			// Create sentiment history for example contacts
-			if (!ContactSentimentHistory::where('contact_id', $contact->id)->exists()) {
-				ContactSentimentHistory::create([
-					'contact_id' => $contact->id,
-					'sentiment_id' => (function () {
-						$rand = rand(1, 100);
-						if ($rand <= 80) {
-							return ContactSentiment::whereIn('id', [3, 4, 5])
-								->inRandomOrder()
-								->first()
-								->id;
-						} else {
-							return ContactSentiment::whereIn('id', [1, 2])
-								->inRandomOrder()
-								->first()
-								->id;
-						}
-					})(),
-					'notes' => fake()->sentence,
-				]);
-			}
-		}
-
-		// Create comprehensive demo data for Idoneo Technologies
-		$this->createDemoEcosystemForIdoneoTech($techEnterprise);
-
-		$this->command->info('✅ Demo contacts, enterprises and complete ecosystem created for Team 1');
-	}
-
-	/**
-	 * Create a complete demo ecosystem for Idoneo Technologies
-	 */
-	private function createDemoEcosystemForIdoneoTech($enterprise): void
-	{
-		$this->command->info('🚀 Creating comprehensive demo ecosystem for Idoneo Technologies...');
-
-		// Create billing address FIRST (needed for invoices)
-		$this->createBillingAddressForEnterprise($enterprise);
-
-		// Create additional contacts for the enterprise
-		$this->createAdditionalContactsForEnterprise($enterprise);
-
-		// Create services for the enterprise
-		$this->createServicesForEnterprise($enterprise);
-
-		// Create projects for the enterprise
-		$this->createProjectsForEnterprise($enterprise);
-
-		// Create invoices and payments (billing address already exists)
-		$this->createInvoicesAndPaymentsForEnterprise($enterprise);
-
-		$this->command->info('✅ Complete demo ecosystem created for Idoneo Technologies');
-	}
-
-	/**
-	 * Create additional contacts for the enterprise
-	 */
-	private function createAdditionalContactsForEnterprise($enterprise): void
-	{
-		$this->command->info('👥 Creating additional contacts for Idoneo Technologies...');
-
-		$additionalContacts = [
-			[
-				'name' => 'Sarah Johnson',
-				'surname' => 'CEO',
-				'email' => 'sarah.johnson@idoneo.dev',
-				'phone' => 34722372859,
-				'profile' => 'CEO and Founder of Idoneo Technologies',
-				'position' => 'Chief Executive Officer',
-			],
-			[
-				'name' => 'Mike Rodriguez',
-				'surname' => 'CTO',
-				'email' => 'mike.rodriguez@idoneo.dev',
-				'phone' => 34722372860,
-				'profile' => 'Chief Technology Officer at Idoneo Technologies',
-				'position' => 'Chief Technology Officer',
-			],
-			[
-				'name' => 'Lisa Chen',
-				'surname' => 'CFO',
-				'email' => 'lisa.chen@idoneo.dev',
-				'phone' => 34722372861,
-				'profile' => 'Chief Financial Officer at Idoneo Technologies',
-				'position' => 'Chief Financial Officer',
-			],
-			[
-				'name' => 'David Smith',
-				'surname' => 'Project Manager',
-				'email' => 'david.smith@idoneo.dev',
-				'phone' => 34722372862,
-				'profile' => 'Senior Project Manager at Idoneo Technologies',
-				'position' => 'Senior Project Manager',
-			],
-		];
-
-		foreach ($additionalContacts as $contactData) {
-			$contact = Contact::updateOrCreate(
-				['email' => $contactData['email'], 'team_id' => 1],
+		$account = PaymentAccount::where('team_id', $this->teamId)->first();
+		$paymentType = PaymentType::first();
+		$invoices = Invoice::whereHas('enterprise', function ($q) {
+			$q->where('team_id', $this->teamId);
+		})->where('status', 1)->get();
+
+		foreach ($invoices->take(3) as $invoice) {
+			Payment::firstOrCreate(
+				['invoice_id' => $invoice->id],
 				[
-					'team_id' => 1,
-					'name' => $contactData['name'],
-					'surname' => $contactData['surname'],
-					'email' => $contactData['email'],
-					'phone' => $contactData['phone'],
-					'profile' => $contactData['profile'],
-					'creator_id' => 1,
-					'responsible_id' => 1,
-					'status_id' => 5,
-					'current_enterprise_id' => $enterprise->id,
-				],
-			);
-
-			// Create relationship in contact_enterprise pivot table
-			\Illuminate\Support\Facades\DB::table('contact_enterprise')->updateOrInsert(
-				[
-					'contact_id' => $contact->id,
-					'enterprise_id' => $enterprise->id,
-				],
-				[
-					'position' => $contactData['position'],
-					'department_id' => null,
-					'superior_id' => null,
-					'created_at' => now(),
-					'updated_at' => now(),
-				],
-			);
-		}
-	}
-
-	/**
-	 * Create services for the enterprise
-	 */
-	private function createServicesForEnterprise($enterprise): void
-	{
-		$this->command->info('🛠️ Creating services for Idoneo Technologies...');
-
-		// Get a default category for services
-		$defaultCategory = Category::where('team_id', 1)->first();
-		if (!$defaultCategory) {
-			$defaultCategory = Category::create([
-				'team_id' => 1,
-				'name' => 'Technology Services',
-				'description' => 'Technology and software services',
-			]);
-		}
-
-		$services = [
-			[
-				'description' => 'AI Software Development - Custom AI solution development for enterprise clients',
-				'price' => 15000.0,
-				'next_billing' => now()->addMonth()->toDateString(),
-				'status' => 1,
-			],
-			[
-				'description' => 'Cloud Infrastructure Management - Complete cloud infrastructure setup and management',
-				'price' => 8500.0,
-				'next_billing' => now()->addMonth()->toDateString(),
-				'status' => 1,
-			],
-			[
-				'description' => 'Mobile App Development - Cross-platform mobile application development',
-				'price' => 12000.0,
-				'next_billing' => now()->addMonth()->toDateString(),
-				'status' => 1,
-			],
-			[
-				'description' => 'Cybersecurity Consulting - Enterprise cybersecurity assessment and implementation',
-				'price' => 6500.0,
-				'next_billing' => now()->addMonth()->toDateString(),
-				'status' => 1,
-			],
-			[
-				'description' => 'Data Analytics Platform - Business intelligence and data analytics solution',
-				'price' => 9800.0,
-				'next_billing' => null,
-				'status' => 0,
-			],
-		];
-
-		foreach ($services as $serviceData) {
-			Service::create([
-				'category_id' => $defaultCategory->id,
-				'enterprise_id' => $enterprise->id,
-				'description' => $serviceData['description'],
-				'price' => $serviceData['price'],
-				'next_billing' => $serviceData['next_billing'],
-				'status' => $serviceData['status'],
-				'operation' => 'sell',
-				'frequency' => 1,  // Monthly
-				'responsible_id' => 1,
-				'created_at' => now(),
-				'updated_at' => now(),
-			]);
-		}
-	}
-
-	/**
-	 * Create projects for the enterprise
-	 */
-	private function createProjectsForEnterprise($enterprise): void
-	{
-		$this->command->info('📋 Creating projects for Idoneo Technologies...');
-
-		// Get a default category for projects
-		$defaultCategory = Category::where('team_id', 1)->first();
-		if (!$defaultCategory) {
-			$defaultCategory = Category::create([
-				'team_id' => 1,
-				'name' => 'Software Development',
-				'description' => 'Software development projects',
-			]);
-		}
-
-		$projects = [
-			[
-				'name' => 'E-commerce Platform Redesign',
-				'description' => 'Complete redesign of the company e-commerce platform with AI recommendations',
-				'status_id' => 2,  // En progreso
-				'date_start' => now()->subDays(45)->toDateString(),
-				'date_end' => now()->addDays(30)->toDateString(),
-				'price' => 45000.0,
-			],
-			[
-				'name' => 'Customer Data Migration',
-				'description' => 'Migration of legacy customer data to new cloud infrastructure',
-				'status_id' => 3,  // Completado
-				'date_start' => now()->subDays(120)->toDateString(),
-				'date_end' => now()->subDays(30)->toDateString(),
-				'price' => 28000.0,
-			],
-			[
-				'name' => 'Mobile App MVP',
-				'description' => 'Development of minimum viable product for iOS and Android',
-				'status_id' => 1,  // Pendiente
-				'date_start' => now()->addDays(15)->toDateString(),
-				'date_end' => now()->addDays(90)->toDateString(),
-				'price' => 65000.0,
-			],
-			[
-				'name' => 'Security Audit Implementation',
-				'description' => 'Implementation of security recommendations from cybersecurity audit',
-				'status_id' => 2,  // En progreso
-				'date_start' => now()->subDays(20)->toDateString(),
-				'date_end' => now()->addDays(45)->toDateString(),
-				'price' => 18500.0,
-			],
-		];
-
-		foreach ($projects as $projectData) {
-			Project::create([
-				'team_id' => 1,
-				'enterprise_id' => $enterprise->id,
-				'category_id' => $defaultCategory->id,
-				'responsible_id' => 1,
-				'name' => $projectData['name'],
-				'description' => $projectData['description'],
-				'status_id' => $projectData['status_id'],
-				'date_start' => $projectData['date_start'],
-				'date_end' => $projectData['date_end'],
-				'price' => $projectData['price'],
-				'created_at' => now(),
-				'updated_at' => now(),
-			]);
-		}
-	}
-
-	/**
-	 * Create billing address for the enterprise
-	 */
-	private function createBillingAddressForEnterprise($enterprise): void
-	{
-		$this->command->info('🏢 Creating billing address for Idoneo Technologies...');
-
-		$taxStatusTypes = EnterpriseTaxStatusType::pluck('id')->all();
-		if (empty($taxStatusTypes)) {
-			$taxStatusTypes = [1];  // Default fallback
-		}
-
-		EnterpriseBillingAddress::updateOrCreate(
-			['enterprise_id' => $enterprise->id],
-			[
-				'name' => 'Idoneo Technologies - Headquarters',
-				'identification_number' => 'B98765432',
-				'tax_status_type_id' => collect($taxStatusTypes)->random(),
-				'address' => 'Avenida Innovación 456, Torre Desarrollo',
-				'postal_code' => '08001',
-				'locality' => 'Barcelona',
-				'province' => 'Barcelona',
-				'country' => 'ES',
-				'status' => 1,
-				'created_at' => now(),
-				'updated_at' => now(),
-			],
-		);
-	}
-
-	/**
-	 * Create invoices and payments for the enterprise
-	 */
-	private function createInvoicesAndPaymentsForEnterprise($enterprise): void
-	{
-		$this->command->info('💰 Creating invoices and payments for Idoneo Technologies...');
-
-		// Ensure billing address exists and get it
-		$billingAddress = EnterpriseBillingAddress::where('enterprise_id', $enterprise->id)->first();
-		if (!$billingAddress) {
-			$this->command->warn('⚠️ No billing address found for enterprise. Creating one...');
-			$this->createBillingAddressForEnterprise($enterprise);
-			$billingAddress = EnterpriseBillingAddress::where('enterprise_id', $enterprise->id)->first();
-		}
-
-		$invoiceType = InvoiceType::first();
-
-		// Create multiple invoices with different statuses
-		$invoices = [
-			[
-				'number' => '2024-FT-001',
-				'date' => now()->subDays(90)->toDateString(),
-				'due_date' => now()->subDays(60)->toDateString(),
-				'gross_amount' => 15000.0,
-				'total_amount' => 18150.0,
-				'status' => 1,  // Paid
-				'items' => [
-					['description' => 'AI Software Development - Q1 2024', 'quantity' => 1, 'unit_price' => 15000.0],
-				],
-			],
-			[
-				'number' => '2024-FT-002',
-				'date' => now()->subDays(60)->toDateString(),
-				'due_date' => now()->subDays(30)->toDateString(),
-				'gross_amount' => 21500.0,
-				'total_amount' => 26015.0,
-				'status' => 1,  // Paid
-				'items' => [
-					['description' => 'Cloud Infrastructure Management', 'quantity' => 1, 'unit_price' => 8500.0],
-					['description' => 'Mobile App Development', 'quantity' => 1, 'unit_price' => 12000.0],
-					['description' => 'Setup Fee', 'quantity' => 1, 'unit_price' => 1000.0],
-				],
-			],
-			[
-				'number' => '2024-FT-003',
-				'date' => now()->subDays(30)->toDateString(),
-				'due_date' => now()->toDateString(),
-				'gross_amount' => 24300.0,
-				'total_amount' => 29403.0,
-				'status' => 2,  // Pending
-				'items' => [
-					['description' => 'AI Software Development - Q2 2024', 'quantity' => 1, 'unit_price' => 15000.0],
-					['description' => 'Data Analytics Platform', 'quantity' => 1, 'unit_price' => 9300.0],
-				],
-			],
-			[
-				'number' => '2024-FT-004',
-				'date' => now()->subDays(15)->toDateString(),
-				'due_date' => now()->addDays(15)->toDateString(),
-				'gross_amount' => 6500.0,
-				'total_amount' => 7865.0,
-				'status' => 2,  // Pending
-				'items' => [
-					['description' => 'Cybersecurity Consulting - Monthly Fee', 'quantity' => 1, 'unit_price' => 6500.0],
-				],
-			],
-		];
-
-		foreach ($invoices as $invoiceData) {
-			$invoice = Invoice::create([
-				'enterprise_id' => $enterprise->id,
-				'billing_id' => $billingAddress->id,  // Explicitly assign billing_id (not nullable)
-				'type_id' => $invoiceType?->id ?? 1,
-				'operation' => 'sell',
-				'number' => $invoiceData['number'],
-				'date' => $invoiceData['date'],
-				'due_date' => $invoiceData['due_date'],
-				'gross_amount' => $invoiceData['gross_amount'],
-				'discount' => 0,
-				'total_amount' => $invoiceData['total_amount'],
-				'balance' => $invoiceData['status'] == 1 ? 0 : $invoiceData['total_amount'],
-				'status' => $invoiceData['status'],
-				'created_at' => now(),
-				'updated_at' => now(),
-			]);
-
-			$this->command->info("✅ Created invoice {$invoiceData['number']} with billing_id: {$billingAddress->id}");
-
-			// Create invoice items
-			foreach ($invoiceData['items'] as $item) {
-				InvoiceItem::create([
-					'invoice_id' => $invoice->id,
-					'description' => $item['description'],
-					'quantity' => $item['quantity'],
-					'unit_price' => $item['unit_price'],
-					'discount' => 0,
-					'tax_percentage' => 21,
-					'created_at' => now(),
-					'updated_at' => now(),
-				]);
-			}
-
-			// Create payments for paid invoices
-			if ($invoiceData['status'] == 1) {
-				// Get or create default payment account and type
-				$paymentAccount = PaymentAccount::where('team_id', 1)->first();
-				if (!$paymentAccount) {
-					$paymentAccount = PaymentAccount::create([
-						'team_id' => 1,
-						'name' => 'Main Business Account',
-						'account_number' => 'ES21 1234 5678 9012 3456 7890',
-						'balance' => 0,
-						'status' => 1,
-					]);
-				}
-
-				$paymentType = PaymentType::first();
-				if (!$paymentType) {
-					$paymentType = PaymentType::create([
-						'name' => 'Bank Transfer',
-						'description' => 'Wire transfer payment',
-					]);
-				}
-
-				Payment::create([
-					'team_id' => 1,
-					'enterprise_id' => $enterprise->id,
-					'invoice_id' => $invoice->id,
+					'team_id' => $this->teamId,
+					'enterprise_id' => $invoice->enterprise_id,
 					'transaction_type' => 'income',
-					'date' => $invoiceData['due_date'],
-					'account_id' => $paymentAccount->id,
-					'type_id' => $paymentType->id,
-					'amount' => $invoiceData['total_amount'],
-					'remarks' => 'Payment received for invoice ' . $invoiceData['number'],
-					'status' => 1,  // Completed
-					'created_at' => now(),
-					'updated_at' => now(),
-				]);
-			}
-		}
-	}
-
-	/**
-	 * Seed demo products for Team 1
-	 */
-	private function seedDemoProducts(): void
-	{
-		$this->command->info('🛍️ Creating demo products for Team 1...');
-
-		// Ensure we have categories and currencies
-		$categories = Category::where('team_id', 1)->get();
-		$currencies = Currency::all();
-
-		if ($categories->isEmpty()) {
-			$this->command->warn('⚠️ No categories found for Team 1. Creating default category...');
-			$defaultCategory = Category::create([
-				'team_id' => 1,
-				'name' => 'Technology Services',
-				'description' => 'Technology and software services',
-			]);
-			$categories = collect([$defaultCategory]);
-		}
-
-		if ($currencies->isEmpty()) {
-			$this->command->warn('⚠️ No currencies found. Creating default currencies...');
-			$this->call(\Database\Seeders\CurrencySeeder::class);
-			$currencies = Currency::all();
-		}
-
-		// Get USD currency (or first available)
-		$usdCurrency = $currencies->where('code', 'USD')->first() ?? $currencies->first();
-		$eurCurrency = $currencies->where('code', 'EUR')->first() ?? $currencies->first();
-
-		// Create demo products
-		$products = [
-			[
-				'name' => 'Hosting Web Básico',
-				'description' => 'Hosting web con 10GB de espacio SSD, 100GB de transferencia mensual, 5 bases de datos MySQL, 10 cuentas de email, panel cPanel, certificado SSL gratuito y soporte técnico 24/7.',
-				'price' => 29.99,
-				'currency_id' => $usdCurrency->id,
-				'category_id' => $categories->where('name', 'like', '%hosting%')->first()?->id ?? $categories->first()->id,
-			],
-			[
-				'name' => 'Hosting Web Premium',
-				'description' => 'Hosting web premium con 50GB de espacio SSD, transferencia ilimitada, 25 bases de datos MySQL, 100 cuentas de email, panel cPanel, certificado SSL gratuito, backup automático y soporte técnico prioritario.',
-				'price' => 59.99,
-				'currency_id' => $usdCurrency->id,
-				'category_id' => $categories->where('name', 'like', '%hosting%')->first()?->id ?? $categories->first()->id,
-			],
-			[
-				'name' => 'Dominio .com',
-				'description' => 'Registro de dominio .com por 1 año con protección de privacidad WHOIS, redirección de email, bloqueo de transferencia y soporte técnico.',
-				'price' => 19.99,
-				'currency_id' => $usdCurrency->id,
-				'category_id' => $categories->where('name', 'like', '%dominio%')->first()?->id ?? $categories->first()->id,
-			],
-			[
-				'name' => 'Certificado SSL Básico',
-				'description' => 'Certificado SSL básico para un dominio, válido por 1 año, con encriptación de 256 bits y soporte técnico.',
-				'price' => 49.99,
-				'currency_id' => $usdCurrency->id,
-				'category_id' => $categories->where('name', 'like', '%ssl%')->first()?->id ?? $categories->first()->id,
-			],
-			[
-				'name' => 'Desarrollo Web Básico',
-				'description' => 'Desarrollo de sitio web básico con hasta 5 páginas, diseño responsive, formulario de contacto, SEO básico y 3 meses de soporte.',
-				'price' => 999.99,
-				'currency_id' => $usdCurrency->id,
-				'category_id' => $categories->where('name', 'like', '%desarrollo%')->first()?->id ?? $categories->first()->id,
-			],
-			[
-				'name' => 'App Móvil Básica',
-				'description' => 'Desarrollo de aplicación móvil básica para iOS y Android, con hasta 5 pantallas, diseño nativo y 3 meses de soporte.',
-				'price' => 1499.99,
-				'currency_id' => $usdCurrency->id,
-				'category_id' => $categories->where('name', 'like', '%app%')->first()?->id ?? $categories->first()->id,
-			],
-			[
-				'name' => 'Consultoría IT',
-				'description' => 'Sesión de consultoría IT de 2 horas para análisis de infraestructura, recomendaciones de mejora y plan de implementación.',
-				'price' => 199.99,
-				'currency_id' => $usdCurrency->id,
-				'category_id' => $categories->where('name', 'like', '%consultoría%')->first()?->id ?? $categories->first()->id,
-			],
-			[
-				'name' => 'Soporte Técnico Premium',
-				'description' => 'Soporte técnico prioritario por email, chat y teléfono, con tiempo de respuesta de 4 horas y acceso a técnicos senior.',
-				'price' => 149.99,
-				'currency_id' => $usdCurrency->id,
-				'category_id' => $categories->where('name', 'like', '%soporte%')->first()?->id ?? $categories->first()->id,
-			],
-		];
-
-		$created = 0;
-		foreach ($products as $productData) {
-			// Check if product already exists
-			$existingProduct = Product::where('name', $productData['name'])
-				->where('team_id', 1)
-				->first();
-
-			if (!$existingProduct) {
-				Product::create([
-					...$productData,
-					'team_id' => 1,
-					'status' => true,
-					'whatsapp_enabled' => true,
-				]);
-				$created++;
-				$this->command->info("✅ Created product: {$productData['name']}");
-			} else {
-				$this->command->info("⏭️ Skipped existing product: {$productData['name']}");
-			}
-		}
-
-		$total = Product::where('team_id', 1)->count();
-		$this->command->info('📊 Demo products summary:');
-		$this->command->info("   - New products created: {$created}");
-		$this->command->info("   - Total products for Team 1: {$total}");
-		$this->command->info('✅ Demo products creation completed successfully!');
-	}
-
-	/**
-	 * Ensure demo team exists before creating any data
-	 */
-	private function ensureDemoTeamExists(): void
-	{
-		$team = Team::find(1);
-		if (!$team) {
-			$this->command->info('🏢 Creating Demo team...');
-
-			// Create a user first for team ownership
-			$user = User::firstOrCreate(
-				['email' => 'admin@example.com'],
-				[
-					'name' => 'Admin',
-					'password' => bcrypt('password'),
-					'email_verified_at' => now(),
-				],
-			);
-
-			// Create the team
-			$team = Team::create([
-				'user_id' => $user->id,
-				'name' => "Demo's Team",
-				'personal_team' => false,
-			]);
-
-			// Ensure the team has ID 1 (if not, update the user's current team)
-			$user->update(['current_team_id' => $team->id]);
-		}
-
-		// Configure email settings for Demo team
-		$this->configureDemoEmailSettings($team);
-	}
-
-	/**
-	 * Configure email settings for Demo team
-	 */
-	private function configureDemoEmailSettings(Team $team): void
-	{
-		$this->command->info('📧 Configuring Demo team email settings...');
-
-		// Set From Name
-		$team->setSetting('mail_from_name', 'Tester', [
-			'type' => 'string',
-			'group' => 'email',
-			'is_encrypted' => false,
-		]);
-
-		// Set From Email Address
-		$team->setSetting('mail_from_address', 'no-reply@idoneo.dev', [
-			'type' => 'string',
-			'group' => 'email',
-			'is_encrypted' => false,
-		]);
-
-		$this->command->info('✅ Demo team email settings configured successfully!');
-		$this->command->info('   - From Name: Tester');
-		$this->command->info('   - From Email: no-reply@idoneo.dev');
-	}
-
-	/**
-	 * Create simple demo template for team 1 (moved from SimpleTemplateSeeder)
-	 */
-	private function createSimpleDemoTemplate(): void
-	{
-		$this->command->info('📧 Creating simple demo template...');
-
-		$template = Template::firstOrCreate(
-			[
-				'name' => 'Demo',
-				'team_id' => 1,
-			],
-			[
-				'status_id' => 1,
-				'gjs_data' => [
-					'css' => '* { box-sizing: border-box; } body {margin: 0;}.gjs-row{display:table;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;width:100%;}.gjs-cell{width:8%;display:table-cell;height:75px;}#ix12{padding:10px;}@media (max-width: 768px){.gjs-cell{width:100%;display:block;}}',
-					'html' => '<body><div class="gjs-row"><div class="gjs-cell"><div id="ix12">Bienvenido <b>{{name}}</b>, esta es un envío de prueba. <a href="https://revisionalpha.com/emailer">Visita nuestro sitio web</a> para más información sobre email marketing. También puedes <a href="https://humano.app">conocer nuestras aplicaciones</a>.</div></div></div></body>',
-					'styles' => json_encode([
-						[
-							'selectors' => [['name' => 'gjs-row', 'private' => 1]],
-							'style' => [
-								'display' => 'table',
-								'padding-top' => '10px',
-								'padding-right' => '10px',
-								'padding-bottom' => '10px',
-								'padding-left' => '10px',
-								'width' => '100%',
-							],
-						],
-						[
-							'selectors' => [['name' => 'gjs-cell', 'private' => 1]],
-							'style' => [
-								'width' => '100%',
-								'display' => 'block',
-							],
-							'mediaText' => '(max-width: 768px)',
-							'atRuleType' => 'media',
-						],
-						[
-							'selectors' => [['name' => 'gjs-cell', 'private' => 1]],
-							'style' => [
-								'width' => '8%',
-								'display' => 'table-cell',
-								'height' => '75px',
-							],
-						],
-						[
-							'selectors' => ['#ix12'],
-							'style' => [
-								'padding' => '10px',
-							],
-						],
-					]),
-					'components' => json_encode([
-						[
-							'name' => 'Row',
-							'droppable' => '.gjs-cell',
-							'resizable' => [
-								'tl' => 0,
-								'tc' => 0,
-								'tr' => 0,
-								'cl' => 0,
-								'cr' => 0,
-								'bl' => 0,
-								'br' => 0,
-								'minDim' => 1,
-							],
-							'classes' => [['name' => 'gjs-row', 'private' => 1]],
-							'components' => [
-								[
-									'name' => 'Cell',
-									'draggable' => '.gjs-row',
-									'resizable' => [
-										'tl' => 0,
-										'tc' => 0,
-										'tr' => 0,
-										'cl' => 0,
-										'cr' => 1,
-										'bl' => 0,
-										'br' => 0,
-										'minDim' => 1,
-										'bc' => 0,
-										'currentUnit' => 1,
-										'step' => 0.2,
-									],
-									'classes' => [['name' => 'gjs-cell', 'private' => 1]],
-									'components' => [
-										[
-											'type' => 'text',
-											'content' => 'Bienvenido <b>{{name}}</b>, esta es un envío de prueba. <a href="https://revisionalpha.com/emailer">Visita nuestro sitio web</a> para más información sobre email marketing. También puedes <a href="https://humano.app">conocer nuestras aplicaciones</a>.',
-											'attributes' => ['id' => 'ix12'],
-										],
-									],
-								],
-							],
-						],
-					]),
-				],
-			],
-		);
-
-		$this->command->info("✅ Simple template created: {$template->name} (ID: {$template->id})");
-
-		// Show editor URL for reference
-		$editorUrl = route('template.editor', $template->getHashedId());
-		$this->command->info("🔗 Editor URL: {$editorUrl}");
-	}
-
-	/**
-	 * Create demo messages for team 1
-	 */
-	private function createDemoMessages(): void
-	{
-		$this->command->info('📧 Creating demo messages...');
-
-		// Get the demo template we just created
-		$demoTemplate = Template::where('name', 'Demo')->first();
-
-		// Get Staff category that was just created
-		$staffCategory = Category::where('name', 'Staff')
-			->where('team_id', 1)
-			->first();
-
-		if ($demoTemplate) {
-			Message::firstOrCreate(
-				[
-					'name' => 'Test Message',
-					'team_id' => 1,
-				],
-				[
-					'text' => 'Hola {{name}}, esta es una campaña de prueba. Visita https://revisionalpha.com/emailer para más información sobre email marketing. También puedes conocer nuestras aplicaciones en https://humano.app',
-					'type_id' => 2,
-					'template_id' => $demoTemplate->id,
-					'status_id' => 0,
-				],
-			);
-
-			Message::firstOrCreate(
-				[
-					'name' => 'Newsletter Demo',
-					'team_id' => 1,
-				],
-				[
-					'text' => 'Hola {{name}}, te invitamos a conocer nuestros servicios. Descubre REVISION ALPHA Emailer en https://revisionalpha.com/emailer y nuestras aplicaciones en https://humano.app ¡Esperamos verte pronto!',
-					'type_id' => 1,
-					'template_id' => $demoTemplate->id,
-					'category_id' => $staffCategory?->id,
-					'status_id' => 0,
-				],
-			);
-
-			if ($staffCategory) {
-				$this->command->info("✅ Newsletter Demo assigned to Staff category (ID: {$staffCategory->id})");
-			} else {
-				$this->command->warn('⚠️  Staff category not found for Newsletter Demo');
-			}
-		} else {
-			$this->command->warn('⚠️  Demo template not found, skipping message creation');
-		}
-	}
-
-	/**
-	 * Create Staff category and contacts for team 1
-	 */
-	private function createStaffCategoryAndContacts(): void
-	{
-		$this->command->info('👥 Creating contact categories and staff contacts...');
-
-		// Get contacts module
-		$contactsModule = Module::where('key', 'contacts')->first();
-		if (!$contactsModule) {
-			$this->command->warn('⚠️  Contacts module not found, skipping staff creation');
-
-			return;
-		}
-
-		// 1. Create main contact category
-		$mainContactCategory = Category::updateOrCreate(
-			[
-				'name' => 'Contactos',
-				'module_id' => $contactsModule->id,
-				'team_id' => 1,
-				'parent_id' => null,
-			],
-			[
-				'description' => 'Categoría principal para contactos',
-				'status' => 1,
-			],
-		);
-
-		$this->command->info("✅ Main category created: {$mainContactCategory->name} (ID: {$mainContactCategory->id})");
-
-		// 2. Create Staff subcategory with parent_id pointing to main category
-		$staffCategory = Category::updateOrCreate(
-			[
-				'name' => 'Staff',
-				'module_id' => $contactsModule->id,
-				'team_id' => 1,
-			],
-			[
-				'description' => 'Contactos internos del equipo',
-				'parent_id' => $mainContactCategory->id,
-				'status' => 1,
-			],
-		);
-
-		$this->command->info("✅ Staff subcategory created: {$staffCategory->name} (ID: {$staffCategory->id}) -> Parent: {$mainContactCategory->name}");
-
-		// Staff contacts to create
-		$staffContacts = [
-			[
-				'name' => 'Idoneo',
-				'surname' => 'Dev',
-				'email' => 'bitcoder@idoneo.dev',
-			],
-			[
-				'name' => 'Diego',
-				'surname' => 'Mascarenhas',
-				'email' => 'diego@revisionalpha.es',
-			],
-			[
-				'name' => 'Fernando',
-				'surname' => 'Barneto',
-				'email' => 'fernando@revisionalpha.com',
-			],
-			[
-				'name' => 'REVISION ALPHA',
-				'surname' => 'Hotmail',
-				'email' => 'revisionalpha@hotmail.com',
-			],
-			[
-				'name' => 'REVISION ALPHA',
-				'surname' => 'Gmail',
-				'email' => 'revisionalpha@gmail.com',
-			],
-			[
-				'name' => 'REVISION ALPHA',
-				'surname' => 'Info',
-				'email' => 'info@revisionalpha.com',
-			],
-			[
-				'name' => 'REVISION ALPHA',
-				'surname' => 'Webmaster',
-				'email' => 'webmaster@revisionalpha.cloud',
-			],
-			[
-				'name' => 'REVISION ALPHA',
-				'surname' => 'Admin',
-				'email' => 'administracion@revisionalpha.es',
-			],
-		];
-
-		$created = 0;
-		foreach ($staffContacts as $contactData) {
-			// Create or find contact
-			$contact = Contact::firstOrCreate(
-				[
-					'email' => $contactData['email'],
-					'team_id' => 1,
-				],
-				[
-					'name' => $contactData['name'],
-					'surname' => $contactData['surname'],
-					'creator_id' => 1,
-					'responsible_id' => 1,
-					'status_id' => 1,
-				],
-			);
-
-			// Assign Staff category to contact
-			if (!$contact->categories()->where('category_id', $staffCategory->id)->exists()) {
-				$contact->categories()->attach($staffCategory->id);
-				$this->command->info("  ✅ Assigned Staff category to: {$contact->email}");
-			} else {
-				$this->command->info("  ⏭️  Contact already has Staff category: {$contact->email}");
-			}
-
-			$created++;
-		}
-
-		$this->command->info("✅ Staff contacts processed: {$created} total");
-		$this->command->info('📧 Staff emails ready for newsletter campaigns!');
-	}
-
-	/**
-	 * Create professional email template with logos and better design
-	 */
-	private function createProfessionalEmailTemplate(): void
-	{
-		$this->command->info('🎨 Creating professional email template with Revision Alpha base...');
-
-		$template = Template::updateOrCreate(
-			[
-				'name' => 'Email Marketing fácil, rápido y seguro',
-				'team_id' => 1,
-			],
-			[
-				'status_id' => 1,
-				'gjs_data' => [
-					'css' => '
-                        * {
-                            padding: 0;
-                            margin: 0;
-                            line-height: 1.5;
-                        }
-
-                        body {
-                            font-family: helvetica, arial, verdana, sans-serif;
-                        }
-
-                        h1, h2, h3, h4, h5, h6, strong {
-                            font-weight: 600;
-                        }
-
-                        p, span, a, td {
-                            font-size: 14px;
-                            font-weight: 300;
-                            color: #777777;
-                        }
-
-                        a {
-                            text-decoration: none;
-                        }
-
-                        a:hover {
-                            text-decoration: underline;
-                        }
-                    ',
-					'html' => '
-                        <table width="100%" bgcolor="#F5EFEF" border="0" cellpadding="0" cellspacing="0">
-                            <tr>
-                                <td height="20"></td>
-                            </tr>
-                            <tr>
-                                <td align="center">
-                                    <table width="700" bgcolor="#FFFFFF" border="0" cellpadding="0" cellspacing="0">
-                                        <tr>
-                                            <td align="center">
-                                                <table width="660" bgcolor="#FFFFFF" border="0" cellpadding="0" cellspacing="0">
-                                                    <tr>
-                                                        <td height="25" colspan="2"></td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>
-                                                            <h1 style="text-align: left; margin: 0; padding: 0">
-                                                                <img
-                                                                    src="https://revisionalpha.com/assets/revision-alpha-new-logo-color.svg"
-                                                                    alt="revision alpha"
-                                                                    width="300"
-                                                                    style="display: block; position: relative; margin: 0; padding: 0"
-                                                                />
-                                                            </h1>
-                                                        </td>
-                                                        <td align="right">
-                                                            <!-- Header area - now empty to match template changes -->
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td height="25" colspan="2"></td>
-                                                    </tr>
-                                                </table>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td height="2px" bgcolor="#FF1A1D"></td>
-                                        </tr>
-                                        <tr>
-                                            <td align="center">
-                                                <table width="660" bgcolor="#FFFFFF" border="0" cellpadding="0" cellspacing="0">
-                                                    <tr>
-                                                        <td height="50"></td>
-                                                    </tr>
-
-                                                    <!-- CONTENT SECTION -->
-                                                    <tr>
-                                                        <td>
-                                                            <div style="text-align: center; margin-bottom: 30px">
-                                                                <h1 style="font-size: 28px; color: #2a333d; margin: 0; font-weight: 700">Email Marketing fácil, rápido y seguro</h1>
-                                                                <h2 style="font-size: 18px; color: #666; margin: 8px 0 15px 0; font-weight: 400; font-style: italic;">Comunicarte con tus clientes nunca fue tan fácil</h2>
-                                                                <h3 style="font-size: 20px; color: #36f1cd; margin: 15px 0 0 0; font-weight: 600">¡GRATUITO para todos nuestros clientes!</h3>
-                                                                <div
-                                                                    style="
-                                                                        width: 50px;
-                                                                        height: 3px;
-                                                                        background: linear-gradient(90deg, #36f1cd 0%, #ff1a1d 100%);
-                                                                        margin: 15px auto;
-                                                                    "
-                                                                ></div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-
-                                                                                                        <tr>
-                                                        <td style="text-align: center; margin: 30px 0;">
-                                                            <p style="color: #555; margin: 0 0 25px 0; line-height: 1.6; font-size: 16px; text-align: center;">
-                                                                <span style="color: #777; font-size: 14px;">Solo sube tus contactos y redacta tu mensaje<br/>
-                                                                <strong style="color: #ff1a1d;">¡Nosotros nos encargamos del resto!</strong></span>
-                                                            </p>
-
-                                                            <!-- Features Grid -->
-                                                            <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
-                                                                <tr>
-                                                                    <td width="50%" style="padding: 10px; vertical-align: top;">
-                                                                        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                                                                            <div style="width: 50px; height: 50px; background: #ff1a1d; border-radius: 12px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
-                                                                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
-                                                                                    <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11.5C14.8,12.6 13.9,13.5 12.8,13.5H11.2C10.1,13.5 9.2,12.6 9.2,11.5V10C9.2,8.6 10.6,7 12,7Z"/>
-                                                                                </svg>
-                                                                            </div>
-                                                                            <h4 style="color: #2a333d; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">Envíos controlados</h4>
-                                                                            <p style="color: #666; margin: 0; font-size: 13px; line-height: 1.4;">Sistema inteligente anti-spam que mejora la reputación de tu dominio</p>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td width="50%" style="padding: 10px; vertical-align: top;">
-                                                                        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                                                                            <div style="width: 50px; height: 50px; background: #ff1a1d; border-radius: 12px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
-                                                                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
-                                                                                    <path d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4Z"/>
-                                                                                </svg>
-                                                                            </div>
-                                                                            <h4 style="color: #2a333d; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">Campañas simples</h4>
-                                                                            <p style="color: #666; margin: 0; font-size: 13px; line-height: 1.4;">Diseño profesional sin conocimientos técnicos</p>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td width="50%" style="padding: 10px; vertical-align: top;">
-                                                                        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                                                                            <div style="width: 50px; height: 50px; background: #ff1a1d; border-radius: 12px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
-                                                                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
-                                                                                    <path d="M9,12L11,14L15,10L13,8L11,10L9,8M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z"/>
-                                                                                </svg>
-                                                                            </div>
-                                                                            <h4 style="color: #2a333d; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">Protección total</h4>
-                                                                            <p style="color: #666; margin: 0; font-size: 13px; line-height: 1.4;">Cumplimiento GDPR y estándares de seguridad</p>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td width="50%" style="padding: 10px; vertical-align: top;">
-                                                                        <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                                                                            <div style="width: 50px; height: 50px; background: #ff1a1d; border-radius: 12px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
-                                                                                <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
-                                                                                    <path d="M16,11.78L20.24,4.45L21.97,5.45L16.74,14.5L10.23,10.75L5.46,19H22V21H2V3H4V17.54L9.5,8L16,11.78Z"/>
-                                                                                </svg>
-                                                                            </div>
-                                                                            <h4 style="color: #2a333d; margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">Reportes completos</h4>
-                                                                            <p style="color: #666; margin: 0; font-size: 13px; line-height: 1.4;">Métricas detalladas para optimizar campañas</p>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            </table>
-                                                        </td>
-                                                    </tr>
-
-                                                    <tr>
-                                                        <td style="text-align: center; padding: 40px 0">
-                                                            <div
-                                                                style="
-                                                                    background: linear-gradient(135deg, #36f1cd 0%, #2dd4b4 100%);
-                                                                    border-radius: 50px;
-                                                                    display: inline-block;
-                                                                    padding: 3px;
-                                                                "
-                                                            >
-                                                                <a
-                                                                    href="https://revisionalpha.com/emailer"
-                                                                    style="
-                                                                        display: inline-block;
-                                                                        padding: 16px 35px;
-                                                                        background: #fff;
-                                                                        color: #2a333d;
-                                                                        text-decoration: none;
-                                                                        border-radius: 47px;
-                                                                        font-weight: 700;
-                                                                        font-size: 16px;
-                                                                        transition: all 0.3s ease;
-                                                                        box-shadow: 0 4px 15px rgba(54, 241, 205, 0.3);
-                                                                    "
-                                                                >
-                                                                    <strong>¡Empieza ahora!</strong>
-                                                                </a>
-                                                            </div>
-                                                            <p style="color: #999; font-size: 12px; margin: 15px 0 0 0">Comienza tu campaña de email marketing</p>
-                                                        </td>
-                                                    </tr>
-
-                                                    <tr>
-                                                        <td>
-                                                            <div style="text-align: center; margin: 30px 0">
-                                                                <div
-                                                                    style="
-                                                                        width: 100%;
-                                                                        height: 1px;
-                                                                        background: linear-gradient(90deg, transparent 0%, #36f1cd 50%, transparent 100%);
-                                                                        margin: 20px 0;
-                                                                    "
-                                                                ></div>
-                                                                <div style="margin-top: 15px">
-                                                                    <span style="color: #36f1cd; font-size: 20px">✨</span>
-                                                                    <span style="color: #ff1a1d; font-size: 16px; margin: 0 8px">•</span>
-                                                                    <span style="color: #36f1cd; font-size: 20px">✨</span>
-                                                                </div>
-                                                                <p style="color: #2a333d; font-size: 16px; font-weight: 600; margin: 15px 0 0 0">
-                                                                    <strong>¡Gracias por confiar en nosotros!</strong>
-                                                                </p>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                    <!-- END CONTENT SECTION -->
-
-                                                    <tr>
-                                                        <td height="50"></td>
-                                                    </tr>
-                                                </table>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td height="10" bgcolor="#FF1A1D"></td>
-                                        </tr>
-                                        <tr>
-                                            <td align="center">
-                                                <table width="100%" bgcolor="#2A333D" border="0" cellpadding="0" cellspacing="0">
-                                                    <tr>
-                                                        <td align="center">
-                                                            <table
-                                                                width="660"
-                                                                bgcolor="#2A333D"
-                                                                border="0"
-                                                                cellpadding="0"
-                                                                cellspacing="0"
-                                                            >
-                                                                <tr>
-                                                                    <td height="25" colspan="2"></td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td>
-                                                                        <a
-                                                                            href="https://www.revisionalpha.com/"
-                                                                            style="
-                                                                                font-size: 17px;
-                                                                                color: #ffffff;
-                                                                                text-decoration: none;
-                                                                            "
-                                                                            ><img
-                                                                                src="https://revisionalpha.com/assets/revision-alpha-new-logo-blanco-y-rojo.svg"
-                                                                                alt="revision alpha"
-                                                                                style="display: block; position: relative; width: 150px"
-                                                                            />
-                                                                            www.revisionalpha.com</a
-                                                                        >
-                                                                    </td>
-                                                                    <td align="right">
-                                                                        <span style="color: #ffffff"
-                                                                            ><strong>WhatsApp:</strong>
-                                                                            <a href="https://api.whatsapp.com/send/?phone=12202137800&text=Hola!"
-                                                                               style="color: #ffffff !important; text-decoration: none;"
-                                                                               target="_blank">+1 (220) 213-7800</a
-                                                                            ><br />
-                                                                            <strong>Email:</strong>
-                                                                            <a
-                                                                                href="mailto:info@revisionalpha.com?subject=Consulta"
-                                                                                style="color: inherit"
-                                                                                >info@revisionalpha.com</a
-                                                                            ></span
-                                                                        >
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td height="25" colspan="2"></td>
-                                                                </tr>
-                                                            </table>
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td height="20"></td>
-                            </tr>
-                        </table>
-                    ',
-					'styles' => json_encode([
-						[
-							'selectors' => [['name' => 'email-container', 'private' => 0]],
-							'style' => [
-								'width' => '100%',
-								'background-color' => '#F5EFEF',
-								'border' => '0',
-								'cellpadding' => '0',
-								'cellspacing' => '0'
-							]
-						],
-						[
-							'selectors' => [['name' => 'email-content', 'private' => 0]],
-							'style' => [
-								'width' => '700px',
-								'background-color' => '#FFFFFF',
-								'border' => '0',
-								'cellpadding' => '0',
-								'cellspacing' => '0'
-							]
-						],
-						[
-							'selectors' => [['name' => 'email-inner', 'private' => 0]],
-							'style' => [
-								'width' => '660px',
-								'background-color' => '#FFFFFF',
-								'border' => '0',
-								'cellpadding' => '0',
-								'cellspacing' => '0'
-							]
-						]
-					]),
-					'components' => json_encode([
-						[
-							'tagName' => 'table',
-							'attributes' => [
-								'width' => '100%',
-								'bgcolor' => '#F5EFEF',
-								'border' => '0',
-								'cellpadding' => '0',
-								'cellspacing' => '0'
-							],
-							'classes' => [['name' => 'email-container']],
-							'components' => [
-								[
-									'tagName' => 'tr',
-									'components' => [
-										[
-											'tagName' => 'td',
-											'attributes' => ['align' => 'center'],
-											'components' => [
-												[
-													'type' => 'text',
-													'content' => '<!-- Professional Newsletter Template -->'
-												]
-											]
-										]
-									]
-								]
-							]
-						]
-					]),
+					'date' => $invoice->due_date,
+					'account_id' => $account?->id ?? 1,
+					'type_id' => $paymentType?->id ?? 1,
+					'amount' => $invoice->total_amount,
+					'remarks' => 'Payment for invoice ' . $invoice->number,
+					'status' => 1,
 				]
-			],
-		);
+			);
+		}
 
-		$this->command->info("✅ Professional template created: {$template->name} (ID: {$template->id})");
-
-		// Show editor URL for reference
-		$editorUrl = route('template.editor', $template->getHashedId());
-		$this->command->info("🔗 Editor URL: {$editorUrl}");
+		$this->command->info('✅ Demo payments created');
 	}
 
-	/**
-	 * Fix GrapesJS structure for all templates after seeding
-	 */
 	private function fixGrapesJsStructure(): void
 	{
-		$this->command->info('🔧 Fixing GrapesJS structure for all templates...');
+		$this->command->info('🔧 Fixing GrapesJS structure...');
 
-		// Get all templates for Team 1
-		$templates = Template::where('team_id', 1)->get();
-
+		$templates = Template::where('team_id', $this->teamId)->get();
 		$fixed = 0;
-		$failed = 0;
 
 		foreach ($templates as $template) {
 			try {
 				$result = GrapesJsHelper::fixTemplateStructure($template);
 				if ($result) {
-					$this->command->info("✅ Fixed GrapesJS structure for: {$template->name} (ID: {$template->id})");
 					$fixed++;
-				} else {
-					$this->command->warn("⚠️ Failed to fix GrapesJS structure for: {$template->name} (ID: {$template->id})");
-					$failed++;
 				}
 			} catch (\Exception $e) {
-				$this->command->error("❌ Error fixing template {$template->name}: " . $e->getMessage());
-				$failed++;
+				$this->command->error('❌ Error: ' . $e->getMessage());
 			}
 		}
 
-		$this->command->info('📊 GrapesJS structure fix summary:');
-		$this->command->info("   - Templates fixed: {$fixed}");
-		$this->command->info("   - Templates failed: {$failed}");
-		$this->command->info('✅ GrapesJS structure fix completed!');
+		$this->command->info("✅ Fixed {$fixed} templates");
 	}
 
-	/**
-	 * Create task boards for Team 1
-	 */
-	private function createTaskBoards(): void
+	private function ensureMessageTypesExist(): void
 	{
-		$this->command->info('🎯 Creating task boards for Team 1...');
+		$messageTypes = [
+			['id' => 1, 'name' => 'Mailer', 'status' => 1],
+			['id' => 2, 'name' => 'WhatsApp', 'status' => 1],
+		];
 
-		$team = Team::find(1);
-		if (!$team) {
-			$this->command->warn('⚠️ Team 1 not found, skipping task boards creation');
-			return;
+		foreach ($messageTypes as $type) {
+			DB::table('message_type')->updateOrInsert(['id' => $type['id']], $type);
 		}
-
-		// Check if boards already exist for this team
-		$existingBoards = \App\Models\TaskBoard::withoutGlobalScopes()
-			->where('team_id', $team->id)
-			->count();
-
-		if ($existingBoards > 0) {
-			$this->command->warn("⏭️  Boards already exist for Team 1 ({$existingBoards} boards), skipping...");
-			return;
-		}
-
-		// Board 1: General (Default)
-		$generalBoard = \App\Models\TaskBoard::withoutGlobalScopes()->create([
-			'team_id' => $team->id,
-			'name' => 'General',
-			'description' => 'Tablero general para tareas del día a día',
-			'is_default' => true,
-			'order' => 0,
-		]);
-
-		$this->command->info('  ✅ Created board: General (Default)');
-
-		// Board 2: Development
-		\App\Models\TaskBoard::withoutGlobalScopes()->create([
-			'team_id' => $team->id,
-			'name' => 'Development',
-			'description' => 'Tablero para tareas de desarrollo y técnicas',
-			'is_default' => false,
-			'order' => 1,
-		]);
-
-		$this->command->info('  ✅ Created board: Development');
-		$this->command->info('✅ Task boards created successfully for Team 1!');
 	}
 }
