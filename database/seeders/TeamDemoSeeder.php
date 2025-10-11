@@ -16,6 +16,7 @@ use App\Models\Module;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
+use App\Models\Project;
 use App\Models\Service;
 use App\Models\Team;
 use App\Models\Template;
@@ -67,8 +68,12 @@ class TeamDemoSeeder extends Seeder
 
 		// 12. Seed demo data
 		$this->seedDemoEnterprises();
+		$this->createServiceCategoriesAndTypes();
 		$this->seedDemoServices();
 		$this->createClientContactsWithInvoicesAndPayments();
+		$this->createFinalizedContacts();
+		$this->createProjectCategoriesAndProjects();
+		$this->createProjectBoardsWithTasks();
 
 		// 12. Fix GrapesJS structure
 		$this->fixGrapesJsStructure();
@@ -653,6 +658,73 @@ class TeamDemoSeeder extends Seeder
 		}
 	}
 
+	private function createServiceCategoriesAndTypes(): void
+	{
+		$this->command->info('🏷️  Creating service categories and types...');
+
+		$servicesModule = Module::where('key', 'services')->first();
+		if (!$servicesModule) {
+			$this->command->warn('⚠️  Services module not found');
+			return;
+		}
+
+		// Create service categories
+		$mainServiceCategory = Category::firstOrCreate(
+			['name' => 'Servicios IT', 'module_id' => $servicesModule->id, 'team_id' => $this->teamId],
+			['description' => 'Categoría principal de servicios IT', 'status' => 1]
+		);
+
+		$subcategories = [
+			['name' => 'Desarrollo', 'description' => 'Servicios de desarrollo de software'],
+			['name' => 'Consultoría', 'description' => 'Servicios de consultoría IT'],
+			['name' => 'Infraestructura', 'description' => 'Servicios de infraestructura y cloud'],
+			['name' => 'Diseño', 'description' => 'Servicios de diseño y UX'],
+		];
+
+		foreach ($subcategories as $subcat) {
+			Category::firstOrCreate(
+				['name' => $subcat['name'], 'module_id' => $servicesModule->id, 'team_id' => $this->teamId],
+				[
+					'description' => $subcat['description'],
+					'parent_id' => $mainServiceCategory->id,
+					'status' => 1,
+				]
+			);
+			$this->command->info("✅ Service category: {$subcat['name']}");
+		}
+
+		// Create service types
+		$serviceTypes = [
+			['name' => 'Desarrollo Web', 'description' => 'Desarrollo de aplicaciones web', 'category' => 'Desarrollo'],
+			['name' => 'Desarrollo Mobile', 'description' => 'Desarrollo de aplicaciones móviles', 'category' => 'Desarrollo'],
+			['name' => 'Consultoría Técnica', 'description' => 'Asesoría técnica especializada', 'category' => 'Consultoría'],
+			['name' => 'Consultoría Estratégica', 'description' => 'Asesoría estratégica IT', 'category' => 'Consultoría'],
+			['name' => 'Cloud Infrastructure', 'description' => 'Gestión de infraestructura cloud', 'category' => 'Infraestructura'],
+			['name' => 'DevOps', 'description' => 'Servicios de DevOps y CI/CD', 'category' => 'Infraestructura'],
+			['name' => 'UI/UX Design', 'description' => 'Diseño de interfaces y experiencia de usuario', 'category' => 'Diseño'],
+			['name' => 'Branding', 'description' => 'Diseño de identidad corporativa', 'category' => 'Diseño'],
+		];
+
+		foreach ($serviceTypes as $typeData) {
+			$category = Category::where('name', $typeData['category'])
+				->where('module_id', $servicesModule->id)
+				->where('team_id', $this->teamId)
+				->first();
+
+			\App\Models\ServiceType::firstOrCreate(
+				['name' => $typeData['name']],
+				[
+					'description' => $typeData['description'],
+					'category_id' => $category?->id,
+					'status' => 1,
+				]
+			);
+			$this->command->info("✅ Service type: {$typeData['name']}");
+		}
+
+		$this->command->info('✅ Service categories and types created');
+	}
+
 	private function seedDemoEnterprises(): void
 	{
 		$this->command->info('🏢 Creating demo enterprises...');
@@ -703,24 +775,215 @@ class TeamDemoSeeder extends Seeder
 			return;
 		}
 
-		foreach ($enterprises->take(3) as $enterprise) {
-			Service::firstOrCreate(
+		$serviceTypes = \App\Models\ServiceType::all();
+		if ($serviceTypes->isEmpty()) {
+			$this->command->warn('⚠️  No service types found, using default');
+			$serviceTypes = collect([$serviceType]);
+		}
+
+		$servicesModule = Module::where('key', 'services')->first();
+		$serviceCategory = Category::where('module_id', $servicesModule?->id)
+			->where('team_id', $this->teamId)
+			->first();
+
+		$servicesCreated = 0;
+
+		foreach ($enterprises as $enterprise) {
+			// Create 1-3 services per enterprise
+			$numServices = rand(1, 3);
+			for ($i = 0; $i < $numServices; $i++) {
+				$selectedType = $serviceTypes->random();
+
+				Service::firstOrCreate(
+					['enterprise_id' => $enterprise->id, 'service_type_id' => $selectedType->id],
+					[
+						'description' => $selectedType->name . ' para ' . $enterprise->name,
+						'price' => rand(500, 5000),
+						'status' => 1,
+						'operation' => 'sell',
+						'frequency' => rand(1, 4),
+						'responsible_id' => 1,
+					]
+				);
+				$servicesCreated++;
+			}
+		}
+
+		$this->command->info("✅ {$servicesCreated} demo services created");
+	}
+
+	private function createFinalizedContacts(): void
+	{
+		$this->command->info('✅ Creating finalized contacts...');
+
+		// Status 3 = Finalized
+		$finalizedEmails = [
+			'antonio.romero@cliente11.com',
+			'cristina.navarro@cliente12.com',
+			'francisco.serrano@cliente13.com',
+		];
+
+		Contact::whereIn('email', $finalizedEmails)
+			->where('team_id', $this->teamId)
+			->update(['status_id' => 3]);
+
+		$count = Contact::whereIn('email', $finalizedEmails)
+			->where('team_id', $this->teamId)
+			->count();
+
+		$this->command->info("✅ {$count} contacts marked as finalized");
+	}
+
+	private function createProjectCategoriesAndProjects(): void
+	{
+		$this->command->info('📁 Creating project categories and projects...');
+
+		$projectsModule = Module::where('key', 'projects')->first();
+		if (!$projectsModule) {
+			$this->command->warn('⚠️  Projects module not found');
+			return;
+		}
+
+		// Create project categories
+		$mainProjectCategory = Category::firstOrCreate(
+			['name' => 'Proyectos IT', 'module_id' => $projectsModule->id, 'team_id' => $this->teamId],
+			['description' => 'Categoría principal de proyectos IT', 'status' => 1]
+		);
+
+		$subcategories = [
+			['name' => 'Desarrollo Web', 'description' => 'Proyectos de desarrollo web'],
+			['name' => 'Desarrollo Mobile', 'description' => 'Proyectos de aplicaciones móviles'],
+			['name' => 'Infraestructura', 'description' => 'Proyectos de infraestructura'],
+			['name' => 'Consultoría', 'description' => 'Proyectos de consultoría'],
+		];
+
+		$projectCategories = [];
+		foreach ($subcategories as $subcat) {
+			$category = Category::firstOrCreate(
+				['name' => $subcat['name'], 'module_id' => $projectsModule->id, 'team_id' => $this->teamId],
 				[
-					'enterprise_id' => $enterprise->id,
-					'description' => 'Software Development',
-				],
-				[
-					'service_type_id' => $serviceType->id,
-					'price' => 1500.0,
+					'description' => $subcat['description'],
+					'parent_id' => $mainProjectCategory->id,
 					'status' => 1,
-					'operation' => 'sell',
-					'frequency' => 1,
+				]
+			);
+			$projectCategories[] = $category;
+			$this->command->info("✅ Project category: {$subcat['name']}");
+		}
+
+		// Get enterprises
+		$enterprises = Enterprise::where('team_id', $this->teamId)->limit(5)->get();
+		if ($enterprises->isEmpty()) {
+			$this->command->warn('⚠️  No enterprises found for projects');
+			return;
+		}
+
+		// Create projects
+		$projectData = [
+			['name' => 'Portal Web Corporativo', 'real_name' => 'Corporate Website', 'description' => 'Desarrollo de portal web institucional con CMS', 'status_id' => 2],
+			['name' => 'App Móvil iOS/Android', 'real_name' => 'Mobile App', 'description' => 'Aplicación móvil nativa para iOS y Android', 'status_id' => 2],
+			['name' => 'Migración a Cloud', 'real_name' => 'Cloud Migration', 'description' => 'Migración de infraestructura local a AWS', 'status_id' => 3],
+			['name' => 'Sistema de Gestión', 'real_name' => 'Management System', 'description' => 'ERP personalizado para gestión empresarial', 'status_id' => 2],
+			['name' => 'Dashboard Analytics', 'real_name' => 'Analytics Dashboard', 'description' => 'Dashboard de analytics y reportes en tiempo real', 'status_id' => 4],
+			['name' => 'eCommerce Platform', 'real_name' => 'eCommerce', 'description' => 'Plataforma de comercio electrónico con pasarela de pagos', 'status_id' => 2],
+		];
+
+		foreach ($projectData as $index => $project) {
+			$enterprise = $enterprises->random();
+			$category = collect($projectCategories)->random();
+
+			Project::firstOrCreate(
+				['name' => $project['name'], 'team_id' => $this->teamId],
+				[
+					'real_name' => $project['real_name'],
+					'description' => $project['description'],
+					'enterprise_id' => $enterprise->id,
+					'category_id' => $category->id,
+					'status_id' => $project['status_id'],
 					'responsible_id' => 1,
 				]
 			);
+			$this->command->info("✅ Project: {$project['name']}");
 		}
 
-		$this->command->info('✅ Demo services created');
+		$this->command->info('✅ Projects created');
+	}
+
+	private function createProjectBoardsWithTasks(): void
+	{
+		$this->command->info('📋 Creating project boards with tasks...');
+
+		// Get projects that need boards
+		$projects = Project::where('team_id', $this->teamId)
+			->whereIn('status_id', [2, 3, 4])  // In progress, testing, or active
+			->limit(3)
+			->get();
+
+		if ($projects->isEmpty()) {
+			$this->command->warn('⚠️  No projects found for boards');
+			return;
+		}
+
+		$tasksModule = Module::where('key', 'tasks')->first();
+		$taskCategories = Category::where('module_id', $tasksModule?->id)
+			->where('team_id', $this->teamId)
+			->get();
+
+		foreach ($projects as $project) {
+			// Create board for project
+			$board = \App\Models\TaskBoard::firstOrCreate(
+				['name' => 'Board: ' . $project->name, 'team_id' => $this->teamId],
+				[
+					'description' => 'Tablero de tareas para ' . $project->name,
+					'is_default' => false,
+					'order' => 10,
+				]
+			);
+
+			// Link board to project
+			$project->update(['board_id' => $board->id]);
+
+			// Create 5-10 tasks for this project
+			$numTasks = rand(5, 10);
+			$taskStatuses = [1, 2, 3, 4];  // Pending, In Progress, Completed, Cancelled
+
+			$taskTemplates = [
+				'Análisis de requisitos',
+				'Diseño de arquitectura',
+				'Desarrollo de backend',
+				'Desarrollo de frontend',
+				'Integración de APIs',
+				'Testing unitario',
+				'Testing de integración',
+				'Deployment a staging',
+				'Documentación técnica',
+				'Code review',
+				'Optimización de performance',
+				'Corrección de bugs',
+			];
+
+			for ($i = 0; $i < $numTasks; $i++) {
+				$taskName = $taskTemplates[$i % count($taskTemplates)] . ' - ' . $project->name;
+				$category = $taskCategories->isNotEmpty() ? $taskCategories->random() : null;
+
+				\App\Models\Task::firstOrCreate(
+					['title' => $taskName, 'board_id' => $board->id],
+					[
+						'description' => 'Tarea de ' . strtolower($taskTemplates[$i % count($taskTemplates)]) . ' para ' . $project->name,
+						'category_id' => $category?->id,
+						'status_id' => collect($taskStatuses)->random(),
+						'responsible_id' => 1,
+						'team_id' => $this->teamId,
+						'start_date' => now(),
+						'due_date' => now()->addDays(rand(7, 30)),
+					]
+				);
+			}
+
+			$this->command->info("✅ Board created for project: {$project->name} ({$numTasks} tasks)");
+		}
+
+		$this->command->info('✅ Project boards with tasks created');
 	}
 
 	private function createClientContactsWithInvoicesAndPayments(): void
