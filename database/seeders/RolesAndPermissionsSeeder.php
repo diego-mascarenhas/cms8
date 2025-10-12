@@ -634,6 +634,17 @@ class RolesAndPermissionsSeeder extends Seeder
 			'project.show',
 		]);
 
+		$studentRole = Role::firstOrCreate(['name' => 'student']);
+		$studentRole->syncPermissions([
+			'profile.show',
+			'profile.edit',
+			'profile.update',
+			'password.update',
+			'academy.index',
+			'academy.list',
+			'academy.show',
+		]);
+
 		$userRole = Role::firstOrCreate(['name' => 'user']);
 		$userRole->syncPermissions([
 			'profile.show',

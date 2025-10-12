@@ -42,6 +42,9 @@ class TeamLizamaSeeder extends Seeder
 		// Configurar permisos de Academy
 		$this->setupAcademyPermissions();
 
+		// Importar contactos y crear usuarios
+		$this->importContactsAndUsers($teamId);
+
 		// Crear categorías de cursos
 		$categoryId = $this->createAcademyCategories($teamId);
 
@@ -215,6 +218,286 @@ class TeamLizamaSeeder extends Seeder
 		$this->command->info('   - Total de módulos: 11');
 		$this->command->info('   - Duración total estimada: ~20 horas');
 		$this->command->info("   - Curso ID: {$course->id}");
+	}
+
+	/**
+	 * Importar contactos y crear usuarios vinculados
+	 */
+	private function importContactsAndUsers(int $teamId): void
+	{
+		$this->command->info('📋 Importando contactos y creando usuarios...');
+
+		// Buscar el modelo Contact
+		$contactModel = \App\Models\Contact::class;
+		if (!class_exists($contactModel)) {
+			$this->command->error('❌ Modelo Contact no encontrado');
+
+			return;
+		}
+
+		// Obtener admin del team para usar como creator_id
+		$teamAdmin = \App\Models\User::whereHas('teams', function ($query) use ($teamId) {
+			$query->where('teams.id', $teamId);
+		})->first();
+
+		if (!$teamAdmin) {
+			$this->command->error('❌ No se encontró un admin para el team');
+
+			return;
+		}
+
+		$contacts = $this->getContactsData();
+		$adminCount = 0;
+		$studentCount = 0;
+		$contactsCount = 0;
+
+		foreach ($contacts as $contactData) {
+			try {
+				// Limpiar y formatear datos
+				$nombre = $this->toProperCase($contactData['nombre']);
+				$apellido = $this->toProperCase($contactData['apellido']);
+				$email = strtolower(trim($contactData['email']));
+				$telefono = $this->cleanPhoneNumber($contactData['telefono']);
+				$areaPrivada = $contactData['area_privada'];
+
+				// Nombre completo para el campo name
+				$nombreCompleto = trim($nombre . ' ' . $apellido);
+				if (empty($nombreCompleto)) {
+					$nombreCompleto = explode('@', $email)[0];  // Usar parte del email si no hay nombre
+				}
+
+				// Crear usuario primero si area_privada es 3 (admin) o 5 (student)
+				$userId = null;
+				if (in_array($areaPrivada, ['3', '5'])) {
+					$role = $areaPrivada === '3' ? 'admin' : 'student';
+					$password = $areaPrivada === '3' ? 'Passw0rd!' : 'Lizama';
+
+					// Preparar datos del usuario
+					$userData = [
+						'name' => $nombreCompleto,
+						'password' => bcrypt($password),
+					];
+
+					// Agregar teléfono si existe
+					if ($telefono) {
+						$userData['phone'] = $telefono;
+					}
+
+					// Crear usuario
+					$user = \App\Models\User::firstOrCreate(
+						['email' => $email],
+						$userData,
+					);
+
+					// Actualizar teléfono si el usuario ya existía y hay teléfono nuevo
+					if (!$user->wasRecentlyCreated && $telefono && !$user->phone) {
+						$user->update(['phone' => $telefono]);
+					}
+
+					// Asignar role
+					if (!$user->hasRole($role)) {
+						$user->assignRole($role);
+					}
+
+					// Vincular al team
+					$membership = \DB::table('team_user')
+						->where('team_id', $teamId)
+						->where('user_id', $user->id)
+						->first();
+
+					if (!$membership) {
+						\DB::table('team_user')->insert([
+							'team_id' => $teamId,
+							'user_id' => $user->id,
+							'role' => $role,
+							'created_at' => now(),
+							'updated_at' => now(),
+						]);
+					}
+
+					// Asignar current_team_id si no tiene uno
+					if (!$user->current_team_id) {
+						$user->update(['current_team_id' => $teamId]);
+					}
+
+					$userId = $user->id;
+
+					if ($role === 'admin') {
+						$adminCount++;
+					} else {
+						$studentCount++;
+					}
+				}
+
+				// Crear o actualizar contacto con la estructura correcta
+				$contact = $contactModel::updateOrCreate(
+					['email' => $email, 'team_id' => $teamId],
+					[
+						'name' => $nombreCompleto,
+						'surname' => $apellido ?: null,
+						'phone' => $telefono,
+						'country' => 152,  // Chile
+						'user_id' => $userId,
+						'creator_id' => $teamAdmin->id,
+						'status_id' => 1,
+					],
+				);
+
+				$contactsCount++;
+			} catch (\Exception $e) {
+				$this->command->warn("⚠️  Error procesando contacto {$contactData['email']}: " . $e->getMessage());
+			}
+		}
+
+		$this->command->info("✅ Contactos importados: {$contactsCount}");
+		$this->command->info("✅ Usuarios admin creados: {$adminCount}");
+		$this->command->info("✅ Usuarios student creados: {$studentCount}");
+	}
+
+	/**
+	 * Convertir texto a formato Proper Case (Primera letra mayúscula)
+	 */
+	private function toProperCase(string $text): string
+	{
+		if (empty($text)) {
+			return '';
+		}
+
+		return mb_convert_case(trim($text), MB_CASE_TITLE, 'UTF-8');
+	}
+
+	/**
+	 * Limpiar número de teléfono (remover símbolo +)
+	 */
+	private function cleanPhoneNumber(?string $phone): ?string
+	{
+		if (empty($phone)) {
+			return null;
+		}
+
+		return str_replace('+', '', trim($phone));
+	}
+
+	/**
+	 * Obtener datos de contactos desde el SQL proporcionado
+	 */
+	private function getContactsData(): array
+	{
+		return [
+			['nombre' => 'Luis', 'apellido' => 'Lizama', 'telefono' => '56222463080', 'email' => 'luis.lizama@lizamaabogados.cl', 'area_privada' => '3'],
+			['nombre' => 'Lucas', 'apellido' => 'Astroza', 'telefono' => '56994969564', 'email' => 'Lucas.Astroza@hgt.com', 'area_privada' => '5'],
+			['nombre' => 'Aileen', 'apellido' => 'Santelices', 'telefono' => '56994399147', 'email' => 'aileen.santelices@lizamabogados.cl', 'area_privada' => '3'],
+			['nombre' => 'rubenusabiaga@yahoo.com.a', 'apellido' => '', 'telefono' => null, 'email' => 'rubenusabiaga@yahoo.com.ar', 'area_privada' => '5'],
+			['nombre' => 'andy.arguindegui@gmail.co', 'apellido' => '', 'telefono' => '1135889448', 'email' => 'andy.arguindegui@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Belén', 'apellido' => 'Salazar', 'telefono' => '56956556678', 'email' => 'Belen.Salazar@hgt.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '+56963455239', 'email' => 'torrescarrasco.r@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Pablo', 'apellido' => 'Barrozo', 'telefono' => null, 'email' => 'pablo@revisionalpha.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '998086725', 'email' => 'fmerino2018@udec.cl', 'area_privada' => '5'],
+			['nombre' => 'Joaquín', 'apellido' => 'Estay', 'telefono' => '946147373', 'email' => 'Joaquin.Estay@hgt.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '932458222', 'email' => 'juan.cuitino.l@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '964947781', 'email' => 'felipe.pena@taxseven.cl', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '+56959144995', 'email' => 'Valenzuela.km@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '985798108', 'email' => 'alexiscorrea.a@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '998729266', 'email' => 'estudiosolis@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Lucas', 'apellido' => 'Astroza', 'telefono' => '985008293', 'email' => 'Lucas.Astroza@hgt.com', 'area_privada' => '5'],
+			['nombre' => 'Juan Pablo', 'apellido' => 'Muñoz', 'telefono' => '+56998632044', 'email' => 'jpmunozp2@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '88614517', 'email' => 'felipealtamiranog@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '+56948171619', 'email' => 'derechodeltrabajadorchile@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '964901811', 'email' => 'faayudalegal@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Administracion Academia', 'apellido' => 'Lizama', 'telefono' => null, 'email' => 'administracion@academializama.cl', 'area_privada' => '3'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '981834674', 'email' => 'sofijiu98@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '962968580', 'email' => 'fgalaz@myma.cl', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '+56964682832', 'email' => 'paola.barrantes12@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '56942858114', 'email' => 'roxana.berrios@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '988005696', 'email' => 'juanantonionunezrojas@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '945328805', 'email' => 'tchiblev@gmail.com', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '961923365', 'email' => 'aorellana@betterfood.cl', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '948086138', 'email' => 'rvega@contadorgeneral.cl', 'area_privada' => '5'],
+			['nombre' => '', 'apellido' => '', 'telefono' => '+56956271544', 'email' => 'monserrat.tellez@derecho.uchile.cl', 'area_privada' => '5'],
+			['nombre' => 'Ignacio', 'apellido' => 'Cartes', 'telefono' => '56961205305', 'email' => 'ignacio.cartes@lizamaabogados.cl', 'area_privada' => '3'],
+			['nombre' => 'Ignacio', 'apellido' => 'Cartes', 'telefono' => null, 'email' => 'ignacio.cartes@lizamabogados.com', 'area_privada' => '5'],
+			['nombre' => 'Victoria', 'apellido' => 'Suarez', 'telefono' => '962982782', 'email' => 'vic82008@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Javiera', 'apellido' => 'ALVAREZ VERA', 'telefono' => '+56991544192', 'email' => 'javiera.alvarez@lizamaycia.cl', 'area_privada' => '5'],
+			['nombre' => 'Ximena', 'apellido' => 'Catalán', 'telefono' => '56990911489', 'email' => 'ximena.catalan@lizamaycia.cl', 'area_privada' => '3'],
+			['nombre' => 'Diego', 'apellido' => 'Rojas', 'telefono' => '56999969244', 'email' => 'drojas@imed.cl', 'area_privada' => '5'],
+			['nombre' => 'Alejandra', 'apellido' => 'Jugo', 'telefono' => '+56961213399', 'email' => 'ajugo@proa.cl', 'area_privada' => '5'],
+			['nombre' => 'Víctor', 'apellido' => 'Velásquez Nieto', 'telefono' => '968755862', 'email' => 'victor.velasquez.n@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Jim', 'apellido' => 'Azola', 'telefono' => '982315073', 'email' => 'jazolac@udd.cl', 'area_privada' => '5'],
+			['nombre' => 'Jorge', 'apellido' => 'Consales', 'telefono' => '977066482', 'email' => 'Jorgeconsales@gnail.com', 'area_privada' => '5'],
+			['nombre' => 'Edwin', 'apellido' => 'Ugarte Romero', 'telefono' => '963031280', 'email' => 'edwin.ugarte@cbb.cl', 'area_privada' => '5'],
+			['nombre' => 'Jose Miguel', 'apellido' => 'Crespo Vergara', 'telefono' => '226378173', 'email' => 'jcrespo@ariztia.com', 'area_privada' => '5'],
+			['nombre' => 'Jose luis', 'apellido' => 'Cartes Saez', 'telefono' => '995386132', 'email' => 'Jlcartes.saez@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Eduardo', 'apellido' => 'Carrasco', 'telefono' => '+56988288929', 'email' => 'ecarrasco@csh.cl', 'area_privada' => '5'],
+			['nombre' => 'Christina', 'apellido' => 'Silva', 'telefono' => null, 'email' => 'christina.silva@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Evelyn', 'apellido' => 'Peña', 'telefono' => null, 'email' => 'evelyn.pena@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Alejandro', 'apellido' => 'Tuesta', 'telefono' => '962284455', 'email' => 'alejandro.tuesta@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Juan Luis', 'apellido' => 'Rebolledo', 'telefono' => null, 'email' => 'juan.rebolledo@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Carlos', 'apellido' => 'Blanco', 'telefono' => null, 'email' => 'carlos.blanco@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Rene', 'apellido' => 'Lopez', 'telefono' => null, 'email' => 'rene.lopez@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Elena', 'apellido' => 'Caceres', 'telefono' => '996793274', 'email' => 'carola.caceres@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Jorge', 'apellido' => 'Cuevas', 'telefono' => null, 'email' => 'jorge.cuevas@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Andy', 'apellido' => 'Rubench', 'telefono' => null, 'email' => 'andy.allendes@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Jose Luis', 'apellido' => 'Jimenez', 'telefono' => null, 'email' => 'joseluis.jimenez@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'María José', 'apellido' => 'Vega', 'telefono' => null, 'email' => 'mariajose.vega@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Klaus', 'apellido' => 'Wennrich', 'telefono' => null, 'email' => 'klaus.wennrich@hgt.com', 'area_privada' => '5'],
+			['nombre' => 'Priscila', 'apellido' => 'Cerda', 'telefono' => null, 'email' => 'priscila.cerda@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Denisse', 'apellido' => 'Espinoza', 'telefono' => null, 'email' => 'denisse.espinoza@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Jacqueline', 'apellido' => 'Castillo', 'telefono' => null, 'email' => 'jacqueline.castillo@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Daniel', 'apellido' => 'Campusano', 'telefono' => null, 'email' => 'daniel.campusano@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Jeannette', 'apellido' => 'Guajardo', 'telefono' => null, 'email' => 'jeannette.guajardo@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Margarita', 'apellido' => 'Rivas', 'telefono' => null, 'email' => 'margarita.rivas@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Camila', 'apellido' => 'Martínez', 'telefono' => null, 'email' => 'camila.martinez@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Francisca', 'apellido' => 'Ovalle', 'telefono' => null, 'email' => 'francisca.ovalle@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Matías', 'apellido' => 'Vial', 'telefono' => null, 'email' => 'matias.vial@hgt.com', 'area_privada' => '5'],
+			['nombre' => 'Luis', 'apellido' => 'Prado', 'telefono' => null, 'email' => 'luis.Prado@hgt.com', 'area_privada' => '5'],
+			['nombre' => 'Valeria', 'apellido' => 'Tapia', 'telefono' => null, 'email' => 'valeria.tapia@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Diego', 'apellido' => 'Accevedo', 'telefono' => null, 'email' => 'diego.acevedo@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Barbara', 'apellido' => 'González', 'telefono' => null, 'email' => 'barbara.gonzalez@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Joaquín', 'apellido' => 'Estay', 'telefono' => null, 'email' => 'Joaquin.Estay@hgt.com', 'area_privada' => '5'],
+			['nombre' => 'Luis', 'apellido' => 'Gutierrez', 'telefono' => null, 'email' => 'luis.gutierrez@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Macarena', 'apellido' => 'Muñoz', 'telefono' => null, 'email' => 'macarena.munoz@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Constanza', 'apellido' => 'Castro', 'telefono' => null, 'email' => 'constanza.castro@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Damian', 'apellido' => 'Gutierrez', 'telefono' => null, 'email' => 'damian.gutierrez@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Jonathan', 'apellido' => 'Castillo', 'telefono' => null, 'email' => 'jonathan.castillo@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Valentina', 'apellido' => 'Marin', 'telefono' => null, 'email' => 'valentina.marin@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Benjamin', 'apellido' => 'Llambías', 'telefono' => null, 'email' => 'benjamin.llambias@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Francisca', 'apellido' => 'Mezzano', 'telefono' => null, 'email' => 'francisca.mezzano@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Francisca', 'apellido' => 'Palaneck', 'telefono' => null, 'email' => 'francisca.palaneck@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Mariela', 'apellido' => 'Castro', 'telefono' => '989228170', 'email' => 'mariela.castro@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Fabiana', 'apellido' => 'Gomez', 'telefono' => null, 'email' => 'fabiana.gomez@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Nicole', 'apellido' => 'Indo', 'telefono' => null, 'email' => 'nicole.indo@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Maria Eugenia', 'apellido' => 'Salvatierra', 'telefono' => null, 'email' => 'maria.salvatierra@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Jorge', 'apellido' => 'Carvajal', 'telefono' => null, 'email' => 'jorge.carvajal@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Guiliano', 'apellido' => 'Villablanca', 'telefono' => null, 'email' => 'gulianno.villablanca@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Rodrigo', 'apellido' => 'Galleguillos', 'telefono' => null, 'email' => 'rodrigo.galleguillos@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Diego', 'apellido' => 'Correa', 'telefono' => null, 'email' => 'diego.correa@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Jairo', 'apellido' => 'Quintero', 'telefono' => null, 'email' => 'jairo.quintero@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Antonia', 'apellido' => 'Hidalgo', 'telefono' => null, 'email' => 'antonia.hidalgo@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Javiera', 'apellido' => 'Vargas', 'telefono' => null, 'email' => 'javiera.vargas@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Maria', 'apellido' => 'Salazar', 'telefono' => null, 'email' => 'maria.salazar@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Daniela', 'apellido' => 'Urtubia', 'telefono' => null, 'email' => 'daniela.urtubia@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Daniela', 'apellido' => 'Reinoso', 'telefono' => null, 'email' => 'daniela.reinoso@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Martín', 'apellido' => 'Pelayo', 'telefono' => null, 'email' => 'martin.pelayo@hgt.com', 'area_privada' => '5'],
+			['nombre' => 'Nataly', 'apellido' => 'De La Hoz', 'telefono' => '56976182741', 'email' => 'natalydelahozmoraga@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Martín', 'apellido' => 'Pelayo', 'telefono' => null, 'email' => 'martin.pelayo@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Klaus', 'apellido' => 'Wennrich', 'telefono' => null, 'email' => 'klaus.wennrich@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Admin', 'apellido' => '', 'telefono' => null, 'email' => 'administracion@academializama.cl', 'area_privada' => '5'],
+			['nombre' => 'Agustín', 'apellido' => 'Marletta', 'telefono' => null, 'email' => 'agustin.marletta@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Natalia Andrea', 'apellido' => 'Escobar Arce', 'telefono' => '976109862', 'email' => 'natalia.escobar@saamterminals.com', 'area_privada' => '5'],
+			['nombre' => 'Andrés Felipe', 'apellido' => 'Escobar Rioseco', 'telefono' => '+56998705723', 'email' => 'aescobarr@udd.cl', 'area_privada' => '5'],
+			['nombre' => 'César', 'apellido' => 'Pizarro', 'telefono' => '934003801', 'email' => 'cpizarrov@atiport.cl', 'area_privada' => '5'],
+			['nombre' => 'Gabriel', 'apellido' => 'Lizama', 'telefono' => '976690489', 'email' => 'gabriel.lizama@uc.cl', 'area_privada' => '5'],
+			['nombre' => 'Luckas', 'apellido' => 'Garrido', 'telefono' => '+56983734369', 'email' => 'logarrido@uc.cl', 'area_privada' => '5'],
+			['nombre' => 'Damian', 'apellido' => 'Gutiérrez', 'telefono' => '+56945353068', 'email' => 'damy1200.agp@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Esteban', 'apellido' => 'Uribe', 'telefono' => '997434308', 'email' => 'es.uribe@yahoo.cl', 'area_privada' => '5'],
+			['nombre' => 'Monica', 'apellido' => 'Vega', 'telefono' => '927761289', 'email' => 'monicavapp63@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Angel', 'apellido' => 'Rojas Gutierrez', 'telefono' => '+56952106209', 'email' => 'angel.rojas@derecho.uchile.cl', 'area_privada' => '5'],
+			['nombre' => 'Claudia', 'apellido' => 'Diaz', 'telefono' => '956284952', 'email' => 'cdiaz@elsauce.CL', 'area_privada' => '5'],
+			['nombre' => 'Agustin', 'apellido' => 'Marletta', 'telefono' => null, 'email' => 'agustin.marletta@hgt.com', 'area_privada' => '5'],
+			['nombre' => 'SILVIA ANDREA', 'apellido' => 'HORMAZABAL ARAYA', 'telefono' => '991932483', 'email' => 'shormazabala@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'Diego', 'apellido' => 'Díaz', 'telefono' => '922222118', 'email' => 'diegodiazah@gmail.com', 'area_privada' => '5'],
+			['nombre' => 'carolina estrella', 'apellido' => 'villa Astudillo', 'telefono' => '9992976698', 'email' => 'carolinaestrellaastudillo@gmail.com', 'area_privada' => '5'],
+		];
 	}
 
 	/**
