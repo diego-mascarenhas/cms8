@@ -1134,6 +1134,11 @@
 		if (stopTimerBtn) stopTimerBtn.setAttribute('data-task-id', String(taskId));
 
 		offcanvas.show();
+
+		// Load communication history after offcanvas is shown
+		setTimeout(() => {
+			loadCommunicationHistory(taskId);
+		}, 300);
 	}
 
 	// Handle edit task option
