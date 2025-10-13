@@ -675,12 +675,14 @@
 			});
 		}
 
-		if (window.flatpickr)
-		{
+	if (window.flatpickr)
+	{
             const opts = {
                 dateFormat: 'Y-m-d',
                 altInput: true,
-                altFormat: 'j F, Y'
+                altFormat: 'd-m-Y',
+                monthSelectorType: 'static',
+                allowInput: true
             };
             try {
                 if (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.es) {
