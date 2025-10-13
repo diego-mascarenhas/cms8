@@ -33,20 +33,25 @@ class UpdateMessageClickStats extends Command
 
         $messageId = $this->option('message-id');
 
-        if ($messageId) {
+        if ($messageId)
+        {
             $messages = Message::where('id', $messageId)->get();
-            if ($messages->isEmpty()) {
+            if ($messages->isEmpty())
+            {
                 $this->error("Message with ID {$messageId} not found.");
+
                 return 1;
             }
-        } else {
+        } else
+        {
             // Update stats for all messages that have deliveries
             $messages = Message::whereHas('deliveries')->get();
         }
 
         $updatedCount = 0;
 
-        foreach ($messages as $message) {
+        foreach ($messages as $message)
+        {
             $this->updateMessageStats($message);
             $updatedCount++;
         }
@@ -92,7 +97,7 @@ class UpdateMessageClickStats extends Command
                 'clicks' => 0,
                 'unique_opens' => 0,
                 'ratio' => 0,
-            ]
+            ],
         );
 
         // Update with calculated stats

@@ -28,7 +28,8 @@ class ContactFactory extends Factory
 
         // Create weighted array for random selection
         $weightedLanguages = [];
-        foreach ($languages as $lang => $weight) {
+        foreach ($languages as $lang => $weight)
+        {
             $weightedLanguages = array_merge($weightedLanguages, array_fill(0, $weight, $lang));
         }
 
@@ -50,10 +51,12 @@ class ContactFactory extends Factory
 
     public function configure()
     {
-        return $this->afterCreating(function (Contact $contact) {
+        return $this->afterCreating(function (Contact $contact)
+        {
             $sources = Source::where('id', '<=', 3)->inRandomOrder()->get();
 
-            if ($primarySource = $sources->first()) {
+            if ($primarySource = $sources->first())
+            {
                 $contact->source_id = $primarySource->id;
                 $contact->save();
             }

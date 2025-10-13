@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 
 class Fluid extends Controller
 {
-	public function index()
-	{
-		$pageConfigs = ['contentLayout' => 'wide'];
+    public function index()
+    {
+        $pageConfigs = ['contentLayout' => 'wide'];
 
-		return view('content.layouts-example.layouts-fluid', ['pageConfigs' => $pageConfigs]);
-	}
+        return view('content.layouts-example.layouts-fluid', ['pageConfigs' => $pageConfigs]);
+    }
 }

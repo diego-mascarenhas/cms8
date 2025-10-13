@@ -49,8 +49,8 @@ class PaymentAccountFactory extends Factory
 
         return [
             'team_id' => $this->getDemoTeam()->id,
-            'code' => $account['code'] . '_' . $this->faker->unique()->numberBetween(1, 999),
-            'name' => $account['name'] . ' ' . $this->faker->randomNumber(3),
+            'code' => $account['code'].'_'.$this->faker->unique()->numberBetween(1, 999),
+            'name' => $account['name'].' '.$this->faker->randomNumber(3),
             'symbol' => $account['symbol'],
             'currency_id' => $this->faker->randomElement($currencies),
             'status' => 1, // Active by default
@@ -63,8 +63,8 @@ class PaymentAccountFactory extends Factory
     public function cash(): static
     {
         return $this->state(fn (array $attributes) => [
-            'code' => 'CASH_' . $this->faker->unique()->numberBetween(1, 999),
-            'name' => 'Cash ' . $this->faker->randomNumber(3),
+            'code' => 'CASH_'.$this->faker->unique()->numberBetween(1, 999),
+            'name' => 'Cash '.$this->faker->randomNumber(3),
             'symbol' => '$',
         ]);
     }
@@ -75,8 +75,8 @@ class PaymentAccountFactory extends Factory
     public function bank(): static
     {
         return $this->state(fn (array $attributes) => [
-            'code' => 'BANK_' . $this->faker->unique()->numberBetween(1, 999),
-            'name' => 'Bank Account ' . $this->faker->randomNumber(3),
+            'code' => 'BANK_'.$this->faker->unique()->numberBetween(1, 999),
+            'name' => 'Bank Account '.$this->faker->randomNumber(3),
             'symbol' => '$',
         ]);
     }
@@ -87,8 +87,8 @@ class PaymentAccountFactory extends Factory
     public function savings(): static
     {
         return $this->state(fn (array $attributes) => [
-            'code' => 'SAVINGS_' . $this->faker->unique()->numberBetween(1, 999),
-            'name' => 'Savings Account ' . $this->faker->randomNumber(3),
+            'code' => 'SAVINGS_'.$this->faker->unique()->numberBetween(1, 999),
+            'name' => 'Savings Account '.$this->faker->randomNumber(3),
             'symbol' => '$',
         ]);
     }
@@ -99,8 +99,8 @@ class PaymentAccountFactory extends Factory
     public function business(): static
     {
         return $this->state(fn (array $attributes) => [
-            'code' => 'BUSINESS_' . $this->faker->unique()->numberBetween(1, 999),
-            'name' => 'Business Account ' . $this->faker->randomNumber(3),
+            'code' => 'BUSINESS_'.$this->faker->unique()->numberBetween(1, 999),
+            'name' => 'Business Account '.$this->faker->randomNumber(3),
             'symbol' => '$',
         ]);
     }

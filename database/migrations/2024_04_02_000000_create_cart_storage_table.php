@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cart_storage', function (Blueprint $table) {
+        Schema::create('cart_storage', function (Blueprint $table)
+        {
             $table->string('id')->index();
             $table->longText('cart_data');
             $table->timestamps();

@@ -370,8 +370,10 @@ class EnterpriseOrganizationSeeder extends Seeder
 
         $departmentCounters = [];
 
-        foreach ($organizations as $item) {
-            if (! isset($departmentCounters[$item['department_id']])) {
+        foreach ($organizations as $item)
+        {
+            if (! isset($departmentCounters[$item['department_id']]))
+            {
                 $departmentCounters[$item['department_id']] = 1;
             }
 

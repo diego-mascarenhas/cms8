@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('task_boards', function (Blueprint $table) {
+        Schema::create('task_boards', function (Blueprint $table)
+        {
             $table->id();
             $table->foreignId('team_id')->constrained()->onDelete('cascade');
             $table->string('name');

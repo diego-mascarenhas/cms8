@@ -6,7 +6,6 @@ use App\Models\Team;
 use App\Models\TeamSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Crypt;
 use Tests\TestCase;
 
 class TeamConfigurationTest extends TestCase
@@ -29,7 +28,7 @@ class TeamConfigurationTest extends TestCase
     {
         $this->team->setSetting('test_key', 'test_value', [
             'group' => 'test',
-            'is_encrypted' => false
+            'is_encrypted' => false,
         ]);
 
         $this->assertEquals('test_value', $this->team->getSetting('test_key'));
@@ -41,7 +40,7 @@ class TeamConfigurationTest extends TestCase
     {
         $this->team->setSetting('secret_key', 'sensitive_data', [
             'group' => 'security',
-            'is_encrypted' => true
+            'is_encrypted' => true,
         ]);
 
         // Check that the raw value is encrypted
@@ -299,11 +298,11 @@ class TeamConfigurationTest extends TestCase
         // Verify they return same data
         $this->assertEquals(
             $this->team->getOutgoingEmailConfig(),
-            $this->team->getEmailConfig()
+            $this->team->getEmailConfig(),
         );
         $this->assertEquals(
             $this->team->hasOutgoingEmailConfig(),
-            $this->team->hasEmailConfig()
+            $this->team->hasEmailConfig(),
         );
     }
 

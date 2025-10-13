@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('notification_types', function (Blueprint $table) {
+        Schema::create('notification_types', function (Blueprint $table)
+        {
             $table->id();
             $table->string('name');
             $table->string('template_subject')->nullable();

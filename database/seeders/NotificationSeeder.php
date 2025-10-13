@@ -22,7 +22,8 @@ class NotificationSeeder extends Seeder
         $contacts = Contact::all();
         $notificationTypes = NotificationType::all();
 
-        if ($teams->isEmpty() || $users->isEmpty() || $contacts->isEmpty() || $notificationTypes->isEmpty()) {
+        if ($teams->isEmpty() || $users->isEmpty() || $contacts->isEmpty() || $notificationTypes->isEmpty())
+        {
             $this->command->info('Make sure you have teams, users, contacts, and notification types before running this seeder.');
 
             return;
@@ -34,7 +35,8 @@ class NotificationSeeder extends Seeder
         // Create 15 random notifications with mixed states
         Notification::factory()
             ->count(15)
-            ->state(function () use ($users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes)
+            {
                 return [
                     'team_id' => 1,
                     'user_id' => $users->random()->id,
@@ -50,7 +52,8 @@ class NotificationSeeder extends Seeder
         Notification::factory()
             ->count(8)
             ->projectRelated()
-            ->state(function () use ($users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes)
+            {
                 return [
                     'team_id' => 1,
                     'user_id' => $users->random()->id,
@@ -66,7 +69,8 @@ class NotificationSeeder extends Seeder
         Notification::factory()
             ->count(5)
             ->paymentRelated()
-            ->state(function () use ($users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes)
+            {
                 return [
                     'team_id' => 1,
                     'user_id' => $users->random()->id,
@@ -83,7 +87,8 @@ class NotificationSeeder extends Seeder
             ->count(3)
             ->urgent()
             ->sentUnread()
-            ->state(function () use ($users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes)
+            {
                 return [
                     'team_id' => 1,
                     'user_id' => $users->random()->id,
@@ -99,7 +104,8 @@ class NotificationSeeder extends Seeder
         Notification::factory()
             ->count(5)
             ->unsent()
-            ->state(function () use ($users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes)
+            {
                 return [
                     'team_id' => 1,
                     'user_id' => $users->random()->id,
@@ -115,7 +121,8 @@ class NotificationSeeder extends Seeder
         Notification::factory()
             ->count(7)
             ->sentRead()
-            ->state(function () use ($users, $contacts, $notificationTypes) {
+            ->state(function () use ($users, $contacts, $notificationTypes)
+            {
                 return [
                     'team_id' => 1,
                     'user_id' => $users->random()->id,
@@ -126,7 +133,8 @@ class NotificationSeeder extends Seeder
             ->create();
 
         // Create specific notifications for the first contact if available
-        if ($contacts->count() > 0) {
+        if ($contacts->count() > 0)
+        {
             $firstContact = $contacts->first();
             $this->command->info("Creating specific notifications for contact: {$firstContact->name}...");
 

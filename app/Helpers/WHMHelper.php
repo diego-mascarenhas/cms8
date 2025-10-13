@@ -2,35 +2,35 @@
 
 if (! function_exists('getWHMServers'))
 {
-	function getWHMServers()
-	{
-		$servers = env('WHM_SERVERS');
+    function getWHMServers()
+    {
+        $servers = env('WHM_SERVERS');
 
-		if (! $servers)
-		{
-			return [];
-		}
+        if (! $servers)
+        {
+            return [];
+        }
 
-		$serversArray = explode(',', $servers);
-		$formattedServers = [];
+        $serversArray = explode(',', $servers);
+        $formattedServers = [];
 
-		foreach ($serversArray as $server)
-		{
-			$serverDetails = explode(':', $server);
+        foreach ($serversArray as $server)
+        {
+            $serverDetails = explode(':', $server);
 
-			if (count($serverDetails) !== 3)
-			{
-				continue;
-			}
+            if (count($serverDetails) !== 3)
+            {
+                continue;
+            }
 
-			[$host, $username, $token] = $serverDetails;
-			$formattedServers[] = [
-				'host' => $host,
-				'username' => $username,
-				'token' => $token,
-			];
-		}
+            [$host, $username, $token] = $serverDetails;
+            $formattedServers[] = [
+                'host' => $host,
+                'username' => $username,
+                'token' => $token,
+            ];
+        }
 
-		return $formattedServers;
-	}
+        return $formattedServers;
+    }
 }

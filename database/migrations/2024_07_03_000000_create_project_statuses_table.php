@@ -13,7 +13,8 @@ class CreateProjectStatusesTable extends Migration
      */
     public function up()
     {
-        Schema::create('project_statuses', function (Blueprint $table) {
+        Schema::create('project_statuses', function (Blueprint $table)
+        {
             $table->tinyIncrements('id');
             $table->string('name');
             $table->string('label_class');

@@ -1201,18 +1201,22 @@ class TeamSettingController extends Controller
         $shortcuts = $request->input('shortcuts', []);
 
         // Filter out empty shortcuts
-        $shortcuts = array_filter($shortcuts, function ($shortcut) {
-            return !empty($shortcut['title']) && !empty($shortcut['url']) && !empty($shortcut['icon']);
+        $shortcuts = array_filter($shortcuts, function ($shortcut)
+        {
+            return ! empty($shortcut['title']) && ! empty($shortcut['url']) && ! empty($shortcut['icon']);
         });
 
         // Sort shortcuts by order
-        usort($shortcuts, function ($a, $b) {
+        usort($shortcuts, function ($a, $b)
+        {
             return ($a['order'] ?? 0) - ($b['order'] ?? 0);
         });
 
         // Remove order field from final data
-        $shortcuts = array_map(function ($shortcut) {
+        $shortcuts = array_map(function ($shortcut)
+        {
             unset($shortcut['order']);
+
             return $shortcut;
         }, $shortcuts);
 

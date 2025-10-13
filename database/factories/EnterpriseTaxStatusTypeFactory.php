@@ -31,7 +31,7 @@ class EnterpriseTaxStatusTypeFactory extends Factory
             'Government entity',
             'Non-profit organization',
             'Foreign corporation',
-            'Domestic corporation'
+            'Domestic corporation',
         ];
 
         return [

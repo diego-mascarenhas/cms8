@@ -130,8 +130,8 @@ class DeliveryStats extends Component
 
         // Check if campaign was recently paused (status changed to 0 in last hour)
         $this->wasPausedForErrors = $this->message->status_id == 0 &&
-        	$this->message->updated_at->isAfter(now()->subHour()) &&
-        	$this->criticalErrorsCount > 0;
+            $this->message->updated_at->isAfter(now()->subHour()) &&
+            $this->criticalErrorsCount > 0;
     }
 
     public function render()

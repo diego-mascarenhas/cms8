@@ -9,53 +9,53 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Certification extends Model
 {
-	use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
-	protected $fillable = [
-		'certification',
-		'language',
-		'team_id',
-	];
+    protected $fillable = [
+        'certification',
+        'language',
+        'team_id',
+    ];
 
-	/**
-	 * The attributes that should be mutated to dates.
-	 *
-	 * @var array
-	 */
-	protected $dates = ['deleted_at'];
+    /**
+     * The attributes that should be mutated to dates.
+     *
+     * @var array
+     */
+    protected $dates = ['deleted_at'];
 
-	protected static function booted()
-	{
-		static::addGlobalScope('team', function (Builder $builder)
-		{
-			if (auth()->check())
-			{
-				$builder->where('team_id', auth()->user()->currentTeam->id);
-			}
-		});
-	}
+    protected static function booted()
+    {
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+    }
 
-	/**
-	 * Get the team that owns the certification
-	 */
-	public function team()
-	{
-		return $this->belongsTo(Team::class);
-	}
+    /**
+     * Get the team that owns the certification
+     */
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
 
-	/**
-	 * Get the language associated with the certification
-	 */
-	public function languageRelation()
-	{
-		return $this->belongsTo(Language::class, 'language', 'code');
-	}
+    /**
+     * Get the language associated with the certification
+     */
+    public function languageRelation()
+    {
+        return $this->belongsTo(Language::class, 'language', 'code');
+    }
 
-	/**
-	 * Set the language attribute to lowercase
-	 */
-	public function setLanguageAttribute($value)
-	{
-		$this->attributes['language'] = strtolower($value);
-	}
+    /**
+     * Set the language attribute to lowercase
+     */
+    public function setLanguageAttribute($value)
+    {
+        $this->attributes['language'] = strtolower($value);
+    }
 }

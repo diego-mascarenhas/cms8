@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('notification_tracking', function (Blueprint $table) {
+        Schema::create('notification_tracking', function (Blueprint $table)
+        {
             $table->id();
             $table->foreignId('notification_id')->constrained('notifications')->onDelete('cascade');
             $table->string('event_type')->default('opened'); // opened, clicked, bounced, etc.
@@ -30,4 +31,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('notification_tracking');
     }
-}; 
+};

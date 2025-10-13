@@ -7,31 +7,31 @@ use Illuminate\Database\Eloquent\Model;
 
 class NetworkDevice extends Model
 {
-	use HasFactory;
+    use HasFactory;
 
-	protected $fillable = [
-		'name',
-		'device_type',
-	];
+    protected $fillable = [
+        'name',
+        'device_type',
+    ];
 
-	public function hostConnections()
-	{
-		return $this->hasMany(Host::class, 'private_connection_id');
-	}
+    public function hostConnections()
+    {
+        return $this->hasMany(Host::class, 'private_connection_id');
+    }
 
-	public function publicConnections()
-	{
-		return $this->hasMany(Host::class, 'public_connection_id');
-	}
+    public function publicConnections()
+    {
+        return $this->hasMany(Host::class, 'public_connection_id');
+    }
 
-	public static function getOptions()
-	{
-		return self::all()->map(function ($data)
-		{
-			return [
-				'id' => $data->id,
-				'name' => $data->name,
-			];
-		});
-	}
+    public static function getOptions()
+    {
+        return self::all()->map(function ($data)
+        {
+            return [
+                'id' => $data->id,
+                'name' => $data->name,
+            ];
+        });
+    }
 }

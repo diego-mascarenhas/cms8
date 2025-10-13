@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('invoice_types', function (Blueprint $table) {
+        Schema::create('invoice_types', function (Blueprint $table)
+        {
             $table->tinyIncrements('id');
             $table->string('name');
         });

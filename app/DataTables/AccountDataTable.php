@@ -11,130 +11,130 @@ use Yajra\DataTables\Services\DataTable;
 
 class AccountDataTable extends DataTable
 {
-	/**
-	 * Build the DataTable class.
-	 *
-	 * @param  QueryBuilder  $query  Results from query() method.
-	 */
-	public function dataTable(QueryBuilder $query): EloquentDataTable
-	{
-		return (new EloquentDataTable($query))
-			->addColumn('owner_name', function ($account)
-			{
-				return $account->owner->name;
-			})
-			->filterColumn('owner_name', function ($query, $keyword)
-			{
-				$query->whereHas('owner', function ($q) use ($keyword)
-				{
-					$q->where('name', 'like', "%{$keyword}%");
-				});
-			})
-			->addColumn('members_count', function ($account)
-			{
-				return $account->members_count;
-			})
-			->addColumn('active_clients_count', function ($account)
-			{
-				return $account->active_clients_count;
-			})
-			->addColumn('total_time', function ($account)
-			{
-				$seconds = $account->total_time;
-				$hours = floor($seconds / 3600);
-				$minutes = floor(($seconds % 3600) / 60);
+    /**
+     * Build the DataTable class.
+     *
+     * @param  QueryBuilder  $query  Results from query() method.
+     */
+    public function dataTable(QueryBuilder $query): EloquentDataTable
+    {
+        return (new EloquentDataTable($query))
+            ->addColumn('owner_name', function ($account)
+            {
+                return $account->owner->name;
+            })
+            ->filterColumn('owner_name', function ($query, $keyword)
+            {
+                $query->whereHas('owner', function ($q) use ($keyword)
+                {
+                    $q->where('name', 'like', "%{$keyword}%");
+                });
+            })
+            ->addColumn('members_count', function ($account)
+            {
+                return $account->members_count;
+            })
+            ->addColumn('active_clients_count', function ($account)
+            {
+                return $account->active_clients_count;
+            })
+            ->addColumn('total_time', function ($account)
+            {
+                $seconds = $account->total_time;
+                $hours = floor($seconds / 3600);
+                $minutes = floor(($seconds % 3600) / 60);
 
-				if ($hours > 0)
-				{
-					return sprintf('%dh %dm', $hours, $minutes);
-				}
+                if ($hours > 0)
+                {
+                    return sprintf('%dh %dm', $hours, $minutes);
+                }
 
-				return sprintf('%dm', $minutes);
-			})
-			->editColumn('created_at', function ($account)
-			{
-				return $account->created_at->format('d/m/Y');
-			})
-			->addColumn('action', function ($account)
-			{
-				return '<div class="d-flex justify-content-center align-items-center">
+                return sprintf('%dm', $minutes);
+            })
+            ->editColumn('created_at', function ($account)
+            {
+                return $account->created_at->format('d/m/Y');
+            })
+            ->addColumn('action', function ($account)
+            {
+                return '<div class="d-flex justify-content-center align-items-center">
 					<a href="'.route('account.edit', $account->id).'" class="text-body">
 						<i class="ti ti-edit ti-sm me-2"></i>
 					</a>
 				</div>';
-			})
-			->setRowId('id')
-			->rawColumns(['name', 'action']);
-	}
+            })
+            ->setRowId('id')
+            ->rawColumns(['name', 'action']);
+    }
 
-	public function query(Account $model): QueryBuilder
-	{
-		return $model->newQuery()
-			->with('owner');
-	}
+    public function query(Account $model): QueryBuilder
+    {
+        return $model->newQuery()
+            ->with('owner');
+    }
 
-	public function html(): HtmlBuilder
-	{
-		return $this->builder()
-			->setTableId('account-table')
-			->columns($this->getColumns())
-			->minifiedAjax()
-			->dom('frtip')
-			->orderBy(1, direction: 'asc')
-			->responsive(true)
-			->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
-			->parameters([
-				'pageLength' => 60,
-				'paging' => false,
-			]);
-	}
+    public function html(): HtmlBuilder
+    {
+        return $this->builder()
+            ->setTableId('account-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(1, direction: 'asc')
+            ->responsive(true)
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
+            ->parameters([
+                'pageLength' => 60,
+                'paging' => false,
+            ]);
+    }
 
-	public function getColumns(): array
-	{
-		return [
-			Column::make('id')->hidden(),
-			Column::make('name')
-				->title(value: 'Nombre')
-				->addClass('all')
-				->orderable(true)
-				->searchable(true),
-			Column::computed('owner_name')
-				->title('Propietario')
-				->className('text-center')
-				->addClass('min-phone')
-				->orderable(true)
-				->searchable(true),
-			Column::computed('members_count')
-				->title('Miembros')
-				->className('text-center')
-				->addClass('min-phone')
-				->orderable(true),
-			Column::computed('active_clients_count')
-				->title('Clientes')
-				->className('text-center')
-				->addClass('min-phone')
-				->orderable(true),
-			Column::make('created_at')
-				->title('Creación')
-				->className('text-center')
-				->addClass('min-phone')
-				->orderable(true),
-			Column::computed('total_time')
-				->title('Tiempo')
-				->className('text-center')
-				->addClass('min-phone')
-				->orderable(true),
-			Column::computed('action')
-				->title('Acciones')
-				->className('text-center')
-				->addClass('min-phone')
-				->orderable(false)
-				->searchable(false),
-		];
-	}
+    public function getColumns(): array
+    {
+        return [
+            Column::make('id')->hidden(),
+            Column::make('name')
+                ->title(value: 'Nombre')
+                ->addClass('all')
+                ->orderable(true)
+                ->searchable(true),
+            Column::computed('owner_name')
+                ->title('Propietario')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true)
+                ->searchable(true),
+            Column::computed('members_count')
+                ->title('Miembros')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true),
+            Column::computed('active_clients_count')
+                ->title('Clientes')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true),
+            Column::make('created_at')
+                ->title('Creación')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true),
+            Column::computed('total_time')
+                ->title('Tiempo')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(true),
+            Column::computed('action')
+                ->title('Acciones')
+                ->className('text-center')
+                ->addClass('min-phone')
+                ->orderable(false)
+                ->searchable(false),
+        ];
+    }
 
-	protected function filename(): string
-	{
-		return 'Account_'.date('YmdHis');
-	}
+    protected function filename(): string
+    {
+        return 'Account_'.date('YmdHis');
+    }
 }

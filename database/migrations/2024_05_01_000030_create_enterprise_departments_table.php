@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('enterprise_departments', function (Blueprint $table) {
+        Schema::create('enterprise_departments', function (Blueprint $table)
+        {
             $table->tinyIncrements('id');
             $table->string('name');
             $table->string('color');

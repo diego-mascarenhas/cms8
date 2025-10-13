@@ -37,7 +37,8 @@ class List60Factory extends Factory
         $contactIds = Contact::pluck('id')->toArray();
         $availableIds = array_diff($contactIds, static::$usedContactIds);
 
-        if (empty($availableIds)) {
+        if (empty($availableIds))
+        {
             throw new \RuntimeException('No more unique contact IDs available.');
         }
 

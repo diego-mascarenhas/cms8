@@ -334,15 +334,15 @@
                     </li>
                 @endif
 
-                {{-- Root-only: Account Management --}}
-                @if (Auth::check() && (Auth::user()->hasRole('root') || Auth::user()->can('user.management')))
-                    <li>
-                        <a class="dropdown-item" href="{{ url('account-management') }}">
-                            <i class="ti ti-shield-lock me-2 ti-sm"></i>
-                            <span class="align-middle">{{ __('app.profile.team.account_management') }}</span>
-                        </a>
-                    </li>
-                @endif
+            {{-- Root-only: Account Management --}}
+            @if (Auth::check() && Auth::user()->hasRole('root'))
+                <li>
+                    <a class="dropdown-item" href="{{ url('account-management') }}">
+                        <i class="ti ti-shield-lock me-2 ti-sm"></i>
+                        <span class="align-middle">{{ __('app.profile.team.account_management') }}</span>
+                    </a>
+                </li>
+            @endif
 
                 @if (Auth::check() && Laravel\Jetstream\Jetstream::hasApiFeatures())
                     <li>

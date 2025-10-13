@@ -8,15 +8,15 @@ use Illuminate\View\View;
 
 class PaymentController extends Controller
 {
-	public function index(PaymentDataTable $dataTable)
-	{
-		return $dataTable->render('payments.index');
-	}
+    public function index(PaymentDataTable $dataTable)
+    {
+        return $dataTable->render('payments.index');
+    }
 
-	public function show($id): View
-	{
-		$payment = Payment::with(['enterprise', 'invoice', 'account', 'type'])->findOrFail($id);
+    public function show($id): View
+    {
+        $payment = Payment::with(['enterprise', 'invoice', 'account', 'type'])->findOrFail($id);
 
-		return view('payments.show', compact('payment'));
-	}
+        return view('payments.show', compact('payment'));
+    }
 }

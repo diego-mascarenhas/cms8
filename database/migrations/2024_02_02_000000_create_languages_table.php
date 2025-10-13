@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('languages', function (Blueprint $table) {
+        Schema::create('languages', function (Blueprint $table)
+        {
             $table->string('code', 2)->primary(); // ISO 639-1 codes
             $table->string('name');
         });

@@ -87,7 +87,8 @@ class SourceSeeder extends Seeder
             ],
         ];
 
-        foreach ($sources as $source) {
+        foreach ($sources as $source)
+        {
             Source::updateOrCreate(
                 ['name' => $source['name']],
                 $source,

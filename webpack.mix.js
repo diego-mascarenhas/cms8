@@ -166,13 +166,16 @@ mix.version();
 
 /*
  |--------------------------------------------------------------------------
- | Browsersync Reloading
+ | Browsersync Reloading (DISABLED)
  |--------------------------------------------------------------------------
  |
- | BrowserSync can automatically monitor your files for changes, and inject your changes into the browser without requiring a manual refresh.
- | You may enable support for this by calling the mix.browserSync() method:
- | Make Sure to run `php artisan serve` and `yarn watch` command to run Browser Sync functionality
- | Refer official documentation for more information: https://laravel.com/docs/10.x/mix#browsersync-reloading
+ | BrowserSync is DISABLED because:
+ | 1. Not compatible with Laravel Herd (.test domains)
+ | 2. Causes build failures in production (npm run build)
+ | 3. Not needed for Herd's hot reload functionality
+ |
+ | If you need BrowserSync, enable it conditionally:
+ | if (!mix.inProduction()) { mix.browserSync('http://humano.test/'); }
  */
 
-mix.browserSync('http://127.0.0.1:8000/');
+// mix.browserSync('http://127.0.0.1:8000/');

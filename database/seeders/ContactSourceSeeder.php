@@ -19,16 +19,19 @@ class ContactSourceSeeder extends Seeder
         $contacts = Contact::all();
         $sources = Source::all();
 
-        if ($contacts->isEmpty() || $sources->isEmpty()) {
+        if ($contacts->isEmpty() || $sources->isEmpty())
+        {
             $this->command->info('Make sure there are contacts and sources in the database before running this seeder.');
 
             return;
         }
 
-        foreach ($contacts as $contact) {
+        foreach ($contacts as $contact)
+        {
             $randomSources = $sources->random(rand(1, 3));
 
-            foreach ($randomSources as $source) {
+            foreach ($randomSources as $source)
+            {
                 ContactSource::create([
                     'contact_id' => $contact->id,
                     'source_id' => $source->id,
@@ -43,7 +46,8 @@ class ContactSourceSeeder extends Seeder
      */
     private function generateRandomValue(string $sourceName): string
     {
-        switch ($sourceName) {
+        switch ($sourceName)
+        {
             case 'Phone':
                 return rand(1, 99).rand(100000000, 999999999);
             case 'Email':

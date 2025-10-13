@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Contact;
 use App\Models\NotificationType;
-use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -30,7 +29,8 @@ class NotificationFactory extends Factory
         $contact = Contact::where('team_id', 1)->inRandomOrder()->first();
 
         // If no contact exists with team_id 1, throw an exception
-        if (! $contact) {
+        if (! $contact)
+        {
             throw new \Exception('No contacts found with team_id = 1. Please run ContactSeeder first.');
         }
 
@@ -38,7 +38,8 @@ class NotificationFactory extends Factory
         $user = User::inRandomOrder()->first();
 
         // If no user exists, throw an exception
-        if (! $user) {
+        if (! $user)
+        {
             throw new \Exception('No users found. Please run UserSeeder first.');
         }
 

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class ChartJs extends Controller
 {
-	public function index()
-	{
-		return view('content.charts.charts-chartjs');
-	}
+    public function index()
+    {
+        return view('content.charts.charts-chartjs');
+    }
 }

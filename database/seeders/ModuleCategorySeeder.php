@@ -71,7 +71,8 @@ class ModuleCategorySeeder extends Seeder
             ],
         ];
 
-        foreach ($serviceTypes as $mainCategory => $subCategories) {
+        foreach ($serviceTypes as $mainCategory => $subCategories)
+        {
             $parent = Category::create([
                 'name' => $mainCategory,
                 'module_id' => $moduleIds['services'],
@@ -80,7 +81,8 @@ class ModuleCategorySeeder extends Seeder
                 'status' => 1,
             ]);
 
-            foreach ($subCategories as $subCategory) {
+            foreach ($subCategories as $subCategory)
+            {
                 Category::create([
                     'name' => $subCategory,
                     'module_id' => $moduleIds['services'],
@@ -102,7 +104,8 @@ class ModuleCategorySeeder extends Seeder
 
         $messageTypes = ['Prospect', 'Client', 'Staff', 'Support', 'Automated'];
 
-        foreach ($messageTypes as $type) {
+        foreach ($messageTypes as $type)
+        {
             Category::create([
                 'name' => $type,
                 'module_id' => $moduleIds['communications'],
@@ -123,7 +126,8 @@ class ModuleCategorySeeder extends Seeder
 
         $taskCategories = ['Development', 'Design', 'Research', 'Meeting', 'Support', 'Administrative', 'Documentation'];
 
-        foreach ($taskCategories as $category) {
+        foreach ($taskCategories as $category)
+        {
             Category::create([
                 'name' => $category,
                 'module_id' => $moduleIds['tasks'],
@@ -144,7 +148,8 @@ class ModuleCategorySeeder extends Seeder
 
         $projectCategories = ['Web', 'Marketing', 'Design', 'Consulting', 'Maintenance', 'Development'];
 
-        foreach ($projectCategories as $category) {
+        foreach ($projectCategories as $category)
+        {
             Category::create([
                 'name' => $category,
                 'module_id' => $moduleIds['projects'],
@@ -155,7 +160,8 @@ class ModuleCategorySeeder extends Seeder
         }
 
         // Software Categories (Global)
-        if ($moduleIds['softwares']) {
+        if ($moduleIds['softwares'])
+        {
             $softwareParent = Category::create([
                 'name' => 'Software Types',
                 'module_id' => $moduleIds['softwares'],
@@ -172,7 +178,8 @@ class ModuleCategorySeeder extends Seeder
                 'Desarrollo' => 'Software de desarrollo y programación',
             ];
 
-            foreach ($softwareCategories as $category => $description) {
+            foreach ($softwareCategories as $category => $description)
+            {
                 Category::create([
                     'name' => $category,
                     'module_id' => $moduleIds['softwares'],
@@ -200,7 +207,8 @@ class ModuleCategorySeeder extends Seeder
 
         $invoiceCategories = ['Monthly Services', 'One-time Projects', 'Consulting', 'Product Sales', 'Maintenance'];
 
-        foreach ($invoiceCategories as $category) {
+        foreach ($invoiceCategories as $category)
+        {
             Category::create([
                 'name' => $category,
                 'module_id' => $moduleIds['invoices'],
@@ -225,7 +233,8 @@ class ModuleCategorySeeder extends Seeder
             'Billing Questions' => ['Invoice Question', 'Payment Issue', 'Refund Request'],
         ];
 
-        foreach ($ticketCategories as $mainCategory => $subCategories) {
+        foreach ($ticketCategories as $mainCategory => $subCategories)
+        {
             $parent = Category::create([
                 'name' => $mainCategory,
                 'module_id' => $moduleIds['tickets'],
@@ -234,7 +243,8 @@ class ModuleCategorySeeder extends Seeder
                 'status' => 1,
             ]);
 
-            foreach ($subCategories as $subCategory) {
+            foreach ($subCategories as $subCategory)
+            {
                 Category::create([
                     'name' => $subCategory,
                     'module_id' => $moduleIds['tickets'],
@@ -246,7 +256,8 @@ class ModuleCategorySeeder extends Seeder
         }
 
         // Mail Categories for Team 1
-        if ($moduleIds['mail']) {
+        if ($moduleIds['mail'])
+        {
             $mailParent = Category::create([
                 'name' => 'Email Categories',
                 'module_id' => $moduleIds['mail'],
@@ -261,7 +272,8 @@ class ModuleCategorySeeder extends Seeder
                 'Internal' => ['Team Communications', 'Reports', 'Administrative'],
             ];
 
-            foreach ($mailCategories as $mainCategory => $subCategories) {
+            foreach ($mailCategories as $mainCategory => $subCategories)
+            {
                 $parent = Category::create([
                     'name' => $mainCategory,
                     'module_id' => $moduleIds['mail'],
@@ -270,7 +282,8 @@ class ModuleCategorySeeder extends Seeder
                     'status' => 1,
                 ]);
 
-                foreach ($subCategories as $subCategory) {
+                foreach ($subCategories as $subCategory)
+                {
                     Category::create([
                         'name' => $subCategory,
                         'module_id' => $moduleIds['mail'],
@@ -283,7 +296,8 @@ class ModuleCategorySeeder extends Seeder
         }
 
         // Chat Categories for Team 1
-        if ($moduleIds['chat']) {
+        if ($moduleIds['chat'])
+        {
             $chatParent = Category::create([
                 'name' => 'Chat Channels',
                 'module_id' => $moduleIds['chat'],
@@ -298,7 +312,8 @@ class ModuleCategorySeeder extends Seeder
                 'Internal' => ['Team Chat', 'Project Coordination', 'General Discussion'],
             ];
 
-            foreach ($chatCategories as $mainCategory => $subCategories) {
+            foreach ($chatCategories as $mainCategory => $subCategories)
+            {
                 $parent = Category::create([
                     'name' => $mainCategory,
                     'module_id' => $moduleIds['chat'],
@@ -307,7 +322,8 @@ class ModuleCategorySeeder extends Seeder
                     'status' => 1,
                 ]);
 
-                foreach ($subCategories as $subCategory) {
+                foreach ($subCategories as $subCategory)
+                {
                     Category::create([
                         'name' => $subCategory,
                         'module_id' => $moduleIds['chat'],

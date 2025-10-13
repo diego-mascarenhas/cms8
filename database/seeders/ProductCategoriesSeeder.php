@@ -56,13 +56,16 @@ class ProductCategoriesSeeder extends Seeder
         $created = 0;
         $updated = 0;
 
-        foreach ($categories as $categoryData) {
-            foreach ($categoryData['teams'] as $teamId) {
+        foreach ($categories as $categoryData)
+        {
+            foreach ($categoryData['teams'] as $teamId)
+            {
                 $existing = Category::where('team_id', $teamId)
                     ->where('name', $categoryData['name'])
                     ->first();
 
-                if ($existing) {
+                if ($existing)
+                {
                     // Update existing category
                     $existing->update([
                         'description' => $categoryData['description'],
@@ -70,7 +73,8 @@ class ProductCategoriesSeeder extends Seeder
                     ]);
                     $updated++;
                     $this->command->info("🔄 Updated category: {$categoryData['name']} for Team {$teamId}");
-                } else {
+                } else
+                {
                     // Create new category
                     Category::create([
                         'team_id' => $teamId,

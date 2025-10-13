@@ -9,19 +9,19 @@ use Illuminate\Queue\SerializesModels;
 
 class TrackedTestMail extends Mailable
 {
-	use Queueable, SerializesModels;
+    use Queueable, SerializesModels;
 
-	public $delivery;
+    public $delivery;
 
-	public function __construct(MessageDelivery $delivery)
-	{
-		$this->delivery = $delivery;
-	}
+    public function __construct(MessageDelivery $delivery)
+    {
+        $this->delivery = $delivery;
+    }
 
-	public function build()
-	{
-		$trackingLink = $this->delivery->getTrackingUrl();
-		$html = <<<HTML
+    public function build()
+    {
+        $trackingLink = $this->delivery->getTrackingUrl();
+        $html = <<<HTML
 <html>
 <body>
 	<p>Hola, este es un mensaje de prueba con tracking de apertura.</p>
@@ -32,7 +32,7 @@ class TrackedTestMail extends Mailable
 </html>
 HTML;
 
-		return $this->subject('Prueba de Tracking de Apertura')
-			->html($html);
-	}
+        return $this->subject('Prueba de Tracking de Apertura')
+            ->html($html);
+    }
 }

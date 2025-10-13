@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('contact_valorations', function (Blueprint $table) {
+        Schema::create('contact_valorations', function (Blueprint $table)
+        {
             $table->unsignedSmallInteger('id')->primary();
             $table->foreignId('team_id')->constrained()->onDelete('cascade');
             $table->string('name', 255);

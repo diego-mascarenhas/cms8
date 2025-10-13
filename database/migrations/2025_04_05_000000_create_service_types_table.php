@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('service_types', function (Blueprint $table) {
+        Schema::create('service_types', function (Blueprint $table)
+        {
             $table->id();
             $table->string('name');
             $table->unsignedBigInteger('category_id')->nullable();
@@ -25,7 +26,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('order')->nullable();
             $table->tinyInteger('status')->default(1);
             $table->timestamps();
-            
+
             $table->foreign('category_id')
                 ->references('id')
                 ->on('categories')

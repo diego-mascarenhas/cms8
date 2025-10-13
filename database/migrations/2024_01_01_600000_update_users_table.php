@@ -13,7 +13,8 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table)
+        {
             $table->unsignedBigInteger('phone')->nullable()->after('name');
             $table->boolean('subscribed')->default(true)->after('password');
             $table->softDeletes();
@@ -27,15 +28,18 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table)
+        {
             $table->dropColumn('phone');
         });
 
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table)
+        {
             $table->dropColumn('subscribed');
         });
 
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table)
+        {
             $table->dropSoftDeletes();
         });
     }

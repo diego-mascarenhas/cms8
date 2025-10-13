@@ -31,7 +31,8 @@ class EnterpriseDepartmentSeeder extends Seeder
             ],
         ];
 
-        foreach ($departments as $department) {
+        foreach ($departments as $department)
+        {
             EnterpriseDepartment::create($department);
         }
     }

@@ -77,7 +77,7 @@ return [
     'canvas' => [
         'styles' => [
             // Email template fonts and styles
-            'data:text/css;base64,' . base64_encode('
+            'data:text/css;base64,'.base64_encode('
                 /* Email template typography */
                 * {
                     padding: 0;
@@ -138,7 +138,7 @@ return [
                 .gjs-frame table[bgcolor="#2A333D"] * {
                     color: #ffffff !important;
                 }
-            ')
+            '),
         ],
         'scripts' => [],
     ],

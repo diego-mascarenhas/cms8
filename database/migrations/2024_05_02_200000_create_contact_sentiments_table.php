@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('contact_sentiments', function (Blueprint $table) {
+        Schema::create('contact_sentiments', function (Blueprint $table)
+        {
             $table->tinyIncrements('id');
             $table->string('name');
         });

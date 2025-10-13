@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('enterprise_billing_addresses', function (Blueprint $table) {
+        Schema::create('enterprise_billing_addresses', function (Blueprint $table)
+        {
             $table->id();
             $table->foreignId('enterprise_id')->constrained('enterprises')->onDelete('cascade');
             $table->string('name');

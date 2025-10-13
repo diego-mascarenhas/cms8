@@ -436,7 +436,7 @@ class LanguageVariantSeeder extends Seeder
         {
             LanguageVariant::firstOrCreate(
                 ['code' => $variant['code']],
-                $variant
+                $variant,
             );
         }
 

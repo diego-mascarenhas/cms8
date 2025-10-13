@@ -7,24 +7,24 @@ use Illuminate\Database\Eloquent\Model;
 
 class EnterpriseType extends Model
 {
-	use HasFactory;
+    use HasFactory;
 
-	public $timestamps = false;
+    public $timestamps = false;
 
-	protected $fillable = ['name'];
+    protected $fillable = ['name'];
 
-	public function enterprises()
-	{
-		return $this->hasMany(Enterprise::class);
-	}
+    public function enterprises()
+    {
+        return $this->hasMany(Enterprise::class);
+    }
 
-	public function enterpriseType()
-	{
-		return $this->belongsTo(EnterpriseType::class);
-	}
+    public function enterpriseType()
+    {
+        return $this->belongsTo(EnterpriseType::class);
+    }
 
-	public function list60s()
-	{
-		return $this->hasMany(List60::class, 'type_id');
-	}
+    public function list60s()
+    {
+        return $this->hasMany(List60::class, 'type_id');
+    }
 }

@@ -49,7 +49,8 @@ class EnterpriseSeeder extends Seeder
 
         // Crear empresas básicas
         $this->command->info('Creating basic enterprises...');
-        foreach ($basicEnterprises as $enterprise) {
+        foreach ($basicEnterprises as $enterprise)
+        {
             Enterprise::create($enterprise);
         }
 

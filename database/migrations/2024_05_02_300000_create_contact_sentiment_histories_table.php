@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('contact_sentiment_histories', function (Blueprint $table) {
+        Schema::create('contact_sentiment_histories', function (Blueprint $table)
+        {
             $table->id();
             $table->foreignId('contact_id')->constrained('contacts')->onDelete('cascade');
             $table->unsignedTinyInteger('sentiment_id');

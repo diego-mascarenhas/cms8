@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class PaginationBreadcrumbs extends Controller
 {
-	public function index()
-	{
-		return view('content.user-interface.ui-pagination-breadcrumbs');
-	}
+    public function index()
+    {
+        return view('content.user-interface.ui-pagination-breadcrumbs');
+    }
 }

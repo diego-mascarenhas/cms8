@@ -18,7 +18,8 @@ class TaskSeeder extends Seeder
         $statuses = TaskStatus::pluck('id')->toArray();
 
         // Create 50 fake tasks
-        for ($i = 0; $i < 50; $i++) {
+        for ($i = 0; $i < 50; $i++)
+        {
             $startDate = fake()->dateTimeBetween('-1 month', '+1 month');
             $dueDate = fake()->dateTimeBetween($startDate, '+2 months');
 
@@ -35,7 +36,8 @@ class TaskSeeder extends Seeder
         }
 
         // Create some tasks for current month specifically
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 10; $i++)
+        {
             $startDate = fake()->dateTimeBetween('now', '+1 week');
             $dueDate = fake()->dateTimeBetween('+1 week', '+2 weeks');
 

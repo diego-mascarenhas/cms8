@@ -7,17 +7,17 @@ use Illuminate\View\Component;
 
 class TaskNotifications extends Component
 {
-	public $pendingTasks;
+    public $pendingTasks;
 
-	public function __construct()
-	{
-		$this->pendingTasks = Task::pendingForUser(auth()->id())
-			->with(['status'])
-			->get();
-	}
+    public function __construct()
+    {
+        $this->pendingTasks = Task::pendingForUser(auth()->id())
+            ->with(['status'])
+            ->get();
+    }
 
-	public function render()
-	{
-		return view('components.task-notifications');
-	}
+    public function render()
+    {
+        return view('components.task-notifications');
+    }
 }

@@ -105,8 +105,8 @@ class RecalculateDeliveryTimes extends Command
 
         // Confirm before recalculating
         $confirmMessage = $messageId
-        	? "⚠️  Are you sure you want to recalculate {$deliveries->count()} delivery times for Message ID {$messageId}?"
-        	: "⚠️  Are you sure you want to recalculate {$deliveries->count()} delivery times?";
+            ? "⚠️  Are you sure you want to recalculate {$deliveries->count()} delivery times for Message ID {$messageId}?"
+            : "⚠️  Are you sure you want to recalculate {$deliveries->count()} delivery times?";
 
         if (! $this->confirm($confirmMessage))
         {

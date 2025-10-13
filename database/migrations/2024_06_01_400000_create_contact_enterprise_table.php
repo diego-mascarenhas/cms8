@@ -8,7 +8,8 @@ class CreateContactEnterpriseTable extends Migration
 {
     public function up()
     {
-        Schema::create('contact_enterprise', function (Blueprint $table) {
+        Schema::create('contact_enterprise', function (Blueprint $table)
+        {
             $table->id();
             $table->foreignId('contact_id')->constrained()->onDelete('cascade');
             $table->foreignId('enterprise_id')->constrained()->onDelete('cascade');

@@ -23,8 +23,10 @@ class ContactValorationSeeder extends Seeder
         // Get all teams
         $teams = DB::table('teams')->get();
 
-        foreach ($teams as $team) {
-            foreach ($valorations as $valoration) {
+        foreach ($teams as $team)
+        {
+            foreach ($valorations as $valoration)
+            {
                 DB::table('contact_valorations')->insertOrIgnore([
                     'id' => ($team->id * 10) + $valoration['id'], // Generate unique ID
                     'team_id' => $team->id,

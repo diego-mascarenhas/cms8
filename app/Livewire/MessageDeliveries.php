@@ -61,13 +61,13 @@ class MessageDeliveries extends Component
                 'contact_name' => $delivery->contact ? $delivery->contact->name : '-',
                 'contact_email' => $delivery->contact ? $delivery->contact->email : '-',
                 'sent_at' => $delivery->sent_at ?
-                	(is_string($delivery->sent_at) ? $delivery->sent_at : $delivery->sent_at->format('M j, Y H:i')) : null,
+                    (is_string($delivery->sent_at) ? $delivery->sent_at : $delivery->sent_at->format('M j, Y H:i')) : null,
                 'delivered_at' => $delivery->delivered_at ?
-                	(is_string($delivery->delivered_at) ? $delivery->delivered_at : $delivery->delivered_at->format('M j, Y H:i')) : null,
+                    (is_string($delivery->delivered_at) ? $delivery->delivered_at : $delivery->delivered_at->format('M j, Y H:i')) : null,
                 'opened_at' => $delivery->opened_at ?
-                	(is_string($delivery->opened_at) ? $delivery->opened_at : $delivery->opened_at->format('M j, Y H:i')) : null,
+                    (is_string($delivery->opened_at) ? $delivery->opened_at : $delivery->opened_at->format('M j, Y H:i')) : null,
                 'clicked_at' => $delivery->clicked_at ?
-                	(is_string($delivery->clicked_at) ? $delivery->clicked_at : $delivery->clicked_at->format('M j, Y H:i')) : null,
+                    (is_string($delivery->clicked_at) ? $delivery->clicked_at : $delivery->clicked_at->format('M j, Y H:i')) : null,
                 'status' => $this->getStatusBadge($delivery),
                 'status_text' => $this->getStatusText($delivery),
                 'has_opened' => ! is_null($delivery->opened_at),

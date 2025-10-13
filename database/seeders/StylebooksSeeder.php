@@ -67,17 +67,20 @@ class StylebooksSeeder extends Seeder
         ];
 
         // Create the storage directory if it doesn't exist
-        if (! Storage::disk('public')->exists('stylebooks')) {
+        if (! Storage::disk('public')->exists('stylebooks'))
+        {
             Storage::disk('public')->makeDirectory('stylebooks');
         }
 
         // Create a placeholder PDF file if it doesn't exist
         $placeholderPath = 'stylebooks/placeholder.pdf';
-        if (! Storage::disk('public')->exists($placeholderPath)) {
+        if (! Storage::disk('public')->exists($placeholderPath))
+        {
             Storage::disk('public')->put($placeholderPath, 'Placeholder file for seeding purposes');
         }
 
-        foreach ($stylebooks as $stylebook) {
+        foreach ($stylebooks as $stylebook)
+        {
             Stylebook::create($stylebook);
         }
     }

@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('notes', function (Blueprint $table) {
+        Schema::create('notes', function (Blueprint $table)
+        {
             $table->id();
             $table->unsignedBigInteger('user_id');
             $table->unsignedTinyInteger('module_id');

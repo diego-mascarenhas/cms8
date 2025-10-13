@@ -23,7 +23,8 @@ class FareUnitSeeder extends Seeder
         $rollUnit = Unit::where('type', 'Rollos')->first();
 
         // Check if units exist before proceeding
-        if (! $minuteUnit || ! $tenMinutesUnit || ! $hourUnit || ! $wordUnit || ! $pageUnit || ! $rollUnit) {
+        if (! $minuteUnit || ! $tenMinutesUnit || ! $hourUnit || ! $wordUnit || ! $pageUnit || ! $rollUnit)
+        {
             echo "Warning: Some units not found. Skipping FareUnitSeeder.\n";
 
             return;
@@ -75,11 +76,14 @@ class FareUnitSeeder extends Seeder
         ];
 
         // Create the relationships
-        foreach ($relationships as $relationship) {
+        foreach ($relationships as $relationship)
+        {
             $fare = Fare::where('name', $relationship['fare_name'])->first();
 
-            if ($fare) {
-                foreach ($relationship['unit_ids'] as $unitId) {
+            if ($fare)
+            {
+                foreach ($relationship['unit_ids'] as $unitId)
+                {
                     DB::table('fare_unit')->insert([
                         'fare_id' => $fare->id,
                         'unit_id' => $unitId,

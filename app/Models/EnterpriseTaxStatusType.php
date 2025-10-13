@@ -7,16 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class EnterpriseTaxStatusType extends Model
 {
-	use HasFactory;
+    use HasFactory;
 
-	protected $table = 'enterprise_tax_status_types';
+    protected $table = 'enterprise_tax_status_types';
 
-	public $timestamps = false;
+    public $timestamps = false;
 
-	protected $fillable = ['name'];
+    protected $fillable = ['name'];
 
-	public function enterpriseBillingAddresses()
-	{
-		return $this->hasMany(EnterpriseBillingAddress::class, 'fiscal_condition_type_id');
-	}
+    public function enterpriseBillingAddresses()
+    {
+        return $this->hasMany(EnterpriseBillingAddress::class, 'fiscal_condition_type_id');
+    }
 }

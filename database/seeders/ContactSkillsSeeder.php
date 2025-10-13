@@ -23,7 +23,8 @@ class ContactSkillsSeeder extends Seeder
         // Get only contacts from team_id 1
         $contacts = Contact::withoutGlobalScope('team')->where('team_id', 1)->get();
 
-        if ($contacts->isEmpty()) {
+        if ($contacts->isEmpty())
+        {
             $this->command->info('No contacts found for team_id 1. Please run ContactSeeder first.');
 
             return;
@@ -37,13 +38,15 @@ class ContactSkillsSeeder extends Seeder
         $valorations = ContactValoration::withoutGlobalScope('team')->where('team_id', 1)->get();
         $projects = \App\Models\Project::withoutGlobalScope('team')->where('team_id', 1)->get();
 
-        if ($languageVariants->isEmpty() || $software->isEmpty() || $topics->isEmpty()) {
+        if ($languageVariants->isEmpty() || $software->isEmpty() || $topics->isEmpty())
+        {
             $this->command->info('Please ensure LanguageVariants, Software, and Topics are seeded first.');
 
             return;
         }
 
-        if ($projects->isEmpty()) {
+        if ($projects->isEmpty())
+        {
             $this->command->info('Warning: No projects found for team_id 1. Projects will not be assigned.');
         }
 
@@ -141,7 +144,8 @@ class ContactSkillsSeeder extends Seeder
 
         $this->command->info('Assigning skills to '.$contacts->count().' contacts...');
 
-        foreach ($contacts as $contact) {
+        foreach ($contacts as $contact)
+        {
             // Assign a random profile type
             $profileType = $faker->randomElement(array_keys($profileTypes));
             $profile = $profileTypes[$profileType];
@@ -154,12 +158,14 @@ class ContactSkillsSeeder extends Seeder
             // Get available language variant codes from the database
             $availableLanguageCodes = $languageVariants->pluck('code')->toArray();
 
-            for ($i = 0; $i < $numLanguagePairs; $i++) {
+            for ($i = 0; $i < $numLanguagePairs; $i++)
+            {
                 $sourceLanguage = $faker->randomElement($availableLanguageCodes);
                 $targetLanguage = $faker->randomElement($availableLanguageCodes);
 
                 // Ensure source and target are different
-                while ($sourceLanguage === $targetLanguage) {
+                while ($sourceLanguage === $targetLanguage)
+                {
                     $targetLanguage = $faker->randomElement($availableLanguageCodes);
                 }
 
@@ -169,7 +175,8 @@ class ContactSkillsSeeder extends Seeder
                     ->where('target_language_code', $targetLanguage)
                     ->exists();
 
-                if (! $existingPair) {
+                if (! $existingPair)
+                {
                     $contact->languageVariants()->create([
                         'source_language_code' => $sourceLanguage,
                         'target_language_code' => $targetLanguage,
@@ -183,24 +190,30 @@ class ContactSkillsSeeder extends Seeder
             // Assign Software (all software is already filtered for team_id 1)
             $teamSoftware = $software;
 
-            $relevantSoftware = $teamSoftware->filter(function ($soft) use ($profile) {
-                return collect($profile['software'])->contains(function ($name) use ($soft) {
+            $relevantSoftware = $teamSoftware->filter(function ($soft) use ($profile)
+            {
+                return collect($profile['software'])->contains(function ($name) use ($soft)
+                {
                     return stripos($soft->name, $name) !== false || stripos($name, $soft->name) !== false;
                 });
             });
 
             // If no relevant software found, pick random ones
-            if ($relevantSoftware->isEmpty()) {
+            if ($relevantSoftware->isEmpty())
+            {
                 $relevantSoftware = $teamSoftware->random(min(3, $teamSoftware->count()));
-            } else {
+            } else
+            {
                 // Add some random software to the relevant ones
                 $additionalSoftware = $teamSoftware->diff($relevantSoftware)->random(min(2, max(0, $teamSoftware->count() - $relevantSoftware->count())));
                 $relevantSoftware = $relevantSoftware->merge($additionalSoftware);
             }
 
-            foreach ($relevantSoftware as $soft) {
+            foreach ($relevantSoftware as $soft)
+            {
                 // Check if relationship already exists
-                if (! $contact->softwares()->where('software_id', $soft->id)->exists()) {
+                if (! $contact->softwares()->where('software_id', $soft->id)->exists())
+                {
                     $contact->softwares()->attach($soft->id, [
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -211,16 +224,20 @@ class ContactSkillsSeeder extends Seeder
             // Assign Topics (all topics are already filtered for team_id 1)
             $teamTopics = $topics;
 
-            $relevantTopics = $teamTopics->filter(function ($topic) use ($profile) {
-                return collect($profile['topics'])->contains(function ($name) use ($topic) {
+            $relevantTopics = $teamTopics->filter(function ($topic) use ($profile)
+            {
+                return collect($profile['topics'])->contains(function ($name) use ($topic)
+                {
                     return stripos($topic->name, $name) !== false || stripos($name, $topic->name) !== false;
                 });
             });
 
             // If no relevant topics found, pick random ones
-            if ($relevantTopics->isEmpty()) {
+            if ($relevantTopics->isEmpty())
+            {
                 $relevantTopics = $teamTopics->random(min(4, $teamTopics->count()));
-            } else {
+            } else
+            {
                 // Add some random topics to the relevant ones
                 $additionalTopics = $teamTopics->diff($relevantTopics)->random(min(2, max(0, $teamTopics->count() - $relevantTopics->count())));
                 $relevantTopics = $relevantTopics->merge($additionalTopics);
@@ -229,9 +246,11 @@ class ContactSkillsSeeder extends Seeder
             // Limit to max 6 topics per contact
             $relevantTopics = $relevantTopics->take(6);
 
-            foreach ($relevantTopics as $topic) {
+            foreach ($relevantTopics as $topic)
+            {
                 // Check if relationship already exists
-                if (! $contact->topics()->where('topic_id', $topic->id)->exists()) {
+                if (! $contact->topics()->where('topic_id', $topic->id)->exists())
+                {
                     $contact->topics()->attach($topic->id, [
                         'created_at' => now(),
                         'updated_at' => now(),
@@ -240,19 +259,24 @@ class ContactSkillsSeeder extends Seeder
             }
 
             // Assign Services/Fares (all fares are already filtered for team_id 1)
-            if (! $fares->isEmpty()) {
+            if (! $fares->isEmpty())
+            {
                 $teamFares = $fares;
 
-                $relevantFares = $teamFares->filter(function ($fare) use ($profile) {
-                    return collect($profile['services'])->contains(function ($serviceName) use ($fare) {
+                $relevantFares = $teamFares->filter(function ($fare) use ($profile)
+                {
+                    return collect($profile['services'])->contains(function ($serviceName) use ($fare)
+                    {
                         return stripos($fare->name, $serviceName) !== false || stripos($serviceName, $fare->name) !== false;
                     });
                 });
 
                 // If no relevant fares found, pick random ones
-                if ($relevantFares->isEmpty()) {
+                if ($relevantFares->isEmpty())
+                {
                     $relevantFares = $teamFares->random(min(3, $teamFares->count()));
-                } else {
+                } else
+                {
                     // Add some random fares to the relevant ones
                     $additionalFares = $teamFares->diff($relevantFares)->random(min(2, max(0, $teamFares->count() - $relevantFares->count())));
                     $relevantFares = $relevantFares->merge($additionalFares);
@@ -264,9 +288,11 @@ class ContactSkillsSeeder extends Seeder
                 // Get all language combinations for this contact to assign rates
                 $languageCombinations = $contact->languageVariants;
 
-                foreach ($relevantFares as $fare) {
+                foreach ($relevantFares as $fare)
+                {
                     // Assign fare with realistic rates for each language combination
-                    foreach ($languageCombinations as $langCombo) {
+                    foreach ($languageCombinations as $langCombo)
+                    {
                         // Check if relationship already exists for this specific language combination
                         $existingFare = $contact->fares()
                             ->where('fare_id', $fare->id)
@@ -274,7 +300,8 @@ class ContactSkillsSeeder extends Seeder
                             ->wherePivot('target_language_code', $langCombo->target_language_code)
                             ->exists();
 
-                        if (! $existingFare) {
+                        if (! $existingFare)
+                        {
                             // Generate realistic prices based on profile type and valoration
                             $basePrice = $this->generateRealisticPrice($profileType, $fare->name, $contact->valoration_id);
 
@@ -286,9 +313,11 @@ class ContactSkillsSeeder extends Seeder
 
                             // Random currency based on profile (some specialists prefer certain currencies)
                             $currencies = ['EUR', 'USD', 'GBP'];
-                            if (in_array($profileType, ['medical_specialist', 'legal_specialist'])) {
+                            if (in_array($profileType, ['medical_specialist', 'legal_specialist']))
+                            {
                                 $currency = $faker->randomElement(['EUR', 'USD']); // Premium specialists prefer EUR/USD
-                            } else {
+                            } else
+                            {
                                 $currency = $faker->randomElement($currencies);
                             }
 
@@ -307,24 +336,29 @@ class ContactSkillsSeeder extends Seeder
             }
 
             // Assign Valoration based on profile weights
-            if (! $valorations->isEmpty() && ! $contact->valoration_id) {
+            if (! $valorations->isEmpty() && ! $contact->valoration_id)
+            {
                 $teamValorations = $valorations;
 
                 // Use weighted random selection based on profile
                 $weights = $profile['valoration_weights'];
                 $valorationIds = $teamValorations->pluck('id')->toArray();
 
-                if (! empty($valorationIds)) {
+                if (! empty($valorationIds))
+                {
                     // Create weighted array
                     $weightedArray = [];
-                    foreach ($valorationIds as $valorationId) {
+                    foreach ($valorationIds as $valorationId)
+                    {
                         $weight = $weights[$valorationId] ?? 10; // Default weight if not specified
-                        for ($i = 0; $i < $weight; $i++) {
+                        for ($i = 0; $i < $weight; $i++)
+                        {
                             $weightedArray[] = $valorationId;
                         }
                     }
 
-                    if (! empty($weightedArray)) {
+                    if (! empty($weightedArray))
+                    {
                         $selectedValorationId = $faker->randomElement($weightedArray);
                         $contact->update(['valoration_id' => $selectedValorationId]);
                     }
@@ -332,18 +366,22 @@ class ContactSkillsSeeder extends Seeder
             }
 
             // Assign Projects based on profile probability
-            if (isset($projects) && ! $projects->isEmpty()) {
+            if (isset($projects) && ! $projects->isEmpty())
+            {
                 $shouldAssignProjects = $faker->boolean($profile['project_probability']);
 
-                if ($shouldAssignProjects) {
+                if ($shouldAssignProjects)
+                {
                     $numProjects = $faker->numberBetween($profile['min_projects'], $profile['max_projects']);
 
                     // Get random projects from the available ones
                     $selectedProjects = $projects->random(min($numProjects, $projects->count()));
 
-                    foreach ($selectedProjects as $project) {
+                    foreach ($selectedProjects as $project)
+                    {
                         // Check if relationship already exists
-                        if (! $contact->projects()->where('project_id', $project->id)->exists()) {
+                        if (! $contact->projects()->where('project_id', $project->id)->exists())
+                        {
                             // Generate realistic status and timing
                             $statuses = ['sent', 'viewed', 'accepted', 'rejected'];
                             $status = $faker->randomElement($statuses);
@@ -352,12 +390,14 @@ class ContactSkillsSeeder extends Seeder
                             $viewedAt = null;
                             $respondedAt = null;
 
-                            if (in_array($status, ['viewed', 'accepted', 'rejected'])) {
+                            if (in_array($status, ['viewed', 'accepted', 'rejected']))
+                            {
                                 // Generate safe datetime avoiding DST transition hours
                                 $viewedAt = $this->generateSafeDatetime($sentAt, 'now');
                             }
 
-                            if (in_array($status, ['accepted', 'rejected'])) {
+                            if (in_array($status, ['accepted', 'rejected']))
+                            {
                                 $respondedAt = $this->generateSafeDatetime($viewedAt ?: $sentAt, 'now');
                             }
 
@@ -373,7 +413,8 @@ class ContactSkillsSeeder extends Seeder
 
                             // Generate response message if status requires it
                             $responseMessage = null;
-                            if ($status === 'accepted') {
+                            if ($status === 'accepted')
+                            {
                                 $responses = [
                                     'Perfecto, acepto el proyecto. Mi tarifa es de $XX por palabra.',
                                     'Excelente, puedo trabajar en este proyecto. ¿Cuándo necesitan la entrega?',
@@ -381,7 +422,8 @@ class ContactSkillsSeeder extends Seeder
                                     'Me parece bien, podemos proceder con el proyecto.',
                                 ];
                                 $responseMessage = $faker->randomElement($responses);
-                            } elseif ($status === 'rejected') {
+                            } elseif ($status === 'rejected')
+                            {
                                 $responses = [
                                     'Lamentablemente no tengo disponibilidad para este proyecto.',
                                     'No puedo aceptar este proyecto en este momento.',
@@ -421,8 +463,10 @@ class ContactSkillsSeeder extends Seeder
         $maxAttempts = 10;
         $attempts = 0;
 
-        while ($attempts < $maxAttempts) {
-            try {
+        while ($attempts < $maxAttempts)
+        {
+            try
+            {
                 $dateTime = $faker->dateTimeBetween($from, $to);
 
                 // Avoid problematic DST transition hours (2:00-3:00 AM on DST days)
@@ -431,17 +475,19 @@ class ContactSkillsSeeder extends Seeder
                 $day = (int) $dateTime->format('j');
 
                 // Skip 2 AM hour during likely DST transition dates (late March, late October)
-                if ($hour === 2 && (($month === 3 && $day >= 25) || ($month === 10 && $day >= 25))) {
+                if ($hour === 2 && (($month === 3 && $day >= 25) || ($month === 10 && $day >= 25)))
+                {
                     $attempts++;
 
                     continue;
                 }
 
                 return $dateTime;
-
-            } catch (\Exception $e) {
+            } catch (\Exception $e)
+            {
                 $attempts++;
-                if ($attempts >= $maxAttempts) {
+                if ($attempts >= $maxAttempts)
+                {
                     // Fallback: return a safe datetime by adjusting to 3 AM
                     $safeDateTime = $faker->dateTimeBetween($from, $to);
                     $safeDateTime->setTime(3, 0, 0); // Set to 3:00 AM to avoid DST issues
@@ -503,8 +549,10 @@ class ContactSkillsSeeder extends Seeder
 
         // Apply service multiplier
         $serviceMultiplier = 1.0;
-        foreach ($serviceMultipliers as $service => $multiplier) {
-            if (stripos($serviceName, $service) !== false) {
+        foreach ($serviceMultipliers as $service => $multiplier)
+        {
+            if (stripos($serviceName, $service) !== false)
+            {
                 $serviceMultiplier = $multiplier;
                 break;
             }

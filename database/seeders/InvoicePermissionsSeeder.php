@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -26,28 +25,32 @@ class InvoicePermissionsSeeder extends Seeder
             'invoice.destroy',
         ];
 
-        foreach ($invoicePermissions as $permission) {
+        foreach ($invoicePermissions as $permission)
+        {
             Permission::firstOrCreate(['name' => $permission]);
         }
 
         // Update admin role to include invoice permissions
         $adminRole = Role::where('name', 'admin')->first();
-        if ($adminRole) {
+        if ($adminRole)
+        {
             $adminRole->givePermissionTo($invoicePermissions);
         }
 
         // Update client role to include view permissions for invoices
         $clientRole = Role::where('name', 'client')->first();
-        if ($clientRole) {
+        if ($clientRole)
+        {
             $clientRole->givePermissionTo([
                 'invoice.index',
                 'invoice.list',
                 'invoice.show',
             ]);
         }
-        
+
         // Update client role to include view permissions for services and projects
-        if ($clientRole) {
+        if ($clientRole)
+        {
             $clientRole->givePermissionTo([
                 'service.index',
                 'service.list',

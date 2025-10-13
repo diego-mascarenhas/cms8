@@ -9,120 +9,122 @@ use Illuminate\Support\Facades\Log;
 
 class SendPendingNotifications extends Command
 {
-	/**
-	 * The name and signature of the console command.
-	 *
-	 * @var string
-	 */
-	protected $signature = 'notifications:send-pending {--limit=50 : Maximum number of notifications to send} {--dry-run : Only show what would be sent}';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'notifications:send-pending {--limit=50 : Maximum number of notifications to send} {--dry-run : Only show what would be sent}';
 
-	/**
-	 * The console command description.
-	 *
-	 * @var string
-	 */
-	protected $description = 'Send pending notifications that have not been sent yet';
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Send pending notifications that have not been sent yet';
 
-	/**
-	 * Execute the console command.
-	 */
-	public function handle()
-	{
-		$limit = $this->option('limit');
-		$dryRun = $this->option('dry-run');
+    /**
+     * Execute the console command.
+     */
+    public function handle()
+    {
+        $limit = $this->option('limit');
+        $dryRun = $this->option('dry-run');
 
-		$this->info('Starting to process pending notifications...');
+        $this->info('Starting to process pending notifications...');
 
-		// Get pending notifications only from teams with notifications enabled
-		$pendingNotifications = Notification::with(['contact', 'user', 'team'])
-			->unsent()
-			->whereHas('team', function ($query) {
-				$query->whereHas('settings', function ($settingsQuery) {
-					$settingsQuery->where('key', 'notifications_email_enabled')
-						->where('value', '1'); // true as string
-				});
-			})
-			->orderBy('created_at', 'asc')
-			->limit($limit)
-			->get();
+        // Get pending notifications only from teams with notifications enabled
+        $pendingNotifications = Notification::with(['contact', 'user', 'team'])
+            ->unsent()
+            ->whereHas('team', function ($query)
+            {
+                $query->whereHas('settings', function ($settingsQuery)
+                {
+                    $settingsQuery->where('key', 'notifications_email_enabled')
+                        ->where('value', '1'); // true as string
+                });
+            })
+            ->orderBy('created_at', 'asc')
+            ->limit($limit)
+            ->get();
 
-		if ($pendingNotifications->isEmpty())
-		{
-			$this->info('No pending notifications found.');
+        if ($pendingNotifications->isEmpty())
+        {
+            $this->info('No pending notifications found.');
 
-			return Command::SUCCESS;
-		}
+            return Command::SUCCESS;
+        }
 
-		$this->info("Found {$pendingNotifications->count()} pending notifications.");
+        $this->info("Found {$pendingNotifications->count()} pending notifications.");
 
-		if ($dryRun)
-		{
-			$this->info('DRY RUN MODE - No notifications will be sent');
-			$this->table(
-				['ID', 'Contact', 'Email', 'Subject', 'Created'],
-				$pendingNotifications->map(function ($notification)
-				{
-					return [
-						$notification->id,
-						$notification->contact->name,
-						$notification->contact->email,
-						\Str::limit($notification->subject, 50),
-						$notification->created_at->format('Y-m-d H:i:s'),
-					];
-				}),
-			);
+        if ($dryRun)
+        {
+            $this->info('DRY RUN MODE - No notifications will be sent');
+            $this->table(
+                ['ID', 'Contact', 'Email', 'Subject', 'Created'],
+                $pendingNotifications->map(function ($notification)
+                {
+                    return [
+                        $notification->id,
+                        $notification->contact->name,
+                        $notification->contact->email,
+                        \Str::limit($notification->subject, 50),
+                        $notification->created_at->format('Y-m-d H:i:s'),
+                    ];
+                }),
+            );
 
-			return Command::SUCCESS;
-		}
+            return Command::SUCCESS;
+        }
 
-		$sentCount = 0;
-		$errorCount = 0;
+        $sentCount = 0;
+        $errorCount = 0;
 
-		foreach ($pendingNotifications as $notification)
-		{
-			try
-			{
-				// Check if contact has email
-				if (empty($notification->contact->email))
-				{
-					$this->warn("Skipping notification ID {$notification->id} - Contact has no email");
+        foreach ($pendingNotifications as $notification)
+        {
+            try
+            {
+                // Check if contact has email
+                if (empty($notification->contact->email))
+                {
+                    $this->warn("Skipping notification ID {$notification->id} - Contact has no email");
 
-					continue;
-				}
+                    continue;
+                }
 
-				// Dispatch the job
-				SendNotificationJob::dispatch($notification);
-				$sentCount++;
+                // Dispatch the job
+                SendNotificationJob::dispatch($notification);
+                $sentCount++;
 
-				$this->info("Queued notification ID {$notification->id} for {$notification->contact->name}");
+                $this->info("Queued notification ID {$notification->id} for {$notification->contact->name}");
 
-				Log::info('Notification queued for sending', [
-					'notification_id' => $notification->id,
-					'contact_id' => $notification->contact->id,
-					'contact_email' => $notification->contact->email,
-					'subject' => $notification->subject,
-				]);
-			} catch (\Exception $e)
-			{
-				$errorCount++;
-				$this->error("Failed to queue notification ID {$notification->id}: {$e->getMessage()}");
+                Log::info('Notification queued for sending', [
+                    'notification_id' => $notification->id,
+                    'contact_id' => $notification->contact->id,
+                    'contact_email' => $notification->contact->email,
+                    'subject' => $notification->subject,
+                ]);
+            } catch (\Exception $e)
+            {
+                $errorCount++;
+                $this->error("Failed to queue notification ID {$notification->id}: {$e->getMessage()}");
 
-				Log::error('Failed to queue notification', [
-					'notification_id' => $notification->id,
-					'error' => $e->getMessage(),
-					'contact_id' => $notification->contact->id ?? null,
-				]);
-			}
-		}
+                Log::error('Failed to queue notification', [
+                    'notification_id' => $notification->id,
+                    'error' => $e->getMessage(),
+                    'contact_id' => $notification->contact->id ?? null,
+                ]);
+            }
+        }
 
-		$this->info('Command completed:');
-		$this->info("- Notifications queued: {$sentCount}");
+        $this->info('Command completed:');
+        $this->info("- Notifications queued: {$sentCount}");
 
-		if ($errorCount > 0)
-		{
-			$this->warn("- Errors encountered: {$errorCount}");
-		}
+        if ($errorCount > 0)
+        {
+            $this->warn("- Errors encountered: {$errorCount}");
+        }
 
-		return Command::SUCCESS;
-	}
+        return Command::SUCCESS;
+    }
 }

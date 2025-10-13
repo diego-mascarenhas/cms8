@@ -41,10 +41,12 @@ class ServiceFactory extends Factory
 
         return [
             'enterprise_id' => Enterprise::factory(),
-            'category_id' => function () {
+            'category_id' => function ()
+            {
                 // Get a service category for team_id 1
                 return Category::where('team_id', 1)
-                    ->where('module_id', function ($query) {
+                    ->where('module_id', function ($query)
+                    {
                         $query->select('id')
                             ->from('modules')
                             ->where('name', 'services')
@@ -54,7 +56,7 @@ class ServiceFactory extends Factory
                     ->first()?->id ?? 1;
             },
             'operation' => $this->faker->randomElement($operations),
-            'description' => $this->faker->randomElement($services) . ' - ' . $this->faker->text(100),
+            'description' => $this->faker->randomElement($services).' - '.$this->faker->text(100),
             'data' => [
                 'domain' => $this->faker->domainName(),
                 'server_url' => $this->faker->url(),
@@ -70,9 +72,11 @@ class ServiceFactory extends Factory
             'next_billing' => $this->faker->dateTimeBetween('now', '+1 year'),
             'last_billed' => $this->faker->dateTimeBetween('-6 months', 'now'),
             'expires_at' => $this->faker->dateTimeBetween('+6 months', '+2 years'),
-            'responsible_id' => function () {
+            'responsible_id' => function ()
+            {
                 // Get a user from team_id 1
-                return User::whereHas('teams', function ($query) {
+                return User::whereHas('teams', function ($query)
+                {
                     $query->where('team_id', 1);
                 })->inRandomOrder()->first()?->id ?? 1;
             },
@@ -85,9 +89,10 @@ class ServiceFactory extends Factory
      */
     public function forTeam1(): static
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes)
+        {
             return [
-                'enterprise_id' => Enterprise::where('team_id', 1)->inRandomOrder()->first()?->id 
+                'enterprise_id' => Enterprise::where('team_id', 1)->inRandomOrder()->first()?->id
                     ?? Enterprise::factory()->create(['team_id' => 1])->id,
             ];
         });
@@ -98,7 +103,8 @@ class ServiceFactory extends Factory
      */
     public function active(): static
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes)
+        {
             return [
                 'status' => 4, // Active status
                 'operation' => 'sell',
@@ -111,9 +117,10 @@ class ServiceFactory extends Factory
      */
     public function hosting(): static
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes)
+        {
             return [
-                'description' => 'Web Hosting Service - ' . $this->faker->domainName(),
+                'description' => 'Web Hosting Service - '.$this->faker->domainName(),
                 'data' => [
                     'domain' => $this->faker->domainName(),
                     'server_url' => 'https://hosting.example.com',

@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('servers', function (Blueprint $table) {
+        Schema::create('servers', function (Blueprint $table)
+        {
             $table->smallIncrements('id');
             $table->unsignedBigInteger('team_id')->nullable();
             $table->string('name');

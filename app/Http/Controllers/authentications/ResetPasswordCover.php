@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 
 class ResetPasswordCover extends Controller
 {
-	public function index()
-	{
-		$pageConfigs = ['myLayout' => 'blank'];
+    public function index()
+    {
+        $pageConfigs = ['myLayout' => 'blank'];
 
-		return view('content.authentications.auth-reset-password-cover', ['pageConfigs' => $pageConfigs]);
-	}
+        return view('content.authentications.auth-reset-password-cover', ['pageConfigs' => $pageConfigs]);
+    }
 }

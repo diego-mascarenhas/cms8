@@ -11,60 +11,60 @@ use TijsVerkoyen\CssToInlineStyles\CssToInlineStyles;
 
 class TestMessageMail extends Mailable
 {
-	use Queueable, SerializesModels;
+    use Queueable, SerializesModels;
 
-	public $message;
+    public $message;
 
-	public $testContact;
+    public $testContact;
 
-	public $htmlContent;
+    public $htmlContent;
 
-	/**
-	 * Create a new message instance.
-	 */
-	public function __construct(Message $message, stdClass $testContact, string $htmlContent)
-	{
-		$this->message = $message;
-		$this->testContact = $testContact;
-		$this->htmlContent = $htmlContent;
-	}
+    /**
+     * Create a new message instance.
+     */
+    public function __construct(Message $message, stdClass $testContact, string $htmlContent)
+    {
+        $this->message = $message;
+        $this->testContact = $testContact;
+        $this->htmlContent = $htmlContent;
+    }
 
-	/**
-	 * Build the message.
-	 */
-	public function build()
-	{
-		$team = auth()->user()->currentTeam;
-		$emailConfig = $team->getOutgoingEmailConfig();
+    /**
+     * Build the message.
+     */
+    public function build()
+    {
+        $team = auth()->user()->currentTeam;
+        $emailConfig = $team->getOutgoingEmailConfig();
 
-		// Add advertising footer if team is using system SMTP
-		$finalHtml = $this->htmlContent;
-		$advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
+        // Add advertising footer if team is using system SMTP
+        $finalHtml = $this->htmlContent;
+        $advertisingFooter = $team ? $team->getAdvertisingFooter() : '';
 
-		if ($advertisingFooter)
-		{
-			if (stripos($finalHtml, '</body>') !== false)
-			{
-				$finalHtml = str_ireplace('</body>', $advertisingFooter.'</body>', $finalHtml);
-			} else
-			{
-				$finalHtml .= $advertisingFooter;
-			}
-		}
+        if ($advertisingFooter)
+        {
+            if (stripos($finalHtml, '</body>') !== false)
+            {
+                $finalHtml = str_ireplace('</body>', $advertisingFooter.'</body>', $finalHtml);
+            } else
+            {
+                $finalHtml .= $advertisingFooter;
+            }
+        }
 
-		// Get CSS from template if available
-		$css = '';
-		if ($this->message->template && isset($this->message->template->gjs_data['css']))
-		{
-			$css = $this->message->template->gjs_data['css'];
-		}
+        // Get CSS from template if available
+        $css = '';
+        if ($this->message->template && isset($this->message->template->gjs_data['css']))
+        {
+            $css = $this->message->template->gjs_data['css'];
+        }
 
-		// Inline CSS styles
-		$cssInliner = new CssToInlineStyles;
-		$inlinedHtml = $cssInliner->convert($finalHtml, $css);
+        // Inline CSS styles
+        $cssInliner = new CssToInlineStyles;
+        $inlinedHtml = $cssInliner->convert($finalHtml, $css);
 
-		return $this->from($emailConfig['from_address'], $emailConfig['from_name'])
-			->subject('[TEST] '.$this->message->name)
-			->html($inlinedHtml);
-	}
+        return $this->from($emailConfig['from_address'], $emailConfig['from_name'])
+            ->subject('[TEST] '.$this->message->name)
+            ->html($inlinedHtml);
+    }
 }

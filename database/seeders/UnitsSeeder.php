@@ -22,7 +22,8 @@ class UnitsSeeder extends Seeder
             ['type' => 'Total'],
         ];
 
-        foreach ($units as $unit) {
+        foreach ($units as $unit)
+        {
             Unit::create($unit);
         }
     }

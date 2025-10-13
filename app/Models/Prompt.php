@@ -7,12 +7,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Prompt extends Model
 {
-	use SoftDeletes;
+    use SoftDeletes;
 
-	protected $fillable = ['name', 'type_id', 'content', 'status'];
+    protected $fillable = ['name', 'type_id', 'content', 'status'];
 
-	public function type()
-	{
-		return $this->belongsTo(PromptType::class, 'type_id');
-	}
+    public function type()
+    {
+        return $this->belongsTo(PromptType::class, 'type_id');
+    }
 }

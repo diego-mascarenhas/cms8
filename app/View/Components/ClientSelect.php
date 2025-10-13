@@ -7,36 +7,36 @@ use Illuminate\View\Component;
 
 class ClientSelect extends Component
 {
-	public $options;
+    public $options;
 
-	public $selected;
+    public $selected;
 
-	public $label;
+    public $label;
 
-	public $id;
+    public $id;
 
-	public $allowNull;
+    public $allowNull;
 
-	public function __construct($selected = null, $label = 'Cliente', $id = 'enterprise_id', $allowNull = true)
-	{
-		$this->selected = $selected;
-		$this->label = $label;
-		$this->id = $id;
-		$this->allowNull = $allowNull;
-		$this->options = $this->getClients();
-	}
+    public function __construct($selected = null, $label = 'Cliente', $id = 'enterprise_id', $allowNull = true)
+    {
+        $this->selected = $selected;
+        $this->label = $label;
+        $this->id = $id;
+        $this->allowNull = $allowNull;
+        $this->options = $this->getClients();
+    }
 
-	private function getClients()
-	{
-		// Only get clients (type_id = 1)
-		return Enterprise::where('type_id', 1)
-			->where('team_id', auth()->user()->currentTeam->id)
-			->orderBy('name')
-			->pluck('name', 'id');
-	}
+    private function getClients()
+    {
+        // Only get clients (type_id = 1)
+        return Enterprise::where('type_id', 1)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->orderBy('name')
+            ->pluck('name', 'id');
+    }
 
-	public function render()
-	{
-		return view('components.client-select');
-	}
+    public function render()
+    {
+        return view('components.client-select');
+    }
 }

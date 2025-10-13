@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('enterprise_organizations', function (Blueprint $table) {
+        Schema::create('enterprise_organizations', function (Blueprint $table)
+        {
             $table->id();
             $table->foreignId('team_id')->constrained('teams')->onDelete('cascade');
             $table->unsignedTinyInteger('department_id');

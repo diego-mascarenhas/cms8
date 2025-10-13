@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('category_user', function (Blueprint $table) {
+        Schema::create('category_user', function (Blueprint $table)
+        {
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('category_id');
 

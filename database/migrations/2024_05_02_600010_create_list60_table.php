@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('list60', function (Blueprint $table) {
+        Schema::create('list60', function (Blueprint $table)
+        {
             $table->id();
             $table->unsignedBigInteger('contact_id');
             $table->unsignedTinyInteger('type_id')->default(1);

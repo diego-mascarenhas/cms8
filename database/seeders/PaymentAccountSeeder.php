@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class PaymentAccountSeeder extends Seeder
@@ -15,8 +14,10 @@ class PaymentAccountSeeder extends Seeder
         // Get existing teams
         $teams = \App\Models\Team::all();
 
-        if ($teams->isEmpty()) {
+        if ($teams->isEmpty())
+        {
             $this->command->warn('No teams found. Please run team seeders first.');
+
             return;
         }
 
@@ -52,18 +53,20 @@ class PaymentAccountSeeder extends Seeder
         ];
 
         // Create payment accounts for each team
-        foreach ($teams as $team) {
+        foreach ($teams as $team)
+        {
             $this->command->info("Creating payment accounts for team: {$team->name}");
 
-            foreach ($paymentAccountsTemplate as $accountData) {
+            foreach ($paymentAccountsTemplate as $accountData)
+            {
                 $account = array_merge($accountData, ['team_id' => $team->id]);
 
                 \App\Models\PaymentAccount::firstOrCreate(
                     [
                         'team_id' => $team->id,
-                        'code' => $account['code']
+                        'code' => $account['code'],
                     ],
-                    $account
+                    $account,
                 );
             }
         }

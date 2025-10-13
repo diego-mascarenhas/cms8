@@ -20,7 +20,8 @@ class ContactSentimentSeeder extends Seeder
             ['id' => 5, 'name' => 'Muy Positivo'],
         ];
 
-        foreach ($sentiments as $sentiment) {
+        foreach ($sentiments as $sentiment)
+        {
             ContactSentiment::create($sentiment);
         }
     }

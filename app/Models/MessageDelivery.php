@@ -200,8 +200,8 @@ class MessageDelivery extends Model
     public function getHtmlForContact()
     {
         $templateHtml = $this->message && $this->message->template && isset($this->message->template->gjs_data['html'])
-        	? $this->message->template->gjs_data['html']
-        	: '';
+            ? $this->message->template->gjs_data['html']
+            : '';
         $contactName = $this->contact ? $this->contact->name : '';
 
         // Replace all template variables
@@ -244,7 +244,7 @@ class MessageDelivery extends Model
     {
         // Enable click tracking for SMTP emails (not for providers that handle it themselves)
         return in_array($this->email_provider, ['smtp', null]) ||
-        	   config('services.email.provider', 'smtp') === 'smtp';
+               config('services.email.provider', 'smtp') === 'smtp';
     }
 
     /**
@@ -253,8 +253,8 @@ class MessageDelivery extends Model
     public function getTextForWhatsApp(): string
     {
         $messageText = $this->message && $this->message->text
-        	? $this->message->text
-        	: 'Mensaje de prueba';
+            ? $this->message->text
+            : 'Mensaje de prueba';
 
         $contactName = $this->contact ? $this->contact->name : '';
 

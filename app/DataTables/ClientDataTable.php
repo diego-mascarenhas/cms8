@@ -11,75 +11,75 @@ use Yajra\DataTables\Services\DataTable;
 
 class ClientDataTable extends DataTable
 {
-	/**
-	 * Build the DataTable class.
-	 *
-	 * @param  QueryBuilder  $query  Results from query() method.
-	 */
-	public function dataTable(QueryBuilder $query): EloquentDataTable
-	{
-		return (new EloquentDataTable($query))
-			->addColumn('action', 'client.action')
-			->setRowId('id')
-			->editColumn('name', function ($row)
-			{
-				return '<div class="d-flex flex-column">
+    /**
+     * Build the DataTable class.
+     *
+     * @param  QueryBuilder  $query  Results from query() method.
+     */
+    public function dataTable(QueryBuilder $query): EloquentDataTable
+    {
+        return (new EloquentDataTable($query))
+            ->addColumn('action', 'client.action')
+            ->setRowId('id')
+            ->editColumn('name', function ($row)
+            {
+                return '<div class="d-flex flex-column">
 							<span class="fw-medium text-body text-truncate">'.e($row->name).'</span>
 							<small class="text-muted">'.e($row->responsible->name ?? 'Sin asignar').'</small>
 						</div>';
-			})
-			->addColumn('sources', function ($row)
-			{
-				return $row->sources_icons_html;
-			})
-			->addColumn('responsible_name', function ($contact)
-			{
-				if ($contact->responsible)
-				{
-					return e($contact->responsible->name);
-				}
+            })
+            ->addColumn('sources', function ($row)
+            {
+                return $row->sources_icons_html;
+            })
+            ->addColumn('responsible_name', function ($contact)
+            {
+                if ($contact->responsible)
+                {
+                    return e($contact->responsible->name);
+                }
 
-				return '<span class="text-muted">-</span>';
-			})
-			->filterColumn('responsible_name', function ($query, $keyword)
-			{
-				$query->whereHas('responsible', function ($q) use ($keyword)
-				{
-					$q->where('name', 'like', "%{$keyword}%");
-				});
-			})
-			->editColumn('status_id', function ($row)
-			{
-				return $row->status_label;
-			})
-			->rawColumns(['name', 'action', 'sources', 'responsible_name', 'status_id', 'website', 'phone']);
-	}
+                return '<span class="text-muted">-</span>';
+            })
+            ->filterColumn('responsible_name', function ($query, $keyword)
+            {
+                $query->whereHas('responsible', function ($q) use ($keyword)
+                {
+                    $q->where('name', 'like', "%{$keyword}%");
+                });
+            })
+            ->editColumn('status_id', function ($row)
+            {
+                return $row->status_label;
+            })
+            ->rawColumns(['name', 'action', 'sources', 'responsible_name', 'status_id', 'website', 'phone']);
+    }
 
-	public function query(Enterprise $model): QueryBuilder
-	{
-		return $model->newQuery()
-			->activeClients()
-			->with([
-				'responsible:id,name',
-				'status',
-			]);
-	}
+    public function query(Enterprise $model): QueryBuilder
+    {
+        return $model->newQuery()
+            ->activeClients()
+            ->with([
+                'responsible:id,name',
+                'status',
+            ]);
+    }
 
-	public function html(): HtmlBuilder
-	{
-		return $this->builder()
-			->setTableId('client-table')
-			->columns($this->getColumns())
-			->minifiedAjax()
-			->dom('frtip')
-			->orderBy(1, 'asc')
-			->responsive(true)
-			->processing(true)
-			->serverSide(true)
-			->pageLength(25)
-			->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
-			->parameters([
-				'initComplete' => "function() {
+    public function html(): HtmlBuilder
+    {
+        return $this->builder()
+            ->setTableId('client-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(1, 'asc')
+            ->responsive(true)
+            ->processing(true)
+            ->serverSide(true)
+            ->pageLength(25)
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
+            ->parameters([
+                'initComplete' => "function() {
 					var api = this.api();
 					api.columns('.select-filter').every(function() {
 						var column = this;
@@ -95,61 +95,61 @@ class ClientDataTable extends DataTable
 						});
 					});
 				}",
-				'drawCallback' => "function() {
+                'drawCallback' => "function() {
 					$('#EmotionalState').off('change').on('change', function() {
 						$('#client-table').DataTable().columns('.select-filter').search($(this).val()).draw();
 					});
 				}",
-			]);
-	}
+            ]);
+    }
 
-	public function getColumns(): array
-	{
-		return [
-			Column::make('id')->hidden(),
-			Column::make('name')
-				->title(__('Client'))
-				->addClass('all'),
-			Column::make('sources')
-				->title(__('Networks'))
-				->className('text-center')
-				->addClass('min-desktop')
-				->searchable(false)
-				->orderable(false)
-				->width(150),
-			Column::make('responsible_name')
-				->title(__('Responsable'))
-				->className('text-center')
-				->addClass('min-tablet')
-				->searchable(false)
-				->orderable(false),
-			Column::make('status_id')
-				->title(__('Status'))
-				->className('text-center')
-				->addClass('min-tablet'),
-			Column::computed('action')
-				->title(__('Actions'))
-				->width(20)
-				->className('text-center')
-				->addClass('min-desktop')
-				->exportable(false)
-				->printable(false)
-				->width(30),
-		];
-	}
+    public function getColumns(): array
+    {
+        return [
+            Column::make('id')->hidden(),
+            Column::make('name')
+                ->title(__('Client'))
+                ->addClass('all'),
+            Column::make('sources')
+                ->title(__('Networks'))
+                ->className('text-center')
+                ->addClass('min-desktop')
+                ->searchable(false)
+                ->orderable(false)
+                ->width(150),
+            Column::make('responsible_name')
+                ->title(__('Responsable'))
+                ->className('text-center')
+                ->addClass('min-tablet')
+                ->searchable(false)
+                ->orderable(false),
+            Column::make('status_id')
+                ->title(__('Status'))
+                ->className('text-center')
+                ->addClass('min-tablet'),
+            Column::computed('action')
+                ->title(__('Actions'))
+                ->width(20)
+                ->className('text-center')
+                ->addClass('min-desktop')
+                ->exportable(false)
+                ->printable(false)
+                ->width(30),
+        ];
+    }
 
-	protected function filename(): string
-	{
-		return 'Client_'.date('YmdHis');
-	}
+    protected function filename(): string
+    {
+        return 'Client_'.date('YmdHis');
+    }
 
-	private function ensureProtocol($url)
-	{
-		if (! preg_match('~^(?:f|ht)tps?://~i', $url))
-		{
-			$url = 'https://'.$url;
-		}
+    private function ensureProtocol($url)
+    {
+        if (! preg_match('~^(?:f|ht)tps?://~i', $url))
+        {
+            $url = 'https://'.$url;
+        }
 
-		return $url;
-	}
+        return $url;
+    }
 }
