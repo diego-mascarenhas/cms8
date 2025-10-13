@@ -116,7 +116,49 @@ class Task extends Model implements HasMedia
 	 */
 	public function registerMediaCollections(): void
 	{
-		$this->addMediaCollection('attachments');
+		$this
+			->addMediaCollection('attachments')
+			->useDisk('public')
+			->acceptsMimeTypes([
+				// Images
+				'image/jpeg',
+				'image/jpg',
+				'image/png',
+				'image/gif',
+				'image/webp',
+				'image/svg+xml',
+				'image/bmp',
+				'image/tiff',
+				// Videos
+				'video/mp4',
+				'video/avi',
+				'video/mov',
+				'video/wmv',
+				'video/flv',
+				'video/webm',
+				'video/mkv',
+				// Audio
+				'audio/mpeg',
+				'audio/mp3',
+				'audio/wav',
+				'audio/ogg',
+				'audio/aac',
+				'audio/flac',
+				// Documents
+				'application/pdf',
+				'application/msword',
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				'text/plain',
+				'application/vnd.ms-excel',
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				'application/vnd.ms-powerpoint',
+				'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+				// Archives
+				'application/zip',
+				'application/x-rar-compressed',
+				'application/x-7z-compressed',
+				'application/x-tar',
+			]);
 	}
 
 	/**

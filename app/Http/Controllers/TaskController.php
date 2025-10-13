@@ -547,4 +547,38 @@ class TaskController extends Controller
 			->route('task.communication.respond', $token)
 			->with('success', 'Tu respuesta ha sido enviada correctamente.');
 	}
+
+	public function getTotalTime($taskId)
+	{
+		$task = Task::findOrFail($taskId);
+
+		// Get all time entries for this task
+		$times = \App\Models\Time::where('task_id', $task->id)->get();
+
+		$totalSeconds = 0;
+
+		foreach ($times as $time) {
+			if ($time->duration_seconds) {
+				// Time entry already has duration calculated
+				$totalSeconds += $time->duration_seconds;
+			} elseif ($time->start_time && $time->end_time) {
+				// Calculate duration if not stored
+				$totalSeconds += $time->end_time->diffInSeconds($time->start_time);
+			} elseif ($time->start_time && !$time->end_time) {
+				// Timer is still running, calculate current elapsed time
+				$totalSeconds += now()->diffInSeconds($time->start_time);
+			}
+		}
+
+		// Format as hours and minutes
+		$hours = floor($totalSeconds / 3600);
+		$minutes = floor(($totalSeconds % 3600) / 60);
+
+		return response()->json([
+			'total_seconds' => $totalSeconds,
+			'hours' => $hours,
+			'minutes' => $minutes,
+			'formatted' => $hours > 0 ? "{$hours}h {$minutes}min" : ($minutes > 0 ? "{$minutes}min" : '0min'),
+		]);
+	}
 }

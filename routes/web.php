@@ -368,6 +368,7 @@ Route::middleware(['auth'])->group(function () {
 	Route::get('/task/{id}/activities', [TaskController::class, 'getActivities'])->name('task.activities');
 	Route::post('/task/send-communication', [TaskController::class, 'sendCommunication'])->name('task.send-communication');
 	Route::get('/task/{id}/communications', [TaskController::class, 'getCommunications'])->name('task.communications');
+	Route::get('/task/{id}/total-time', [TaskController::class, 'getTotalTime'])->name('task.total-time');
 
 	// Public routes for client responses (no auth required)
 	Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])

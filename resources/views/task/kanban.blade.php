@@ -188,13 +188,16 @@
                 <!-- Update item/tasks -->
                 <div class="tab-pane fade show active" id="tab-update" role="tabpanel">
                     <form>
-                        <div class="d-flex gap-2 mb-3">
+                        <div class="d-flex gap-2 mb-3 align-items-center">
                             <button type="button" class="btn btn-success" id="task-start-timer">
                                 <i class="ti ti-player-play me-1"></i>{{ __('Start Timer') }}
                             </button>
                             <button type="button" class="btn btn-danger d-none" id="task-stop-timer">
                                 <i class="ti ti-player-stop me-1"></i>{{ __('Stop Timer') }}
                             </button>
+                            <span id="elapsed-time-display" class="text-muted" style="font-size: 0.875rem;">
+                                <i class="ti ti-clock me-1"></i><span id="elapsed-time-value">0h 0min</span>
+                            </span>
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="title">{{ __('Título') }}</label>

@@ -1418,23 +1418,39 @@
 					const fieldName = fieldTranslations[field] || field;
 					let displayValue = attrs[field];
 
-					// Use resolved names instead of IDs
-					if (field === 'status_id' && attrs['status_name'])
-					{
-						displayValue = attrs['status_name'];
+				// Use resolved names instead of IDs
+				if (field === 'status_id' && attrs['status_name'])
+				{
+					displayValue = attrs['status_name'];
+				}
+				else if (field === 'category_id' && attrs['category_name'])
+				{
+					displayValue = attrs['category_name'];
+				}
+				else if (field === 'responsible_id' && attrs['responsible_name'])
+				{
+					displayValue = attrs['responsible_name'];
+				}
+				else if (field === 'board_id' && attrs['board_name'])
+				{
+					displayValue = attrs['board_name'];
+				}
+				else if (field === 'estimated_hours' && displayValue !== null)
+				{
+					// Format hours: 3.25 -> "3h 15min"
+					const hours = Math.floor(displayValue);
+					const minutes = Math.round((displayValue - hours) * 60);
+
+					if (hours === 0 && minutes === 0) {
+						displayValue = '0 min';
+					} else if (hours === 0) {
+						displayValue = `${minutes} min`;
+					} else if (minutes === 0) {
+						displayValue = `${hours}h`;
+					} else {
+						displayValue = `${hours}h ${minutes}min`;
 					}
-					else if (field === 'category_id' && attrs['category_name'])
-					{
-						displayValue = attrs['category_name'];
-					}
-					else if (field === 'responsible_id' && attrs['responsible_name'])
-					{
-						displayValue = attrs['responsible_name'];
-					}
-					else if (field === 'board_id' && attrs['board_name'])
-					{
-						displayValue = attrs['board_name'];
-					}
+				}
 
 					// Only show changes for the actual fields, not the resolved _name fields
 					if (!field.endsWith('_name'))
@@ -1701,6 +1717,29 @@
 		if (clientNameEl)
 		{
 			clientNameEl.textContent = clientName;
+		}
+
+		// Load total time worked
+		if (taskId)
+		{
+			fetch(`/task/${taskId}/total-time`, {
+				method: 'GET',
+				headers: {
+					'Accept': 'application/json',
+					'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+				}
+			})
+			.then(response => response.json())
+			.then(data => {
+				const elapsedTimeValue = document.getElementById('elapsed-time-value');
+				if (elapsedTimeValue)
+				{
+					elapsedTimeValue.textContent = data.formatted || '0min';
+				}
+			})
+			.catch(error => {
+				console.error('Error loading total time:', error);
+			});
 		}
 
 		// Load communication history with a small delay to ensure DOM is ready
