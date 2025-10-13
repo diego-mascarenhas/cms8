@@ -429,7 +429,7 @@
 		const stopBtnRef = sidebarEl.querySelector('#task-stop-timer');
 		if (startBtnRef) startBtnRef.setAttribute('data-task-id', taskId);
 		if (stopBtnRef) stopBtnRef.setAttribute('data-task-id', taskId);
-		
+
 		// Also propagate to the Communication button
 		const sendCommunicationBtn = sidebarEl.querySelector('#send-communication');
 		if (sendCommunicationBtn) sendCommunicationBtn.setAttribute('data-task-id', taskId);
@@ -1390,7 +1390,7 @@
 			const sendBtn = document.getElementById('send-communication');
 			const btnTaskId = sendBtn?.getAttribute('data-task-id');
 			const taskId = btnTaskId ? parseInt(btnTaskId) : (sidebarEl ? parseInt(sidebarEl.getAttribute('data-current-task-id')) : null);
-			
+
 			const clientChecked = document.getElementById('recipient-client').checked;
 			const subject = document.getElementById('communication-subject').value;
 			const message = document.getElementById('communication-message').value;

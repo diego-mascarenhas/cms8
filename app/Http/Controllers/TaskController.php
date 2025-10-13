@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskBoard;
+use App\Models\TaskCommunication;
 use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -375,7 +376,7 @@ class TaskController extends Controller
 				'message' => 'required|string',
 			]);
 
-			$task = Task::with(['responsible', 'project.enterprise'])->findOrFail($request->task_id);
+			$task = Task::findOrFail($request->task_id);
 
 			// Generate unique token if client is in recipients
 			$responseToken = null;
@@ -384,10 +385,10 @@ class TaskController extends Controller
 			}
 
 			// Store communication record
-			$communication = \App\Models\TaskCommunication::create([
+			$communication = TaskCommunication::create([
 				'task_id' => $task->id,
 				'user_id' => auth()->id(),
-				'recipients' => json_encode($request->recipients),
+				'recipients' => $request->recipients,
 				'method' => in_array('client', $request->recipients) ? 'email' : 'internal',
 				'subject' => $request->subject,
 				'message' => $request->message,
@@ -395,68 +396,31 @@ class TaskController extends Controller
 				'sent_at' => now(),
 			]);
 
-			// Send emails if needed
-			$sent = true;
-			$errorMessage = '';
-			$messages = [];
+			// Dispatch job to send emails in the background
+			\App\Jobs\SendTaskCommunication::dispatch($communication)->onQueue('task-communications');
 
-			// Internal note for responsible
+			// Build success message
+			$messages = [];
 			if (in_array('responsible', $request->recipients)) {
 				$messages[] = 'Nota interna guardada';
 			}
-
-			// Email to client
 			if (in_array('client', $request->recipients)) {
-				if ($task->project && $task->project->enterprise && $task->project->enterprise->email) {
-					try {
-						$responseUrl = route('task.communication.respond', ['token' => $responseToken]);
-
-						\Mail::send('emails.task-communication', [
-							'task' => $task,
-							'message' => $request->message,
-							'responseUrl' => $responseUrl,
-							'enterprise' => $task->project->enterprise,
-						], function ($mail) use ($task, $request) {
-							$mail
-								->to($task->project->enterprise->email)
-								->subject($request->subject . ' - Tarea: ' . $task->title);
-						});
-
-						$messages[] = 'Email enviado al cliente';
-					} catch (\Exception $mailError) {
-						\Log::error('Error sending email to client', [
-							'error' => $mailError->getMessage(),
-							'task_id' => $task->id,
-						]);
-						$errorMessage = 'No se pudo enviar el email al cliente';
-						$sent = false;
-					}
-				} else {
-					$errorMessage = 'El cliente no tiene un email configurado';
-					$sent = false;
-				}
+				$messages[] = 'Email en cola de envío';
 			}
 
-			if ($sent) {
-				return response()->json([
-					'success' => true,
-					'message' => implode(' y ', $messages) . ' correctamente',
-				]);
-			} else {
-				return response()->json([
-					'success' => false,
-					'message' => $errorMessage ?: 'No se pudo enviar la comunicación',
-				], 500);
-			}
+			return response()->json([
+				'success' => true,
+				'message' => implode(' y ', $messages),
+			]);
 		} catch (\Exception $e) {
-			\Log::error('Error sending task communication', [
+			\Log::error('Error creating task communication', [
 				'error' => $e->getMessage(),
 				'trace' => $e->getTraceAsString(),
 			]);
 
 			return response()->json([
 				'success' => false,
-				'message' => 'Error al enviar la comunicación: ' . $e->getMessage(),
+				'message' => 'Error al crear la comunicación: ' . $e->getMessage(),
 			], 500);
 		}
 	}
