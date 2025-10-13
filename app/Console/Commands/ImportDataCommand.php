@@ -29,8 +29,8 @@ class ImportDataCommand extends Command
 			$this->info('✓ Local database connection successful: ' . DB::connection()->getDatabaseName());
 
 			// Test remote database connection
-			DB::connection('mysql_tmp')->getPdo();
-			$this->info('✓ Remote database connection successful: ' . DB::connection('mysql_tmp')->getDatabaseName());
+			DB::connection('mysql_legacy')->getPdo();
+			$this->info('✓ Remote database connection successful: ' . DB::connection('mysql_legacy')->getDatabaseName());
 
 			return true;
 		} catch (Exception $e) {
@@ -39,7 +39,7 @@ class ImportDataCommand extends Command
 
 			// Show connection details (without sensitive data)
 			$this->warn('Remote Database Configuration:');
-			$config = config('database.connections.mysql_tmp');
+			$config = config('database.connections.mysql_legacy');
 			$this->table(
 				['Setting', 'Value'],
 				[
@@ -145,7 +145,7 @@ class ImportDataCommand extends Command
 	protected function getData($type, $id = null)
 	{
 		$query = match ($type) {
-			'1. Users' => DB::connection('mysql_tmp')
+			'1. Users' => DB::connection('mysql_legacy')
 				->table('contactos')
 				->whereNotNull('email')
 				->where('grupo', env('CMS_GROUP', 502))
@@ -157,27 +157,27 @@ class ImportDataCommand extends Command
 				->whereRaw("TRIM(nombre) != ''")
 				->select('id', 'email', 'nombre', 'apellido', 'estado', 'id_empresa', 'area_privada', 'telefono', 'celular', 'fecha_alta', 'fecha_modificacion'),
 
-			'2. Categories' => DB::connection('mysql_tmp')
+			'2. Categories' => DB::connection('mysql_legacy')
 				->table('categorias_generales')
 				->where('grupo', env('CMS_GROUP', 502))
 				->where('padre', 10)
 				->select('id', 'categoria', 'padre', 'estado'),
 
-			'3. Service Types' => DB::connection('mysql_tmp')
+			'3. Service Types' => DB::connection('mysql_legacy')
 				->table('categorias_generales_tipo')
 				->select('id', 'tipo', 'descripcion', 'caracteristicas', 'id_moneda', 'valor', 'descuento', 'frecuencia', 'template_alta_de_servicio', 'orden', 'estado'),
 
-			'4. Payment Accounts' => DB::connection('mysql_tmp')
+			'4. Payment Accounts' => DB::connection('mysql_legacy')
 				->table('cuentas')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'nombre_cuenta', 'id_empresa', 'id_moneda', 'estado'),
 
-			'5. Enterprises' => DB::connection('mysql_tmp')
+			'5. Enterprises' => DB::connection('mysql_legacy')
 				->table('empresas')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'empresa', 'id_categoria', 'telefono', 'email', 'estado', 'fecha_modificacion'),
 
-			'6. Services' => DB::connection('mysql_tmp')
+			'6. Services' => DB::connection('mysql_legacy')
 				->table('servicios')
 				->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
 				->where('servicios.grupo', env('CMS_GROUP', 502))
@@ -185,12 +185,12 @@ class ImportDataCommand extends Command
 				->where('servicios.operacion', 'V')
 				->select('servicios.*', 'servicios_hosting.*'),
 
-			'7. Projects' => DB::connection('mysql_tmp')
+			'7. Projects' => DB::connection('mysql_legacy')
 				->table('proyectos')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'nombre', 'id_empresa', 'estado'),
 
-			'8. Invoices' => DB::connection('mysql_tmp')
+			'8. Invoices' => DB::connection('mysql_legacy')
 				->table('facturas')
 				->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
 				->where('facturas.grupo', env('CMS_GROUP', 502))
@@ -221,32 +221,32 @@ class ImportDataCommand extends Command
 					'facturas.EXENTO',
 				),
 
-			'9. Billing Addresses' => DB::connection('mysql_tmp')
+			'9. Billing Addresses' => DB::connection('mysql_legacy')
 				->table('empresas_fiscales')
 				->where('grupo', env('CMS_GROUP', 502))
 				->where('estado', 1)
 				->select('id', 'id_empresa', 'razon_social', 'cuit', 'ingresos_brutos', 'id_condicion_iva', 'domicilio', 'codigo_postal', 'localidad', 'provincia', 'pais', 'estado', 'fecha_alta', 'fecha_modificacion'),
 
-			'10. Invoice Items' => DB::connection('mysql_tmp')
+			'10. Invoice Items' => DB::connection('mysql_legacy')
 				->table('facturas_items')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'id_factura', 'id_categoria', 'descripcion', 'valor', 'descuento', 'fecha_alta', 'fecha_modificacion'),
 
-			'11. Payments' => DB::connection('mysql_tmp')
+			'11. Payments' => DB::connection('mysql_legacy')
 				->table('pagos')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'id_empresa', 'id_forma_pago', 'estado'),
 
-			'12. Notification Types' => DB::connection('mysql_tmp')
+			'12. Notification Types' => DB::connection('mysql_legacy')
 				->table('comunicaciones_tipo')
 				->select('id', 'tipo', 'estado'),
 
-			'13. Communications' => DB::connection('mysql_tmp')
+			'13. Communications' => DB::connection('mysql_legacy')
 				->table('comunicaciones')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'id_contacto', 'id_tipo', 'asunto', 'estado'),
 
-			'14. Products (CMS7)' => DB::connection('mysql_tmp')
+			'14. Products (CMS7)' => DB::connection('mysql_legacy')
 				->table('categorias_generales')
 				->where('grupo', env('CMS_GROUP', 502))
 				->whereNull('padre')
@@ -424,7 +424,7 @@ class ImportDataCommand extends Command
 		];
 
 		try {
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('contactos')
 				->whereNotNull('email')
 				->where('grupo', env('CMS_GROUP', 502))
@@ -687,7 +687,7 @@ class ImportDataCommand extends Command
 				5 => 840,  // Dolar MEP → USD
 			];
 
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('cuentas')
 				->where('grupo', env('CMS_GROUP', 502))
 				->where('estado', '>', 0);
@@ -779,7 +779,7 @@ class ImportDataCommand extends Command
 		];
 
 		try {
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('empresas')
 				->where('grupo', env('CMS_GROUP', 502));
 
@@ -821,7 +821,7 @@ class ImportDataCommand extends Command
 				//		 $this->info("Found contact with ID {$contactId} for enterprise {$data->id}");
 				//	 } else {
 				//		 // Si no existe, lo importamos desde la base de datos original
-				//		 $contactData = DB::connection('mysql_tmp')
+				//		 $contactData = DB::connection('mysql_legacy')
 				//			 ->table('contactos')
 				//			 ->where('id', $data->id_contacto)
 				//			 ->first();
@@ -951,7 +951,7 @@ class ImportDataCommand extends Command
 			}
 
 			// Obtener todas las categorías del sistema antiguo
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('categorias_generales')
 				->where('grupo', env('CMS_GROUP', 502))
 				->where('estado', '>', 0);
@@ -1101,7 +1101,7 @@ class ImportDataCommand extends Command
 
 		try {
 			// Obtener todos los tipos de servicio del sistema antiguo
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('categorias_generales_tipo');
 
 			if ($id) {
@@ -1190,7 +1190,7 @@ class ImportDataCommand extends Command
 		];
 
 		try {
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('facturas')
 				->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
 				->where('facturas.grupo', env('CMS_GROUP', 502))
@@ -1322,7 +1322,7 @@ class ImportDataCommand extends Command
 		];
 
 		try {
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('empresas_fiscales')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'id_empresa', 'razon_social', 'cuit', 'ingresos_brutos', 'id_condicion_iva', 'domicilio', 'codigo_postal', 'localidad', 'provincia', 'pais', 'estado', 'fecha_alta', 'fecha_modificacion');
@@ -1402,7 +1402,7 @@ class ImportDataCommand extends Command
 		];
 
 		try {
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('facturas_items')
 				->where('grupo', env('CMS_GROUP', 502))
 				->select('id', 'id_factura', 'id_categoria', 'descripcion', 'valor', 'descuento', 'fecha_alta', 'fecha_modificacion');
@@ -1502,13 +1502,13 @@ class ImportDataCommand extends Command
 
 		try {
 			// Test connection
-			DB::connection('mysql_tmp')->getPdo();
+			DB::connection('mysql_legacy')->getPdo();
 
 			// Get the CMS group
 			$cmsGroup = env('CMS_GROUP', 502);
 			$this->info("   Using CMS_GROUP: {$cmsGroup}");
 
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('servicios')
 				->where('servicios.grupo', $cmsGroup)
 				->where('servicios.estado', '>', 0)
@@ -1604,13 +1604,13 @@ class ImportDataCommand extends Command
 
 		try {
 			// Test connection
-			DB::connection('mysql_tmp')->getPdo();
+			DB::connection('mysql_legacy')->getPdo();
 
 			// Get the CMS group
 			$cmsGroup = env('CMS_GROUP', 502);
 			$this->info("   Using CMS_GROUP: {$cmsGroup}");
 
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('proyectos')
 				->where('grupo', $cmsGroup)
 				->where('estado', '>', 0);
@@ -1734,7 +1734,7 @@ class ImportDataCommand extends Command
 			}
 
 			// Test connection
-			DB::connection('mysql_tmp')->getPdo();
+			DB::connection('mysql_legacy')->getPdo();
 
 			// Get the CMS group
 			$cmsGroup = env('CMS_GROUP', 502);
@@ -1758,7 +1758,7 @@ class ImportDataCommand extends Command
 				14 => 12,  // MercadoPago
 			];
 
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('movimientos')
 				->leftJoin('facturas', 'movimientos.id_factura', '=', 'facturas.id')
 				->leftJoin('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
@@ -1918,7 +1918,7 @@ class ImportDataCommand extends Command
 		];
 
 		try {
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('comunicaciones_tipo')
 				->where('estado', '>', 0);
 
@@ -2002,7 +2002,7 @@ class ImportDataCommand extends Command
 		];
 
 		try {
-			$query = DB::connection('mysql_tmp')
+			$query = DB::connection('mysql_legacy')
 				->table('comunicaciones')
 				->where('grupo', env('CMS_GROUP', 502))
 				->where('estado', '>', 0);
@@ -2187,7 +2187,7 @@ class ImportDataCommand extends Command
 			'updated' => 0,
 		];
 
-		$query = DB::connection('mysql_tmp')
+		$query = DB::connection('mysql_legacy')
 			->table('categorias_generales')
 			->where('grupo', env('CMS_GROUP', 502))
 			->whereNull('padre')  // Only parent categories
@@ -2257,7 +2257,7 @@ class ImportDataCommand extends Command
 			'updated' => 0,
 		];
 
-		$query = DB::connection('mysql_tmp')
+		$query = DB::connection('mysql_legacy')
 			->table('categorias_generales')
 			->where('grupo', env('CMS_GROUP', 502))
 			->whereNotNull('padre')  // Only child products
@@ -2406,7 +2406,7 @@ class ImportDataCommand extends Command
 		// If product has a parent, find the parent category
 		if (isset($cms7Product->padre) && $cms7Product->padre) {
 			// Get parent category from CMS7
-			$parentCategory = DB::connection('mysql_tmp')
+			$parentCategory = DB::connection('mysql_legacy')
 				->table('categorias_generales')
 				->where('id', $cms7Product->padre)
 				->first();

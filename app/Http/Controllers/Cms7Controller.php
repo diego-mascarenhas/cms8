@@ -12,13 +12,12 @@ class Cms7Controller extends Controller
 	 */
 	public function showContact($id)
 	{
-		$contact = DB::connection('mysql_tmp')
+		$contact = DB::connection('mysql_legacy')
 			->table('contactos')
 			->where('id', $id)
 			->first();
 
-		if (! $contact)
-		{
+		if (!$contact) {
 			return redirect()
 				->back()
 				->with('error', 'Contacto no encontrado en el sistema antiguo');
@@ -26,9 +25,8 @@ class Cms7Controller extends Controller
 
 		// Obtenemos la empresa si existe
 		$empresa = null;
-		if ($contact->id_empresa)
-		{
-			$empresa = DB::connection('mysql_tmp')
+		if ($contact->id_empresa) {
+			$empresa = DB::connection('mysql_legacy')
 				->table('empresas')
 				->where('id', $contact->id_empresa)
 				->first();
@@ -42,20 +40,19 @@ class Cms7Controller extends Controller
 	 */
 	public function showEnterprise($id)
 	{
-		$empresa = DB::connection('mysql_tmp')
+		$empresa = DB::connection('mysql_legacy')
 			->table('empresas')
 			->where('id', $id)
 			->first();
 
-		if (! $empresa)
-		{
+		if (!$empresa) {
 			return redirect()
 				->back()
 				->with('error', 'Empresa no encontrada en el sistema antiguo');
 		}
 
 		// Obtenemos los contactos asociados a esta empresa
-		$contactos = DB::connection('mysql_tmp')
+		$contactos = DB::connection('mysql_legacy')
 			->table('contactos')
 			->where('id_empresa', $id)
 			->orderBy('nombre')
@@ -69,18 +66,18 @@ class Cms7Controller extends Controller
 	 */
 	public function showServices($empresaId = null)
 	{
-		$query = DB::connection('mysql_tmp')
+		$query = DB::connection('mysql_legacy')
 			->table('servicios')
 			->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio')
 			->where('servicios.grupo', env('CMS_GROUP', 501))
 			->where('servicios.estado', '>', 0);
 
-		if ($empresaId)
-		{
+		if ($empresaId) {
 			$query->where('servicios.id_empresa', $empresaId);
 		}
 
-		$servicios = $query->select('servicios.*', 'servicios_hosting.*')
+		$servicios = $query
+			->select('servicios.*', 'servicios_hosting.*')
 			->orderBy('servicios.id_empresa')
 			->get();
 
@@ -92,31 +89,31 @@ class Cms7Controller extends Controller
 	 */
 	public function showInvoices($empresaId = null)
 	{
-		$query = DB::connection('mysql_tmp')
+		$query = DB::connection('mysql_legacy')
 			->table('facturas')
 			->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
 			->where('facturas.grupo', env('CMS_GROUP', 501))
 			->where('facturas.estado', '>', 0);
 
-		if ($empresaId)
-		{
+		if ($empresaId) {
 			$query->where('empresas_fiscales.id_empresa', $empresaId);
 		}
 
-		$facturas = $query->select(
-			'facturas.id',
-			'empresas_fiscales.id_empresa as enterprise_id',
-			'facturas.fecha',
-			'facturas.vencimiento',
-			'facturas.operacion',
-			'facturas.numero_talonario',
-			'facturas.numero_factura',
-			'facturas.bruto',
-			'facturas.descuento',
-			'facturas.total_neto',
-			'facturas.saldo',
-			'facturas.estado',
-		)
+		$facturas = $query
+			->select(
+				'facturas.id',
+				'empresas_fiscales.id_empresa as enterprise_id',
+				'facturas.fecha',
+				'facturas.vencimiento',
+				'facturas.operacion',
+				'facturas.numero_talonario',
+				'facturas.numero_factura',
+				'facturas.bruto',
+				'facturas.descuento',
+				'facturas.total_neto',
+				'facturas.saldo',
+				'facturas.estado',
+			)
 			->orderBy('facturas.fecha', 'desc')
 			->get();
 
@@ -130,17 +127,16 @@ class Cms7Controller extends Controller
 	{
 		$query = $request->input('q');
 
-		if (empty($query))
-		{
+		if (empty($query)) {
 			return view('cms7.search');
 		}
 
-		$contactos = DB::connection('mysql_tmp')
+		$contactos = DB::connection('mysql_legacy')
 			->table('contactos')
 			->where('grupo', env('CMS_GROUP', 501))
-			->where(function ($q) use ($query)
-			{
-				$q->where('nombre', 'like', "%{$query}%")
+			->where(function ($q) use ($query) {
+				$q
+					->where('nombre', 'like', "%{$query}%")
 					->orWhere('apellido', 'like', "%{$query}%")
 					->orWhere('email', 'like', "%{$query}%")
 					->orWhere('telefono', 'like', "%{$query}%")
@@ -150,12 +146,12 @@ class Cms7Controller extends Controller
 			->limit(50)
 			->get();
 
-		$empresas = DB::connection('mysql_tmp')
+		$empresas = DB::connection('mysql_legacy')
 			->table('empresas')
 			->where('grupo', env('CMS_GROUP', 501))
-			->where(function ($q) use ($query)
-			{
-				$q->where('empresa', 'like', "%{$query}%")
+			->where(function ($q) use ($query) {
+				$q
+					->where('empresa', 'like', "%{$query}%")
 					->orWhere('email', 'like', "%{$query}%")
 					->orWhere('telefono', 'like', "%{$query}%");
 			})
@@ -172,24 +168,23 @@ class Cms7Controller extends Controller
 	public function enterpriseDetails($id)
 	{
 		// Buscar la empresa en la base de datos antigua
-		$empresa = DB::connection('mysql_tmp')
+		$empresa = DB::connection('mysql_legacy')
 			->table('empresas')
 			->where('id', $id)
 			->first();
 
-		if (! $empresa)
-		{
+		if (!$empresa) {
 			return response()->json(['error' => 'Empresa no encontrada'], 404);
 		}
 
 		// Obtener los contactos relacionados
-		$contactos = DB::connection('mysql_tmp')
+		$contactos = DB::connection('mysql_legacy')
 			->table('contactos')
 			->where('id_empresa', $id)
 			->get();
 
 		// Obtener servicios relacionados con categoría
-		$servicios = DB::connection('mysql_tmp')
+		$servicios = DB::connection('mysql_legacy')
 			->table('servicios')
 			->join('servicios_hosting', 'servicios.id', '=', 'servicios_hosting.id_servicio', 'left')
 			->leftJoin('categorias_generales', 'servicios.id_categoria', '=', 'categorias_generales.id')
@@ -199,13 +194,13 @@ class Cms7Controller extends Controller
 			->get();
 
 		// Obtener datos fiscales si existen
-		$datosFiscales = DB::connection('mysql_tmp')
+		$datosFiscales = DB::connection('mysql_legacy')
 			->table('empresas_fiscales')
 			->where('id_empresa', $id)
 			->get();
 
 		// Obtener facturas si existen
-		$facturas = DB::connection('mysql_tmp')
+		$facturas = DB::connection('mysql_legacy')
 			->table('facturas')
 			->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
 			->where('empresas_fiscales.id_empresa', $id)
