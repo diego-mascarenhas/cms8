@@ -430,12 +430,13 @@ class TaskController extends Controller
 		try {
 			$task = Task::findOrFail($id);
 
-			$communications = \App\Models\TaskCommunication::where('task_id', $task->id)
+			$communications = TaskCommunication::where('task_id', $task->id)
 				->with('user')
 				->orderBy('created_at', 'desc')
 				->get()
 				->map(function ($comm) {
-					$recipients = json_decode($comm->recipients, true);
+					// Recipients is already cast to array in the model
+					$recipients = $comm->recipients ?? [];
 					$recipientsDisplay = [];
 
 					if (in_array('responsible', $recipients)) {
@@ -445,7 +446,7 @@ class TaskController extends Controller
 						$recipientsDisplay[] = 'Cliente';
 					}
 
-					$response = [
+					return [
 						'id' => $comm->id,
 						'method' => $comm->method,
 						'subject' => $comm->subject,
@@ -458,8 +459,6 @@ class TaskController extends Controller
 						'response' => $comm->response,
 						'response_at' => $comm->response_at ? $comm->response_at->format('d/m/Y H:i') : null,
 					];
-
-					return $response;
 				});
 
 			return response()->json($communications);

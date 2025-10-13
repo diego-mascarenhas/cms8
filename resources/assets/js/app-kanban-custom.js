@@ -1514,55 +1514,52 @@
 				return;
 			}
 
-			// Render communications
-			let html = '<div class="timeline">';
-			communications.forEach((comm, index) => {
-				const methodIcon = {
-					'email': 'ti-mail',
-					'whatsapp': 'ti-brand-whatsapp',
-					'internal': 'ti-note'
-				}[comm.method] || 'ti-message';
+		// Render communications
+		let html = '<div class="timeline">';
+		communications.forEach((comm, index) => {
+			const methodIcon = {
+				'email': 'ti-mail',
+				'whatsapp': 'ti-brand-whatsapp',
+				'internal': 'ti-note'
+			}[comm.method] || 'ti-message';
 
-				const methodColor = {
-					'email': 'info',
-					'whatsapp': 'success',
-					'internal': 'secondary'
-				}[comm.method] || 'primary';
+			const methodColor = {
+				'email': 'info',
+				'whatsapp': 'success',
+				'internal': 'secondary'
+			}[comm.method] || 'primary';
 
-				html += `
-					<div class="timeline-item timeline-item-transparent">
-						<span class="timeline-point timeline-point-${methodColor}"></span>
-						<div class="timeline-event">
-							<div class="timeline-header mb-1">
-								<h6 class="mb-0">
-									<i class="ti ${methodIcon} me-1"></i>
-									${comm.subject || comm.method.charAt(0).toUpperCase() + comm.method.slice(1)}
-								</h6>
-								<small class="text-muted">${comm.created_at}</small>
-							</div>
-							<p class="mb-2">${comm.message}</p>
-							<div class="d-flex gap-2 mb-2">
-								<span class="badge bg-label-${methodColor}">
-									<i class="ti ti-users me-1"></i>${comm.recipients_display}
-								</span>
-								<span class="badge bg-label-secondary">
-									<i class="ti ti-user me-1"></i>${comm.sender_name}
-								</span>
-							</div>
-							${comm.has_response ? `
-								<div class="alert alert-success p-2 mt-2">
-									<strong><i class="ti ti-check-circle me-1"></i>Respuesta del cliente:</strong>
-									<p class="mb-1 mt-1">${comm.response}</p>
-									<small class="text-muted">${comm.response_at}</small>
-								</div>
-							` : ''}
+			html += `
+				<div class="timeline-item timeline-item-transparent">
+					<span class="timeline-point timeline-point-${methodColor}"></span>
+					<div class="timeline-event">
+						<div class="timeline-header mb-2">
+							<h6 class="mb-1">
+								<i class="ti ${methodIcon} me-1"></i>
+								${comm.sender_name}
+							</h6>
+							<small class="text-muted fst-italic">${comm.created_at}</small>
 						</div>
+						<p class="mb-2">${comm.message}</p>
+						<div class="d-flex gap-2 mb-2">
+							<span class="badge bg-label-${methodColor}">
+								<i class="ti ti-users me-1"></i>${comm.recipients_display}
+							</span>
+						</div>
+						${comm.has_response ? `
+							<div class="alert alert-success p-2 mt-2">
+								<strong><i class="ti ti-check-circle me-1"></i>Respuesta del cliente:</strong>
+								<p class="mb-1 mt-1">${comm.response}</p>
+								<small class="text-muted fst-italic">${comm.response_at}</small>
+							</div>
+						` : ''}
 					</div>
-				`;
-			});
-			html += '</div>';
+				</div>
+			`;
+		});
+		html += '</div>';
 
-			historyContainer.innerHTML = html;
+		historyContainer.innerHTML = html;
 		})
 		.catch(error => {
 			console.error('Error loading communication history:', error);
@@ -1587,6 +1584,10 @@
 		const taskId = taskElement.getAttribute('data-task-id');
 		const taskData = JSON.parse(taskElement.getAttribute('data-task-data'));
 
+		// Also propagate to the Communication button
+		const sendCommunicationBtn = document.querySelector('#send-communication');
+		if (sendCommunicationBtn) sendCommunicationBtn.setAttribute('data-task-id', taskId);
+
 		// Update responsible and client names
 		const responsibleName = taskData.responsible_name || 'Responsable';
 		const responsibleNameEl = document.getElementById('responsible-name');
@@ -1602,10 +1603,25 @@
 			clientNameEl.textContent = clientName;
 		}
 
-		// Load communication history
+		// Load communication history with a small delay to ensure DOM is ready
 		if (taskId)
 		{
-			loadCommunicationHistory(taskId);
+			setTimeout(() => {
+				loadCommunicationHistory(taskId);
+			}, 100);
+		}
+
+		// Also reload history when clicking on the Communication tab
+		const communicationTab = document.querySelector('[data-bs-target="#tab-communication"]');
+		if (communicationTab && taskId)
+		{
+			// Remove previous listener if exists
+			const newTab = communicationTab.cloneNode(true);
+			communicationTab.parentNode.replaceChild(newTab, communicationTab);
+
+			newTab.addEventListener('click', function() {
+				loadCommunicationHistory(taskId);
+			});
 		}
 	};
 })();
