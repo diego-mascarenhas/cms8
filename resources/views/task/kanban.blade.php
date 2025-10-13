@@ -50,6 +50,19 @@
         if (el && el.parentElement !== document.body) {
             document.body.appendChild(el);
         }
+
+        // Handle project selector change
+        const projectSelector = document.getElementById('project-selector');
+        if (projectSelector) {
+            projectSelector.addEventListener('change', function() {
+                const projectId = this.value;
+                if (projectId) {
+                    window.location.href = '{{ route('task.index') }}?view=kanban&project_id=' + projectId;
+                } else {
+                    window.location.href = '{{ route('task.index') }}?view=kanban';
+                }
+            });
+        }
     });
     </script>
     <script src="{{ mix('assets/js/app-kanban-custom.js') }}"></script>
@@ -76,15 +89,27 @@
             </p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3 mt-3 mt-md-0">
+            <!-- Project Selector -->
+            <select class="form-select" id="project-selector" style="width: 200px;">
+                <option value="">Tablero general</option>
+                @foreach($projects as $proj)
+                    <option value="{{ $proj->id }}" {{ $project && $project->id == $proj->id ? 'selected' : '' }}>
+                        {{ $proj->name }}
+                    </option>
+                @endforeach
+            </select>
+
+            <!-- Go to Project Button (only shown when project is selected) -->
             @if($project)
-                <a href="{{ route('project.show', $project->id) }}" class="btn btn-label-secondary waves-effect">
-                    <i class="ti ti-arrow-left me-1"></i>Volver al proyecto
-                </a>
-            @else
-                <a href="{{ route('task.index') }}" class="btn btn-label-secondary waves-effect" id="view-list-btn">
-                    <i class="ti ti-list me-1"></i>Vista de lista
+                <a href="{{ route('project.show', $project->id) }}" class="btn btn-label-primary waves-effect">
+                    <i class="ti ti-external-link me-1"></i>Ir al proyecto
                 </a>
             @endif
+
+            <!-- View List Button -->
+            <a href="{{ route('task.index') }}" class="btn btn-label-secondary waves-effect" id="view-list-btn">
+                <i class="ti ti-list me-1"></i>Vista de lista
+            </a>
         </div>
     </div>
 
