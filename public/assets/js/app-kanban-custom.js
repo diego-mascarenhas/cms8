@@ -437,15 +437,23 @@
 		// (debug ID removed)
 
         // Prefill fields from data attributes
-		const titleEl = taskDiv.querySelector('.kanban-text');
-		const inputTitle = sidebarEl.querySelector('#title');
-		const inputDue = sidebarEl.querySelector('#due-date');
-		const inputEstimated = sidebarEl.querySelector('#estimated-hours');
-		const inputDescription = sidebarEl.querySelector('#description');
+	const titleEl = taskDiv.querySelector('.kanban-text');
+	const inputTitle = sidebarEl.querySelector('#title');
+	const inputDue = sidebarEl.querySelector('#due-date');
+	const inputEstimatedHours = sidebarEl.querySelector('#estimated-hours');
+	const inputEstimatedMinutes = sidebarEl.querySelector('#estimated-minutes');
+	const inputDescription = sidebarEl.querySelector('#description');
 
 	inputTitle.value = titleEl ? titleEl.textContent.trim() : '';
 	inputDue.value = taskDiv.getAttribute('data-due-date') || '';
-	if (inputEstimated) inputEstimated.value = taskDiv.getAttribute('data-estimated-hours') || '';
+	
+	// Parse estimated hours (e.g., 8.5 = 8 hours 30 minutes)
+	const totalHours = parseFloat(taskDiv.getAttribute('data-estimated-hours')) || 0;
+	const hours = Math.floor(totalHours);
+	const minutes = Math.round((totalHours - hours) * 60);
+	
+	if (inputEstimatedHours) inputEstimatedHours.value = hours;
+	if (inputEstimatedMinutes) inputEstimatedMinutes.value = minutes;
 	if (inputDescription) inputDescription.value = taskDiv.getAttribute('data-description') || '';
 
 	// Handle attachment preview
@@ -525,12 +533,17 @@
 				// Send request to backend to delete the attachment
 				const formData = new FormData();
 				formData.append('id', parseInt(taskId));
-				formData.append('title', sidebarEl.querySelector('#title').value);
-				formData.append('description', sidebarEl.querySelector('#description') ? sidebarEl.querySelector('#description').value : '');
-				formData.append('responsible_id', sidebarEl.querySelector('#responsible') ? sidebarEl.querySelector('#responsible').value : currentUserId);
-				formData.append('estimated_hours', sidebarEl.querySelector('#estimated-hours') ? sidebarEl.querySelector('#estimated-hours').value : '');
-				formData.append('start_date', sidebarEl.querySelector('#due-date').value);
-				formData.append('due_date', sidebarEl.querySelector('#due-date').value);
+			// Combine hours and minutes into decimal
+			const hours = parseInt(sidebarEl.querySelector('#estimated-hours')?.value || 0);
+			const minutes = parseInt(sidebarEl.querySelector('#estimated-minutes')?.value || 0);
+			const totalHours = hours + (minutes / 60);
+
+			formData.append('title', sidebarEl.querySelector('#title').value);
+			formData.append('description', sidebarEl.querySelector('#description') ? sidebarEl.querySelector('#description').value : '');
+			formData.append('responsible_id', sidebarEl.querySelector('#responsible') ? sidebarEl.querySelector('#responsible').value : currentUserId);
+			formData.append('estimated_hours', totalHours);
+			formData.append('start_date', sidebarEl.querySelector('#due-date').value);
+			formData.append('due_date', sidebarEl.querySelector('#due-date').value);
 				formData.append('status_id', taskElement.closest('.kanban-board') ? taskElement.closest('.kanban-board').getAttribute('data-id') : '');
 				formData.append('category_id', sidebarEl.querySelector('#label') && sidebarEl.querySelector('#label').value ? sidebarEl.querySelector('#label').value : '');
 				formData.append('board_id', boardId);
@@ -727,16 +740,21 @@
 			inputDueFound: !!inputDue,
 			saveBtnFound: !!saveBtn
 		});
-		const onSave = (ev) => {
-			if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-			const newTitle = inputTitle.value.trim();
-			const newDue = inputDue.value || null;
-			const newDescription = inputDescription ? inputDescription.value.trim() : '';
-			const newEstimatedHours = inputEstimated ? parseFloat(inputEstimated.value) || null : null;
-			const categorySelect = sidebarEl.querySelector('#label');
-			const categoryId = categorySelect && categorySelect.value ? parseInt(categorySelect.value) : null;
-			const responsibleSelect = sidebarEl.querySelector('#responsible');
-			const responsibleId = responsibleSelect && responsibleSelect.value ? parseInt(responsibleSelect.value) : currentUserId;
+	const onSave = (ev) => {
+		if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+		const newTitle = inputTitle.value.trim();
+		const newDue = inputDue.value || null;
+		const newDescription = inputDescription ? inputDescription.value.trim() : '';
+		
+		// Combine hours and minutes into decimal
+		const hours = parseInt(inputEstimatedHours?.value || 0);
+		const minutes = parseInt(inputEstimatedMinutes?.value || 0);
+		const newEstimatedHours = hours + (minutes / 60);
+		
+		const categorySelect = sidebarEl.querySelector('#label');
+		const categoryId = categorySelect && categorySelect.value ? parseInt(categorySelect.value) : null;
+		const responsibleSelect = sidebarEl.querySelector('#responsible');
+		const responsibleId = responsibleSelect && responsibleSelect.value ? parseInt(responsibleSelect.value) : currentUserId;
 			const boardEl = taskElement.closest('.kanban-board');
 			const statusId = boardEl ? parseInt(boardEl.getAttribute('data-id')) : null;
 

@@ -222,8 +222,25 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="estimated-hours">{{ __('Tiempo Estimado (horas)') }}</label>
-                            <input type="number" id="estimated-hours" class="form-control" placeholder="{{ __('Ej: 8.5') }}" step="0.5" min="0" />
+                            <label class="form-label">{{ __('Tiempo Estimado') }}</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <select id="estimated-hours" class="form-select">
+                                        <option value="0">0 horas</option>
+                                        @for ($i = 1; $i <= 40; $i++)
+                                        <option value="{{ $i }}">{{ $i }} {{ $i == 1 ? 'hora' : 'horas' }}</option>
+                                        @endfor
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select id="estimated-minutes" class="form-select">
+                                        <option value="0">0 min</option>
+                                        <option value="15">15 min</option>
+                                        <option value="30">30 min</option>
+                                        <option value="45">45 min</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="attachments">{{ __('Adjunto') }}</label>
