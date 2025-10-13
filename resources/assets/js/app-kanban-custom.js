@@ -95,7 +95,9 @@
                     responsibleId: task.responsible ? task.responsible.id : '',
                     estimatedHours: task.estimated_hours || '',
                     description: task.description || '',
-                    attachment: task.attachment || ''
+                    attachment: task.attachment || '',
+                    totalTime: task.total_time || '0min',
+                    totalSeconds: task.total_seconds || 0
                 }
                 };
 			})
@@ -332,6 +334,7 @@
 				taskElement.setAttribute('data-estimated-hours', taskItem._taskData.estimatedHours);
 				taskElement.setAttribute('data-description', taskItem._taskData.description.replace(/"/g, '&quot;'));
 				taskElement.setAttribute('data-attachment', taskItem._taskData.attachment);
+				taskElement.setAttribute('data-total-time', taskItem._taskData.totalTime);
 				console.log('[Kanban] Added data attributes to task:', taskItem._taskData.taskId, taskElement);
 			}
 		});
@@ -1691,6 +1694,8 @@
 	// Update communication tab when a task is opened
 	const originalUpdateItemSidebar = window.updateItemSidebar;
 	window.updateItemSidebar = function(taskElement) {
+		console.log('[Kanban] updateItemSidebar called with:', taskElement);
+
 		// Call original function
 		if (originalUpdateItemSidebar) {
 			originalUpdateItemSidebar(taskElement);
@@ -1699,6 +1704,7 @@
 		// Get task data
 		const taskId = taskElement.getAttribute('data-task-id');
 		const taskData = JSON.parse(taskElement.getAttribute('data-task-data'));
+		console.log('[Kanban] Task ID:', taskId, 'Task Data:', taskData);
 
 		// Also propagate to the Communication button
 		const sendCommunicationBtn = document.querySelector('#send-communication');
@@ -1719,28 +1725,15 @@
 			clientNameEl.textContent = clientName;
 		}
 
-		// Load total time worked
-		if (taskId)
-		{
-			fetch(`/task/${taskId}/total-time`, {
-				method: 'GET',
-				headers: {
-					'Accept': 'application/json',
-					'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-				}
-			})
-			.then(response => response.json())
-			.then(data => {
-				const elapsedTimeValue = document.getElementById('elapsed-time-value');
-				if (elapsedTimeValue)
-				{
-					elapsedTimeValue.textContent = data.formatted || '0min';
-				}
-			})
-			.catch(error => {
-				console.error('Error loading total time:', error);
-			});
-		}
+	// Load total time worked from data attribute
+	const elapsedTimeValue = document.getElementById('elapsed-time-value');
+	const totalTime = taskDiv.getAttribute('data-total-time') || '0min';
+	console.log('[Kanban] Total time from data attribute:', totalTime);
+	if (elapsedTimeValue)
+	{
+		elapsedTimeValue.textContent = totalTime;
+		console.log('[Kanban] Updated time display to:', totalTime);
+	}
 
 		// Load communication history with a small delay to ensure DOM is ready
 		if (taskId)

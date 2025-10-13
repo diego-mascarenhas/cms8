@@ -72,6 +72,24 @@ class TaskController extends Controller
 			$tasksByStatus[$status['id']] = $tasks->map(function ($task) {
 				$attachment = $task->getFirstMediaUrl('attachments');
 
+				// Calculate total time for this task
+				$times = \App\Models\Time::where('task_id', $task->id)->get();
+				$totalSeconds = 0;
+
+				foreach ($times as $time) {
+					if ($time->duration_seconds) {
+						$totalSeconds += $time->duration_seconds;
+					} elseif ($time->start_time && $time->end_time) {
+						$totalSeconds += $time->end_time->diffInSeconds($time->start_time);
+					} elseif ($time->start_time && !$time->end_time) {
+						$totalSeconds += now()->diffInSeconds($time->start_time);
+					}
+				}
+
+				$hours = floor($totalSeconds / 3600);
+				$minutes = floor(($totalSeconds % 3600) / 60);
+				$totalTimeFormatted = $hours > 0 ? "{$hours}h {$minutes}min" : ($minutes > 0 ? "{$minutes}min" : '0min');
+
 				return [
 					'id' => $task->id,
 					'title' => $task->title,
@@ -79,6 +97,8 @@ class TaskController extends Controller
 					'due_date' => $task->due_date ? $task->due_date->format('Y-m-d') : null,
 					'estimated_hours' => $task->estimated_hours,
 					'attachment' => $attachment ?: null,
+					'total_time' => $totalTimeFormatted,
+					'total_seconds' => $totalSeconds,
 					'responsible' => $task->responsible ? [
 						'id' => $task->responsible->id,
 						'name' => $task->responsible->name,
@@ -555,20 +575,40 @@ class TaskController extends Controller
 		// Get all time entries for this task
 		$times = \App\Models\Time::where('task_id', $task->id)->get();
 
+		\Log::info('TaskController getTotalTime', [
+			'task_id' => $taskId,
+			'times_count' => $times->count(),
+			'times' => $times->map(function ($t) {
+				return [
+					'id' => $t->id,
+					'start_time' => $t->start_time,
+					'end_time' => $t->end_time,
+					'duration_seconds' => $t->duration_seconds,
+				];
+			}),
+		]);
+
 		$totalSeconds = 0;
 
 		foreach ($times as $time) {
 			if ($time->duration_seconds) {
 				// Time entry already has duration calculated
+				\Log::info('Adding duration_seconds', ['time_id' => $time->id, 'duration_seconds' => $time->duration_seconds]);
 				$totalSeconds += $time->duration_seconds;
 			} elseif ($time->start_time && $time->end_time) {
 				// Calculate duration if not stored
-				$totalSeconds += $time->end_time->diffInSeconds($time->start_time);
+				$calculated = $time->end_time->diffInSeconds($time->start_time);
+				\Log::info('Calculating from start/end', ['time_id' => $time->id, 'calculated' => $calculated]);
+				$totalSeconds += $calculated;
 			} elseif ($time->start_time && !$time->end_time) {
 				// Timer is still running, calculate current elapsed time
-				$totalSeconds += now()->diffInSeconds($time->start_time);
+				$calculated = now()->diffInSeconds($time->start_time);
+				\Log::info('Calculating running timer', ['time_id' => $time->id, 'calculated' => $calculated]);
+				$totalSeconds += $calculated;
 			}
 		}
+
+		\Log::info('Total calculation result', ['total_seconds' => $totalSeconds, 'hours' => floor($totalSeconds / 3600), 'minutes' => floor(($totalSeconds % 3600) / 60)]);
 
 		// Format as hours and minutes
 		$hours = floor($totalSeconds / 3600);
