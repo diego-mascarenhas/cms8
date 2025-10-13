@@ -7,17 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class EnterpriseDepartment extends Model
 {
-	use HasFactory;
+    use HasFactory;
 
-	public $timestamps = false;
+    public $timestamps = false;
 
-	protected $fillable = [
-		'name',
-		'color',
-	];
+    protected $fillable = [
+        'name',
+        'color',
+    ];
 
-	public function organizations()
-	{
-		return $this->hasMany(EnterpriseOrganization::class);
-	}
+    public function organizations()
+    {
+        return $this->hasMany(EnterpriseOrganization::class);
+    }
 }

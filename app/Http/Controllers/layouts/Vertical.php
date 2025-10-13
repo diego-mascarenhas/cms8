@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 
 class Vertical extends Controller
 {
-	public function index()
-	{
-		$pageConfigs = ['myLayout' => 'vertical'];
+    public function index()
+    {
+        $pageConfigs = ['myLayout' => 'vertical'];
 
-		return view('content.dashboard.dashboards-analytics', ['pageConfigs' => $pageConfigs]);
-	}
+        return view('content.dashboard.dashboards-analytics', ['pageConfigs' => $pageConfigs]);
+    }
 }

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class EcommerceSettingsLocations extends Controller
 {
-	public function index()
-	{
-		return view('content.apps.app-ecommerce-settings-locations');
-	}
+    public function index()
+    {
+        return view('content.apps.app-ecommerce-settings-locations');
+    }
 }

@@ -2,10 +2,9 @@
 
 namespace Tests\Unit;
 
-use Tests\TestCase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
 
 class ProductionHealthTest extends TestCase
 {
@@ -20,10 +19,11 @@ class ProductionHealthTest extends TestCase
         // Test essential tables exist
         $essentialTables = ['users', 'teams', 'messages', 'message_deliveries', 'contacts'];
 
-        foreach ($essentialTables as $table) {
+        foreach ($essentialTables as $table)
+        {
             $this->assertTrue(
                 DB::getSchemaBuilder()->hasTable($table),
-                "Essential table '{$table}' is missing"
+                "Essential table '{$table}' is missing",
             );
         }
     }
@@ -40,7 +40,8 @@ class ProductionHealthTest extends TestCase
         $this->assertNotEmpty(config('app.url'), 'APP_URL is not set');
 
         // Debug should be false in production
-        if (config('app.env') === 'production') {
+        if (config('app.env') === 'production')
+        {
             $this->assertFalse(config('app.debug'), 'APP_DEBUG should be false in production');
         }
     }
@@ -50,8 +51,8 @@ class ProductionHealthTest extends TestCase
      */
     public function test_cache_functionality(): void
     {
-        $testKey = 'health_check_' . time();
-        $testValue = 'test_value_' . rand(1000, 9999);
+        $testKey = 'health_check_'.time();
+        $testValue = 'test_value_'.rand(1000, 9999);
 
         // Test cache write
         Cache::put($testKey, $testValue, 60);
@@ -76,10 +77,11 @@ class ProductionHealthTest extends TestCase
             base_path('bootstrap/cache'),
         ];
 
-        foreach ($criticalPaths as $path) {
+        foreach ($criticalPaths as $path)
+        {
             $this->assertTrue(
                 is_writable($path),
-                "Critical path '{$path}' is not writable"
+                "Critical path '{$path}' is not writable",
             );
         }
     }
@@ -107,7 +109,8 @@ class ProductionHealthTest extends TestCase
         $this->assertNotEmpty(config('mail.default'), 'Mail driver not configured');
 
         // SMTP configuration should be present if using SMTP
-        if (config('mail.default') === 'smtp') {
+        if (config('mail.default') === 'smtp')
+        {
             $this->assertNotEmpty(config('mail.mailers.smtp.host'), 'SMTP host not configured');
         }
     }
@@ -125,14 +128,15 @@ class ProductionHealthTest extends TestCase
             \App\Models\Contact::class,
         ];
 
-        foreach ($models as $modelClass) {
+        foreach ($models as $modelClass)
+        {
             $this->assertTrue(
                 class_exists($modelClass),
-                "Essential model '{$modelClass}' does not exist"
+                "Essential model '{$modelClass}' does not exist",
             );
 
             // Test model can be instantiated
-            $model = new $modelClass();
+            $model = new $modelClass;
             $this->assertInstanceOf($modelClass, $model);
         }
     }
@@ -145,12 +149,12 @@ class ProductionHealthTest extends TestCase
         // Test that tracking routes exist
         $this->assertTrue(
             \Route::has('message.track'),
-            'Message tracking route does not exist'
+            'Message tracking route does not exist',
         );
 
         $this->assertTrue(
             \Route::has('message.track.click'),
-            'Message click tracking route does not exist'
+            'Message click tracking route does not exist',
         );
     }
 
@@ -162,17 +166,17 @@ class ProductionHealthTest extends TestCase
         // Test that MessageDelivery has required methods
         $this->assertTrue(
             method_exists(\App\Models\MessageDelivery::class, 'getTrackingToken'),
-            'MessageDelivery missing getTrackingToken method'
+            'MessageDelivery missing getTrackingToken method',
         );
 
         $this->assertTrue(
             method_exists(\App\Models\MessageDelivery::class, 'getTrackingUrl'),
-            'MessageDelivery missing getTrackingUrl method'
+            'MessageDelivery missing getTrackingUrl method',
         );
 
         $this->assertTrue(
             method_exists(\App\Models\MessageDelivery::class, 'getTextForWhatsApp'),
-            'MessageDelivery missing getTextForWhatsApp method'
+            'MessageDelivery missing getTextForWhatsApp method',
         );
     }
 }

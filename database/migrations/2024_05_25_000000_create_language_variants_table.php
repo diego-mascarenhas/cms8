@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('language_variants', function (Blueprint $table) {
+        Schema::create('language_variants', function (Blueprint $table)
+        {
             $table->id();
             $table->unsignedBigInteger('team_id')->nullable();
             $table->string('code', 10);

@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('contact_sources', function (Blueprint $table) {
+        Schema::create('contact_sources', function (Blueprint $table)
+        {
             $table->foreignId('contact_id')->constrained()->onDelete('cascade');
             $table->unsignedTinyInteger('source_id');
             $table->string('value');

@@ -2,10 +2,10 @@
 
 namespace Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
+use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
-use chillerlan\QRCode\Output\QROutputInterface;
+use PHPUnit\Framework\TestCase;
 
 class QrCodeGenerationTest extends TestCase
 {
@@ -17,7 +17,7 @@ class QrCodeGenerationTest extends TestCase
     public function test_qr_generation_svg_format()
     {
         // Create QR code instance with default settings (SVG)
-        $qrcode = new QRCode();
+        $qrcode = new QRCode;
 
         // Generate QR code
         $result = $qrcode->render($this->testUrl);
@@ -35,9 +35,9 @@ class QrCodeGenerationTest extends TestCase
 
         echo "\n✅ SVG QR Test Results:\n";
         echo "- Format: SVG (data URI)\n";
-        echo "- Size: " . strlen($result) . " characters\n";
+        echo '- Size: '.strlen($result)." characters\n";
         echo "- Contains SVG markup: YES\n";
-        echo "- First 100 chars: " . substr($result, 0, 100) . "...\n";
+        echo '- First 100 chars: '.substr($result, 0, 100)."...\n";
     }
 
     /**
@@ -72,11 +72,11 @@ class QrCodeGenerationTest extends TestCase
 
         echo "\n✅ PNG QR Test Results:\n";
         echo "- Format: PNG (data URI)\n";
-        echo "- Data URI Size: " . strlen($result) . " characters\n";
-        echo "- Binary Size: " . strlen($binaryData) . " bytes\n";
+        echo '- Data URI Size: '.strlen($result)." characters\n";
+        echo '- Binary Size: '.strlen($binaryData)." bytes\n";
         echo "- Has PNG signature: YES\n";
         echo "- Is binary data: YES\n";
-        echo "- Hex header: " . bin2hex(substr($binaryData, 0, 16)) . "\n";
+        echo '- Hex header: '.bin2hex(substr($binaryData, 0, 16))."\n";
     }
 
     /**
@@ -84,15 +84,16 @@ class QrCodeGenerationTest extends TestCase
      */
     public function test_qr_file_saving()
     {
-        $tempDir = sys_get_temp_dir() . '/qr_tests';
-        if (!file_exists($tempDir)) {
+        $tempDir = sys_get_temp_dir().'/qr_tests';
+        if (! file_exists($tempDir))
+        {
             mkdir($tempDir, 0755, true);
         }
 
         // Test SVG saving
-        $qrcodeSvg = new QRCode();
+        $qrcodeSvg = new QRCode;
         $svgResult = $qrcodeSvg->render($this->testUrl);
-        $svgFile = $tempDir . '/test_qr.svg';
+        $svgFile = $tempDir.'/test_qr.svg';
         file_put_contents($svgFile, $svgResult);
 
         $this->assertFileExists($svgFile);
@@ -103,15 +104,15 @@ class QrCodeGenerationTest extends TestCase
             'outputType' => QROutputInterface::GDIMAGE_PNG,
         ]));
         $pngResult = $qrcodePng->render($this->testUrl);
-        $pngFile = $tempDir . '/test_qr.png';
+        $pngFile = $tempDir.'/test_qr.png';
         file_put_contents($pngFile, $pngResult);
 
         $this->assertFileExists($pngFile);
         $this->assertGreaterThan(0, filesize($pngFile));
 
         echo "\n✅ File Saving Test Results:\n";
-        echo "- SVG file: " . $svgFile . " (" . filesize($svgFile) . " bytes)\n";
-        echo "- PNG file: " . $pngFile . " (" . filesize($pngFile) . " bytes)\n";
+        echo '- SVG file: '.$svgFile.' ('.filesize($svgFile)." bytes)\n";
+        echo '- PNG file: '.$pngFile.' ('.filesize($pngFile)." bytes)\n";
 
         // Cleanup
         unlink($svgFile);
@@ -131,7 +132,8 @@ class QrCodeGenerationTest extends TestCase
             'tel:+54911234567',
         ];
 
-        foreach ($testUrls as $url) {
+        foreach ($testUrls as $url)
+        {
             // Create fresh QR instance for each URL to ensure PNG output
             $qrcode = new QRCode(new QROptions([
                 'outputType' => QROutputInterface::GDIMAGE_PNG,
@@ -150,7 +152,7 @@ class QrCodeGenerationTest extends TestCase
         }
 
         echo "\n✅ Multiple URLs Test Results:\n";
-        echo "- Tested " . count($testUrls) . " different URLs\n";
+        echo '- Tested '.count($testUrls)." different URLs\n";
         echo "- All generated valid PNG QR codes\n";
     }
 
@@ -159,7 +161,8 @@ class QrCodeGenerationTest extends TestCase
      */
     public function test_qr_error_handling()
     {
-        try {
+        try
+        {
             // Test with very long data (might cause issues)
             $longData = str_repeat('A', 10000);
             $qrcode = new QRCode(new QROptions([
@@ -171,12 +174,12 @@ class QrCodeGenerationTest extends TestCase
             $this->assertIsString($result);
             echo "\n✅ Error Handling Test Results:\n";
             echo "- Long data handled successfully\n";
-
-        } catch (\Exception $e) {
+        } catch (\Exception $e)
+        {
             // This is also acceptable - the library should handle limits gracefully
             $this->assertInstanceOf(\Exception::class, $e);
             echo "\n✅ Error Handling Test Results:\n";
-            echo "- Long data properly rejected with exception: " . $e->getMessage() . "\n";
+            echo '- Long data properly rejected with exception: '.$e->getMessage()."\n";
         }
     }
 }

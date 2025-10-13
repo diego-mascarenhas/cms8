@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 
 class Payment extends Controller
 {
-	public function index()
-	{
-		$pageConfigs = ['myLayout' => 'front'];
+    public function index()
+    {
+        $pageConfigs = ['myLayout' => 'front'];
 
-		return view('content.front-pages.payment-page', ['pageConfigs' => $pageConfigs]);
-	}
+        return view('content.front-pages.payment-page', ['pageConfigs' => $pageConfigs]);
+    }
 }

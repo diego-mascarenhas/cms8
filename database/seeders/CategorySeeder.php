@@ -54,15 +54,15 @@ class CategorySeeder extends Seeder
         // Get the hosting module ID dynamically
         $hostingModule = Module::where('key', 'hosting')->first();
         $hostingModuleId = $hostingModule ? $hostingModule->id : null;
-        
+
         // Services main category
         Category::firstOrCreate(
             ['id' => 1],
             [
                 'name' => 'Services',
                 'parent_id' => null,
-                'status' => 1
-            ]
+                'status' => 1,
+            ],
         );
 
         // OVH service categories as subcategories
@@ -75,7 +75,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         Category::firstOrCreate(
@@ -87,7 +87,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         Category::firstOrCreate(
@@ -99,7 +99,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         Category::firstOrCreate(
@@ -111,7 +111,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         Category::firstOrCreate(
@@ -123,7 +123,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         Category::firstOrCreate(
@@ -135,7 +135,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         Category::firstOrCreate(
@@ -147,7 +147,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         Category::firstOrCreate(
@@ -159,7 +159,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         Category::firstOrCreate(
@@ -171,7 +171,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         Category::firstOrCreate(
@@ -183,7 +183,7 @@ class CategorySeeder extends Seeder
                 'team_id' => null,
                 'parent_id' => 1,
                 'status' => 1,
-            ]
+            ],
         );
 
         $this->command->info('Basic system categories created successfully.');

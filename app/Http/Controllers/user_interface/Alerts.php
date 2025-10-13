@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class Alerts extends Controller
 {
-	public function index()
-	{
-		return view('content.user-interface.ui-alerts');
-	}
+    public function index()
+    {
+        return view('content.user-interface.ui-alerts');
+    }
 }

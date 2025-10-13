@@ -42,7 +42,7 @@ class AttendanceController extends Controller
             ], 403);
         }
 
-        if (!$attendance->isRunning())
+        if (! $attendance->isRunning())
         {
             return response()->json([
                 'success' => false,
@@ -71,7 +71,7 @@ class AttendanceController extends Controller
             ], 403);
         }
 
-        if (!$attendance->pause())
+        if (! $attendance->pause())
         {
             return response()->json([
                 'success' => false,
@@ -97,7 +97,7 @@ class AttendanceController extends Controller
             ], 403);
         }
 
-        if (!$attendance->resume())
+        if (! $attendance->resume())
         {
             return response()->json([
                 'success' => false,
@@ -121,5 +121,3 @@ class AttendanceController extends Controller
         ]);
     }
 }
-
-

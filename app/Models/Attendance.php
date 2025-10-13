@@ -48,12 +48,12 @@ class Attendance extends Model
 
     public function isRunning(): bool
     {
-        return $this->start_at && !$this->end_at;
+        return $this->start_at && ! $this->end_at;
     }
 
     public function stop(): bool
     {
-        if (!$this->isRunning())
+        if (! $this->isRunning())
         {
             return false;
         }
@@ -69,18 +69,19 @@ class Attendance extends Model
 
     public function pause(): bool
     {
-        if (!$this->isRunning() || $this->paused_at)
+        if (! $this->isRunning() || $this->paused_at)
         {
             return false;
         }
         $this->paused_at = now();
         $this->save();
+
         return true;
     }
 
     public function resume(): bool
     {
-        if (!$this->isRunning() || !$this->paused_at)
+        if (! $this->isRunning() || ! $this->paused_at)
         {
             return false;
         }
@@ -89,6 +90,7 @@ class Attendance extends Model
         $this->paused_seconds = $pausedSoFar;
         $this->paused_at = null;
         $this->save();
+
         return true;
     }
 
@@ -101,5 +103,3 @@ class Attendance extends Model
             ->first();
     }
 }
-
-

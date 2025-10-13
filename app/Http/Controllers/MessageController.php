@@ -660,8 +660,8 @@ class MessageController extends Controller
     private function getTestHtmlForContact($message, $testContact)
     {
         $templateHtml = $message && $message->template && isset($message->template->gjs_data['html'])
-        	? $message->template->gjs_data['html']
-        	: '';
+            ? $message->template->gjs_data['html']
+            : '';
 
         // Replace variables
         $html = str_replace('{{name}}', $testContact->name ?? '', $templateHtml);
@@ -702,8 +702,8 @@ class MessageController extends Controller
             if ($message->template && $message->template->gjs_data)
             {
                 $gjsData = is_array($message->template->gjs_data)
-                	? $message->template->gjs_data
-                	: json_decode($message->template->gjs_data, true);
+                    ? $message->template->gjs_data
+                    : json_decode($message->template->gjs_data, true);
 
                 $htmlContent = $gjsData['html'] ?? '';
 
@@ -754,32 +754,32 @@ class MessageController extends Controller
 
         // Check for common SMTP error patterns
         if (strpos($errorMessage, '550 domain is not configured with ORIGIN IP IN SPF') !== false ||
-        	strpos($errorMessage, 'SPF') !== false ||
-        	strpos($errorMessage, '550') !== false)
+            strpos($errorMessage, 'SPF') !== false ||
+            strpos($errorMessage, '550') !== false)
         {
             return "No se pudo enviar el email de prueba.\nPor favor, contacte con soporte técnico para autorizar la salida de emails desde su dominio.";
         }
 
         // Check for authentication errors
         if (strpos($errorMessage, '535') !== false ||
-        	strpos($errorMessage, 'authentication') !== false ||
-        	strpos($errorMessage, 'login') !== false)
+            strpos($errorMessage, 'authentication') !== false ||
+            strpos($errorMessage, 'login') !== false)
         {
             return 'Error de autenticación en el servidor de correo. Verifique las credenciales de configuración.';
         }
 
         // Check for connection errors
         if (strpos($errorMessage, 'connection') !== false ||
-        	strpos($errorMessage, 'timeout') !== false ||
-        	strpos($errorMessage, 'refused') !== false)
+            strpos($errorMessage, 'timeout') !== false ||
+            strpos($errorMessage, 'refused') !== false)
         {
             return 'No se pudo conectar al servidor de correo. Verifique la configuración de conexión.';
         }
 
         // Check for quota exceeded
         if (strpos($errorMessage, 'quota') !== false ||
-        	strpos($errorMessage, 'limit') !== false ||
-        	strpos($errorMessage, 'exceeded') !== false)
+            strpos($errorMessage, 'limit') !== false ||
+            strpos($errorMessage, 'exceeded') !== false)
         {
             return 'Se ha alcanzado el límite de envío de emails. Contacte con soporte técnico.';
         }

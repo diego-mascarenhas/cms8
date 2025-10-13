@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('stylebooks', function (Blueprint $table) {
+        Schema::create('stylebooks', function (Blueprint $table)
+        {
             $table->id();
             $table->foreignId('team_id')->constrained();
             $table->string('name', 255);

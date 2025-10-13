@@ -9,9 +9,10 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-        public function up(): void
+    public function up(): void
     {
-        Schema::create('payment_accounts', function (Blueprint $table) {
+        Schema::create('payment_accounts', function (Blueprint $table)
+        {
             $table->id();
             $table->unsignedBigInteger('team_id');
             $table->string('code', 10);

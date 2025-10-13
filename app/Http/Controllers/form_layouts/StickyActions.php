@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class StickyActions extends Controller
 {
-	public function index()
-	{
-		return view('content.form-layout.form-layouts-sticky');
-	}
+    public function index()
+    {
+        return view('content.form-layout.form-layouts-sticky');
+    }
 }

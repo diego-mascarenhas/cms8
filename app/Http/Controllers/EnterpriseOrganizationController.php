@@ -8,149 +8,149 @@ use Illuminate\Http\Request;
 
 class EnterpriseOrganizationController extends Controller
 {
-	public function index()
-	{
-		$departments = EnterpriseDepartment::all();
+    public function index()
+    {
+        $departments = EnterpriseDepartment::all();
 
-		$departmentPostits = [];
+        $departmentPostits = [];
 
-		foreach ($departments as $department)
-		{
-			$postits = EnterpriseOrganization::where('department_id', $department->id)
-				->where('team_id', auth()->user()->currentTeam->id)
-				->with('responsible')
-				->orderBy('order')
-				->get()
-				->map(function ($organization) use ($department)
-				{
-					return [
-						'id' => $organization->id,
-						'header' => $organization->name,
-						'author' => $organization->responsible->name ?? 'N/A',
-						'content' => $organization->description,
-						'time_allocation' => $organization->time_allocation,
-						'color' => $department->color ?? 'yellow',
-						'availability' => $organization->availability,
-					];
-				});
+        foreach ($departments as $department)
+        {
+            $postits = EnterpriseOrganization::where('department_id', $department->id)
+                ->where('team_id', auth()->user()->currentTeam->id)
+                ->with('responsible')
+                ->orderBy('order')
+                ->get()
+                ->map(function ($organization) use ($department)
+                {
+                    return [
+                        'id' => $organization->id,
+                        'header' => $organization->name,
+                        'author' => $organization->responsible->name ?? 'N/A',
+                        'content' => $organization->description,
+                        'time_allocation' => $organization->time_allocation,
+                        'color' => $department->color ?? 'yellow',
+                        'availability' => $organization->availability,
+                    ];
+                });
 
-			$departmentPostits[$department->name] = $postits;
-		}
+            $departmentPostits[$department->name] = $postits;
+        }
 
-		return view('organization.index', compact('departmentPostits'));
-	}
+        return view('organization.index', compact('departmentPostits'));
+    }
 
-	/**
-	 * Show the form for creating a new resource.
-	 */
-	public function create()
-	{
-		$data = new \stdClass;
-		$departments = EnterpriseDepartment::all()->map(function ($department)
-		{
-			return [
-				'id' => $department->id,
-				'name' => $department->name,
-			];
-		});
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        $data = new \stdClass;
+        $departments = EnterpriseDepartment::all()->map(function ($department)
+        {
+            return [
+                'id' => $department->id,
+                'name' => $department->name,
+            ];
+        });
 
-		return view('organization.form', compact('data', 'departments'));
-	}
+        return view('organization.form', compact('data', 'departments'));
+    }
 
-	/**
-	 * Store a newly created resource in storage.
-	 */
-	public function store(Request $request)
-	{
-		$request->validate([
-			'name' => 'required|string|max:255',
-			'description' => 'required|string',
-			'department_id' => 'required|exists:enterprise_departments,id',
-			'responsible_id' => 'required|exists:users,id',
-			'time_allocation' => 'required|string|max:255',
-			'availability' => 'nullable|string|max:255',
-		]);
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'department_id' => 'required|exists:enterprise_departments,id',
+            'responsible_id' => 'required|exists:users,id',
+            'time_allocation' => 'required|string|max:255',
+            'availability' => 'nullable|string|max:255',
+        ]);
 
-		// Find the highest order for this department
-		$maxOrder = EnterpriseOrganization::where('department_id', $request->department_id)
-			->where('team_id', auth()->user()->currentTeam->id)
-			->max('order');
+        // Find the highest order for this department
+        $maxOrder = EnterpriseOrganization::where('department_id', $request->department_id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->max('order');
 
-		EnterpriseOrganization::create([
-			'name' => $request->name,
-			'description' => $request->description,
-			'department_id' => $request->department_id,
-			'team_id' => auth()->user()->currentTeam->id,
-			'responsible_id' => $request->responsible_id,
-			'time_allocation' => $request->time_allocation,
-			'availability' => $request->availability,
-			'order' => ($maxOrder ?? 0) + 1,
-		]);
+        EnterpriseOrganization::create([
+            'name' => $request->name,
+            'description' => $request->description,
+            'department_id' => $request->department_id,
+            'team_id' => auth()->user()->currentTeam->id,
+            'responsible_id' => $request->responsible_id,
+            'time_allocation' => $request->time_allocation,
+            'availability' => $request->availability,
+            'order' => ($maxOrder ?? 0) + 1,
+        ]);
 
-		return redirect()->route('organization.index')->with('success', 'Task created successfully.');
-	}
+        return redirect()->route('organization.index')->with('success', 'Task created successfully.');
+    }
 
-	/**
-	 * Show the form for editing the specified resource.
-	 */
-	public function edit($id)
-	{
-		$data = EnterpriseOrganization::where('id', $id)
-			->where('team_id', auth()->user()->currentTeam->id)
-			->firstOrFail();
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit($id)
+    {
+        $data = EnterpriseOrganization::where('id', $id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->firstOrFail();
 
-		$departments = EnterpriseDepartment::all()->map(function ($department)
-		{
-			return [
-				'id' => $department->id,
-				'name' => $department->name,
-			];
-		});
+        $departments = EnterpriseDepartment::all()->map(function ($department)
+        {
+            return [
+                'id' => $department->id,
+                'name' => $department->name,
+            ];
+        });
 
-		return view('organization.form', compact('data', 'departments'));
-	}
+        return view('organization.form', compact('data', 'departments'));
+    }
 
-	/**
-	 * Update the specified resource in storage.
-	 */
-	public function update(Request $request, $id)
-	{
-		$request->validate([
-			'name' => 'required|string|max:255',
-			'description' => 'required|string',
-			'department_id' => 'required|exists:enterprise_departments,id',
-			'responsible_id' => 'required|exists:users,id',
-			'time_allocation' => 'required|string|max:255',
-			'availability' => 'nullable|string|max:255',
-		]);
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'department_id' => 'required|exists:enterprise_departments,id',
+            'responsible_id' => 'required|exists:users,id',
+            'time_allocation' => 'required|string|max:255',
+            'availability' => 'nullable|string|max:255',
+        ]);
 
-		$organization = EnterpriseOrganization::where('id', $id)
-			->where('team_id', auth()->user()->currentTeam->id)
-			->firstOrFail();
+        $organization = EnterpriseOrganization::where('id', $id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->firstOrFail();
 
-		$organization->update([
-			'name' => $request->name,
-			'description' => $request->description,
-			'department_id' => $request->department_id,
-			'responsible_id' => $request->responsible_id,
-			'time_allocation' => $request->time_allocation,
-			'availability' => $request->availability,
-		]);
+        $organization->update([
+            'name' => $request->name,
+            'description' => $request->description,
+            'department_id' => $request->department_id,
+            'responsible_id' => $request->responsible_id,
+            'time_allocation' => $request->time_allocation,
+            'availability' => $request->availability,
+        ]);
 
-		return redirect()->route('organization.index')->with('success', 'Task updated successfully.');
-	}
+        return redirect()->route('organization.index')->with('success', 'Task updated successfully.');
+    }
 
-	/**
-	 * Remove the specified resource from storage.
-	 */
-	public function destroy($id)
-	{
-		$organization = EnterpriseOrganization::where('id', $id)
-			->where('team_id', auth()->user()->currentTeam->id)
-			->firstOrFail();
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy($id)
+    {
+        $organization = EnterpriseOrganization::where('id', $id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->firstOrFail();
 
-		$organization->delete();
+        $organization->delete();
 
-		return redirect()->route('organization.index')->with('success', 'Task deleted successfully.');
-	}
+        return redirect()->route('organization.index')->with('success', 'Task deleted successfully.');
+    }
 }

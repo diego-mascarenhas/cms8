@@ -11,70 +11,70 @@ use Yajra\DataTables\Services\DataTable;
 
 class SoftwareDataTable extends DataTable
 {
-	public function dataTable(QueryBuilder $query): EloquentDataTable
-	{
-		return (new EloquentDataTable($query))
-			->addColumn('action', function ($software)
-			{
-				return view('software.action', compact('software'));
-			})
-			->addColumn('category', function ($software)
-			{
-				return $software->category ? $software->category->name : '';
-			})
-			->orderColumn('name', function ($query, $order)
-			{
-				$query->orderBy('name', $order);
-			})
-			->orderColumn('category', function ($query, $order)
-			{
-				$query->leftJoin('categories', 'software.category_id', '=', 'categories.id')
-					->orderBy('categories.name', $order);
-			})
-			->rawColumns(['action'])
-			->setRowId('id');
-	}
+    public function dataTable(QueryBuilder $query): EloquentDataTable
+    {
+        return (new EloquentDataTable($query))
+            ->addColumn('action', function ($software)
+            {
+                return view('software.action', compact('software'));
+            })
+            ->addColumn('category', function ($software)
+            {
+                return $software->category ? $software->category->name : '';
+            })
+            ->orderColumn('name', function ($query, $order)
+            {
+                $query->orderBy('name', $order);
+            })
+            ->orderColumn('category', function ($query, $order)
+            {
+                $query->leftJoin('categories', 'software.category_id', '=', 'categories.id')
+                    ->orderBy('categories.name', $order);
+            })
+            ->rawColumns(['action'])
+            ->setRowId('id');
+    }
 
-	public function query(Software $model): QueryBuilder
-	{
-		// Global scope will handle team filtering automatically
-		return $model->newQuery()->with(['category']);
-	}
+    public function query(Software $model): QueryBuilder
+    {
+        // Global scope will handle team filtering automatically
+        return $model->newQuery()->with(['category']);
+    }
 
-	public function html(): HtmlBuilder
-	{
-		return $this->builder()
-			->setTableId('software-table')
-			->columns($this->getColumns())
-			->minifiedAjax()
-			->dom('frtip')
-			->orderBy(0, 'asc')
-			->responsive(true)
-			->processing(true)
-			->serverSide(true)
-			->pageLength(25)
-			->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
-			->parameters([
-				'select' => false,
-				'lengthChange' => false,
-			]);
-	}
+    public function html(): HtmlBuilder
+    {
+        return $this->builder()
+            ->setTableId('software-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax()
+            ->dom('frtip')
+            ->orderBy(0, 'asc')
+            ->responsive(true)
+            ->processing(true)
+            ->serverSide(true)
+            ->pageLength(25)
+            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
+            ->parameters([
+                'select' => false,
+                'lengthChange' => false,
+            ]);
+    }
 
-	protected function getColumns(): array
-	{
-		return [
-			Column::make('name')->title('NOMBRE')->searchable(true)->orderable(true),
-			Column::computed('category')->title('Categoría')->searchable(true)->orderable(true),
-			Column::computed('action')
-				->exportable(false)
-				->printable(false)
-				->addClass('text-center')
-				->title('Acciones'),
-		];
-	}
+    protected function getColumns(): array
+    {
+        return [
+            Column::make('name')->title('NOMBRE')->searchable(true)->orderable(true),
+            Column::computed('category')->title('Categoría')->searchable(true)->orderable(true),
+            Column::computed('action')
+                ->exportable(false)
+                ->printable(false)
+                ->addClass('text-center')
+                ->title('Acciones'),
+        ];
+    }
 
-	protected function filename(): string
-	{
-		return 'Software_'.date('YmdHis');
-	}
+    protected function filename(): string
+    {
+        return 'Software_'.date('YmdHis');
+    }
 }

@@ -18,7 +18,8 @@ class FareTypesSeeder extends Seeder
             ['name' => 'Accesibilidad audiovisual'],
         ];
 
-        foreach ($types as $type) {
+        foreach ($types as $type)
+        {
             FareType::create($type);
         }
     }

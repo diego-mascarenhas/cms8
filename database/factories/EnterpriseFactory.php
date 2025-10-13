@@ -57,8 +57,10 @@ class EnterpriseFactory extends Factory
             'payment_type_id' => $this->faker->randomElement([1, 2, 3, 4]),
             'invoice_type_id' => $this->faker->randomElement([1, 2, 3, 4]),
             'status_id' => $this->faker->randomElement([1, 2]),
-            'creator_id' => function () {
-                $users = User::whereHas('teams', function ($q) {
+            'creator_id' => function ()
+            {
+                $users = User::whereHas('teams', function ($q)
+                {
                     $q->where('team_id', 1);
                 })->get();
 
@@ -75,7 +77,8 @@ class EnterpriseFactory extends Factory
      */
     public function medical()
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes)
+        {
             $enterpriseData = $this->getEnterpriseDataByCategory('medical_pharmaceutical');
             $nameIndex = $this->faker->numberBetween(0, count($enterpriseData['names']) - 1);
 
@@ -97,7 +100,8 @@ class EnterpriseFactory extends Factory
      */
     public function entertainment()
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes)
+        {
             $enterpriseData = $this->getEnterpriseDataByCategory('entertainment_media');
             $nameIndex = $this->faker->numberBetween(0, count($enterpriseData['names']) - 1);
 
@@ -119,7 +123,8 @@ class EnterpriseFactory extends Factory
      */
     public function technology()
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes)
+        {
             $enterpriseData = $this->getEnterpriseDataByCategory('technology_software');
             $nameIndex = $this->faker->numberBetween(0, count($enterpriseData['names']) - 1);
 
@@ -141,7 +146,8 @@ class EnterpriseFactory extends Factory
      */
     public function legal()
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes)
+        {
             $enterpriseData = $this->getEnterpriseDataByCategory('legal_financial');
             $nameIndex = $this->faker->numberBetween(0, count($enterpriseData['names']) - 1);
 
@@ -163,7 +169,8 @@ class EnterpriseFactory extends Factory
      */
     public function marketing()
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes)
+        {
             $enterpriseData = $this->getEnterpriseDataByCategory('marketing_advertising');
             $nameIndex = $this->faker->numberBetween(0, count($enterpriseData['names']) - 1);
 
@@ -185,11 +192,14 @@ class EnterpriseFactory extends Factory
      */
     public function forTeam($teamId)
     {
-        return $this->state(function (array $attributes) use ($teamId) {
+        return $this->state(function (array $attributes) use ($teamId)
+        {
             return [
                 'team_id' => $teamId,
-                'creator_id' => function () use ($teamId) {
-                    $users = User::whereHas('teams', function ($q) use ($teamId) {
+                'creator_id' => function () use ($teamId)
+                {
+                    $users = User::whereHas('teams', function ($q) use ($teamId)
+                    {
                         $q->where('team_id', $teamId);
                     })->get();
 

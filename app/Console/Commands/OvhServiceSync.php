@@ -6,44 +6,44 @@ use Illuminate\Console\Command;
 
 class OvhServiceSync extends Command
 {
-	/**
-	 * The name and signature of the console command.
-	 *
-	 * @var string
-	 */
-	protected $signature = 'ovh:sync {--now} {--debug}';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'ovh:sync {--now} {--debug}';
 
-	/**
-	 * The console command description.
-	 *
-	 * @var string
-	 */
-	protected $description = 'Sync domains from OVH services';
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Sync domains from OVH services';
 
-	/**
-	 * Execute the console command.
-	 */
-	public function handle()
-	{
-		$this->info('Syncing domains from OVH services...');
+    /**
+     * Execute the console command.
+     */
+    public function handle()
+    {
+        $this->info('Syncing domains from OVH services...');
 
-		$debug = $this->option('debug');
-		$now = $this->option('now');
+        $debug = $this->option('debug');
+        $now = $this->option('now');
 
-		$this->info('Executing synchronization'.($debug ? ' in debug mode' : '').($now ? ' immediately' : ' via queue').'...');
+        $this->info('Executing synchronization'.($debug ? ' in debug mode' : '').($now ? ' immediately' : ' via queue').'...');
 
-		$job = new \App\Jobs\OvhServiceSync($debug);
+        $job = new \App\Jobs\OvhServiceSync($debug);
 
-		if ($now)
-		{
-			// Execute job immediately
-			$job->handle();
-		} else
-		{
-			// Dispatch to queue
-			dispatch($job);
-		}
+        if ($now)
+        {
+            // Execute job immediately
+            $job->handle();
+        } else
+        {
+            // Dispatch to queue
+            dispatch($job);
+        }
 
-		$this->info('OVH domain sync '.($now ? 'completed!' : 'queued!'));
-	}
+        $this->info('OVH domain sync '.($now ? 'completed!' : 'queued!'));
+    }
 }

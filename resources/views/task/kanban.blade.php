@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/typography.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/katex.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/editor.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
 @endsection
 
 @section('page-style')
@@ -30,6 +31,7 @@
 <script src="{{asset('assets/vendor/libs/jkanban/jkanban.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/quill/katex.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/quill/quill.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -151,16 +153,22 @@
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body">
-            <ul class="nav nav-tabs tabs-line">
+            <ul class="nav nav-tabs tabs-line flex-nowrap">
                 <li class="nav-item">
                     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-update">
-                        <i class="ti ti-edit me-2"></i>
+                        <i class="ti ti-edit me-1"></i>
                         <span class="align-middle">{{ __('Editar') }}</span>
                     </button>
                 </li>
                 <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-communication">
+                        <i class="ti ti-message-circle me-1"></i>
+                        <span class="align-middle">{{ __('Comunicación') }}</span>
+                    </button>
+                </li>
+                <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-activity">
-                        <i class="ti ti-trending-up me-2"></i>
+                        <i class="ti ti-trending-up me-1"></i>
                         <span class="align-middle">{{ __('Actividad') }}</span>
                     </button>
                 </li>
@@ -225,6 +233,63 @@
                             <button type="button" id="offcanvas-delete" class="btn btn-label-danger">{{ __('Eliminar') }}</button>
                         </div>
                     </form>
+                </div>
+                <!-- Communication -->
+                <div class="tab-pane fade" id="tab-communication" role="tabpanel">
+                    <div class="mt-3">
+                        <form id="communication-form">
+                        <!-- Recipients Selection -->
+                        <div class="mb-3">
+                            <label class="form-label">{{ __('Destinatarios') }}</label>
+                            <div class="d-flex gap-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="recipient-responsible" value="responsible" checked disabled>
+                                    <label class="form-check-label" for="recipient-responsible">
+                                        <i class="ti ti-user me-1"></i>
+                                        <span id="responsible-name">{{ __('Responsable') }}</span>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="recipient-client" value="client">
+                                    <label class="form-check-label" for="recipient-client">
+                                        <i class="ti ti-building me-1"></i>
+                                        <span id="client-name">{{ __('Cliente') }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                            <!-- Subject (readonly, predefined) -->
+                            <input type="hidden" id="communication-subject" value="Consulta sobre tarea">
+
+                            <!-- Message -->
+                            <div class="mb-3">
+                                <label class="form-label" for="communication-message">{{ __('Mensaje') }}</label>
+                                <textarea id="communication-message" class="form-control" rows="6" placeholder="{{ __('Escribe tu mensaje o consulta...') }}"></textarea>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary" id="send-communication">
+                                    <i class="ti ti-send me-1"></i>{{ __('Enviar') }}
+                                </button>
+                                <button type="button" class="btn btn-label-secondary" id="clear-communication">
+                                    <i class="ti ti-x me-1"></i>{{ __('Limpiar') }}
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Communication History -->
+                        <div class="mt-4">
+                            <h6 class="mb-3">{{ __('Historial de comunicaciones') }}</h6>
+                            <div id="communication-history">
+                                <div class="text-center py-3 text-muted">
+                                    <i class="ti ti-message-off mb-2" style="font-size: 2rem;"></i>
+                                    <p class="mb-0">{{ __('No hay comunicaciones previas') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <!-- Activities -->
                 <div class="tab-pane fade" id="tab-activity" role="tabpanel">

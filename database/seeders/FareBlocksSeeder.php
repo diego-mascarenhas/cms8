@@ -18,7 +18,8 @@ class FareBlocksSeeder extends Seeder
             ['id' => 3, 'name' => 'Audiodescripción'],
         ];
 
-        foreach ($blocks as $block) {
+        foreach ($blocks as $block)
+        {
             FareType::create($block);
         }
     }

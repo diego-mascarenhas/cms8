@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('products', function (Blueprint $table) {
+        Schema::create('products', function (Blueprint $table)
+        {
             $table->id();
             $table->foreignId('team_id')->constrained('teams')->onDelete('cascade'); // teams uses bigint
             $table->string('name');

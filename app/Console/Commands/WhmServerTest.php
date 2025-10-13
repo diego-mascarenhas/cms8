@@ -7,16 +7,16 @@ use Illuminate\Console\Command;
 
 class WhmServerTest extends Command
 {
-	protected $signature = 'whm:test-servers';
+    protected $signature = 'whm:test-servers';
 
-	protected $description = 'Test WHM servers connections';
+    protected $description = 'Test WHM servers connections';
 
-	public function handle()
-	{
-		$this->info('Testing WHM servers...');
+    public function handle()
+    {
+        $this->info('Testing WHM servers...');
 
-		dispatch(new WhmServerTestJob);
+        dispatch(new WhmServerTestJob);
 
-		$this->info('Job dispatched successfully!');
-	}
+        $this->info('Job dispatched successfully!');
+    }
 }

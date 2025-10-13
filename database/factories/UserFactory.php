@@ -38,7 +38,8 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes)
+        {
             return [
                 'email_verified_at' => null,
             ];
@@ -50,7 +51,8 @@ class UserFactory extends Factory
      */
     public function withPersonalTeam(?callable $callback = null): static
     {
-        if (! Features::hasTeamFeatures()) {
+        if (! Features::hasTeamFeatures())
+        {
             return $this->state([]);
         }
 

@@ -50,7 +50,8 @@ class CertificationsSeeder extends Seeder
             ['certification' => 'EZTitles Certification', 'language' => 'en', 'team_id' => 1],
         ];
 
-        foreach ($certifications as $certification) {
+        foreach ($certifications as $certification)
+        {
             Certification::create($certification);
         }
     }

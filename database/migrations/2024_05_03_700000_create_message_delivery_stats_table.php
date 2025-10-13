@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('message_delivery_stats', function (Blueprint $table) {
+        Schema::create('message_delivery_stats', function (Blueprint $table)
+        {
             $table->id();
             $table->unsignedBigInteger('message_id');
             $table->unsignedInteger('subscribers')->nullable();

@@ -14,35 +14,35 @@ use Laravel\Jetstream\Jetstream;
 
 class JetstreamServiceProvider extends ServiceProvider
 {
-	/**
-	 * Register any application services.
-	 */
-	public function register(): void
-	{
-		//
-	}
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        //
+    }
 
-	/**
-	 * Bootstrap any application services.
-	 */
-	public function boot(): void
-	{
-		$this->configurePermissions();
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        $this->configurePermissions();
 
-		Jetstream::createTeamsUsing(CreateTeam::class);
-		Jetstream::updateTeamNamesUsing(UpdateTeamName::class);
-		Jetstream::addTeamMembersUsing(AddTeamMember::class);
-		Jetstream::inviteTeamMembersUsing(InviteTeamMember::class);
-		Jetstream::removeTeamMembersUsing(RemoveTeamMember::class);
-		Jetstream::deleteTeamsUsing(DeleteTeam::class);
-		Jetstream::deleteUsersUsing(DeleteUser::class);
-	}
+        Jetstream::createTeamsUsing(CreateTeam::class);
+        Jetstream::updateTeamNamesUsing(UpdateTeamName::class);
+        Jetstream::addTeamMembersUsing(AddTeamMember::class);
+        Jetstream::inviteTeamMembersUsing(InviteTeamMember::class);
+        Jetstream::removeTeamMembersUsing(RemoveTeamMember::class);
+        Jetstream::deleteTeamsUsing(DeleteTeam::class);
+        Jetstream::deleteUsersUsing(DeleteUser::class);
+    }
 
-	/**
-	 * Configure the roles and permissions that are available within the application.
-	 */
-	protected function configurePermissions(): void
-	{
+    /**
+     * Configure the roles and permissions that are available within the application.
+     */
+    protected function configurePermissions(): void
+    {
         Jetstream::defaultApiTokenPermissions(['read']);
 
         // Register roles in hierarchical order (top → bottom)
@@ -89,5 +89,5 @@ class JetstreamServiceProvider extends ServiceProvider
         Jetstream::role('user', 'User', [
             'read',
         ])->description('Standard user role with read access.');
-	}
+    }
 }

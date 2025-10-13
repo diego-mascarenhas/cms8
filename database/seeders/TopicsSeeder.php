@@ -29,8 +29,10 @@ class TopicsSeeder extends Seeder
         // Get all teams to assign topics to each one
         $teams = Team::all();
 
-        foreach ($teams as $team) {
-            foreach ($topics as $topicName) {
+        foreach ($teams as $team)
+        {
+            foreach ($topics as $topicName)
+            {
                 DB::table('topics')->insert([
                     'name' => $topicName,
                     'team_id' => $team->id,

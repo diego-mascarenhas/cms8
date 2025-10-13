@@ -10,7 +10,8 @@ class MailTest extends TestCase
 {
     public function test_real_smtp_connection()
     {
-        try {
+        try
+        {
             // Enviar a múltiples direcciones para probar
             $recipients = [
                 'diego.mascarenhas@icloud.com',
@@ -18,12 +19,14 @@ class MailTest extends TestCase
                 // Agrega más emails si quieres probar
             ];
 
-            foreach ($recipients as $email) {
+            foreach ($recipients as $email)
+            {
                 Mail::to($email)->send(new TestMail);
                 $this->assertTrue(true);
                 echo "\nEmail enviado correctamente a: ".$email;
             }
-        } catch (\Exception $e) {
+        } catch (\Exception $e)
+        {
             $this->fail('Error al enviar el email: '.$e->getMessage());
         }
     }

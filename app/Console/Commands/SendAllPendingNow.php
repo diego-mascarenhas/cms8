@@ -76,8 +76,8 @@ class SendAllPendingNow extends Command
 
             // Show Message ID column only when not filtering by specific message
             $headers = $messageId
-            	? ['ID', 'Contact Email', 'Message', 'Team']
-            	: ['ID', 'Contact Email', 'Msg ID', 'Message', 'Team'];
+                ? ['ID', 'Contact Email', 'Message', 'Team']
+                : ['ID', 'Contact Email', 'Msg ID', 'Message', 'Team'];
 
             $this->table(
                 $headers,
@@ -110,8 +110,8 @@ class SendAllPendingNow extends Command
 
         // Confirm before mass sending
         $confirmMessage = $messageId
-        	? "⚠️  Are you sure you want to send {$pendings->count()} emails from Message ID {$messageId} immediately?"
-        	: "⚠️  Are you sure you want to send {$pendings->count()} emails immediately?";
+            ? "⚠️  Are you sure you want to send {$pendings->count()} emails from Message ID {$messageId} immediately?"
+            : "⚠️  Are you sure you want to send {$pendings->count()} emails immediately?";
 
         if (! $this->confirm($confirmMessage))
         {

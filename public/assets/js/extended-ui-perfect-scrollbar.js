@@ -1,1 +1,37 @@
-"use strict";document.addEventListener("DOMContentLoaded",(function(){!function(){const e=document.getElementById("vertical-example"),t=document.getElementById("horizontal-example"),n=document.getElementById("both-scrollbars-example");e&&new PerfectScrollbar(e,{wheelPropagation:!1}),t&&new PerfectScrollbar(t,{wheelPropagation:!1,suppressScrollY:!0}),n&&new PerfectScrollbar(n,{wheelPropagation:!1})}()}));
+/**
+ * Perfect Scrollbar
+ */
+'use strict';
+
+document.addEventListener('DOMContentLoaded', function () {
+  (function () {
+    const verticalExample = document.getElementById('vertical-example'),
+      horizontalExample = document.getElementById('horizontal-example'),
+      horizVertExample = document.getElementById('both-scrollbars-example');
+
+    // Vertical Example
+    // --------------------------------------------------------------------
+    if (verticalExample) {
+      new PerfectScrollbar(verticalExample, {
+        wheelPropagation: false
+      });
+    }
+
+    // Horizontal Example
+    // --------------------------------------------------------------------
+    if (horizontalExample) {
+      new PerfectScrollbar(horizontalExample, {
+        wheelPropagation: false,
+        suppressScrollY: true
+      });
+    }
+
+    // Both vertical and Horizontal Example
+    // --------------------------------------------------------------------
+    if (horizVertExample) {
+      new PerfectScrollbar(horizVertExample, {
+        wheelPropagation: false
+      });
+    }
+  })();
+});

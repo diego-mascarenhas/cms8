@@ -22,7 +22,8 @@ class SoftwareTypesSeeder extends Seeder
             ['name' => 'Custom Application'],
         ];
 
-        foreach ($types as $type) {
+        foreach ($types as $type)
+        {
             SoftwareType::create($type);
         }
     }

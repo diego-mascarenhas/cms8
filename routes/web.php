@@ -366,6 +366,16 @@ Route::middleware(['auth'])->group(function () {
 	Route::post('/task/update-status', [TaskController::class, 'updateStatus'])->name('task.update-status');
 	Route::post('/task/update-order', [TaskController::class, 'updateOrder'])->name('task.update-order');
 	Route::get('/task/{id}/activities', [TaskController::class, 'getActivities'])->name('task.activities');
+	Route::post('/task/send-communication', [TaskController::class, 'sendCommunication'])->name('task.send-communication');
+	Route::get('/task/{id}/communications', [TaskController::class, 'getCommunications'])->name('task.communications');
+
+	// Public routes for client responses (no auth required)
+	Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])
+		->name('task.communication.respond')
+		->withoutMiddleware(['auth']);
+	Route::post('/task-communication/{token}', [TaskController::class, 'storeCommunicationResponse'])
+		->name('task.communication.respond.store')
+		->withoutMiddleware(['auth']);
 
 	// Task Board Routes
 	Route::get('/task-board', [App\Http\Controllers\TaskBoardController::class, 'index'])->name('task-board.index');

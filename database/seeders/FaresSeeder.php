@@ -49,7 +49,8 @@ class FaresSeeder extends Seeder
             ['name' => 'Lengua de signos', 'team_id' => 1, 'type_id' => 3],
         ];
 
-        foreach ($fares as $fare) {
+        foreach ($fares as $fare)
+        {
             Fare::create($fare);
         }
     }

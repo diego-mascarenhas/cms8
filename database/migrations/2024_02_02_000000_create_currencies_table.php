@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('currencies', function (Blueprint $table) {
+        Schema::create('currencies', function (Blueprint $table)
+        {
             $table->unsignedInteger('id')->primary();
             $table->string('code', 3)->unique();
             $table->string('name');

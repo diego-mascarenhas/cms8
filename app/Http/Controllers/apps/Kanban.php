@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class Kanban extends Controller
 {
-	public function index()
-	{
-		return view('content.apps.app-kanban');
-	}
+    public function index()
+    {
+        return view('content.apps.app-kanban');
+    }
 }

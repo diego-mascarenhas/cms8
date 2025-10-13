@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('channel_configs', function (Blueprint $table) {
+        Schema::create('channel_configs', function (Blueprint $table)
+        {
             $table->id();
             $table->unsignedTinyInteger('channel_id');
             $table->string('param');

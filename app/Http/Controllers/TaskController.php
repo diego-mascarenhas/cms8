@@ -363,4 +363,184 @@ class TaskController extends Controller
 			return response()->json(['success' => false, 'message' => 'Error deleting task'], 500);
 		}
 	}
+
+	public function sendCommunication(Request $request)
+	{
+		try {
+			$request->validate([
+				'task_id' => 'required|exists:tasks,id',
+				'recipients' => 'required|array|min:1',
+				'recipients.*' => 'in:responsible,client',
+				'subject' => 'required|string|max:255',
+				'message' => 'required|string',
+			]);
+
+			$task = Task::with(['responsible', 'project.enterprise'])->findOrFail($request->task_id);
+
+			// Generate unique token if client is in recipients
+			$responseToken = null;
+			if (in_array('client', $request->recipients)) {
+				$responseToken = \Str::random(64);
+			}
+
+			// Store communication record
+			$communication = \App\Models\TaskCommunication::create([
+				'task_id' => $task->id,
+				'user_id' => auth()->id(),
+				'recipients' => json_encode($request->recipients),
+				'method' => in_array('client', $request->recipients) ? 'email' : 'internal',
+				'subject' => $request->subject,
+				'message' => $request->message,
+				'response_token' => $responseToken,
+				'sent_at' => now(),
+			]);
+
+			// Send emails if needed
+			$sent = true;
+			$errorMessage = '';
+			$messages = [];
+
+			// Internal note for responsible
+			if (in_array('responsible', $request->recipients)) {
+				$messages[] = 'Nota interna guardada';
+			}
+
+			// Email to client
+			if (in_array('client', $request->recipients)) {
+				if ($task->project && $task->project->enterprise && $task->project->enterprise->email) {
+					try {
+						$responseUrl = route('task.communication.respond', ['token' => $responseToken]);
+
+						\Mail::send('emails.task-communication', [
+							'task' => $task,
+							'message' => $request->message,
+							'responseUrl' => $responseUrl,
+							'enterprise' => $task->project->enterprise,
+						], function ($mail) use ($task, $request) {
+							$mail
+								->to($task->project->enterprise->email)
+								->subject($request->subject . ' - Tarea: ' . $task->title);
+						});
+
+						$messages[] = 'Email enviado al cliente';
+					} catch (\Exception $mailError) {
+						\Log::error('Error sending email to client', [
+							'error' => $mailError->getMessage(),
+							'task_id' => $task->id,
+						]);
+						$errorMessage = 'No se pudo enviar el email al cliente';
+						$sent = false;
+					}
+				} else {
+					$errorMessage = 'El cliente no tiene un email configurado';
+					$sent = false;
+				}
+			}
+
+			if ($sent) {
+				return response()->json([
+					'success' => true,
+					'message' => implode(' y ', $messages) . ' correctamente',
+				]);
+			} else {
+				return response()->json([
+					'success' => false,
+					'message' => $errorMessage ?: 'No se pudo enviar la comunicación',
+				], 500);
+			}
+		} catch (\Exception $e) {
+			\Log::error('Error sending task communication', [
+				'error' => $e->getMessage(),
+				'trace' => $e->getTraceAsString(),
+			]);
+
+			return response()->json([
+				'success' => false,
+				'message' => 'Error al enviar la comunicación: ' . $e->getMessage(),
+			], 500);
+		}
+	}
+
+	public function getCommunications($id)
+	{
+		try {
+			$task = Task::findOrFail($id);
+
+			$communications = \App\Models\TaskCommunication::where('task_id', $task->id)
+				->with('user')
+				->orderBy('created_at', 'desc')
+				->get()
+				->map(function ($comm) {
+					$recipients = json_decode($comm->recipients, true);
+					$recipientsDisplay = [];
+
+					if (in_array('responsible', $recipients)) {
+						$recipientsDisplay[] = 'Responsable';
+					}
+					if (in_array('client', $recipients)) {
+						$recipientsDisplay[] = 'Cliente';
+					}
+
+					$response = [
+						'id' => $comm->id,
+						'method' => $comm->method,
+						'subject' => $comm->subject,
+						'message' => $comm->message,
+						'recipients' => $recipients,
+						'recipients_display' => implode(', ', $recipientsDisplay),
+						'sender_name' => $comm->user ? $comm->user->name : 'Sistema',
+						'created_at' => $comm->created_at->format('d/m/Y H:i'),
+						'has_response' => !empty($comm->response),
+						'response' => $comm->response,
+						'response_at' => $comm->response_at ? $comm->response_at->format('d/m/Y H:i') : null,
+					];
+
+					return $response;
+				});
+
+			return response()->json($communications);
+		} catch (\Exception $e) {
+			\Log::error('Error loading task communications', [
+				'task_id' => $id,
+				'error' => $e->getMessage(),
+			]);
+
+			return response()->json([], 500);
+		}
+	}
+
+	public function showCommunicationResponse($token)
+	{
+		$communication = \App\Models\TaskCommunication::with(['task.project.enterprise', 'user'])
+			->where('response_token', $token)
+			->firstOrFail();
+
+		return view('task.communication-respond', compact('communication'));
+	}
+
+	public function storeCommunicationResponse(Request $request, $token)
+	{
+		$request->validate([
+			'response' => 'required|string',
+		]);
+
+		$communication = \App\Models\TaskCommunication::where('response_token', $token)
+			->firstOrFail();
+
+		// Check if already responded
+		if ($communication->response) {
+			return redirect()
+				->route('task.communication.respond', $token)
+				->with('error', 'Ya se ha respondido a esta comunicación previamente.');
+		}
+
+		$communication->update([
+			'response' => $request->response,
+			'response_at' => now(),
+		]);
+
+		return redirect()
+			->route('task.communication.respond', $token)
+			->with('success', 'Tu respuesta ha sido enviada correctamente.');
+	}
 }

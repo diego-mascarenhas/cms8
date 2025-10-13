@@ -21,7 +21,8 @@ class ContactStatusSeeder extends Seeder
             ['name' => 'Finalizado', 'label_class' => 'bg-label-dark'],
         ];
 
-        foreach ($statuses as $status) {
+        foreach ($statuses as $status)
+        {
             ContactStatus::create($status);
         }
     }

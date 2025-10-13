@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('message_type', function (Blueprint $table) {
+        Schema::create('message_type', function (Blueprint $table)
+        {
             $table->increments('id');
             $table->string('name');
             $table->tinyInteger('status')->default(2);

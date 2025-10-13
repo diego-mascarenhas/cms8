@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('history', function (Blueprint $table) {
+        Schema::create('history', function (Blueprint $table)
+        {
             $table->id();
             $table->string('ref');
             $table->string('keyword')->nullable();

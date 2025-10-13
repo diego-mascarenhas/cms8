@@ -430,6 +430,10 @@
 		if (startBtnRef) startBtnRef.setAttribute('data-task-id', taskId);
 		if (stopBtnRef) stopBtnRef.setAttribute('data-task-id', taskId);
 
+		// Also propagate to the Communication button
+		const sendCommunicationBtn = sidebarEl.querySelector('#send-communication');
+		if (sendCommunicationBtn) sendCommunicationBtn.setAttribute('data-task-id', taskId);
+
 		// (debug ID removed)
 
         // Prefill fields from data attributes
@@ -1358,5 +1362,251 @@
 
 		return translations[description] || description;
 	}
+
+	// ========== Communication Tab Functionality ==========
+
+	// Clear communication form
+	const clearCommunicationBtn = document.getElementById('clear-communication');
+	if (clearCommunicationBtn)
+	{
+		clearCommunicationBtn.addEventListener('click', function()
+		{
+			// Don't uncheck responsible (it's always checked and disabled)
+			document.getElementById('recipient-client').checked = false;
+			document.getElementById('communication-message').value = '';
+		});
+	}
+
+	// Send communication
+	const communicationForm = document.getElementById('communication-form');
+	if (communicationForm)
+	{
+		communicationForm.addEventListener('submit', function(e)
+		{
+			e.preventDefault();
+
+			// Get task ID from button (like timer does)
+			const sidebarEl = document.querySelector('.kanban-update-item-sidebar');
+			const sendBtn = document.getElementById('send-communication');
+			const btnTaskId = sendBtn?.getAttribute('data-task-id');
+			const taskId = btnTaskId ? parseInt(btnTaskId) : (sidebarEl ? parseInt(sidebarEl.getAttribute('data-current-task-id')) : null);
+
+			const clientChecked = document.getElementById('recipient-client').checked;
+			const subject = document.getElementById('communication-subject').value;
+			const message = document.getElementById('communication-message').value;
+
+			// Debug
+			console.log('=== COMMUNICATION FORM SUBMIT ===');
+			console.log('Task ID from button:', btnTaskId);
+			console.log('Task ID final:', taskId);
+			console.log('Client checked:', clientChecked);
+			console.log('Subject:', subject);
+			console.log('Message:', message);
+
+			// Validation
+			if (!taskId || !message.trim())
+			{
+				console.error('Validation failed:', { taskId, messageLength: message.trim().length });
+				return;
+			}
+
+			// Build recipients array (always include responsible)
+			const recipients = ['responsible'];
+			if (clientChecked) recipients.push('client');
+
+			// Send the communication (reuse sendBtn from above)
+			sendBtn.disabled = true;
+			sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Enviando...';
+
+			fetch('/task/send-communication', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRF-TOKEN': csrfToken
+				},
+				body: JSON.stringify({
+					task_id: taskId,
+					recipients: recipients,
+					subject: subject,
+					message: message
+				})
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success)
+				{
+					// Success feedback in button
+					sendBtn.innerHTML = '<i class="ti ti-check me-1"></i>Enviado!';
+					sendBtn.classList.remove('btn-primary');
+					sendBtn.classList.add('btn-success');
+
+					// Clear form and reload history
+					setTimeout(() => {
+						clearCommunicationBtn.click();
+						loadCommunicationHistory(taskId);
+						sendBtn.innerHTML = '<i class="ti ti-send me-1"></i>Enviar';
+						sendBtn.classList.remove('btn-success');
+						sendBtn.classList.add('btn-primary');
+						sendBtn.disabled = false;
+					}, 1500);
+				}
+				else
+				{
+					// Error feedback in button
+					sendBtn.innerHTML = '<i class="ti ti-x me-1"></i>Error';
+					sendBtn.classList.remove('btn-primary');
+					sendBtn.classList.add('btn-danger');
+
+					setTimeout(() => {
+						sendBtn.innerHTML = '<i class="ti ti-send me-1"></i>Enviar';
+						sendBtn.classList.remove('btn-danger');
+						sendBtn.classList.add('btn-primary');
+						sendBtn.disabled = false;
+					}, 2000);
+				}
+			})
+			.catch(error => {
+				console.error('Error sending communication:', error);
+				// Error feedback in button
+				sendBtn.innerHTML = '<i class="ti ti-x me-1"></i>Error';
+				sendBtn.classList.remove('btn-primary');
+				sendBtn.classList.add('btn-danger');
+
+				setTimeout(() => {
+					sendBtn.innerHTML = '<i class="ti ti-send me-1"></i>Enviar';
+					sendBtn.classList.remove('btn-danger');
+					sendBtn.classList.add('btn-primary');
+					sendBtn.disabled = false;
+				}, 2000);
+			});
+		});
+	}
+
+	// Load communication history
+	function loadCommunicationHistory(taskId)
+	{
+		const historyContainer = document.getElementById('communication-history');
+		if (!historyContainer) return;
+
+		historyContainer.innerHTML = `
+			<div class="text-center py-3">
+				<div class="spinner-border spinner-border-sm text-primary" role="status">
+					<span class="visually-hidden">Cargando...</span>
+				</div>
+			</div>
+		`;
+
+		fetch(`/task/${taskId}/communications`, {
+			headers: {
+				'X-CSRF-TOKEN': csrfToken
+			}
+		})
+		.then(response => response.json())
+		.then(communications => {
+			if (communications.length === 0)
+			{
+				historyContainer.innerHTML = `
+					<div class="text-center py-3 text-muted">
+						<i class="ti ti-message-off mb-2" style="font-size: 2rem;"></i>
+						<p class="mb-0">No hay comunicaciones previas</p>
+					</div>
+				`;
+				return;
+			}
+
+			// Render communications
+			let html = '<div class="timeline">';
+			communications.forEach((comm, index) => {
+				const methodIcon = {
+					'email': 'ti-mail',
+					'whatsapp': 'ti-brand-whatsapp',
+					'internal': 'ti-note'
+				}[comm.method] || 'ti-message';
+
+				const methodColor = {
+					'email': 'info',
+					'whatsapp': 'success',
+					'internal': 'secondary'
+				}[comm.method] || 'primary';
+
+				html += `
+					<div class="timeline-item timeline-item-transparent">
+						<span class="timeline-point timeline-point-${methodColor}"></span>
+						<div class="timeline-event">
+							<div class="timeline-header mb-1">
+								<h6 class="mb-0">
+									<i class="ti ${methodIcon} me-1"></i>
+									${comm.subject || comm.method.charAt(0).toUpperCase() + comm.method.slice(1)}
+								</h6>
+								<small class="text-muted">${comm.created_at}</small>
+							</div>
+							<p class="mb-2">${comm.message}</p>
+							<div class="d-flex gap-2 mb-2">
+								<span class="badge bg-label-${methodColor}">
+									<i class="ti ti-users me-1"></i>${comm.recipients_display}
+								</span>
+								<span class="badge bg-label-secondary">
+									<i class="ti ti-user me-1"></i>${comm.sender_name}
+								</span>
+							</div>
+							${comm.has_response ? `
+								<div class="alert alert-success p-2 mt-2">
+									<strong><i class="ti ti-check-circle me-1"></i>Respuesta del cliente:</strong>
+									<p class="mb-1 mt-1">${comm.response}</p>
+									<small class="text-muted">${comm.response_at}</small>
+								</div>
+							` : ''}
+						</div>
+					</div>
+				`;
+			});
+			html += '</div>';
+
+			historyContainer.innerHTML = html;
+		})
+		.catch(error => {
+			console.error('Error loading communication history:', error);
+			historyContainer.innerHTML = `
+				<div class="text-center py-3 text-danger">
+					<i class="ti ti-alert-circle mb-2" style="font-size: 2rem;"></i>
+					<p class="mb-0">Error al cargar el historial</p>
+				</div>
+			`;
+		});
+	}
+
+	// Update communication tab when a task is opened
+	const originalUpdateItemSidebar = window.updateItemSidebar;
+	window.updateItemSidebar = function(taskElement) {
+		// Call original function
+		if (originalUpdateItemSidebar) {
+			originalUpdateItemSidebar(taskElement);
+		}
+
+		// Get task data
+		const taskId = taskElement.getAttribute('data-task-id');
+		const taskData = JSON.parse(taskElement.getAttribute('data-task-data'));
+
+		// Update responsible and client names
+		const responsibleName = taskData.responsible_name || 'Responsable';
+		const responsibleNameEl = document.getElementById('responsible-name');
+		if (responsibleNameEl)
+		{
+			responsibleNameEl.textContent = responsibleName;
+		}
+
+		const clientName = taskData.client_name || 'Cliente';
+		const clientNameEl = document.getElementById('client-name');
+		if (clientNameEl)
+		{
+			clientNameEl.textContent = clientName;
+		}
+
+		// Load communication history
+		if (taskId)
+		{
+			loadCommunicationHistory(taskId);
+		}
+	};
 })();
 

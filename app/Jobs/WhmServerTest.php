@@ -14,47 +14,47 @@ use Illuminate\Support\Facades\Log;
 
 class WhmServerTest implements ShouldQueue
 {
-	use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-	public function __construct()
-	{
-		$this->onQueue('whm-tests');
-	}
+    public function __construct()
+    {
+        $this->onQueue('whm-tests');
+    }
 
-	public function handle(WHMService $whmService)
-	{
-		try
-		{
-			$results = $whmService->testConnections();
+    public function handle(WHMService $whmService)
+    {
+        try
+        {
+            $results = $whmService->testConnections();
 
-			foreach ($results as $result)
-			{
-				if (isset($result['components']) && count($result['components']) >= 3)
-				{
-					$testResult = $result['test_result'];
-					$status = $testResult['success'] ?? false
-						? ServerStatus::ACTIVE
-						: ServerStatus::INACTIVE;
+            foreach ($results as $result)
+            {
+                if (isset($result['components']) && count($result['components']) >= 3)
+                {
+                    $testResult = $result['test_result'];
+                    $status = $testResult['success'] ?? false
+                        ? ServerStatus::ACTIVE
+                        : ServerStatus::INACTIVE;
 
-					Server::updateOrCreate(
-						['server_url' => $result['components'][0]],
-						[
-						    'username' => $result['components'][1],
-						    'success' => $testResult['success'] ?? false,
-						    'status_id' => $status->value,
-						    'details' => $testResult,
-						],
-					);
-				}
-			}
-		} catch (\Exception $e)
-		{
-			Log::error('Critical error in WHM server test: '.$e->getMessage(), [
-				'exception' => get_class($e),
-				'file' => $e->getFile(),
-				'line' => $e->getLine(),
-			]);
-			throw $e;
-		}
-	}
+                    Server::updateOrCreate(
+                        ['server_url' => $result['components'][0]],
+                        [
+                            'username' => $result['components'][1],
+                            'success' => $testResult['success'] ?? false,
+                            'status_id' => $status->value,
+                            'details' => $testResult,
+                        ],
+                    );
+                }
+            }
+        } catch (\Exception $e)
+        {
+            Log::error('Critical error in WHM server test: '.$e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            throw $e;
+        }
+    }
 }

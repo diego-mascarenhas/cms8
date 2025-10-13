@@ -11,7 +11,8 @@ class CreateMailboxInboundEmailsTable extends Migration
      */
     public function up()
     {
-        Schema::create('mailbox_inbound_emails', function (Blueprint $table) {
+        Schema::create('mailbox_inbound_emails', function (Blueprint $table)
+        {
             $table->bigIncrements('id');
             $table->string('message_id');
             $table->longText('message');

@@ -20,15 +20,14 @@ class EnterpriseTaxStatusTypeSeeder extends Seeder
             'Individual taxpayer',
         ];
 
-        foreach ($types as $name) {
+        foreach ($types as $name)
+        {
             EnterpriseTaxStatusType::updateOrCreate(
                 ['name' => $name],
-                []
+                [],
             );
         }
 
         $this->command->info('EnterpriseTaxStatusType seeded successfully.');
     }
 }
-
-

@@ -23,6 +23,5 @@ class MessageTypeSeeder extends Seeder
             'name' => 'WhatsApp',
             'status' => 1,
         ]);
-
     }
 }

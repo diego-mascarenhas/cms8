@@ -13,7 +13,8 @@ class CreateEnterpriseStatusesTable extends Migration
      */
     public function up()
     {
-        Schema::create('enterprise_statuses', function (Blueprint $table) {
+        Schema::create('enterprise_statuses', function (Blueprint $table)
+        {
             $table->tinyIncrements('id');
             $table->string('name');
             $table->unsignedTinyInteger('enterprise_type_id');

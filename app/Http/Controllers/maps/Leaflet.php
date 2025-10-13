@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class Leaflet extends Controller
 {
-	public function index()
-	{
-		return view('content.maps.maps-leaflet');
-	}
+    public function index()
+    {
+        return view('content.maps.maps-leaflet');
+    }
 }

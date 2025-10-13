@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 
 class RegisterBasic extends Controller
 {
-	public function index()
-	{
-		$pageConfigs = ['myLayout' => 'blank'];
+    public function index()
+    {
+        $pageConfigs = ['myLayout' => 'blank'];
 
-		return view('content.authentications.auth-register-basic', ['pageConfigs' => $pageConfigs]);
-	}
+        return view('content.authentications.auth-register-basic', ['pageConfigs' => $pageConfigs]);
+    }
 }

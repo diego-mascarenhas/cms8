@@ -1,1 +1,471 @@
-"use strict";!async function(){let e;const t=document.querySelector(".kanban-update-item-sidebar"),a=document.querySelector(".kanban-wrapper"),n=document.querySelector(".comment-editor"),i=document.querySelector(".kanban-add-new-board"),d=[].slice.call(document.querySelectorAll(".kanban-add-board-input")),o=document.querySelector(".kanban-add-board-btn"),r=document.querySelector("#due-date"),s=$(".select2"),l=document.querySelector("html").getAttribute("data-assets-path"),c=new bootstrap.Offcanvas(t),u=await fetch(l+"json/kanban.json");if(u.ok||console.error("error",u),e=await u.json(),r&&r.flatpickr({monthSelectorType:"static",altInput:!0,altFormat:"j F, Y",dateFormat:"Y-m-d"}),s.length){function A(e){return e.id?"<div class='badge "+$(e.element).data("color")+" rounded-pill'> "+e.text+"</div>":e.text}s.each((function(){var e=$(this);e.wrap("<div class='position-relative'></div>").select2({placeholder:"Seleccionar etiqueta",dropdownParent:e.parent(),templateResult:A,templateSelection:A,escapeMarkup:function(e){return e}})}))}function p(e,t,a,n,i){var d=t?" pull-up":"",o=a?"avatar-"+a:"",r=null==i?" ":i.split(",");return null==e?" ":e.split(",").map((function(e,t,a){var i=n&&t!==a.length-1?" me-"+n:"";return"<div class='avatar "+o+i+"'data-bs-toggle='tooltip' data-bs-placement='top'title='"+r[t]+"'><img src='"+l+"img/avatars/"+e+"' alt='Avatar' class='rounded-circle "+d+"'></div>"})).join(" ")}n&&new Quill(n,{modules:{toolbar:".comment-toolbar"},placeholder:"Escribe un comentario... ",theme:"snow"});const m=new jKanban({element:".kanban-wrapper",gutter:"15px",widthBoard:"250px",dragItems:!0,boards:e,dragBoards:!0,addItemButton:!0,buttonContent:"+ Añadir elemento",itemAddOptions:{enabled:!0,content:"+ Añadir nuevo elemento",class:"kanban-title-button btn",footer:!1},click:function(e){let a=e,n=a.getAttribute("data-eid")?a.querySelector(".kanban-text").textContent:a.textContent,i=a.getAttribute("data-due-date"),d=new Date,o=d.getFullYear(),r=i?i+", "+o:d.getDate()+" "+d.toLocaleString("es",{month:"long"})+", "+o,l=a.getAttribute("data-badge-text"),u=a.getAttribute("data-assigned");c.show(),t.querySelector("#title").value=n,t.querySelector("#due-date").nextSibling.value=r,$(".kanban-update-item-sidebar").find(s).val(l).trigger("change"),t.querySelector(".assigned").innerHTML="",t.querySelector(".assigned").insertAdjacentHTML("afterbegin",p(u,!1,"xs","1",e.getAttribute("data-members"))+"<div class='avatar avatar-xs ms-1'><span class='avatar-initial rounded-circle bg-label-secondary'><i class='ti ti-plus ti-xs text-heading'></i></span></div>")},buttonClick:function(e,t){const a=document.createElement("form");a.setAttribute("class","new-item-form"),a.innerHTML='<div class="mb-3"><textarea class="form-control add-new-item" rows="2" placeholder="Añade contenido" autofocus required></textarea></div><div class="mb-3"><button type="submit" class="btn btn-primary btn-sm me-2 waves-effect waves-light">Añadir</button><button type="button" class="btn btn-label-secondary btn-sm cancel-add-item waves-effect waves-light">Cancelar</button></div>',m.addForm(t,a),a.addEventListener("submit",(function(e){e.preventDefault();const n=[].slice.call(document.querySelectorAll(".kanban-board[data-id="+t+"] .kanban-item"));m.addElement(t,{title:"<span class='kanban-text'>"+e.target[0].value+"</span>",id:t+"-"+n.length+1});[].slice.call(document.querySelectorAll(".kanban-board[data-id="+t+"] .kanban-text")).forEach((function(e){e.insertAdjacentHTML("beforebegin","<div class='dropdown kanban-tasks-item-dropdown'><i class='dropdown-toggle ti ti-dots-vertical' id='kanban-tasks-item-dropdown' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'></i><div class='dropdown-menu dropdown-menu-end' aria-labelledby='kanban-tasks-item-dropdown'><a class='dropdown-item' href='javascript:void(0)'>Copiar enlace</a><a class='dropdown-item' href='javascript:void(0)'>Duplicar</a><a class='dropdown-item delete-task' href='javascript:void(0)'>Eliminar</a></div></div>")}));const i=[].slice.call(document.querySelectorAll(".kanban-item .kanban-tasks-item-dropdown"));i&&i.forEach((function(e){e.addEventListener("click",(function(e){e.stopPropagation()}))}));[].slice.call(document.querySelectorAll(".kanban-board[data-id="+t+"] .delete-task")).forEach((function(e){e.addEventListener("click",(function(){const e=this.closest(".kanban-item").getAttribute("data-eid");m.removeElement(e)}))})),a.remove()})),a.querySelector(".cancel-add-item").addEventListener("click",(function(e){a.remove()}))}});a&&new PerfectScrollbar(a);const b=document.querySelector(".kanban-container"),v=[].slice.call(document.querySelectorAll(".kanban-title-board")),g=[].slice.call(document.querySelectorAll(".kanban-item"));g&&g.forEach((function(e){const t="<span class='kanban-text'>"+e.textContent+"</span>";let a="";var n,i,d,o,r,s;null!==e.getAttribute("data-image")&&(a="<img class='img-fluid rounded mb-2' src='"+l+"img/elements/"+e.getAttribute("data-image")+"'>"),e.textContent="",void 0!==e.getAttribute("data-badge")&&void 0!==e.getAttribute("data-badge-text")&&e.insertAdjacentHTML("afterbegin",(n=e.getAttribute("data-badge"),i=e.getAttribute("data-badge-text"),"<div class='d-flex justify-content-between flex-wrap align-items-center mb-2 pb-1'><div class='item-badges'> <div class='badge rounded-pill bg-label-"+n+"'> "+i+"</div></div><div class='dropdown kanban-tasks-item-dropdown'><i class='dropdown-toggle ti ti-dots-vertical' id='kanban-tasks-item-dropdown' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'></i><div class='dropdown-menu dropdown-menu-end' aria-labelledby='kanban-tasks-item-dropdown'><a class='dropdown-item' href='javascript:void(0)'>Copiar enlace</a><a class='dropdown-item' href='javascript:void(0)'>Duplicar</a><a class='dropdown-item delete-task' href='javascript:void(0)'>Eliminar</a></div></div></div>"+a+t)),void 0===e.getAttribute("data-comments")&&void 0===e.getAttribute("data-due-date")&&void 0===e.getAttribute("data-assigned")||e.insertAdjacentHTML("beforeend",(d=e.getAttribute("data-attachments"),o=e.getAttribute("data-comments"),r=e.getAttribute("data-assigned"),s=e.getAttribute("data-members"),"<div class='d-flex justify-content-between align-items-center flex-wrap mt-2 pt-1'><div class='d-flex'> <span class='d-flex align-items-center me-2'><i class='ti ti-paperclip ti-xs me-1'></i><span class='attachments'>"+d+"</span></span> <span class='d-flex align-items-center ms-1'><i class='ti ti-message-dots ti-xs me-1'></i><span> "+o+" </span></span></div><div class='avatar-group d-flex align-items-center assigned-avatar'>"+p(r,!0,"xs",null,s)+"</div></div>"))}));[].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]')).map((function(e){return new bootstrap.Tooltip(e)}));const f=[].slice.call(document.querySelectorAll(".kanban-tasks-item-dropdown"));f&&f.forEach((function(e){e.addEventListener("click",(function(e){e.stopPropagation()}))})),o&&o.addEventListener("click",(()=>{d.forEach((e=>{e.value="",e.classList.toggle("d-none")}))})),b&&b.appendChild(i),v&&v.forEach((function(e){e.addEventListener("mouseenter",(function(){this.contentEditable="true"})),e.insertAdjacentHTML("afterend","<div class='dropdown'><i class='dropdown-toggle ti ti-dots-vertical cursor-pointer' id='board-dropdown' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'></i><div class='dropdown-menu dropdown-menu-end' aria-labelledby='board-dropdown'><a class='dropdown-item delete-board' href='javascript:void(0)'> <i class='ti ti-trash ti-xs' me-1></i> <span class='align-middle'>Eliminar</span></a><a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-edit ti-xs' me-1></i> <span class='align-middle'>Renombrar</span></a><a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-archive ti-xs' me-1></i> <span class='align-middle'>Archivar</span></a></div></div>")}));const w=[].slice.call(document.querySelectorAll(".delete-board"));w&&w.forEach((function(e){e.addEventListener("click",(function(){const e=this.closest(".kanban-board").getAttribute("data-id");m.removeBoard(e)}))}));const h=[].slice.call(document.querySelectorAll(".delete-task"));h&&h.forEach((function(e){e.addEventListener("click",(function(){const e=this.closest(".kanban-item").getAttribute("data-eid");m.removeElement(e)}))}));const k=document.querySelector(".kanban-add-board-cancel-btn");k&&k.addEventListener("click",(function(){d.forEach((e=>{e.classList.toggle("d-none")}))})),i&&i.addEventListener("submit",(function(e){e.preventDefault();const t=this.querySelector(".form-control").value,a=t.replace(/\s+/g,"-").toLowerCase();m.addBoards([{id:a,title:t}]);const n=document.querySelectorAll(".kanban-board:last-child")[0];if(n){n.querySelector(".kanban-title-board").insertAdjacentHTML("afterend","<div class='dropdown'><i class='dropdown-toggle ti ti-dots-vertical cursor-pointer' id='board-dropdown' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'></i><div class='dropdown-menu dropdown-menu-end' aria-labelledby='board-dropdown'><a class='dropdown-item delete-board' href='javascript:void(0)'> <i class='ti ti-trash ti-xs' me-1></i> <span class='align-middle'>Eliminar</span></a><a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-edit ti-xs' me-1></i> <span class='align-middle'>Renombrar</span></a><a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-archive ti-xs' me-1></i> <span class='align-middle'>Archivar</span></a></div></div>"),n.querySelector(".kanban-title-board").addEventListener("mouseenter",(function(){this.contentEditable="true"}))}const o=n.querySelector(".delete-board");o&&o.addEventListener("click",(function(){const e=this.closest(".kanban-board").getAttribute("data-id");m.removeBoard(e)})),d&&d.forEach((e=>{e.classList.add("d-none")})),b&&b.appendChild(i)})),t.addEventListener("hidden.bs.offcanvas",(function(){t.querySelector(".ql-editor").firstElementChild.innerHTML=""})),t&&t.addEventListener("shown.bs.offcanvas",(function(){[].slice.call(t.querySelectorAll('[data-bs-toggle="tooltip"]')).map((function(e){return new bootstrap.Tooltip(e)}))}))}();
+/**
+ * App Kanban
+ */
+
+'use strict';
+
+(async function () {
+  let boards;
+  const kanbanSidebar = document.querySelector('.kanban-update-item-sidebar'),
+    kanbanWrapper = document.querySelector('.kanban-wrapper'),
+    commentEditor = document.querySelector('.comment-editor'),
+    kanbanAddNewBoard = document.querySelector('.kanban-add-new-board'),
+    kanbanAddNewInput = [].slice.call(document.querySelectorAll('.kanban-add-board-input')),
+    kanbanAddBoardBtn = document.querySelector('.kanban-add-board-btn'),
+    datePicker = document.querySelector('#due-date'),
+    select2 = $('.select2'), // ! Using jquery vars due to select2 jQuery dependency
+    assetsPath = document.querySelector('html').getAttribute('data-assets-path');
+
+  // Init kanban Offcanvas
+  const kanbanOffcanvas = new bootstrap.Offcanvas(kanbanSidebar);
+
+  // Get kanban data
+  const kanbanResponse = await fetch(assetsPath + 'json/kanban.json');
+  if (!kanbanResponse.ok) {
+    console.error('error', kanbanResponse);
+  }
+  boards = await kanbanResponse.json();
+
+  // datepicker init
+  if (datePicker) {
+    datePicker.flatpickr({
+      monthSelectorType: 'static',
+      altInput: true,
+      altFormat: 'j F, Y',
+      dateFormat: 'Y-m-d'
+    });
+  }
+
+  //! TODO: Update Event label and guest code to JS once select removes jQuery dependency
+  // select2
+  if (select2.length) {
+    function renderLabels(option) {
+      if (!option.id) {
+        return option.text;
+      }
+      var $badge = "<div class='badge " + $(option.element).data('color') + " rounded-pill'> " + option.text + '</div>';
+      return $badge;
+    }
+
+    select2.each(function () {
+      var $this = $(this);
+      $this.wrap("<div class='position-relative'></div>").select2({
+        placeholder: 'Seleccionar etiqueta',
+        dropdownParent: $this.parent(),
+        templateResult: renderLabels,
+        templateSelection: renderLabels,
+        escapeMarkup: function (es) {
+          return es;
+        }
+      });
+    });
+  }
+
+  // Comment editor
+  if (commentEditor) {
+    new Quill(commentEditor, {
+      modules: {
+        toolbar: '.comment-toolbar'
+      },
+      placeholder: 'Escribe un comentario... ',
+      theme: 'snow'
+    });
+  }
+
+  // Render board dropdown
+  function renderBoardDropdown() {
+    return (
+      "<div class='dropdown'>" +
+      "<i class='dropdown-toggle ti ti-dots-vertical cursor-pointer' id='board-dropdown' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'></i>" +
+      "<div class='dropdown-menu dropdown-menu-end' aria-labelledby='board-dropdown'>" +
+      "<a class='dropdown-item delete-board' href='javascript:void(0)'> <i class='ti ti-trash ti-xs' me-1></i> <span class='align-middle'>Eliminar</span></a>" +
+      "<a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-edit ti-xs' me-1></i> <span class='align-middle'>Renombrar</span></a>" +
+      "<a class='dropdown-item' href='javascript:void(0)'><i class='ti ti-archive ti-xs' me-1></i> <span class='align-middle'>Archivar</span></a>" +
+      '</div>' +
+      '</div>'
+    );
+  }
+  // Render item dropdown
+  function renderDropdown() {
+    return (
+      "<div class='dropdown kanban-tasks-item-dropdown'>" +
+      "<i class='dropdown-toggle ti ti-dots-vertical' id='kanban-tasks-item-dropdown' data-bs-toggle='dropdown' aria-haspopup='true' aria-expanded='false'></i>" +
+      "<div class='dropdown-menu dropdown-menu-end' aria-labelledby='kanban-tasks-item-dropdown'>" +
+      "<a class='dropdown-item' href='javascript:void(0)'>Copiar enlace</a>" +
+      "<a class='dropdown-item' href='javascript:void(0)'>Duplicar</a>" +
+      "<a class='dropdown-item delete-task' href='javascript:void(0)'>Eliminar</a>" +
+      '</div>' +
+      '</div>'
+    );
+  }
+  // Render header
+  function renderHeader(color, text) {
+    return (
+      "<div class='d-flex justify-content-between flex-wrap align-items-center mb-2 pb-1'>" +
+      "<div class='item-badges'> " +
+      "<div class='badge rounded-pill bg-label-" +
+      color +
+      "'> " +
+      text +
+      '</div>' +
+      '</div>' +
+      renderDropdown() +
+      '</div>'
+    );
+  }
+
+  // Render avatar
+  function renderAvatar(images, pullUp, size, margin, members) {
+    var $transition = pullUp ? ' pull-up' : '',
+      $size = size ? 'avatar-' + size + '' : '',
+      member = members == undefined ? ' ' : members.split(',');
+
+    return images == undefined
+      ? ' '
+      : images
+          .split(',')
+          .map(function (img, index, arr) {
+            var $margin = margin && index !== arr.length - 1 ? ' me-' + margin + '' : '';
+
+            return (
+              "<div class='avatar " +
+              $size +
+              $margin +
+              "'" +
+              "data-bs-toggle='tooltip' data-bs-placement='top'" +
+              "title='" +
+              member[index] +
+              "'" +
+              '>' +
+              "<img src='" +
+              assetsPath +
+              'img/avatars/' +
+              img +
+              "' alt='Avatar' class='rounded-circle " +
+              $transition +
+              "'>" +
+              '</div>'
+            );
+          })
+          .join(' ');
+  }
+
+  // Render footer
+  function renderFooter(attachments, comments, assigned, members) {
+    return (
+      "<div class='d-flex justify-content-between align-items-center flex-wrap mt-2 pt-1'>" +
+      "<div class='d-flex'> <span class='d-flex align-items-center me-2'><i class='ti ti-paperclip ti-xs me-1'></i>" +
+      "<span class='attachments'>" +
+      attachments +
+      '</span>' +
+      "</span> <span class='d-flex align-items-center ms-1'><i class='ti ti-message-dots ti-xs me-1'></i>" +
+      '<span> ' +
+      comments +
+      ' </span>' +
+      '</span></div>' +
+      "<div class='avatar-group d-flex align-items-center assigned-avatar'>" +
+      renderAvatar(assigned, true, 'xs', null, members) +
+      '</div>' +
+      '</div>'
+    );
+  }
+  // Init kanban
+  const kanban = new jKanban({
+    element: '.kanban-wrapper',
+    gutter: '15px',
+    widthBoard: '250px',
+    dragItems: true,
+    boards: boards,
+    dragBoards: true,
+    addItemButton: true,
+    buttonContent: '+ Añadir elemento',
+    itemAddOptions: {
+      enabled: true, // add a button to board for easy item creation
+      content: '+ Añadir nuevo elemento', // text or html content of the board button
+      class: 'kanban-title-button btn', // default class of the button
+      footer: false // position the button on footer
+    },
+    click: function (el) {
+      let element = el;
+      let title = element.getAttribute('data-eid')
+          ? element.querySelector('.kanban-text').textContent
+          : element.textContent,
+        date = element.getAttribute('data-due-date'),
+        dateObj = new Date(),
+        year = dateObj.getFullYear(),
+        dateToUse = date
+          ? date + ', ' + year
+          : dateObj.getDate() + ' ' + dateObj.toLocaleString('es', { month: 'long' }) + ', ' + year,
+        label = element.getAttribute('data-badge-text'),
+        avatars = element.getAttribute('data-assigned');
+
+      // Show kanban offcanvas
+      kanbanOffcanvas.show();
+
+      // To get data on sidebar
+      kanbanSidebar.querySelector('#title').value = title;
+      kanbanSidebar.querySelector('#due-date').nextSibling.value = dateToUse;
+
+      // ! Using jQuery method to get sidebar due to select2 dependency
+      $('.kanban-update-item-sidebar').find(select2).val(label).trigger('change');
+
+      // Remove & Update assigned
+      kanbanSidebar.querySelector('.assigned').innerHTML = '';
+      kanbanSidebar
+        .querySelector('.assigned')
+        .insertAdjacentHTML(
+          'afterbegin',
+          renderAvatar(avatars, false, 'xs', '1', el.getAttribute('data-members')) +
+            "<div class='avatar avatar-xs ms-1'>" +
+            "<span class='avatar-initial rounded-circle bg-label-secondary'><i class='ti ti-plus ti-xs text-heading'></i></span>" +
+            '</div>'
+        );
+    },
+
+    buttonClick: function (el, boardId) {
+      const addNew = document.createElement('form');
+      addNew.setAttribute('class', 'new-item-form');
+      addNew.innerHTML =
+        '<div class="mb-3">' +
+        '<textarea class="form-control add-new-item" rows="2" placeholder="Añade contenido" autofocus required></textarea>' +
+        '</div>' +
+        '<div class="mb-3">' +
+        '<button type="submit" class="btn btn-primary btn-sm me-2 waves-effect waves-light">Añadir</button>' +
+        '<button type="button" class="btn btn-label-secondary btn-sm cancel-add-item waves-effect waves-light">Cancelar</button>' +
+        '</div>';
+      kanban.addForm(boardId, addNew);
+
+      addNew.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const currentBoard = [].slice.call(
+          document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-item')
+        );
+        kanban.addElement(boardId, {
+          title: "<span class='kanban-text'>" + e.target[0].value + '</span>',
+          id: boardId + '-' + currentBoard.length + 1
+        });
+
+        // add dropdown in new boards
+        const kanbanText = [].slice.call(
+          document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-text')
+        );
+        kanbanText.forEach(function (e) {
+          e.insertAdjacentHTML('beforebegin', renderDropdown());
+        });
+
+        // prevent sidebar to open onclick dropdown buttons of new tasks
+        const newTaskDropdown = [].slice.call(document.querySelectorAll('.kanban-item .kanban-tasks-item-dropdown'));
+        if (newTaskDropdown) {
+          newTaskDropdown.forEach(function (e) {
+            e.addEventListener('click', function (el) {
+              el.stopPropagation();
+            });
+          });
+        }
+
+        // delete tasks for new boards
+        const deleteTask = [].slice.call(
+          document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .delete-task')
+        );
+        deleteTask.forEach(function (e) {
+          e.addEventListener('click', function () {
+            const id = this.closest('.kanban-item').getAttribute('data-eid');
+            kanban.removeElement(id);
+          });
+        });
+        addNew.remove();
+      });
+
+      // Remove form on clicking cancel button
+      addNew.querySelector('.cancel-add-item').addEventListener('click', function (e) {
+        addNew.remove();
+      });
+    }
+  });
+
+  // Kanban Wrapper scrollbar
+  if (kanbanWrapper) {
+    new PerfectScrollbar(kanbanWrapper);
+  }
+
+  const kanbanContainer = document.querySelector('.kanban-container'),
+    kanbanTitleBoard = [].slice.call(document.querySelectorAll('.kanban-title-board')),
+    kanbanItem = [].slice.call(document.querySelectorAll('.kanban-item'));
+
+  // Render custom items
+  if (kanbanItem) {
+    kanbanItem.forEach(function (el) {
+      const element = "<span class='kanban-text'>" + el.textContent + '</span>';
+      let img = '';
+      if (el.getAttribute('data-image') !== null) {
+        img =
+          "<img class='img-fluid rounded mb-2' src='" +
+          assetsPath +
+          'img/elements/' +
+          el.getAttribute('data-image') +
+          "'>";
+      }
+      el.textContent = '';
+      if (el.getAttribute('data-badge') !== undefined && el.getAttribute('data-badge-text') !== undefined) {
+        el.insertAdjacentHTML(
+          'afterbegin',
+          renderHeader(el.getAttribute('data-badge'), el.getAttribute('data-badge-text')) + img + element
+        );
+      }
+      if (
+        el.getAttribute('data-comments') !== undefined ||
+        el.getAttribute('data-due-date') !== undefined ||
+        el.getAttribute('data-assigned') !== undefined
+      ) {
+        el.insertAdjacentHTML(
+          'beforeend',
+          renderFooter(
+            el.getAttribute('data-attachments'),
+            el.getAttribute('data-comments'),
+            el.getAttribute('data-assigned'),
+            el.getAttribute('data-members')
+          )
+        );
+      }
+    });
+  }
+
+  // To initialize tooltips for rendered items
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+
+  // prevent sidebar to open onclick dropdown buttons of tasks
+  const tasksItemDropdown = [].slice.call(document.querySelectorAll('.kanban-tasks-item-dropdown'));
+  if (tasksItemDropdown) {
+    tasksItemDropdown.forEach(function (e) {
+      e.addEventListener('click', function (el) {
+        el.stopPropagation();
+      });
+    });
+  }
+
+  // Toggle add new input and actions add-new-btn
+  if (kanbanAddBoardBtn) {
+    kanbanAddBoardBtn.addEventListener('click', () => {
+      kanbanAddNewInput.forEach(el => {
+        el.value = '';
+        el.classList.toggle('d-none');
+      });
+    });
+  }
+
+  // Render add new inline with boards
+  if (kanbanContainer) {
+    kanbanContainer.appendChild(kanbanAddNewBoard);
+  }
+
+  // Makes kanban title editable for rendered boards
+  if (kanbanTitleBoard) {
+    kanbanTitleBoard.forEach(function (elem) {
+      elem.addEventListener('mouseenter', function () {
+        this.contentEditable = 'true';
+      });
+
+      // Appends delete icon with title
+      elem.insertAdjacentHTML('afterend', renderBoardDropdown());
+    });
+  }
+
+  // To delete Board for rendered boards
+  const deleteBoards = [].slice.call(document.querySelectorAll('.delete-board'));
+  if (deleteBoards) {
+    deleteBoards.forEach(function (elem) {
+      elem.addEventListener('click', function () {
+        const id = this.closest('.kanban-board').getAttribute('data-id');
+        kanban.removeBoard(id);
+      });
+    });
+  }
+
+  // Delete task for rendered boards
+  const deleteTask = [].slice.call(document.querySelectorAll('.delete-task'));
+  if (deleteTask) {
+    deleteTask.forEach(function (e) {
+      e.addEventListener('click', function () {
+        const id = this.closest('.kanban-item').getAttribute('data-eid');
+        kanban.removeElement(id);
+      });
+    });
+  }
+
+  // Cancel btn add new input
+  const cancelAddNew = document.querySelector('.kanban-add-board-cancel-btn');
+  if (cancelAddNew) {
+    cancelAddNew.addEventListener('click', function () {
+      kanbanAddNewInput.forEach(el => {
+        el.classList.toggle('d-none');
+      });
+    });
+  }
+
+  // Add new board
+  if (kanbanAddNewBoard) {
+    kanbanAddNewBoard.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const thisEle = this,
+        value = thisEle.querySelector('.form-control').value,
+        id = value.replace(/\s+/g, '-').toLowerCase();
+      kanban.addBoards([
+        {
+          id: id,
+          title: value
+        }
+      ]);
+
+      // Adds delete board option to new board, delete new boards & updates data-order
+      const kanbanBoardLastChild = document.querySelectorAll('.kanban-board:last-child')[0];
+      if (kanbanBoardLastChild) {
+        const header = kanbanBoardLastChild.querySelector('.kanban-title-board');
+        header.insertAdjacentHTML('afterend', renderBoardDropdown());
+
+        // To make newly added boards title editable
+        kanbanBoardLastChild.querySelector('.kanban-title-board').addEventListener('mouseenter', function () {
+          this.contentEditable = 'true';
+        });
+      }
+
+      // Add delete event to delete newly added boards
+      const deleteNewBoards = kanbanBoardLastChild.querySelector('.delete-board');
+      if (deleteNewBoards) {
+        deleteNewBoards.addEventListener('click', function () {
+          const id = this.closest('.kanban-board').getAttribute('data-id');
+          kanban.removeBoard(id);
+        });
+      }
+
+      // Remove current append new add new form
+      if (kanbanAddNewInput) {
+        kanbanAddNewInput.forEach(el => {
+          el.classList.add('d-none');
+        });
+      }
+
+      // To place inline add new btn after clicking add btn
+      if (kanbanContainer) {
+        kanbanContainer.appendChild(kanbanAddNewBoard);
+      }
+    });
+  }
+
+  // Clear comment editor on close
+  kanbanSidebar.addEventListener('hidden.bs.offcanvas', function () {
+    kanbanSidebar.querySelector('.ql-editor').firstElementChild.innerHTML = '';
+  });
+
+  // Re-init tooltip when offcanvas opens(Bootstrap bug)
+  if (kanbanSidebar) {
+    kanbanSidebar.addEventListener('shown.bs.offcanvas', function () {
+      const tooltipTriggerList = [].slice.call(kanbanSidebar.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+      });
+    });
+  }
+})();

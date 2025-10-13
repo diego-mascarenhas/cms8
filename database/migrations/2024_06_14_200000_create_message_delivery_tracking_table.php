@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('message_delivery_tracking', function (Blueprint $table) {
+        Schema::create('message_delivery_tracking', function (Blueprint $table)
+        {
             $table->id();
             $table->foreignId('message_delivery_id')->constrained('message_deliveries')->onDelete('cascade');
             $table->string('event'); // opened, clicked, error, etc.

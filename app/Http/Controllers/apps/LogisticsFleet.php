@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class LogisticsFleet extends Controller
 {
-	public function index()
-	{
-		return view('content.apps.app-logistics-fleet');
-	}
+    public function index()
+    {
+        return view('content.apps.app-logistics-fleet');
+    }
 }

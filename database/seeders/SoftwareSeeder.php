@@ -17,8 +17,10 @@ class SoftwareSeeder extends Seeder
         // Get the software module
         $softwareModule = Module::where('key', 'softwares')->first();
 
-        if (!$softwareModule) {
+        if (! $softwareModule)
+        {
             $this->command->warn('Software module not found, skipping software seeding');
+
             return;
         }
 
@@ -114,7 +116,8 @@ class SoftwareSeeder extends Seeder
         ];
 
         // Insert all software records
-        foreach (array_merge($subtitleSoftware, $dubbingSoftware, $videoEditingSoftware, $catToolsSoftware, $developmentSoftware) as $software) {
+        foreach (array_merge($subtitleSoftware, $dubbingSoftware, $videoEditingSoftware, $catToolsSoftware, $developmentSoftware) as $software)
+        {
             Software::updateOrCreate(
                 ['name' => $software['name'], 'team_id' => $software['team_id']],
                 $software,

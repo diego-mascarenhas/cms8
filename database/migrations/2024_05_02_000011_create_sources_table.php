@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('sources', function (Blueprint $table) {
+        Schema::create('sources', function (Blueprint $table)
+        {
             $table->tinyIncrements('id');
             $table->string('name');
             $table->string('base_url');

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 
 class AcademyCourse extends Controller
 {
-	public function index()
-	{
-		return view('content.apps.app-academy-course');
-	}
+    public function index()
+    {
+        return view('content.apps.app-academy-course');
+    }
 }

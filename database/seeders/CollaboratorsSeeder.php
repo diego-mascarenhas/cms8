@@ -7,19 +7,18 @@ use App\Models\ContactLanguageVariant;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class CollaboratorsSeeder extends Seeder
 {
     private $teamId = 1; // Demo Team ID
-    
+
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
         $this->command->info('🚀 Setting up Demo Collaborators for Team 1...');
-        
+
         // Demo collaborators data
         $demoCollaborators = [
             [
@@ -108,43 +107,48 @@ class CollaboratorsSeeder extends Seeder
                 'specialties' => ['Localization', 'Software Translation'],
             ],
         ];
-        
-        foreach ($demoCollaborators as $collaboratorData) {
+
+        foreach ($demoCollaborators as $collaboratorData)
+        {
             $this->createDemoCollaborator($collaboratorData);
         }
-        
+
         $this->command->info('✅ Demo collaborators setup completed successfully');
     }
-    
+
     /**
      * Create a demo collaborator
      */
     private function createDemoCollaborator($data)
     {
-        try {
+        try
+        {
             $name = $data['name'];
             $email = $data['email'];
             $phone = $data['phone'];
-            
+
             // Check if contact already exists
             $existingContact = Contact::where('email', $email)
                 ->where('team_id', $this->teamId)
                 ->first();
-            
-            if ($existingContact) {
+
+            if ($existingContact)
+            {
                 $this->command->warn("Contact already exists: {$name} ({$email})");
+
                 return;
             }
-            
+
             // Clean phone number (extract only digits)
-            $cleanPhone = !empty($phone) ? preg_replace('/[^0-9]/', '', $phone) : null;
-            if ($cleanPhone && strlen($cleanPhone) > 15) {
+            $cleanPhone = ! empty($phone) ? preg_replace('/[^0-9]/', '', $phone) : null;
+            if ($cleanPhone && strlen($cleanPhone) > 15)
+            {
                 $cleanPhone = substr($cleanPhone, -15);
             }
-            
+
             // Map country to code
             $countryCode = $this->mapCountryToCode($data['country']);
-            
+
             // Prepare contact data
             $contactData = [
                 'city' => $data['city'],
@@ -155,13 +159,13 @@ class CollaboratorsSeeder extends Seeder
                 'specialties' => $data['specialties'],
                 'demo_collaborator' => true,
             ];
-            
+
             // Create contact
             $contact = Contact::create([
                 'team_id' => $this->teamId,
                 'name' => $name,
                 'email' => $email,
-                'phone' => $cleanPhone ? (int)$cleanPhone : null,
+                'phone' => $cleanPhone ? (int) $cleanPhone : null,
                 'country' => $countryCode,
                 'language' => 'es',
                 'status_id' => 1,
@@ -170,49 +174,52 @@ class CollaboratorsSeeder extends Seeder
                 'data' => $contactData,
                 'profile' => $data['profile'],
             ]);
-            
+
             // Create language combinations
-            foreach ($data['language_combinations'] as $combination) {
-                if (count($combination) === 2) {
+            foreach ($data['language_combinations'] as $combination)
+            {
+                if (count($combination) === 2)
+                {
                     $sourceLanguage = $combination[0];
                     $targetLanguage = $combination[1];
-                    
+
                     // Validate language codes exist
                     $sourceExists = \App\Models\LanguageVariant::where('code', $sourceLanguage)->exists();
                     $targetExists = \App\Models\LanguageVariant::where('code', $targetLanguage)->exists();
-                    
-                    if ($sourceExists && $targetExists && $sourceLanguage !== $targetLanguage) {
+
+                    if ($sourceExists && $targetExists && $sourceLanguage !== $targetLanguage)
+                    {
                         $this->createLanguageVariant($contact, $sourceLanguage, $targetLanguage);
                     }
                 }
             }
-            
+
             // Create associated user
             $user = User::create([
                 'name' => $name,
                 'email' => $email,
                 'password' => Hash::make('demo123'),
                 'current_team_id' => $this->teamId,
-                'phone' => $cleanPhone ? (int)$cleanPhone : null,
+                'phone' => $cleanPhone ? (int) $cleanPhone : null,
                 'email_verified_at' => now(),
             ]);
-            
+
             // Add user to team
             $user->teams()->attach($this->teamId);
-            
+
             // Assign collaborator role
             $user->assignRole('collaborator');
-            
+
             // Link contact to user
             $contact->update(['user_id' => $user->id]);
-            
+
             $this->command->info("✅ Created demo collaborator: {$name} ({$email})");
-            
-        } catch (\Exception $e) {
-            $this->command->error("Error creating demo collaborator {$data['name']}: " . $e->getMessage());
+        } catch (\Exception $e)
+        {
+            $this->command->error("Error creating demo collaborator {$data['name']}: ".$e->getMessage());
         }
     }
-    
+
     /**
      * Create language variant record for contact
      */
@@ -223,8 +230,9 @@ class CollaboratorsSeeder extends Seeder
             ->where('source_language_code', $sourceCode)
             ->where('target_language_code', $targetCode)
             ->first();
-        
-        if (!$existingVariant) {
+
+        if (! $existingVariant)
+        {
             ContactLanguageVariant::create([
                 'contact_id' => $contact->id,
                 'source_language_code' => $sourceCode,
@@ -235,16 +243,17 @@ class CollaboratorsSeeder extends Seeder
             ]);
         }
     }
-    
+
     /**
      * Map country names to country codes
      */
     private function mapCountryToCode(?string $country): int
     {
-        if (empty($country)) {
+        if (empty($country))
+        {
             return 724; // Default to Spain
         }
-        
+
         $countryMappings = [
             'España' => 724,
             'Spain' => 724,
@@ -276,7 +285,7 @@ class CollaboratorsSeeder extends Seeder
             'Panamá' => 591,
             'Paraguay' => 600,
         ];
-        
+
         return $countryMappings[$country] ?? 724;
     }
 }

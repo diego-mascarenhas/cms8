@@ -13,7 +13,8 @@ class CreateList60StatusesTable extends Migration
      */
     public function up()
     {
-        Schema::create('list60_statuses', function (Blueprint $table) {
+        Schema::create('list60_statuses', function (Blueprint $table)
+        {
             $table->tinyIncrements('id');
             $table->string('name');
             $table->string('label_class')->default('bg-label-secondary');
