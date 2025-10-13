@@ -21,6 +21,17 @@
 .select2-container {
 	width: 200px !important;
 }
+/* Compact tabs in sidebar */
+.kanban-update-item-sidebar .nav-tabs .nav-link {
+	padding: 0.5rem 0.75rem !important;
+	font-size: 0.875rem;
+}
+.kanban-update-item-sidebar .nav-tabs .nav-item {
+	margin-right: 0 !important;
+}
+.kanban-update-item-sidebar .nav-tabs {
+	gap: 0.25rem;
+}
 </style>
 @endsection
 
@@ -156,20 +167,20 @@
             <ul class="nav nav-tabs tabs-line flex-nowrap">
                 <li class="nav-item">
                     <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-update">
-                        <i class="ti ti-edit me-1"></i>
-                        <span class="align-middle">{{ __('Editar') }}</span>
+                        <i class="ti ti-edit me-md-1 me-0"></i>
+                        <span class="align-middle d-none d-md-inline">{{ __('Editar') }}</span>
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-communication">
-                        <i class="ti ti-message-circle me-1"></i>
-                        <span class="align-middle">{{ __('Comunicación') }}</span>
+                        <i class="ti ti-message-circle me-md-1 me-0"></i>
+                        <span class="align-middle d-none d-md-inline">{{ __('Comunicación') }}</span>
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-activity">
-                        <i class="ti ti-trending-up me-1"></i>
-                        <span class="align-middle">{{ __('Actividad') }}</span>
+                        <i class="ti ti-trending-up me-md-1 me-0"></i>
+                        <span class="align-middle d-none d-md-inline">{{ __('Actividad') }}</span>
                     </button>
                 </li>
             </ul>

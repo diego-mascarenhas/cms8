@@ -1353,14 +1353,89 @@
 
 	function translateActivityDescription(description, properties)
 	{
-		// Translate common activity descriptions to Spanish
-		const translations = {
-			'created': 'creó la tarea',
-			'updated': 'actualizó la tarea',
-			'deleted': 'eliminó la tarea'
+		// Field translations
+		const fieldTranslations = {
+			'title': 'el título',
+			'description': 'la descripción',
+			'status_id': 'el estado',
+			'category_id': 'la categoría',
+			'responsible_id': 'el responsable',
+			'estimated_hours': 'el tiempo estimado',
+			'due_date': 'la fecha límite',
+			'priority': 'la prioridad',
+			'board_id': 'el tablero'
 		};
 
-		return translations[description] || description;
+		// Special case for creation
+		if (description === 'created')
+		{
+			return 'creó la tarea';
+		}
+
+		// Special case for deletion
+		if (description === 'deleted')
+		{
+			return 'eliminó la tarea';
+		}
+
+		// For updates, show specific field changes
+		if (description === 'updated' && properties && properties.attributes)
+		{
+			const changes = [];
+			const attrs = properties.attributes;
+			const old = properties.old || {};
+
+			// Check what changed and build specific messages
+			for (const field in attrs)
+			{
+				if (old.hasOwnProperty(field) && attrs[field] !== old[field])
+				{
+					const fieldName = fieldTranslations[field] || field;
+					let displayValue = attrs[field];
+
+					// Use resolved names instead of IDs
+					if (field === 'status_id' && attrs['status_name'])
+					{
+						displayValue = attrs['status_name'];
+					}
+					else if (field === 'category_id' && attrs['category_name'])
+					{
+						displayValue = attrs['category_name'];
+					}
+					else if (field === 'responsible_id' && attrs['responsible_name'])
+					{
+						displayValue = attrs['responsible_name'];
+					}
+					else if (field === 'board_id' && attrs['board_name'])
+					{
+						displayValue = attrs['board_name'];
+					}
+
+					// Only show changes for the actual fields, not the resolved _name fields
+					if (!field.endsWith('_name'))
+					{
+						if (displayValue !== null && displayValue !== undefined)
+						{
+							changes.push(`actualizó ${fieldName}:<br><strong>${displayValue}</strong>`);
+						}
+						else
+						{
+							changes.push(`actualizó ${fieldName}`);
+						}
+					}
+				}
+			}
+
+			if (changes.length > 0)
+			{
+				return changes.join('<br>');
+			}
+
+			return 'actualizó la tarea';
+		}
+
+		// Fallback
+		return description;
 	}
 
 	// ========== Communication Tab Functionality ==========

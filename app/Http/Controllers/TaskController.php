@@ -139,6 +139,47 @@ class TaskController extends Controller
 			->latest()
 			->get()
 			->map(function ($activity) {
+				$properties = $activity->properties;
+
+				// Resolve IDs to names for better readability
+				if (isset($properties['attributes'])) {
+					$attributes = $properties['attributes'];
+
+					// Resolve status_id to status name
+					if (isset($attributes['status_id'])) {
+						$status = TaskStatus::find($attributes['status_id']);
+						if ($status) {
+							$attributes['status_name'] = $status->translated_name;
+						}
+					}
+
+					// Resolve category_id to category name
+					if (isset($attributes['category_id'])) {
+						$category = Category::find($attributes['category_id']);
+						if ($category) {
+							$attributes['category_name'] = $category->name;
+						}
+					}
+
+					// Resolve responsible_id to user name
+					if (isset($attributes['responsible_id'])) {
+						$responsible = User::find($attributes['responsible_id']);
+						if ($responsible) {
+							$attributes['responsible_name'] = $responsible->name;
+						}
+					}
+
+					// Resolve board_id to board name
+					if (isset($attributes['board_id'])) {
+						$board = TaskBoard::find($attributes['board_id']);
+						if ($board) {
+							$attributes['board_name'] = $board->name;
+						}
+					}
+
+					$properties['attributes'] = $attributes;
+				}
+
 				return [
 					'id' => $activity->id,
 					'description' => $activity->description,
@@ -147,7 +188,7 @@ class TaskController extends Controller
 						'initials' => strtoupper(substr($activity->causer->name, 0, 2)),
 					] : null,
 					'created_at' => $activity->created_at->format('d/m/Y H:i'),
-					'properties' => $activity->properties,
+					'properties' => $properties,
 				];
 			});
 
