@@ -14,6 +14,12 @@
 @section('page-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/css/pages/app-kanban.css')}}" />
 <style>
+#project-selector {
+	width: 200px !important;
+}
+.select2-container {
+	width: 200px !important;
+}
 </style>
 @endsection
 
@@ -51,11 +57,18 @@
             document.body.appendChild(el);
         }
 
-        // Handle project selector change
-        const projectSelector = document.getElementById('project-selector');
-        if (projectSelector) {
-            projectSelector.addEventListener('change', function() {
-                const projectId = this.value;
+        // Initialize Select2 on project selector
+        const $projectSelector = $('#project-selector');
+        if ($projectSelector.length && $.fn.select2) {
+            $projectSelector.select2({
+                width: 'resolve',
+                minimumResultsForSearch: 5,
+                dropdownAutoWidth: true
+            });
+
+            // Handle project selector change
+            $projectSelector.on('change', function() {
+                const projectId = $(this).val();
                 if (projectId) {
                     window.location.href = '{{ route('task.index') }}?view=kanban&project_id=' + projectId;
                 } else {
@@ -88,16 +101,18 @@
                 @endif
             </p>
         </div>
-        <div class="d-flex align-content-center flex-wrap gap-3 mt-3 mt-md-0">
+        <div class="d-flex align-items-center flex-wrap gap-3 mt-3 mt-md-0">
             <!-- Project Selector -->
-            <select class="form-select" id="project-selector" style="width: 200px;">
-                <option value="">Tablero general</option>
-                @foreach($projects as $proj)
-                    <option value="{{ $proj->id }}" {{ $project && $project->id == $proj->id ? 'selected' : '' }}>
-                        {{ $proj->name }}
-                    </option>
-                @endforeach
-            </select>
+            <div class="w-auto">
+                <select class="form-select select2" id="project-selector">
+                    <option value="">Tablero general</option>
+                    @foreach($projects as $proj)
+                        <option value="{{ $proj->id }}" {{ $project && $project->id == $proj->id ? 'selected' : '' }}>
+                            {{ $proj->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
 
             <!-- Go to Project Button (only shown when project is selected) -->
             @if($project)
