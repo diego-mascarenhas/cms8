@@ -31,9 +31,22 @@ class Handler extends ExceptionHandler
 
     public function render($request, Throwable $exception)
     {
+        // Handle 404 errors
         if ($exception instanceof \Illuminate\Database\Eloquent\ModelNotFoundException || $exception instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException)
         {
             return redirect()->route('404');
+        }
+
+        // Handle 403 Unauthorized/Forbidden errors
+        if ($exception instanceof \Symfony\Component\HttpKernel\Exception\HttpException && $exception->getStatusCode() === 403)
+        {
+            return redirect('/misc-not-authorized');
+        }
+
+        // Handle Authorization exceptions
+        if ($exception instanceof \Illuminate\Auth\Access\AuthorizationException)
+        {
+            return redirect('/misc-not-authorized');
         }
 
         return parent::render($request, $exception);

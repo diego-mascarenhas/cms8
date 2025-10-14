@@ -170,9 +170,12 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
     Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
 
-    // User Management
-    Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
-    Route::resource('/user-list', UserManagement::class);
+    // User Management (Admin only)
+    Route::middleware('role:admin')->group(function ()
+    {
+        Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
+        Route::resource('/user-list', UserManagement::class);
+    });
 
     // Activity Log
     Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-log.index');

@@ -54,16 +54,12 @@ class UserDataTable extends DataTable
 
     public function query(): QueryBuilder
     {
-        // Filter users by current team and admin role
+        // Filter all users by current team
         return User::query()
             ->with('roles')
             ->whereHas('teams', function ($query)
             {
                 $query->where('team_id', Auth::user()->currentTeam->id);
-            })
-            ->whereHas('roles', function ($query)
-            {
-                $query->where('name', 'admin');
             });
     }
 
@@ -137,8 +133,10 @@ class UserDataTable extends DataTable
         $colors = [
             'admin' => 'primary',
             'manager' => 'info',
+            'collaborator' => 'success',
+            'client' => 'warning',
             'user' => 'secondary',
-            'guest' => 'warning',
+            'guest' => 'dark',
         ];
 
         return $colors[strtolower($role)] ?? 'secondary';

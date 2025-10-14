@@ -874,7 +874,8 @@ class ContactController extends Controller
                         'url' => route('contact.show', $contact->id),
                     ];
                 })
-                ->values();
+                ->values()
+                ->all();
 
             // Add contact-related pages only if contacts module is active
             $data['pages'][] = [
@@ -920,7 +921,8 @@ class ContactController extends Controller
                         'url' => $enterprise->responsible_id ? route('contact.show', $enterprise->responsible_id) : '#',
                     ];
                 })
-                ->values();
+                ->values()
+                ->all();
         }
 
         // Only search services if the services module is active
@@ -955,7 +957,8 @@ class ContactController extends Controller
                         'url' => route('service.show', $service->id),
                     ];
                 })
-                ->values();
+                ->values()
+                ->all();
         }
 
         // Only search projects if the projects module is active
@@ -989,7 +992,8 @@ class ContactController extends Controller
                         'url' => route('project.show', $project->id),
                     ];
                 })
-                ->values();
+                ->values()
+                ->all();
 
             // Add project-related pages only if projects module is active
             $data['pages'][] = [
@@ -1016,7 +1020,8 @@ class ContactController extends Controller
                         'url' => route('collaborator.show', $contact->id),
                     ];
                 })
-                ->values();
+                ->values()
+                ->all();
 
             // Add collaborator-related pages only if collaborators module is active
             $data['pages'][] = [
@@ -1051,7 +1056,8 @@ class ContactController extends Controller
                         'url' => route('invoice.show', $invoice->id),
                     ];
                 })
-                ->values();
+                ->values()
+                ->all();
 
             // Add invoice-related pages only if invoices module is active
             $data['pages'][] = [
@@ -1091,10 +1097,11 @@ class ContactController extends Controller
                         'url' => $address->enterprise ? route('contact.show', $address->enterprise->responsible_id) : '#',
                     ];
                 })
-                ->values();
+                ->values()
+                ->all();
 
-            // Merge billing addresses into enterprises collection
-            $data['enterprises'] = $data['enterprises']->concat($billingAddresses)->values();
+            // Merge billing addresses into enterprises array
+            $data['enterprises'] = array_merge($data['enterprises'], $billingAddresses);
         }
 
         // Add client-related pages only if clients module is active

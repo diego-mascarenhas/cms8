@@ -446,10 +446,29 @@ if (typeof $ !== 'undefined') {
             dataType: 'json',
             data: { q: q },
             success: function(response) {
-              console.log('[Search] Success! Response:', response);
-              console.log('[Search] Field data:', response[field]);
+              console.log('[Search] Success! Full Response:', response);
+              console.log('[Search] Field requested:', field);
+              console.log('[Search] Field exists?', field in response);
+              console.log('[Search] Field data type:', typeof response[field]);
+              console.log('[Search] Field raw data:', response[field]);
               console.log('[Search] Is array?', Array.isArray(response[field]));
-              cb(response[field] || []);
+
+              // Convert to array if needed
+              var results = response[field] || [];
+              if (typeof results === 'object' && !Array.isArray(results)) {
+                console.log('[Search] Converting object to array using Object.values()');
+                results = Object.values(results);
+              }
+
+              console.log('[Search] ✅ Final results array:', results);
+              console.log('[Search] ✅ Array length:', results.length);
+              console.log('[Search] ✅ First result:', results[0]);
+              console.log('[Search] ✅ Sample result.name:', results[0] ? results[0].name : 'N/A');
+              console.log('[Search] ⏩ Calling cb() NOW with', results.length, 'results');
+
+              cb(results);
+
+              console.log('[Search] ✓ cb() called for field:', field);
             },
             error: function(xhr, status, error) {
               console.error('[Search] AJAX Error!', status, error);
@@ -555,29 +574,25 @@ if (typeof $ !== 'undefined') {
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function (data) {
-                  var { name, src, subtitle, url } = data;
-                  return (
-                    '<a href="' +
-                    url + '">' +
+                  console.log('[Search] Rendering suggestion for:', data);
+                  if (!data || !data.name) {
+                    console.error('[Search] Invalid data for suggestion:', data);
+                    return '';
+                  }
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
+                  var html = '<a href="' + url + '">' +
                     '<div class="d-flex align-items-center">' +
-                    '<!-- <img class="rounded-circle me-3" src="' +
-                    assetsPath +
-                    src +
-                    '" alt="' +
-                    name +
-                    '" height="32"> --> ' +
                     '<i class="ti ti-user me-2"></i>' +
                     '<div class="user-info">' +
-                    '<h6 class="mb-0">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
+                    '<h6 class="mb-0">' + name + '</h6>' +
+                    '<small class="text-muted">' + subtitle + '</small>' +
                     '</div>' +
                     '</div>' +
-                    '</a>'
-                  );
+                    '</a>';
+                  console.log('[Search] Generated HTML:', html);
+                  return html;
                 },
                 notFound:
                   '<div class="not-found px-3 py-2">' +
@@ -593,7 +608,11 @@ if (typeof $ !== 'undefined') {
               source: dynamicSearch('enterprises'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function (data) {
+                  if (!data || !data.name) return '';
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
                   return (
                     '<a href="' +
                     url + '">' +
@@ -625,7 +644,11 @@ if (typeof $ !== 'undefined') {
               source: dynamicSearch('services'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function (data) {
+                  if (!data || !data.name) return '';
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
                   return (
                     '<a href="' +
                     url + '">' +
@@ -658,7 +681,11 @@ if (typeof $ !== 'undefined') {
               source: dynamicSearch('projects'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function (data) {
+                  if (!data || !data.name) return '';
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
                   return (
                     '<a href="' +
                     url + '">' +
@@ -691,7 +718,11 @@ if (typeof $ !== 'undefined') {
               source: dynamicSearch('invoices'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function (data) {
+                  if (!data || !data.name) return '';
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
                   return (
                     '<a href="' +
                     url + '">' +
@@ -714,6 +745,85 @@ if (typeof $ !== 'undefined') {
                   '<h6 class="suggestions-header text-primary mb-2">Facturas</h6>' +
                   '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Factura no encontrada</p>' +
                   '</div>'
+              }
+            },
+            // DEBUG: Mirror server 'members' dataset with minimal markup
+            {
+              name: 'members-mirror',
+              display: 'name',
+              limit: 4,
+              source: dynamicSearch('members'),
+              templates: {
+                header: '<h6 class="suggestions-header text-success mb-0 mx-3 mt-3 pb-2">Contactos (server espejo)</h6>',
+                suggestion: function (data) {
+                  if (!data || !data.name) return '';
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
+                  return (
+                    '<a href="' + url + '">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="ti ti-user text-success me-2"></i>' +
+                    '<div class="user-info">' +
+                    '<h6 class="mb-0 text-success">' + name + '</h6>' +
+                    '<small class="text-muted">' + subtitle + '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    '</a>'
+                  );
+                },
+                notFound:
+                  '<div class="not-found px-3 py-2">' +
+                  '<h6 class="suggestions-header text-success mb-2">Contactos (server espejo)</h6>' +
+                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
+                  '</div>'
+              }
+            },
+            // TEST HARDCODED - ELIMINAR DESPUÉS
+            {
+              name: 'test',
+              display: 'name',
+              limit: 2,
+              source: function(q, cb) {
+                console.log('[TEST] Hardcoded data being returned');
+                cb([
+                  {
+                    name: '🔥 PRUEBA HARDCODED 1',
+                    subtitle: 'Este es un resultado de prueba',
+                    url: '#'
+                  },
+                  {
+                    name: '✅ PRUEBA HARDCODED 2',
+                    subtitle: 'Si ves esto, el template funciona correctamente',
+                    url: '#'
+                  }
+                ]);
+              },
+              templates: {
+                header: '<h6 class="suggestions-header text-danger mb-0 mx-3 mt-3 pb-2">⚠️ DATOS DE PRUEBA</h6>',
+                suggestion: function (data) {
+                  console.log('[TEST] Rendering hardcoded suggestion:', data);
+                  if (!data || !data.name) return '';
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
+                  return (
+                    '<a href="' +
+                    url + '">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="ti ti-alert-triangle me-2 text-danger"></i>' +
+                    '<div class="user-info">' +
+                    '<h6 class="mb-0 text-danger">' +
+                    name +
+                    '</h6>' +
+                    '<small class="text-muted">' +
+                    subtitle +
+                    '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    '</a>'
+                  );
+                }
               }
             }
           )
