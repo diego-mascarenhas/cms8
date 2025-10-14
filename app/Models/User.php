@@ -98,9 +98,9 @@ class User extends Authenticatable
         return $this->hasMany(Conversation::class, 'from', 'phone');
     }
 
-    public function projetcs()
+    public function projects()
     {
-        return $this->hasMany(Project::class, 'leader_id');
+        return $this->hasMany(Project::class, 'responsible_id');
     }
 
     /**

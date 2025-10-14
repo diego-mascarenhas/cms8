@@ -18,7 +18,7 @@
 
     <!-- Search Results Dropdown -->
     @if($showResults && !empty($query))
-        <div class="navbar-search-suggestion position-absolute top-100 start-0 mt-0" style="z-index: 9999; width: 450px;">
+        <div class="navbar-search-suggestion position-absolute top-100 start-0 mt-0" style="z-index: 9999; width: 600px; left: 0;">
             <div class="card">
                 <div class="card-body p-0">
                     @if(empty(array_filter($results)))
