@@ -841,7 +841,7 @@ class ContactController extends Controller
         if ($team && $team->hasModule('contacts'))
         {
             $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at')
-                ->where('status_id', '!=', 3);  // Exclude finalized contacts (status_id = 3)
+                ->where('status_id', '!=', 6);  // Exclude clients from global search (status_id = 6)
 
             if (! $isInitialLoad)
             {
