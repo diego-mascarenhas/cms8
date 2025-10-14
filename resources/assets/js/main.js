@@ -525,15 +525,15 @@ if (typeof $ !== 'undefined') {
                 suggestion: 'suggestion d-flex justify-content-between px-3 py-2 w-100'
               }
             },
-            // Contacts header (with notFound)
+
+            // Contacts header (notFound + header only)
             {
-              name: 'contacts',
+              name: 'contacts-header',
               display: 'name',
               limit: 0,
               source: dynamicSearch('members'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
-                // No suggestion renderer here on purpose
                 notFound:
                   '<div class="not-found px-3 py-2">' +
                   '<h6 class="suggestions-header text-primary mb-2">Contactos</h6>' +
@@ -541,9 +541,9 @@ if (typeof $ !== 'undefined') {
                   '</div>'
               }
             },
-            // Contacts (mirror definitive renderer)
+            // Contacts (primary renderer, unique dataset name)
             {
-              name: 'contacts-mirror',
+              name: 'contacts-list',
               display: 'name',
               limit: 10,
               source: dynamicSearch('members'),
