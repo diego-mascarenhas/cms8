@@ -139,11 +139,14 @@ class DashboardController extends Controller
         $ongoingProjects = null;
         if ($activeTeam && $activeTeam->hasModule('projects'))
         {
+            // Include BUDGET (1), BUDGETED (2), and IN_PROGRESS (9) statuses
+            // Order by status (IN_PROGRESS first), then by updated_at
             $ongoingProjects = Project::with(['client', 'responsible', 'status'])
                 ->where('team_id', $activeTeam->id)
-                ->where('status_id', 9)  // IN_PROGRESS status
-                ->latest('updated_at')
-                ->take(5)
+                ->whereIn('status_id', [1, 2, 9])  // BUDGET, BUDGETED, IN_PROGRESS
+                ->orderByRaw('FIELD(status_id, 9, 2, 1)')  // IN_PROGRESS (9) first, then BUDGETED (2), then BUDGET (1)
+                ->orderBy('updated_at', 'desc')
+                ->take(10)  // Limit to 10 projects
                 ->get();
         }
 

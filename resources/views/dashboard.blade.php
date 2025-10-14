@@ -335,11 +335,9 @@
                             <thead>
                                 <tr>
                                     <th>{{ __('Project') }}</th>
-                                    <th class="text-center">{{ __('Client') }}</th>
                                     <th class="text-center">{{ __('Status') }}</th>
-                                    <th class="text-center">{{ __('Progress') }}</th>
-                                    <th class="text-center">{{ __('Responsible') }}</th>
-                                    <th class="text-center">{{ __('Actions') }}</th>
+                                    <th class="text-center">{{ __('Hours') }}</th>
+                                    <th class="text-center">{{ __('Tasks') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -347,51 +345,42 @@
                                     <tr>
                                         <td>
                                             <div class="d-flex flex-column">
-                                                <h6 class="mb-0 text-truncate" style="max-width: 180px;">{{ $project->name }}</h6>
-                                                <small class="text-muted">{{ $project->start_date ? \Carbon\Carbon::parse($project->start_date)->format('d M Y') : 'N/A' }}</small>
-                                            </div>
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="d-flex flex-column">
-                                                <span>{{ $project->client->name ?? 'N/A' }}</span>
+                                                <h6 class="mb-0 text-truncate" style="max-width: 250px;">{{ $project->name }}</h6>
+                                                <small class="text-muted">{{ $project->client->name ?? 'N/A' }}</small>
                                             </div>
                                         </td>
                                         <td class="text-center">
                                             {!! $project->status_label !!}
                                         </td>
-                                        <td>
-                                            <div class="d-flex justify-content-center align-items-center gap-3">
+                                        <td class="text-center">
+                                            <div class="d-flex flex-column align-items-center">
                                                 @php
-                                                    // Calculate days remaining
-                                                    $progress = 0;
-                                                    $today = \Carbon\Carbon::now();
-                                                    $endDate = $project->end_date ? \Carbon\Carbon::parse($project->end_date) : null;
-                                                    $startDate = $project->start_date ? \Carbon\Carbon::parse($project->start_date) : null;
-
-                                                    if ($startDate && $endDate) {
-                                                        $totalDays = $startDate->diffInDays($endDate);
-                                                        $daysElapsed = $startDate->diffInDays($today);
-                                                        $progress = $totalDays > 0 ? min(100, round(($daysElapsed / $totalDays) * 100)) : 0;
-                                                    }
+                                                    $totalHours = $project->total_hours ?? 0;
+                                                    $estimatedHours = $project->estimated_hours ?? 0;
                                                 @endphp
-                                                <div class="progress w-100" style="height: 8px;">
-                                                    <div class="progress-bar" role="progressbar" style="width: {{ $progress }}%" aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="100"></div>
-                                                </div>
-                                                <small class="fw-semibold">{{ $progress }}%</small>
+                                                <span class="fw-semibold">{{ $totalHours }}h</span>
+                                                @if($estimatedHours > 0)
+                                                    <small class="text-muted">/ {{ $estimatedHours }}h</small>
+                                                @endif
                                             </div>
                                         </td>
                                         <td class="text-center">
-                                            {{ $project->responsible->name ?? 'N/A' }}
-                                        </td>
-                                        <td class="text-center">
-                                            <a href="{{ route('project.edit', $project->id) }}" class="btn btn-sm btn-icon">
-                                                <i class="ti ti-pencil text-primary"></i>
-                                            </a>
+                                            @if($project->status_id == 9)
+                                                {{-- IN_PROGRESS: Show Kanban icon --}}
+                                                <a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="text-body" title="{{ __('View Kanban') }}">
+                                                    <i class="ti ti-layout-kanban ti-sm"></i>
+                                                </a>
+                                            @else
+                                                {{-- BUDGET/BUDGETED: Show eye icon to view details --}}
+                                                <a href="{{ route('project.show', $project->id) }}" class="text-body" title="{{ __('View Details') }}">
+                                                    <i class="ti ti-eye ti-sm"></i>
+                                                </a>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center py-4">
+                                        <td colspan="4" class="text-center py-4">
                                             <i class="ti ti-mood-check text-success ti-3x mb-3"></i>
                                             <h5>{{ __('No ongoing projects') }}</h5>
                                             <p class="text-muted">{{ __('All projects are completed or not yet started') }}</p>

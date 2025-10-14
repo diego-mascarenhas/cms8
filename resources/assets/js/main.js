@@ -431,6 +431,49 @@ if (typeof $ !== 'undefined') {
         };
       };
 
+      // Shared AJAX cache to avoid multiple concurrent requests and race conditions
+      var searchAjaxCache = {
+        lastQuery: null,
+        lastResponse: null,
+        inflight: null,
+        listeners: [],
+      };
+
+      function fetchSearchResponse(query, onDone) {
+        // If we already have a response for this exact query, reuse it immediately
+        if (searchAjaxCache.lastQuery === query && searchAjaxCache.lastResponse) {
+          return onDone(searchAjaxCache.lastResponse);
+        }
+        // If there is a request in-flight for this query, attach as listener
+        if (searchAjaxCache.inflight && searchAjaxCache.lastQuery === query) {
+          searchAjaxCache.listeners.push(onDone);
+          return;
+        }
+        // Start a new request for this query
+        searchAjaxCache.lastQuery = query;
+        searchAjaxCache.listeners = [onDone];
+        searchAjaxCache.inflight = $.ajax({
+          url: '/contact/search',
+          dataType: 'json',
+          data: { q: query }
+        })
+          .done(function (response) {
+            searchAjaxCache.lastResponse = response;
+            var cbs = searchAjaxCache.listeners.slice(0);
+            searchAjaxCache.listeners = [];
+            cbs.forEach(function (fn) { try { fn(response); } catch (e) { console.error(e); } });
+          })
+          .fail(function (xhr, status, error) {
+            console.error('[Search] AJAX Error!', status, error);
+            var cbs = searchAjaxCache.listeners.slice(0);
+            searchAjaxCache.listeners = [];
+            cbs.forEach(function (fn) { try { fn({}); } catch (e) { console.error(e); } });
+          })
+          .always(function () {
+            searchAjaxCache.inflight = null;
+          });
+      }
+
       // Dynamic search function - queries server on each keystroke
       var dynamicSearch = function (field) {
         return function findMatches(q, cb) {
@@ -440,40 +483,30 @@ if (typeof $ !== 'undefined') {
             return cb([]);
           }
 
-          console.log('[Search] Making AJAX call to /contact/search');
-          $.ajax({
-            url: '/contact/search',
-            dataType: 'json',
-            data: { q: q },
-            success: function(response) {
-              console.log('[Search] Success! Full Response:', response);
-              console.log('[Search] Field requested:', field);
-              console.log('[Search] Field exists?', field in response);
-              console.log('[Search] Field data type:', typeof response[field]);
-              console.log('[Search] Field raw data:', response[field]);
-              console.log('[Search] Is array?', Array.isArray(response[field]));
+          console.log('[Search] Using shared AJAX to /contact/search');
+          fetchSearchResponse(q, function (response) {
+            console.log('[Search] Success! Full Response:', response);
+            console.log('[Search] Field requested:', field);
+            console.log('[Search] Field exists?', field in response);
+            console.log('[Search] Field data type:', typeof response[field]);
+            console.log('[Search] Field raw data:', response[field]);
+            console.log('[Search] Is array?', Array.isArray(response[field]));
 
-              // Convert to array if needed
-              var results = response[field] || [];
-              if (typeof results === 'object' && !Array.isArray(results)) {
-                console.log('[Search] Converting object to array using Object.values()');
-                results = Object.values(results);
-              }
-
-              console.log('[Search] ✅ Final results array:', results);
-              console.log('[Search] ✅ Array length:', results.length);
-              console.log('[Search] ✅ First result:', results[0]);
-              console.log('[Search] ✅ Sample result.name:', results[0] ? results[0].name : 'N/A');
-              console.log('[Search] ⏩ Calling cb() NOW with', results.length, 'results');
-
-              cb(results);
-
-              console.log('[Search] ✓ cb() called for field:', field);
-            },
-            error: function(xhr, status, error) {
-              console.error('[Search] AJAX Error!', status, error);
-              cb([]);
+            var results = response[field] || [];
+            if (typeof results === 'object' && !Array.isArray(results)) {
+              console.log('[Search] Converting object to array using Object.values()');
+              results = Object.values(results);
             }
+
+            console.log('[Search] ✅ Final results array:', results);
+            console.log('[Search] ✅ Array length:', results.length);
+            console.log('[Search] ✅ First result:', results[0]);
+            console.log('[Search] ✅ Sample result.name:', results[0] ? results[0].name : 'N/A');
+            console.log('[Search] ⏩ Calling cb() NOW with', results.length, 'results');
+
+            cb(results);
+
+            console.log('[Search] ✓ cb() called for field:', field);
           });
         };
       };
@@ -569,20 +602,18 @@ if (typeof $ !== 'undefined') {
             {
               name: 'members',
               display: 'name',
-              limit: 4,
+              limit: 10,
               source: dynamicSearch('members'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function (data) {
-                  console.log('[Search] Rendering suggestion for:', data);
-                  if (!data || !data.name) {
-                    console.error('[Search] Invalid data for suggestion:', data);
-                    return '';
-                  }
+                  console.log('[Members] Rendering suggestion:', data);
+                  if (!data || !data.name) { console.warn('[Members] Invalid data, skipping'); return ''; }
                   var name = data.name || '';
                   var subtitle = data.subtitle || '';
                   var url = data.url || '#';
-                  var html = '<a href="' + url + '">' +
+                  var html = (
+                    '<a href="' + url + '">' +
                     '<div class="d-flex align-items-center">' +
                     '<i class="ti ti-user me-2"></i>' +
                     '<div class="user-info">' +
@@ -590,8 +621,9 @@ if (typeof $ !== 'undefined') {
                     '<small class="text-muted">' + subtitle + '</small>' +
                     '</div>' +
                     '</div>' +
-                    '</a>';
-                  console.log('[Search] Generated HTML:', html);
+                    '</a>'
+                  );
+                  console.log('[Members] HTML:', html);
                   return html;
                 },
                 notFound:

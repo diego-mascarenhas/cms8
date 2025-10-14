@@ -93,6 +93,46 @@ class Project extends Model
         return $this->hasMany(Note::class, 'reference')->where('module_id', 1); // Assuming module_id 1 is for projects
     }
 
+    /**
+     * Get total hours worked on this project (from tasks and time entries)
+     */
+    public function getTotalHoursAttribute()
+    {
+        if (! $this->board_id)
+        {
+            return 0;
+        }
+
+        // Get all tasks from this project's board
+        $tasks = Task::where('board_id', $this->board_id)->pluck('id');
+
+        if ($tasks->isEmpty())
+        {
+            return 0;
+        }
+
+        // Sum all time entries for these tasks
+        $totalSeconds = Time::whereIn('task_id', $tasks)->sum('duration_seconds');
+
+        return round($totalSeconds / 3600, 1); // Convert to hours with 1 decimal
+    }
+
+    /**
+     * Get estimated hours from all tasks in the project
+     */
+    public function getEstimatedHoursAttribute()
+    {
+        if (! $this->board_id)
+        {
+            return 0;
+        }
+
+        $totalHours = Task::where('board_id', $this->board_id)
+            ->sum('estimated_hours');
+
+        return round($totalHours, 1);
+    }
+
     public function collaborators()
     {
         return $this->belongsToMany(Contact::class, 'contact_project')
