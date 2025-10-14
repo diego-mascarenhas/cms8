@@ -122,6 +122,7 @@ class ContactController extends Controller
             'language',
             'sentimentHistories.sentiment',
             'enterprises',  // relación correcta
+            'currentEnterprise',
             'user.roles',
         ])->find($id);
 
@@ -155,7 +156,10 @@ class ContactController extends Controller
                 'metrics' => null,
             ];
 
-            if ($data->enterprise && $data->enterprise->code)
+            // Determine the enterprise to use for Stripe (current or first associated)
+            $enterpriseForStripe = $data->currentEnterprise ?: $data->enterprises->first();
+
+            if ($enterpriseForStripe && $enterpriseForStripe->code)
             {
                 try
                 {
@@ -168,7 +172,10 @@ class ContactController extends Controller
             }
         }
 
-        if ($data->enterprise && $data->enterprise->code && $team->getSetting('stripe_secret'))
+        // Determine the enterprise again (outside to keep structure clear)
+        $enterpriseForStripe = $data->currentEnterprise ?: $data->enterprises->first();
+
+        if ($enterpriseForStripe && $enterpriseForStripe->code && $team->getSetting('stripe_secret'))
         {
             try
             {
@@ -177,7 +184,7 @@ class ContactController extends Controller
 
                 // Retrieve customer
                 $customer = Customer::retrieve([
-                    'id' => $data->enterprise->code,
+                    'id' => $enterpriseForStripe->code,
                     'expand' => [
                         'subscriptions',
                         'subscriptions.data.items',
