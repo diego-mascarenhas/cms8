@@ -431,24 +431,38 @@ if (typeof $ !== 'undefined') {
         };
       };
 
-      // Search API AJAX call - load filtered data synchronously
-      var searchData = $.ajax({
-        url: '/contact/search',
-        dataType: 'json',
-        async: false,
-        data: { q: '' }, // Empty query to load all initial data (with filters applied)
-        success: function(searchData) {
-          console.log('Search data received:', searchData);
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-          console.error('Error loading search data:', textStatus, errorThrown);
-        }
-      }).responseJSON;
+      // Dynamic search function - queries server on each keystroke
+      var dynamicSearch = function (field) {
+        return function findMatches(q, cb) {
+          console.log('[Search] Query:', q, 'Field:', field);
+          if (!q || q.length < 1) {
+            console.log('[Search] Empty query, returning empty array');
+            return cb([]);
+          }
+
+          console.log('[Search] Making AJAX call to /contact/search');
+          $.ajax({
+            url: '/contact/search',
+            dataType: 'json',
+            data: { q: q },
+            success: function(response) {
+              console.log('[Search] Success! Response:', response);
+              console.log('[Search] Field data:', response[field]);
+              console.log('[Search] Is array?', Array.isArray(response[field]));
+              cb(response[field] || []);
+            },
+            error: function(xhr, status, error) {
+              console.error('[Search] AJAX Error!', status, error);
+              cb([]);
+            }
+          });
+        };
+      };
 
       // Init typeahead on searchInput
       searchInput.each(function () {
         var $this = $(this);
-        searchInput
+        $this
           .typeahead(
             {
               hint: false,
@@ -537,10 +551,11 @@ if (typeof $ !== 'undefined') {
               name: 'members',
               display: 'name',
               limit: 4,
-              source: filterConfig(searchData.members),
+              source: dynamicSearch('members'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function (data) {
+                  var { name, src, subtitle, url } = data;
                   return (
                     '<a href="' +
                     url + '">' +
@@ -575,7 +590,7 @@ if (typeof $ !== 'undefined') {
               name: 'enterprises',
               display: 'name',
               limit: 4,
-              source: filterConfig(searchData.enterprises),
+              source: dynamicSearch('enterprises'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
                 suggestion: function ({ name, src, subtitle, url }) {
@@ -607,7 +622,7 @@ if (typeof $ !== 'undefined') {
               name: 'services',
               display: 'name',
               limit: 4,
-              source: filterConfig(searchData.services),
+              source: dynamicSearch('services'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',
                 suggestion: function ({ name, src, subtitle, url }) {
@@ -640,7 +655,7 @@ if (typeof $ !== 'undefined') {
               name: 'projects',
               display: 'name',
               limit: 4,
-              source: filterConfig(searchData.projects),
+              source: dynamicSearch('projects'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',
                 suggestion: function ({ name, src, subtitle, url }) {
@@ -673,7 +688,7 @@ if (typeof $ !== 'undefined') {
               name: 'invoices',
               display: 'name',
               limit: 4,
-              source: filterConfig(searchData.invoices),
+              source: dynamicSearch('invoices'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',
                 suggestion: function ({ name, src, subtitle, url }) {
@@ -709,9 +724,9 @@ if (typeof $ !== 'undefined') {
           })
           // On typeahead select
           .bind('typeahead:select', function (ev, suggestion) {
-            // Open selected page
-            if (suggestion.url !== 'javascript:;') {
-              window.location = baseUrl + suggestion.url;
+            // Open selected page (URL is already complete from backend)
+            if (suggestion.url && suggestion.url !== 'javascript:;') {
+              window.location = suggestion.url;
             }
           })
           // On typeahead close

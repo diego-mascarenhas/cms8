@@ -1,14 +1,11 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
-use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\CategoryController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
-use App\Http\Controllers\language\LanguageController;
-use App\Http\Controllers\laravel_example\UserManagement;
-use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\CertificationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClientController;
@@ -26,6 +23,8 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\KanbanController;
+use App\Http\Controllers\language\LanguageController;
+use App\Http\Controllers\laravel_example\UserManagement;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\List60Controller;
@@ -36,6 +35,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\pages\AccountSettingsAccount;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ServerController;
@@ -53,13 +53,15 @@ use Illuminate\Support\Facades\Route;
 
 // auth
 Route::middleware([
-	'auth:sanctum',
-	config('jetstream.auth_session'),
-	'verified',
-])->group(function () {
-	Route::get('/dashboard', function () {
-		return view('dashboard');
-	})->name('dashboard');
+    'auth:sanctum',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function ()
+{
+    Route::get('/dashboard', function ()
+    {
+        return view('dashboard');
+    })->name('dashboard');
 });
 
 // locale
@@ -67,7 +69,7 @@ Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 
 // Public API routes (must be before auth group)
 Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
-	->name('project.get-fare-units');
+    ->name('project.get-fare-units');
 
 // main
 Route::get('/', [HomeController::class, 'index']);
@@ -80,455 +82,472 @@ Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name(
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
 
 // Adding routes for other dashboard types
-Route::get('/dashboard/client', function () {
-	// This view doesn't exist yet, so we'll redirect to collaborator for now
-	return view('collaborator.dashboard');
+Route::get('/dashboard/client', function ()
+{
+    // This view doesn't exist yet, so we'll redirect to collaborator for now
+    return view('collaborator.dashboard');
 })->name('dashboard.client')->middleware('auth');
 
-Route::get('/dashboard/project', function () {
-	// This view doesn't exist yet, so we'll redirect to collaborator for now
-	return view('collaborator.dashboard');
+Route::get('/dashboard/project', function ()
+{
+    // This view doesn't exist yet, so we'll redirect to collaborator for now
+    return view('collaborator.dashboard');
 })->name('dashboard.project')->middleware('auth');
 
 // errors
-Route::get('misc-not-authorized', function () {
-	return view('content.pages.pages-misc-not-authorized');
+Route::get('misc-not-authorized', function ()
+{
+    return view('content.pages.pages-misc-not-authorized');
 })->name('403');
 
-Route::get('misc-error', function () {
-	return view('content.pages.pages-misc-error');
+Route::get('misc-error', function ()
+{
+    return view('content.pages.pages-misc-error');
 })->name('404');
 
-Route::get('/error-without-team', function () {
-	return view('error-without-team');
+Route::get('/error-without-team', function ()
+{
+    return view('error-without-team');
 })->name('error-without-team');
 
-Route::get('misc-under-maintenance', function () {
-	return view('content.pages.pages-misc-under-maintenance');
+Route::get('misc-under-maintenance', function ()
+{
+    return view('content.pages.pages-misc-under-maintenance');
 })->name('under-maintenance');
 
-Route::get('misc-comingsoon', function () {
-	return view('content.pages.pages-misc-comingsoon');
+Route::get('misc-comingsoon', function ()
+{
+    return view('content.pages.pages-misc-comingsoon');
 })->name('comingsoon');
 
 // Authenticated routes
-Route::middleware(['auth'])->group(function () {
-	Route::get('/dashboard', function () {
-		return redirect()->route('dashboard');
-	});
+Route::middleware(['auth'])->group(function ()
+{
+    Route::get('/dashboard', function ()
+    {
+        return redirect()->route('dashboard');
+    });
 
-	// Team Settings
-	Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
-	Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
-	Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
-	Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
-	Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
-	Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
-	Route::post('/team/{team}/test-twilio', [TeamSettingController::class, 'testTwilioConnection'])->name('team-settings.test-twilio');
+    // Team Settings
+    Route::get('/team/{team}/settings', [TeamSettingController::class, 'index'])->name('team-settings.index');
+    Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
+    Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
+    Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
+    Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
+    Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
+    Route::post('/team/{team}/test-twilio', [TeamSettingController::class, 'testTwilioConnection'])->name('team-settings.test-twilio');
 
-	// Team Valorations
-	Route::get('/team/{team}/valorations', [TeamSettingController::class, 'valorations'])->name('team-settings.valorations');
-	Route::post('/team/{team}/valorations', [TeamSettingController::class, 'storeValoration'])->name('team-settings.valorations.store');
-	Route::put('/team/{team}/valorations/{valoration}', [TeamSettingController::class, 'updateValoration'])->name('team-settings.valorations.update');
-	Route::delete('/team/{team}/valorations/{valoration}', [TeamSettingController::class, 'destroyValoration'])->name('team-settings.valorations.destroy');
+    // Team Valorations
+    Route::get('/team/{team}/valorations', [TeamSettingController::class, 'valorations'])->name('team-settings.valorations');
+    Route::post('/team/{team}/valorations', [TeamSettingController::class, 'storeValoration'])->name('team-settings.valorations.store');
+    Route::put('/team/{team}/valorations/{valoration}', [TeamSettingController::class, 'updateValoration'])->name('team-settings.valorations.update');
+    Route::delete('/team/{team}/valorations/{valoration}', [TeamSettingController::class, 'destroyValoration'])->name('team-settings.valorations.destroy');
 
-	// Team API Tokens
-	Route::get('/team/{team}/api-tokens', [TeamSettingController::class, 'apiTokens'])->name('team-settings.api-tokens');
-	Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
-	Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
+    // Team API Tokens
+    Route::get('/team/{team}/api-tokens', [TeamSettingController::class, 'apiTokens'])->name('team-settings.api-tokens');
+    Route::post('/team/{team}/api-tokens/generate', [TeamSettingController::class, 'generateApiToken'])->name('team-settings.generate-api-token');
+    Route::delete('/team/{team}/api-tokens/revoke', [TeamSettingController::class, 'revokeApiToken'])->name('team-settings.revoke-api-token');
 
-	// Custom Translations
-	Route::get('/team/{team}/custom-translations', [TeamSettingController::class, 'customTranslations'])->name('team-settings.custom-translations');
-	Route::post('/team/{team}/custom-translations', [TeamSettingController::class, 'storeCustomTranslation'])->name('team-settings.custom-translations.store');
-	Route::put('/team/{team}/custom-translations/{translation}', [TeamSettingController::class, 'updateCustomTranslation'])->name('team-settings.custom-translations.update');
-	Route::delete('/team/{team}/custom-translations/{translation}', [TeamSettingController::class, 'destroyCustomTranslation'])->name('team-settings.custom-translations.destroy');
-	Route::post('/team/{team}/custom-translations/import', [TeamSettingController::class, 'importCustomTranslations'])->name('team-settings.custom-translations.import');
+    // Custom Translations
+    Route::get('/team/{team}/custom-translations', [TeamSettingController::class, 'customTranslations'])->name('team-settings.custom-translations');
+    Route::post('/team/{team}/custom-translations', [TeamSettingController::class, 'storeCustomTranslation'])->name('team-settings.custom-translations.store');
+    Route::put('/team/{team}/custom-translations/{translation}', [TeamSettingController::class, 'updateCustomTranslation'])->name('team-settings.custom-translations.update');
+    Route::delete('/team/{team}/custom-translations/{translation}', [TeamSettingController::class, 'destroyCustomTranslation'])->name('team-settings.custom-translations.destroy');
+    Route::post('/team/{team}/custom-translations/import', [TeamSettingController::class, 'importCustomTranslations'])->name('team-settings.custom-translations.import');
 
-	// Team Shortcuts
-	Route::get('/team/{team}/shortcuts', [TeamSettingController::class, 'shortcuts'])->name('team-settings.shortcuts');
-	Route::post('/team/{team}/shortcuts', [TeamSettingController::class, 'storeShortcuts'])->name('team-settings.shortcuts.store');
+    // Team Shortcuts
+    Route::get('/team/{team}/shortcuts', [TeamSettingController::class, 'shortcuts'])->name('team-settings.shortcuts');
+    Route::post('/team/{team}/shortcuts', [TeamSettingController::class, 'storeShortcuts'])->name('team-settings.shortcuts.store');
 
-	// Categories Management
-	Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
-	Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
-	Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
-	Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
-	Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
-	Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
-	Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
-	Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
-	Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
+    // Categories Management
+    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
+    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+    Route::get('/categories/{id}', [CategoryController::class, 'show'])->name('categories.show');
+    Route::get('/categories/{id}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+    Route::put('/categories/{id}', [CategoryController::class, 'update'])->name('categories.update');
+    Route::delete('/categories/{id}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+    Route::post('/categories/order', [CategoryController::class, 'updateOrder'])->name('categories.order');
+    Route::get('/categories/{id}/items', [CategoryController::class, 'showItems'])->name('categories.items');
 
-	// User Management
-	Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
-	Route::resource('/user-list', UserManagement::class);
+    // User Management
+    Route::get('/user-management', [UserManagement::class, 'UserManagement'])->name('user-management');
+    Route::resource('/user-list', UserManagement::class);
 
-	// Activity Log
-	Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-log.index');
-	Route::get('/activity-log/statistics', [App\Http\Controllers\ActivityLogController::class, 'statistics'])->name('activity-log.statistics');
-	Route::get('/activity-log/recent', [App\Http\Controllers\ActivityLogController::class, 'recent'])->name('activity-log.recent');
-	Route::get('/activity-log/{activity}', [App\Http\Controllers\ActivityLogController::class, 'show'])->name('activity-log.show');
-	Route::get('/activity-log/user/{userId}', [App\Http\Controllers\ActivityLogController::class, 'userActivities'])->name('activity-log.user');
+    // Activity Log
+    Route::get('/activity-log', [App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity-log.index');
+    Route::get('/activity-log/statistics', [App\Http\Controllers\ActivityLogController::class, 'statistics'])->name('activity-log.statistics');
+    Route::get('/activity-log/recent', [App\Http\Controllers\ActivityLogController::class, 'recent'])->name('activity-log.recent');
+    Route::get('/activity-log/{activity}', [App\Http\Controllers\ActivityLogController::class, 'show'])->name('activity-log.show');
+    Route::get('/activity-log/user/{userId}', [App\Http\Controllers\ActivityLogController::class, 'userActivities'])->name('activity-log.user');
 
-	// Account Management (Root only)
-	Route::middleware(['role:root'])->group(function () {
-		Route::get('/account-management', [AccountController::class, 'index'])->name('account-management');
-		Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
-		Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
-		Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
-	});
+    // Account Management (Root only)
+    Route::middleware(['role:root'])->group(function ()
+    {
+        Route::get('/account-management', [AccountController::class, 'index'])->name('account-management');
+        Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
+        Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
+        Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
+    });
 
-	// Email Plans Management (Admin only)
-	Route::middleware(['role:admin'])->group(function () {
-		Route::get('/email-plans', [EmailPlanController::class, 'index'])->name('email-plans.index');
-		Route::post('/email-plans/{team}/assign', [EmailPlanController::class, 'assign'])->name('email-plans.assign');
-		Route::get('/email-plans/{team}/details', [EmailPlanController::class, 'show'])->name('email-plans.show');
+    // Email Plans Management (Admin only)
+    Route::middleware(['role:admin'])->group(function ()
+    {
+        Route::get('/email-plans', [EmailPlanController::class, 'index'])->name('email-plans.index');
+        Route::post('/email-plans/{team}/assign', [EmailPlanController::class, 'assign'])->name('email-plans.assign');
+        Route::get('/email-plans/{team}/details', [EmailPlanController::class, 'show'])->name('email-plans.show');
 
-		// Email Plans Management Interface
-		Route::get('/email-plans-management', [EmailPlansManagementController::class, 'index'])->name('email-plans-management.index');
-		Route::post('/email-plans-management/{team}/assign', [EmailPlansManagementController::class, 'assign'])->name('email-plans-management.assign');
-		Route::get('/email-plans-management/{team}/details', [EmailPlansManagementController::class, 'show'])->name('email-plans-management.show');
-		Route::post('/email-plans-management/{team}/sync-usage', [EmailPlansManagementController::class, 'syncUsage'])->name('email-plans-management.sync-usage');
-	});
+        // Email Plans Management Interface
+        Route::get('/email-plans-management', [EmailPlansManagementController::class, 'index'])->name('email-plans-management.index');
+        Route::post('/email-plans-management/{team}/assign', [EmailPlansManagementController::class, 'assign'])->name('email-plans-management.assign');
+        Route::get('/email-plans-management/{team}/details', [EmailPlansManagementController::class, 'show'])->name('email-plans-management.show');
+        Route::post('/email-plans-management/{team}/sync-usage', [EmailPlansManagementController::class, 'syncUsage'])->name('email-plans-management.sync-usage');
+    });
 
-	// Current team email plan (for all users)
-	Route::get('/my-team/email-plan', [EmailPlanController::class, 'current'])->name('email-plans.current');
+    // Current team email plan (for all users)
+    Route::get('/my-team/email-plan', [EmailPlanController::class, 'current'])->name('email-plans.current');
 
-	// Contacts
-	Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
-	Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
-	Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
-	Route::post('/contact/upload-file', [contactController::class, 'UploadFile'])->name('contact.upload-file');
-	Route::get('/contact/import', [ContactController::class, 'showImportForm'])->name('contact.import');
-	Route::get('/contacts/import-mapping', action: [ContactController::class, 'importMapping'])->name('contact.import-mapping');
-	Route::post('/contact/upload-file-mapping', [ContactController::class, 'uploadFileForMapping'])->name('contact.upload-file-mapping');
-	Route::post('/contact/process-mapping', [ContactController::class, 'processMapping'])->name('contact.process-mapping');
-	Route::get('/contact/create', [contactController::class, 'create'])->name('contact.create');
-	Route::get('/contact/{id}', [contactController::class, 'show'])->name('contact.show');
-	Route::get('/contact/{id}/edit', [contactController::class, 'edit'])->name('contact.edit');
-	Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
-	Route::put('/contact/{id}', [ContactController::class, 'update'])->name('contact.update');
-	Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
-	Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
-	Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
-	Route::post('/contact/{id}/link-user', [ContactController::class, 'linkUser'])->name('contact.link-user');
-	Route::post('/contact/{id}/unlink-user', [ContactController::class, 'unlinkUser'])->name('contact.unlink-user');
-	Route::post('/contact/{id}/create-and-link-user', [ContactController::class, 'createAndLinkUser'])->name('contact.create-and-link-user');
+    // Contacts
+    Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
+    Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
+    Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
+    Route::post('/contact/upload-file', [contactController::class, 'UploadFile'])->name('contact.upload-file');
+    Route::get('/contact/import', [ContactController::class, 'showImportForm'])->name('contact.import');
+    Route::get('/contacts/import-mapping', action: [ContactController::class, 'importMapping'])->name('contact.import-mapping');
+    Route::post('/contact/upload-file-mapping', [ContactController::class, 'uploadFileForMapping'])->name('contact.upload-file-mapping');
+    Route::post('/contact/process-mapping', [ContactController::class, 'processMapping'])->name('contact.process-mapping');
+    Route::get('/contact/create', [contactController::class, 'create'])->name('contact.create');
+    Route::get('/contact/{id}', [contactController::class, 'show'])->name('contact.show');
+    Route::get('/contact/{id}/edit', [contactController::class, 'edit'])->name('contact.edit');
+    Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
+    Route::put('/contact/{id}', [ContactController::class, 'update'])->name('contact.update');
+    Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
+    Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
+    Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
+    Route::post('/contact/{id}/link-user', [ContactController::class, 'linkUser'])->name('contact.link-user');
+    Route::post('/contact/{id}/unlink-user', [ContactController::class, 'unlinkUser'])->name('contact.unlink-user');
+    Route::post('/contact/{id}/create-and-link-user', [ContactController::class, 'createAndLinkUser'])->name('contact.create-and-link-user');
 
-	Route::post('/delivery/{deliveryId}/resend', [ContactController::class, 'resendDelivery'])->name('delivery.resend');
+    Route::post('/delivery/{deliveryId}/resend', [ContactController::class, 'resendDelivery'])->name('delivery.resend');
 
-	// Collaborators
-	Route::get('/collaborator/list', [CollaboratorController::class, 'index'])->name('collaborator-list');
-	Route::get('/collaborator/create', [CollaboratorController::class, 'create'])->name('collaborator.create');
-	Route::post('/collaborator', [CollaboratorController::class, 'store'])->name('collaborator.store');
-	Route::get('/collaborator/{id}', [CollaboratorController::class, 'show'])->name('collaborator.show');
-	Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit');
-	Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
-	Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
-	Route::post('/collaborator/{id}/mark-as-watch', [CollaboratorController::class, 'markAsWatch'])->name('collaborator.markAsWatch');
-	Route::post('/collaborator/{id}/send-to-blacklist', [CollaboratorController::class, 'sendToBlacklist'])->name('collaborator.sendToBlacklist');
-	Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
-	Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware');
-	Route::post('/collaborator/{id}/update-services', [CollaboratorController::class, 'updateServices'])->name('collaborator.updateServices');
-	Route::post('/collaborator/{id}/update-topics', [CollaboratorController::class, 'updateTopics'])->name('collaborator.updateTopics');
-	Route::post('/collaborator/{id}/update-valoration', [CollaboratorController::class, 'updateValoration'])->name('collaborator.updateValoration');
-	Route::post('/collaborator/{id}/link-user', [CollaboratorController::class, 'linkUser'])->name('collaborator.link-user');
-	Route::post('/collaborator/{id}/unlink-user', [CollaboratorController::class, 'unlinkUser'])->name('collaborator.unlink-user');
-	Route::post('/collaborator/{id}/create-and-link-user', [CollaboratorController::class, 'createAndLinkUser'])->name('collaborator.create-and-link-user');
-	Route::post('/collaborator/{id}/portfolio', [CollaboratorController::class, 'storePortfolio'])->name('collaborator.portfolio.store');
-	Route::put('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'updatePortfolio'])->name('collaborator.portfolio.update');
-	Route::delete('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'destroyPortfolio'])->name('collaborator.portfolio.destroy');
-	Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
-	Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
-	Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getCollaboratorRates'])->name('collaborator.rates.get');
-	Route::get('/collaborator/{id}/absences', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'index'])->name('collaborator.absences');
-	Route::post('/collaborator/{id}/absences/toggle-date', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'toggleDate'])->name('collaborator.absences.toggle-date');
-	Route::post('/collaborator/{id}/absences/update-weekly', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'updateWeekly'])->name('collaborator.absences.update-weekly');
+    // Collaborators
+    Route::get('/collaborator/list', [CollaboratorController::class, 'index'])->name('collaborator-list');
+    Route::get('/collaborator/create', [CollaboratorController::class, 'create'])->name('collaborator.create');
+    Route::post('/collaborator', [CollaboratorController::class, 'store'])->name('collaborator.store');
+    Route::get('/collaborator/{id}', [CollaboratorController::class, 'show'])->name('collaborator.show');
+    Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit');
+    Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
+    Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
+    Route::post('/collaborator/{id}/mark-as-watch', [CollaboratorController::class, 'markAsWatch'])->name('collaborator.markAsWatch');
+    Route::post('/collaborator/{id}/send-to-blacklist', [CollaboratorController::class, 'sendToBlacklist'])->name('collaborator.sendToBlacklist');
+    Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
+    Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware');
+    Route::post('/collaborator/{id}/update-services', [CollaboratorController::class, 'updateServices'])->name('collaborator.updateServices');
+    Route::post('/collaborator/{id}/update-topics', [CollaboratorController::class, 'updateTopics'])->name('collaborator.updateTopics');
+    Route::post('/collaborator/{id}/update-valoration', [CollaboratorController::class, 'updateValoration'])->name('collaborator.updateValoration');
+    Route::post('/collaborator/{id}/link-user', [CollaboratorController::class, 'linkUser'])->name('collaborator.link-user');
+    Route::post('/collaborator/{id}/unlink-user', [CollaboratorController::class, 'unlinkUser'])->name('collaborator.unlink-user');
+    Route::post('/collaborator/{id}/create-and-link-user', [CollaboratorController::class, 'createAndLinkUser'])->name('collaborator.create-and-link-user');
+    Route::post('/collaborator/{id}/portfolio', [CollaboratorController::class, 'storePortfolio'])->name('collaborator.portfolio.store');
+    Route::put('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'updatePortfolio'])->name('collaborator.portfolio.update');
+    Route::delete('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'destroyPortfolio'])->name('collaborator.portfolio.destroy');
+    Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
+    Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
+    Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getCollaboratorRates'])->name('collaborator.rates.get');
+    Route::get('/collaborator/{id}/absences', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'index'])->name('collaborator.absences');
+    Route::post('/collaborator/{id}/absences/toggle-date', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'toggleDate'])->name('collaborator.absences.toggle-date');
+    Route::post('/collaborator/{id}/absences/update-weekly', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'updateWeekly'])->name('collaborator.absences.update-weekly');
 
-	// Additional collaborator routes from mailer branch
-	Route::get('/collaborator/{id}/notifications', [CollaboratorController::class, 'notifications'])->name('collaborator.notifications');
-	Route::get('/collaborator/{id}/activity', [CollaboratorController::class, 'activity'])->name('collaborator.activity');
-	Route::get('/collaborator/{id}/media', [CollaboratorController::class, 'media'])->name('collaborator.media');
-	Route::post('/collaborator/{id}/media', [CollaboratorController::class, 'uploadMedia'])->name('collaborator.media.upload');
-	Route::put('/collaborator/{id}/media/{mediaId}', [CollaboratorController::class, 'updateMedia'])->name('collaborator.media.update');
-	Route::delete('/collaborator/{id}/media/{mediaId}', [CollaboratorController::class, 'destroyMedia'])->name('collaborator.media.destroy');
-	Route::get('/collaborator/{id}/accept', [CollaboratorController::class, 'showAcceptForm'])->name('collaborator.accept');
-	Route::post('/collaborator/{id}/accept', [CollaboratorController::class, 'processAccept'])->name('collaborator.process-accept');
+    // Additional collaborator routes from mailer branch
+    Route::get('/collaborator/{id}/notifications', [CollaboratorController::class, 'notifications'])->name('collaborator.notifications');
+    Route::get('/collaborator/{id}/activity', [CollaboratorController::class, 'activity'])->name('collaborator.activity');
+    Route::get('/collaborator/{id}/media', [CollaboratorController::class, 'media'])->name('collaborator.media');
+    Route::post('/collaborator/{id}/media', [CollaboratorController::class, 'uploadMedia'])->name('collaborator.media.upload');
+    Route::put('/collaborator/{id}/media/{mediaId}', [CollaboratorController::class, 'updateMedia'])->name('collaborator.media.update');
+    Route::delete('/collaborator/{id}/media/{mediaId}', [CollaboratorController::class, 'destroyMedia'])->name('collaborator.media.destroy');
+    Route::get('/collaborator/{id}/accept', [CollaboratorController::class, 'showAcceptForm'])->name('collaborator.accept');
+    Route::post('/collaborator/{id}/accept', [CollaboratorController::class, 'processAccept'])->name('collaborator.process-accept');
 
-	// Employees
-	Route::get('/employee/list', [EmployeeController::class, 'index'])->name('employee.index');
-	Route::get('/employee/create', [EmployeeController::class, 'create'])->name('employee.create');
-	Route::post('/employee', [EmployeeController::class, 'store'])->name('employee.store');
-	Route::get('/employee/{id}', [EmployeeController::class, 'show'])->name('employee.show');
-	Route::get('/employee/{id}/edit', [EmployeeController::class, 'edit'])->name('employee.edit');
-	Route::put('/employee/{id}', [EmployeeController::class, 'update'])->name('employee.update');
-	Route::delete('/employee/{id}', [EmployeeController::class, 'destroy'])->name('employee.destroy');
-	Route::get('/employee/{id}/absences', [EmployeeController::class, 'absences'])->name('employee.absences');
-	Route::post('/employee/{id}/absences/toggle-date', [EmployeeController::class, 'toggleAbsenceDate'])->name('employee.absences.toggle-date');
-	Route::post('/employee/{id}/absences/update-weekly', [EmployeeController::class, 'updateWeeklyAvailability'])->name('employee.absences.update-weekly');
-	Route::get('/employee/{id}/activity', [EmployeeController::class, 'activity'])->name('employee.activity');
+    // Employees
+    Route::get('/employee/list', [EmployeeController::class, 'index'])->name('employee.index');
+    Route::get('/employee/create', [EmployeeController::class, 'create'])->name('employee.create');
+    Route::post('/employee', [EmployeeController::class, 'store'])->name('employee.store');
+    Route::get('/employee/{id}', [EmployeeController::class, 'show'])->name('employee.show');
+    Route::get('/employee/{id}/edit', [EmployeeController::class, 'edit'])->name('employee.edit');
+    Route::put('/employee/{id}', [EmployeeController::class, 'update'])->name('employee.update');
+    Route::delete('/employee/{id}', [EmployeeController::class, 'destroy'])->name('employee.destroy');
+    Route::get('/employee/{id}/absences', [EmployeeController::class, 'absences'])->name('employee.absences');
+    Route::post('/employee/{id}/absences/toggle-date', [EmployeeController::class, 'toggleAbsenceDate'])->name('employee.absences.toggle-date');
+    Route::post('/employee/{id}/absences/update-weekly', [EmployeeController::class, 'updateWeeklyAvailability'])->name('employee.absences.update-weekly');
+    Route::get('/employee/{id}/activity', [EmployeeController::class, 'activity'])->name('employee.activity');
 
-	// Clients
-	Route::get('/client/list', [ClientController::class, 'index'])->name('client-list');
-	Route::post('/client/end-action/{id}', [ClientController::class, 'endAction'])->name('client.end-action');
-	Route::get('/client/import', [ClientController::class, 'showImportForm'])->name('client.import');
-	Route::post('/client/import-excel', [ClientController::class, 'importExcel'])->name('client.import-excel');
+    // Clients
+    Route::get('/client/list', [ClientController::class, 'index'])->name('client-list');
+    Route::post('/client/end-action/{id}', [ClientController::class, 'endAction'])->name('client.end-action');
+    Route::get('/client/import', [ClientController::class, 'showImportForm'])->name('client.import');
+    Route::post('/client/import-excel', [ClientController::class, 'importExcel'])->name('client.import-excel');
 
-	Route::get('/client/create', [ClientController::class, 'create'])->name('client.create');
-	Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');
-	Route::get('/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
-	Route::post('/client', [ClientController::class, 'store'])->name('client.store');
-	Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
-	Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
+    Route::get('/client/create', [ClientController::class, 'create'])->name('client.create');
+    Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');
+    Route::get('/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
+    Route::post('/client', [ClientController::class, 'store'])->name('client.store');
+    Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
+    Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
 
-	// List60
-	Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
-	Route::post('/list60', [List60Controller::class, 'store'])->name('list60.store');
-	Route::delete('/list60/{id}', [List60Controller::class, 'destroy'])->name('list60.destroy');
+    // List60
+    Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
+    Route::post('/list60', [List60Controller::class, 'store'])->name('list60.store');
+    Route::delete('/list60/{id}', [List60Controller::class, 'destroy'])->name('list60.destroy');
 
-	// Chat
-	Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
-	Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
-	Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
-	Route::post('/chat/send-template', [ChatController::class, 'sendTemplateMessage'])->name('chat.send-template');
+    // Chat
+    Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('/chat/messages/{phone}', [ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::post('/chat/send-template', [ChatController::class, 'sendTemplateMessage'])->name('chat.send-template');
 
-	// Users
-	Route::get('/user/list', [UserController::class, 'index'])->name('user.index');
-	Route::get('/user/create', [UserController::class, 'create'])->name('user.create');
-	Route::post('/user', [UserController::class, 'store'])->name('user.store');
-	Route::get('/user/{user}', [UserController::class, 'show'])->name('user.show');
-	Route::get('/user/{user}/edit', [UserController::class, 'edit'])->name('user.edit');
-	Route::put('/user/{user}', [UserController::class, 'update'])->name('user.update');
-	Route::delete('/user/{id}', [UserController::class, 'destroy'])->name('user.destroy');
+    // Users
+    Route::get('/user/list', [UserController::class, 'index'])->name('user.index');
+    Route::get('/user/create', [UserController::class, 'create'])->name('user.create');
+    Route::post('/user', [UserController::class, 'store'])->name('user.store');
+    Route::get('/user/{user}', [UserController::class, 'show'])->name('user.show');
+    Route::get('/user/{user}/edit', [UserController::class, 'edit'])->name('user.edit');
+    Route::put('/user/{user}', [UserController::class, 'update'])->name('user.update');
+    Route::delete('/user/{id}', [UserController::class, 'destroy'])->name('user.destroy');
 
-	// Mail
-	Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
+    // Mail
+    Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
 
-	// Services
-	Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list');
-	Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling');
-	Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create');
-	Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show');
-	Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit');
-	Route::post('/service', [ServiceController::class, 'store'])->name('service.store');
-	Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update');
-	Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy');
+    // Services
+    Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list');
+    Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling');
+    Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create');
+    Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show');
+    Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit');
+    Route::post('/service', [ServiceController::class, 'store'])->name('service.store');
+    Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update');
+    Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy');
 
-	// Projects - IMPORTANT: Specific routes MUST be before parameterized routes
-	Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');
-	Route::get('/project/create', [ProjectController::class, 'create'])->name('project.create');
-	Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
-	Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
-	Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
-	Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
-	Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
-	Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
-	Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
-	Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
-	Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
-	Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
-	Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
+    // Projects - IMPORTANT: Specific routes MUST be before parameterized routes
+    Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');
+    Route::get('/project/create', [ProjectController::class, 'create'])->name('project.create');
+    Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
+    Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
+    Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
+    Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
+    Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
+    Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
+    Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
+    Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
+    Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
+    Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
+    Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
 
-	// Project services modal routes
-	Route::get('/project/{project}/services', [ProjectController::class, 'getServices'])->name('project.get-services');
-	Route::post('/project/{project}/service', [ProjectController::class, 'storeService'])->name('project.store-service');
-	Route::put('/project/{project}/service/{serviceId}', [ProjectController::class, 'updateService'])->name('project.update-service');
-	Route::delete('/project/{project}/service/{serviceId}', [ProjectController::class, 'deleteService'])->name('project.delete-service');
+    // Project services modal routes
+    Route::get('/project/{project}/services', [ProjectController::class, 'getServices'])->name('project.get-services');
+    Route::post('/project/{project}/service', [ProjectController::class, 'storeService'])->name('project.store-service');
+    Route::put('/project/{project}/service/{serviceId}', [ProjectController::class, 'updateService'])->name('project.update-service');
+    Route::delete('/project/{project}/service/{serviceId}', [ProjectController::class, 'deleteService'])->name('project.delete-service');
 
-	// Time Tracking Routes
-	Route::get('/time/list', [TimeController::class, 'index'])->name('time.index');
-	Route::get('/time/timer', [TimeController::class, 'timer'])->name('time.timer');
-	Route::get('/time/create', [TimeController::class, 'create'])->name('time.create');
-	Route::post('/time', [TimeController::class, 'store'])->name('time.store');
-	Route::get('/time/{id}/edit', [TimeController::class, 'edit'])->name('time.edit');
-	Route::put('/time/{id}', [TimeController::class, 'update'])->name('time.update');
-	Route::delete('/time/{id}', [TimeController::class, 'destroy'])->name('time.destroy');
-	Route::post('/time/start', [TimeController::class, 'start'])->name('time.start');
-	Route::post('/time/{id}/stop', [TimeController::class, 'stop'])->name('time.stop');
-	Route::get('/time/running', [TimeController::class, 'running'])->name('time.running');
-	Route::get('/time/tasks', [TimeController::class, 'getTasks'])->name('time.tasks');
+    // Time Tracking Routes
+    Route::get('/time/list', [TimeController::class, 'index'])->name('time.index');
+    Route::get('/time/timer', [TimeController::class, 'timer'])->name('time.timer');
+    Route::get('/time/create', [TimeController::class, 'create'])->name('time.create');
+    Route::post('/time', [TimeController::class, 'store'])->name('time.store');
+    Route::get('/time/{id}/edit', [TimeController::class, 'edit'])->name('time.edit');
+    Route::put('/time/{id}', [TimeController::class, 'update'])->name('time.update');
+    Route::delete('/time/{id}', [TimeController::class, 'destroy'])->name('time.destroy');
+    Route::post('/time/start', [TimeController::class, 'start'])->name('time.start');
+    Route::post('/time/{id}/stop', [TimeController::class, 'stop'])->name('time.stop');
+    Route::get('/time/running', [TimeController::class, 'running'])->name('time.running');
+    Route::get('/time/tasks', [TimeController::class, 'getTasks'])->name('time.tasks');
 
-	// Attendance Routes (global in/out)
-	Route::post('/attendance/start', [AttendanceController::class, 'start'])->name('attendance.start');
-	Route::post('/attendance/{id}/pause', [AttendanceController::class, 'pause'])->name('attendance.pause');
-	Route::post('/attendance/{id}/resume', [AttendanceController::class, 'resume'])->name('attendance.resume');
-	Route::post('/attendance/{id}/stop', [AttendanceController::class, 'stop'])->name('attendance.stop');
-	Route::get('/attendance/running', [AttendanceController::class, 'running'])->name('attendance.running');
+    // Attendance Routes (global in/out)
+    Route::post('/attendance/start', [AttendanceController::class, 'start'])->name('attendance.start');
+    Route::post('/attendance/{id}/pause', [AttendanceController::class, 'pause'])->name('attendance.pause');
+    Route::post('/attendance/{id}/resume', [AttendanceController::class, 'resume'])->name('attendance.resume');
+    Route::post('/attendance/{id}/stop', [AttendanceController::class, 'stop'])->name('attendance.stop');
+    Route::get('/attendance/running', [AttendanceController::class, 'running'])->name('attendance.running');
 
-	// Task Routes
-	Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');
-	Route::get('/task/create', [TaskController::class, 'create'])->name('task.create');
-	Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
-	Route::get('/task/{id}/edit', [TaskController::class, 'edit'])->name('task.edit');
-	Route::post('/task', [TaskController::class, 'store'])->name('task.store');
-	Route::put('/task/{id}', [TaskController::class, 'update'])->name('task.update');
-	Route::delete('/task/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
-	Route::post('/task/update-status', [TaskController::class, 'updateStatus'])->name('task.update-status');
-	Route::post('/task/update-order', [TaskController::class, 'updateOrder'])->name('task.update-order');
-	Route::get('/task/{id}/activities', [TaskController::class, 'getActivities'])->name('task.activities');
-	Route::post('/task/send-communication', [TaskController::class, 'sendCommunication'])->name('task.send-communication');
-	Route::get('/task/{id}/communications', [TaskController::class, 'getCommunications'])->name('task.communications');
-	Route::get('/task/{id}/total-time', [TaskController::class, 'getTotalTime'])->name('task.total-time');
+    // Task Routes
+    Route::get('/task/list', [TaskController::class, 'index'])->name('task.index');
+    Route::get('/task/create', [TaskController::class, 'create'])->name('task.create');
+    Route::get('/task/{id}', [TaskController::class, 'show'])->name('task.show');
+    Route::get('/task/{id}/edit', [TaskController::class, 'edit'])->name('task.edit');
+    Route::post('/task', [TaskController::class, 'store'])->name('task.store');
+    Route::put('/task/{id}', [TaskController::class, 'update'])->name('task.update');
+    Route::delete('/task/{id}', [TaskController::class, 'destroy'])->name('task.destroy');
+    Route::post('/task/update-status', [TaskController::class, 'updateStatus'])->name('task.update-status');
+    Route::post('/task/update-order', [TaskController::class, 'updateOrder'])->name('task.update-order');
+    Route::get('/task/{id}/activities', [TaskController::class, 'getActivities'])->name('task.activities');
+    Route::post('/task/send-communication', [TaskController::class, 'sendCommunication'])->name('task.send-communication');
+    Route::get('/task/{id}/communications', [TaskController::class, 'getCommunications'])->name('task.communications');
+    Route::get('/task/{id}/total-time', [TaskController::class, 'getTotalTime'])->name('task.total-time');
 
-	// Public routes for client responses (no auth required)
-	Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])
-		->name('task.communication.respond')
-		->withoutMiddleware(['auth']);
-	Route::post('/task-communication/{token}', [TaskController::class, 'storeCommunicationResponse'])
-		->name('task.communication.respond.store')
-		->withoutMiddleware(['auth']);
+    // Public routes for client responses (no auth required)
+    Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])
+        ->name('task.communication.respond')
+        ->withoutMiddleware(['auth']);
+    Route::post('/task-communication/{token}', [TaskController::class, 'storeCommunicationResponse'])
+        ->name('task.communication.respond.store')
+        ->withoutMiddleware(['auth']);
 
-	// Task Board Routes
-	Route::get('/task-board', [App\Http\Controllers\TaskBoardController::class, 'index'])->name('task-board.index');
-	Route::get('/task-board/create', [App\Http\Controllers\TaskBoardController::class, 'create'])->name('task-board.create');
-	Route::post('/task-board', [App\Http\Controllers\TaskBoardController::class, 'store'])->name('task-board.store');
-	Route::get('/task-board/{id}/edit', [App\Http\Controllers\TaskBoardController::class, 'edit'])->name('task-board.edit');
-	Route::get('/task-board/{id}/destroy', [App\Http\Controllers\TaskBoardController::class, 'destroy'])->name('task-board.destroy');
-	Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
+    // Task Board Routes
+    Route::get('/task-board', [App\Http\Controllers\TaskBoardController::class, 'index'])->name('task-board.index');
+    Route::get('/task-board/create', [App\Http\Controllers\TaskBoardController::class, 'create'])->name('task-board.create');
+    Route::post('/task-board', [App\Http\Controllers\TaskBoardController::class, 'store'])->name('task-board.store');
+    Route::get('/task-board/{id}/edit', [App\Http\Controllers\TaskBoardController::class, 'edit'])->name('task-board.edit');
+    Route::get('/task-board/{id}/destroy', [App\Http\Controllers\TaskBoardController::class, 'destroy'])->name('task-board.destroy');
+    Route::post('/task-board/update-order', [App\Http\Controllers\TaskBoardController::class, 'updateOrder'])->name('task-board.update-order');
 
-	// Invoice & Payment Routes
-	Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
-	Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
-	Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoices.data');
+    // Invoice & Payment Routes
+    Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoices.show');
+    Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoices.data');
 
-	// Legacy aliases for invoices
-	Route::prefix('invoice')->group(function () {
-		Route::get('/list', function () {
-			return redirect()->route('invoices.index');
-		})->name('invoice.index');
+    // Legacy aliases for invoices
+    Route::prefix('invoice')->group(function ()
+    {
+        Route::get('/list', function ()
+        {
+            return redirect()->route('invoices.index');
+        })->name('invoice.index');
 
-		Route::get('/create', function () {
-			return redirect()->route('invoices.index');
-		})->name('invoice.create');
+        Route::get('/create', function ()
+        {
+            return redirect()->route('invoices.index');
+        })->name('invoice.create');
 
-		Route::get('/show/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
+        Route::get('/show/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
 
-		Route::get('/edit/{id}', [InvoiceController::class, 'show'])->name('invoice.edit');
+        Route::get('/edit/{id}', [InvoiceController::class, 'show'])->name('invoice.edit');
 
-		Route::delete('/destroy/{id}', function ($id) {
-			return redirect()->route('invoices.index');
-		})->name('invoice.destroy');
-	});
+        Route::delete('/destroy/{id}', function ($id)
+        {
+            return redirect()->route('invoices.index');
+        })->name('invoice.destroy');
+    });
 
-	// Payments
-	Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
-	Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
+    // Payments
+    Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
 
-	Route::prefix('payment')->group(function () {
-		Route::get('/list', function () {
-			return redirect()->route('payments.index');
-		})->name('payment.index');
-	});
+    Route::prefix('payment')->group(function ()
+    {
+        Route::get('/list', function ()
+        {
+            return redirect()->route('payments.index');
+        })->name('payment.index');
+    });
 
-	// Hosting
-	Route::resource('hosting', HostingController::class);
-	Route::get('/hosting/data', [HostingController::class, 'data'])->name('hosting.data');
+    // Hosting
+    Route::resource('hosting', HostingController::class);
+    Route::get('/hosting/data', [HostingController::class, 'data'])->name('hosting.data');
 
-	// Domains
-	Route::resource('domain', DomainController::class);
-	Route::post('/domain/{domain}/refresh', [DomainController::class, 'refresh'])->name('domain.refresh');
-	Route::post('/domain/{domain}/toggle-suspension', [DomainController::class, 'toggleSuspension'])->name('domain.toggle-suspension');
+    // Domains
+    Route::resource('domain', DomainController::class);
+    Route::post('/domain/{domain}/refresh', [DomainController::class, 'refresh'])->name('domain.refresh');
+    Route::post('/domain/{domain}/toggle-suspension', [DomainController::class, 'toggleSuspension'])->name('domain.toggle-suspension');
 
-	// Servers
-	Route::resource('server', ServerController::class);
-	Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
+    // Servers
+    Route::resource('server', ServerController::class);
+    Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
 
-	// Custom Translations
+    // Custom Translations
 
-	// Accounting Routes
-	// NOTE: These routes are now handled by the humano-billing package
-	// See: packages/humano-billing/routes/web.php
+    // Accounting Routes
+    // NOTE: These routes are now handled by the humano-billing package
+    // See: packages/humano-billing/routes/web.php
 
-	// Messages
-	Route::get('message/list', [MessageController::class, 'index'])->name('message-list');
-	Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
-	Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
-	Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
-	Route::get('message/{id}/preview', [MessageController::class, 'preview'])->name('message.preview');
-	Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
-	Route::post('message/{id}/pause', [MessageController::class, 'pauseCampaign'])->name('message.pause');
-	Route::post('message/{id}/test', [MessageController::class, 'testSend'])->name('message.test');
-	Route::get('message/{id}/link-details/{encodedLink}', [MessageController::class, 'getLinkDetails'])->name('message.link-details');
-	Route::post('message', [MessageController::class, 'store'])->name('message.store');
-	Route::put('message/{id}', [MessageController::class, 'update'])->name('message.update');
-	Route::delete('message/{id}', [MessageController::class, 'destroy'])->name('message.destroy');
+    // Messages
+    Route::get('message/list', [MessageController::class, 'index'])->name('message-list');
+    Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
+    Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
+    Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
+    Route::get('message/{id}/preview', [MessageController::class, 'preview'])->name('message.preview');
+    Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
+    Route::post('message/{id}/pause', [MessageController::class, 'pauseCampaign'])->name('message.pause');
+    Route::post('message/{id}/test', [MessageController::class, 'testSend'])->name('message.test');
+    Route::get('message/{id}/link-details/{encodedLink}', [MessageController::class, 'getLinkDetails'])->name('message.link-details');
+    Route::post('message', [MessageController::class, 'store'])->name('message.store');
+    Route::put('message/{id}', [MessageController::class, 'update'])->name('message.update');
+    Route::delete('message/{id}', [MessageController::class, 'destroy'])->name('message.destroy');
 
-	Route::get('/send-sms', [MessageController::class, 'sendSmsMessage']);
-	Route::get('/send-whatsapp', [MessageController::class, 'sendWhatsAppMessage']);
-	Route::get('/send-email', [MessageController::class, 'sendSendGridMessage']);
+    Route::get('/send-sms', [MessageController::class, 'sendSmsMessage']);
+    Route::get('/send-whatsapp', [MessageController::class, 'sendWhatsAppMessage']);
+    Route::get('/send-email', [MessageController::class, 'sendSendGridMessage']);
 
-	// Templates
-	Route::get('/template/list', [TemplateController::class, 'index'])->name('template-list');
-	Route::get('/template/create', [TemplateController::class, 'create'])->name('template.create');
-	Route::get('/template/{hashedId}', [TemplateController::class, 'show'])->name('template.show');
-	Route::get('/template/{hashedId}/edit', [TemplateController::class, 'edit'])->name('template.edit');
-	Route::post('/template', [TemplateController::class, 'store'])->name('template.store');
-	Route::put('/template/{hashedId}', [TemplateController::class, 'update'])->name('template.update');
-	Route::delete('/template/{hashedId}', [TemplateController::class, 'destroy'])->name('template.destroy');
-	Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');
-	Route::get('/template/view/{hashedId}', [TemplateController::class, 'show'])->name('template.view');
+    // Templates
+    Route::get('/template/list', [TemplateController::class, 'index'])->name('template-list');
+    Route::get('/template/create', [TemplateController::class, 'create'])->name('template.create');
+    Route::get('/template/{hashedId}', [TemplateController::class, 'show'])->name('template.show');
+    Route::get('/template/{hashedId}/edit', [TemplateController::class, 'edit'])->name('template.edit');
+    Route::post('/template', [TemplateController::class, 'store'])->name('template.store');
+    Route::put('/template/{hashedId}', [TemplateController::class, 'update'])->name('template.update');
+    Route::delete('/template/{hashedId}', [TemplateController::class, 'destroy'])->name('template.destroy');
+    Route::get('/template/{hashedId}/editor', [TemplateController::class, 'editor'])->name('template.editor');
+    Route::get('/template/view/{hashedId}', [TemplateController::class, 'show'])->name('template.view');
 
-	// Fare Types
-	Route::get('/fare', [FareController::class, 'index'])->name('fare.index');
-	Route::get('/fare/create', [FareController::class, 'create'])->name('fare.create');
-	Route::post('/fare', [FareController::class, 'store'])->name('fare.store');
-	Route::get('/fare/{fare}', [FareController::class, 'show'])->name('fare.show');
-	Route::get('/fare/{fare}/edit', [FareController::class, 'edit'])->name('fare.edit');
-	Route::put('/fare/{fare}', [FareController::class, 'update'])->name('fare.update');
-	Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
+    // Fare Types
+    Route::get('/fare', [FareController::class, 'index'])->name('fare.index');
+    Route::get('/fare/create', [FareController::class, 'create'])->name('fare.create');
+    Route::post('/fare', [FareController::class, 'store'])->name('fare.store');
+    Route::get('/fare/{fare}', [FareController::class, 'show'])->name('fare.show');
+    Route::get('/fare/{fare}/edit', [FareController::class, 'edit'])->name('fare.edit');
+    Route::put('/fare/{fare}', [FareController::class, 'update'])->name('fare.update');
+    Route::delete('/fare/{fare}', [FareController::class, 'destroy'])->name('fare.destroy');
 
-	// Software Management
-	Route::get('/software', [SoftwareController::class, 'index'])->name('software.index');
-	Route::get('/software/create', [SoftwareController::class, 'create'])->name('software.create');
-	Route::post('/software', [SoftwareController::class, 'store'])->name('software.store');
-	Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit');
-	Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update');
-	Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy');
-	Route::get('/software/autocomplete', [SoftwareController::class, 'autocomplete'])->name('software.autocomplete');
+    // Software Management
+    Route::get('/software', [SoftwareController::class, 'index'])->name('software.index');
+    Route::get('/software/create', [SoftwareController::class, 'create'])->name('software.create');
+    Route::post('/software', [SoftwareController::class, 'store'])->name('software.store');
+    Route::get('/software/{software}/edit', [SoftwareController::class, 'edit'])->name('software.edit');
+    Route::put('/software/{software}', [SoftwareController::class, 'update'])->name('software.update');
+    Route::delete('/software/{software}', [SoftwareController::class, 'destroy'])->name('software.destroy');
+    Route::get('/software/autocomplete', [SoftwareController::class, 'autocomplete'])->name('software.autocomplete');
 
-	// Certification Management
-	Route::get('/certification', [CertificationController::class, 'index'])->name('certification.index');
-	Route::get('/certification/create', [CertificationController::class, 'create'])->name('certification.create');
-	Route::post('/certification', [CertificationController::class, 'store'])->name('certification.store');
-	Route::get('/certification/{certification}/edit', [CertificationController::class, 'edit'])->name('certification.edit');
-	Route::put('/certification/{certification}', [CertificationController::class, 'update'])->name('certification.update');
-	Route::delete('/certification/{certification}', [CertificationController::class, 'destroy'])->name('certification.destroy');
+    // Certification Management
+    Route::get('/certification', [CertificationController::class, 'index'])->name('certification.index');
+    Route::get('/certification/create', [CertificationController::class, 'create'])->name('certification.create');
+    Route::post('/certification', [CertificationController::class, 'store'])->name('certification.store');
+    Route::get('/certification/{certification}/edit', [CertificationController::class, 'edit'])->name('certification.edit');
+    Route::put('/certification/{certification}', [CertificationController::class, 'update'])->name('certification.update');
+    Route::delete('/certification/{certification}', [CertificationController::class, 'destroy'])->name('certification.destroy');
 
-	// Style Book Management
-	Route::get('/stylebook', [StylebookController::class, 'index'])->name('stylebook.index');
-	Route::get('/stylebook/create', [StylebookController::class, 'create'])->name('stylebook.create');
-	Route::post('/stylebook', [StylebookController::class, 'store'])->name('stylebook.store');
-	Route::get('/stylebook/{stylebook}', [StylebookController::class, 'show'])->name('stylebook.show');
-	Route::get('/stylebook/{stylebook}/edit', [StylebookController::class, 'edit'])->name('stylebook.edit');
-	Route::put('/stylebook/{stylebook}', [StylebookController::class, 'update'])->name('stylebook.update');
-	Route::delete('/stylebook/{stylebook}', [StylebookController::class, 'destroy'])->name('stylebook.destroy');
+    // Style Book Management
+    Route::get('/stylebook', [StylebookController::class, 'index'])->name('stylebook.index');
+    Route::get('/stylebook/create', [StylebookController::class, 'create'])->name('stylebook.create');
+    Route::post('/stylebook', [StylebookController::class, 'store'])->name('stylebook.store');
+    Route::get('/stylebook/{stylebook}', [StylebookController::class, 'show'])->name('stylebook.show');
+    Route::get('/stylebook/{stylebook}/edit', [StylebookController::class, 'edit'])->name('stylebook.edit');
+    Route::put('/stylebook/{stylebook}', [StylebookController::class, 'update'])->name('stylebook.update');
+    Route::delete('/stylebook/{stylebook}', [StylebookController::class, 'destroy'])->name('stylebook.destroy');
 
-	// Notification Management
-	Route::get('/notification/list', [NotificationController::class, 'index'])->name('notification-list');
-	Route::get('/notification/create', [NotificationController::class, 'create'])->name('notification.create');
-	Route::post('/notification', [NotificationController::class, 'store'])->name('notification.store');
-	Route::get('/notification/{notification}', [NotificationController::class, 'show'])->name('notification.show');
-	Route::get('/notification/{notification}/edit', [NotificationController::class, 'edit'])->name('notification.edit');
-	Route::put('/notification/{notification}', [NotificationController::class, 'update'])->name('notification.update');
-	Route::delete('/notification/{notification}', [NotificationController::class, 'destroy'])->name('notification.destroy');
-	Route::post('/notification/{notification}/send', [NotificationController::class, 'send'])->name('notification.send');
-	Route::post('/notification/{notification}/resend', [NotificationController::class, 'resend'])->name('notification.resend');
-	Route::post('/notification/get-template', [NotificationController::class, 'getTemplate'])->name('notification.get-template');
-	Route::post('/notification/bulk-send', [NotificationController::class, 'bulkSend'])->name('notification.bulk-send');
-	Route::post('/notification/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notification.bulk-delete');
+    // Notification Management
+    Route::get('/notification/list', [NotificationController::class, 'index'])->name('notification-list');
+    Route::get('/notification/create', [NotificationController::class, 'create'])->name('notification.create');
+    Route::post('/notification', [NotificationController::class, 'store'])->name('notification.store');
+    Route::get('/notification/{notification}', [NotificationController::class, 'show'])->name('notification.show');
+    Route::get('/notification/{notification}/edit', [NotificationController::class, 'edit'])->name('notification.edit');
+    Route::put('/notification/{notification}', [NotificationController::class, 'update'])->name('notification.update');
+    Route::delete('/notification/{notification}', [NotificationController::class, 'destroy'])->name('notification.destroy');
+    Route::post('/notification/{notification}/send', [NotificationController::class, 'send'])->name('notification.send');
+    Route::post('/notification/{notification}/resend', [NotificationController::class, 'resend'])->name('notification.resend');
+    Route::post('/notification/get-template', [NotificationController::class, 'getTemplate'])->name('notification.get-template');
+    Route::post('/notification/bulk-send', [NotificationController::class, 'bulkSend'])->name('notification.bulk-send');
+    Route::post('/notification/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notification.bulk-delete');
 
-	// Tarifas Personalizadas de Usuario
-	Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
-	Route::get('/user-fare/create', [UserFareController::class, 'create'])->name('user-fare.create');
-	Route::post('/user-fare', [UserFareController::class, 'store'])->name('user-fare.store');
-	Route::get('/user-fare/{userFare}', [UserFareController::class, 'show'])->name('user-fare.show');
-	Route::get('/user-fare/{userFare}/edit', [UserFareController::class, 'edit'])->name('user-fare.edit');
-	Route::put('/user-fare/{userFare}', [UserFareController::class, 'update'])->name('user-fare.update');
-	Route::delete('/user-fare/{userFare}', [UserFareController::class, 'destroy'])->name('user-fare.destroy');
+    // Tarifas Personalizadas de Usuario
+    Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');
+    Route::get('/user-fare/create', [UserFareController::class, 'create'])->name('user-fare.create');
+    Route::post('/user-fare', [UserFareController::class, 'store'])->name('user-fare.store');
+    Route::get('/user-fare/{userFare}', [UserFareController::class, 'show'])->name('user-fare.show');
+    Route::get('/user-fare/{userFare}/edit', [UserFareController::class, 'edit'])->name('user-fare.edit');
+    Route::put('/user-fare/{userFare}', [UserFareController::class, 'update'])->name('user-fare.update');
+    Route::delete('/user-fare/{userFare}', [UserFareController::class, 'destroy'])->name('user-fare.destroy');
 
-	// Academy - Now using the humano-academy package
-	// Route::get('/academy/list', [AcademyController::class, 'index'])->name('academy-list');
-	// Route::get('/academy/{id}', [AcademyController::class, 'show'])->name('academy.show');
+    // Academy - Now using the humano-academy package
+    // Route::get('/academy/list', [AcademyController::class, 'index'])->name('academy-list');
+    // Route::get('/academy/{id}', [AcademyController::class, 'show'])->name('academy.show');
 });
 
 // Testing
@@ -558,8 +577,9 @@ Route::view('/strategy', 'strategy.index')->name('strategy.index');
 Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');
 Route::resource('organization', EnterpriseOrganizationController::class)->except(['index', 'show']);
 
-Route::get('/notes', function () {
-	return view('notes.index');
+Route::get('/notes', function ()
+{
+    return view('notes.index');
 })->name('notes.index');
 
 // Kanban
@@ -574,100 +594,108 @@ Route::get('pages/{page}', [PageController::class, 'show'])->name('page.view');
 
 // Twilio Webhook Routes (legacy - without hash)
 Route::post('/twilio/webhook', [TwilioWebhookController::class, 'handleIncomingMessage'])
-	->name('twilio.webhook');
+    ->name('twilio.webhook');
 Route::post('/twilio/status', [TwilioWebhookController::class, 'handleMessageStatus'])
-	->name('twilio.status');
+    ->name('twilio.status');
 Route::post('/twilio/fallback', [TwilioWebhookController::class, 'handleFallback'])
-	->name('twilio.fallback');
+    ->name('twilio.fallback');
 
 // Twilio Webhook Routes (team-specific with hash)
 Route::post('/twilio/webhook/{hash}', [TwilioWebhookController::class, 'handleIncomingMessage'])
-	->name('twilio.webhook.team');
+    ->name('twilio.webhook.team');
 Route::post('/twilio/status/{hash}', [TwilioWebhookController::class, 'handleMessageStatus'])
-	->name('twilio.status.team');
+    ->name('twilio.status.team');
 Route::post('/twilio/fallback/{hash}', [TwilioWebhookController::class, 'handleFallback'])
-	->name('twilio.fallback.team');
+    ->name('twilio.fallback.team');
 
 // Debug route for testing JSON response (no auth required)
-Route::get('/debug-units', function () {
-	$fare = \App\Models\Fare::with('units')->find(1);
-	if (!$fare) {
-		return response()->json(['error' => 'Fare not found']);
-	}
+Route::get('/debug-units', function ()
+{
+    $fare = \App\Models\Fare::with('units')->find(1);
+    if (! $fare)
+    {
+        return response()->json(['error' => 'Fare not found']);
+    }
 
-	$units = $fare->units->map(function ($unit) {
-		return [
-			'id' => $unit->id,
-			'type' => $unit->type,
-			'label' => $unit->type,
-		];
-	});
+    $units = $fare->units->map(function ($unit)
+    {
+        return [
+            'id' => $unit->id,
+            'type' => $unit->type,
+            'label' => $unit->type,
+        ];
+    });
 
-	return response()->json([
-		'units' => $units,
-		'success' => true,
-		'fare_team_id' => $fare->team_id,
-		'fare_name' => $fare->name,
-	]);
+    return response()->json([
+        'units' => $units,
+        'success' => true,
+        'fare_team_id' => $fare->team_id,
+        'fare_name' => $fare->name,
+    ]);
 })->name('debug-units');
 
 // Debug route for user authentication info
-Route::get('/debug-user', function () {
-	if (!auth()->check()) {
-		return response()->json(['error' => 'Not authenticated']);
-	}
+Route::get('/debug-user', function ()
+{
+    if (! auth()->check())
+    {
+        return response()->json(['error' => 'Not authenticated']);
+    }
 
-	$user = auth()->user();
-	$team = $user->currentTeam;
+    $user = auth()->user();
+    $team = $user->currentTeam;
 
-	return response()->json([
-		'user_id' => $user->id,
-		'user_name' => $user->name,
-		'team_id' => $team ? $team->id : null,
-		'team_name' => $team ? $team->name : null,
-		'authenticated' => true,
-	]);
+    return response()->json([
+        'user_id' => $user->id,
+        'user_name' => $user->name,
+        'team_id' => $team ? $team->id : null,
+        'team_name' => $team ? $team->name : null,
+        'authenticated' => true,
+    ]);
 })->middleware('auth')->name('debug-user');
 
 /*
  * OVH API Routes
  */
-Route::prefix('ovh')->group(function () {
-	Route::get('/dashboard', [OvhApiController::class, 'dashboard'])->name('ovh.dashboard');
-	Route::get('/invoices', [OvhApiController::class, 'getInvoices'])->name('ovh.invoices');
-	Route::get('/services', [OvhApiController::class, 'getServices'])->name('ovh.services');
-	Route::get('/sync-domains', [OvhApiController::class, 'syncDomains'])->name('ovh.sync-domains');
+Route::prefix('ovh')->group(function ()
+{
+    Route::get('/dashboard', [OvhApiController::class, 'dashboard'])->name('ovh.dashboard');
+    Route::get('/invoices', [OvhApiController::class, 'getInvoices'])->name('ovh.invoices');
+    Route::get('/services', [OvhApiController::class, 'getServices'])->name('ovh.services');
+    Route::get('/sync-domains', [OvhApiController::class, 'syncDomains'])->name('ovh.sync-domains');
 });
 
 // Claude Prompts
-Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function () {
-	Route::get('/prompts', [App\Http\Controllers\ClaudePromptController::class, 'index'])->name('prompts.index');
-	Route::get('/prompts/create', [App\Http\Controllers\ClaudePromptController::class, 'create'])->name('prompts.create');
-	Route::post('/prompts', [App\Http\Controllers\ClaudePromptController::class, 'store'])->name('prompts.store');
-	Route::get('/prompts/{prompt}/edit', [App\Http\Controllers\ClaudePromptController::class, 'edit'])->name('prompts.edit');
-	Route::put('/prompts/{prompt}', [App\Http\Controllers\ClaudePromptController::class, 'update'])->name('prompts.update');
-	Route::delete('/prompts/{prompt}', [App\Http\Controllers\ClaudePromptController::class, 'destroy'])->name('prompts.destroy');
-	Route::post('/prompts/activate', [App\Http\Controllers\ClaudePromptController::class, 'activate'])->name('prompts.activate');
-	Route::post('/prompts/preview', [App\Http\Controllers\ClaudePromptController::class, 'preview'])->name('prompts.preview');
+Route::prefix('claude')->name('claude.')->middleware(['auth'])->group(function ()
+{
+    Route::get('/prompts', [App\Http\Controllers\ClaudePromptController::class, 'index'])->name('prompts.index');
+    Route::get('/prompts/create', [App\Http\Controllers\ClaudePromptController::class, 'create'])->name('prompts.create');
+    Route::post('/prompts', [App\Http\Controllers\ClaudePromptController::class, 'store'])->name('prompts.store');
+    Route::get('/prompts/{prompt}/edit', [App\Http\Controllers\ClaudePromptController::class, 'edit'])->name('prompts.edit');
+    Route::put('/prompts/{prompt}', [App\Http\Controllers\ClaudePromptController::class, 'update'])->name('prompts.update');
+    Route::delete('/prompts/{prompt}', [App\Http\Controllers\ClaudePromptController::class, 'destroy'])->name('prompts.destroy');
+    Route::post('/prompts/activate', [App\Http\Controllers\ClaudePromptController::class, 'activate'])->name('prompts.activate');
+    Route::post('/prompts/preview', [App\Http\Controllers\ClaudePromptController::class, 'preview'])->name('prompts.preview');
 });
 
 // Language Variants
-Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function () {
-	Route::get('/', [App\Http\Controllers\LanguageVariantController::class, 'index'])->name('index');
-	Route::get('/create', [App\Http\Controllers\LanguageVariantController::class, 'create'])->name('create');
-	Route::post('/', [App\Http\Controllers\LanguageVariantController::class, 'store'])->name('store');
-	Route::get('/{languageVariant}/edit', [App\Http\Controllers\LanguageVariantController::class, 'edit'])->name('edit');
-	Route::put('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'update'])->name('update');
-	Route::delete('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'destroy'])->name('destroy');
-	Route::get('/by-language/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
+Route::middleware(['auth'])->prefix('language/variants')->name('language-variants.')->group(function ()
+{
+    Route::get('/', [App\Http\Controllers\LanguageVariantController::class, 'index'])->name('index');
+    Route::get('/create', [App\Http\Controllers\LanguageVariantController::class, 'create'])->name('create');
+    Route::post('/', [App\Http\Controllers\LanguageVariantController::class, 'store'])->name('store');
+    Route::get('/{languageVariant}/edit', [App\Http\Controllers\LanguageVariantController::class, 'edit'])->name('edit');
+    Route::put('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'update'])->name('update');
+    Route::delete('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'destroy'])->name('destroy');
+    Route::get('/by-language/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
 });
 
 /*
  * CMS7 Routes - Legacy database
  */
 Route::get('/cms7/empresa/{id}', [App\Http\Controllers\Cms7Controller::class, 'enterpriseDetails'])
-	->name('cms7.empresa')
-	->middleware(['auth', 'verified']);
+    ->name('cms7.empresa')
+    ->middleware(['auth', 'verified']);
 
 // User linking routes - unified page
 Route::get('/user-link/{type}/{id}', [ContactController::class, 'showUserLinkPage'])->name('user-link.show');
@@ -683,10 +711,11 @@ Route::delete('/collaborator/{id}/documents/{media}', [CollaboratorController::c
 Route::get('/collaborator/debug/availability', [CollaboratorController::class, 'debugAvailability'])->name('collaborator.debug.availability');
 
 // Profile Update Routes
-Route::prefix('profile-update')->name('profile-update.')->middleware(['auth', 'verified'])->group(function () {
-	Route::get('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'index'])->name('index');
-	Route::post('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'store'])->name('store');
-	Route::post('/get-rates', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'getRatesForLanguagePair'])->name('get-rates');
+Route::prefix('profile-update')->name('profile-update.')->middleware(['auth', 'verified'])->group(function ()
+{
+    Route::get('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'index'])->name('index');
+    Route::post('/', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'store'])->name('store');
+    Route::post('/get-rates', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'getRatesForLanguagePair'])->name('get-rates');
 });
 
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
@@ -696,9 +725,10 @@ Route::get('message/track/click/{token}', [MessageTrackingController::class, 'tr
 Route::post('webhooks/mailbaby', [App\Http\Controllers\MailBabyWebhookController::class, 'handle'])->name('mailbaby.webhook');
 
 // WhatsApp Cart Testing Routes (available in all environments)
-Route::prefix('test-cart')->group(function () {
-	Route::get('/', [App\Http\Controllers\TestCartController::class, 'index'])->name('test.cart.index');
-	Route::post('/process', [App\Http\Controllers\TestCartController::class, 'processMessage'])->name('test.cart.process');
-	Route::get('/status', [App\Http\Controllers\TestCartController::class, 'cartStatus'])->name('test.cart.status');
-	Route::post('/clear', [App\Http\Controllers\TestCartController::class, 'clearCart'])->name('test.cart.clear');
+Route::prefix('test-cart')->group(function ()
+{
+    Route::get('/', [App\Http\Controllers\TestCartController::class, 'index'])->name('test.cart.index');
+    Route::post('/process', [App\Http\Controllers\TestCartController::class, 'processMessage'])->name('test.cart.process');
+    Route::get('/status', [App\Http\Controllers\TestCartController::class, 'cartStatus'])->name('test.cart.status');
+    Route::post('/clear', [App\Http\Controllers\TestCartController::class, 'clearCart'])->name('test.cart.clear');
 });
