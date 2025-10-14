@@ -600,40 +600,6 @@ if (typeof $ !== 'undefined') {
             // },
             // Members
             {
-              name: 'members',
-              display: 'name',
-              limit: 10,
-              source: dynamicSearch('members'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
-                suggestion: function (data) {
-                  console.log('[Members] Rendering suggestion:', data);
-                  if (!data || !data.name) { console.warn('[Members] Invalid data, skipping'); return ''; }
-                  var name = data.name || '';
-                  var subtitle = data.subtitle || '';
-                  var url = data.url || '#';
-                  var html = (
-                    '<a href="' + url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-user me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' + name + '</h6>' +
-                    '<small class="text-muted">' + subtitle + '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                  console.log('[Members] HTML:', html);
-                  return html;
-                },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Contactos</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
-                  '</div>'
-              }
-            },
-            {
               name: 'enterprises',
               display: 'name',
               limit: 4,
@@ -779,83 +745,32 @@ if (typeof $ !== 'undefined') {
                   '</div>'
               }
             },
-            // DEBUG: Mirror server 'members' dataset with minimal markup
+            // Members moved to bottom
             {
-              name: 'members-mirror',
+              name: 'members',
               display: 'name',
-              limit: 4,
+              limit: 10,
               source: dynamicSearch('members'),
               templates: {
-                header: '<h6 class="suggestions-header text-success mb-0 mx-3 mt-3 pb-2">Contactos (server espejo)</h6>',
+                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function (data) {
-                  if (!data || !data.name) return '';
+                  if (!data || !data.name) { return ''; }
                   var name = data.name || '';
                   var subtitle = data.subtitle || '';
                   var url = data.url || '#';
                   return (
                     '<a href="' + url + '">' +
                     '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-user text-success me-2"></i>' +
+                    '<i class="ti ti-user me-2"></i>' +
                     '<div class="user-info">' +
-                    '<h6 class="mb-0 text-success">' + name + '</h6>' +
+                    '<h6 class="mb-0">' + name + '</h6>' +
                     '<small class="text-muted">' + subtitle + '</small>' +
                     '</div>' +
                     '</div>' +
                     '</a>'
                   );
                 },
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-success mb-2">Contactos (server espejo)</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
-                  '</div>'
-              }
-            },
-            // TEST HARDCODED - ELIMINAR DESPUÉS
-            {
-              name: 'test',
-              display: 'name',
-              limit: 2,
-              source: function(q, cb) {
-                console.log('[TEST] Hardcoded data being returned');
-                cb([
-                  {
-                    name: '🔥 PRUEBA HARDCODED 1',
-                    subtitle: 'Este es un resultado de prueba',
-                    url: '#'
-                  },
-                  {
-                    name: '✅ PRUEBA HARDCODED 2',
-                    subtitle: 'Si ves esto, el template funciona correctamente',
-                    url: '#'
-                  }
-                ]);
-              },
-              templates: {
-                header: '<h6 class="suggestions-header text-danger mb-0 mx-3 mt-3 pb-2">⚠️ DATOS DE PRUEBA</h6>',
-                suggestion: function (data) {
-                  console.log('[TEST] Rendering hardcoded suggestion:', data);
-                  if (!data || !data.name) return '';
-                  var name = data.name || '';
-                  var subtitle = data.subtitle || '';
-                  var url = data.url || '#';
-                  return (
-                    '<a href="' +
-                    url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-alert-triangle me-2 text-danger"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0 text-danger">' +
-                    name +
-                    '</h6>' +
-                    '<small class="text-muted">' +
-                    subtitle +
-                    '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                }
+                notFound: ''
               }
             }
           )
