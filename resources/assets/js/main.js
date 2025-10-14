@@ -525,80 +525,66 @@ if (typeof $ !== 'undefined') {
                 suggestion: 'suggestion d-flex justify-content-between px-3 py-2 w-100'
               }
             },
-            // ? Add/Update blocks as per need
-            // // Pages
-            // {
-            //   name: 'pages',
-            //   display: 'name',
-            //   limit: 5,
-            //   source: filterConfig(searchData.pages),
-            //   templates: {
-            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Pages</h6>',
-            //     suggestion: function ({ url, icon, name }) {
-            //       return (
-            //         '<a href="' +
-            //         baseUrl +
-            //         url +
-            //         '">' +
-            //         '<div>' +
-            //         '<i class="ti ' +
-            //         icon +
-            //         ' me-2"></i>' +
-            //         '<span class="align-middle">' +
-            //         name +
-            //         '</span>' +
-            //         '</div>' +
-            //         '</a>'
-            //       );
-            //     },
-            //     notFound:
-            //       '<div class="not-found px-3 py-2">' +
-            //       '<h6 class="suggestions-header text-primary mb-2">Pages</h6>' +
-            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> No Results Found</p>' +
-            //       '</div>'
-            //   }
-            // },
-            // // Files
-            // {
-            //   name: 'files',
-            //   display: 'name',
-            //   limit: 4,
-            //   source: filterConfig(searchData.files),
-            //   templates: {
-            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Files</h6>',
-            //     suggestion: function ({ src, name, subtitle, meta }) {
-            //       return (
-            //         '<a href="javascript:;">' +
-            //         '<div class="d-flex w-50">' +
-            //         '<img class="me-3" src="' +
-            //         assetsPath +
-            //         src +
-            //         '" alt="' +
-            //         name +
-            //         '" height="32">' +
-            //         '<div class="w-75">' +
-            //         '<h6 class="mb-0">' +
-            //         name +
-            //         '</h6>' +
-            //         '<small class="text-muted">' +
-            //         subtitle +
-            //         '</small>' +
-            //         '</div>' +
-            //         '</div>' +
-            //         '<small class="text-muted">' +
-            //         meta +
-            //         '</small>' +
-            //         '</a>'
-            //       );
-            //     },
-            //     notFound:
-            //       '<div class="not-found px-3 py-2">' +
-            //       '<h6 class="suggestions-header text-primary mb-2">Files</h6>' +
-            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> No Results Found</p>' +
-            //       '</div>'
-            //   }
-            // },
-            // Members
+            // Members first
+            {
+              name: 'contacts',
+              display: 'name',
+              limit: 10,
+              source: dynamicSearch('members'),
+              templates: {
+                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
+                suggestion: function (data) {
+                  if (!data || !data.name) { return ''; }
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
+                  return (
+                    '<a href="' + url + '">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="ti ti-user me-2"></i>' +
+                    '<div class="user-info">' +
+                    '<h6 class="mb-0">' + name + '</h6>' +
+                    '<small class="text-muted">' + subtitle + '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    '</a>'
+                  );
+                },
+                notFound:
+                  '<div class="not-found px-3 py-2">' +
+                  '<h6 class="suggestions-header text-primary mb-2">Contactos</h6>' +
+                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
+                  '</div>'
+              }
+            },
+            // Contacts mirror (debug)
+            {
+              name: 'contacts-mirror',
+              display: 'name',
+              limit: 10,
+              source: dynamicSearch('members'),
+              templates: {
+                header: '<h6 class="suggestions-header text-success mb-0 mx-3 mt-3 pb-2">Contactos (espejo)</h6>',
+                suggestion: function (data) {
+                  if (!data || !data.name) return '';
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
+                  return (
+                    '<a href="' + url + '">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="ti ti-user text-success me-2"></i>' +
+                    '<div class="user-info">' +
+                    '<h6 class="mb-0 text-success">' + name + '</h6>' +
+                    '<small class="text-muted">' + subtitle + '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    '</a>'
+                  );
+                }
+              }
+            },
+            // Enterprises
             {
               name: 'enterprises',
               display: 'name',
@@ -635,6 +621,34 @@ if (typeof $ !== 'undefined') {
                   '</div>'
               }
             },
+            // Enterprises mirror (debug)
+            {
+              name: 'enterprises-mirror',
+              display: 'name',
+              limit: 6,
+              source: dynamicSearch('enterprises'),
+              templates: {
+                header: '<h6 class="suggestions-header text-success mb-0 mx-3 mt-3 pb-2">Empresas (espejo)</h6>',
+                suggestion: function (data) {
+                  if (!data || !data.name) return '';
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
+                  return (
+                    '<a href="' + url + '">' +
+                    '<div class="d-flex align-items-center">' +
+                    '<i class="ti ti-building text-success me-2"></i>' +
+                    '<div class="user-info">' +
+                    '<h6 class="mb-0 text-success">' + name + '</h6>' +
+                    '<small class="text-muted">' + subtitle + '</small>' +
+                    '</div>' +
+                    '</div>' +
+                    '</a>'
+                  );
+                }
+              }
+            },
+            // Services
             {
               name: 'services',
               display: 'name',
@@ -743,34 +757,6 @@ if (typeof $ !== 'undefined') {
                   '<h6 class="suggestions-header text-primary mb-2">Facturas</h6>' +
                   '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Factura no encontrada</p>' +
                   '</div>'
-              }
-            },
-            // Members moved to bottom
-            {
-              name: 'members',
-              display: 'name',
-              limit: 10,
-              source: dynamicSearch('members'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
-                suggestion: function (data) {
-                  if (!data || !data.name) { return ''; }
-                  var name = data.name || '';
-                  var subtitle = data.subtitle || '';
-                  var url = data.url || '#';
-                  return (
-                    '<a href="' + url + '">' +
-                    '<div class="d-flex align-items-center">' +
-                    '<i class="ti ti-user me-2"></i>' +
-                    '<div class="user-info">' +
-                    '<h6 class="mb-0">' + name + '</h6>' +
-                    '<small class="text-muted">' + subtitle + '</small>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>'
-                  );
-                },
-                notFound: ''
               }
             }
           )

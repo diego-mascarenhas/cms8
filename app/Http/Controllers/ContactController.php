@@ -885,11 +885,9 @@ class ContactController extends Controller
             ];
         }
 
-        // Only search enterprises if the enterprises module is active
-        if ($team && $team->hasModule('enterprises'))
+        // Search enterprises unconditionally (team scope still applies)
         {
             $enterprisesQuery = \App\Models\Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at', 'responsible_id');
-            // No filter on enterprises - show all
 
             if (! $isInitialLoad)
             {
@@ -904,6 +902,7 @@ class ContactController extends Controller
             }
 
             $data['enterprises'] = $enterprisesQuery
+                ->orderBy('name')
                 ->limit(50)  // Limit for dynamic search
                 ->get()
                 ->map(function ($enterprise)
