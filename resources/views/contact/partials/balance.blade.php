@@ -5,7 +5,7 @@
             <a href="https://dashboard.stripe.com/invoices/create?customer={{ $enterprise->code }}"
                target="_blank"
                class="btn btn-primary btn-sm">
-                + Crear facturax
+                + Crear factura
             </a>
         @endif
     </h5>
@@ -77,11 +77,18 @@
                                 </span>
                             </td>
                             <td class="text-center">
-                                @if($invoice['pdf'])
-                                    <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary">
-                                        <i class="ti ti-download"></i>
-                                    </a>
-                                @endif
+                                <div class="btn-group">
+                                    @if(!empty($invoice['pdf']))
+                                        <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Descargar PDF">
+                                            <i class="ti ti-download"></i>
+                                        </a>
+                                    @endif
+                                    @if(!empty($invoice['dashboard_url']))
+                                        <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Ver en Stripe">
+                                            <i class="ti ti-external-link"></i>
+                                        </a>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @endforeach
@@ -116,11 +123,105 @@
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    @if($invoice['pdf'])
-                                        <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary">
-                                            <i class="ti ti-download"></i>
-                                        </a>
-                                    @endif
+                                    <div class="btn-group">
+                                        @if(!empty($invoice['pdf']))
+                                            <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Descargar PDF">
+                                                <i class="ti ti-download"></i>
+                                            </a>
+                                        @endif
+                                        @if(!empty($invoice['dashboard_url']))
+                                            <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Ver en Stripe">
+                                                <i class="ti 	ti-external-link"></i>
+                                            </a>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
+
+        @if (!empty($stripeData['void_invoices']))
+        <div class="mt-4">
+            <h6 class="mb-3">Anuladas</h6>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th class="text-center">Fecha</th>
+                            <th class="text-end">Monto</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($stripeData['void_invoices'] as $invoice)
+                            <tr>
+                                <td>{{ $invoice['number'] }}</td>
+                                <td class="text-center">{{ $invoice['date'] }}</td>
+                                <td class="text-end">{{ $invoice['amount'] }} {{ $invoice['currency'] }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-label-secondary">Anulada</span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group">
+                                        @if(!empty($invoice['pdf']))
+                                            <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Descargar PDF">
+                                                <i class="ti ti-download"></i>
+                                            </a>
+                                        @endif
+                                        @if(!empty($invoice['dashboard_url']))
+                                            <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Ver en Stripe">
+                                                <i class="ti ti-external-link"></i>
+                                            </a>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
+
+        @if (!empty($stripeData['credit_notes']))
+        <div class="mt-4">
+            <h6 class="mb-3">Notas de Crédito</h6>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th class="text-center">Fecha</th>
+                            <th class="text-end">Monto</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($stripeData['credit_notes'] as $note)
+                            <tr>
+                                <td>{{ $note['number'] }}</td>
+                                <td class="text-center">{{ $note['date'] }}</td>
+                                <td class="text-end">-{{ $note['amount'] }} {{ $note['currency'] }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-label-{{ $note['status'] === 'void' ? 'secondary' : 'info' }}">
+                                        {{ $note['status'] === 'void' ? 'Anulada' : 'Emitida' }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group">
+                                        @if(!empty($note['pdf']))
+                                            <a href="{{ $note['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Descargar PDF">
+                                                <i class="ti ti-download"></i>
+                                            </a>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

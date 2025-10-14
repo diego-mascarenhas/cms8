@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Stripe\CreditNote;
 use Stripe\Customer;
 use Stripe\Invoice;
 use Stripe\PaymentMethod;
@@ -146,6 +147,9 @@ class ContactController extends Controller
 				'customer' => null,
 				'payment_method' => null,
 				'invoices' => [],
+				'unpaid_invoices' => [],
+				'void_invoices' => [],
+				'credit_notes' => [],
 				'metrics' => null,
 			];
 
@@ -195,6 +199,17 @@ class ContactController extends Controller
 					'customer' => $customer->id,
 					'limit' => 20,
 					'status' => 'uncollectible',
+				]);
+				$voidInvoices = Invoice::all([
+					'customer' => $customer->id,
+					'limit' => 20,
+					'status' => 'void',
+				]);
+
+				// Credit notes (issued and/or void)
+				$creditNotes = CreditNote::all([
+					'customer' => $customer->id,
+					'limit' => 20,
 				]);
 
 				// Get payment methods
@@ -273,24 +288,54 @@ class ContactController extends Controller
 				// Process invoices (paid)
 				foreach ($paidInvoices->data as $invoice) {
 					$stripeData['invoices'][] = [
+						'id' => $invoice->id,
 						'number' => $invoice->number,
 						'amount' => $invoice->amount_paid / 100,  // Convert from cents
 						'currency' => strtoupper($invoice->currency),
 						'status' => $invoice->status,
 						'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
 						'pdf' => $invoice->invoice_pdf,
+						'dashboard_url' => 'https://dashboard.stripe.com/invoices/' . $invoice->id,
 					];
 				}
 				// Process invoices (unpaid: open + uncollectible)
 				$stripeData['unpaid_invoices'] = [];
 				foreach (array_merge($openInvoices->data, $uncollectibleInvoices->data) as $invoice) {
 					$stripeData['unpaid_invoices'][] = [
+						'id' => $invoice->id,
 						'number' => $invoice->number,
 						'amount' => ($invoice->amount_due ?? $invoice->amount_remaining ?? 0) / 100,
 						'currency' => strtoupper($invoice->currency),
 						'status' => $invoice->status,  // 'open' or 'uncollectible'
 						'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
 						'pdf' => $invoice->invoice_pdf,
+						'dashboard_url' => 'https://dashboard.stripe.com/invoices/' . $invoice->id,
+					];
+				}
+
+				// Process void invoices (canceled)
+				foreach ($voidInvoices->data as $invoice) {
+					$stripeData['void_invoices'][] = [
+						'id' => $invoice->id,
+						'number' => $invoice->number,
+						'amount' => ($invoice->amount_due ?? 0) / 100,
+						'currency' => strtoupper($invoice->currency),
+						'status' => $invoice->status,  // 'void'
+						'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
+						'pdf' => $invoice->invoice_pdf,
+						'dashboard_url' => 'https://dashboard.stripe.com/invoices/' . $invoice->id,
+					];
+				}
+
+				// Process credit notes
+				foreach ($creditNotes->data as $note) {
+					$stripeData['credit_notes'][] = [
+						'number' => $note->number,
+						'amount' => ($note->amount ?? 0) / 100,
+						'currency' => strtoupper($note->currency),
+						'status' => $note->status,  // 'issued' or 'void'
+						'date' => Carbon::createFromTimestamp($note->created)->format('d/m/Y'),
+						'pdf' => $note->pdf ?? null,
 					];
 				}
 
