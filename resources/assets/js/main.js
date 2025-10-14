@@ -380,18 +380,18 @@ if (typeof $ !== 'undefined') {
         }
       });
     }
-    // Open search on 'CTRL+/'
-    $(document).on('keydown', function (event) {
-      let ctrlKey = event.ctrlKey,
-        slashKey = event.which === 191;
+    // Open search on 'CTRL+/' - Disabled for Livewire search
+    // $(document).on('keydown', function (event) {
+    //   let ctrlKey = event.ctrlKey,
+    //     slashKey = event.which === 191;
 
-      if (ctrlKey && slashKey) {
-        if (searchInputWrapper.length) {
-          searchInputWrapper.toggleClass('d-none');
-          searchInput.focus();
-        }
-      }
-    });
+    //   if (ctrlKey && slashKey) {
+    //     if (searchInputWrapper.length) {
+    //       searchInputWrapper.toggleClass('d-none');
+    //       searchInput.focus();
+    //     }
+    //   }
+    // });
     // Note: Following code is required to update container class of typeahead dropdown width on focus of search input. setTimeout is required to allow time to initiate Typeahead UI.
     setTimeout(function () {
       var twitterTypeahead = $('.twitter-typeahead');
@@ -431,83 +431,62 @@ if (typeof $ !== 'undefined') {
         };
       };
 
-      // Shared AJAX cache to avoid multiple concurrent requests and race conditions
-      var searchAjaxCache = {
-        lastQuery: null,
-        lastResponse: null,
-        inflight: null,
-        listeners: [],
-      };
+      // Modern async search with Promise and debouncing
+      var searchCache = {};
+      var searchTimeouts = {};
 
-      function fetchSearchResponse(query, onDone) {
-        // If we already have a response for this exact query, reuse it immediately
-        if (searchAjaxCache.lastQuery === query && searchAjaxCache.lastResponse) {
-          return onDone(searchAjaxCache.lastResponse);
-        }
-        // If there is a request in-flight for this query, attach as listener
-        if (searchAjaxCache.inflight && searchAjaxCache.lastQuery === query) {
-          searchAjaxCache.listeners.push(onDone);
-          return;
-        }
-        // Start a new request for this query
-        searchAjaxCache.lastQuery = query;
-        searchAjaxCache.listeners = [onDone];
-        searchAjaxCache.inflight = $.ajax({
-          url: '/contact/search',
-          dataType: 'json',
-          data: { q: query }
-        })
-          .done(function (response) {
-            searchAjaxCache.lastResponse = response;
-            var cbs = searchAjaxCache.listeners.slice(0);
-            searchAjaxCache.listeners = [];
-            cbs.forEach(function (fn) { try { fn(response); } catch (e) { console.error(e); } });
-          })
-          .fail(function (xhr, status, error) {
-            console.error('[Search] AJAX Error!', status, error);
-            var cbs = searchAjaxCache.listeners.slice(0);
-            searchAjaxCache.listeners = [];
-            cbs.forEach(function (fn) { try { fn({}); } catch (e) { console.error(e); } });
-          })
-          .always(function () {
-            searchAjaxCache.inflight = null;
-          });
-      }
-
-      // Dynamic search function - queries server on each keystroke
       var dynamicSearch = function (field) {
         return function findMatches(q, cb) {
           console.log('[Search] Query:', q, 'Field:', field);
+
           if (!q || q.length < 1) {
             console.log('[Search] Empty query, returning empty array');
             return cb([]);
           }
 
-          console.log('[Search] Using shared AJAX to /contact/search');
-          fetchSearchResponse(q, function (response) {
-            console.log('[Search] Success! Full Response:', response);
-            console.log('[Search] Field requested:', field);
-            console.log('[Search] Field exists?', field in response);
-            console.log('[Search] Field data type:', typeof response[field]);
-            console.log('[Search] Field raw data:', response[field]);
-            console.log('[Search] Is array?', Array.isArray(response[field]));
+          // Check cache first
+          var cacheKey = field + ':' + q.toLowerCase();
+          if (searchCache[cacheKey]) {
+            console.log('[Search] Cache hit for:', cacheKey);
+            return cb(searchCache[cacheKey]);
+          }
 
-            var results = response[field] || [];
-            if (typeof results === 'object' && !Array.isArray(results)) {
-              console.log('[Search] Converting object to array using Object.values()');
-              results = Object.values(results);
-            }
+          // Clear previous timeout for this field
+          if (searchTimeouts[field]) {
+            clearTimeout(searchTimeouts[field]);
+          }
 
-            console.log('[Search] ✅ Final results array:', results);
-            console.log('[Search] ✅ Array length:', results.length);
-            console.log('[Search] ✅ First result:', results[0]);
-            console.log('[Search] ✅ Sample result.name:', results[0] ? results[0].name : 'N/A');
-            console.log('[Search] ⏩ Calling cb() NOW with', results.length, 'results');
+          // Debounce search requests per field
+          searchTimeouts[field] = setTimeout(function() {
+            console.log('[Search] Making async AJAX request for:', field, q);
 
-            cb(results);
+            // Use Promise-based approach
+            fetch('/contact/search?q=' + encodeURIComponent(q))
+              .then(function(response) {
+                if (!response.ok) {
+                  throw new Error('Network response was not ok');
+                }
+                return response.json();
+              })
+              .then(function(data) {
+                console.log('[Search] Async response for', field, ':', data);
 
-            console.log('[Search] ✓ cb() called for field:', field);
-          });
+                var results = data[field] || [];
+                if (typeof results === 'object' && !Array.isArray(results)) {
+                  results = Object.values(results);
+                }
+
+                // Cache the results
+                searchCache[cacheKey] = results;
+
+                console.log('[Search] ✅ Calling cb() with', results.length, 'results for', field);
+                cb(results);
+              })
+              .catch(function(error) {
+                console.error('[Search] Async error for', field, ':', error);
+                cb([]);
+              });
+          }, 150); // 150ms debounce per field
         };
       };
 
@@ -526,46 +505,46 @@ if (typeof $ !== 'undefined') {
               }
             },
 
-            // Contacts header (notFound + header only)
+            // Contacts
             {
-              name: 'contacts-header',
-              display: 'name',
-              limit: 0,
-              source: dynamicSearch('members'),
-              templates: {
-                header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
-                notFound:
-                  '<div class="not-found px-3 py-2">' +
-                  '<h6 class="suggestions-header text-primary mb-2">Contactos</h6>' +
-                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
-                  '</div>'
-              }
-            },
-            // Contacts (primary renderer, unique dataset name)
-            {
-              name: 'contacts-list',
+              name: 'contacts',
               display: 'name',
               limit: 10,
               source: dynamicSearch('members'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
                 suggestion: function (data) {
-                  if (!data || !data.name) return '';
+                  console.log('[Contacts] Rendering suggestion:', data);
+                  if (!data || !data.name) {
+                    console.log('[Contacts] Invalid data:', data);
+                    return '';
+                  }
                   var name = data.name || '';
                   var subtitle = data.subtitle || '';
                   var url = data.url || '#';
+                  console.log('[Contacts] Rendering:', name, subtitle, url);
                   return (
-                    '<a href="' + url + '">' +
+                    '<a href="' +
+                    url + '">' +
                     '<div class="d-flex align-items-center">' +
                     '<i class="ti ti-user me-2"></i>' +
                     '<div class="user-info">' +
-                    '<h6 class="mb-0">' + name + '</h6>' +
-                    '<small class="text-muted">' + subtitle + '</small>' +
+                    '<h6 class="mb-0">' +
+                    name +
+                    '</h6>' +
+                    '<small class="text-muted">' +
+                    subtitle +
+                    '</small>' +
                     '</div>' +
                     '</div>' +
                     '</a>'
                   );
-                }
+                },
+                notFound:
+                  '<div class="not-found px-3 py-2">' +
+                  '<h6 class="suggestions-header text-primary mb-2">Contactos</h6>' +
+                  '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> Contacto no encontrado</p>' +
+                  '</div>'
               }
             },
             // Enterprises
@@ -577,10 +556,15 @@ if (typeof $ !== 'undefined') {
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
                 suggestion: function (data) {
-                  if (!data || !data.name) return '';
+                  console.log('[Enterprises] Rendering suggestion:', data);
+                  if (!data || !data.name) {
+                    console.log('[Enterprises] Invalid data:', data);
+                    return '';
+                  }
                   var name = data.name || '';
                   var subtitle = data.subtitle || '';
                   var url = data.url || '#';
+                  console.log('[Enterprises] Rendering:', name, subtitle, url);
                   return (
                     '<a href="' +
                     url + '">' +
@@ -613,11 +597,7 @@ if (typeof $ !== 'undefined') {
               source: dynamicSearch('services'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',
-                suggestion: function (data) {
-                  if (!data || !data.name) return '';
-                  var name = data.name || '';
-                  var subtitle = data.subtitle || '';
-                  var url = data.url || '#';
+                suggestion: function ({ name, subtitle, url }) {
                   return (
                     '<a href="' +
                     url + '">' +
@@ -650,11 +630,7 @@ if (typeof $ !== 'undefined') {
               source: dynamicSearch('projects'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',
-                suggestion: function (data) {
-                  if (!data || !data.name) return '';
-                  var name = data.name || '';
-                  var subtitle = data.subtitle || '';
-                  var url = data.url || '#';
+                suggestion: function ({ name, subtitle, url }) {
                   return (
                     '<a href="' +
                     url + '">' +
@@ -687,11 +663,7 @@ if (typeof $ !== 'undefined') {
               source: dynamicSearch('invoices'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',
-                suggestion: function (data) {
-                  if (!data || !data.name) return '';
-                  var name = data.name || '';
-                  var subtitle = data.subtitle || '';
-                  var url = data.url || '#';
+                suggestion: function ({ name, subtitle, url }) {
                   return (
                     '<a href="' +
                     url + '">' +

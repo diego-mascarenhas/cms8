@@ -44,16 +44,13 @@
 <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
 
     @if (!isset($menuHorizontal))
-        <!-- Search -->
+        <!-- Livewire Search -->
         <div class="navbar-nav align-items-center">
             <div class="nav-item navbar-search-wrapper mb-0">
-                <a class="nav-item nav-link search-toggler d-flex align-items-center px-0" href="javascript:void(0);">
-                    <i class="ti ti-search ti-md me-2"></i>
-                    <span class="d-none d-md-inline-block text-muted">{{ __('app.search_with_shortcut') }}</span>
-                </a>
+                @livewire('global-search')
             </div>
         </div>
-        <!-- /Search -->
+        <!-- /Livewire Search -->
     @endif
     <ul class="navbar-nav flex-row align-items-center ms-auto">
         {{-- Quick Time Tracker (attendance clock-in/out) --}}
@@ -134,13 +131,11 @@
         <!--/ Language -->
 
         @if (isset($menuHorizontal))
-            <!-- Search -->
+            <!-- Livewire Search -->
             <li class="nav-item navbar-search-wrapper me-2 me-xl-0">
-                <a class="nav-link search-toggler" href="javascript:void(0);">
-                    <i class="ti ti-search ti-md"></i>
-                </a>
+                @livewire('global-search')
             </li>
-            <!-- /Search -->
+            <!-- /Livewire Search -->
         @endif
         @if ($configData['hasCustomizer'] == true)
             <!-- Style Switcher -->

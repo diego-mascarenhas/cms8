@@ -845,32 +845,25 @@ class ContactController extends Controller
 
             if (! $isInitialLoad)
             {
+                // Optimized search with better performance
                 $contactsQuery->where(function ($q) use ($query)
                 {
-                    $q
-                        ->where('name', 'like', "%{$query}%")
-                        ->orWhere('surname', 'like', "%{$query}%")
-                        ->orWhere('phone', 'like', "%{$query}%")
-                        ->orWhere('email', 'like', "%{$query}%");
+                    $q->whereRaw("CONCAT(name, ' ', surname) LIKE ?", ["%{$query}%"])
+                      ->orWhere('email', 'like', "%{$query}%")
+                      ->orWhere('phone', 'like', "%{$query}%");
                 });
             }
 
             $data['members'] = $contactsQuery
-                ->limit(50)  // Limit for dynamic search
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($contact)
                 {
                     $displayName = trim($contact->name.' '.$contact->surname);
-                    $subtitle = 'Creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs';
-                    if ($contact->email)
-                    {
-                        $subtitle = $contact->email;
-                    }
-
                     return [
                         'name' => $displayName,
-                        'subtitle' => $subtitle,
-                        'src' => 'img/avatars/guru-meditating.jpg',
+                        'subtitle' => $contact->email ?: 'Creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs',
+                        // remove avatar 'src' to simplify rendering
                         'url' => route('contact.show', $contact->id),
                     ];
                 })
@@ -903,21 +896,15 @@ class ContactController extends Controller
 
             $data['enterprises'] = $enterprisesQuery
                 ->orderBy('name')
-                ->limit(50)  // Limit for dynamic search
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($enterprise)
                 {
-                    $subtitle = 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs';
-                    if ($enterprise->code)
-                    {
-                        $subtitle = 'Código: '.$enterprise->code;
-                    }
-
                     return [
                         'name' => $enterprise->name,
-                        'subtitle' => $subtitle,
-                        'src' => 'img/icons/brands/enterprise.png',
-                        'url' => $enterprise->responsible_id ? route('contact.show', $enterprise->responsible_id) : '#',
+                        'subtitle' => ($enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs'),
+                        // remove icon 'src' to simplify rendering
+                        'url' => '#',
                     ];
                 })
                 ->values()
@@ -942,7 +929,7 @@ class ContactController extends Controller
             }
 
             $data['services'] = $servicesQuery
-                ->limit(50)
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($service)
                 {
@@ -977,7 +964,7 @@ class ContactController extends Controller
             }
 
             $data['projects'] = $projectsQuery
-                ->limit(50)
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($project)
                 {
@@ -1042,7 +1029,7 @@ class ContactController extends Controller
             }
 
             $data['invoices'] = $invoicesQuery
-                ->limit(50)
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($invoice)
                 {
@@ -1083,7 +1070,7 @@ class ContactController extends Controller
             }
 
             $billingAddresses = $billingAddressesQuery
-                ->limit(50)
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($address)
                 {
