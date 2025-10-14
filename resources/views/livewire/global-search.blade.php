@@ -1,24 +1,20 @@
-<div class="position-relative">
+<div class="position-relative w-100">
     <!-- Search Input -->
-    <div class="navbar-nav align-items-center">
-        <div class="nav-item d-flex align-items-center">
-            <div class="position-relative">
-                <input
-                    type="text"
-                    class="form-control border-0 shadow-none ps-5 ps-sm-7"
-                    placeholder="Buscar..."
-                    wire:model.live.debounce.300ms="query"
-                    wire:focus="$set('showResults', true)"
-                    wire:blur="$set('showResults', false)"
-                >
-                <i class="ti ti-search position-absolute top-50 start-0 translate-middle-y ms-3"></i>
-            </div>
-        </div>
+    <div class="nav-item d-flex align-items-center w-100">
+        <i class="ti ti-search ti-md me-2 me-lg-0"></i>
+        <input
+            type="text"
+            class="form-control border-0 shadow-none ps-1 ps-sm-2"
+            placeholder="Buscar..."
+            aria-label="Buscar..."
+            wire:model.live.debounce.300ms="query"
+            wire:focus="$set('showResults', true)"
+        >
     </div>
 
     <!-- Search Results Dropdown -->
     @if($showResults && !empty($query))
-        <div class="navbar-search-suggestion position-absolute top-100 start-0 mt-0" style="z-index: 9999; width: 600px; left: 0;">
+        <div class="navbar-search-suggestion position-absolute top-100 start-0" style="z-index: 2000; top: calc(100% + 20px); left: 0; width: 900px;">
             <div class="card">
                 <div class="card-body p-0">
                     @if(empty(array_filter($results)))
@@ -34,11 +30,13 @@
                             <div class="px-3 py-2">
                                 <h6 class="suggestions-header text-primary mb-2">Contactos</h6>
                                 @foreach($results['contacts'] as $contact)
-                                    <a href="{{ $contact['url'] }}" class="d-flex align-items-center px-0 py-2 text-decoration-none hover-bg-light">
-                                        <i class="ti ti-user me-2 text-muted"></i>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">{{ $contact['name'] }}</h6>
-                                            <small class="text-muted">{{ $contact['subtitle'] }}</small>
+                                    <a href="{{ $contact['url'] }}" class="suggestion d-flex justify-content-between px-3 py-2 w-100 text-decoration-none" style="pointer-events: auto; z-index: 1;">
+                                        <div class="d-flex align-items-center">
+                                            <i class="ti ti-user me-2"></i>
+                                            <div class="user-info">
+                                                <h6 class="mb-0">{{ $contact['name'] }}</h6>
+                                                <small class="text-muted">{{ $contact['subtitle'] }}</small>
+                                            </div>
                                         </div>
                                     </a>
                                 @endforeach
@@ -50,11 +48,13 @@
                             <div class="px-3 py-2">
                                 <h6 class="suggestions-header text-primary mb-2">Empresas</h6>
                                 @foreach($results['enterprises'] as $enterprise)
-                                    <a href="{{ $enterprise['url'] }}" class="d-flex align-items-center px-0 py-2 text-decoration-none hover-bg-light">
-                                        <i class="ti ti-building me-2 text-muted"></i>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">{{ $enterprise['name'] }}</h6>
-                                            <small class="text-muted">{{ $enterprise['subtitle'] }}</small>
+                                    <a href="{{ $enterprise['url'] }}" class="suggestion d-flex justify-content-between px-3 py-2 w-100 text-decoration-none" style="pointer-events: auto; z-index: 1;">
+                                        <div class="d-flex align-items-center">
+                                            <i class="ti ti-building me-2"></i>
+                                            <div class="user-info">
+                                                <h6 class="mb-0">{{ $enterprise['name'] }}</h6>
+                                                <small class="text-muted">{{ $enterprise['subtitle'] }}</small>
+                                            </div>
                                         </div>
                                     </a>
                                 @endforeach
@@ -66,11 +66,13 @@
                             <div class="px-3 py-2">
                                 <h6 class="suggestions-header text-primary mb-2">Servicios</h6>
                                 @foreach($results['services'] as $service)
-                                    <a href="{{ $service['url'] }}" class="d-flex align-items-center px-0 py-2 text-decoration-none hover-bg-light">
-                                        <i class="ti ti-world me-2 text-muted"></i>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">{{ $service['name'] }}</h6>
-                                            <small class="text-muted">{{ $service['subtitle'] }}</small>
+                                    <a href="{{ $service['url'] }}" class="suggestion d-flex justify-content-between px-3 py-2 w-100 text-decoration-none" style="pointer-events: auto; z-index: 1;">
+                                        <div class="d-flex align-items-center">
+                                            <i class="ti ti-world me-2"></i>
+                                            <div class="user-info">
+                                                <h6 class="mb-0">{{ $service['name'] }}</h6>
+                                                <small class="text-muted">{{ $service['subtitle'] }}</small>
+                                            </div>
                                         </div>
                                     </a>
                                 @endforeach
@@ -82,11 +84,13 @@
                             <div class="px-3 py-2">
                                 <h6 class="suggestions-header text-primary mb-2">Proyectos</h6>
                                 @foreach($results['projects'] as $project)
-                                    <a href="{{ $project['url'] }}" class="d-flex align-items-center px-0 py-2 text-decoration-none hover-bg-light">
-                                        <i class="ti ti-folder me-2 text-muted"></i>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">{{ $project['name'] }}</h6>
-                                            <small class="text-muted">{{ $project['subtitle'] }}</small>
+                                    <a href="{{ $project['url'] }}" class="suggestion d-flex justify-content-between px-3 py-2 w-100 text-decoration-none" style="pointer-events: auto; z-index: 1;">
+                                        <div class="d-flex align-items-center">
+                                            <i class="ti ti-folder me-2"></i>
+                                            <div class="user-info">
+                                                <h6 class="mb-0">{{ $project['name'] }}</h6>
+                                                <small class="text-muted">{{ $project['subtitle'] }}</small>
+                                            </div>
                                         </div>
                                     </a>
                                 @endforeach
@@ -98,11 +102,13 @@
                             <div class="px-3 py-2">
                                 <h6 class="suggestions-header text-primary mb-2">Facturas</h6>
                                 @foreach($results['invoices'] as $invoice)
-                                    <a href="{{ $invoice['url'] }}" class="d-flex align-items-center px-0 py-2 text-decoration-none hover-bg-light">
-                                        <i class="ti ti-file-invoice me-2 text-muted"></i>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">{{ $invoice['name'] }}</h6>
-                                            <small class="text-muted">{{ $invoice['subtitle'] }}</small>
+                                    <a href="{{ $invoice['url'] }}" class="suggestion d-flex justify-content-between px-3 py-2 w-100 text-decoration-none" style="pointer-events: auto; z-index: 1;">
+                                        <div class="d-flex align-items-center">
+                                            <i class="ti ti-file-invoice me-2"></i>
+                                            <div class="user-info">
+                                                <h6 class="mb-0">{{ $invoice['name'] }}</h6>
+                                                <small class="text-muted">{{ $invoice['subtitle'] }}</small>
+                                            </div>
                                         </div>
                                     </a>
                                 @endforeach
@@ -113,14 +119,39 @@
             </div>
         </div>
     @endif
-
-    <style>
-    .hover-bg-light:hover {
-        background-color: rgba(0,0,0,0.05);
-    }
-    .navbar-search-suggestion {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-    </style>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('livewire:initialized', () => {
+    let psSearch;
+
+    // Close dropdown when clicking outside
+    document.addEventListener('mousedown', function(event) {
+        const searchInput = document.querySelector('[wire\\:model\\.live\\.debounce\\.300ms="query"]');
+        const searchWrapper = searchInput?.closest('.navbar-search-wrapper');
+        const dropdown = document.querySelector('.navbar-search-suggestion');
+
+        // Check if click is outside search area AND not on the dropdown itself
+        if (searchWrapper && !searchWrapper.contains(event.target) &&
+            dropdown && !dropdown.contains(event.target)) {
+            @this.set('showResults', false);
+        }
+    });
+
+    // Initialize Perfect Scrollbar when dropdown appears
+    Livewire.hook('morph.updated', () => {
+        const dropdown = document.querySelector('.navbar-search-suggestion');
+        if (dropdown && typeof PerfectScrollbar !== 'undefined') {
+            if (psSearch) {
+                psSearch.destroy();
+            }
+            psSearch = new PerfectScrollbar(dropdown, {
+                wheelPropagation: false,
+                suppressScrollX: true
+            });
+        }
+    });
+});
+</script>
+@endpush
