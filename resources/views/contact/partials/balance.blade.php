@@ -2,8 +2,8 @@
     <h5 class="card-header d-flex justify-content-between align-items-center">
         Saldo
         @if(!empty($enterprise->code))
-            <a href="https://dashboard.stripe.com/invoices/create?customer={{ $enterprise->code }}" 
-               target="_blank" 
+            <a href="https://dashboard.stripe.com/invoices/create?customer={{ $enterprise->code }}"
+               target="_blank"
                class="btn btn-primary btn-sm">
                 + Crear facturax
             </a>
@@ -53,7 +53,7 @@
             </div>
         </div>
 
-        <!-- Invoices Table -->
+        <!-- Invoices Table (Paid) -->
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
@@ -88,5 +88,46 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Unpaid Invoices Table (Open + Uncollectible) -->
+        @if (!empty($stripeData['unpaid_invoices']))
+        <div class="mt-4">
+            <h6 class="mb-3">Impago</h6>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th class="text-center">Fecha</th>
+                            <th class="text-end">Monto</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($stripeData['unpaid_invoices'] as $invoice)
+                            <tr>
+                                <td>{{ $invoice['number'] }}</td>
+                                <td class="text-center">{{ $invoice['date'] }}</td>
+                                <td class="text-end">{{ $invoice['amount'] }} {{ $invoice['currency'] }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-label-{{ $invoice['status'] === 'uncollectible' ? 'danger' : 'warning' }}">
+                                        {{ $invoice['status'] === 'uncollectible' ? 'Incobrable' : 'Pendiente' }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    @if($invoice['pdf'])
+                                        <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary">
+                                            <i class="ti ti-download"></i>
+                                        </a>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
     </div>
 </div>
