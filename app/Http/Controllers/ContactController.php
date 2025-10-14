@@ -381,6 +381,19 @@ class ContactController extends Controller
         $contact = Contact::findOrFail($id);
         $contact->update($contactData);
 
+        // Sync enterprise relationship (many-to-many)
+        if (isset($data['enterprise']['enterprise_id']))
+        {
+            // Use syncWithoutDetaching to keep other enterprises if they exist
+            $contact->enterprises()->syncWithoutDetaching([$data['enterprise']['enterprise_id']]);
+
+            // Update current_enterprise_id if contact is a client (status_id = 5) or if not set
+            if ($request->status_id == 5 || ! $contact->current_enterprise_id)
+            {
+                $contact->update(['current_enterprise_id' => $data['enterprise']['enterprise_id']]);
+            }
+        }
+
         // Sync categories
         if (isset($data['categories']))
         {
@@ -749,13 +762,14 @@ class ContactController extends Controller
         if ($team && $team->hasModule('contacts'))
         {
             $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at')
-                ->where('status_id', '!=', 3); // Exclude finalized contacts (status_id = 3)
+                ->where('status_id', '!=', 3);  // Exclude finalized contacts (status_id = 3)
 
             if (! $isInitialLoad)
             {
                 $contactsQuery->where(function ($q) use ($query)
                 {
-                    $q->where('name', 'like', "%{$query}%")
+                    $q
+                        ->where('name', 'like', "%{$query}%")
                         ->orWhere('surname', 'like', "%{$query}%")
                         ->orWhere('phone', 'like', "%{$query}%")
                         ->orWhere('email', 'like', "%{$query}%");
@@ -763,7 +777,7 @@ class ContactController extends Controller
             }
 
             $data['members'] = $contactsQuery
-                ->limit(50) // Limit for dynamic search
+                ->limit(50)  // Limit for dynamic search
                 ->get()
                 ->map(function ($contact)
                 {
@@ -800,7 +814,8 @@ class ContactController extends Controller
             {
                 $enterprisesQuery->where(function ($q) use ($query)
                 {
-                    $q->where('name', 'like', "%{$query}%")
+                    $q
+                        ->where('name', 'like', "%{$query}%")
                         ->orWhere('code', 'like', "%{$query}%")
                         ->orWhere('phone', 'like', "%{$query}%")
                         ->orWhere('email', 'like', "%{$query}%");
@@ -808,7 +823,7 @@ class ContactController extends Controller
             }
 
             $data['enterprises'] = $enterprisesQuery
-                ->limit(50) // Limit for dynamic search
+                ->limit(50)  // Limit for dynamic search
                 ->get()
                 ->map(function ($enterprise)
                 {
@@ -831,13 +846,14 @@ class ContactController extends Controller
         if ($team && $team->hasModule('services'))
         {
             $servicesQuery = \App\Models\Service::select('id', 'enterprise_id', 'description', 'data', 'status', 'created_at')
-                ->where('status', 1); // Only active services
+                ->where('status', 1);  // Only active services
 
             if (! $isInitialLoad)
             {
                 $servicesQuery->where(function ($q) use ($query)
                 {
-                    $q->where('description', 'like', "%{$query}%")
+                    $q
+                        ->where('description', 'like', "%{$query}%")
                         // Search in all JSON data fields
                         ->orWhereRaw("JSON_SEARCH(data, 'one', ?) IS NOT NULL", ["%{$query}%"]);
                 });
@@ -870,7 +886,8 @@ class ContactController extends Controller
             {
                 $projectsQuery->where(function ($q) use ($query)
                 {
-                    $q->where('name', 'like', "%{$query}%")
+                    $q
+                        ->where('name', 'like', "%{$query}%")
                         ->orWhere('description', 'like', "%{$query}%");
                 });
             }
@@ -969,7 +986,8 @@ class ContactController extends Controller
             {
                 $billingAddressesQuery->where(function ($q) use ($query)
                 {
-                    $q->where('name', 'like', "%{$query}%")
+                    $q
+                        ->where('name', 'like', "%{$query}%")
                         ->orWhere('identification_number', 'like', "%{$query}%");
                 });
             }
