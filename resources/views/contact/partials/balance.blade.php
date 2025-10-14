@@ -20,8 +20,8 @@
                         </span>
                     </div>
                     <div>
-                        <h4 class="mb-0">{{ count($stripeData['invoices'] ?? []) }}</h4>
-                        <small class="text-muted">Facturas</small>
+                        <h4 class="mb-0">{{ count($stripeData['unpaid_invoices'] ?? []) }}</h4>
+                        <small class="text-muted">Impagas</small>
                     </div>
                 </div>
             </div>
@@ -77,18 +77,16 @@
                                 </span>
                             </td>
                             <td class="text-center">
-                                <div class="btn-group">
-                                    @if(!empty($invoice['pdf']))
-                                        <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Descargar PDF">
-                                            <i class="ti ti-download"></i>
-                                        </a>
-                                    @endif
-                                    @if(!empty($invoice['dashboard_url']))
-                                        <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Ver en Stripe">
-                                            <i class="ti ti-external-link"></i>
-                                        </a>
-                                    @endif
-                                </div>
+                                @if(!empty($invoice['pdf']))
+                                    <a href="{{ $invoice['pdf'] }}" target="_blank" class="text-body me-2" title="Descargar PDF">
+                                        <i class="ti ti-download"></i>
+                                    </a>
+                                @endif
+                                @if(!empty($invoice['dashboard_url']))
+                                    <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="text-body" title="Ver en Stripe">
+                                        <i class="ti ti-external-link"></i>
+                                    </a>
+                                @endif
                             </td>
                         </tr>
                     @endforeach
@@ -123,18 +121,16 @@
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    <div class="btn-group">
-                                        @if(!empty($invoice['pdf']))
-                                            <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Descargar PDF">
-                                                <i class="ti ti-download"></i>
-                                            </a>
-                                        @endif
-                                        @if(!empty($invoice['dashboard_url']))
-                                            <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Ver en Stripe">
-                                                <i class="ti 	ti-external-link"></i>
-                                            </a>
-                                        @endif
-                                    </div>
+                                    @if(!empty($invoice['pdf']))
+                                        <a href="{{ $invoice['pdf'] }}" target="_blank" class="text-body me-2" title="Descargar PDF">
+                                            <i class="ti ti-download"></i>
+                                        </a>
+                                    @endif
+                                    @if(!empty($invoice['dashboard_url']))
+                                        <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="text-body" title="Ver en Stripe">
+                                            <i class="ti ti-external-link"></i>
+                                        </a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -168,18 +164,16 @@
                                     <span class="badge bg-label-secondary">Anulada</span>
                                 </td>
                                 <td class="text-center">
-                                    <div class="btn-group">
-                                        @if(!empty($invoice['pdf']))
-                                            <a href="{{ $invoice['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Descargar PDF">
-                                                <i class="ti ti-download"></i>
-                                            </a>
-                                        @endif
-                                        @if(!empty($invoice['dashboard_url']))
-                                            <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Ver en Stripe">
-                                                <i class="ti ti-external-link"></i>
-                                            </a>
-                                        @endif
-                                    </div>
+                                    @if(!empty($invoice['pdf']))
+                                        <a href="{{ $invoice['pdf'] }}" target="_blank" class="text-body me-2" title="Descargar PDF">
+                                            <i class="ti ti-download"></i>
+                                        </a>
+                                    @endif
+                                    @if(!empty($invoice['dashboard_url']))
+                                        <a href="{{ $invoice['dashboard_url'] }}" target="_blank" class="text-body" title="Ver en Stripe">
+                                            <i class="ti ti-external-link"></i>
+                                        </a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -215,13 +209,11 @@
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    <div class="btn-group">
-                                        @if(!empty($note['pdf']))
-                                            <a href="{{ $note['pdf'] }}" target="_blank" class="btn btn-sm btn-icon btn-label-secondary" title="Descargar PDF">
-                                                <i class="ti ti-download"></i>
-                                            </a>
-                                        @endif
-                                    </div>
+                                    @if(!empty($note['pdf']))
+                                        <a href="{{ $note['pdf'] }}" target="_blank" class="text-body" title="Descargar PDF">
+                                            <i class="ti ti-download"></i>
+                                        </a>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
