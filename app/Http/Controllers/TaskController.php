@@ -141,9 +141,10 @@ class TaskController extends Controller
 				->values()
 			: collect();
 
-		// Get all projects for the selector
+		// Get only IN_PROGRESS projects (status_id = 9) for the selector
 		$projects = Project::query()
 			->where('team_id', auth()->user()->currentTeam->id)
+			->where('status_id', 9)  // Only show projects IN_PROGRESS
 			->orderBy('name')
 			->get(['id', 'name']);
 

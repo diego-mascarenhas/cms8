@@ -91,10 +91,10 @@
                                 <h5 class="card-title mb-0">¡Felicitaciones {{ explode(' ', auth()->user()->name)[0] }}! 🎉
                                 </h5>
                                 <p class="mb-2">¡Vas viento en popa!</p>
-                                <h4 class="text-primary mb-1">{{ number_format($currentMonthRevenue, 2, ',', '.') }}€</h4>
+                                {{-- <h4 class="text-primary mb-1">{{ number_format($currentMonthRevenue, 2, ',', '.') }}€</h4>
                                 <p class="text-muted mb-2">
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
-                                </p>
+                                </p> --}}
                                 <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary">Strategia</a>
                                 <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary ms-2">Organización</a>
                             </div>
@@ -260,7 +260,7 @@
                                                         'User logged out' => 'se desconectó',
                                                         'File uploaded' => 'subió un archivo',
                                                     ];
-                                                    
+
                                                     foreach ($translations as $en => $es) {
                                                         if (str_contains($description, $en)) {
                                                             $description = str_replace($en, $es, $description);
@@ -367,7 +367,7 @@
                                                     $today = \Carbon\Carbon::now();
                                                     $endDate = $project->end_date ? \Carbon\Carbon::parse($project->end_date) : null;
                                                     $startDate = $project->start_date ? \Carbon\Carbon::parse($project->start_date) : null;
-                                                    
+
                                                     if ($startDate && $endDate) {
                                                         $totalDays = $startDate->diffInDays($endDate);
                                                         $daysElapsed = $startDate->diffInDays($today);
@@ -541,7 +541,7 @@
         .sentiment-column {
             padding: 0 2px;
         }
-        
+
         .sentiment-bar {
             max-width: 40px;
         }
