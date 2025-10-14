@@ -38,6 +38,19 @@ class ContactDataTable extends DataTable
 							<small class="text-muted">'.($companyName ?: '&nbsp;').'</small>
 						</div>';
             })
+            ->filterColumn('name', function ($query, $keyword)
+            {
+                // Search in both name and surname fields, and enterprise name
+                $query->where(function ($q) use ($keyword)
+                {
+                    $q->where('name', 'like', "%{$keyword}%")
+                        ->orWhere('surname', 'like', "%{$keyword}%")
+                        ->orWhereHas('enterprises', function ($enterpriseQuery) use ($keyword)
+                        {
+                            $enterpriseQuery->where('name', 'like', "%{$keyword}%");
+                        });
+                });
+            })
             ->addColumn('current_sentiment', function ($row)
             {
                 if ($row->currentSentiment)

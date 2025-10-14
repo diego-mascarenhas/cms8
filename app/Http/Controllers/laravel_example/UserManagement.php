@@ -18,12 +18,10 @@ class UserManagement extends Controller
      */
     public function UserManagement(UserDataTable $dataTable)
     {
+        // Get all users from current team (not just admins)
         $users = User::whereHas('teams', function ($query)
         {
             $query->where('team_id', Auth::user()->currentTeam->id);
-        })->whereHas('roles', function ($query)
-        {
-            $query->where('name', 'admin');
         })->get();
 
         $userCount = $users->count();
@@ -59,13 +57,10 @@ class UserManagement extends Controller
 
         $search = [];
 
-        // Filter users by current team and admin role
+        // Filter all users by current team
         $baseQuery = User::with('roles')->whereHas('teams', function ($q)
         {
             $q->where('team_id', Auth::user()->currentTeam->id);
-        })->whereHas('roles', function ($q)
-        {
-            $q->where('name', 'admin');
         });
 
         $totalData = $baseQuery->count();

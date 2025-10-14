@@ -27,7 +27,7 @@ class UpdateContactRequest extends FormRequest
             'contact.user_id' => 'nullable|exists:users,id',
             'enterprise.name' => 'nullable|string|max:255',
             'enterprise.code' => 'nullable|string|max:255',
-            'enterprise.website' => 'nullable|max:255', // !FIXME: Add url validation
+            'enterprise.website' => 'nullable|max:255',  // !FIXME: Add url validation
             'enterprise.phone' => 'nullable|string|max:20',
             'enterprise.email' => 'nullable|email|max:255',
             'enterprise.whatsapp' => 'nullable|string|max:20',
@@ -81,14 +81,15 @@ class UpdateContactRequest extends FormRequest
                 'email' => $validated['enterprise']['email'] ?? null,
                 'whatsapp' => $validated['enterprise']['whatsapp'] ?? null,
                 'status_id' => $validated['status_id'] == 5 ? 2 : 1,
-                'responsible_id' => $contact->id,
+                'responsible_id' => $validated['responsible_id'] ?? $contact->responsible_id ?? null,
             ];
         }
 
         if ($contact->exists)
         {
+            // Find enterprise by code (unique identifier) and team
             $enterprise = Enterprise::withTrashed()
-                ->where('responsible_id', $contact->id)
+                ->where('code', $validated['enterprise']['code'] ?? null)
                 ->where('team_id', $contact->team_id)
                 ->first();
 
@@ -105,12 +106,15 @@ class UpdateContactRequest extends FormRequest
                 $enterprise = Enterprise::create($enterpriseData);
             }
 
+            // Store enterprise_id for syncing the many-to-many relationship
             if (isset($enterprise))
             {
-                $contactData['enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
+                $enterpriseData['enterprise_id'] = $enterprise->id;
+                // Set current_enterprise_id if contact is a client (status_id = 5)
+                $contactData['current_enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
             } else
             {
-                $contactData['enterprise_id'] = null;
+                $contactData['current_enterprise_id'] = null;
             }
 
             if (isset($validated['source_id']) && isset($validated['source_value']))

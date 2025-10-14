@@ -3,9 +3,9 @@ $customizerHidden = 'customizer-hide';
 $configData = Helper::appClasses();
 @endphp
 
-@extends('layouts/layoutMaster')
+@extends('layouts/blankLayout')
 
-@section('title', 'Not Authorized - Pages')
+@section('title', 'No Autorizado')
 
 @section('page-style')
 <!-- Page -->
@@ -15,14 +15,12 @@ $configData = Helper::appClasses();
 
 @section('content')
 <!-- Not Authorized -->
-<div class="container-xxl container-p-y">
-  <div class="misc-wrapper">
-    <h2 class="mb-1 mx-2">You are not authorized!</h2>
-    <p class="mb-4 mx-2">You do not have permission to view this page using the credentials that you have provided while login. <br> Please contact your site administrator.</p>
-    <a href="{{url('/')}}" class="btn btn-primary mb-4">Back to home</a>
-    <div class="mt-4">
-      <img src="{{ asset('assets/img/illustrations/page-misc-you-are-not-authorized.png') }}" alt="page-misc-not-authorized" width="170" class="img-fluid">
-    </div>
+<div class="misc-wrapper text-center">
+  <h2 class="mb-1 mx-2">¡No estás autorizado!</h2>
+  <p class="mb-4 mx-2">No tienes permisos para acceder a esta página con las credenciales que has proporcionado.<br>Por favor, contacta al administrador del sistema.</p>
+  <a href="{{url('/dashboard')}}" class="btn btn-primary mb-4">Volver al inicio</a>
+  <div class="mt-4">
+    <img src="{{ asset('assets/img/illustrations/page-misc-you-are-not-authorized.png') }}" alt="page-misc-not-authorized" width="170" class="img-fluid">
   </div>
 </div>
 <div class="container-fluid misc-bg-wrapper">

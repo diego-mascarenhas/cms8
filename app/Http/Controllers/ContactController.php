@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Stripe\CreditNote;
 use Stripe\Customer;
 use Stripe\Invoice;
 use Stripe\PaymentMethod;
@@ -122,6 +123,7 @@ class ContactController extends Controller
             'language',
             'sentimentHistories.sentiment',
             'enterprises',  // relación correcta
+            'currentEnterprise',
             'user.roles',
         ])->find($id);
 
@@ -152,10 +154,16 @@ class ContactController extends Controller
                 'customer' => null,
                 'payment_method' => null,
                 'invoices' => [],
+                'unpaid_invoices' => [],
+                'void_invoices' => [],
+                'credit_notes' => [],
                 'metrics' => null,
             ];
 
-            if ($data->enterprise && $data->enterprise->code)
+            // Determine the enterprise to use for Stripe (current or first associated)
+            $enterpriseForStripe = $data->currentEnterprise ?: $data->enterprises->first();
+
+            if ($enterpriseForStripe && $enterpriseForStripe->code)
             {
                 try
                 {
@@ -168,7 +176,10 @@ class ContactController extends Controller
             }
         }
 
-        if ($data->enterprise && $data->enterprise->code && $team->getSetting('stripe_secret'))
+        // Determine the enterprise again (outside to keep structure clear)
+        $enterpriseForStripe = $data->currentEnterprise ?: $data->enterprises->first();
+
+        if ($enterpriseForStripe && $enterpriseForStripe->code && $team->getSetting('stripe_secret'))
         {
             try
             {
@@ -177,7 +188,7 @@ class ContactController extends Controller
 
                 // Retrieve customer
                 $customer = Customer::retrieve([
-                    'id' => $data->enterprise->code,
+                    'id' => $enterpriseForStripe->code,
                     'expand' => [
                         'subscriptions',
                         'subscriptions.data.items',
@@ -185,11 +196,32 @@ class ContactController extends Controller
                     ],
                 ]);
 
-                // Get invoices
-                $invoices = Invoice::all([
+                // Get invoices by status
+                $paidInvoices = Invoice::all([
                     'customer' => $customer->id,
-                    'limit' => 10,  // Last 10 invoices
-                    'status' => 'paid',  // Only paid invoices
+                    'limit' => 20,
+                    'status' => 'paid',
+                ]);
+                $openInvoices = Invoice::all([
+                    'customer' => $customer->id,
+                    'limit' => 20,
+                    'status' => 'open',
+                ]);
+                $uncollectibleInvoices = Invoice::all([
+                    'customer' => $customer->id,
+                    'limit' => 20,
+                    'status' => 'uncollectible',
+                ]);
+                $voidInvoices = Invoice::all([
+                    'customer' => $customer->id,
+                    'limit' => 20,
+                    'status' => 'void',
+                ]);
+
+                // Credit notes (issued and/or void)
+                $creditNotes = CreditNote::all([
+                    'customer' => $customer->id,
+                    'limit' => 20,
                 ]);
 
                 // Get payment methods
@@ -269,16 +301,61 @@ class ContactController extends Controller
                     ];
                 }
 
-                // Process invoices
-                foreach ($invoices->data as $invoice)
+                // Process invoices (paid)
+                foreach ($paidInvoices->data as $invoice)
                 {
                     $stripeData['invoices'][] = [
+                        'id' => $invoice->id,
                         'number' => $invoice->number,
                         'amount' => $invoice->amount_paid / 100,  // Convert from cents
                         'currency' => strtoupper($invoice->currency),
                         'status' => $invoice->status,
                         'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
                         'pdf' => $invoice->invoice_pdf,
+                        'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
+                    ];
+                }
+                // Process invoices (unpaid: open + uncollectible)
+                $stripeData['unpaid_invoices'] = [];
+                foreach (array_merge($openInvoices->data, $uncollectibleInvoices->data) as $invoice)
+                {
+                    $stripeData['unpaid_invoices'][] = [
+                        'id' => $invoice->id,
+                        'number' => $invoice->number,
+                        'amount' => ($invoice->amount_due ?? $invoice->amount_remaining ?? 0) / 100,
+                        'currency' => strtoupper($invoice->currency),
+                        'status' => $invoice->status,  // 'open' or 'uncollectible'
+                        'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
+                        'pdf' => $invoice->invoice_pdf,
+                        'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
+                    ];
+                }
+
+                // Process void invoices (canceled)
+                foreach ($voidInvoices->data as $invoice)
+                {
+                    $stripeData['void_invoices'][] = [
+                        'id' => $invoice->id,
+                        'number' => $invoice->number,
+                        'amount' => ($invoice->amount_due ?? 0) / 100,
+                        'currency' => strtoupper($invoice->currency),
+                        'status' => $invoice->status,  // 'void'
+                        'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
+                        'pdf' => $invoice->invoice_pdf,
+                        'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
+                    ];
+                }
+
+                // Process credit notes
+                foreach ($creditNotes->data as $note)
+                {
+                    $stripeData['credit_notes'][] = [
+                        'number' => $note->number,
+                        'amount' => ($note->amount ?? 0) / 100,
+                        'currency' => strtoupper($note->currency),
+                        'status' => $note->status,  // 'issued' or 'void'
+                        'date' => Carbon::createFromTimestamp($note->created)->format('d/m/Y'),
+                        'pdf' => $note->pdf ?? null,
                     ];
                 }
 
@@ -287,16 +364,18 @@ class ContactController extends Controller
                 $totalUnpaid = 0;
                 $firstInvoiceDate = null;
 
-                if (! empty($invoices->data))
+                // Metrics across all invoices
+                $allInvoicesForMetrics = array_merge($paidInvoices->data, $openInvoices->data, $uncollectibleInvoices->data);
+                if (! empty($allInvoicesForMetrics))
                 {
-                    foreach ($invoices->data as $invoice)
+                    foreach ($allInvoicesForMetrics as $invoice)
                     {
                         if ($invoice->status === 'paid')
                         {
-                            $totalPaid += $invoice->amount_paid / 100;
-                        } else
+                            $totalPaid += ($invoice->amount_paid ?? 0) / 100;
+                        } elseif (in_array($invoice->status, ['open', 'uncollectible']))
                         {
-                            $totalUnpaid += $invoice->amount_due / 100;
+                            $totalUnpaid += ($invoice->amount_due ?? $invoice->amount_remaining ?? 0) / 100;
                         }
 
                         // Track first invoice date for customer age calculation
@@ -380,6 +459,19 @@ class ContactController extends Controller
 
         $contact = Contact::findOrFail($id);
         $contact->update($contactData);
+
+        // Sync enterprise relationship (many-to-many)
+        if (isset($data['enterprise']['enterprise_id']))
+        {
+            // Use syncWithoutDetaching to keep other enterprises if they exist
+            $contact->enterprises()->syncWithoutDetaching([$data['enterprise']['enterprise_id']]);
+
+            // Update current_enterprise_id if contact is a client (status_id = 5) or if not set
+            if ($request->status_id == 5 || ! $contact->current_enterprise_id)
+            {
+                $contact->update(['current_enterprise_id' => $data['enterprise']['enterprise_id']]);
+            }
+        }
 
         // Sync categories
         if (isset($data['categories']))
@@ -749,38 +841,34 @@ class ContactController extends Controller
         if ($team && $team->hasModule('contacts'))
         {
             $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at')
-                ->where('status_id', '!=', 3); // Exclude finalized contacts (status_id = 3)
+                ->where('status_id', '!=', 6);  // Exclude clients from global search (status_id = 6)
 
             if (! $isInitialLoad)
             {
+                // Optimized search with better performance
                 $contactsQuery->where(function ($q) use ($query)
                 {
-                    $q->where('name', 'like', "%{$query}%")
-                        ->orWhere('surname', 'like', "%{$query}%")
-                        ->orWhere('phone', 'like', "%{$query}%")
-                        ->orWhere('email', 'like', "%{$query}%");
+                    $q->whereRaw("CONCAT(name, ' ', surname) LIKE ?", ["%{$query}%"])
+                      ->orWhere('email', 'like', "%{$query}%")
+                      ->orWhere('phone', 'like', "%{$query}%");
                 });
             }
 
             $data['members'] = $contactsQuery
-                ->limit(50) // Limit for dynamic search
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($contact)
                 {
                     $displayName = trim($contact->name.' '.$contact->surname);
-                    $subtitle = 'Creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs';
-                    if ($contact->email)
-                    {
-                        $subtitle = $contact->email;
-                    }
-
                     return [
                         'name' => $displayName,
-                        'subtitle' => $subtitle,
-                        'src' => 'img/avatars/guru-meditating.jpg',
+                        'subtitle' => $contact->email ?: 'Creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs',
+                        // remove avatar 'src' to simplify rendering
                         'url' => route('contact.show', $contact->id),
                     ];
-                });
+                })
+                ->values()
+                ->all();
 
             // Add contact-related pages only if contacts module is active
             $data['pages'][] = [
@@ -790,17 +878,16 @@ class ContactController extends Controller
             ];
         }
 
-        // Only search enterprises if the enterprises module is active
-        if ($team && $team->hasModule('enterprises'))
+        // Search enterprises unconditionally (team scope still applies)
         {
             $enterprisesQuery = \App\Models\Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at', 'responsible_id');
-            // No filter on enterprises - show all
 
             if (! $isInitialLoad)
             {
                 $enterprisesQuery->where(function ($q) use ($query)
                 {
-                    $q->where('name', 'like', "%{$query}%")
+                    $q
+                        ->where('name', 'like', "%{$query}%")
                         ->orWhere('code', 'like', "%{$query}%")
                         ->orWhere('phone', 'like', "%{$query}%")
                         ->orWhere('email', 'like', "%{$query}%");
@@ -808,43 +895,41 @@ class ContactController extends Controller
             }
 
             $data['enterprises'] = $enterprisesQuery
-                ->limit(50) // Limit for dynamic search
+                ->orderBy('name')
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($enterprise)
                 {
-                    $subtitle = 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs';
-                    if ($enterprise->code)
-                    {
-                        $subtitle = 'Código: '.$enterprise->code;
-                    }
-
                     return [
                         'name' => $enterprise->name,
-                        'subtitle' => $subtitle,
-                        'src' => 'img/icons/brands/enterprise.png',
-                        'url' => $enterprise->responsible_id ? route('contact.show', $enterprise->responsible_id) : '#',
+                        'subtitle' => ($enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs'),
+                        // remove icon 'src' to simplify rendering
+                        'url' => '#',
                     ];
-                });
+                })
+                ->values()
+                ->all();
         }
 
         // Only search services if the services module is active
         if ($team && $team->hasModule('services'))
         {
             $servicesQuery = \App\Models\Service::select('id', 'enterprise_id', 'description', 'data', 'status', 'created_at')
-                ->where('status', 1); // Only active services
+                ->where('status', 1);  // Only active services
 
             if (! $isInitialLoad)
             {
                 $servicesQuery->where(function ($q) use ($query)
                 {
-                    $q->where('description', 'like', "%{$query}%")
+                    $q
+                        ->where('description', 'like', "%{$query}%")
                         // Search in all JSON data fields
                         ->orWhereRaw("JSON_SEARCH(data, 'one', ?) IS NOT NULL", ["%{$query}%"]);
                 });
             }
 
             $data['services'] = $servicesQuery
-                ->limit(50)
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($service)
                 {
@@ -857,7 +942,9 @@ class ContactController extends Controller
                         'src' => 'img/icons/brands/web.png',
                         'url' => route('service.show', $service->id),
                     ];
-                });
+                })
+                ->values()
+                ->all();
         }
 
         // Only search projects if the projects module is active
@@ -870,13 +957,14 @@ class ContactController extends Controller
             {
                 $projectsQuery->where(function ($q) use ($query)
                 {
-                    $q->where('name', 'like', "%{$query}%")
+                    $q
+                        ->where('name', 'like', "%{$query}%")
                         ->orWhere('description', 'like', "%{$query}%");
                 });
             }
 
             $data['projects'] = $projectsQuery
-                ->limit(50)
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($project)
                 {
@@ -889,7 +977,9 @@ class ContactController extends Controller
                         'src' => 'img/icons/brands/project.png',
                         'url' => route('project.show', $project->id),
                     ];
-                });
+                })
+                ->values()
+                ->all();
 
             // Add project-related pages only if projects module is active
             $data['pages'][] = [
@@ -915,7 +1005,9 @@ class ContactController extends Controller
                         'src' => 'img/avatars/collaborator.png',
                         'url' => route('collaborator.show', $contact->id),
                     ];
-                });
+                })
+                ->values()
+                ->all();
 
             // Add collaborator-related pages only if collaborators module is active
             $data['pages'][] = [
@@ -937,7 +1029,7 @@ class ContactController extends Controller
             }
 
             $data['invoices'] = $invoicesQuery
-                ->limit(50)
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($invoice)
                 {
@@ -949,7 +1041,9 @@ class ContactController extends Controller
                         'src' => 'img/icons/brands/invoice.png',
                         'url' => route('invoice.show', $invoice->id),
                     ];
-                });
+                })
+                ->values()
+                ->all();
 
             // Add invoice-related pages only if invoices module is active
             $data['pages'][] = [
@@ -969,13 +1063,14 @@ class ContactController extends Controller
             {
                 $billingAddressesQuery->where(function ($q) use ($query)
                 {
-                    $q->where('name', 'like', "%{$query}%")
+                    $q
+                        ->where('name', 'like', "%{$query}%")
                         ->orWhere('identification_number', 'like', "%{$query}%");
                 });
             }
 
             $billingAddresses = $billingAddressesQuery
-                ->limit(50)
+                ->limit(20)  // Optimized limit for on-demand search
                 ->get()
                 ->map(function ($address)
                 {
@@ -987,10 +1082,12 @@ class ContactController extends Controller
                         'src' => 'img/icons/brands/enterprise.png',
                         'url' => $address->enterprise ? route('contact.show', $address->enterprise->responsible_id) : '#',
                     ];
-                });
+                })
+                ->values()
+                ->all();
 
             // Merge billing addresses into enterprises array
-            $data['enterprises'] = $data['enterprises']->concat($billingAddresses);
+            $data['enterprises'] = array_merge($data['enterprises'], $billingAddresses);
         }
 
         // Add client-related pages only if clients module is active

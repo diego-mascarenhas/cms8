@@ -380,18 +380,18 @@ if (typeof $ !== 'undefined') {
         }
       });
     }
-    // Open search on 'CTRL+/'
-    $(document).on('keydown', function (event) {
-      let ctrlKey = event.ctrlKey,
-        slashKey = event.which === 191;
+    // Open search on 'CTRL+/' - Disabled for Livewire search
+    // $(document).on('keydown', function (event) {
+    //   let ctrlKey = event.ctrlKey,
+    //     slashKey = event.which === 191;
 
-      if (ctrlKey && slashKey) {
-        if (searchInputWrapper.length) {
-          searchInputWrapper.toggleClass('d-none');
-          searchInput.focus();
-        }
-      }
-    });
+    //   if (ctrlKey && slashKey) {
+    //     if (searchInputWrapper.length) {
+    //       searchInputWrapper.toggleClass('d-none');
+    //       searchInput.focus();
+    //     }
+    //   }
+    // });
     // Note: Following code is required to update container class of typeahead dropdown width on focus of search input. setTimeout is required to allow time to initiate Typeahead UI.
     setTimeout(function () {
       var twitterTypeahead = $('.twitter-typeahead');
@@ -431,24 +431,69 @@ if (typeof $ !== 'undefined') {
         };
       };
 
-      // Search API AJAX call - load filtered data synchronously
-      var searchData = $.ajax({
-        url: '/contact/search',
-        dataType: 'json',
-        async: false,
-        data: { q: '' }, // Empty query to load all initial data (with filters applied)
-        success: function(searchData) {
-          console.log('Search data received:', searchData);
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-          console.error('Error loading search data:', textStatus, errorThrown);
-        }
-      }).responseJSON;
+      // Modern async search with Promise and debouncing
+      var searchCache = {};
+      var searchTimeouts = {};
+
+      var dynamicSearch = function (field) {
+        return function findMatches(q, cb) {
+          console.log('[Search] Query:', q, 'Field:', field);
+
+          if (!q || q.length < 1) {
+            console.log('[Search] Empty query, returning empty array');
+            return cb([]);
+          }
+
+          // Check cache first
+          var cacheKey = field + ':' + q.toLowerCase();
+          if (searchCache[cacheKey]) {
+            console.log('[Search] Cache hit for:', cacheKey);
+            return cb(searchCache[cacheKey]);
+          }
+
+          // Clear previous timeout for this field
+          if (searchTimeouts[field]) {
+            clearTimeout(searchTimeouts[field]);
+          }
+
+          // Debounce search requests per field
+          searchTimeouts[field] = setTimeout(function() {
+            console.log('[Search] Making async AJAX request for:', field, q);
+
+            // Use Promise-based approach
+            fetch('/contact/search?q=' + encodeURIComponent(q))
+              .then(function(response) {
+                if (!response.ok) {
+                  throw new Error('Network response was not ok');
+                }
+                return response.json();
+              })
+              .then(function(data) {
+                console.log('[Search] Async response for', field, ':', data);
+
+                var results = data[field] || [];
+                if (typeof results === 'object' && !Array.isArray(results)) {
+                  results = Object.values(results);
+                }
+
+                // Cache the results
+                searchCache[cacheKey] = results;
+
+                console.log('[Search] ✅ Calling cb() with', results.length, 'results for', field);
+                cb(results);
+              })
+              .catch(function(error) {
+                console.error('[Search] Async error for', field, ':', error);
+                cb([]);
+              });
+          }, 150); // 150ms debounce per field
+        };
+      };
 
       // Init typeahead on searchInput
       searchInput.each(function () {
         var $this = $(this);
-        searchInput
+        $this
           .typeahead(
             {
               hint: false,
@@ -459,98 +504,29 @@ if (typeof $ !== 'undefined') {
                 suggestion: 'suggestion d-flex justify-content-between px-3 py-2 w-100'
               }
             },
-            // ? Add/Update blocks as per need
-            // // Pages
-            // {
-            //   name: 'pages',
-            //   display: 'name',
-            //   limit: 5,
-            //   source: filterConfig(searchData.pages),
-            //   templates: {
-            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Pages</h6>',
-            //     suggestion: function ({ url, icon, name }) {
-            //       return (
-            //         '<a href="' +
-            //         baseUrl +
-            //         url +
-            //         '">' +
-            //         '<div>' +
-            //         '<i class="ti ' +
-            //         icon +
-            //         ' me-2"></i>' +
-            //         '<span class="align-middle">' +
-            //         name +
-            //         '</span>' +
-            //         '</div>' +
-            //         '</a>'
-            //       );
-            //     },
-            //     notFound:
-            //       '<div class="not-found px-3 py-2">' +
-            //       '<h6 class="suggestions-header text-primary mb-2">Pages</h6>' +
-            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> No Results Found</p>' +
-            //       '</div>'
-            //   }
-            // },
-            // // Files
-            // {
-            //   name: 'files',
-            //   display: 'name',
-            //   limit: 4,
-            //   source: filterConfig(searchData.files),
-            //   templates: {
-            //     header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Files</h6>',
-            //     suggestion: function ({ src, name, subtitle, meta }) {
-            //       return (
-            //         '<a href="javascript:;">' +
-            //         '<div class="d-flex w-50">' +
-            //         '<img class="me-3" src="' +
-            //         assetsPath +
-            //         src +
-            //         '" alt="' +
-            //         name +
-            //         '" height="32">' +
-            //         '<div class="w-75">' +
-            //         '<h6 class="mb-0">' +
-            //         name +
-            //         '</h6>' +
-            //         '<small class="text-muted">' +
-            //         subtitle +
-            //         '</small>' +
-            //         '</div>' +
-            //         '</div>' +
-            //         '<small class="text-muted">' +
-            //         meta +
-            //         '</small>' +
-            //         '</a>'
-            //       );
-            //     },
-            //     notFound:
-            //       '<div class="not-found px-3 py-2">' +
-            //       '<h6 class="suggestions-header text-primary mb-2">Files</h6>' +
-            //       '<p class="py-2 mb-0"><i class="ti ti-alert-circle ti-xs me-2"></i> No Results Found</p>' +
-            //       '</div>'
-            //   }
-            // },
-            // Members
+
+            // Contacts
             {
-              name: 'members',
+              name: 'contacts',
               display: 'name',
-              limit: 4,
-              source: filterConfig(searchData.members),
+              limit: 10,
+              source: dynamicSearch('members'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Contactos</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function (data) {
+                  console.log('[Contacts] Rendering suggestion:', data);
+                  if (!data || !data.name) {
+                    console.log('[Contacts] Invalid data:', data);
+                    return '';
+                  }
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
+                  console.log('[Contacts] Rendering:', name, subtitle, url);
                   return (
                     '<a href="' +
                     url + '">' +
                     '<div class="d-flex align-items-center">' +
-                    '<!-- <img class="rounded-circle me-3" src="' +
-                    assetsPath +
-                    src +
-                    '" alt="' +
-                    name +
-                    '" height="32"> --> ' +
                     '<i class="ti ti-user me-2"></i>' +
                     '<div class="user-info">' +
                     '<h6 class="mb-0">' +
@@ -571,14 +547,24 @@ if (typeof $ !== 'undefined') {
                   '</div>'
               }
             },
+            // Enterprises
             {
               name: 'enterprises',
               display: 'name',
               limit: 4,
-              source: filterConfig(searchData.enterprises),
+              source: dynamicSearch('enterprises'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Empresas</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function (data) {
+                  console.log('[Enterprises] Rendering suggestion:', data);
+                  if (!data || !data.name) {
+                    console.log('[Enterprises] Invalid data:', data);
+                    return '';
+                  }
+                  var name = data.name || '';
+                  var subtitle = data.subtitle || '';
+                  var url = data.url || '#';
+                  console.log('[Enterprises] Rendering:', name, subtitle, url);
                   return (
                     '<a href="' +
                     url + '">' +
@@ -603,14 +589,15 @@ if (typeof $ !== 'undefined') {
                   '</div>'
               }
             },
+            // Services
             {
               name: 'services',
               display: 'name',
               limit: 4,
-              source: filterConfig(searchData.services),
+              source: dynamicSearch('services'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Servicios</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function ({ name, subtitle, url }) {
                   return (
                     '<a href="' +
                     url + '">' +
@@ -640,10 +627,10 @@ if (typeof $ !== 'undefined') {
               name: 'projects',
               display: 'name',
               limit: 4,
-              source: filterConfig(searchData.projects),
+              source: dynamicSearch('projects'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Proyectos</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function ({ name, subtitle, url }) {
                   return (
                     '<a href="' +
                     url + '">' +
@@ -673,10 +660,10 @@ if (typeof $ !== 'undefined') {
               name: 'invoices',
               display: 'name',
               limit: 4,
-              source: filterConfig(searchData.invoices),
+              source: dynamicSearch('invoices'),
               templates: {
                 header: '<h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Facturas</h6>',
-                suggestion: function ({ name, src, subtitle, url }) {
+                suggestion: function ({ name, subtitle, url }) {
                   return (
                     '<a href="' +
                     url + '">' +
@@ -709,9 +696,9 @@ if (typeof $ !== 'undefined') {
           })
           // On typeahead select
           .bind('typeahead:select', function (ev, suggestion) {
-            // Open selected page
-            if (suggestion.url !== 'javascript:;') {
-              window.location = baseUrl + suggestion.url;
+            // Open selected page (URL is already complete from backend)
+            if (suggestion.url && suggestion.url !== 'javascript:;') {
+              window.location = suggestion.url;
             }
           })
           // On typeahead close
