@@ -144,11 +144,21 @@
                             @endif
                             @if ($data->enterprises->count())
                                 <li class="mb-2 pt-1">
-                                    <span class="fw-medium me-1">Empresas:</span>
+                                    <span class="fw-medium me-1">Empresa:</span>
                                     <span>
-                                        @foreach ($data->enterprises as $enterprise)
-                                            <span class="badge bg-label-secondary me-1">{{ $enterprise->name }}</span>
-                                        @endforeach
+                                        @if ($data->enterprises->count() === 1)
+                                            <span class="badge bg-label-primary">{{ $data->enterprises->first()->name }}</span>
+                                        @else
+                                            <select id="current-enterprise-selector" class="form-select form-select-sm d-inline-block" style="width: auto; min-width: 200px;">
+                                                <option value="">Seleccionar empresa</option>
+                                                @foreach ($data->enterprises as $enterprise)
+                                                    <option value="{{ $enterprise->id }}"
+                                                        {{ $data->current_enterprise_id == $enterprise->id ? 'selected' : '' }}>
+                                                        {{ $enterprise->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        @endif
                                     </span>
                                 </li>
                             @endif
@@ -533,6 +543,34 @@
             document.getElementById('totalTime').textContent = formattedTime;
         }, 1000);
 
+        // Handle enterprise selector change
+        $('#current-enterprise-selector').on('change', function() {
+            const enterpriseId = $(this).val();
+            const contactId = {{ $data->id }};
+
+            if (!enterpriseId) {
+                return;
+            }
+
+            $.ajax({
+                url: `/contact/${contactId}/set-current-enterprise`,
+                method: 'POST',
+                data: {
+                    enterprise_id: enterpriseId,
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                        // Reload page to update Stripe data and other enterprise-related info
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Error al actualizar la empresa');
+                }
+            });
+        });
 
     </script>
 @endpush
