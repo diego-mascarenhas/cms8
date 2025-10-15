@@ -76,14 +76,17 @@ SVG;
             '#d35400', '#c0392b', '#7f8c8d',
         ];
 
-        // Generate a hash from the name
-        $hash = 0;
-        for ($i = 0; $i < strlen($name); $i++)
+        // Normalize empty names
+        $name = trim($name);
+        if ($name === '')
         {
-            $hash = ord($name[$i]) + (($hash << 5) - $hash);
+            $name = 'User';
         }
 
-        // Select color based on hash
+        // Generate a stable hash using crc32 to avoid negative overflow issues
+        $hash = crc32($name);
+
+        // Ensure positive index
         $index = abs($hash) % count($colors);
 
         return $colors[$index];
