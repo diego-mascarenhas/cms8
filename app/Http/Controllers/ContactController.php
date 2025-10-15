@@ -134,6 +134,29 @@ class ContactController extends Controller
                 ->with('error', __('messages.errors.not_found'));
         }
 
+        // Verify current_enterprise_id belongs to this contact's enterprises
+        if ($data->current_enterprise_id && $data->enterprises->isNotEmpty())
+        {
+            $hasCurrentEnterprise = $data->enterprises->contains('id', $data->current_enterprise_id);
+
+            if (! $hasCurrentEnterprise)
+            {
+                // Current enterprise doesn't belong to this contact, set to first associated enterprise
+                $data->current_enterprise_id = $data->enterprises->first()->id;
+                $data->save();
+                $data->load('currentEnterprise');
+            }
+        }
+
+        // If contact has enterprises but no current_enterprise_id set, set it to the first one
+        if ($data->enterprises->isNotEmpty() && ! $data->current_enterprise_id)
+        {
+            $data->current_enterprise_id = $data->enterprises->first()->id;
+            $data->save();
+            // Reload the relationship
+            $data->load('currentEnterprise');
+        }
+
         $team = auth()->user()->currentTeam;
 
         $stripeData = [
@@ -438,6 +461,30 @@ class ContactController extends Controller
     {
         $data = Contact::with('enterprises', 'sources', 'softwares', 'categories', 'currentEnterprise')->findOrFail($id);
         $data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
+
+        // Verify current_enterprise_id belongs to this contact's enterprises
+        if ($data->current_enterprise_id && $data->enterprises->isNotEmpty())
+        {
+            $hasCurrentEnterprise = $data->enterprises->contains('id', $data->current_enterprise_id);
+
+            if (! $hasCurrentEnterprise)
+            {
+                // Current enterprise doesn't belong to this contact, set to first associated enterprise
+                $data->current_enterprise_id = $data->enterprises->first()->id;
+                $data->save();
+                $data->load('currentEnterprise');
+            }
+        }
+
+        // If contact has enterprises but no current_enterprise_id set, set it to the first one
+        if ($data->enterprises->isNotEmpty() && ! $data->current_enterprise_id)
+        {
+            $data->current_enterprise_id = $data->enterprises->first()->id;
+            $data->save();
+            // Reload the relationship
+            $data->load('currentEnterprise');
+        }
+
         $enterpriseStatuses = ContactStatus::getOptions();
         $socialSources = Source::getOptions();
 
@@ -463,13 +510,23 @@ class ContactController extends Controller
         // Sync enterprise relationship (many-to-many)
         if (isset($data['enterprise']['enterprise_id']))
         {
-            // Use syncWithoutDetaching to keep other enterprises if they exist
-            $contact->enterprises()->syncWithoutDetaching([$data['enterprise']['enterprise_id']]);
+            $enterpriseId = $data['enterprise']['enterprise_id'];
 
-            // Update current_enterprise_id if contact is a client (status_id = 5) or if not set
-            if ($request->status_id == 5 || ! $contact->current_enterprise_id)
+            // If contact has only one enterprise, replace it. Otherwise, add without detaching
+            if ($contact->enterprises()->count() <= 1)
             {
-                $contact->update(['current_enterprise_id' => $data['enterprise']['enterprise_id']]);
+                // Replace the single enterprise
+                $contact->enterprises()->sync([$enterpriseId]);
+            } else
+            {
+                // Multiple enterprises: add without detaching existing ones
+                $contact->enterprises()->syncWithoutDetaching([$enterpriseId]);
+            }
+
+            // Update current_enterprise_id if needed
+            if (! $contact->current_enterprise_id)
+            {
+                $contact->update(['current_enterprise_id' => $enterpriseId]);
             }
         }
 
@@ -849,8 +906,8 @@ class ContactController extends Controller
                 $contactsQuery->where(function ($q) use ($query)
                 {
                     $q->whereRaw("CONCAT(name, ' ', surname) LIKE ?", ["%{$query}%"])
-                      ->orWhere('email', 'like', "%{$query}%")
-                      ->orWhere('phone', 'like', "%{$query}%");
+                        ->orWhere('email', 'like', "%{$query}%")
+                        ->orWhere('phone', 'like', "%{$query}%");
                 });
             }
 
@@ -860,6 +917,7 @@ class ContactController extends Controller
                 ->map(function ($contact)
                 {
                     $displayName = trim($contact->name.' '.$contact->surname);
+
                     return [
                         'name' => $displayName,
                         'subtitle' => $contact->email ?: 'Creado el '.$contact->created_at->format('d-m-Y H:i:s').' hs',
@@ -879,37 +937,36 @@ class ContactController extends Controller
         }
 
         // Search enterprises unconditionally (team scope still applies)
+
+        $enterprisesQuery = \App\Models\Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at', 'responsible_id');
+
+        if (! $isInitialLoad)
         {
-            $enterprisesQuery = \App\Models\Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at', 'responsible_id');
-
-            if (! $isInitialLoad)
+            $enterprisesQuery->where(function ($q) use ($query)
             {
-                $enterprisesQuery->where(function ($q) use ($query)
-                {
-                    $q
-                        ->where('name', 'like', "%{$query}%")
-                        ->orWhere('code', 'like', "%{$query}%")
-                        ->orWhere('phone', 'like', "%{$query}%")
-                        ->orWhere('email', 'like', "%{$query}%");
-                });
-            }
-
-            $data['enterprises'] = $enterprisesQuery
-                ->orderBy('name')
-                ->limit(20)  // Optimized limit for on-demand search
-                ->get()
-                ->map(function ($enterprise)
-                {
-                    return [
-                        'name' => $enterprise->name,
-                        'subtitle' => ($enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs'),
-                        // remove icon 'src' to simplify rendering
-                        'url' => '#',
-                    ];
-                })
-                ->values()
-                ->all();
+                $q
+                    ->where('name', 'like', "%{$query}%")
+                    ->orWhere('code', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%")
+                    ->orWhere('email', 'like', "%{$query}%");
+            });
         }
+
+        $data['enterprises'] = $enterprisesQuery
+            ->orderBy('name')
+            ->limit(20)  // Optimized limit for on-demand search
+            ->get()
+            ->map(function ($enterprise)
+            {
+                return [
+                    'name' => $enterprise->name,
+                    'subtitle' => ($enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.$enterprise->created_at->format('d-m-Y H:i:s').' hs'),
+                    // remove icon 'src' to simplify rendering
+                    'url' => '#',
+                ];
+            })
+            ->values()
+            ->all();
 
         // Only search services if the services module is active
         if ($team && $team->hasModule('services'))
@@ -1558,5 +1615,43 @@ class ContactController extends Controller
                 'message' => 'Error al reenviar email: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Set the current enterprise for a contact
+     */
+    public function setCurrentEnterprise(Request $request, string $id)
+    {
+        $contact = Contact::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'enterprise_id' => 'required|exists:enterprises,id',
+        ]);
+
+        if ($validator->fails())
+        {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Verify that the enterprise is actually associated with this contact
+        if (! $contact->enterprises()->where('enterprises.id', $request->enterprise_id)->exists())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta empresa no está asociada con este contacto.',
+            ], 403);
+        }
+
+        $contact->update([
+            'current_enterprise_id' => $request->enterprise_id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Empresa actual actualizada correctamente.',
+        ]);
     }
 }

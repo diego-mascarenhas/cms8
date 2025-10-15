@@ -230,6 +230,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/contact/{id}/link-user', [ContactController::class, 'linkUser'])->name('contact.link-user');
     Route::post('/contact/{id}/unlink-user', [ContactController::class, 'unlinkUser'])->name('contact.unlink-user');
     Route::post('/contact/{id}/create-and-link-user', [ContactController::class, 'createAndLinkUser'])->name('contact.create-and-link-user');
+    Route::post('/contact/{id}/set-current-enterprise', [ContactController::class, 'setCurrentEnterprise'])->name('contact.set-current-enterprise');
 
     Route::post('/delivery/{deliveryId}/resend', [ContactController::class, 'resendDelivery'])->name('delivery.resend');
 

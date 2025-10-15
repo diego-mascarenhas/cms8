@@ -87,20 +87,60 @@ class UpdateContactRequest extends FormRequest
 
         if ($contact->exists)
         {
-            // Find enterprise by code (unique identifier) and team
-            $enterprise = Enterprise::withTrashed()
-                ->where('code', $validated['enterprise']['code'] ?? null)
-                ->where('team_id', $contact->team_id)
-                ->first();
+            $enterprise = null;
 
-            if ($enterprise)
+            // Load contact's enterprises if not already loaded
+            if (! $contact->relationLoaded('enterprises'))
             {
-                if ($enterprise->trashed())
+                $contact->load('enterprises');
+            }
+
+            // First, check if contact has a current enterprise that belongs to this contact
+            if ($contact->current_enterprise_id)
+            {
+                $enterprise = $contact->enterprises->firstWhere('id', $contact->current_enterprise_id);
+
+                if ($enterprise)
                 {
-                    $enterprise->restore();
+                    // Only update if there's data to update
+                    if (! empty($validated['enterprise']['name']))
+                    {
+                        $enterprise->update($enterpriseData);
+                    }
                 }
-                $enterprise->update($enterpriseData);
-            } elseif (! empty($validated['enterprise']['name']))
+            }
+
+            // If no current enterprise in contact's enterprises, get the first associated enterprise
+            if (! $enterprise && $contact->enterprises->isNotEmpty())
+            {
+                $enterprise = $contact->enterprises->first();
+
+                if ($enterprise && ! empty($validated['enterprise']['name']))
+                {
+                    $enterprise->update($enterpriseData);
+                }
+            }
+
+            // If still no enterprise, try to find by code
+            if (! $enterprise && ! empty($validated['enterprise']['code']))
+            {
+                $enterprise = Enterprise::withTrashed()
+                    ->where('code', $validated['enterprise']['code'])
+                    ->where('team_id', $contact->team_id)
+                    ->first();
+
+                if ($enterprise)
+                {
+                    if ($enterprise->trashed())
+                    {
+                        $enterprise->restore();
+                    }
+                    $enterprise->update($enterpriseData);
+                }
+            }
+
+            // Only create a new enterprise if none exists and we have a name
+            if (! $enterprise && ! empty($validated['enterprise']['name']))
             {
                 $enterpriseData['team_id'] = $contact->team_id;
                 $enterprise = Enterprise::create($enterpriseData);
@@ -110,11 +150,11 @@ class UpdateContactRequest extends FormRequest
             if (isset($enterprise))
             {
                 $enterpriseData['enterprise_id'] = $enterprise->id;
-                // Set current_enterprise_id if contact is a client (status_id = 5)
-                $contactData['current_enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : null;
+                // Set current_enterprise_id if contact is a client (status_id = 5) or maintain existing
+                $contactData['current_enterprise_id'] = $validated['status_id'] == 5 ? $enterprise->id : $contact->current_enterprise_id;
             } else
             {
-                $contactData['current_enterprise_id'] = null;
+                $contactData['current_enterprise_id'] = $contact->current_enterprise_id;
             }
 
             if (isset($validated['source_id']) && isset($validated['source_value']))

@@ -26,6 +26,7 @@ class Contact extends Model implements HasMedia
     protected $fillable = [
         'team_id',
         'user_id',
+        'current_enterprise_id',
         'name',
         'surname',
         'email',
