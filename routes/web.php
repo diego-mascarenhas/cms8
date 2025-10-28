@@ -235,32 +235,32 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/delivery/{deliveryId}/resend', [ContactController::class, 'resendDelivery'])->name('delivery.resend');
 
     // Collaborators
-    Route::get('/collaborator/list', [CollaboratorController::class, 'index'])->name('collaborator-list');
-    Route::get('/collaborator/create', [CollaboratorController::class, 'create'])->name('collaborator.create');
-    Route::post('/collaborator', [CollaboratorController::class, 'store'])->name('collaborator.store');
-    Route::get('/collaborator/{id}', [CollaboratorController::class, 'show'])->name('collaborator.show');
-    Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit');
-    Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update');
-    Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy');
-    Route::post('/collaborator/{id}/mark-as-watch', [CollaboratorController::class, 'markAsWatch'])->name('collaborator.markAsWatch');
-    Route::post('/collaborator/{id}/send-to-blacklist', [CollaboratorController::class, 'sendToBlacklist'])->name('collaborator.sendToBlacklist');
-    Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification');
-    Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware');
-    Route::post('/collaborator/{id}/update-services', [CollaboratorController::class, 'updateServices'])->name('collaborator.updateServices');
-    Route::post('/collaborator/{id}/update-topics', [CollaboratorController::class, 'updateTopics'])->name('collaborator.updateTopics');
-    Route::post('/collaborator/{id}/update-valoration', [CollaboratorController::class, 'updateValoration'])->name('collaborator.updateValoration');
-    Route::post('/collaborator/{id}/link-user', [CollaboratorController::class, 'linkUser'])->name('collaborator.link-user');
-    Route::post('/collaborator/{id}/unlink-user', [CollaboratorController::class, 'unlinkUser'])->name('collaborator.unlink-user');
-    Route::post('/collaborator/{id}/create-and-link-user', [CollaboratorController::class, 'createAndLinkUser'])->name('collaborator.create-and-link-user');
-    Route::post('/collaborator/{id}/portfolio', [CollaboratorController::class, 'storePortfolio'])->name('collaborator.portfolio.store');
-    Route::put('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'updatePortfolio'])->name('collaborator.portfolio.update');
-    Route::delete('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'destroyPortfolio'])->name('collaborator.portfolio.destroy');
-    Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates');
-    Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save');
-    Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getCollaboratorRates'])->name('collaborator.rates.get');
-    Route::get('/collaborator/{id}/absences', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'index'])->name('collaborator.absences');
-    Route::post('/collaborator/{id}/absences/toggle-date', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'toggleDate'])->name('collaborator.absences.toggle-date');
-    Route::post('/collaborator/{id}/absences/update-weekly', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'updateWeekly'])->name('collaborator.absences.update-weekly');
+    Route::get('/collaborator/list', [CollaboratorController::class, 'index'])->name('collaborator-list')->middleware('permission:collaborator.list');
+    Route::get('/collaborator/create', [CollaboratorController::class, 'create'])->name('collaborator.create')->middleware('permission:collaborator.create');
+    Route::post('/collaborator', [CollaboratorController::class, 'store'])->name('collaborator.store')->middleware('permission:collaborator.store');
+    Route::get('/collaborator/{id}', [CollaboratorController::class, 'show'])->name('collaborator.show')->middleware('permission:collaborator.show');
+    Route::get('/collaborator/{id}/edit', [CollaboratorController::class, 'edit'])->name('collaborator.edit')->middleware('permission:collaborator.edit');
+    Route::put('/collaborator/{id}', [CollaboratorController::class, 'update'])->name('collaborator.update')->middleware('permission:collaborator.update');
+    Route::delete('/collaborator/{id}', [CollaboratorController::class, 'destroy'])->name('collaborator.destroy')->middleware('permission:collaborator.destroy');
+    Route::post('/collaborator/{id}/mark-as-watch', [CollaboratorController::class, 'markAsWatch'])->name('collaborator.markAsWatch')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/send-to-blacklist', [CollaboratorController::class, 'sendToBlacklist'])->name('collaborator.sendToBlacklist')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/send-notification', [CollaboratorController::class, 'sendNotification'])->name('collaborator.sendNotification')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/update-software', [CollaboratorController::class, 'updateSoftware'])->name('collaborator.updateSoftware')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/update-services', [CollaboratorController::class, 'updateServices'])->name('collaborator.updateServices')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/update-topics', [CollaboratorController::class, 'updateTopics'])->name('collaborator.updateTopics')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/update-valoration', [CollaboratorController::class, 'updateValoration'])->name('collaborator.updateValoration')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/link-user', [CollaboratorController::class, 'linkUser'])->name('collaborator.link-user')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/unlink-user', [CollaboratorController::class, 'unlinkUser'])->name('collaborator.unlink-user')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/create-and-link-user', [CollaboratorController::class, 'createAndLinkUser'])->name('collaborator.create-and-link-user')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/portfolio', [CollaboratorController::class, 'storePortfolio'])->name('collaborator.portfolio.store')->middleware('permission:collaborator.update');
+    Route::put('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'updatePortfolio'])->name('collaborator.portfolio.update')->middleware('permission:collaborator.update');
+    Route::delete('/collaborator/{id}/portfolio/{portfolioId}', [CollaboratorController::class, 'destroyPortfolio'])->name('collaborator.portfolio.destroy')->middleware('permission:collaborator.update');
+    Route::get('/collaborator/{id}/rates', [UserFareController::class, 'collaboratorRates'])->name('collaborator.rates')->middleware('permission:collaborator.show');
+    Route::post('/collaborator/{id}/rates', [UserFareController::class, 'saveCollaboratorRates'])->name('collaborator.rates.save')->middleware('permission:collaborator.update');
+    Route::get('/collaborator/{id}/rates/get', [UserFareController::class, 'getCollaboratorRates'])->name('collaborator.rates.get')->middleware('permission:collaborator.show');
+    Route::get('/collaborator/{id}/absences', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'index'])->name('collaborator.absences')->middleware('permission:collaborator.show');
+    Route::post('/collaborator/{id}/absences/toggle-date', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'toggleDate'])->name('collaborator.absences.toggle-date')->middleware('permission:collaborator.update');
+    Route::post('/collaborator/{id}/absences/update-weekly', [App\Http\Controllers\CollaboratorAvailabilityController::class, 'updateWeekly'])->name('collaborator.absences.update-weekly')->middleware('permission:collaborator.update');
 
     // Additional collaborator routes from mailer branch
     Route::get('/collaborator/{id}/notifications', [CollaboratorController::class, 'notifications'])->name('collaborator.notifications');
@@ -339,18 +339,18 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit')->middleware('permission:project.edit');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update')->middleware('permission:project.update');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy')->middleware('permission:project.destroy');
-    Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
-    Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
-    Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
-    Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
-    Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
-    Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
+    Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators')->middleware('permission:project.edit');
+    Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators')->middleware('permission:project.update');
+    Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications')->middleware('permission:project.update');
+    Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator')->middleware('permission:project.update');
+    Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services')->middleware('permission:project.edit');
+    Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services')->middleware('permission:project.update');
 
     // Project services modal routes
-    Route::get('/project/{project}/services', [ProjectController::class, 'getServices'])->name('project.get-services');
-    Route::post('/project/{project}/service', [ProjectController::class, 'storeService'])->name('project.store-service');
-    Route::put('/project/{project}/service/{serviceId}', [ProjectController::class, 'updateService'])->name('project.update-service');
-    Route::delete('/project/{project}/service/{serviceId}', [ProjectController::class, 'deleteService'])->name('project.delete-service');
+    Route::get('/project/{project}/services', [ProjectController::class, 'getServices'])->name('project.get-services')->middleware('permission:project.show');
+    Route::post('/project/{project}/service', [ProjectController::class, 'storeService'])->name('project.store-service')->middleware('permission:project.update');
+    Route::put('/project/{project}/service/{serviceId}', [ProjectController::class, 'updateService'])->name('project.update-service')->middleware('permission:project.update');
+    Route::delete('/project/{project}/service/{serviceId}', [ProjectController::class, 'deleteService'])->name('project.delete-service')->middleware('permission:project.destroy');
 
     // Time Tracking Routes
     Route::get('/time/list', [TimeController::class, 'index'])->name('time.index');

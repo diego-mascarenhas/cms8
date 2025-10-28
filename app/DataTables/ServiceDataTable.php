@@ -19,8 +19,14 @@ class ServiceDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        return (new EloquentDataTable($query))
-            ->addColumn('action', 'service.action')
+        $table = (new EloquentDataTable($query));
+
+        if (\Auth::user()->can('service.edit') || \Auth::user()->can('service.destroy') || \Auth::user()->can('service.show'))
+        {
+            $table = $table->addColumn('action', 'service.action');
+        }
+
+        return $table
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status', 'operation_type'])
             ->addColumn('operation_type', function ($data)

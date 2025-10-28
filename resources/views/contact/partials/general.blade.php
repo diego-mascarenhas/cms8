@@ -1,6 +1,7 @@
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="row g-4">
+            @can('invoice.list')
             <!-- CAC Card -->
             <div class="col-md-6">
                 <div class="card">
@@ -17,7 +18,7 @@
                         <h4 class="card-title mb-1">{{ $stripeData['metrics']['cac'] ?? '0.00' }}€</h4>
                         @if(isset($stripeData['metrics']['cac_trend']))
                             <small class="{{ $stripeData['metrics']['cac_trend'] > 0 ? 'text-danger' : 'text-success' }} fw-semibold">
-                                <i class="ti ti-arrow-{{ $stripeData['metrics']['cac_trend'] > 0 ? 'up' : 'down' }}-right"></i> 
+                                <i class="ti ti-arrow-{{ $stripeData['metrics']['cac_trend'] > 0 ? 'up' : 'down' }}-right"></i>
                                 {{ abs($stripeData['metrics']['cac_trend']) }}%
                             </small>
                         @else
@@ -43,7 +44,7 @@
                         <h4 class="card-title mb-1">{{ $stripeData['metrics']['ltv'] ?? '0.00' }}€</h4>
                         @if(isset($stripeData['metrics']['ltv_trend']))
                             <small class="{{ $stripeData['metrics']['ltv_trend'] > 0 ? 'text-success' : 'text-danger' }} fw-semibold">
-                                <i class="ti ti-arrow-{{ $stripeData['metrics']['ltv_trend'] > 0 ? 'up' : 'down' }}-right"></i> 
+                                <i class="ti ti-arrow-{{ $stripeData['metrics']['ltv_trend'] > 0 ? 'up' : 'down' }}-right"></i>
                                 {{ abs($stripeData['metrics']['ltv_trend']) }}%
                             </small>
                         @else
@@ -52,6 +53,7 @@
                     </div>
                 </div>
             </div>
+            @endcan
 
             <!-- Files -->
             <div class="col-12 opacity-50">

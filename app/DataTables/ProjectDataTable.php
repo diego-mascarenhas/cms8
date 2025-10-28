@@ -15,8 +15,14 @@ class ProjectDataTable extends DataTable
 {
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        return (new EloquentDataTable($query))
-            ->addColumn('action', 'project.action')
+        $table = (new EloquentDataTable($query));
+
+        if (\Auth::user()->can('project.edit') || \Auth::user()->can('project.destroy') || \Auth::user()->can('project.show'))
+        {
+            $table = $table->addColumn('action', 'project.action');
+        }
+
+        return $table
             ->setRowId('id')
             ->editColumn('enterprise_id', function ($data)
             {
