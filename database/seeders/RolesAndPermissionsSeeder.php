@@ -517,6 +517,11 @@ class RolesAndPermissionsSeeder extends Seeder
             // Allow collaborators to view contacts and projects
             'contact.list',
             'contact.show',
+            // No edit/store/update/destroy for contacts
+            // Services view-only
+            'service.list',
+            'service.show',
+            // Projects view-only
             'project.list',
             'project.show',
             'list60.list',

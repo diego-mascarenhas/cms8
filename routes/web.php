@@ -212,19 +212,19 @@ Route::middleware(['auth'])->group(function ()
 
     // Contacts
     Route::get('/contact/search', action: [contactController::class, 'search'])->name('contact.search');
-    Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list');
+    Route::get('/contact/list', [contactController::class, 'index'])->name('contact-list')->middleware('permission:contact.list');
     Route::post('/contact/end-action/{id}', [contactController::class, 'endAction'])->name('contact.end-action');
     Route::post('/contact/upload-file', [contactController::class, 'UploadFile'])->name('contact.upload-file');
     Route::get('/contact/import', [ContactController::class, 'showImportForm'])->name('contact.import');
     Route::get('/contacts/import-mapping', action: [ContactController::class, 'importMapping'])->name('contact.import-mapping');
     Route::post('/contact/upload-file-mapping', [ContactController::class, 'uploadFileForMapping'])->name('contact.upload-file-mapping');
     Route::post('/contact/process-mapping', [ContactController::class, 'processMapping'])->name('contact.process-mapping');
-    Route::get('/contact/create', [contactController::class, 'create'])->name('contact.create');
-    Route::get('/contact/{id}', [contactController::class, 'show'])->name('contact.show');
-    Route::get('/contact/{id}/edit', [contactController::class, 'edit'])->name('contact.edit');
-    Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
-    Route::put('/contact/{id}', [ContactController::class, 'update'])->name('contact.update');
-    Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
+    Route::get('/contact/create', [contactController::class, 'create'])->name('contact.create')->middleware('permission:contact.create');
+    Route::get('/contact/{id}', [contactController::class, 'show'])->name('contact.show')->middleware('permission:contact.show');
+    Route::get('/contact/{id}/edit', [contactController::class, 'edit'])->name('contact.edit')->middleware('permission:contact.edit');
+    Route::post('/contact', [ContactController::class, 'store'])->name('contact.store')->middleware('permission:contact.store');
+    Route::put('/contact/{id}', [ContactController::class, 'update'])->name('contact.update')->middleware('permission:contact.update');
+    Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy')->middleware('permission:contact.destroy');
     Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
     Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
     Route::post('/contact/{id}/link-user', [ContactController::class, 'linkUser'])->name('contact.link-user');
@@ -322,23 +322,23 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
 
     // Services
-    Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list');
+    Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list')->middleware('permission:service.list');
     Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling');
-    Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create');
-    Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show');
-    Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit');
-    Route::post('/service', [ServiceController::class, 'store'])->name('service.store');
-    Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update');
-    Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy');
+    Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create')->middleware('permission:service.create');
+    Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show')->middleware('permission:service.show');
+    Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit')->middleware('permission:service.edit');
+    Route::post('/service', [ServiceController::class, 'store'])->name('service.store')->middleware('permission:service.store');
+    Route::put('/service/{id}', [ServiceController::class, 'update'])->name('service.update')->middleware('permission:service.update');
+    Route::delete('/service/{id}', [ServiceController::class, 'destroy'])->name('service.destroy')->middleware('permission:service.destroy');
 
     // Projects - IMPORTANT: Specific routes MUST be before parameterized routes
-    Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list');
-    Route::get('/project/create', [ProjectController::class, 'create'])->name('project.create');
-    Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
-    Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
-    Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
-    Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
-    Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
+    Route::get('/project/list', [ProjectController::class, 'index'])->name('project-list')->middleware('permission:project.list');
+    Route::get('/project/create', [ProjectController::class, 'create'])->name('project.create')->middleware('permission:project.create');
+    Route::post('/project', [ProjectController::class, 'store'])->name('project.store')->middleware('permission:project.store');
+    Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show')->middleware('permission:project.show');
+    Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit')->middleware('permission:project.edit');
+    Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update')->middleware('permission:project.update');
+    Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy')->middleware('permission:project.destroy');
     Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
     Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
     Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
