@@ -124,6 +124,51 @@
    </div>
 </div>
 
+<!-- Time Tracking for Project Tasks -->
+@if(isset($timeEntries))
+<div class="card mb-4">
+   <div class="card-header d-flex justify-content-between align-items-center">
+       <h5 class="mb-0">{{ __('Recent time entries') }}</h5>
+       <span class="badge bg-label-info">{{ __('Total') }}: {{ number_format($totalHours, 1) }}h</span>
+   </div>
+   <div class="card-body">
+       @if($timeEntries->isEmpty())
+           <p class="text-muted mb-0">{{ __('No time entries for this project') }}</p>
+       @else
+       <div class="table-responsive">
+           <table class="table table-hover">
+               <thead>
+                   <tr>
+                       <th>{{ __('User') }}</th>
+                       <th class="text-center">{{ __('Start') }}</th>
+                       <th class="text-center">{{ __('End') }}</th>
+                       <th class="text-end">{{ __('Duration') }}</th>
+                   </tr>
+               </thead>
+               <tbody>
+                   @foreach($timeEntries as $entry)
+                   <tr>
+                       <td>{{ $entry->user?->name ?? '—' }}</td>
+                       <td class="text-center">{{ optional($entry->start_time)->format('d/m/Y H:i') }}</td>
+                       <td class="text-center">{{ optional($entry->end_time)->format('d/m/Y H:i') ?? '—' }}</td>
+                       <td class="text-end">
+                           @php
+                               $seconds = $entry->duration_seconds ?? ($entry->end_time && $entry->start_time ? $entry->end_time->diffInSeconds($entry->start_time) : 0);
+                               $hours = floor($seconds / 3600);
+                               $minutes = floor(($seconds % 3600) / 60);
+                           @endphp
+                           {{ sprintf('%02dh %02dm', $hours, $minutes) }}
+                       </td>
+                   </tr>
+                   @endforeach
+               </tbody>
+           </table>
+       </div>
+       @endif
+   </div>
+</div>
+@endif
+
 <!-- Collaborators Section (Floating Cards) -->
 @if($project->allCollaborators && $project->allCollaborators->count() > 0)
 <div class="row mb-4" style="align-items: stretch;">
