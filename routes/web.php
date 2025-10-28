@@ -301,6 +301,7 @@ Route::middleware(['auth'])->group(function ()
     // List60
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
     Route::post('/list60', [List60Controller::class, 'store'])->name('list60.store');
+    Route::put('/list60/{id}', [List60Controller::class, 'update'])->name('list60.update');
     Route::delete('/list60/{id}', [List60Controller::class, 'destroy'])->name('list60.destroy');
 
     // Chat
@@ -364,6 +365,41 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/time/{id}/stop', [TimeController::class, 'stop'])->name('time.stop');
     Route::get('/time/running', [TimeController::class, 'running'])->name('time.running');
     Route::get('/time/tasks', [TimeController::class, 'getTasks'])->name('time.tasks');
+
+    // Team users (for internal selects)
+    Route::get('/api/team-users', function ()
+    {
+        $rolesParam = request('roles');
+        $roleNames = $rolesParam ? array_filter(explode(',', $rolesParam)) : ['admin', 'collaborator', 'employee'];
+
+        $users = \App\Models\User::query()
+            ->whereHas('teams', function ($q)
+            {
+                $q->where('team_id', auth()->user()->currentTeam->id);
+            })
+            ->whereHas('roles', function ($q) use ($roleNames)
+            {
+                $q->whereIn('name', $roleNames);
+            })
+            ->with(['roles' => function ($q)
+            {
+                $q->select('name');
+            }])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($u)
+            {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email,
+                    'role' => $u->roles->first()->name ?? null,
+                ];
+            })
+            ->values();
+
+        return response()->json(['users' => $users]);
+    })->name('api.team-users');
 
     // Attendance Routes (global in/out)
     Route::post('/attendance/start', [AttendanceController::class, 'start'])->name('attendance.start');

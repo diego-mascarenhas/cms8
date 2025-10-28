@@ -20,7 +20,14 @@ class List60DataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'list60.action')
+            ->addColumn('action', function ($row)
+            {
+                return view('list60.action', [
+                    'id' => $row->id,
+                    'contact_id' => $row->contact_id,
+                    'responsible_id' => $row->responsible_id,
+                ]);
+            })
             ->setRowId('id')
             ->editColumn('contact_id', function ($row)
             {
@@ -35,6 +42,10 @@ class List60DataTable extends DataTable
             ->editColumn('status_id', function ($row)
             {
                 return $row->status_label;
+            })
+            ->addColumn('responsible_name', function ($row)
+            {
+                return $row->responsible?->name ?? __('Unassigned');
             })
             ->addColumn('sources', function ($row)
             {
@@ -60,14 +71,21 @@ class List60DataTable extends DataTable
 
     public function query(List60 $model): QueryBuilder
     {
-        return $model->myResponsibilities()
-            ->whereHas('contact')
+        $query = $model->newQuery();
+
+        if (! auth()->user()->hasRole('admin'))
+        {
+            $query->myResponsibilities();
+        }
+
+        return $query->whereHas('contact')
             ->with([
                 'contact.enterprises',
                 'contact.sources',
                 'contact.status',
                 'status',
                 'type',
+                'responsible:id,name',
             ]);
     }
 
@@ -115,6 +133,11 @@ class List60DataTable extends DataTable
                 ->title(__('Type'))
                 ->className('text-center')
                 ->addClass('min-desktop'),
+            Column::make('responsible_name')
+                ->title(__('Responsible'))
+                ->className('text-center')
+                ->addClass('min-desktop')
+                ->orderable(false),
             Column::computed('action')
                 ->title(__('Actions'))
                 ->width(20)

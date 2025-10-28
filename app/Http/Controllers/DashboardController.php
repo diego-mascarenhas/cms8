@@ -70,7 +70,7 @@ class DashboardController extends Controller
                 $query->where('team_id', $activeTeam->id);
             })->whereDate('date_next', $today)->count();
 
-            $todayContacts = List60::with(['contact.enterprise', 'contact.currentSentiment.sentiment'])
+            $todayContacts = List60::with(['contact.enterprises', 'contact.currentSentiment.sentiment'])
                 ->whereHas('contact', function ($query) use ($activeTeam)
                 {
                     $query->where('team_id', $activeTeam->id);
@@ -127,7 +127,7 @@ class DashboardController extends Controller
             ->count();
 
         // Get contacts to follow up today (filtered by team)
-        $todayContacts = List60::with(['contact.enterprise', 'contact.currentSentiment.sentiment'])
+        $todayContacts = List60::with(['contact.enterprises', 'contact.currentSentiment.sentiment'])
             ->whereHas('contact', function ($query) use ($activeTeam)
             {
                 $query->where('team_id', $activeTeam->id);
