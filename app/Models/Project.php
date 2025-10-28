@@ -51,6 +51,19 @@ class Project extends Model
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
+
+        // Ownership: non-admin users only see their assigned projects
+        static::addGlobalScope('ownership', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $user = auth()->user();
+                if (! $user->hasRole('admin'))
+                {
+                    $builder->where('responsible_id', $user->id);
+                }
+            }
+        });
     }
 
     public function category()

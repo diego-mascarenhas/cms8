@@ -192,6 +192,13 @@ class ServiceController extends Controller
     {
         $service = Service::with(['category', 'client'])->findOrFail($id);
 
+        // Collaborators can only view their assigned services
+        $currentUser = auth()->user();
+        if ($currentUser && $currentUser->hasRole('collaborator') && $service->responsible_id !== $currentUser->id)
+        {
+            abort(403);
+        }
+
         // Get service data
         $serviceData = $service->data ? (array) $service->data : [];
 

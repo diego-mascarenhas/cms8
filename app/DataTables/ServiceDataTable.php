@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -133,10 +134,20 @@ class ServiceDataTable extends DataTable
 
     public function query(Service $model): QueryBuilder
     {
-        return $model->newQuery()->with(['client', 'category', 'currency'])->whereHas('client', function ($query)
+        $query = $model->newQuery()
+            ->with(['client', 'category', 'currency'])
+            ->whereHas('client', function ($query)
+            {
+                $query->where('team_id', auth()->user()->currentTeam->id);
+            });
+
+        $user = Auth::user();
+        if ($user && $user->hasRole('collaborator'))
         {
-            $query->where('team_id', auth()->user()->currentTeam->id);
-        });
+            $query->where('responsible_id', $user->id);
+        }
+
+        return $query;
     }
 
     public function html(): HtmlBuilder

@@ -5,6 +5,7 @@ namespace App\DataTables;
 use App\Models\Project;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -67,10 +68,18 @@ class ProjectDataTable extends DataTable
 
     public function query(Project $model): QueryBuilder
     {
-        return $model->newQuery()->with([
+        $query = $model->newQuery()->with([
             'client',
             'responsible:id,name',
         ]);
+
+        $user = Auth::user();
+        if ($user && $user->hasRole('collaborator'))
+        {
+            $query->where('responsible_id', $user->id);
+        }
+
+        return $query;
     }
 
     public function html(): HtmlBuilder

@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Builder;
 
 class Service extends Model
 {
@@ -15,6 +16,29 @@ class Service extends Model
     public $timestamps = true;
 
     protected $table = 'services';
+    protected static function booted()
+    {
+        // Team scope via related enterprise
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check() && auth()->user()->currentTeam)
+            {
+                $builder->whereHas('client', function ($q)
+                {
+                    $q->where('team_id', auth()->user()->currentTeam->id);
+                });
+            }
+        });
+
+        // Ownership for non-admins
+        static::addGlobalScope('ownership', function (Builder $builder)
+        {
+            if (auth()->check() && ! auth()->user()->hasRole('admin'))
+            {
+                $builder->where('responsible_id', auth()->id());
+            }
+        });
+    }
 
     protected $fillable = [
         'enterprise_id',
