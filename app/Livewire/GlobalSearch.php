@@ -36,7 +36,9 @@ class GlobalSearch extends Component
             return;
         }
 
-        $team = auth()->user()->currentTeam;
+        $user = auth()->user();
+        $team = $user->currentTeam;
+        $isAdmin = $user->hasRole('admin');
         $searchQuery = $this->query;
 
         $this->results = [
@@ -47,16 +49,22 @@ class GlobalSearch extends Component
             'invoices' => [],
         ];
 
-        // Search contacts
+        // Search contacts (team-scoped; non-admin auto-limited by global scopes)
         if ($team && $team->hasModule('contacts')) {
-            $this->results['contacts'] = Contact::select('id', 'name', 'surname', 'phone', 'email', 'created_at')
+            $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'created_at')
+                ->where('team_id', $team->id)
                 ->where('status_id', '!=', 6)
                 ->where(function ($q) use ($searchQuery) {
                     $q->whereRaw("CONCAT(name, ' ', surname) LIKE ?", ["%{$searchQuery}%"])
                       ->orWhere('email', 'like', "%{$searchQuery}%")
                       ->orWhere('phone', 'like', "%{$searchQuery}%");
-                })
-                ->limit(10)
+                });
+
+            if (! $isAdmin) {
+                $contactsQuery->where('responsible_id', $user->id);
+            }
+
+            $this->results['contacts'] = $contactsQuery->limit(10)
                 ->get()
                 ->map(function ($contact) {
                     return [
@@ -70,36 +78,39 @@ class GlobalSearch extends Component
                 ->toArray();
         }
 
-        // Search enterprises
-        $this->results['enterprises'] = Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at')
-            ->where(function ($q) use ($searchQuery) {
-                $q->where('name', 'like', "%{$searchQuery}%")
-                  ->orWhere('code', 'like', "%{$searchQuery}%")
-                  ->orWhere('phone', 'like', "%{$searchQuery}%")
-                  ->orWhere('email', 'like', "%{$searchQuery}%");
-            })
-            ->limit(10)
-            ->get()
-            ->map(function ($enterprise) {
-                return [
-                    'id' => $enterprise->id,
-                    'name' => $enterprise->name,
-                    'subtitle' => $enterprise->code ? 'Código: ' . $enterprise->code : 'Empresa creada el ' . $enterprise->created_at->format('d-m-Y H:i:s') . ' hs',
-                    'url' => route('client.show', $enterprise->id),
-                    'type' => 'enterprise'
-                ];
-            })
-            ->toArray();
+        // Search enterprises (admins only)
+        if ($isAdmin) {
+            $this->results['enterprises'] = Enterprise::select('id', 'name', 'code', 'phone', 'email', 'created_at')
+                ->where(function ($q) use ($searchQuery) {
+                    $q->where('name', 'like', "%{$searchQuery}%")
+                      ->orWhere('code', 'like', "%{$searchQuery}%")
+                      ->orWhere('phone', 'like', "%{$searchQuery}%")
+                      ->orWhere('email', 'like', "%{$searchQuery}%");
+                })
+                ->limit(10)
+                ->get()
+                ->map(function ($enterprise) {
+                    return [
+                        'id' => $enterprise->id,
+                        'name' => $enterprise->name,
+                        'subtitle' => $enterprise->code ? 'Código: ' . $enterprise->code : 'Empresa creada el ' . $enterprise->created_at->format('d-m-Y H:i:s') . ' hs',
+                        'url' => route('client.show', $enterprise->id),
+                        'type' => 'enterprise'
+                    ];
+                })
+                ->toArray();
+        }
 
         // Search services
         if ($team && $team->hasModule('services')) {
-            $this->results['services'] = Service::select('id', 'description', 'data', 'created_at')
+            $servicesQuery = Service::select('id', 'description', 'data', 'created_at')
                 ->where('status', 1)
                 ->where(function ($q) use ($searchQuery) {
                     $q->where('description', 'like', "%{$searchQuery}%")
                       ->orWhereRaw("JSON_SEARCH(data, 'one', ?) IS NOT NULL", ["%{$searchQuery}%"]);
-                })
-                ->limit(10)
+                });
+
+            $this->results['services'] = $servicesQuery->limit(10)
                 ->get()
                 ->map(function ($service) {
                     $domain = isset($service->data->domain) ? $service->data->domain : ($service->description ?: 'No domain');
@@ -116,13 +127,19 @@ class GlobalSearch extends Component
 
         // Search projects
         if ($team && $team->hasModule('projects')) {
-            $this->results['projects'] = Project::with(['client', 'status'])
+            $projectsQuery = Project::with(['client', 'status'])
                 ->select('id', 'name', 'real_name', 'description', 'created_at')
+                ->where('team_id', $team->id)
                 ->where(function ($q) use ($searchQuery) {
                     $q->where('name', 'like', "%{$searchQuery}%")
                       ->orWhere('description', 'like', "%{$searchQuery}%");
-                })
-                ->limit(10)
+                });
+
+            if (! $isAdmin) {
+                $projectsQuery->where('responsible_id', $user->id);
+            }
+
+            $this->results['projects'] = $projectsQuery->limit(10)
                 ->get()
                 ->map(function ($project) {
                     $clientName = $project->client ? $project->client->name : 'Sin cliente';
@@ -139,22 +156,24 @@ class GlobalSearch extends Component
         }
 
         // Search invoices
-        $this->results['invoices'] = Invoice::with('enterprise')
-            ->select('id', 'number', 'total_amount', 'created_at', 'enterprise_id')
-            ->where('number', 'like', "%{$searchQuery}%")
-            ->limit(10)
-            ->get()
-            ->map(function ($invoice) {
-                $clientName = $invoice->enterprise ? $invoice->enterprise->name : 'Sin cliente';
-                return [
-                    'id' => $invoice->id,
-                    'name' => 'Factura #' . $invoice->number,
-                    'subtitle' => "Cliente: {$clientName} - Total: $" . number_format($invoice->total_amount, 2),
-                    'url' => route('invoices.show', $invoice->id),
-                    'type' => 'invoice'
-                ];
-            })
-            ->toArray();
+        if ($isAdmin) {
+            $this->results['invoices'] = Invoice::with('enterprise')
+                ->select('id', 'number', 'total_amount', 'created_at', 'enterprise_id')
+                ->where('number', 'like', "%{$searchQuery}%")
+                ->limit(10)
+                ->get()
+                ->map(function ($invoice) {
+                    $clientName = $invoice->enterprise ? $invoice->enterprise->name : 'Sin cliente';
+                    return [
+                        'id' => $invoice->id,
+                        'name' => 'Factura #' . $invoice->number,
+                        'subtitle' => "Cliente: {$clientName} - Total: $" . number_format($invoice->total_amount, 2),
+                        'url' => route('invoices.show', $invoice->id),
+                        'type' => 'invoice'
+                    ];
+                })
+                ->toArray();
+        }
 
         $this->showResults = true;
     }

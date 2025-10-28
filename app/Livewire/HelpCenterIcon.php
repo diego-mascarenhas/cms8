@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Conversation;
 use Livewire\Component;
+use Illuminate\Support\Facades\Cache;
 
 class HelpCenterIcon extends Component
 {
@@ -11,17 +12,17 @@ class HelpCenterIcon extends Component
 
     public function mount()
     {
-        $this->inboundCount = Conversation::where('direction', 'inbound')
-            ->where('status', 'received')
-            ->count();
+        $teamKey = auth()->user()->currentTeam->id ?? 'global';
+        $this->inboundCount = Cache::remember("inbound_received_count_{$teamKey}", 60, function ()
+        {
+            return Conversation::where('direction', 'inbound')
+                ->where('status', 'received')
+                ->count();
+        });
     }
 
     public function render()
     {
-        $this->inboundCount = Conversation::where('direction', 'inbound')
-            ->where('status', 'received')
-            ->count();
-
         return view('livewire.help-center-icon');
     }
 }
