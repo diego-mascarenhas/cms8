@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -18,8 +19,14 @@ class ServiceDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        return (new EloquentDataTable($query))
-            ->addColumn('action', 'service.action')
+        $table = (new EloquentDataTable($query));
+
+        if (\Auth::user()->can('service.edit') || \Auth::user()->can('service.destroy') || \Auth::user()->can('service.show'))
+        {
+            $table = $table->addColumn('action', 'service.action');
+        }
+
+        return $table
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status', 'operation_type'])
             ->addColumn('operation_type', function ($data)
@@ -133,10 +140,20 @@ class ServiceDataTable extends DataTable
 
     public function query(Service $model): QueryBuilder
     {
-        return $model->newQuery()->with(['client', 'category', 'currency'])->whereHas('client', function ($query)
+        $query = $model->newQuery()
+            ->with(['client', 'category', 'currency'])
+            ->whereHas('client', function ($query)
+            {
+                $query->where('team_id', auth()->user()->currentTeam->id);
+            });
+
+        $user = Auth::user();
+        if ($user && $user->hasRole('collaborator'))
         {
-            $query->where('team_id', auth()->user()->currentTeam->id);
-        });
+            $query->where('responsible_id', $user->id);
+        }
+
+        return $query;
     }
 
     public function html(): HtmlBuilder

@@ -165,6 +165,12 @@ class TeamRevisionAlphaSeeder extends Seeder
         // $fernando->assignRole(2);
         $fernando->assignRole('collaborator');
 
+		// Ensure Fernando is attached to team with collaborator role in pivot
+		if (! $fernando->teams()->where('team_id', $team->id)->exists())
+		{
+			$fernando->teams()->attach($team->id, ['role' => 'collaborator']);
+		}
+
         // Create Cecilia - collaborator (Revision Alpha)
         $cecilia = User::updateOrCreate(
             ['email' => 'cecilia@revisionalpha.com'],
@@ -178,6 +184,12 @@ class TeamRevisionAlphaSeeder extends Seeder
             ],
         );
         $cecilia->assignRole('collaborator');
+
+		// Ensure Cecilia is attached to team with collaborator role in pivot
+		if (! $cecilia->teams()->where('team_id', $team->id)->exists())
+		{
+			$cecilia->teams()->attach($team->id, ['role' => 'collaborator']);
+		}
     }
 
     /**

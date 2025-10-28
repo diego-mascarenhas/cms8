@@ -134,6 +134,13 @@ class ContactController extends Controller
                 ->with('error', __('messages.errors.not_found'));
         }
 
+        // Collaborators can only view their own assigned contacts
+        $currentUser = auth()->user();
+        if ($currentUser && $currentUser->hasRole('collaborator') && $data->responsible_id !== $currentUser->id)
+        {
+            abort(403);
+        }
+
         // Verify current_enterprise_id belongs to this contact's enterprises
         if ($data->current_enterprise_id && $data->enterprises->isNotEmpty())
         {

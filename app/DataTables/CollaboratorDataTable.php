@@ -14,11 +14,16 @@ class CollaboratorDataTable extends DataTable
 {
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        return (new EloquentDataTable($query))
-            ->addColumn('action', function ($contact)
+        $table = (new EloquentDataTable($query));
+
+        if (\Auth::user()->can('collaborator.edit') || \Auth::user()->can('collaborator.destroy') || \Auth::user()->can('collaborator.show'))
+        {
+            $table = $table->addColumn('action', function ($contact)
             {
                 return view('collaborator.action', compact('contact'));
-            })
+            });
+        }
+        $table = $table
             ->addColumn('rating', function ($contact)
             {
                 // Get the valoration name from the relationship
@@ -139,6 +144,8 @@ class CollaboratorDataTable extends DataTable
                 }
             })
             ->rawColumns(['name', 'action', 'rating', 'language_combinations', 'services', 'projects']);
+
+        return $table;
     }
 
     public function query(Contact $model): QueryBuilder

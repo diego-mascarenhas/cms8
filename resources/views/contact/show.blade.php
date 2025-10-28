@@ -57,8 +57,10 @@
         <div class="d-flex align-content-center flex-wrap gap-3">
             <!-- <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
                             class="ti ti-plus me-1"></i>Añadir informe</a> -->
+            @can('contact.edit')
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
+            @endcan
             @can('project.create')
                 <a href="{{ route('project.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-success waves-effect waves-light"><i
                         class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
@@ -73,7 +75,7 @@
                         class="btn btn-info waves-effect waves-light"><i class="ti ti-message-chatbot me-1"></i>Chat</a>
                 @endif
             @endcan
-            @if (auth()->user()->currentTeam->id == env('CMS_TEAM_ID') && $data->enterprises->first())
+            @if (auth()->user()->currentTeam->id == env('CMS_TEAM_ID') && $data->enterprises->first() && auth()->user()->hasRole('admin'))
                 <a href="{{ route('cms7.empresa', $data->enterprises->first()->id) }}" class="btn btn-secondary waves-effect waves-light" target="_blank">
                     <i class="ti ti-database me-1"></i>
                 </a>
@@ -322,12 +324,15 @@
                         <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones
                     </a>
                 </li>
+                @can('project.list')
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="evolution-tab" data-bs-toggle="tab" href="#evolution" role="tab"
                         aria-controls="evolution" aria-selected="false">
                         <i class="ti ti-chart-line ti-xs me-1"></i>Evolución
                     </a>
                 </li>
+                @endcan
+                @can('invoice.list')
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="balance-tab" data-bs-toggle="tab" href="#balance" role="tab"
                         aria-controls="balance" aria-selected="false">
@@ -340,6 +345,7 @@
                         <i class="ti ti-map-pin ti-xs me-1"></i>Facturación
                     </a>
                 </li>
+                @endcan
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="scheduled-tab" data-bs-toggle="tab" href="#scheduled" role="tab"
                         aria-controls="scheduled" aria-selected="false">

@@ -96,15 +96,7 @@
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Projects') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }}</h4>
         <p class="text-muted">{{ __('Track your projects') }}</p>
     </div>
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        @if(isset($data->id))
-            @can('project.destroy')
-                <button type="button" class="btn btn-danger waves-effect waves-light" onclick="deleteProject({{ $data->id }}, '{{ $data->name }}')">
-                    <i class="ti ti-trash me-1"></i>{{ __('Delete Project') }}
-                </button>
-            @endcan
-        @endif
-    </div>
+    <div class="d-flex align-content-center flex-wrap gap-3"></div>
 </div>
 
 <div class="card mb-4">
@@ -155,11 +147,11 @@
 @enderror
 			</div>
 
-			<!-- Product type (Category) -->
+			<!-- Category -->
 			<div class="col-md-6">
 				<x-module-categories-select
 					id="category_id"
-					label="{{ __('Product Type') }}"
+					label="{{ __('Categoría') }}"
 					moduleKey="projects"
 					:selected="is_array(old('category_id', $data->category_id ?? '')) ? (old('category_id', $data->category_id ?? '')[0] ?? '') : old('category_id', $data->category_id ?? '')"
 				/>
@@ -234,8 +226,7 @@
 			<div class="col-md-12">
 				<x-team-users-select
 					id="responsible_id"
-					label="{{ __('Responsible') }} (*)"
-					role="admin"
+					label="{{ __('Asesor') }} (*)"
 					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
 				/>
 				@error('responsible_id')
@@ -255,8 +246,7 @@
 			<div class="col-md-12">
 				<x-team-users-select
 					id="responsible_id"
-					label="{{ __('Responsible') }} (*)"
-					role="admin"
+					label="{{ __('Asesor') }} (*)"
 					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
 				/>
 				@error('responsible_id')

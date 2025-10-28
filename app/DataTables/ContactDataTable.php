@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Models\Contact;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -18,11 +19,17 @@ class ContactDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        return (new EloquentDataTable($query))
-            ->addColumn('action', function ($contact)
+        $table = (new EloquentDataTable($query));
+
+        if (\Auth::user()->can('contact.edit') || \Auth::user()->can('contact.destroy') || \Auth::user()->can('contact.show'))
+        {
+            $table = $table->addColumn('action', function ($contact)
             {
                 return view('contact.action', compact('contact'));
-            })
+            });
+        }
+
+        return $table
             ->setRowId('id')
             ->editColumn('name', function ($row)
             {
@@ -111,7 +118,9 @@ class ContactDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        return $model->newQuery()->with([
+        $query = $model->newQuery()
+            ->where('team_id', Auth::user()->currentTeam->id)
+            ->with([
             'list60:id,contact_id',
             'enterprises:id,name',
             'currentSentiment.sentiment',
@@ -120,6 +129,15 @@ class ContactDataTable extends DataTable
             'responsible:id,name',
             'categories',
         ]);
+
+        // Collaborators only see their assigned contacts
+        $user = Auth::user();
+        if ($user && $user->hasRole('collaborator'))
+        {
+            $query->where('responsible_id', $user->id);
+        }
+
+        return $query;
     }
 
     public function html(): HtmlBuilder

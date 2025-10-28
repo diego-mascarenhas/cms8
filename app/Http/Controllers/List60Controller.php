@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\DataTables\List60DataTable;
 use App\Models\List60;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Carbon\Carbon;
+use App\Models\User;
 
 class List60Controller extends Controller
 {
@@ -112,7 +115,49 @@ class List60Controller extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'responsible_id' => ['required', 'integer', Rule::exists('users', 'id')],
+            'date_next' => ['nullable', 'date'],
+        ]);
+
+        $record = List60::with('contact')->findOrFail($id);
+
+        // Only admins or current responsible can reassign
+        $user = auth()->user();
+        if (! $user->hasRole('admin') && $record->responsible_id !== $user->id)
+        {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        // Ensure target user belongs to current team and has allowed role
+        $target = User::where('id', $request->responsible_id)
+            ->whereHas('teams', function ($q)
+            {
+                $q->where('team_id', auth()->user()->currentTeam->id);
+            })
+            ->whereHas('roles', function ($q)
+            {
+                $q->whereIn('name', ['admin', 'collaborator', 'employee']);
+            })
+            ->first();
+
+        if (! $target)
+        {
+            return response()->json(['error' => 'Usuario no válido para este equipo'], 422);
+        }
+
+        $record->responsible_id = $target->id;
+        if ($request->filled('date_next'))
+        {
+            $record->date_next = Carbon::parse($request->date_next);
+        }
+        $record->save();
+
+        return response()->json([
+            'success' => 'Asignación actualizada',
+            'responsible_name' => $target->name,
+            'date_next' => $record->date_next ? Carbon::parse($record->date_next)->format('Y-m-d') : null,
+        ]);
     }
 
     /**

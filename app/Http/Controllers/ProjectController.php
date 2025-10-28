@@ -498,6 +498,13 @@ class ProjectController extends Controller
             'projectFares.targetLanguage',
         ])->findOrFail($id);
 
+        // Collaborators can only view their assigned projects
+        $currentUser = auth()->user();
+        if ($currentUser && $currentUser->hasRole('collaborator') && $project->responsible_id !== $currentUser->id)
+        {
+            abort(403);
+        }
+
         // Get time tracking data for this project through board tasks
         $timeEntries = collect();
         $totalHours = 0;
