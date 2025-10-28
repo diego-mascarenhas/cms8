@@ -45,7 +45,7 @@
             @method('PUT')
             <input type="hidden" name="id" value="{{ $data->id }}">
         @endif
-        
+
         @if(isset($enterprise_id))
             <input type="hidden" name="enterprise_id" value="{{ $enterprise_id }}">
         @endif
@@ -56,8 +56,8 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <x-team-users-select 
-                            id="responsible_id" 
+                        <x-team-users-select
+                            id="responsible_id"
                             label="Asesor"
                             :selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
                             show-null="false"
@@ -65,11 +65,11 @@
                     </div>
 
                     <div class="col-md-6">
-                        <x-module-categories-select 
-                            id="category_id" 
-                            label="Category"
+                        <x-module-categories-select
+                            id="category_id"
+                            label="Categoría"
+                            moduleKey="services"
                             :selected="old('category_id', $data->category_id ?? null)"
-                            :moduleKey="'services'"
                         />
                     </div>
 
@@ -186,7 +186,7 @@
                             <input type="text" id="data_ip" name="data[ip]" class="form-control" value="{{ isset($data) ? ($data->data['ip'] ?? '') : '' }}">
                         </div>
                     </div>
-                    
+
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="data_server_id" class="form-label">Server</label>
@@ -505,4 +505,4 @@
         });
     });
 </script>
-@endsection 
+@endsection

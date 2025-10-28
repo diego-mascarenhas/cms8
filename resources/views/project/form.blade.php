@@ -147,11 +147,11 @@
 @enderror
 			</div>
 
-			<!-- Product type (Category) -->
+			<!-- Category -->
 			<div class="col-md-6">
 				<x-module-categories-select
 					id="category_id"
-					label="{{ __('Product Type') }}"
+					label="{{ __('Categoría') }}"
 					moduleKey="projects"
 					:selected="is_array(old('category_id', $data->category_id ?? '')) ? (old('category_id', $data->category_id ?? '')[0] ?? '') : old('category_id', $data->category_id ?? '')"
 				/>
