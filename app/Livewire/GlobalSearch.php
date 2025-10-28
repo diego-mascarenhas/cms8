@@ -19,6 +19,11 @@ class GlobalSearch extends Component
 
     public function updatedQuery()
     {
+        if (! (bool) config('custom.custom.showSearch', true)) {
+            $this->results = [];
+            $this->showResults = false;
+            return;
+        }
         if (strlen($this->query) < 2) {
             $this->results = [];
             $this->showResults = false;
@@ -30,6 +35,11 @@ class GlobalSearch extends Component
 
     public function performSearch()
     {
+        if (! (bool) config('custom.custom.showSearch', true)) {
+            $this->results = [];
+            $this->showResults = false;
+            return;
+        }
         if (empty($this->query)) {
             $this->results = [];
             $this->showResults = false;

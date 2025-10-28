@@ -43,7 +43,7 @@
 
 <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
 
-    @if (!isset($menuHorizontal))
+    @if (!isset($menuHorizontal) && (($configData['showSearch'] ?? true) === true))
         <!-- Livewire Search -->
         <div class="navbar-nav align-items-center">
             <div class="nav-item navbar-search-wrapper mb-0">
@@ -130,7 +130,7 @@
         @endif
         <!--/ Language -->
 
-        @if (isset($menuHorizontal))
+        @if (isset($menuHorizontal) && (($configData['showSearch'] ?? true) === true))
             <!-- Livewire Search -->
             <li class="nav-item navbar-search-wrapper me-2 me-xl-0">
                 @livewire('global-search')
