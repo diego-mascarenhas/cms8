@@ -96,7 +96,7 @@ class ProjectDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(1, 'asc')
+            ->orderBy(1, 'desc')
             ->responsive(true)
             ->processing(false)
             ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
