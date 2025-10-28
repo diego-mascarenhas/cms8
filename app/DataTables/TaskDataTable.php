@@ -17,6 +17,10 @@ class TaskDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'task.action')
             ->setRowId('id')
+            ->addColumn('project_name', function ($row)
+            {
+                return $row->project ? ($row->project->real_name ?: $row->project->name) : __('No project');
+            })
             ->editColumn('responsible_id', function ($data)
             {
                 return $data->responsible->name ?? __('Unassigned');
@@ -49,6 +53,7 @@ class TaskDataTable extends DataTable
             ->with([
                 'responsible:id,name',
                 'status',
+                'project:id,real_name,name,board_id',
             ])
             ->defaultOrder();
     }
@@ -87,6 +92,11 @@ class TaskDataTable extends DataTable
             Column::make('title')
                 ->title(__('Title'))
                 ->addClass('all'),
+            Column::make('project_name')
+                ->title(__('Project'))
+                ->addClass('min-desktop')
+                ->orderable(false)
+                ->searchable(false),
             Column::make('responsible_id')
                 ->title(__('Responsible'))
                 ->addClass('min-tablet')

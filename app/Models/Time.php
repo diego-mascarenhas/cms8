@@ -36,13 +36,18 @@ class Time extends Model
 
     protected static function booted()
     {
-        static::addGlobalScope('team', function (Builder $builder)
-        {
-            if (auth()->check())
-            {
-                $builder->where('team_id', auth()->user()->currentTeam->id);
-            }
-        });
+		static::addGlobalScope('team', function (Builder $builder)
+		{
+			if (auth()->check())
+			{
+				$teamId = optional(auth()->user()->currentTeam)->id
+					?? auth()->user()->teams()->value('teams.id');
+				if ($teamId)
+				{
+					$builder->where('team_id', $teamId);
+				}
+			}
+		});
     }
 
     public function team()
