@@ -39,7 +39,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">
-            <span class="text-muted fw-light">Service/</span> 
+            <span class="text-muted fw-light">Service/</span>
             {{ isset($serviceData['domain']) ? $serviceData['domain'] : 'Service #' . $service->id }}
         </h4>
         <p class="text-muted">
@@ -47,9 +47,11 @@
         </p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
+        @can('service.edit')
         <a href="{{ route('service.edit', $service->id) }}" class="btn btn-primary waves-effect waves-light">
             <i class="ti ti-edit me-1"></i>Edit Service
         </a>
+        @endcan
         @if($service->client && $service->client->responsible_id)
         <a href="#" class="btn btn-outline-primary waves-effect waves-light">
             <i class="ti ti-user me-1"></i>View Responsible
@@ -157,7 +159,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Service Content -->
     <div class="col-xl-8 col-lg-7 col-md-7 order-0 order-md-1">
         <!-- Service Tabs -->
@@ -182,7 +184,7 @@
                             <div class="card-body">
                                 <h5 class="card-title">Description</h5>
                                 <p>{{ $service->description ?? 'No description available' }}</p>
-                                
+
                                 @if(isset($serviceData['domain']))
                                 <div class="mt-4">
                                     <h5>Domain Information</h5>
@@ -257,7 +259,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Service Data Tab -->
                     <div class="tab-pane fade" id="service-data">
                         <div class="card">
@@ -297,4 +299,4 @@
         </div>
     </div>
 </div>
-@endsection 
+@endsection

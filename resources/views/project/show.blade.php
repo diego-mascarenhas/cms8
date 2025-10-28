@@ -59,9 +59,11 @@
 					<i class="ti ti-edit me-1"></i>{{ __('Edit Project') }}
 				</a>
 			@endcan
+			@can('project.edit')
 			<a href="{{ route('project.select-collaborators', $project->id) }}" class="btn btn-success waves-effect waves-light">
 				<i class="ti ti-users me-1"></i>{{ __('Manage Collaborators') }}
 			</a>
+			@endcan
 			<a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="btn btn-info waves-effect waves-light">
 				<i class="ti ti-layout-kanban me-1"></i>{{ __('Kanban Board') }}
 			</a>
@@ -246,9 +248,11 @@
 <div class="card mb-4">
    <div class="card-header d-flex justify-content-between align-items-center">
        <h5 class="mb-0">{{ __('Linked services') }}</h5>
+       @can('project.edit')
        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
            <i class="ti ti-plus ti-xs me-1"></i>{{ __('Vincular servicio') }}
        </button>
+       @endcan
    </div>
    <div class="card-body">
        <div class="table-responsive">
@@ -332,14 +336,18 @@
 								</a>
 							</td>
 							<td class="col-1 text-center">
-								<div class="d-flex justify-content-center align-items-center">
-									<a href="javascript:;" class="text-body me-2" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="{{ $projectFare->id }}">
-										<i class="ti ti-edit ti-sm"></i>
-									</a>
-									<a href="javascript:;" class="text-danger" onclick="deleteProjectService({{ $projectFare->id }})">
-										<i class="ti ti-trash ti-sm"></i>
-									</a>
-								</div>
+                                <div class="d-flex justify-content-center align-items-center">
+                                    @can('project.edit')
+                                    <a href="javascript:;" class="text-body me-2" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="{{ $projectFare->id }}">
+                                        <i class="ti ti-edit ti-sm"></i>
+                                    </a>
+                                    @endcan
+                                    @can('project.destroy')
+                                    <a href="javascript:;" class="text-danger" onclick="deleteProjectService({{ $projectFare->id }})">
+                                        <i class="ti ti-trash ti-sm"></i>
+                                    </a>
+                                    @endcan
+                                </div>
 							</td>
 						</tr>
 						@endforeach
@@ -354,9 +362,11 @@
 			<i class="ti ti-settings ti-xl text-muted mb-3"></i>
 			<h6 class="mb-2">{{ __('No linked services') }}</h6>
 			<p class="text-muted mb-3">{{ __('This project has no linked services yet') }}</p>
-			<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
-				<i class="ti ti-plus me-1"></i>{{ __('Vincular servicio') }}
-			</button>
+		@can('project.edit')
+		<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
+			<i class="ti ti-plus me-1"></i>{{ __('Vincular servicio') }}
+		</button>
+		@endcan
 		</div>
 	</div>
 	@endif
