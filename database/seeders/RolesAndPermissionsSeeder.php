@@ -509,7 +509,6 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $collaboratorRole = Role::firstOrCreate(['name' => 'collaborator']);
         $collaboratorRole->syncPermissions([
-            'user.list',
             'today.list',
             'chat.list',
             'mail.list',

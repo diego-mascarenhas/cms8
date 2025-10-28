@@ -310,13 +310,13 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/chat/send-template', [ChatController::class, 'sendTemplateMessage'])->name('chat.send-template');
 
     // Users
-    Route::get('/user/list', [UserController::class, 'index'])->name('user.index');
-    Route::get('/user/create', [UserController::class, 'create'])->name('user.create');
-    Route::post('/user', [UserController::class, 'store'])->name('user.store');
-    Route::get('/user/{user}', [UserController::class, 'show'])->name('user.show');
-    Route::get('/user/{user}/edit', [UserController::class, 'edit'])->name('user.edit');
-    Route::put('/user/{user}', [UserController::class, 'update'])->name('user.update');
-    Route::delete('/user/{id}', [UserController::class, 'destroy'])->name('user.destroy');
+    Route::get('/user/list', [UserController::class, 'index'])->name('user.index')->middleware('permission:user.list');
+    Route::get('/user/create', [UserController::class, 'create'])->name('user.create')->middleware('permission:user.create');
+    Route::post('/user', [UserController::class, 'store'])->name('user.store')->middleware('permission:user.store');
+    Route::get('/user/{user}', [UserController::class, 'show'])->name('user.show')->middleware('permission:user.show');
+    Route::get('/user/{user}/edit', [UserController::class, 'edit'])->name('user.edit')->middleware('permission:user.edit');
+    Route::put('/user/{user}', [UserController::class, 'update'])->name('user.update')->middleware('permission:user.update');
+    Route::delete('/user/{id}', [UserController::class, 'destroy'])->name('user.destroy')->middleware('permission:user.destroy');
 
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
