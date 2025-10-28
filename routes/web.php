@@ -527,18 +527,18 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/stylebook/{stylebook}', [StylebookController::class, 'destroy'])->name('stylebook.destroy');
 
     // Notification Management
-    Route::get('/notification/list', [NotificationController::class, 'index'])->name('notification-list');
-    Route::get('/notification/create', [NotificationController::class, 'create'])->name('notification.create');
-    Route::post('/notification', [NotificationController::class, 'store'])->name('notification.store');
-    Route::get('/notification/{notification}', [NotificationController::class, 'show'])->name('notification.show');
-    Route::get('/notification/{notification}/edit', [NotificationController::class, 'edit'])->name('notification.edit');
-    Route::put('/notification/{notification}', [NotificationController::class, 'update'])->name('notification.update');
-    Route::delete('/notification/{notification}', [NotificationController::class, 'destroy'])->name('notification.destroy');
-    Route::post('/notification/{notification}/send', [NotificationController::class, 'send'])->name('notification.send');
-    Route::post('/notification/{notification}/resend', [NotificationController::class, 'resend'])->name('notification.resend');
-    Route::post('/notification/get-template', [NotificationController::class, 'getTemplate'])->name('notification.get-template');
-    Route::post('/notification/bulk-send', [NotificationController::class, 'bulkSend'])->name('notification.bulk-send');
-    Route::post('/notification/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notification.bulk-delete');
+    Route::get('/notification/list', [NotificationController::class, 'index'])->name('notification-list')->middleware('permission:notification.list');
+    Route::get('/notification/create', [NotificationController::class, 'create'])->name('notification.create')->middleware('permission:notification.create');
+    Route::post('/notification', [NotificationController::class, 'store'])->name('notification.store')->middleware('permission:notification.store');
+    Route::get('/notification/{notification}', [NotificationController::class, 'show'])->name('notification.show')->middleware('permission:notification.show');
+    Route::get('/notification/{notification}/edit', [NotificationController::class, 'edit'])->name('notification.edit')->middleware('permission:notification.edit');
+    Route::put('/notification/{notification}', [NotificationController::class, 'update'])->name('notification.update')->middleware('permission:notification.update');
+    Route::delete('/notification/{notification}', [NotificationController::class, 'destroy'])->name('notification.destroy')->middleware('permission:notification.destroy');
+    Route::post('/notification/{notification}/send', [NotificationController::class, 'send'])->name('notification.send')->middleware('permission:notification.send');
+    Route::post('/notification/{notification}/resend', [NotificationController::class, 'resend'])->name('notification.resend')->middleware('permission:notification.resend');
+    Route::post('/notification/get-template', [NotificationController::class, 'getTemplate'])->name('notification.get-template')->middleware('permission:notification.get-template');
+    Route::post('/notification/bulk-send', [NotificationController::class, 'bulkSend'])->name('notification.bulk-send')->middleware('permission:notification.bulk-send');
+    Route::post('/notification/bulk-delete', [NotificationController::class, 'bulkDelete'])->name('notification.bulk-delete')->middleware('permission:notification.bulk-delete');
 
     // Tarifas Personalizadas de Usuario
     Route::get('/user-fare', [UserFareController::class, 'index'])->name('user-fare.index');

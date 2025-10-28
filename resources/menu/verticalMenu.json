@@ -213,6 +213,7 @@
       "name": "Notificaciones",
       "icon": "menu-icon tf-icons ti ti-speakerphone",
       "slug": "notification-list",
+      "permission": "notification.list",
       "module_key": "notifications"
     },
     {

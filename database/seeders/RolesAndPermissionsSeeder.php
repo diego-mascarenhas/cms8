@@ -253,6 +253,19 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'message.store']);
         Permission::firstOrCreate(['name' => 'message.update']);
         Permission::firstOrCreate(['name' => 'message.destroy']);
+        // Notifications permissions
+        Permission::firstOrCreate(['name' => 'notification.list']);
+        Permission::firstOrCreate(['name' => 'notification.create']);
+        Permission::firstOrCreate(['name' => 'notification.show']);
+        Permission::firstOrCreate(['name' => 'notification.edit']);
+        Permission::firstOrCreate(['name' => 'notification.store']);
+        Permission::firstOrCreate(['name' => 'notification.update']);
+        Permission::firstOrCreate(['name' => 'notification.destroy']);
+        Permission::firstOrCreate(['name' => 'notification.send']);
+        Permission::firstOrCreate(['name' => 'notification.resend']);
+        Permission::firstOrCreate(['name' => 'notification.get-template']);
+        Permission::firstOrCreate(['name' => 'notification.bulk-send']);
+        Permission::firstOrCreate(['name' => 'notification.bulk-delete']);
         Permission::firstOrCreate(['name' => 'template.list']);
 
         Permission::firstOrCreate(['name' => 'hosting.index']);
@@ -513,7 +526,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'chat.list',
             'mail.list',
             'service.list',
-            'client.list',
+            // Remove clients/list60/notifications visibility for collaborators
             // Allow collaborators to view contacts and projects
             'contact.list',
             'contact.show',
@@ -524,7 +537,7 @@ class RolesAndPermissionsSeeder extends Seeder
             // Projects view-only
             'project.list',
             'project.show',
-            'list60.list',
+            // 'list60.list',
             'task.list',
             'time.list',
             'documentation.list',
@@ -532,7 +545,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'expense.list',
             // Remove accounting visibility for collaborators
             'financial.list',
-            'department.list',
+            // 'department.list', // keep if needed else remove
             'funnel.list',
             'automation.list',
             'integration.list',
