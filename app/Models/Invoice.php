@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -9,21 +10,38 @@ class Invoice extends Model
 {
     use HasFactory;
 
-	protected $fillable = [
-		'enterprise_id',
-		'billing_id',
-		'type_id',
-		'operation',
-		'number',
-		'date',
-		'due_date',
-		'gross_amount',
-		'discount',
-		'total_amount',
-		'balance',
-		'status',
-		'currency',
-	];
+    protected $fillable = [
+        'team_id',
+        'enterprise_id',
+        'billing_id',
+        'type_id',
+        'operation',
+        'number',
+        'date',
+        'due_date',
+        'gross_amount',
+        'discount',
+        'total_amount',
+        'balance',
+        'status',
+        'currency',
+    ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
 
     public function enterprise()
     {
@@ -88,7 +106,8 @@ class Invoice extends Model
         $baseCurrency = $this->currency ?? 'USD';
         $amount = $this->$field ?? 0;
 
-        if ($baseCurrency === $targetCurrency) {
+        if ($baseCurrency === $targetCurrency)
+        {
             return $amount;
         }
 
@@ -104,10 +123,13 @@ class Invoice extends Model
         $currencies = ['USD', 'EUR', 'ARS'];
         $amounts = [];
 
-        foreach ($currencies as $currency) {
-            if ($currency === $baseCurrency) {
+        foreach ($currencies as $currency)
+        {
+            if ($currency === $baseCurrency)
+            {
                 $amounts[$currency] = $this->total_amount;
-            } else {
+            } else
+            {
                 $amounts[$currency] = $this->convertTo($currency, 'total_amount');
             }
         }

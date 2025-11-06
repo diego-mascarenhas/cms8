@@ -2,6 +2,7 @@
 
 namespace App\DataTables;
 
+use App\Helpers\Helpers;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
@@ -53,26 +54,26 @@ class InvoiceDataTable extends DataTable
             })
             ->editColumn('total_amount', function ($data)
             {
-                $currency = $data->currency ?? 'USD';
-                $total = '$' . number_format($data->total_amount, 2);
                 $conversions = '';
 
-                // Mostrar conversiones a otras monedas
-                if ($currency !== 'ARS') {
-                    $ars = $data->convertTo('ARS', 'total_amount');
-                    if ($ars) {
-                        $conversions .= '<br><small class="text-muted">≈ $' . number_format($ars, 2) . ' ARS</small>';
-                    }
+                // Mostrar solo conversiones a ARS y EUR (nunca USD)
+                $ars = $data->convertTo('ARS', 'total_amount');
+                if ($ars)
+                {
+                    $conversions .= '<span class="fw-bold">'.Helpers::formatMoney($ars, 'ARS').' ARS</span>';
                 }
 
-                if ($currency !== 'EUR') {
-                    $eur = $data->convertTo('EUR', 'total_amount');
-                    if ($eur) {
-                        $conversions .= '<br><small class="text-muted">≈ €' . number_format($eur, 2) . ' EUR</small>';
+                $eur = $data->convertTo('EUR', 'total_amount');
+                if ($eur)
+                {
+                    if ($conversions)
+                    {
+                        $conversions .= '<br>';
                     }
+                    $conversions .= '<small class="text-muted">≈ '.Helpers::formatMoney($eur, 'EUR').' EUR</small>';
                 }
 
-                return '<span class="fw-bold">' . $total . ' ' . $currency . '</span>' . $conversions;
+                return $conversions ?: '<span class="text-muted">N/A</span>';
             })
             ->editColumn('status', function ($data)
             {
