@@ -22,7 +22,7 @@ class InvoiceDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'invoices.action')
             ->setRowId('id')
-            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator'])
+            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator', 'total_amount'])
             ->addColumn('number_with_indicator', function ($data)
             {
                 // Punto de color según tipo de operación (rojo: compra, verde: venta)
@@ -50,6 +50,29 @@ class InvoiceDataTable extends DataTable
             ->editColumn('date', function ($data)
             {
                 return Carbon::parse($data->date)->format('d-m-Y');
+            })
+            ->editColumn('total_amount', function ($data)
+            {
+                $currency = $data->currency ?? 'USD';
+                $total = '$' . number_format($data->total_amount, 2);
+                $conversions = '';
+
+                // Mostrar conversiones a otras monedas
+                if ($currency !== 'ARS') {
+                    $ars = $data->convertTo('ARS', 'total_amount');
+                    if ($ars) {
+                        $conversions .= '<br><small class="text-muted">≈ $' . number_format($ars, 2) . ' ARS</small>';
+                    }
+                }
+
+                if ($currency !== 'EUR') {
+                    $eur = $data->convertTo('EUR', 'total_amount');
+                    if ($eur) {
+                        $conversions .= '<br><small class="text-muted">≈ €' . number_format($eur, 2) . ' EUR</small>';
+                    }
+                }
+
+                return '<span class="fw-bold">' . $total . ' ' . $currency . '</span>' . $conversions;
             })
             ->editColumn('status', function ($data)
             {
