@@ -93,4 +93,10 @@ return [
         ],
     ],
 
+    'currencyfreaks' => [
+        'api_key' => env('CURRENCYFREAKS_API_KEY'),
+        'base_currency' => env('CURRENCYFREAKS_BASE_CURRENCY', 'USD'),
+        'target_currencies' => env('CURRENCYFREAKS_TARGET_CURRENCIES', 'ARS,EUR'),
+    ],
+
 ];

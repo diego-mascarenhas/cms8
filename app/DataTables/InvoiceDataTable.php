@@ -2,6 +2,7 @@
 
 namespace App\DataTables;
 
+use App\Helpers\Helpers;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
@@ -22,7 +23,7 @@ class InvoiceDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'invoices.action')
             ->setRowId('id')
-            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator'])
+            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator', 'total_amount'])
             ->addColumn('number_with_indicator', function ($data)
             {
                 // Punto de color según tipo de operación (rojo: compra, verde: venta)
@@ -50,6 +51,29 @@ class InvoiceDataTable extends DataTable
             ->editColumn('date', function ($data)
             {
                 return Carbon::parse($data->date)->format('d-m-Y');
+            })
+            ->editColumn('total_amount', function ($data)
+            {
+                $conversions = '';
+
+                // Mostrar solo conversiones a ARS y EUR (nunca USD)
+                $ars = $data->convertTo('ARS', 'total_amount');
+                if ($ars)
+                {
+                    $conversions .= '<span class="fw-bold">'.Helpers::formatMoney($ars, 'ARS').' ARS</span>';
+                }
+
+                $eur = $data->convertTo('EUR', 'total_amount');
+                if ($eur)
+                {
+                    if ($conversions)
+                    {
+                        $conversions .= '<br>';
+                    }
+                    $conversions .= '<small class="text-muted">≈ '.Helpers::formatMoney($eur, 'EUR').' EUR</small>';
+                }
+
+                return $conversions ?: '<span class="text-muted">N/A</span>';
             })
             ->editColumn('status', function ($data)
             {
