@@ -216,9 +216,8 @@
                         toastr.success(response.message);
                         $('#updateSentimentModal').on('hidden.bs.modal', function() {
                             setTimeout(function() {
-                                window.location.href =
-                                    "{{ route('contact.show', '') }}/" +
-                                    response.contactId;
+                                var showUrl = "{{ route('contact.show', '__ID__') }}".replace('__ID__', response.contactId);
+                                window.location.href = showUrl;
                             }, 1000);
                         });
                         $('#updateSentimentModal').modal('hide');

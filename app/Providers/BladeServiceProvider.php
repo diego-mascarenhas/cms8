@@ -31,8 +31,9 @@ class BladeServiceProvider extends ServiceProvider
         Blade::directive('formatMinutes', function ($expression)
         {
             return "<?php
-				\$hours = floor($expression / 60);
-				\$minutes = $expression % 60;
+				\$totalMinutes = max(0, (int) $expression); // Ensure non-negative
+				\$hours = floor(\$totalMinutes / 60);
+				\$minutes = \$totalMinutes % 60;
 				echo \$hours . 'h ' . \$minutes . 'm';
 			?>";
         });

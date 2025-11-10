@@ -28,15 +28,17 @@ class DashboardController extends Controller
             return redirect()->back()->with('error', 'No team assigned');
         }
 
-        // Calculate total team minutes
+        // Calculate total team minutes (only positive values)
         $totalTeamSeconds = UserContactAction::whereHas('contact', function ($query) use ($activeTeam)
         {
             $query->where('team_id', $activeTeam->id);
         })
             ->whereNotNull('duration_seconds')
+            ->where('duration_seconds', '>', 0)  // Only count positive durations
             ->sum('duration_seconds');
 
-        $totalTeamMinutes = round($totalTeamSeconds / 60);
+        // Ensure we never have negative minutes
+        $totalTeamMinutes = max(0, round($totalTeamSeconds / 60));
 
         // Filter dangerous contacts by team
         $dangerousContacts = Contact::where('team_id', $activeTeam->id)

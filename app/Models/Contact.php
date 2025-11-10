@@ -461,10 +461,13 @@ class Contact extends Model implements HasMedia
             return 0;
         }
 
-        $startTime = $latestAction->start_time;
+        $startTime = Carbon::parse($latestAction->start_time);
         $endTime = Carbon::now();
 
-        return $endTime->diffInSeconds($startTime);
+        // Ensure we always return a positive value
+        $seconds = abs($endTime->diffInSeconds($startTime, false));
+
+        return max(0, $seconds);
     }
 
     public function calculateTotalAccumulatedSeconds()
@@ -477,13 +480,21 @@ class Contact extends Model implements HasMedia
 
         foreach ($completedActions as $action)
         {
-            $totalSeconds += Carbon::parse($action->end_time)->diffInSeconds($action->start_time);
+            $startTime = Carbon::parse($action->start_time);
+            $endTime = Carbon::parse($action->end_time);
+
+            // Only add positive time differences
+            if ($endTime->greaterThanOrEqualTo($startTime))
+            {
+                $totalSeconds += abs($endTime->diffInSeconds($startTime, false));
+            }
         }
 
         $currentActionSeconds = $this->calculateCurrentActionSeconds();
         $totalSeconds += $currentActionSeconds;
 
-        return $totalSeconds;
+        // Ensure we never return a negative value
+        return max(0, $totalSeconds);
     }
 
     public static function getTotalTeamMinutes()
