@@ -59,9 +59,16 @@ class ClientDataTable extends DataTable
     {
         return $model->newQuery()
             ->activeClients()
+            ->select([
+                'enterprises.id',
+                'enterprises.name',
+                'enterprises.responsible_id',
+                'enterprises.status_id',
+                'enterprises.team_id',
+            ])
             ->with([
                 'responsible:id,name',
-                'status',
+                'status:id,name,label_class',
             ]);
     }
 
@@ -79,7 +86,7 @@ class ClientDataTable extends DataTable
             ->pageLength(25)
             ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
-                'initComplete' => "function() {
+				'initComplete' => "function() {
 					var api = this.api();
 					api.columns('.select-filter').every(function() {
 						var column = this;

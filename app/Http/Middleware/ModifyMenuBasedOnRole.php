@@ -41,6 +41,12 @@ class ModifyMenuBasedOnRole
 				}
 			}
 
+			// Eager load modules to avoid N+1 queries when checking hasModule()
+			if ($team && ! $team->relationLoaded('modules'))
+			{
+				$team->load('modules');
+			}
+
 			// Cache menu for 1 hour per user/team combination
 			$teamKey = $team?->id ?? 'none';
 			$cacheKey = "menu_user_{$user->id}_team_{$teamKey}";
