@@ -3,7 +3,7 @@
 @section('title', 'Gracias')
 
 @section('page-style')
-<link rel="stylesheet" href="{{ asset(mix('assets/vendor/css/pages/page-auth.css')) }}">
+<link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}">
 <style>
     .success-icon {
         width: 80px;

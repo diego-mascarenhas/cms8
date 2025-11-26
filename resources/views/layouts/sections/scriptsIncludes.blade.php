@@ -3,15 +3,14 @@ $menuCollapsed = ($configData['menuCollapsed'] === 'layout-menu-collapsed') ? js
 @endphp
 <!-- laravel style -->
 <script src="{{ asset('assets/vendor/js/helpers.js') }}"></script>
-<!-- beautify ignore:start -->
+
 @if ($configData['hasCustomizer'])
-  <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
-  <!--? Template customizer: To hide customizer set displayCustomizer value false in config.js.  -->
+  <!--! Template customizer: required for theme switching -->
   <script src="{{ asset('assets/vendor/js/template-customizer.js') }}"></script>
 @endif
 
-  <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
-  <script src="{{ asset('assets/js/config.js') }}"></script>
+<!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
+<script src="{{ asset('assets/js/config.js') }}"></script>
 
 @if ($configData['hasCustomizer'])
 <script>
@@ -26,15 +25,15 @@ $menuCollapsed = ($configData['menuCollapsed'] === 'layout-menu-collapsed') ? js
       var resolvedPaths = {
         // Core stylesheets
         @foreach (['core'] as $name)
-          '{{ $name }}.css': '{{ asset(mix("assets/vendor/css{$configData['rtlSupport']}/{$name}.css")) }}',
-          '{{ $name }}-dark.css': '{{ asset(mix("assets/vendor/css{$configData['rtlSupport']}/{$name}-dark.css")) }}',
+          '{{ $name }}.css': '{{ asset("assets/vendor/css{$configData['rtlSupport']}/{$name}.css") }}',
+          '{{ $name }}-dark.css': '{{ asset("assets/vendor/css{$configData['rtlSupport']}/{$name}-dark.css") }}',
         @endforeach
 
         // Themes
         @foreach (['default', 'bordered', 'semi-dark'] as $name)
-          'theme-{{ $name }}.css': '{{ asset(mix("assets/vendor/css{$configData['rtlSupport']}/theme-{$name}.css")) }}',
+          'theme-{{ $name }}.css': '{{ asset("assets/vendor/css{$configData['rtlSupport']}/theme-{$name}.css") }}',
           'theme-{{ $name }}-dark.css':
-          '{{ asset(mix("assets/vendor/css{$configData['rtlSupport']}/theme-{$name}-dark.css")) }}',
+          '{{ asset("assets/vendor/css{$configData['rtlSupport']}/theme-{$name}-dark.css") }}',
         @endforeach
       }
       return resolvedPaths[path] || path;
