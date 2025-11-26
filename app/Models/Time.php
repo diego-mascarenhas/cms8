@@ -11,7 +11,6 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Time extends Model
 {
-    use HasFactory;
     use LogsActivity;
     use SoftDeletes;
 

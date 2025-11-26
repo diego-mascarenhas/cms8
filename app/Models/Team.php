@@ -124,6 +124,16 @@ class Team extends JetstreamTeam
      */
     public function hasModule($moduleKey)
     {
+        // Use eager loaded modules if available to avoid N+1 queries
+        if ($this->relationLoaded('modules'))
+        {
+            return $this->modules
+                ->where('key', $moduleKey)
+                ->where('pivot.status', 1)
+                ->isNotEmpty();
+        }
+
+        // Fallback to query if modules not loaded
         return $this->modules()
             ->where('key', $moduleKey)
             ->where('module_team.status', 1)

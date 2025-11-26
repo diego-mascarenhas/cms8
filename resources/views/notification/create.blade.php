@@ -28,7 +28,7 @@
     <h5 class="card-header">{{ __('Notification Details') }}</h5>
     <form class="card-body" action="{{ route('notification.store') }}" method="POST">
         @csrf
-        
+
         <div class="row g-3">
             <div class="col-md-6">
                 <label for="type_id" class="form-label">Tipo de notificación (*)</label>
@@ -62,8 +62,8 @@
 
             <div class="col-md-6">
                 <label for="reference" class="form-label">Referencia</label>
-                <input type="text" class="form-control @error('reference') is-invalid @enderror" 
-                       id="reference" name="reference" value="{{ old('reference') }}" 
+                <input type="text" class="form-control @error('reference') is-invalid @enderror"
+                       id="reference" name="reference" value="{{ old('reference') }}"
                        placeholder="ID del proyecto, tarea, etc.">
                 @error('reference')
                     <div class="invalid-feedback">{{ $message }}</div>
@@ -84,7 +84,7 @@
 
             <div class="col-12">
                 <label for="subject" class="form-label">Asunto (*)</label>
-                <input type="text" class="form-control @error('subject') is-invalid @enderror" 
+                <input type="text" class="form-control @error('subject') is-invalid @enderror"
                        id="subject" name="subject" value="{{ old('subject') }}" required>
                 @error('subject')
                     <div class="invalid-feedback">{{ $message }}</div>
@@ -94,18 +94,18 @@
             <div class="col-12">
                 <label for="message" class="form-label">Mensaje (*)</label>
                 <div id="message-editor" style="height: 200px;"></div>
-                <textarea class="form-control d-none @error('message') is-invalid @enderror" 
+                <textarea class="form-control d-none @error('message') is-invalid @enderror"
                           id="message" name="message" required>{{ old('message') }}</textarea>
                 @error('message')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>
         </div>
-        
+
         <div class="pt-4">
             <div class="col-12 d-flex">
                 <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
-                <button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('notification.index') }}'">Cancelar</button>
+                <button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('notification-list') }}'">Cancelar</button>
                 <button type="button" class="btn btn-info ms-auto" id="loadTemplate">
                     <i class="ti ti-template me-1"></i>Cargar plantilla
                 </button>
@@ -174,7 +174,7 @@ $(document).ready(function() {
                 if (response.success) {
                     $('#subject').val(response.subject);
                     quill.setText(response.message);
-                    
+
                     if (!response.is_customizable) {
                         quill.disable();
                         $('#subject').prop('readonly', true);
@@ -199,4 +199,4 @@ $(document).ready(function() {
     });
 });
 </script>
-@endsection 
+@endsection

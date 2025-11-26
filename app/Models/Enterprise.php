@@ -133,14 +133,12 @@ class Enterprise extends Model
             7 => 'Finished',
         ];
 
+        // Optimize: Use database aggregation instead of loading all records
         $contactStats = self::where('team_id', $teamId)
             ->whereIn('status_id', array_keys($statusLabels))
-            ->get()
+            ->selectRaw('status_id, COUNT(*) as count')
             ->groupBy('status_id')
-            ->map(function ($group)
-            {
-                return $group->count();
-            });
+            ->pluck('count', 'status_id');
 
         $totalContacts = $contactStats->sum();
 
