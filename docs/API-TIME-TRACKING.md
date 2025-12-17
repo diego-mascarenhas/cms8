@@ -408,44 +408,174 @@ Authorization: Bearer {token}
 
 ---
 
+## Quick Example: Start and Stop Timer
+
+Here's a real example of starting a timer on a task and stopping it:
+
+```bash
+# Set your token
+TOKEN="your-token-here"
+
+# 1. Start timer on task
+curl -X POST https://mi.humano.app/api/time/start \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"task_id": 51, "description": "Escribiendo documentación de la API"}' \
+  -k | jq .
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Timer iniciado correctamente.",
+	"data": {
+		"id": 49,
+		"task_id": 51,
+		"task": {
+			"id": 51,
+			"title": "Documentación de la API",
+			"project": {
+				"id": 4,
+				"name": "APP para fichaje en Humano"
+			}
+		},
+		"description": "Escribiendo documentación de la API",
+		"start_time": "2025-12-17T10:05:55.000000Z",
+		"is_billable": true
+	},
+	"previous_stopped": true
+}
+```
+
+```bash
+# 2. Check running timer
+curl -X GET https://mi.humano.app/api/time/running \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"running": true,
+	"data": {
+		"id": 49,
+		"task_id": 51,
+		"task": {
+			"id": 51,
+			"title": "Documentación de la API",
+			"status": "Por Hacer",
+			"project": {
+				"id": 4,
+				"name": "APP para fichaje en Humano"
+			}
+		},
+		"description": "Escribiendo documentación de la API",
+		"start_time": "2025-12-17T10:05:55.000000Z",
+		"elapsed_seconds": 82,
+		"is_billable": true
+	}
+}
+```
+
+```bash
+# 3. Stop timer (replace 49 with your timer ID)
+curl -X POST https://mi.humano.app/api/time/49/stop \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
+```
+
+**Response:**
+
+```json
+{
+	"success": true,
+	"message": "Timer detenido correctamente.",
+	"data": {
+		"id": 49,
+		"task_id": 51,
+		"task": {
+			"id": 51,
+			"title": "Documentación de la API",
+			"project": {
+				"id": 4,
+				"name": "APP para fichaje en Humano"
+			}
+		},
+		"description": "Escribiendo documentación de la API",
+		"start_time": "2025-12-17T10:05:55.000000Z",
+		"end_time": "2025-12-17T10:07:23.000000Z",
+		"duration_seconds": 88,
+		"duration_formatted": "1m",
+		"duration_hours": 0.02,
+		"is_billable": true,
+		"earnings": 0
+	}
+}
+```
+
+---
+
 ## Complete Workflow Example
 
 ```bash
 # 1. Login
-TOKEN=$(curl -X POST https://your-domain.com/api/auth/login \
+TOKEN=$(curl -X POST https://mi.humano.app/api/auth/login \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
   -d '{"email":"user@example.com","password":"password"}' \
-  -s | jq -r '.token')
+  -k -s | jq -r '.token')
 
 # 2. List my tasks
-curl -X GET "https://your-domain.com/api/tasks?pending_only=1" \
-  -H "Authorization: Bearer $TOKEN"
+curl -X GET "https://mi.humano.app/api/tasks?pending_only=1" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
 # 3. Get task details
-curl -X GET https://your-domain.com/api/tasks/1 \
-  -H "Authorization: Bearer $TOKEN"
+curl -X GET https://mi.humano.app/api/tasks/1 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
 # 4. Check if timer is running
-curl -X GET https://your-domain.com/api/time/running \
-  -H "Authorization: Bearer $TOKEN"
+curl -X GET https://mi.humano.app/api/time/running \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
 # 5. Start timer on task
-curl -X POST https://your-domain.com/api/time/start \
+curl -X POST https://mi.humano.app/api/time/start \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"task_id": 1, "description": "Working on feature X"}'
+  -H "Accept: application/json" \
+  -d '{"task_id": 1, "description": "Working on feature X"}' \
+  -k | jq .
 
-# 6. Stop timer
-curl -X POST https://your-domain.com/api/time/1/stop \
-  -H "Authorization: Bearer $TOKEN"
+# 6. Stop timer (replace 1 with actual timer ID)
+curl -X POST https://mi.humano.app/api/time/1/stop \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
 # 7. View time tracking history
-curl -X GET https://your-domain.com/api/time \
-  -H "Authorization: Bearer $TOKEN"
+curl -X GET https://mi.humano.app/api/time \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
 # 8. Filter history by date range
-curl -X GET "https://your-domain.com/api/time?date_from=2025-12-01&date_to=2025-12-31" \
-  -H "Authorization: Bearer $TOKEN"
+curl -X GET "https://mi.humano.app/api/time?date_from=2025-12-01&date_to=2025-12-31" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 ```
 
 ---

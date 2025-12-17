@@ -280,38 +280,187 @@ Authorization: Bearer {token}
 
 ---
 
+## Quick Example: Clock In and Clock Out
+
+Here's a real example of clocking in for your workday and clocking out:
+
+```bash
+# Set your token
+TOKEN="your-token-here"
+
+# 1. Check if already clocked in
+curl -X GET https://mi.humano.app/api/attendance/running \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
+```
+
+**Response (not clocked in):**
+```json
+{
+  "success": true,
+  "running": false,
+  "data": null
+}
+```
+
+```bash
+# 2. Clock in to start work shift
+curl -X POST https://mi.humano.app/api/attendance/clock-in \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Jornada iniciada correctamente.",
+  "data": {
+    "id": 5,
+    "start_at": "2025-12-17T10:08:15.000000Z"
+  }
+}
+```
+
+```bash
+# 3. Check running attendance
+curl -X GET https://mi.humano.app/api/attendance/running \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "running": true,
+  "data": {
+    "id": 5,
+    "start_at": "2025-12-17T10:08:15.000000Z",
+    "elapsed_seconds": 45,
+    "working_seconds": 45,
+    "paused_seconds": 0,
+    "is_paused": false,
+    "paused_at": null
+  }
+}
+```
+
+```bash
+# 4. Pause for lunch break
+curl -X POST https://mi.humano.app/api/attendance/5/pause \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Jornada pausada correctamente.",
+  "data": {
+    "id": 5,
+    "paused_at": "2025-12-17T10:09:00.000000Z"
+  }
+}
+```
+
+```bash
+# 5. Resume after lunch
+curl -X POST https://mi.humano.app/api/attendance/5/resume \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Jornada reanudada correctamente.",
+  "data": {
+    "id": 5,
+    "paused_seconds": 3600
+  }
+}
+```
+
+```bash
+# 6. Clock out at end of day
+curl -X POST https://mi.humano.app/api/attendance/5/clock-out \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Jornada finalizada correctamente.",
+  "data": {
+    "id": 5,
+    "start_at": "2025-12-17T10:08:15.000000Z",
+    "end_at": "2025-12-17T17:30:45.000000Z",
+    "duration_seconds": 23550,
+    "duration_formatted": "6h 32m",
+    "duration_hours": 6.54,
+    "paused_seconds": 3600
+  }
+}
+```
+
+---
+
 ## Complete Workflow Example
 
 ```bash
 # 1. Login
-TOKEN=$(curl -X POST https://your-domain.com/api/auth/login \
+TOKEN=$(curl -X POST https://mi.humano.app/api/auth/login \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
   -d '{"email":"user@example.com","password":"password"}' \
-  -s | jq -r '.token')
+  -k -s | jq -r '.token')
 
 # 2. Check if already clocked in
-curl -X GET https://your-domain.com/api/attendance/running \
-  -H "Authorization: Bearer $TOKEN"
+curl -X GET https://mi.humano.app/api/attendance/running \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
 # 3. Clock in to start work shift
-curl -X POST https://your-domain.com/api/attendance/clock-in \
-  -H "Authorization: Bearer $TOKEN"
+curl -X POST https://mi.humano.app/api/attendance/clock-in \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
-# 4. Pause for lunch break
-curl -X POST https://your-domain.com/api/attendance/1/pause \
-  -H "Authorization: Bearer $TOKEN"
+# 4. Pause for lunch break (replace 1 with your attendance ID)
+curl -X POST https://mi.humano.app/api/attendance/1/pause \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
 # 5. Resume after lunch
-curl -X POST https://your-domain.com/api/attendance/1/resume \
-  -H "Authorization: Bearer $TOKEN"
+curl -X POST https://mi.humano.app/api/attendance/1/resume \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
 # 6. Clock out at end of day
-curl -X POST https://your-domain.com/api/attendance/1/clock-out \
-  -H "Authorization: Bearer $TOKEN"
+curl -X POST https://mi.humano.app/api/attendance/1/clock-out \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 
 # 7. View attendance history
-curl -X GET https://your-domain.com/api/attendance \
-  -H "Authorization: Bearer $TOKEN"
+curl -X GET https://mi.humano.app/api/attendance \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -k | jq .
 ```
 
 ---
