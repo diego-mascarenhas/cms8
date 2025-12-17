@@ -78,7 +78,7 @@ class AttendanceController extends Controller
 		{
 			$elapsedSeconds = now()->diffInSeconds($attendance->start_at);
 			$pausedSeconds = (int) ($attendance->paused_seconds ?? 0);
-			
+
 			// If currently paused, add current pause duration
 			if ($attendance->paused_at)
 			{

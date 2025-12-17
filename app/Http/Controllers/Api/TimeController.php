@@ -22,35 +22,31 @@ class TimeController extends Controller
 			->with(['task', 'task.project', 'task.status']);
 
 		// Filtros opcionales
-		if ($request->has('date_from'))
-		{
+		if ($request->has('date_from')) {
 			$query->whereDate('start_time', '>=', $request->date_from);
 		}
 
-		if ($request->has('date_to'))
-		{
+		if ($request->has('date_to')) {
 			$query->whereDate('start_time', '<=', $request->date_to);
 		}
 
-		if ($request->has('task_id'))
-		{
+		if ($request->has('task_id')) {
 			$query->where('task_id', $request->task_id);
 		}
 
 		// Solo fichajes completados por defecto
-		if (! $request->has('include_running') || ! $request->include_running)
-		{
+		if (!$request->has('include_running') || !$request->include_running) {
 			$query->whereNotNull('end_time');
 		}
 
 		// Ordenar por más reciente primero
-		$times = $query->orderBy('start_time', 'desc')
+		$times = $query
+			->orderBy('start_time', 'desc')
 			->limit($request->input('limit', 50))
 			->get();
 
 		// Transformar a formato API
-		$data = $times->map(function ($time)
-		{
+		$data = $times->map(function ($time) {
 			return [
 				'id' => $time->id,
 				'task_id' => $time->task_id,
@@ -92,8 +88,7 @@ class TimeController extends Controller
 	{
 		$runningTimer = Time::getRunningTimer($request->user()->id);
 
-		if ($runningTimer)
-		{
+		if ($runningTimer) {
 			$runningTimer->load('task', 'task.project', 'task.status');
 
 			return response()->json([
@@ -140,8 +135,7 @@ class TimeController extends Controller
 
 		// Verificar que el usuario tiene acceso a la tarea
 		$task = \App\Models\Task::findOrFail($validated['task_id']);
-		if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
-		{
+		if ($task->responsible_id !== $request->user()->id && !$request->user()->hasRole('admin')) {
 			return response()->json([
 				'success' => false,
 				'message' => __('No tienes permiso para fichar en esta tarea.'),
@@ -150,8 +144,7 @@ class TimeController extends Controller
 
 		// Idempotency: si el timer actual es para la misma tarea, solo retornarlo
 		$runningTimer = Time::getRunningTimer($request->user()->id);
-		if ($runningTimer && (int) $runningTimer->task_id === (int) $validated['task_id'])
-		{
+		if ($runningTimer && (int) $runningTimer->task_id === (int) $validated['task_id']) {
 			$runningTimer->load('task', 'task.project');
 
 			return response()->json([
@@ -174,8 +167,7 @@ class TimeController extends Controller
 
 		// Si hay otro timer corriendo, detenerlo
 		$previouslyStopped = false;
-		if ($runningTimer)
-		{
+		if ($runningTimer) {
 			$runningTimer->stop();
 			$previouslyStopped = true;
 		}
@@ -225,8 +217,7 @@ class TimeController extends Controller
 		$time = Time::findOrFail($id);
 
 		// Validar que el usuario sea dueño del timer
-		if ($time->user_id !== $request->user()->id)
-		{
+		if ($time->user_id !== $request->user()->id) {
 			return response()->json([
 				'success' => false,
 				'message' => __('No tienes permiso para detener este timer.'),
@@ -234,8 +225,7 @@ class TimeController extends Controller
 		}
 
 		// Verificar que el timer esté corriendo
-		if (! $time->isRunning())
-		{
+		if (!$time->isRunning()) {
 			return response()->json([
 				'success' => false,
 				'message' => __('El timer no está corriendo.'),
@@ -272,4 +262,3 @@ class TimeController extends Controller
 		]);
 	}
 }
-

@@ -22,15 +22,12 @@ class TaskController extends Controller
 			->with(['status', 'category', 'project', 'responsible']);
 
 		// Filtros opcionales
-		if ($request->has('status_id'))
-		{
+		if ($request->has('status_id')) {
 			$query->where('status_id', $request->status_id);
 		}
 
-		if ($request->has('pending_only') && $request->pending_only)
-		{
-			$query->whereHas('status', function ($q)
-			{
+		if ($request->has('pending_only') && $request->pending_only) {
+			$query->whereHas('status', function ($q) {
 				$q->whereNotIn('name', ['DONE', 'CANCELLED']);
 			});
 		}
@@ -39,8 +36,7 @@ class TaskController extends Controller
 		$tasks = $query->defaultOrder()->get();
 
 		// Transformar a formato API
-		$data = $tasks->map(function ($task)
-		{
+		$data = $tasks->map(function ($task) {
 			return [
 				'id' => $task->id,
 				'title' => $task->title,
@@ -89,8 +85,7 @@ class TaskController extends Controller
 
 		// Validar que el usuario tenga acceso a esta tarea
 		// (El global scope ya filtra por team_id, pero verificamos responsible)
-		if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
-		{
+		if ($task->responsible_id !== $request->user()->id && !$request->user()->hasRole('admin')) {
 			return response()->json([
 				'success' => false,
 				'message' => __('No tienes permiso para ver esta tarea.'),
@@ -132,4 +127,3 @@ class TaskController extends Controller
 		]);
 	}
 }
-
