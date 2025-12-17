@@ -29,3 +29,15 @@ Thumbs.db
 /public/js/helpdesk-chat.js
 /public/js/datatables/
 /public/assets/
+
+# Packages en desarrollo local (trabaje en otra computadora)
+/packages/idoneo/humano-academy
+/packages/idoneo/humano-access-control
+/packages/idoneo/humano-billing
+/packages/idoneo/humano-chat
+/packages/idoneo/humano-ecommerce
+/packages/idoneo/humano-infrastructure
+/packages/idoneo/humano-mailbox
+/packages/idoneo/humano-mailer
+/packages/idoneo/humano-tickets
+/packages/idoneo/humano-version-control
