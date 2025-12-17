@@ -12,10 +12,12 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SoftwareController;
+use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamContactController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TemplateImportController;
+use App\Http\Controllers\Api\TimeController;
 use App\Http\Controllers\AuthController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
@@ -350,6 +352,22 @@ Route::group(['prefix' => 'auth'], function ()
 
 Route::middleware('auth:sanctum')->group(function ()
 {
+    // Time tracking / Fichaje
+    Route::prefix('time')->group(function ()
+    {
+        Route::get('/', [TimeController::class, 'index']);
+        Route::get('/running', [TimeController::class, 'running']);
+        Route::post('/start', [TimeController::class, 'start']);
+        Route::post('/{id}/stop', [TimeController::class, 'stop']);
+    });
+
+    // Tasks
+    Route::prefix('tasks')->group(function ()
+    {
+        Route::get('/', [TaskController::class, 'index']);
+        Route::get('/{id}', [TaskController::class, 'show']);
+    });
+
     // Category
     Route::get('category', [CategoryController::class, 'index']);
 
