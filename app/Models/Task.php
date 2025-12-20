@@ -37,18 +37,18 @@ class Task extends Model implements HasMedia
 
     protected static function booted()
     {
-		static::addGlobalScope('team', function (Builder $builder)
-		{
-			if (auth()->check())
-			{
-				$teamId = optional(auth()->user()->currentTeam)->id
-					?? auth()->user()->teams()->value('teams.id');
-				if ($teamId)
-				{
-					$builder->where('team_id', $teamId);
-				}
-			}
-		});
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $teamId = optional(auth()->user()->currentTeam)->id
+                    ?? auth()->user()->teams()->value('teams.id');
+                if ($teamId)
+                {
+                    $builder->where('team_id', $teamId);
+                }
+            }
+        });
     }
 
     public function responsible()
@@ -73,8 +73,8 @@ class Task extends Model implements HasMedia
 
     public function project()
     {
-		// Link task to project by shared board_id
-		return $this->hasOne(Project::class, 'board_id', 'board_id');
+        // Link task to project by shared board_id
+        return $this->hasOne(Project::class, 'board_id', 'board_id');
     }
 
     public function getStatusLabelAttribute()

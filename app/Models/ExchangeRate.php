@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class ExchangeRate extends Model
 {
@@ -37,15 +37,12 @@ class ExchangeRate extends Model
     /**
      * Get the latest exchange rate for a currency pair.
      * If direct conversion doesn't exist, calculates it using USD as intermediary.
-     *
-     * @param string $base
-     * @param string $target
-     * @return float|null
      */
     public static function getLatestRate(string $base, string $target): ?float
     {
         // Si son la misma moneda, la tasa es 1
-        if ($base === $target) {
+        if ($base === $target)
+        {
             return 1.0;
         }
 
@@ -55,13 +52,15 @@ class ExchangeRate extends Model
             ->latest('date')
             ->first();
 
-        if ($rate) {
+        if ($rate)
+        {
             return (float) $rate->rate;
         }
 
         // Si no existe conversión directa, calcular usando USD como intermediario
         // Fórmula: BASE → TARGET = (1 / USD_BASE) × USD_TARGET
-        if ($base !== 'USD' && $target !== 'USD') {
+        if ($base !== 'USD' && $target !== 'USD')
+        {
             $usdToBase = static::where('base_currency', 'USD')
                 ->where('target_currency', $base)
                 ->latest('date')
@@ -72,7 +71,8 @@ class ExchangeRate extends Model
                 ->latest('date')
                 ->first();
 
-            if ($usdToBase && $usdToTarget) {
+            if ($usdToBase && $usdToTarget)
+            {
                 // 1 BASE = (1 / USD_BASE) USD
                 // 1 BASE = (1 / USD_BASE) × USD_TARGET TARGET
                 return (1 / (float) $usdToBase->rate) * (float) $usdToTarget->rate;
@@ -80,25 +80,29 @@ class ExchangeRate extends Model
         }
 
         // Si base es USD, intentar la conversión inversa
-        if ($base === 'USD') {
+        if ($base === 'USD')
+        {
             $targetToUsd = static::where('base_currency', $target)
                 ->where('target_currency', 'USD')
                 ->latest('date')
                 ->first();
 
-            if ($targetToUsd) {
+            if ($targetToUsd)
+            {
                 return 1 / (float) $targetToUsd->rate;
             }
         }
 
         // Si target es USD, intentar la conversión inversa
-        if ($target === 'USD') {
+        if ($target === 'USD')
+        {
             $baseToUsd = static::where('base_currency', $base)
                 ->where('target_currency', 'USD')
                 ->latest('date')
                 ->first();
 
-            if ($baseToUsd) {
+            if ($baseToUsd)
+            {
                 return 1 / (float) $baseToUsd->rate;
             }
         }
@@ -109,10 +113,7 @@ class ExchangeRate extends Model
     /**
      * Get exchange rate for a specific date.
      *
-     * @param string $base
-     * @param string $target
-     * @param string|Carbon $date
-     * @return float|null
+     * @param  string|Carbon  $date
      */
     public static function getRateForDate(string $base, string $target, $date): ?float
     {
@@ -128,15 +129,11 @@ class ExchangeRate extends Model
 
     /**
      * Convert an amount from one currency to another.
-     *
-     * @param float $amount
-     * @param string $from
-     * @param string $to
-     * @return float|null
      */
     public static function convert(float $amount, string $from, string $to): ?float
     {
-        if ($from === $to) {
+        if ($from === $to)
+        {
             return $amount;
         }
 
@@ -148,8 +145,7 @@ class ExchangeRate extends Model
     /**
      * Scope to filter by base currency.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string $currency
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeBaseCurrency($query, string $currency)
@@ -160,8 +156,7 @@ class ExchangeRate extends Model
     /**
      * Scope to filter by target currency.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string $currency
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeTargetCurrency($query, string $currency)
@@ -172,9 +167,9 @@ class ExchangeRate extends Model
     /**
      * Scope to filter by date range.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string|Carbon $startDate
-     * @param string|Carbon $endDate
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  string|Carbon  $startDate
+     * @param  string|Carbon  $endDate
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeDateRange($query, $startDate, $endDate)
@@ -182,4 +177,3 @@ class ExchangeRate extends Model
         return $query->whereBetween('date', [$startDate, $endDate]);
     }
 }
-

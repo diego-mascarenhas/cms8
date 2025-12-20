@@ -167,23 +167,23 @@ class Kernel extends ConsoleKernel
             ->name('process-active-campaigns')
             ->description('Create deliveries for active campaigns');
 
-		$schedule->command('campaigns:send-scheduled')
-			->everyMinute()
-			->withoutOverlapping()
-			->name('send-scheduled-deliveries')
-			->description('Send scheduled email deliveries');
+        $schedule->command('campaigns:send-scheduled')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->name('send-scheduled-deliveries')
+            ->description('Send scheduled email deliveries');
 
-		// Fetch exchange rates daily
-		$schedule->command('exchange-rates:fetch')
-			->dailyAt('06:00')
-			->name('fetch-exchange-rates')
-			->description('Fetch daily exchange rates from CurrencyFreaks')
-			->onFailure(function ()
-			{
-				Log::error('Exchange rates fetch command failed');
-			})
-			->runInBackground();
-	}
+        // Fetch exchange rates daily
+        $schedule->command('exchange-rates:fetch')
+            ->dailyAt('06:00')
+            ->name('fetch-exchange-rates')
+            ->description('Fetch daily exchange rates from CurrencyFreaks')
+            ->onFailure(function ()
+            {
+                Log::error('Exchange rates fetch command failed');
+            })
+            ->runInBackground();
+    }
 
     /**
      * Register the commands for the application.

@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\Authenticate;
-use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\LocaleMiddleware;
 use App\Http\Middleware\ModifyMenuBasedOnRole;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
@@ -12,7 +11,6 @@ use App\Http\Middleware\TrackContactViewing;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateSignature;
-use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -24,7 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware) {
+    ->withMiddleware(function (Middleware $middleware)
+    {
         // Global middleware
         $middleware->use([
             // \App\Http\Middleware\TrustHosts::class,
@@ -73,6 +72,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // Add any cookies that should not be encrypted
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions) {
+    ->withExceptions(function (Exceptions $exceptions)
+    {
         //
     })->create();

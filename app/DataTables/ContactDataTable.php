@@ -121,14 +121,14 @@ class ContactDataTable extends DataTable
         $query = $model->newQuery()
             ->where('team_id', Auth::user()->currentTeam->id)
             ->with([
-            'list60:id,contact_id',
-            'enterprises:id,name',
-            'currentSentiment.sentiment',
-            'status',
-            'sources',
-            'responsible:id,name',
-            'categories',
-        ]);
+                'list60:id,contact_id',
+                'enterprises:id,name',
+                'currentSentiment.sentiment',
+                'status',
+                'sources',
+                'responsible:id,name',
+                'categories',
+            ]);
 
         // Collaborators only see their assigned contacts
         $user = Auth::user();

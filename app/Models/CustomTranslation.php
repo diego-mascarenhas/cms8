@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
@@ -28,8 +27,8 @@ class CustomTranslation extends Model
         });
 
         // Clear cache on model changes
-        static::saved(fn($translation) => Cache::forget("custom_translations_team_{$translation->team_id}"));
-        static::deleted(fn($translation) => Cache::forget("custom_translations_team_{$translation->team_id}"));
+        static::saved(fn ($translation) => Cache::forget("custom_translations_team_{$translation->team_id}"));
+        static::deleted(fn ($translation) => Cache::forget("custom_translations_team_{$translation->team_id}"));
     }
 
     public function team()

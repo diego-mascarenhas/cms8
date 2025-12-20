@@ -13,8 +13,24 @@ class CoreModulesPermissionsSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->command->info('🔐 Creating core modules permissions...');
+        /*
+         * ==================================================================================
+         * PERMISSIONS ARE NO LONGER USED - AUTHORIZATION NOW BASED ON ROLES + POLICIES
+         * ==================================================================================
+         *
+         * This seeder has been disabled. Authorization is now handled by:
+         * - Spatie Roles (admin, collaborator, client, etc.)
+         * - Laravel Policies (ProjectPolicy, ContactPolicy, etc.)
+         *
+         * See RolesAndPermissionsSeeder for more information.
+         * ==================================================================================
+         */
 
+        $this->command->info('⏭️  Skipping core modules permissions (role-based authorization active)');
+        // All permission creation disabled - authorization now handled by roles and policies
+
+        // The following code has been commented out but kept for reference:
+        /*
         // Define all core modules and their permissions
         $coreModules = [
             'dashboard' => ['index'],
@@ -40,7 +56,7 @@ class CoreModulesPermissionsSeeder extends Seeder
             foreach ($actions as $action)
             {
                 $permissionName = $module.'.'.$action;
-                Permission::firstOrCreate(['name' => $permissionName]);
+                // Permission::firstOrCreate(['name' => $permissionName]);
                 $permissionsCreated++;
             }
         }
@@ -145,7 +161,7 @@ class CoreModulesPermissionsSeeder extends Seeder
 
         foreach ($additionalPermissions as $permission)
         {
-            Permission::firstOrCreate(['name' => $permission]);
+        // Permission::firstOrCreate(['name' => $permission]);
             $permissionsCreated++;
         }
 
@@ -162,5 +178,6 @@ class CoreModulesPermissionsSeeder extends Seeder
         {
             $this->command->warn('⚠️  Admin role not found');
         }
+        */
     }
 }

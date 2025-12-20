@@ -57,19 +57,19 @@
         <div class="d-flex align-content-center flex-wrap gap-3">
             <!-- <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
                             class="ti ti-plus me-1"></i>Añadir informe</a> -->
-            @can('contact.edit')
+            @can('update', $data)
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @endcan
-            @can('project.create')
+            @role('admin|collaborator|developer|technical')
                 <a href="{{ route('project.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-success waves-effect waves-light"><i
                         class="ti ti-folder-plus me-1"></i>Crear proyecto</a>
-            @endcan
-            @can('service.create')
+            @endrole
+            @role('admin|collaborator')
                 <a href="{{ route('service.create', ['enterprise_id' => $data->enterprises->first()?->id]) }}" class="btn btn-info waves-effect waves-light ms-2"><i
                         class="ti ti-server me-1"></i>Crear servicio</a>
-            @endcan
-            @can('chat.list')
+            @endrole
+            @role('admin|collaborator')
                 @if ($data->getWhatsAppNumber())
                     <a href="{{ route('chat.index') }}?phone={{ $data->getWhatsAppNumber() }}"
                         class="btn btn-info waves-effect waves-light"><i class="ti ti-message-chatbot me-1"></i>Chat</a>
@@ -240,7 +240,7 @@
                                                 <span class="badge bg-label-primary me-2">{{ $linkedUser->roles->first()->name ?? 'Sin rol' }}</span>
                                                 <span>{{ $linkedUser->name }} ({{ $linkedUser->email }})</span>
                                             </div>
-                                            @can('contact.edit')
+                                            @can('update', $data)
                                                 <a href="{{ route('user-unlink.show', ['contact', $data->id]) }}" class="btn btn-sm btn-icon btn-outline-secondary">
                                                     <i class="ti ti-unlink ti-xs"></i>
                                                 </a>
@@ -248,14 +248,14 @@
                                         </div>
                                     @else
                                         <span class="badge bg-label-danger">Usuario no encontrado</span>
-                                        @can('contact.edit')
+                                        @can('update', $data)
                                             <a href="{{ route('user-link.show', ['contact', $data->id]) }}" class="btn btn-sm btn-outline-primary ms-2">
                                                 <i class="ti ti-link ti-xs me-1"></i>Vincular usuario
                                             </a>
                                         @endcan
                                     @endif
                                 @else
-                                    @can('contact.edit')
+                                    @can('update', $data)
                                         <a href="{{ route('user-link.show', ['contact', $data->id]) }}" class="btn btn-sm btn-outline-primary ms-2">
                                             <i class="ti ti-link ti-xs me-1"></i>Vincular usuario
                                         </a>
@@ -324,15 +324,15 @@
                         <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones
                     </a>
                 </li>
-                @can('project.list')
+                @role('admin|collaborator|developer|editor|technical')
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="evolution-tab" data-bs-toggle="tab" href="#evolution" role="tab"
                         aria-controls="evolution" aria-selected="false">
                         <i class="ti ti-chart-line ti-xs me-1"></i>Evolución
                     </a>
                 </li>
-                @endcan
-                @can('invoice.list')
+                @endrole
+                @role('admin|collaborator')
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="balance-tab" data-bs-toggle="tab" href="#balance" role="tab"
                         aria-controls="balance" aria-selected="false">

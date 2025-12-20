@@ -33,8 +33,13 @@ class ProjectPolicy
             return true;
         }
 
-        // Regular users need specific permission
-        return $user->can('project.index');
+        // Developers and editors can view projects
+        if ($user->hasRole(['developer', 'editor', 'technical']))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -63,8 +68,13 @@ class ProjectPolicy
                 ->exists() && $project->team_id === $user->currentTeam->id;
         }
 
-        // Regular users need specific permission and team membership
-        return $user->can('project.show') && $project->team_id === $user->currentTeam->id;
+        // Developers and editors can view projects in their team
+        if ($user->hasRole(['developer', 'editor', 'technical']))
+        {
+            return $project->team_id === $user->currentTeam->id;
+        }
+
+        return false;
     }
 
     /**
@@ -72,12 +82,7 @@ class ProjectPolicy
      */
     public function create(User $user): bool
     {
-        if ($user->hasRole('admin'))
-        {
-            return true;
-        }
-
-        return $user->can('project.create');
+        return $user->hasRole(['admin', 'collaborator', 'developer', 'technical']);
     }
 
     /**
@@ -97,8 +102,13 @@ class ProjectPolicy
             return $project->responsible_id === $user->id && $project->team_id === $user->currentTeam->id;
         }
 
-        // Regular users need specific permission and team membership
-        return $user->can('project.update') && $project->team_id === $user->currentTeam->id;
+        // Developers and technical users can update projects in their team
+        if ($user->hasRole(['developer', 'technical']))
+        {
+            return $project->team_id === $user->currentTeam->id;
+        }
+
+        return false;
     }
 
     /**
@@ -107,13 +117,7 @@ class ProjectPolicy
     public function delete(User $user, Project $project): bool
     {
         // Only admins can delete projects
-        if ($user->hasRole('admin'))
-        {
-            return $project->team_id === $user->currentTeam->id;
-        }
-
-        // Regular users need specific permission
-        return $user->can('project.destroy') && $project->team_id === $user->currentTeam->id;
+        return $user->hasRole('admin') && $project->team_id === $user->currentTeam->id;
     }
 
     /**
@@ -159,8 +163,8 @@ class ProjectPolicy
                 return $query->whereIn('enterprise_id', $enterpriseIds);
             }
 
-            // Regular users can see all projects if they have permission
-            if ($user->can('project.index'))
+            // Developers and editors can see all projects in their team
+            if ($user->hasRole(['developer', 'editor', 'technical']))
             {
                 return $query->where('team_id', $user->currentTeam->id);
             }

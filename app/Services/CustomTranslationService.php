@@ -50,7 +50,8 @@ class CustomTranslationService
     {
         $cacheKey = "custom_translations_team_{$teamId}";
 
-        return Cache::remember($cacheKey, now()->addHours(24), function () use ($teamId) {
+        return Cache::remember($cacheKey, now()->addHours(24), function () use ($teamId)
+        {
             $translations = CustomTranslation::withoutGlobalScope('team')
                 ->where('team_id', $teamId)
                 ->get();
@@ -246,7 +247,8 @@ class CustomTranslationService
         // Check table existence with cache (24 hour TTL) to avoid repeated schema queries
         try
         {
-            $tableExists = Cache::remember('custom_translations_table_exists', now()->addHours(24), function () {
+            $tableExists = Cache::remember('custom_translations_table_exists', now()->addHours(24), function ()
+            {
                 return \Illuminate\Support\Facades\Schema::hasTable('custom_translations');
             });
 

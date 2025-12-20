@@ -59,18 +59,18 @@ class Contact extends Model implements HasMedia
             }
         });
 
-		// Visibility: non-admin users only see contacts assigned to them
-		static::addGlobalScope('ownership', function (Builder $builder)
-		{
-			if (auth()->check())
-			{
-				$user = auth()->user();
-				if (! $user->hasRole('admin'))
-				{
-					$builder->where('responsible_id', $user->id);
-				}
-			}
-		});
+        // Visibility: non-admin users only see contacts assigned to them
+        static::addGlobalScope('ownership', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $user = auth()->user();
+                if (! $user->hasRole('admin'))
+                {
+                    $builder->where('responsible_id', $user->id);
+                }
+            }
+        });
     }
 
     /**

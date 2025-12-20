@@ -86,7 +86,7 @@ class ClientDataTable extends DataTable
             ->pageLength(25)
             ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
             ->parameters([
-				'initComplete' => "function() {
+                'initComplete' => "function() {
 					var api = this.api();
 					api.columns('.select-filter').every(function() {
 						var column = this;

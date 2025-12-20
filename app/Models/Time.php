@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
@@ -35,18 +34,18 @@ class Time extends Model
 
     protected static function booted()
     {
-		static::addGlobalScope('team', function (Builder $builder)
-		{
-			if (auth()->check())
-			{
-				$teamId = optional(auth()->user()->currentTeam)->id
-					?? auth()->user()->teams()->value('teams.id');
-				if ($teamId)
-				{
-					$builder->where('team_id', $teamId);
-				}
-			}
-		});
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check())
+            {
+                $teamId = optional(auth()->user()->currentTeam)->id
+                    ?? auth()->user()->teams()->value('teams.id');
+                if ($teamId)
+                {
+                    $builder->where('team_id', $teamId);
+                }
+            }
+        });
     }
 
     public function team()

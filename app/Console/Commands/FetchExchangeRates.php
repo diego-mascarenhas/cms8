@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\ExchangeRate;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 class FetchExchangeRates extends Command
 {
@@ -20,26 +20,31 @@ class FetchExchangeRates extends Command
     {
         $apiKey = config('services.currencyfreaks.api_key');
 
-        if (empty($apiKey)) {
+        if (empty($apiKey))
+        {
             $this->error('CurrencyFreaks API key not configured in .env');
+
             return 1;
         }
 
         $baseCurrency = strtoupper($this->option('base'));
         $targetCurrencies = array_map('trim', explode(',', strtoupper($this->option('currencies'))));
 
-        try {
-            $this->info("Fetching rates: {$baseCurrency} -> " . implode(', ', $targetCurrencies));
+        try
+        {
+            $this->info("Fetching rates: {$baseCurrency} -> ".implode(', ', $targetCurrencies));
 
-            $url = "https://api.currencyfreaks.com/v2.0/rates/latest";
+            $url = 'https://api.currencyfreaks.com/v2.0/rates/latest';
             $response = Http::timeout(30)->get($url, [
                 'apikey' => $apiKey,
                 'base' => $baseCurrency,
                 'symbols' => implode(',', $targetCurrencies),
             ]);
 
-            if (!$response->successful()) {
-                $this->error("API Error: " . $response->status());
+            if (! $response->successful())
+            {
+                $this->error('API Error: '.$response->status());
+
                 return 1;
             }
 
@@ -48,8 +53,12 @@ class FetchExchangeRates extends Command
             $fetchedAt = Carbon::now();
 
             $count = 0;
-            foreach ($targetCurrencies as $target) {
-                if (!isset($data['rates'][$target])) continue;
+            foreach ($targetCurrencies as $target)
+            {
+                if (! isset($data['rates'][$target]))
+                {
+                    continue;
+                }
 
                 ExchangeRate::updateOrCreate(
                     [
@@ -60,7 +69,7 @@ class FetchExchangeRates extends Command
                     [
                         'rate' => $data['rates'][$target],
                         'fetched_at' => $fetchedAt,
-                    ]
+                    ],
                 );
 
                 $this->line("  ✓ {$baseCurrency}/{$target}: {$data['rates'][$target]}");
@@ -68,11 +77,13 @@ class FetchExchangeRates extends Command
             }
 
             $this->info("✓ Stored {$count} exchange rates");
-            return 0;
 
-        } catch (\Exception $e) {
+            return 0;
+        } catch (\Exception $e)
+        {
             $this->error("Error: {$e->getMessage()}");
             Log::error('Exchange rates fetch error', ['message' => $e->getMessage()]);
+
             return 1;
         }
     }
