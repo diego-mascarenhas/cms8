@@ -11,11 +11,11 @@
         @role('admin|collaborator')
             <a href="{{ route('collaborator.edit', $contact->id) }}" class="text-body me-2"><i class="ti ti-edit ti-sm"></i></a>
         @endrole
-        
+
         @role('admin|collaborator')
             <a href="{{ route('collaborator.show', $contact->id) }}" class="text-body me-2"><i class="ti ti-eye ti-sm"></i></a>
         @endrole
-        
+
         <!-- Three dots dropdown menu -->
         @role('admin')
             <div class="dropdown">
@@ -45,4 +45,4 @@
             </div>
         @endrole
     @endif
-</div> 
+</div>

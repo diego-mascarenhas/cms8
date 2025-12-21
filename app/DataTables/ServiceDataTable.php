@@ -12,6 +12,9 @@ use Yajra\DataTables\Services\DataTable;
 
 class ServiceDataTable extends DataTable
 {
+    // Fix N+1: Cache servers to avoid querying in the loop
+    protected $serversCache = null;
+
     /**
      * Build the DataTable class.
      *
@@ -19,6 +22,9 @@ class ServiceDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
+        // Fix N+1: Load all servers once
+        $this->serversCache = \App\Models\Server::pluck('name', 'id');
+
         $table = (new EloquentDataTable($query));
 
         if (\Auth::user()->can('service.edit') || \Auth::user()->can('service.destroy') || \Auth::user()->can('service.show'))
@@ -52,13 +58,12 @@ class ServiceDataTable extends DataTable
             })
             ->editColumn('category_id', function ($data)
             {
-                return $data->category->name;
+                return $data->serviceType->name;  // Fix N+1: Use eager-loaded serviceType
             })
             ->filterColumn('category_id', function ($query, $keyword)
             {
-                $query->whereHas('category', function ($q) use ($keyword)
-                {
-                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
+                $query->whereHas('serviceType', function ($q) use ($keyword)  // Fix N+1: Use serviceType relation
+                {$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
             ->addColumn('domain', function ($data)
@@ -67,11 +72,10 @@ class ServiceDataTable extends DataTable
             })
             ->addColumn('server', function ($data)
             {
+                // Fix N+1: Use cache instead of individual queries
                 if (! empty($data->data['server_id']))
                 {
-                    $server = \App\Models\Server::find($data->data['server_id']);
-
-                    return $server ? $server->name : '-';
+                    return $this->serversCache[$data->data['server_id']] ?? '-';
                 }
 
                 return '-';
@@ -141,7 +145,11 @@ class ServiceDataTable extends DataTable
     public function query(Service $model): QueryBuilder
     {
         $query = $model->newQuery()
-            ->with(['client', 'category', 'currency'])
+            ->with([
+                'client',
+                'serviceType',  // Fix N+1: Use 'serviceType' instead of 'category' alias
+                'currency',
+            ])
             ->whereHas('client', function ($query)
             {
                 $query->where('team_id', auth()->user()->currentTeam->id);

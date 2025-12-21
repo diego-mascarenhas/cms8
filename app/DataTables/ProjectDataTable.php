@@ -77,6 +77,8 @@ class ProjectDataTable extends DataTable
         $query = $model->newQuery()->with([
             'client',
             'responsible:id,name',
+            'category',  // Fix N+1: Needed for category name in dataTable()
+            'status',    // Fix N+1: Needed for status_label in dataTable()
         ]);
 
         $user = Auth::user();

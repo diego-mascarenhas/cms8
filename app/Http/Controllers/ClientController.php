@@ -120,10 +120,19 @@ class ClientController extends Controller
         }
         $collaborators = $collaborators->unique('id');
 
-        // Count projects per collaborator
-        foreach ($collaborators as $collaborator)
+        // Fix N+1: Load project counts for all collaborators at once
+        if ($collaborators->isNotEmpty())
         {
-            $collaborator->loadCount('projects');
+            $collaboratorIds = $collaborators->pluck('id')->toArray();
+            $projectCounts = \App\Models\User::whereIn('id', $collaboratorIds)
+                ->withCount('projects')
+                ->get()
+                ->keyBy('id');
+
+            foreach ($collaborators as $collaborator)
+            {
+                $collaborator->projects_count = $projectCounts[$collaborator->id]->projects_count ?? 0;
+            }
         }
 
         // Get language combinations from projects
