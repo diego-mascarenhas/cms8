@@ -671,47 +671,76 @@ class TeamRevisionAlphaSeeder extends Seeder
     }
 
     /**
-     * Assign core modules to team
+     * Assign ALL modules to team
      */
     private function assignCoreModules(Team $team): void
     {
-        $this->getCommand()->info('🔧 Assigning core modules to team...');
+        $this->getCommand()->info('🔧 Assigning ALL modules to team...');
 
-        // These are the core modules that are automatically activated
-        $defaultModuleKeys = [
-            'dashboard',  // Dashboard (always active)
-            'users',  // User management
-            'contacts',  // Contact management
-            'clients',  // Client management
-            'services',  // Service catalog
-            'projects',  // Project management
-            'tasks',  // Task system (Kanban)
-            'times',  // Time tracking
-            'invoices',  // Invoice management
-            'payments',  // Payment management
-            'attendances',  // Attendance tracking
-            // 'accounting',  // Accounting (disabled by default)
-        ];
+        // Get all available modules
+        $allModules = Module::orderBy('is_core', 'desc')
+            ->orderBy('name')
+            ->get();
 
-        foreach ($defaultModuleKeys as $moduleKey)
+        if ($allModules->isEmpty())
         {
-            $module = Module::where('key', $moduleKey)->first();
-            if ($module)
+            $this->getCommand()->warn('⚠️  No modules found in the system!');
+
+            return;
+        }
+
+        $this->getCommand()->info("Total modules available: {$allModules->count()}");
+
+        $enabledCount = 0;
+        $alreadyEnabledCount = 0;
+
+        foreach ($allModules as $module)
+        {
+            // Check if module is already enabled
+            $existingPivot = DB::table('module_team')
+                ->where('module_id', $module->id)
+                ->where('team_id', $team->id)
+                ->first();
+
+            if ($existingPivot)
             {
-                DB::table('module_team')->updateOrInsert([
+                if ($existingPivot->status == 1)
+                {
+                    $this->getCommand()->info("✓ Already enabled: {$module->name} ({$module->key})");
+                    $alreadyEnabledCount++;
+                } else
+                {
+                    // Update to enable
+                    DB::table('module_team')
+                        ->where('module_id', $module->id)
+                        ->where('team_id', $team->id)
+                        ->update([
+                            'status' => 1,
+                            'updated_at' => now(),
+                        ]);
+                    $this->getCommand()->info("✅ Enabled: {$module->name} ({$module->key})");
+                    $enabledCount++;
+                }
+            } else
+            {
+                // Insert new record
+                DB::table('module_team')->insert([
                     'module_id' => $module->id,
                     'team_id' => $team->id,
-                ], [
                     'status' => 1,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                $this->getCommand()->info("✅ Enabled module: {$module->name} ({$moduleKey})");
-            } else
-            {
-                $this->getCommand()->warn("⚠️  Module not found: {$moduleKey}");
+                $this->getCommand()->info("✅ Enabled: {$module->name} ({$module->key})");
+                $enabledCount++;
             }
         }
+
+        $this->getCommand()->info('');
+        $this->getCommand()->info('📊 Module Activation Summary:');
+        $this->getCommand()->info("   - Newly enabled modules: {$enabledCount}");
+        $this->getCommand()->info("   - Already enabled modules: {$alreadyEnabledCount}");
+        $this->getCommand()->info('   - Total active modules: '.($enabledCount + $alreadyEnabledCount));
     }
 
     /**
