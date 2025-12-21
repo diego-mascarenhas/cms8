@@ -32,8 +32,8 @@
 
 		@php
 			// Check if campaign is active and has deliveries pending or in progress
-			$totalDeliveries = \Idoneo\HumanoMailer\Models\MessageDelivery::where('message_id', $message->id)->count();
-			$sentDeliveries = \Idoneo\HumanoMailer\Models\MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count();
+			$totalDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)->count();
+			$sentDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count();
 			$hasDeliveriesPending = $totalDeliveries > $sentDeliveries;
 			$campaignIsActive = $message->status_id == 1;
 			$campaignCanBePaused = $campaignIsActive && ($totalDeliveries > 0 || $message->started_at);

@@ -19,7 +19,7 @@ class SendMessageCampaignJob implements ShouldQueue
     /**
      * The message delivery instance.
      *
-     * @var \Idoneo\HumanoMailer\Models\MessageDelivery
+     * @var \App\Models\MessageDelivery
      */
     public $messageDelivery;
 

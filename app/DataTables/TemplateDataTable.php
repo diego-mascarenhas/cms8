@@ -20,7 +20,9 @@ class TemplateDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'humano-mailer::template.action')
+            ->addColumn('action', function ($template) {
+                return view('template.action', ['hashedId' => $template->getHashedId()])->render();
+            })
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status_id'])
             ->editColumn('updated_at', function ($data)
