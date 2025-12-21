@@ -10,9 +10,7 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/animate-css/animate.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
-
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/toastr/toastr.css')}}" />
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/animate-css/animate.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -25,7 +23,6 @@
 <script src="{{asset('assets/vendor/libs/cleavejs/cleave.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/cleavejs/cleave-phone.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
-
 <script src="{{asset('assets/vendor/libs/toastr/toastr.js')}}"></script>
 @endsection
 
@@ -141,12 +138,3 @@
 @push('scripts')
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
 @endpush
-
-{{-- vendor scripts --}}
-@section('vendor-script')
-<script src="{{asset('vendors/data-tables/js/jquery.dataTables.min.js')}}"></script>
-<script src="{{asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js')}}"></script>
-<script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
-<script src="{{asset('vendors/fullcalendar/lib/moment.min.js')}}"></script>
-<script src="{{asset('js/moment/' . app()->getLocale() . '.js')}}"></script>
-@endsection

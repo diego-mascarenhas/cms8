@@ -48,7 +48,7 @@ class Message extends Model
 
     public function team()
     {
-        return $this->belongsTo(Team::class);
+        return $this->belongsTo(\App\Models\Team::class);
     }
 
     public function type()
@@ -58,12 +58,12 @@ class Message extends Model
 
     public function category()
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(\App\Models\Category::class);
     }
 
     public function template()
     {
-        return $this->belongsTo(Template::class);
+        return $this->belongsTo(\App\Models\Template::class);
     }
 
     public function deliveries()
@@ -73,13 +73,13 @@ class Message extends Model
 
     public function contactStatus()
     {
-        return $this->belongsTo(ContactStatus::class);
+        return $this->belongsTo(\App\Models\ContactStatus::class);
     }
 
     /**
      * Check if this message can be sent to a specific contact based on the minimum hours between emails
      */
-    public function canSendToContact(Contact $contact): bool
+    public function canSendToContact(\App\Models\Contact $contact): bool
     {
         // If min_hours_between_emails is 0, always allow sending
         if ($this->min_hours_between_emails <= 0)
@@ -110,7 +110,7 @@ class Message extends Model
     /**
      * Get the next available time to send an email to a specific contact
      */
-    public function getNextAvailableTimeForContact(Contact $contact): ?\Carbon\Carbon
+    public function getNextAvailableTimeForContact(\App\Models\Contact $contact): ?\Carbon\Carbon
     {
         // If min_hours_between_emails is 0, can send immediately
         if ($this->min_hours_between_emails <= 0)

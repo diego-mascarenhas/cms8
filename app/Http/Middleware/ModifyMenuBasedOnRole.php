@@ -87,10 +87,14 @@ class ModifyMenuBasedOnRole
                         // Check if the menu item has a module key
                         $moduleKey = $menuItem['module_key'] ?? null;
 
-                        // Skip if the user doesn't have permission
-                        if (isset($menuItem['permission']) && ! $user->can($menuItem['permission']))
+                        // Skip permission check if user has admin role (admins have access to everything)
+                        if (! $user->hasRole('admin'))
                         {
-                            continue;
+                            // For non-admin users, skip if they don't have the required permission
+                            if (isset($menuItem['permission']) && ! $user->can($menuItem['permission']))
+                            {
+                                continue;
+                            }
                         }
 
                         // Gate all menu items by team module setting, except a small allowlist

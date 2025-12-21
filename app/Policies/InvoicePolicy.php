@@ -9,6 +9,19 @@ use Illuminate\Database\Eloquent\Builder;
 class InvoicePolicy
 {
     /**
+     * Perform pre-authorization checks.
+     * Admins have full access to everything in their team.
+     */
+    public function before(User $user, string $ability): ?bool
+    {
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        return null; // Continue to specific policy methods
+    }
+
+    /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool

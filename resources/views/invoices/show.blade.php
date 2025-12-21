@@ -248,4 +248,3 @@ function deleteInvoice(id) {
 </script>
 @endsection
 @endsection
-

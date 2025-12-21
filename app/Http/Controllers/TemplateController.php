@@ -47,7 +47,7 @@ class TemplateController extends Controller
             ],
         );
 
-        return redirect()->route('template-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('humano-mailer.template.index')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -59,10 +59,10 @@ class TemplateController extends Controller
 
         if (! $page)
         {
-            return redirect()->route('template.index')->with('error', 'Page not found.');
+            return redirect()->route('humano-mailer.template.index')->with('error', 'Template not found.');
         }
 
-        return view('page.show', compact('page'));
+        return view('template.show', compact('page'));
     }
 
     /**
@@ -74,7 +74,7 @@ class TemplateController extends Controller
 
         if (! $data)
         {
-            return redirect()->route('template-list')->with('error', 'Template not found.');
+            return redirect()->route('humano-mailer.template.index')->with('error', 'Template not found.');
         }
 
         return view('template.form', compact('data'));
@@ -111,7 +111,7 @@ class TemplateController extends Controller
 
         if (! $page)
         {
-            return redirect()->route('template-list')->with('error', 'Template not found.');
+            return redirect()->route('humano-mailer.template.index')->with('error', 'Template not found.');
         }
 
         // Add team ID information to the editor context

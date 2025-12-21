@@ -383,11 +383,16 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $rootRole = Role::firstOrCreate(['name' => 'root']);
 
+        /*
+         * Permission assignments commented out - using role-based authorization only
+         *
         $rootRole->syncPermissions([
             'user.management',
         ]);
+        */
 
         $administratorRole = Role::firstOrCreate(['name' => 'admin']);
+        /*
         $administratorRole->syncPermissions([
             'user.index',
             'user.list',
@@ -538,8 +543,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'academy.update',
             'academy.destroy',
         ]);
+        */
 
         $collaboratorRole = Role::firstOrCreate(['name' => 'collaborator']);
+        /*
         $collaboratorRole->syncPermissions([
             'today.list',
             'chat.list',
@@ -601,16 +608,20 @@ class RolesAndPermissionsSeeder extends Seeder
             'ecommerce.dashboard',
             'ecommerce.settings',
         ]);
+        */
 
         $employeeRole = Role::firstOrCreate(['name' => 'employee']);
+        /*
         $employeeRole->syncPermissions([
             'profile.show',
             'profile.edit',
             'profile.update',
             'password.update',
         ]);
+        */
 
         $editorRole = Role::firstOrCreate(['name' => 'editor']);
+        /*
         $editorRole->syncPermissions([
             'profile.show',
             'profile.edit',
@@ -633,24 +644,30 @@ class RolesAndPermissionsSeeder extends Seeder
             'message.list',
             'template.list',
         ]);
+        */
 
         $auditorRole = Role::firstOrCreate(['name' => 'auditor']);
+        /*
         $auditorRole->syncPermissions([
             'profile.show',
             'profile.edit',
             'profile.update',
             'password.update',
         ]);
+        */
 
         $technicalRole = Role::firstOrCreate(['name' => 'technical']);
+        /*
         $technicalRole->syncPermissions([
             'profile.show',
             'profile.edit',
             'profile.update',
             'password.update',
         ]);
+        */
 
         $clientRole = Role::firstOrCreate(['name' => 'client']);
+        /*
         $clientRole->syncPermissions([
             'profile.show',
             'profile.edit',
@@ -669,8 +686,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'project.list',
             'project.show',
         ]);
+        */
 
         $studentRole = Role::firstOrCreate(['name' => 'student']);
+        /*
         $studentRole->syncPermissions([
             'profile.show',
             'profile.edit',
@@ -680,24 +699,30 @@ class RolesAndPermissionsSeeder extends Seeder
             'academy.list',
             'academy.show',
         ]);
+        */
 
         $userRole = Role::firstOrCreate(['name' => 'user']);
+        /*
         $userRole->syncPermissions([
             'profile.show',
             'profile.edit',
             'profile.update',
             'password.update',
         ]);
+        */
 
         $guestRole = Role::firstOrCreate(['name' => 'guest']);
+        /*
         $guestRole->syncPermissions([
             'profile.show',
             'profile.edit',
             'profile.update',
             'password.update',
         ]);
+        */
 
         $developerRole = Role::firstOrCreate(['name' => 'developer']);
+        /*
         $developerRole->syncPermissions([
             'user.list',
             'user.create',
@@ -905,5 +930,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'academy.update',
             'academy.destroy',
         ]);
+        */
     }
 }

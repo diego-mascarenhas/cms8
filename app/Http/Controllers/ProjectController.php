@@ -16,6 +16,12 @@ use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
+    public function __construct()
+    {
+        // Authorize resource actions using ProjectPolicy
+        $this->authorizeResource(Project::class, 'id');
+    }
+
     public function index(ProjectDataTable $dataTable)
     {
         return $dataTable->render('project.index');

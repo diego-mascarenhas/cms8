@@ -16,7 +16,8 @@ class ServiceController extends Controller
      */
     public function __construct()
     {
-        // No middleware needed here as it's already applied at the route level
+        // Authorize resource actions using ServicePolicy
+        $this->authorizeResource(Service::class, 'id');
     }
 
     public function index(ServiceDataTable $dataTable)

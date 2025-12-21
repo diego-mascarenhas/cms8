@@ -29,6 +29,13 @@ class ContactController extends Controller
 {
     use TracksContactActions;
 
+    public function __construct()
+    {
+        // Authorize resource actions using ContactPolicy
+        // This automatically checks: viewAny, view, create, update, delete
+        $this->authorizeResource(Contact::class, 'id');
+    }
+
     public function index(ContactDataTable $dataTable)
     {
         if (! auth()->user()->currentTeam)

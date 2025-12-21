@@ -3,19 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\MessageDataTable;
-use App\Helpers\DnsHelper;
-use App\Mail\MySendGridMail;
-use App\Models\Contact;
-use App\Models\ContactStatus;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
 use App\Models\MessageType;
-use App\Models\Template;
-use App\Models\User;
-use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use stdClass;
@@ -23,8 +17,6 @@ use Twilio\Rest\Client;
 
 class MessageController extends Controller
 {
-    use ConfiguresTeamMail;
-
     public function index(MessageDataTable $dataTable)
     {
         return $dataTable->render('message.index');
@@ -37,8 +29,8 @@ class MessageController extends Controller
     {
         $data = new stdClass;
         $data->types = MessageType::getOptions();
-        $data->templates = Template::getOptions();
-        $data->contactStatuses = ContactStatus::getOptions();
+        $data->templates = \App\Models\Template::getOptions();
+        $data->contactStatuses = \App\Models\ContactStatus::getOptions();
 
         return view('message.form', compact('data'));
     }
@@ -175,18 +167,21 @@ class MessageController extends Controller
 
         // Verificar configuración DNS para el dominio del remitente
         $dnsStatus = null;
-        $mailbabyUser = null;
+        $apiUser = null;
 
         if (! empty($emailConfig['from_address']))
         {
-            // Obtener el usuario de MailBaby desde la configuración
-            $mailbabyUser = config('services.mailbaby.enabled') ? env('MAIL_USERNAME') : null;
+            // Obtener configuración de API de email
+            $apiUser = config('humano-mailer.providers.api.enabled') ? env('MAIL_USERNAME') : null;
 
             // Verificar configuración DNS
-            $dnsStatus = DnsHelper::checkEmailDomainConfiguration(
-                $emailConfig['from_address'],
-                $mailbabyUser,
-            );
+            if (class_exists(\App\Helpers\DnsHelper::class))
+            {
+                $dnsStatus = \App\Helpers\DnsHelper::checkEmailDomainConfiguration(
+                    $emailConfig['from_address'],
+                    $apiUser,
+                );
+            }
         }
 
         return view('message.show', [
@@ -198,7 +193,7 @@ class MessageController extends Controller
             'emailConfig' => $emailConfig,
             'contactsInCategory' => $contactsInCategory,
             'dnsStatus' => $dnsStatus,
-            'mailbabyUser' => $mailbabyUser,
+            'apiUser' => $apiUser,
         ]);
     }
 
@@ -215,8 +210,8 @@ class MessageController extends Controller
         }
 
         $data->types = MessageType::getOptions();
-        $data->templates = Template::getOptions();
-        $data->contactStatuses = ContactStatus::getOptions();
+        $data->templates = \App\Models\Template::getOptions();
+        $data->contactStatuses = \App\Models\ContactStatus::getOptions();
 
         return view('message.form', compact('data'));
     }
@@ -238,7 +233,7 @@ class MessageController extends Controller
 
         $model->delete();
 
-        return response()->json(['success' => 'The record has been deleted.'], 200);
+        return redirect()->route('message-list')->with('success', 'The record has been deleted.');
     }
 
     public function sendSmsMessage(Request $request)
@@ -289,25 +284,11 @@ class MessageController extends Controller
         }
     }
 
-    public function sendSendGridMessage()
-    {
-        $data = [
-            'to' => env('MAILBOX_USERNAME'),
-            'dynamic_template_data' => [
-                'name' => env('APP_NAME', 'Laravel'),
-                'message' => env('APP_NAME', 'Laravel').' SendGrid Message testing...',
-                'unsubscribe_url' => route('unsubscribe', ['email' => env('MAILBOX_USERNAME')]),
-            ],
-        ];
-
-        Mail::send(new MySendGridMail($data));
-    }
-
     public function unsubscribe($email)
     {
         // Update contact status to "Perdido" (ID 4) when they unsubscribe
         // But don't change status if they are already a client (status_id 5)
-        $contact = Contact::where('email', $email)->first();
+        $contact = \App\Models\Contact::where('email', $email)->first();
 
         if ($contact)
         {
@@ -568,7 +549,10 @@ class MessageController extends Controller
             ]);
 
             // ✨ IMPORTANTE: Configurar SMTP igual que en el Job
-            $this->configureMailForTeam($team);
+            if (trait_exists(\App\Traits\ConfiguresTeamMail::class))
+            {
+                $this->configureMailForTeam($team);
+            }
 
             Log::info('✅ TEST SEND: SMTP configured, ready to send', [
                 'after_config_host' => config('mail.mailers.smtp.host'),
@@ -597,19 +581,16 @@ class MessageController extends Controller
 
             switch ($emailProvider)
             {
-                case 'mailgun':
-                    if (config('services.mailgun.secret'))
+                case 'api':
+                    if (config('humano-mailer.providers.api.enabled'))
                     {
-                        Mail::mailer('mailgun')->to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
+                        // Use configured email API (MailBaby, Mailgun, etc.)
+                        Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
                     } else
                     {
-                        Log::warning('TEST SEND: Mailgun not configured, using default SMTP');
+                        Log::warning('TEST SEND: Email API not configured, using default SMTP');
                         Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
                     }
-                    break;
-                case 'mailbaby':
-                    Log::warning('TEST SEND: MailBaby API not supported for test emails, using SMTP');
-                    Mail::to($user->email)->send(new \App\Mail\TestMessageMail($message, $testContact, $htmlContent));
                     break;
                 case 'smtp':
                 default:
@@ -802,5 +783,26 @@ class MessageController extends Controller
         // They are now hardcoded in the template content
 
         return $htmlContent;
+    }
+
+    /**
+     * Configure mail for team (if trait is available)
+     */
+    private function configureMailForTeam($team)
+    {
+        if (trait_exists(\App\Traits\ConfiguresTeamMail::class))
+        {
+            // Use the trait if available in the host app
+            $trait = new class
+            {
+                use \App\Traits\ConfiguresTeamMail;
+
+                public function configure($team)
+                {
+                    $this->configureMailForTeam($team);
+                }
+            };
+            $trait->configure($team);
+        }
     }
 }

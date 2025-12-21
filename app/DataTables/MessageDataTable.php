@@ -20,7 +20,7 @@ class MessageDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'message.action')
+            ->addColumn('action', 'humano-mailer::message.action')
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status_id', 'contact_status_id'])
             ->editColumn('type_id', function ($data)

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6e5924a587d82bfc92c4555f3d41de45",
+    "content-hash": "4ab4897b7e57ab48f5a418ed3b074b0c",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -1641,90 +1641,6 @@
                 "source": "https://github.com/diego-mascarenhas/humano-academy/tree/main"
             },
             "time": "2025-10-11T18:10:43+00:00"
-        },
-        {
-            "name": "idoneo/humano-billing",
-            "version": "1.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/diego-mascarenhas/humano-billing.git",
-                "reference": "fb00eb4cda1269c3f22e0b6fde8e3661c61ccc81"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/diego-mascarenhas/humano-billing/zipball/fb00eb4cda1269c3f22e0b6fde8e3661c61ccc81",
-                "reference": "fb00eb4cda1269c3f22e0b6fde8e3661c61ccc81",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
-                "illuminate/support": "^10.0 || ^11.0 || ^12.0",
-                "laravel/cashier": "^15.0",
-                "php": "^8.1",
-                "spatie/laravel-activitylog": "^4.10",
-                "spatie/laravel-package-tools": "^1.16",
-                "spatie/laravel-permission": "^6.0",
-                "yajra/laravel-datatables-oracle": "^10.11 || ^11.0 || ^12.0"
-            },
-            "require-dev": {
-                "larastan/larastan": "^3.0",
-                "laravel/pint": "^1.14",
-                "nunomaduro/collision": "^7.0 || ^8.0 || ^9.0",
-                "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
-                "pestphp/pest": "^2.0 || ^3.0 || ^4.0",
-                "pestphp/pest-plugin-arch": "^2.0 || ^3.0 || ^4.0",
-                "pestphp/pest-plugin-laravel": "^2.0 || ^3.0 || ^4.0",
-                "phpstan/extension-installer": "^1.4",
-                "phpstan/phpstan-deprecation-rules": "^2.0",
-                "phpstan/phpstan-phpunit": "^2.0",
-                "spatie/laravel-ray": "^1.35"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "aliases": {
-                        "HumanoBilling": "Idoneo\\HumanoBilling\\Facades\\HumanoBilling"
-                    },
-                    "providers": [
-                        "Idoneo\\HumanoBilling\\HumanoBillingServiceProvider"
-                    ]
-                },
-                "branch-alias": {
-                    "dev-main": "0.1.x-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Idoneo\\HumanoBilling\\": "src/",
-                    "Idoneo\\HumanoBilling\\Database\\Factories\\": "database/factories/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "AGPL-3.0"
-            ],
-            "authors": [
-                {
-                    "name": "Diego Adrián Mascarenhas Goytía",
-                    "email": "diego.mascarenhas@icloud.com",
-                    "role": "Developer"
-                }
-            ],
-            "description": "Comprehensive billing and payment management system for Humano applications",
-            "homepage": "https://github.com/diego-mascarenhas/humano-billing",
-            "keywords": [
-                "billing",
-                "humano-billing",
-                "idoneo",
-                "invoicing",
-                "laravel",
-                "payments"
-            ],
-            "support": {
-                "issues": "https://github.com/diego-mascarenhas/humano-billing/issues",
-                "source": "https://github.com/diego-mascarenhas/humano-billing/tree/v1.1.0"
-            },
-            "time": "2025-10-10T09:43:52+00:00"
         },
         {
             "name": "jd-dotlogics/laravel-grapesjs",
@@ -5469,97 +5385,6 @@
                 "source": "https://github.com/spatie/image-optimizer/tree/1.8.0"
             },
             "time": "2024-11-04T08:24:54+00:00"
-        },
-        {
-            "name": "spatie/laravel-activitylog",
-            "version": "4.10.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/spatie/laravel-activitylog.git",
-                "reference": "bb879775d487438ed9a99e64f09086b608990c10"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/spatie/laravel-activitylog/zipball/bb879775d487438ed9a99e64f09086b608990c10",
-                "reference": "bb879775d487438ed9a99e64f09086b608990c10",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/config": "^8.0 || ^9.0 || ^10.0 || ^11.0 || ^12.0",
-                "illuminate/database": "^8.69 || ^9.27 || ^10.0 || ^11.0 || ^12.0",
-                "illuminate/support": "^8.0 || ^9.0 || ^10.0 || ^11.0 || ^12.0",
-                "php": "^8.1",
-                "spatie/laravel-package-tools": "^1.6.3"
-            },
-            "require-dev": {
-                "ext-json": "*",
-                "orchestra/testbench": "^6.23 || ^7.0 || ^8.0 || ^9.0 || ^10.0",
-                "pestphp/pest": "^1.20 || ^2.0 || ^3.0"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Spatie\\Activitylog\\ActivitylogServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "files": [
-                    "src/helpers.php"
-                ],
-                "psr-4": {
-                    "Spatie\\Activitylog\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Freek Van der Herten",
-                    "email": "freek@spatie.be",
-                    "homepage": "https://spatie.be",
-                    "role": "Developer"
-                },
-                {
-                    "name": "Sebastian De Deyne",
-                    "email": "sebastian@spatie.be",
-                    "homepage": "https://spatie.be",
-                    "role": "Developer"
-                },
-                {
-                    "name": "Tom Witkowski",
-                    "email": "dev.gummibeer@gmail.com",
-                    "homepage": "https://gummibeer.de",
-                    "role": "Developer"
-                }
-            ],
-            "description": "A very simple activity logger to monitor the users of your website or application",
-            "homepage": "https://github.com/spatie/activitylog",
-            "keywords": [
-                "activity",
-                "laravel",
-                "log",
-                "spatie",
-                "user"
-            ],
-            "support": {
-                "issues": "https://github.com/spatie/laravel-activitylog/issues",
-                "source": "https://github.com/spatie/laravel-activitylog/tree/4.10.2"
-            },
-            "funding": [
-                {
-                    "url": "https://spatie.be/open-source/support-us",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/spatie",
-                    "type": "github"
-                }
-            ],
-            "time": "2025-06-15T06:59:49+00:00"
         },
         {
             "name": "spatie/laravel-medialibrary",

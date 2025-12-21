@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Template;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -19,17 +20,16 @@ class TemplateDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', function ($template)
-            {
-                return view('template.action', ['id' => $template->getHashedId()])->render();
-            })
+            ->addColumn('action', 'humano-mailer::template.action')
             ->setRowId('id')
             ->rawColumns(['name', 'action', 'status_id'])
+            ->editColumn('updated_at', function ($data)
+            {
+                return Carbon::parse($data->updated_at)->format('d-m-Y H:i:s');
+            })
             ->editColumn('status_id', function ($data)
             {
-                $statusValue = is_object($data->status_id) ? $data->status_id->value : $data->status_id;
-
-                if ($statusValue == 2)
+                if ($data->status_id)
                 {
                     return '<span class="badge rounded-pill bg-label-success">Active</span>';
                 } else
@@ -62,6 +62,10 @@ class TemplateDataTable extends DataTable
             Column::make('name')
                 ->title(__('Name'))
                 ->addClass('all'),
+            Column::make('updated_at')
+                ->title(__('Updated'))
+                ->className('text-center')
+                ->addClass('min-tablet'),
             Column::make('status_id')
                 ->title(__('Status'))
                 ->className('text-center')
