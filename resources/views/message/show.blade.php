@@ -246,7 +246,7 @@
 								<th class="text-center">ACCIONES</th>
 							</tr>
 						</thead>
-						<tbody>
+						<tbody class="delivery-tbody">
 							@forelse($deliveries as $delivery)
 							<tr>
 								<td>
@@ -307,6 +307,13 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	/* Remove border from last delivery row */
+	.delivery-tbody tr:last-child td {
+		border-bottom: none !important;
+	}
+</style>
 
 <script>
 function previewMessage() {
