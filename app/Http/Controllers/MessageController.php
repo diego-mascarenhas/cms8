@@ -92,11 +92,26 @@ class MessageController extends Controller
         $team = auth()->user()->currentTeam->load('settings');
         $emailConfig = $team->getOutgoingEmailConfig();
 
-        // Contar contactos que coinciden con la categoría del mensaje
+        // Contar contactos que coinciden con la categoría y estado de contacto del mensaje
         $contactsInCategory = 0;
         if ($message->category)
         {
-            $contactsInCategory = $message->category->contacts()->count();
+            $query = $message->category->contacts();
+
+            // Apply contact status filter if specified in the message
+            if ($message->contact_status_id)
+            {
+                $query->where('status_id', $message->contact_status_id);
+            }
+
+            $contactsInCategory = $query->count();
+        } elseif ($message->contact_status_id)
+        {
+            // If no category but has contact status filter, count all team contacts with that status
+            $contactsInCategory = \App\Models\Contact::where('team_id', $message->team_id)
+                ->where('status_id', $message->contact_status_id)
+                ->whereNotNull('email')
+                ->count();
         }
 
         // Obtener estadísticas reales calculadas desde la base de datos (optimizado con una sola query)
