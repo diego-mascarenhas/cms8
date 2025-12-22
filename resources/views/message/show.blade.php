@@ -489,8 +489,11 @@ function testSend(messageId) {
 			Swal.fire({
 				title: 'Enviando...',
 				text: 'Por favor espera',
+				icon: 'info',
 				allowOutsideClick: false,
-				didOpen: () => {
+				allowEscapeKey: false,
+				showConfirmButton: false,
+				willOpen: () => {
 					Swal.showLoading();
 				}
 			});
@@ -560,8 +563,11 @@ function resendDelivery(deliveryId) {
 			Swal.fire({
 				title: 'Reenviando...',
 				text: 'Por favor espera',
+				icon: 'info',
 				allowOutsideClick: false,
-				didOpen: () => {
+				allowEscapeKey: false,
+				showConfirmButton: false,
+				willOpen: () => {
 					Swal.showLoading();
 				}
 			});

@@ -35,7 +35,6 @@ class TestMessageMail extends Mailable
     public function build()
     {
         $team = auth()->user()->currentTeam;
-        $emailConfig = $team->getOutgoingEmailConfig();
 
         // Add advertising footer if team is using system SMTP
         $finalHtml = $this->htmlContent;
@@ -63,7 +62,11 @@ class TestMessageMail extends Mailable
         $cssInliner = new CssToInlineStyles;
         $inlinedHtml = $cssInliner->convert($finalHtml, $css);
 
-        return $this->from($emailConfig['from_address'], $emailConfig['from_name'])
+        // Use from address/name already configured by ConfiguresTeamMail trait
+        $fromAddress = config('mail.from.address');
+        $fromName = config('mail.from.name');
+
+        return $this->from($fromAddress, $fromName)
             ->subject('[TEST] '.$this->message->name)
             ->html($inlinedHtml);
     }

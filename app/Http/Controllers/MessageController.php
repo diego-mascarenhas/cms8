@@ -8,6 +8,7 @@ use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
 use App\Models\MessageType;
+use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,8 @@ use Twilio\Rest\Client;
 
 class MessageController extends Controller
 {
+    use ConfiguresTeamMail;
+
     public function index(MessageDataTable $dataTable)
     {
         return $dataTable->render('message.index');
@@ -572,10 +575,7 @@ class MessageController extends Controller
             ]);
 
             // ✨ IMPORTANTE: Configurar SMTP igual que en el Job
-            if (trait_exists(\App\Traits\ConfiguresTeamMail::class))
-            {
-                $this->configureMailForTeam($team);
-            }
+            $this->configureMailForTeam($team);
 
             Log::info('✅ TEST SEND: SMTP configured, ready to send', [
                 'after_config_host' => config('mail.mailers.smtp.host'),
@@ -806,27 +806,6 @@ class MessageController extends Controller
         // They are now hardcoded in the template content
 
         return $htmlContent;
-    }
-
-    /**
-     * Configure mail for team (if trait is available)
-     */
-    private function configureMailForTeam($team)
-    {
-        if (trait_exists(\App\Traits\ConfiguresTeamMail::class))
-        {
-            // Use the trait if available in the host app
-            $trait = new class
-            {
-                use \App\Traits\ConfiguresTeamMail;
-
-                public function configure($team)
-                {
-                    $this->configureMailForTeam($team);
-                }
-            };
-            $trait->configure($team);
-        }
     }
 
     /**
