@@ -106,9 +106,12 @@ trait HasEmailLimits
         $this->resetLimitsIfNeeded();
 
         $monthlyLimit = (int) $this->getSetting('email_monthly_limit', 10000);
-        $monthlyUsed = (int) $this->getSetting('email_monthly_used', 0);
         $dailyLimit = (int) $this->getSetting('email_daily_limit', 500);
-        $dailyUsed = (int) $this->getSetting('email_daily_used', 0);
+
+        // Get actual usage from database instead of settings
+        $actualUsage = $this->getActualEmailUsage();
+        $monthlyUsed = $actualUsage['monthly_used'];
+        $dailyUsed = $actualUsage['daily_used'];
 
         $dailyRemaining = ($dailyLimit <= 0 || $dailyLimit >= 999999)
             ? null // No daily limit for SCALE plan
@@ -280,18 +283,18 @@ trait HasEmailLimits
     {
         $now = now();
 
-        // Monthly usage from actual sent emails
+        // Monthly usage from actual sent emails (only past sent_at, not scheduled)
         $monthlyUsed = $this->messageDeliveries()
             ->whereNotNull('sent_at')
+            ->where('sent_at', '<=', $now) // Only count emails already sent
             ->where('sent_at', '>=', $now->copy()->startOfMonth())
-            ->where('sent_at', '<=', $now->copy()->endOfMonth())
             ->count();
 
-        // Daily usage from actual sent emails
+        // Daily usage from actual sent emails (only past sent_at, not scheduled)
         $dailyUsed = $this->messageDeliveries()
             ->whereNotNull('sent_at')
+            ->where('sent_at', '<=', $now) // Only count emails already sent
             ->where('sent_at', '>=', $now->copy()->startOfDay())
-            ->where('sent_at', '<=', $now->copy()->endOfDay())
             ->count();
 
         return [
