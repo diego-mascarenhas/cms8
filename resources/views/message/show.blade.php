@@ -11,16 +11,9 @@
 		<p class="text-muted">Detailed view of the message and its statistics</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
-		<!-- Edit Button -->
-		@can('message.edit')
-		<a href="{{ route('message.edit', $message->id) }}" class="btn btn-primary waves-effect waves-light">
-			<i class="ti ti-edit me-1"></i>Edit Message
-		</a>
-		@endcan
-
 		<!-- Preview Button -->
 		<button class="btn btn-outline-primary me-2" onclick="previewMessage()">
-			<i class="ti ti-eye me-1"></i>Preview
+			<i class="ti ti-eye me-1"></i>Vista previa
 		</button>
 
 		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
@@ -41,18 +34,25 @@
 
 		@if($campaignCanBePaused)
 			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
-				<i class="ti ti-player-pause me-1"></i>Pause
+				<i class="ti ti-player-pause me-1"></i>Pausar
 			</button>
 		@else
 			<button class="btn btn-success me-2 {{ !$canSend ? 'disabled' : '' }}"
 					onclick="{{ $canSend ? 'startCampaign(' . $message->id . ')' : 'showAuthorizationError()' }}"
 					{{ !$canSend ? 'disabled' : '' }}>
-				<i class="ti ti-send me-1"></i>Send Now
+				<i class="ti ti-send me-1"></i>Enviar ahora
 			</button>
 		@endif
 
+		<!-- Edit Button -->
+		@can('message.edit')
+		<a href="{{ route('message.edit', $message->id) }}" class="btn btn-primary waves-effect waves-light">
+			<i class="ti ti-edit me-1"></i>Editar
+		</a>
+		@endcan
+
 		<a href="{{ route('message.index') }}" class="btn btn-label-secondary">
-			<i class="ti ti-arrow-left me-1"></i>Back to list
+			<i class="ti ti-arrow-left me-1"></i>Volver
 		</a>
 	</div>
 </div>
@@ -234,19 +234,19 @@
 			<div class="card-header d-flex justify-content-between align-items-center">
 				<h5 class="mb-0">Entregas</h5>
 				<div class="d-flex align-items-center">
-					<input type="text" class="form-control form-control-sm me-2" placeholder="Search..." style="width: 200px;">
+					<input type="text" id="searchDeliveries" class="form-control form-control-sm me-2" placeholder="Buscar..." style="width: 200px;">
 					<i class="ti ti-search"></i>
 				</div>
 			</div>
 			<div class="card-body">
 				<div class="table-responsive">
-					<table class="table table-hover">
+					<table class="table table-hover" id="deliveriesTable">
 						<thead>
 							<tr>
 								<th>CONTACTO</th>
 								<th>ESTADO DE ENTREGA</th>
 								<th>ESTADO</th>
-								<th>ACCIÓN</th>
+								<th class="text-center">ACCIONES</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -294,13 +294,16 @@
 									@endif
 								</td>
 								<td>
-									<div class="d-flex">
+									<div class="d-flex justify-content-center align-items-center">
 										@if($delivery->opened_at)
-											<i class="ti ti-eye text-success me-2" title="Opened"></i>
+											<i class="ti ti-eye text-success me-2" title="Abierto"></i>
 										@endif
 										@if($delivery->clicked_at)
-											<i class="ti ti-mouse text-primary me-2" title="Clicked"></i>
+											<i class="ti ti-mouse text-primary me-2" title="Clickeado"></i>
 										@endif
+										<a href="javascript:;" class="text-primary" onclick="resendDelivery({{ $delivery->id }})" title="Reenviar">
+											<i class="ti ti-send ti-sm"></i>
+										</a>
 									</div>
 								</td>
 							</tr>
@@ -383,7 +386,7 @@ function showAuthorizationError() {
 }
 
 function testSend(messageId) {
-	if (!confirm('Send a test email to your address ({{ auth()->user()->email }})?')) {
+	if (!confirm('¿Enviar un correo de prueba a tu dirección ({{ auth()->user()->email }})?')) {
 		return;
 	}
 
@@ -391,7 +394,7 @@ function testSend(messageId) {
 	const originalButton = event.target.closest('button');
 	const originalText = originalButton.innerHTML;
 	originalButton.disabled = true;
-	originalButton.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Sending...';
+	originalButton.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Enviando...';
 
 	fetch(`/message/${messageId}/test`, {
 		method: 'POST',
@@ -406,7 +409,7 @@ function testSend(messageId) {
 		originalButton.innerHTML = originalText;
 
 		if (data.success) {
-			alert('✅ Test email sent successfully to ' + data.email);
+			alert('✅ Correo de prueba enviado exitosamente a ' + data.email);
 		} else {
 			alert('❌ Error: ' + data.message);
 		}
@@ -415,8 +418,61 @@ function testSend(messageId) {
 		console.error('Error:', error);
 		originalButton.disabled = false;
 		originalButton.innerHTML = originalText;
-		alert('❌ An error occurred while sending the test email');
+		alert('❌ Ocurrió un error al enviar el correo de prueba');
 	});
 }
+
+function resendDelivery(deliveryId) {
+	if (!confirm('¿Estás seguro de que deseas reenviar este correo?')) {
+		return;
+	}
+
+	fetch(`/message/delivery/${deliveryId}/resend`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRF-TOKEN': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
+			alert('✅ ' + data.message);
+			location.reload();
+		} else {
+			alert('❌ Error: ' + data.message);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		alert('❌ Ocurrió un error al reenviar el correo');
+	});
+}
+
+// Search functionality for deliveries table
+document.addEventListener('DOMContentLoaded', function() {
+	const searchInput = document.getElementById('searchDeliveries');
+	if (searchInput) {
+		searchInput.addEventListener('keyup', function() {
+			const searchTerm = this.value.toLowerCase();
+			const table = document.getElementById('deliveriesTable');
+			const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+			for (let i = 0; i < rows.length; i++) {
+				const row = rows[i];
+				const contactCell = row.cells[0];
+				
+				if (contactCell) {
+					const text = contactCell.textContent || contactCell.innerText;
+					if (text.toLowerCase().indexOf(searchTerm) > -1) {
+						row.style.display = '';
+					} else {
+						row.style.display = 'none';
+					}
+				}
+			}
+		});
+	}
+});
 </script>
 @endsection
