@@ -31,13 +31,14 @@ class ContactController extends Controller
 
     public function __construct()
     {
-        // Authorize resource actions using ContactPolicy
-        // This automatically checks: viewAny, view, create, update, delete
-        $this->authorizeResource(Contact::class, 'id');
+        // Note: Manual authorization in each method due to non-standard route parameter names
+        // Laravel's authorizeResource() expects {contact} parameter, but routes use {id}
     }
 
     public function index(ContactDataTable $dataTable)
     {
+        $this->authorize('viewAny', Contact::class);
+        
         if (! auth()->user()->currentTeam)
         {
             return redirect()->route('error-without-team');
@@ -57,6 +58,8 @@ class ContactController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Contact::class);
+        
         $data = new \stdClass;
 
         // Pre-fill user_id if provided in query string
@@ -76,6 +79,8 @@ class ContactController extends Controller
      */
     public function store(UpdateContactRequest $request)
     {
+        $this->authorize('create', Contact::class);
+        
         $data = $request->validated();
 
         $contactData = $data['contact'];
@@ -132,14 +137,9 @@ class ContactController extends Controller
             'enterprises',  // relación correcta
             'currentEnterprise',
             'user.roles',
-        ])->find($id);
+        ])->findOrFail($id);
 
-        if (! $data)
-        {
-            return redirect()
-                ->route('contact-list')
-                ->with('error', __('messages.errors.not_found'));
-        }
+        $this->authorize('view', $data);
 
         // Collaborators can only view their own assigned contacts
         $currentUser = auth()->user();
@@ -171,7 +171,7 @@ class ContactController extends Controller
             $data->load('currentEnterprise');
         }
 
-        $team = auth()->user()->currentTeam;
+        $team = auth()->user()->currentTeam->load('settings');
 
         $stripeData = [
             'subscription' => null,
@@ -474,6 +474,8 @@ class ContactController extends Controller
     public function edit($id)
     {
         $data = Contact::with('enterprises', 'sources', 'softwares', 'categories', 'currentEnterprise')->findOrFail($id);
+        $this->authorize('update', $data);
+        
         $data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
 
         // Verify current_enterprise_id belongs to this contact's enterprises
@@ -510,6 +512,9 @@ class ContactController extends Controller
      */
     public function update(UpdateContactRequest $request, $id)
     {
+        $contact = Contact::findOrFail($id);
+        $this->authorize('update', $contact);
+        
         $data = $request->validated();
         $contactData = $data['contact'];
 
@@ -578,6 +583,7 @@ class ContactController extends Controller
     public function destroy(string $id)
     {
         $model = Contact::findOrFail($id);
+        $this->authorize('delete', $model);
 
         $model->delete();
 

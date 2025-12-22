@@ -41,21 +41,21 @@ function deleteMessage(messageId) {
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = `/message/${messageId}`;
-            
+
             // Add CSRF token
             const csrfToken = document.createElement('input');
             csrfToken.type = 'hidden';
             csrfToken.name = '_token';
             csrfToken.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             form.appendChild(csrfToken);
-            
+
             // Add method override for DELETE
             const methodInput = document.createElement('input');
             methodInput.type = 'hidden';
             methodInput.name = '_method';
             methodInput.value = 'DELETE';
             form.appendChild(methodInput);
-            
+
             // Submit the form
             document.body.appendChild(form);
             form.submit();

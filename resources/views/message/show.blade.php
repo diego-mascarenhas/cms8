@@ -204,7 +204,7 @@
 
 				<!-- Upgrade button if needed -->
 				@php
-					$isOverLimits = ($remaining['monthly_used'] >= $remaining['monthly_limit']) || 
+					$isOverLimits = ($remaining['monthly_used'] >= $remaining['monthly_limit']) ||
 									($remaining['daily_limit'] && $remaining['daily_used'] >= $remaining['daily_limit']);
 				@endphp
 				@if($isOverLimits)

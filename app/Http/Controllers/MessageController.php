@@ -74,7 +74,7 @@ class MessageController extends Controller
             ],
         );
 
-        return redirect()->route('message-list')->with('success', 'Record saved successfully.');
+        return redirect()->route('message.index')->with('success', 'Record saved successfully.');
     }
 
     /**
@@ -82,11 +82,11 @@ class MessageController extends Controller
      */
     public function show(string $id)
     {
-        // Obtener el mensaje
-        $message = Message::findOrFail($id);
+        // Obtener el mensaje con relaciones necesarias
+        $message = Message::with('category')->findOrFail($id);
 
-        // Obtener configuración de correo saliente del team
-        $team = auth()->user()->currentTeam;
+        // Obtener configuración de correo saliente del team con settings cargados
+        $team = auth()->user()->currentTeam->load('settings');
         $emailConfig = $team->getOutgoingEmailConfig();
 
         // Contar contactos que coinciden con la categoría del mensaje
@@ -96,18 +96,29 @@ class MessageController extends Controller
             $contactsInCategory = $message->category->contacts()->count();
         }
 
-        // Obtener estadísticas reales calculadas desde la base de datos
+        // Obtener estadísticas reales calculadas desde la base de datos (optimizado con una sola query)
+        $deliveryStats = MessageDelivery::where('message_id', $message->id)
+            ->selectRaw('
+                COUNT(*) as subscribers,
+                SUM(CASE WHEN status_id = 0 THEN 1 ELSE 0 END) as failed,
+                SUM(CASE WHEN sent_at IS NOT NULL THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN delivered_at IS NOT NULL THEN 1 ELSE 0 END) as delivered,
+                SUM(CASE WHEN opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened,
+                SUM(CASE WHEN clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicks
+            ')
+            ->first();
+
         $stats = [
-            'subscribers' => MessageDelivery::where('message_id', $message->id)->count(),
+            'subscribers' => $deliveryStats->subscribers ?? 0,
             'remaining' => 0, // Puedes calcularlo según tu lógica
-            'failed' => MessageDelivery::where('message_id', $message->id)->where('status_id', 0)->count(),
-            'sent' => MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count(),
+            'failed' => $deliveryStats->failed ?? 0,
+            'sent' => $deliveryStats->sent ?? 0,
             'rejected' => 0, // Ajusta según tu lógica
-            'delivered' => MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count(),
-            'opened' => MessageDelivery::where('message_id', $message->id)->whereNotNull('opened_at')->count(),
+            'delivered' => $deliveryStats->delivered ?? 0,
+            'opened' => $deliveryStats->opened ?? 0,
             'unsubscribed' => 0, // Si tienes tracking de desuscriptos
-            'clicks' => MessageDelivery::where('message_id', $message->id)->whereNotNull('clicked_at')->count(),
-            'unique_opens' => MessageDelivery::where('message_id', $message->id)->whereNotNull('opened_at')->count(), // Same as opened for now
+            'clicks' => $deliveryStats->clicks ?? 0,
+            'unique_opens' => $deliveryStats->opened ?? 0, // Same as opened for now
             'ratio' => 0, // Se calculará después
         ];
 
@@ -206,7 +217,7 @@ class MessageController extends Controller
 
         if (! $data)
         {
-            return redirect()->route('message-list')->with('error', 'Message not found.');
+            return redirect()->route('message.index')->with('error', 'Message not found.');
         }
 
         $data->types = MessageType::getOptions();
@@ -233,7 +244,7 @@ class MessageController extends Controller
 
         $model->delete();
 
-        return redirect()->route('message-list')->with('success', 'The record has been deleted.');
+        return redirect()->route('message.index')->with('success', 'The record has been deleted.');
     }
 
     public function sendSmsMessage(Request $request)
