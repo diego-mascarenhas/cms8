@@ -105,8 +105,18 @@
 				</button>
 			</div>
 			<div class="card-body">
-				<div class="mb-2"><strong>Sender:</strong> {{ $emailConfig['from_name'] ?? 'N/A' }}</div>
-				<div class="mb-2"><strong>Email:</strong> {{ $emailConfig['from_address'] ?? 'N/A' }}</div>
+				@if(empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
+					<div class="alert alert-warning mb-3" role="alert">
+						<i class="ti ti-alert-triangle me-2"></i>
+						<strong>Email sender not configured.</strong>
+						<a href="{{ route('team-settings.edit', ['team' => auth()->user()->current_team_id, 'group' => 'email']) }}" class="alert-link">
+							Configure it here
+						</a>
+					</div>
+				@else
+					<div class="mb-2"><strong>Sender:</strong> {{ $emailConfig['from_name'] }}</div>
+					<div class="mb-2"><strong>Email:</strong> {{ $emailConfig['from_address'] }}</div>
+				@endif
 				<div class="mb-2"><strong>Category:</strong>
 					@if($message->category)
 						{{ $message->category->name }}
