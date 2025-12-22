@@ -146,7 +146,9 @@ class TeamRevisionAlphaSeeder extends Seeder
 		// Ensure user has admin and root roles
 		if ($revisionUser && !$revisionUser->hasRole('root')) {
 			$revisionUser->assignRole('root');
-			$this->getCommand()->info('✅ Assigned root role to existing user: ' . $revisionUser->email);
+			if ($this->command) {
+				$this->command->info('✅ Assigned root role to existing user: ' . $revisionUser->email);
+			}
 		}
 
 		// Update current team for main user
