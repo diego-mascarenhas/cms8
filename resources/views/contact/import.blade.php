@@ -22,9 +22,25 @@
                     @csrf
                     <div class="mb-3">
                         <label for="file" class="form-label">Selecciona un archivo Excel o CSV</label>
-                        <input class="form-control" type="file" id="file" name="file" accept=".csv, .xlsx, .xls">
-                        <div class="form-text">Formatos permitidos: .xlsx, .xls, .csv</div>
+                        <input class="form-control" type="file" id="file" name="file" accept=".csv, .xlsx, .xls, .txt, text/csv, text/plain, application/csv">
+                        <div class="form-text">Formatos permitidos: .xlsx, .xls, .csv, .txt</div>
                     </div>
+
+                    @if ($errors->any())
+                        <div class="alert alert-danger">
+                            <ul class="mb-0">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    @if (session('error'))
+                        <div class="alert alert-danger">
+                            {{ session('error') }}
+                        </div>
+                    @endif
                     <button type="submit" class="btn btn-primary">
                         <i class="ti ti-upload me-1"></i>
                         Subir y Continuar

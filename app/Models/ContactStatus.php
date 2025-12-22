@@ -10,14 +10,6 @@ class ContactStatus extends Model
 
     public static function getOptions()
     {
-        $query = self::query();
-
-        return $query->get()->map(function ($status)
-        {
-            return [
-                'id' => $status->id,
-                'name' => $status->name,
-            ];
-        });
+        return self::orderBy('name')->pluck('name', 'id')->toArray();
     }
 }

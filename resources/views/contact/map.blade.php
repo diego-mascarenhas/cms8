@@ -31,10 +31,10 @@
                                         <label class="form-label"><strong>{{ $header }}</strong></label>
                                     </div>
                                     <div class="col-md-8">
-                                        <select name="mapping[{{ $index }}]" class="form-select">
+                                        <select name="mapping[{{ $index }}]" class="form-select select2-mapping" data-column="{{ $index }}">
                                             <option value="">No importar esta columna</option>
                                             @foreach($availableFields as $field => $label)
-                                                <option value="{{ $field }}" 
+                                                <option value="{{ $field }}"
                                                     {{ in_array($header, ['First Name', 'Middle Name', 'Last Name']) && $field === 'name' ? 'selected' : '' }}
                                                     {{ $header === 'E-mail 1 - Value' && $field === 'email' ? 'selected' : '' }}
                                                     {{ $header === 'Phone 1 - Value' && $field === 'phone' ? 'selected' : '' }}>
@@ -58,12 +58,12 @@
                                             @foreach($headers as $header)
                                                 <th>
                                                     @php
-                                                        $isPhoneHeader = strpos(strtolower($header), 'phone') !== false || 
+                                                        $isPhoneHeader = strpos(strtolower($header), 'phone') !== false ||
                                                                         strpos(strtolower($header), 'tel') !== false ||
                                                                         strpos(strtolower($header), 'móvil') !== false ||
                                                                         strpos(strtolower($header), 'celular') !== false;
                                                     @endphp
-                                                    
+
                                                     @if($isPhoneHeader)
                                                         <i class="ti ti-phone text-primary me-1"></i>
                                                     @endif
@@ -79,13 +79,13 @@
                                                     <td>
                                                         @php
                                                             $header = $headers[$index] ?? '';
-                                                            $isPhone = strpos(strtolower($header), 'phone') !== false || 
+                                                            $isPhone = strpos(strtolower($header), 'phone') !== false ||
                                                                       strpos(strtolower($header), 'tel') !== false ||
                                                                       strpos(strtolower($header), 'móvil') !== false ||
                                                                       strpos(strtolower($header), 'celular') !== false ||
                                                                       (is_numeric($cell) && strlen($cell) >= 9 && strlen($cell) <= 15);
                                                         @endphp
-                                                        
+
                                                         @if($isPhone && !empty($cell))
                                                             <div class="d-flex align-items-center">
                                                                 <i class="ti ti-phone text-primary me-2"></i>
@@ -106,7 +106,7 @@
                                     Mostrando 5 de {{ count($rows) }} filas
                                 </div>
                             @endif
-                            
+
                             @php
                                 $phoneCount = 0;
                                 $emailCount = 0;
@@ -115,13 +115,13 @@
                                         $header = $headers[$index] ?? '';
                                         if (!empty($cell)) {
                                             // Count phones
-                                            if (strpos(strtolower($header), 'phone') !== false || 
+                                            if (strpos(strtolower($header), 'phone') !== false ||
                                                 strpos(strtolower($header), 'tel') !== false ||
                                                 (is_numeric($cell) && strlen($cell) >= 9 && strlen($cell) <= 15)) {
                                                 $phoneCount++;
                                             }
                                             // Count emails
-                                            if (strpos(strtolower($header), 'email') !== false || 
+                                            if (strpos(strtolower($header), 'email') !== false ||
                                                 strpos(strtolower($header), 'mail') !== false ||
                                                 filter_var($cell, FILTER_VALIDATE_EMAIL)) {
                                                 $emailCount++;
@@ -130,7 +130,7 @@
                                     }
                                 }
                             @endphp
-                            
+
                             @if($phoneCount > 0 || $emailCount > 0)
                                 <div class="row mt-3">
                                     <div class="col-12">
@@ -156,6 +156,35 @@
                         </div>
                     </div>
 
+                    <!-- Additional Import Settings -->
+                    <div class="row mt-4 border-top pt-4">
+                        <div class="col-12">
+                            <h5 class="mb-3"><i class="ti ti-settings me-2"></i>Configuración de Importación</h5>
+                        </div>
+
+                        <!-- Categories Selection -->
+                        <div class="col-md-6 mb-3">
+                            <x-categories-select
+                                id="categories"
+                                label="Categorías"
+                                moduleKey="contacts"
+                                helpText="Selecciona una o más categorías para asignar a todos los contactos importados"
+                            />
+                        </div>
+
+                        <!-- Status Selection -->
+                        <div class="col-md-6 mb-3">
+                            <x-input-select
+                                id="status_id"
+                                label="Estado del Contacto"
+                                :options="$statuses"
+                                :value="1"
+                                :required="true"
+                                helpText="Todos los contactos importados tendrán este estado"
+                            />
+                        </div>
+                    </div>
+
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="ti ti-file-import me-1"></i>
@@ -171,4 +200,28 @@
         </div>
     </div>
 </div>
+
+@section('vendor-style')
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
+@endsection
+
+@section('vendor-script')
+<script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
+@endsection
+
+@section('page-script')
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for mapping selects
+    $('.select2-mapping').select2({
+        placeholder: 'Seleccionar campo',
+        allowClear: true,
+        width: '100%'
+    });
+
+    // Initialize Select2 for categories (handled by component)
+    // Initialize Select2 for status (handled by component)
+});
+</script>
+@endsection
 @endsection

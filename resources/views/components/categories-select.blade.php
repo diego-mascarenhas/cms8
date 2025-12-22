@@ -1,4 +1,4 @@
-@props(['id', 'label', 'selected' => [], 'showNull' => true, 'moduleKey' => null])
+@props(['id', 'label', 'selected' => [], 'showNull' => false, 'moduleKey' => null, 'helpText' => null])
 
 <div class="form-group">
     <label for="{{ $id }}">{{ $label }}</label>
@@ -6,13 +6,13 @@
         @if($showNull)
             <option value="">Seleccione una categoría</option>
         @endif
-        
+
         @php
             // Determinar el módulo actual
             if (!$moduleKey) {
                 $routeName = Route::currentRouteName();
                 $segments = request()->segments();
-                
+
                 // Mapeo de rutas/segmentos a módulos
                 $routeModuleMap = [
                     'task' => 'tasks',
@@ -24,7 +24,7 @@
                     'mail' => 'mail',
                     'chat' => 'chat',
                 ];
-                
+
                 // Comprobar la ruta por prefijo
                 foreach ($routeModuleMap as $routePrefix => $key) {
                     if ($routeName && strpos($routeName, $routePrefix) === 0) {
@@ -32,7 +32,7 @@
                         break;
                     }
                 }
-                
+
                 // Si no encontramos por ruta, comprobar segmentos de URL
                 if (!$moduleKey && !empty($segments)) {
                     foreach ($routeModuleMap as $routePrefix => $key) {
@@ -43,10 +43,10 @@
                     }
                 }
             }
-            
+
             // Obtener el módulo
             $module = $moduleKey ? \App\Models\Module::where('key', $moduleKey)->first() : null;
-            
+
             // Obtener todas las categorías activas para este módulo (grupos y subcategorías)
             if ($module) {
                 $query = \App\Models\Category::where('module_id', $module->id)
@@ -64,13 +64,13 @@
                             ->orWhere('team_id', auth()->user()->currentTeam->id);
                     });
             }
-            
+
             // Obtener los grupos (categorías padre)
             $parentCategories = $query->whereNull('parent_id')
                 ->orderBy('order')
                 ->orderBy('name')
                 ->get();
-                
+
             // Obtener todas las subcategorías para este módulo
             if ($module) {
                 $allSubcategories = \App\Models\Category::where('module_id', $module->id)
@@ -98,7 +98,7 @@
                     ->groupBy('parent_id');
             }
         @endphp
-        
+
         @foreach($parentCategories as $parentCategory)
             <optgroup label="{{ $parentCategory->name }}">
                 @if(isset($allSubcategories[$parentCategory->id]))
@@ -111,7 +111,11 @@
             </optgroup>
         @endforeach
     </select>
-    
+
+    @if($helpText)
+        <div class="form-text">{{ $helpText }}</div>
+    @endif
+
     @error($id)
         <span class="invalid-feedback" role="alert">
             <strong>{{ $message }}</strong>
@@ -130,4 +134,4 @@
         });
     });
 </script>
-@endpush 
+@endpush
