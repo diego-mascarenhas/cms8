@@ -6,15 +6,20 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 	<div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3">
-			<span class="text-muted fw-light">Messages/</span> {{ $message->name }}
+			<span class="text-muted fw-light">Mensajes/</span> {{ $message->name }}
 		</h4>
-		<p class="text-muted">Detailed view of the message and its statistics</p>
+		<p class="text-muted">Vista detallada del mensaje y sus estadísticas</p>
 	</div>
 	<div class="d-flex align-content-center flex-wrap gap-3">
 		<!-- Preview Button -->
 		<button class="btn btn-outline-primary me-2" onclick="previewMessage()">
 			<i class="ti ti-eye me-1"></i>Vista previa
 		</button>
+
+		<!-- Edit Button -->
+		<a href="{{ route('message.edit', $message->id) }}" class="btn btn-primary waves-effect waves-light">
+			<i class="ti ti-edit me-1"></i>Editar
+		</a>
 
 		<!-- Send/Pause Toggle Button - Only show if sender is configured -->
 		@php
@@ -43,13 +48,6 @@
 				<i class="ti ti-send me-1"></i>Enviar ahora
 			</button>
 		@endif
-
-		<!-- Edit Button -->
-		@can('message.edit')
-		<a href="{{ route('message.edit', $message->id) }}" class="btn btn-primary waves-effect waves-light">
-			<i class="ti ti-edit me-1"></i>Editar
-		</a>
-		@endcan
 
 		<a href="{{ route('message.index') }}" class="btn btn-label-secondary">
 			<i class="ti ti-arrow-left me-1"></i>Volver
@@ -461,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			for (let i = 0; i < rows.length; i++) {
 				const row = rows[i];
 				const contactCell = row.cells[0];
-				
+
 				if (contactCell) {
 					const text = contactCell.textContent || contactCell.innerText;
 					if (text.toLowerCase().indexOf(searchTerm) > -1) {
