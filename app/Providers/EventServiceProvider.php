@@ -33,7 +33,7 @@ class EventServiceProvider extends ServiceProvider
     {
         // Activity log tracking was removed from the application
         // If you need to track login/logout events, implement a custom solution
-        
+
         /*
         // Track user login
         Event::listen(Login::class, function (Login $event)
