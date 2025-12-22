@@ -115,18 +115,20 @@
 					<div class="mb-2"><strong>{{ __('Sender') }}:</strong> {{ $emailConfig['from_name'] }}</div>
 					<div class="mb-2"><strong>{{ __('Email') }}:</strong> {{ $emailConfig['from_address'] }}</div>
 				@endif
-				<div class="mb-2"><strong>{{ __('Category') }}:</strong>
+				<div class="mb-2">
+					<strong>{{ __('Category') }}:</strong>
 					@if($message->category)
-						{{ $message->category->name }}
+						<span class="badge bg-label-primary">{{ $message->category->name }}</span>
 					@else
-						{{ __('All contacts') }}
+						<span class="badge bg-label-secondary">{{ __('All contacts') }}</span>
 					@endif
 				</div>
-				<div class="mb-2"><strong>{{ __('Contact Status') }}:</strong>
+				<div class="mb-2">
+					<strong>{{ __('Contact Status') }}:</strong>
 					@if($message->contactStatus)
-						{{ $message->contactStatus->name }}
+						<span class="badge bg-label-success">{{ $message->contactStatus->name }}</span>
 					@else
-						<span class="text-muted">{{ __('All statuses') }}</span>
+						<span class="badge bg-label-secondary">{{ __('All statuses') }}</span>
 					@endif
 				</div>
 			</div>
