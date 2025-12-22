@@ -876,5 +876,15 @@
   "Potential Subscribers": "Suscriptores Potenciales",
   "Total Contacts": "Contactos Totales",
   "With Delivery": "Con Entrega",
-  "No contacts match the message criteria": "No hay contactos que coincidan con los criterios del mensaje"
+  "No contacts match the message criteria": "No hay contactos que coincidan con los criterios del mensaje",
+  "Test Send": "Envío de Prueba",
+  "Monthly Usage": "Uso Mensual",
+  "Daily Usage": "Uso Diario",
+  "Email Plan": "Plan de Email",
+  "Basic": "Básico",
+  "All contacts": "Todos los contactos",
+  "All statuses": "Todos los estados",
+  "Email sender not configured.": "Remitente de email no configurado.",
+  "Configure it here": "Configurar aquí",
+  "Upgrade Plan": "Actualizar Plan"
 }

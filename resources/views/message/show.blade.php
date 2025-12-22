@@ -95,38 +95,38 @@
 		<!-- General Info -->
 		<div class="card mb-4">
 			<div class="card-header d-flex justify-content-between align-items-center">
-				<h5 class="mb-0">General Information</h5>
+				<h5 class="mb-0">{{ __('General Information') }}</h5>
 				<button class="btn btn-sm btn-outline-info {{ !$canSend ? 'disabled' : '' }}"
 						onclick="{{ $canSend ? 'testSend(' . $message->id . ')' : 'showAuthorizationError()' }}"
 						{{ !$canSend ? 'disabled' : '' }}>
-					<i class="ti ti-send-2 me-1"></i>Test Send
+					<i class="ti ti-send-2 me-1"></i>{{ __('Test Send') }}
 				</button>
 			</div>
 			<div class="card-body">
 				@if(empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
 					<div class="alert alert-warning mb-3" role="alert">
 						<i class="ti ti-alert-triangle me-2"></i>
-						<strong>Email sender not configured.</strong>
+						<strong>{{ __('Email sender not configured.') }}</strong>
 						<a href="{{ route('team-settings.edit', ['team' => auth()->user()->current_team_id, 'group' => 'email']) }}" class="alert-link">
-							Configure it here
+							{{ __('Configure it here') }}
 						</a>
 					</div>
 				@else
-					<div class="mb-2"><strong>Sender:</strong> {{ $emailConfig['from_name'] }}</div>
-					<div class="mb-2"><strong>Email:</strong> {{ $emailConfig['from_address'] }}</div>
+					<div class="mb-2"><strong>{{ __('Sender') }}:</strong> {{ $emailConfig['from_name'] }}</div>
+					<div class="mb-2"><strong>{{ __('Email') }}:</strong> {{ $emailConfig['from_address'] }}</div>
 				@endif
-				<div class="mb-2"><strong>Category:</strong>
+				<div class="mb-2"><strong>{{ __('Category') }}:</strong>
 					@if($message->category)
 						{{ $message->category->name }}
 					@else
-						All contacts
+						{{ __('All contacts') }}
 					@endif
 				</div>
-				<div class="mb-2"><strong>Contact Status:</strong>
+				<div class="mb-2"><strong>{{ __('Contact Status') }}:</strong>
 					@if($message->contactStatus)
 						{{ $message->contactStatus->name }}
 					@else
-						<span class="text-muted">All statuses</span>
+						<span class="text-muted">{{ __('All statuses') }}</span>
 					@endif
 				</div>
 			</div>
@@ -135,7 +135,7 @@
 		<!-- Email Plans Information -->
 		<div class="card mb-4">
 			<div class="card-header d-flex justify-content-between align-items-center">
-				<h5 class="card-title mb-0">Email Plan</h5>
+				<h5 class="card-title mb-0">{{ __('Email Plan') }}</h5>
 				@php
 					$team = auth()->user()->currentTeam;
 					$currentPlan = $team->getEmailPlan();
@@ -150,7 +150,7 @@
 				<!-- Monthly Usage -->
 				<div class="mb-3">
 					<div class="d-flex justify-content-between mb-2">
-						<span class="text-muted">Monthly Usage</span>
+						<span class="text-muted">{{ __('Monthly Usage') }}</span>
 						<span class="fw-semibold">{{ number_format($remaining['monthly_used']) }} / {{ number_format($remaining['monthly_limit']) }}</span>
 					</div>
 					<div class="progress" style="height: 8px;">
@@ -168,7 +168,7 @@
 				<!-- Daily Usage -->
 				<div class="mb-3">
 					<div class="d-flex justify-content-between mb-2">
-						<span class="text-muted">Daily Usage</span>
+						<span class="text-muted">{{ __('Daily Usage') }}</span>
 						<span class="fw-semibold">
 							{{ number_format($remaining['daily_used']) }} /
 							{{ $remaining['daily_limit'] ? number_format($remaining['daily_limit']) : '∞' }}
@@ -193,7 +193,7 @@
 				<!-- Contacts -->
 				<div class="mb-3">
 					<div class="d-flex justify-content-between mb-2">
-						<span class="text-muted">Contacts</span>
+						<span class="text-muted">{{ __('Contacts') }}</span>
 						<span class="fw-semibold">{{ number_format($team->contacts()->count()) }} / {{ number_format($team->getContactLimit()) }}</span>
 					</div>
 					<div class="progress" style="height: 8px;">
@@ -218,7 +218,7 @@
 				@if($isOverLimits)
 					<div class="text-center mt-3">
 						<a href="{{ route('billing.plans') }}" class="btn btn-sm btn-primary">
-							<i class="ti ti-arrow-up me-1"></i>Upgrade Plan
+							<i class="ti ti-arrow-up me-1"></i>{{ __('Upgrade Plan') }}
 						</a>
 					</div>
 				@endif
@@ -243,7 +243,6 @@
 							<tr>
 								<th>CONTACTO</th>
 								<th>ESTADO DE ENTREGA</th>
-								<th>ESTADO</th>
 								<th class="text-center">ACCIONES</th>
 							</tr>
 						</thead>
@@ -258,14 +257,14 @@
 								</td>
 								<td>
 									@if($delivery->delivered_at)
-										<span class="text-success">
+										<span class="text-info">
 											<i class="ti ti-check me-1"></i>
 											Entregado: {{ $delivery->delivered_at->format('M d, Y H:i') }}
 										</span><br>
 										<small class="text-muted">Enviado: {{ $delivery->sent_at ? $delivery->sent_at->format('M d, Y H:i') : 'N/A' }}</small>
 									@elseif($delivery->sent_at)
-										<span class="text-info">
-											<i class="ti ti-clock me-1"></i>
+										<span class="text-success">
+											<i class="ti ti-send me-1"></i>
 											Enviado: {{ $delivery->sent_at->format('M d, Y H:i') }}
 										</span>
 									@elseif($delivery->failed_at)
@@ -281,17 +280,6 @@
 									@endif
 								</td>
 								<td>
-									@if($delivery->delivered_at)
-										<span class="badge bg-success">Delivered</span>
-									@elseif($delivery->sent_at)
-										<span class="badge bg-info">Sent</span>
-									@elseif($delivery->failed_at)
-										<span class="badge bg-danger">Failed</span>
-									@else
-										<span class="badge bg-secondary">Pending</span>
-									@endif
-								</td>
-								<td>
 									<div class="d-flex justify-content-center align-items-center">
 										@if($delivery->opened_at)
 											<i class="ti ti-eye text-success me-2" title="Abierto"></i>
@@ -300,14 +288,14 @@
 											<i class="ti ti-mouse text-primary me-2" title="Clickeado"></i>
 										@endif
 										<a href="javascript:;" class="text-primary" onclick="resendDelivery({{ $delivery->id }})" title="Reenviar">
-											<i class="ti ti-send ti-sm"></i>
+											<i class="ti ti-refresh ti-sm"></i>
 										</a>
 									</div>
 								</td>
 							</tr>
 							@empty
 							<tr>
-								<td colspan="4" class="text-center text-muted py-4">
+								<td colspan="3" class="text-center text-muted py-4">
 									No deliveries found
 								</td>
 							</tr>
