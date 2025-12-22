@@ -279,7 +279,7 @@ document.querySelector('form').addEventListener('submit', function() {
 
 		<div class="pt-4">
 			<button type="submit" class="btn btn-primary me-sm-3 me-1">Send</button>
-			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message-list') }}'">Cancel</button>
+			<button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('message.index') }}'">Cancel</button>
 		</div>
 	</form>
 </div>

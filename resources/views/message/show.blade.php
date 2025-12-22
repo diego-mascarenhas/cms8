@@ -51,7 +51,7 @@
 			</button>
 		@endif
 
-		<a href="{{ route('message-list') }}" class="btn btn-label-secondary">
+		<a href="{{ route('message.index') }}" class="btn btn-label-secondary">
 			<i class="ti ti-arrow-left me-1"></i>Back to list
 		</a>
 	</div>
