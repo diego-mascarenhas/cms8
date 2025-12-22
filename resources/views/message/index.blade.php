@@ -40,11 +40,11 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Messages</h4>
-        <p class="text-muted">Manage your messages with ease and keep your audience engaged!</p>
+        <h4 class="mb-1 mt-3">{{ __('Messages') }}</h4>
+        <p class="text-muted">{{ __('Manage your messages with ease and keep your audience engaged!') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('message.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">Create New</a>
+        <a href="{{ route('message.create') }}" type="submit" class="btn btn-primary waves-effect waves-light">{{ __('Create New') }}</a>
     </div>
 </div>
 
