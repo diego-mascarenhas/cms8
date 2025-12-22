@@ -311,27 +311,102 @@
 
 <script>
 function previewMessage() {
-	// Preview functionality
-	alert('Preview functionality to be implemented');
+	window.open('{{ route('message.preview', $message->id) }}', '_blank');
 }
 
 function pauseCampaign(messageId) {
-	// Pause campaign functionality
-	alert('Pause campaign functionality to be implemented');
+	if (!confirm('Are you sure you want to pause this campaign?')) {
+		return;
+	}
+
+	fetch(`/message/${messageId}/pause`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRF-TOKEN': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
+			alert(data.message);
+			location.reload();
+		} else {
+			alert('Error: ' + data.message);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		alert('An error occurred while pausing the campaign');
+	});
 }
 
 function startCampaign(messageId) {
-	// Start campaign functionality
-	alert('Start campaign functionality to be implemented');
+	if (!confirm('Are you sure you want to start this campaign?')) {
+		return;
+	}
+
+	fetch(`/message/${messageId}/start`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRF-TOKEN': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		if (data.success) {
+			alert(data.message);
+			location.reload();
+		} else {
+			alert('Error: ' + data.message);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		alert('An error occurred while starting the campaign');
+	});
 }
 
 function showAuthorizationError() {
-	alert('Domain not authorized for sending emails');
+	alert('Domain not authorized for sending emails. Please contact technical support to authorize email sending from your domain.');
 }
 
 function testSend(messageId) {
-	// Test send functionality
-	alert('Test send functionality to be implemented');
+	if (!confirm('Send a test email to your address ({{ auth()->user()->email }})?')) {
+		return;
+	}
+
+	// Show loading indicator
+	const originalButton = event.target.closest('button');
+	const originalText = originalButton.innerHTML;
+	originalButton.disabled = true;
+	originalButton.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Sending...';
+
+	fetch(`/message/${messageId}/test`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'X-CSRF-TOKEN': '{{ csrf_token() }}'
+		}
+	})
+	.then(response => response.json())
+	.then(data => {
+		originalButton.disabled = false;
+		originalButton.innerHTML = originalText;
+
+		if (data.success) {
+			alert('✅ Test email sent successfully to ' + data.email);
+		} else {
+			alert('❌ Error: ' + data.message);
+		}
+	})
+	.catch(error => {
+		console.error('Error:', error);
+		originalButton.disabled = false;
+		originalButton.innerHTML = originalText;
+		alert('❌ An error occurred while sending the test email');
+	});
 }
 </script>
 @endsection
