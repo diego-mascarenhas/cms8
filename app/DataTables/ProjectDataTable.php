@@ -17,10 +17,8 @@ class ProjectDataTable extends DataTable
     {
         $table = (new EloquentDataTable($query));
 
-        if (\Auth::user()->can('project.edit') || \Auth::user()->can('project.destroy') || \Auth::user()->can('project.show'))
-        {
-            $table = $table->addColumn('action', 'project.action');
-        }
+        // Add action column (blade view will handle policy-based permissions)
+        $table = $table->addColumn('action', 'project.action');
 
         return $table
             ->setRowId('id')

@@ -27,10 +27,8 @@ class ServiceDataTable extends DataTable
 
         $table = (new EloquentDataTable($query));
 
-        if (\Auth::user()->can('service.edit') || \Auth::user()->can('service.destroy') || \Auth::user()->can('service.show'))
-        {
-            $table = $table->addColumn('action', 'service.action');
-        }
+        // Add action column (blade view will handle policy-based permissions)
+        $table = $table->addColumn('action', 'service.action');
 
         return $table
             ->setRowId('id')

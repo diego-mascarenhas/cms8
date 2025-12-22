@@ -38,7 +38,7 @@ class ContactController extends Controller
     public function index(ContactDataTable $dataTable)
     {
         $this->authorize('viewAny', Contact::class);
-        
+
         if (! auth()->user()->currentTeam)
         {
             return redirect()->route('error-without-team');
@@ -59,7 +59,7 @@ class ContactController extends Controller
     public function create()
     {
         $this->authorize('create', Contact::class);
-        
+
         $data = new \stdClass;
 
         // Pre-fill user_id if provided in query string
@@ -80,7 +80,7 @@ class ContactController extends Controller
     public function store(UpdateContactRequest $request)
     {
         $this->authorize('create', Contact::class);
-        
+
         $data = $request->validated();
 
         $contactData = $data['contact'];
@@ -475,7 +475,7 @@ class ContactController extends Controller
     {
         $data = Contact::with('enterprises', 'sources', 'softwares', 'categories', 'currentEnterprise')->findOrFail($id);
         $this->authorize('update', $data);
-        
+
         $data->birthday = $data->birthday ? Carbon::parse($data->birthday)->format('Y-m-d') : null;
 
         // Verify current_enterprise_id belongs to this contact's enterprises
@@ -514,7 +514,7 @@ class ContactController extends Controller
     {
         $contact = Contact::findOrFail($id);
         $this->authorize('update', $contact);
-        
+
         $data = $request->validated();
         $contactData = $data['contact'];
 
