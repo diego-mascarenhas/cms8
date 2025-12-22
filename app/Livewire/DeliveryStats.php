@@ -81,8 +81,8 @@ class DeliveryStats extends Component
 
         $deliveries = $message->deliveries;
 
-        // Get actual deliveries count, but if 0, show potential subscribers
-        $subscribers = $deliveries->count();
+        // Count unique contacts (subscribers), not total deliveries
+        $subscribers = $deliveries->pluck('contact_id')->unique()->count();
 
         // If no deliveries exist yet, count potential subscribers
         if ($subscribers === 0)

@@ -99,7 +99,7 @@ class MessageController extends Controller
         // Obtener estadísticas reales calculadas desde la base de datos (optimizado con una sola query)
         $deliveryStats = MessageDelivery::where('message_id', $message->id)
             ->selectRaw('
-                COUNT(*) as subscribers,
+                COUNT(DISTINCT contact_id) as subscribers,
                 SUM(CASE WHEN status_id = 0 THEN 1 ELSE 0 END) as failed,
                 SUM(CASE WHEN sent_at IS NOT NULL THEN 1 ELSE 0 END) as sent,
                 SUM(CASE WHEN delivered_at IS NOT NULL THEN 1 ELSE 0 END) as delivered,
