@@ -1,10 +1,10 @@
-@props(['id', 'label' => null, 'options', 'value', 'placeholder' => null, 'required' => false, 'helpText' => null])
+@props(['id', 'label' => null, 'options', 'value', 'placeholder' => null, 'required' => false, 'helpText' => null, 'disabled' => false])
 
 <div class="form-group">
     @if($label)
         <label for="{{ $id }}">{{ $label }}@if($required) <span class="text-danger">*</span>@endif</label>
     @endif
-    <select id="{{ $id }}" name="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror" @if($required) required @endif>
+    <select id="{{ $id }}" name="{{ $id }}" class="form-control select2 @error($id) is-invalid @enderror" @if($required) required @endif @if($disabled) disabled @endif>
         @if($placeholder)
             <option value="">{{ $placeholder }}</option>
         @endif

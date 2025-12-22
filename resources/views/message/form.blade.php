@@ -173,7 +173,13 @@ document.querySelector('form').addEventListener('submit', function() {
 					:selected="old('category_id', $data->category_id ?? '')"
 					:allowEmpty="true"
 					emptyText="Toda la base de datos"
+					:disabled="isset($data->hasDeliveries) && $data->hasDeliveries"
 				/>
+				@if(isset($data->hasDeliveries) && $data->hasDeliveries)
+					<div class="form-text text-warning mt-1">
+						<i class="ti ti-alert-triangle me-1"></i>No se puede cambiar la categoría porque el mensaje ya tiene entregas creadas.
+					</div>
+				@endif
 			</div>
 			<div class="col-md-2">
 				<x-input-select
@@ -181,7 +187,13 @@ document.querySelector('form').addEventListener('submit', function() {
 					label="{{ __('Contact Status') }}"
 					:options="$data->contactStatuses ?? []"
 					value="{{ old('contact_status_id', $data->contact_status_id ?? '') }}"
+					:disabled="isset($data->hasDeliveries) && $data->hasDeliveries"
 				/>
+				@if(isset($data->hasDeliveries) && $data->hasDeliveries)
+					<div class="form-text text-warning mt-1">
+						<i class="ti ti-alert-triangle me-1"></i>No se puede cambiar el estado porque el mensaje ya tiene entregas creadas.
+					</div>
+				@endif
 			</div>
 			<div class="col-md-6">
 				<x-input-select id="type_id" label="Type (*)" :options="$data->types" value="{{ old('type_id', $data->type_id ?? '') }}" />

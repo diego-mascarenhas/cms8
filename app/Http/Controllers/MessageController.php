@@ -242,6 +242,9 @@ class MessageController extends Controller
         $data->templates = \App\Models\Template::getOptions();
         $data->contactStatuses = \App\Models\ContactStatus::getOptions();
 
+        // Check if message has any deliveries created
+        $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
+
         return view('message.form', compact('data'));
     }
 
