@@ -8,10 +8,11 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('messages', function (Blueprint $table) {
+        Schema::create('messages', function (Blueprint $table)
+        {
             $table->id();
             $table->string('name');
-            $table->unsignedBigInteger('type_id');
+            $table->unsignedTinyInteger('type_id');
             $table->unsignedBigInteger('category_id')->nullable();
             $table->unsignedBigInteger('contact_status_id')->nullable();
             $table->unsignedBigInteger('template_id')->nullable();

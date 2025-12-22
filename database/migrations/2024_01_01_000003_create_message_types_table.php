@@ -8,8 +8,9 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('message_type', function (Blueprint $table) {
-            $table->id();
+        Schema::create('message_type', function (Blueprint $table)
+        {
+            $table->tinyIncrements('id');
             $table->string('name');
             $table->boolean('status')->default(1);
         });
