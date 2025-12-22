@@ -492,7 +492,7 @@ Route::middleware(['auth'])->group(function ()
     // See: packages/humano-billing/routes/web.php
 
     // Messages
-    Route::get('message/list', [MessageController::class, 'index'])->name('message-list');
+    Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
@@ -510,7 +510,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/send-email', [MessageController::class, 'sendSendGridMessage']);
 
     // Templates
-    Route::get('/template/list', [TemplateController::class, 'index'])->name('template-list');
+    Route::get('/template/list', [TemplateController::class, 'index'])->name('template.index');
     Route::get('/template/create', [TemplateController::class, 'create'])->name('template.create');
     Route::get('/template/{hashedId}', [TemplateController::class, 'show'])->name('template.show');
     Route::get('/template/{hashedId}/edit', [TemplateController::class, 'edit'])->name('template.edit');

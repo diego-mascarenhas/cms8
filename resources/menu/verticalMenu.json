@@ -168,14 +168,14 @@
       "url": "message/list",
       "name": "Messages",
       "icon": "menu-icon tf-icons ti ti-send",
-      "slug": "message-list",
+      "slug": "message.index",
       "module_key": "mailer"
     },
     {
       "url": "template/list",
       "name": "Templates",
       "icon": "menu-icon tf-icons ti ti-template",
-      "slug": "template-list",
+      "slug": "template.index",
       "module_key": "mailer"
     },
     {

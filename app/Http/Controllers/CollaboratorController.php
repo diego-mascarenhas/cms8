@@ -1111,6 +1111,8 @@ class CollaboratorController extends Controller
                           "\nMotivo: ".$validated['rejection_reason'],
             ]);
 
+            // Activity log was removed
+            /*
             // Log the activity
             activity()
                 ->causedBy(auth()->user())
@@ -1121,6 +1123,7 @@ class CollaboratorController extends Controller
                     'rejected_by' => auth()->user()->name,
                 ])
                 ->log('Colaborador rechazado');
+            */
 
             return redirect()->route('collaborator-list')
                 ->with('success', 'Colaborador rechazado correctamente.');
@@ -1153,6 +1156,8 @@ class CollaboratorController extends Controller
                 'status_id' => 1, // Assuming 1 is active status
             ]);
 
+            // Activity log was removed
+            /*
             // Log the activity
             activity()
                 ->causedBy(auth()->user())
@@ -1163,6 +1168,7 @@ class CollaboratorController extends Controller
                     'accepted_by' => auth()->user()->name,
                 ])
                 ->log('Colaborador aceptado y usuario creado');
+            */
 
             // Send welcome email with credentials (optional)
             // You can implement this later if needed
@@ -1287,11 +1293,14 @@ class CollaboratorController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
+            // Activity log was removed
+            /*
             // Log activity
             activity()
                 ->performedOn($collaborator)
                 ->causedBy(auth()->user())
                 ->log('uploaded media file: '.$media->name);
+            */
 
             return response()->json([
                 'success' => true,
@@ -1360,11 +1369,14 @@ class CollaboratorController extends Controller
             $media->name = $request->name;
             $media->save();
 
+            // Activity log was removed
+            /*
             // Log activity
             activity()
                 ->performedOn($collaborator)
                 ->causedBy(auth()->user())
                 ->log('updated media file name from "'.$oldName.'" to "'.$request->name.'"');
+            */
 
             return response()->json([
                 'success' => true,
@@ -1409,11 +1421,14 @@ class CollaboratorController extends Controller
             $mediaName = $media->name;
             $media->delete();
 
+            // Activity log was removed
+            /*
             // Log activity
             activity()
                 ->performedOn($collaborator)
                 ->causedBy(auth()->user())
                 ->log('deleted media file: '.$mediaName);
+            */
 
             return response()->json([
                 'success' => true,
