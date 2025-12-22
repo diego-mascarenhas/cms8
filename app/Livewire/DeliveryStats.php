@@ -19,6 +19,16 @@ class DeliveryStats extends Component
 
     public $wasPausedForErrors = false;
 
+    public $showSubscribersModal = false;
+
+    public $potentialSubscribers = [];
+
+    public $subscribersStats = [
+        'total' => 0,
+        'with_delivery' => 0,
+        'without_delivery' => 0,
+    ];
+
     public function mount($messageId)
     {
         $this->messageId = $messageId;
@@ -29,6 +39,9 @@ class DeliveryStats extends Component
         // Check if team is using system SMTP
         $team = auth()->user()->currentTeam;
         $this->isUsingSystemSmtp = $team ? $team->isUsingSystemSmtp() : false;
+
+        // Calculate potential subscribers on mount
+        $this->updatePotentialSubscribersCount();
     }
 
     public function loadStats()
@@ -68,7 +81,14 @@ class DeliveryStats extends Component
 
         $deliveries = $message->deliveries;
 
+        // Get actual deliveries count, but if 0, show potential subscribers
         $subscribers = $deliveries->count();
+
+        // If no deliveries exist yet, count potential subscribers
+        if ($subscribers === 0)
+        {
+            $subscribers = $this->getPotentialSubscribersCount();
+        }
 
         // Only count as "sent" if sent_at is in the past (actually sent)
         $sent = $deliveries->filter(function ($delivery)
@@ -107,6 +127,26 @@ class DeliveryStats extends Component
         );
     }
 
+    private function updatePotentialSubscribersCount()
+    {
+        // This is called on mount to ensure stats table has correct subscriber count
+        $this->updateRealTimeStats();
+    }
+
+    private function getPotentialSubscribersCount(): int
+    {
+        $message = \App\Models\Message::find($this->messageId);
+
+        if (! $message)
+        {
+            return 0;
+        }
+
+        $contactsQuery = $this->getContactsForMessage($message);
+
+        return $contactsQuery->count();
+    }
+
     private function checkForCriticalErrors()
     {
         if (! $this->message)
@@ -132,6 +172,98 @@ class DeliveryStats extends Component
         $this->wasPausedForErrors = $this->message->status_id == 0 &&
             $this->message->updated_at->isAfter(now()->subHour()) &&
             $this->criticalErrorsCount > 0;
+    }
+
+    public function showSubscribers()
+    {
+        $this->loadPotentialSubscribers();
+        $this->showSubscribersModal = true;
+    }
+
+    public function closeSubscribersModal()
+    {
+        $this->showSubscribersModal = false;
+    }
+
+    private function loadPotentialSubscribers()
+    {
+        $message = \App\Models\Message::with('category', 'contactStatus')->find($this->messageId);
+
+        if (! $message)
+        {
+            $this->potentialSubscribers = [];
+
+            return;
+        }
+
+        // Get contacts that match message criteria
+        $contactsQuery = $this->getContactsForMessage($message);
+        $contacts = $contactsQuery->get();
+
+        // Get existing deliveries for comparison
+        $existingDeliveryIds = \App\Models\MessageDelivery::where('message_id', $message->id)
+            ->pluck('contact_id')
+            ->toArray();
+
+        // Mark which contacts already have deliveries and prepare data
+        $this->potentialSubscribers = $contacts->map(function ($contact) use ($existingDeliveryIds)
+        {
+            return [
+                'id' => $contact->id,
+                'name' => $contact->name,
+                'email' => $contact->email,
+                'has_delivery' => in_array($contact->id, $existingDeliveryIds),
+            ];
+        })->toArray();
+
+        $this->subscribersStats = [
+            'total' => count($this->potentialSubscribers),
+            'with_delivery' => count(array_filter($this->potentialSubscribers, fn ($c) => $c['has_delivery'])),
+            'without_delivery' => count(array_filter($this->potentialSubscribers, fn ($c) => ! $c['has_delivery'])),
+        ];
+    }
+
+    private function getContactsForMessage($message)
+    {
+        $query = null;
+
+        if ($message->category)
+        {
+            $query = $message->category->contacts();
+
+            // Filter by contact status - use message's contact_status_id or default to active (1)
+            $statusId = $message->contact_status_id ?: 1;
+            $query->where('status_id', $statusId);
+        } else
+        {
+            // If no category, get all contacts from the team
+            $query = \App\Models\Contact::where('team_id', $message->team_id)
+                ->whereNotNull('email');
+
+            // Filter by contact status - use message's contact_status_id or default to active (1)
+            $statusId = $message->contact_status_id ?: 1;
+            $query->where('status_id', $statusId);
+        }
+
+        // Exclude test/demo email addresses
+        $testDomains = [
+            '@example.org',
+            '@example.net',
+            '@example.com',
+            '@demo.com',
+            '@test.com',
+            '@localhost',
+            '@testing.com',
+            '@dummy.com',
+            '@fake.com',
+        ];
+
+        foreach ($testDomains as $domain)
+        {
+            $query->where('email', 'not like', '%'.$domain);
+        }
+
+        return $query;
     }
 
     public function render()

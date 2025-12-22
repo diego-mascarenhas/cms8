@@ -22,7 +22,11 @@
                             </span>
                         </div>
                         <div>
-                            <h6 class="mb-0">{{ $stats->subscribers ?? 0 }}</h6>
+                            <h6 class="mb-0">
+                                <a href="javascript:;" wire:click="showSubscribers" class="text-primary text-decoration-none" style="cursor: pointer;">
+                                    {{ $stats->subscribers ?? 0 }}
+                                </a>
+                            </h6>
                             <small class="text-muted">Subscribers</small>
                         </div>
                     </div>
@@ -149,4 +153,95 @@
 
         </div>
     </div>
+
+    <!-- Subscribers Modal -->
+    @if($showSubscribersModal)
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1" wire:click.self="closeSubscribersModal">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="ti ti-users me-2"></i>Potential Subscribers
+                    </h5>
+                    <button type="button" class="btn-close" wire:click="closeSubscribersModal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Stats Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-label-primary">
+                                <div class="card-body text-center">
+                                    <h3 class="mb-0">{{ $subscribersStats['total'] }}</h3>
+                                    <small>Total Contacts</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-label-success">
+                                <div class="card-body text-center">
+                                    <h3 class="mb-0">{{ $subscribersStats['with_delivery'] }}</h3>
+                                    <small>With Delivery</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-label-warning">
+                                <div class="card-body text-center">
+                                    <h3 class="mb-0">{{ $subscribersStats['without_delivery'] }}</h3>
+                                    <small>Pending</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contacts List -->
+                    @if(count($potentialSubscribers) > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($potentialSubscribers as $contact)
+                                <tr>
+                                    <td>
+                                        <a href="{{ route('contact.show', $contact['id']) }}" target="_blank" class="text-body">
+                                            {{ $contact['name'] }}
+                                        </a>
+                                    </td>
+                                    <td>{{ $contact['email'] }}</td>
+                                    <td class="text-center">
+                                        @if($contact['has_delivery'])
+                                            <span class="badge bg-success">
+                                                <i class="ti ti-check ti-xs"></i> Scheduled
+                                            </span>
+                                        @else
+                                            <span class="badge bg-warning">
+                                                <i class="ti ti-clock ti-xs"></i> Pending
+                                            </span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @else
+                    <div class="text-center py-5">
+                        <i class="ti ti-users-off" style="font-size: 3rem; color: #ccc;"></i>
+                        <p class="text-muted mt-3">No contacts match the message criteria</p>
+                    </div>
+                    @endif
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" wire:click="closeSubscribersModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
