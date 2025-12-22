@@ -444,6 +444,63 @@ function resendDelivery(deliveryId) {
 	});
 }
 
+// Filter deliveries by status
+let currentFilter = 'all';
+
+function filterDeliveries(filterType) {
+	const table = document.getElementById('deliveriesTable');
+	const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+	// Toggle filter: if clicking the same filter, show all
+	if (currentFilter === filterType) {
+		currentFilter = 'all';
+		filterType = 'all';
+	} else {
+		currentFilter = filterType;
+	}
+
+	for (let i = 0; i < rows.length; i++) {
+		const row = rows[i];
+		const statusCell = row.cells[1]; // Estado de Entrega column
+
+		if (!statusCell) continue;
+
+		const statusText = statusCell.textContent || statusCell.innerText;
+		let shouldShow = false;
+
+		switch(filterType) {
+			case 'all':
+				shouldShow = true;
+				break;
+			case 'sent':
+				shouldShow = statusText.includes('Enviado:') && !statusText.includes('Entregado:');
+				break;
+			case 'delivered':
+				shouldShow = statusText.includes('Entregado:');
+				break;
+			case 'opened':
+				// Check if has eye icon in actions column
+				shouldShow = row.cells[2] && row.cells[2].innerHTML.includes('ti-eye');
+				break;
+			case 'clicked':
+				// Check if has mouse icon in actions column
+				shouldShow = row.cells[2] && row.cells[2].innerHTML.includes('ti-mouse');
+				break;
+			case 'failed':
+				shouldShow = statusText.includes('Failed:');
+				break;
+		}
+
+		row.style.display = shouldShow ? '' : 'none';
+	}
+
+	// Update search to work with filtered rows
+	const searchInput = document.getElementById('searchDeliveries');
+	if (searchInput && searchInput.value) {
+		searchInput.dispatchEvent(new Event('keyup'));
+	}
+}
+
 // Search functionality for deliveries table
 document.addEventListener('DOMContentLoaded', function() {
 	const searchInput = document.getElementById('searchDeliveries');

@@ -15,18 +15,14 @@
             <div class="row g-3">
                 <!-- Total Subscribers -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('all')">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-primary rounded">
                                 <i class="ti ti-users"></i>
                             </span>
                         </div>
                         <div>
-                            <h6 class="mb-0">
-                                <a href="javascript:;" wire:click="showSubscribers" class="text-primary text-decoration-none" style="cursor: pointer;">
-                                    {{ $stats->subscribers ?? 0 }}
-                                </a>
-                            </h6>
+                            <h6 class="mb-0">{{ $stats->subscribers ?? 0 }}</h6>
                             <small class="text-muted">{{ __('Subscribers') }}</small>
                         </div>
                     </div>
@@ -34,7 +30,7 @@
 
                 <!-- Sent -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('sent')">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-success rounded">
                                 <i class="ti ti-send"></i>
@@ -49,7 +45,7 @@
 
                 <!-- Delivered -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('delivered')">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-info rounded">
                                 <i class="ti ti-check"></i>
@@ -64,7 +60,7 @@
 
                 <!-- Opened -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('opened')">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-warning rounded">
                                 <i class="ti ti-eye"></i>
@@ -79,7 +75,7 @@
 
                 <!-- Clicks -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('clicked')">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-secondary rounded">
                                 <i class="ti ti-mouse"></i>
@@ -94,7 +90,7 @@
 
                 <!-- Failed -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('failed')">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-danger rounded">
                                 <i class="ti ti-x"></i>
