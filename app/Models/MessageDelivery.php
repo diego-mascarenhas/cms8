@@ -24,7 +24,12 @@ class MessageDelivery extends Model
         'bounced_at',
         'opened_at',
         'clicked_at',
+        'complained_at',
         'provider_data',
+        'error_message',
+        'error_type',
+        'bounce_type',
+        'bounce_reason',
     ];
 
     protected $casts = [
@@ -32,6 +37,7 @@ class MessageDelivery extends Model
         'delivered_at' => 'datetime',
         'removed_at' => 'datetime',
         'bounced_at' => 'datetime',
+        'complained_at' => 'datetime',
         'opened_at' => 'datetime',
         'clicked_at' => 'datetime',
         'provider_data' => 'array',
@@ -157,6 +163,8 @@ class MessageDelivery extends Model
             $this->sent_at = now();
         }
         $this->status_id = 4; // 4 = error
+        $this->error_type = 'smtp_error'; // SMTP/sending error (not a bounce)
+        $this->error_message = $errorMessage;
 
         // Store error message in provider_data for debugging
         if ($errorMessage)

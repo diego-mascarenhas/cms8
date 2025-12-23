@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('message_deliveries', function (Blueprint $table) {
+        Schema::create('message_deliveries', function (Blueprint $table)
+        {
             $table->id();
             $table->unsignedBigInteger('team_id');
             $table->unsignedBigInteger('message_id');
@@ -24,7 +25,12 @@ return new class extends Migration
             $table->timestamp('bounced_at')->nullable();
             $table->timestamp('opened_at')->nullable();
             $table->timestamp('clicked_at')->nullable();
+            $table->timestamp('complained_at')->nullable();
             $table->json('provider_data')->nullable();
+            $table->text('error_message')->nullable();
+            $table->string('error_type', 50)->nullable(); // 'smtp_error' | 'bounce' | 'complaint' | 'reject'
+            $table->string('bounce_type', 50)->nullable(); // 'hard' | 'soft' | 'complaint' | 'block'
+            $table->text('bounce_reason')->nullable();
             $table->timestamps();
 
             $table->index(['message_id', 'status_id']);
@@ -34,6 +40,8 @@ return new class extends Migration
             $table->index(['sent_at']);
             $table->index(['opened_at']);
             $table->index(['clicked_at']);
+            $table->index(['error_type']);
+            $table->index(['bounce_type']);
         });
     }
 

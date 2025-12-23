@@ -37,7 +37,15 @@
                                         </div>
                                     </td>
                                     <td>
-                                        @if($delivery['delivered_at'])
+                                        @if($delivery['status_text'] === 'Fallido')
+                                            <span class="text-danger">
+                                                <i class="ti ti-x me-1"></i>
+                                                Fallido
+                                            </span><br>
+                                            @if($delivery['sent_at'])
+                                                <small class="text-muted">Intentado: {{ $delivery['sent_at'] }}</small>
+                                            @endif
+                                        @elseif($delivery['delivered_at'])
                                             <span class="text-info">
                                                 <i class="ti ti-check me-1"></i>
                                                 Entregado: {{ $delivery['delivered_at'] }}
