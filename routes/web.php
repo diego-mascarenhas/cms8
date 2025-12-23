@@ -495,6 +495,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');
+    Route::get('message/{id}/debug', [MessageController::class, 'debug'])->name('message.debug'); // Temporary debug route
     Route::get('message/{id}/edit', [MessageController::class, 'edit'])->name('message.edit');
     Route::get('message/{id}/preview', [MessageController::class, 'preview'])->name('message.preview');
     Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
