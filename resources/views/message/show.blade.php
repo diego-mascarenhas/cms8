@@ -230,13 +230,15 @@
 					$isOverLimits = ($remaining['monthly_used'] >= $remaining['monthly_limit']) ||
 									($remaining['daily_limit'] && $remaining['daily_used'] >= $remaining['daily_limit']);
 				@endphp
-				@if($isOverLimits)
-					<div class="text-center mt-3">
-						<a href="{{ route('billing.plans') }}" class="btn btn-sm btn-primary">
-							<i class="ti ti-arrow-up me-1"></i>{{ __('Upgrade Plan') }}
-						</a>
-					</div>
-				@endif
+			{{-- Upgrade Plan button disabled - billing.plans route not defined
+			@if($isOverLimits)
+				<div class="text-center mt-3">
+					<a href="{{ route('billing.plans') }}" class="btn btn-sm btn-primary">
+						<i class="ti ti-arrow-up me-1"></i>{{ __('Upgrade Plan') }}
+					</a>
+				</div>
+			@endif
+			--}}
 			</div>
 		</div>
 	</div>
