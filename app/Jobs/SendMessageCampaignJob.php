@@ -3,18 +3,19 @@
 namespace App\Jobs;
 
 use App\Models\MessageDelivery;
+use App\Traits\ConfiguresTeamMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Http;
 
 class SendMessageCampaignJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use ConfiguresTeamMail, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * The message delivery instance.
@@ -69,14 +70,16 @@ class SendMessageCampaignJob implements ShouldQueue
                     'scheduled_time' => $this->messageDelivery->sent_at,
                     'current_time' => now(),
                 ]);
-                
+
                 $delay = $this->messageDelivery->sent_at->diffInSeconds(now());
                 $this->release($delay);
+
                 return;
             }
 
             // Validation checks
-            if (!$this->validateDelivery()) {
+            if (! $this->validateDelivery())
+            {
                 return;
             }
 
@@ -90,7 +93,6 @@ class SendMessageCampaignJob implements ShouldQueue
                 'delivery_id' => $this->messageDelivery->id,
                 'contact_email' => $this->messageDelivery->contact->email,
             ]);
-
         } catch (\Exception $e)
         {
             $this->handleError($e);
@@ -104,21 +106,23 @@ class SendMessageCampaignJob implements ShouldQueue
     private function validateDelivery(): bool
     {
         // Check if contact exists and has email
-        if (!$this->messageDelivery->contact || !$this->messageDelivery->contact->email)
+        if (! $this->messageDelivery->contact || ! $this->messageDelivery->contact->email)
         {
             Log::warning('Message delivery skipped: No contact or email', [
                 'delivery_id' => $this->messageDelivery->id,
             ]);
             $this->messageDelivery->markAsError('No contact or email address available');
+
             return false;
         }
 
         // Check if message is still active
-        if (!$this->messageDelivery->message || $this->messageDelivery->message->status_id != 1)
+        if (! $this->messageDelivery->message || $this->messageDelivery->message->status_id != 1)
         {
             Log::info('Message delivery cancelled: Message not active', [
                 'delivery_id' => $this->messageDelivery->id,
             ]);
+
             return false;
         }
 
@@ -128,17 +132,19 @@ class SendMessageCampaignJob implements ShouldQueue
             Log::info('Message delivery already sent, skipping', [
                 'delivery_id' => $this->messageDelivery->id,
             ]);
+
             return false;
         }
 
         // Validate email format
-        if (!filter_var($this->messageDelivery->contact->email, FILTER_VALIDATE_EMAIL))
+        if (! filter_var($this->messageDelivery->contact->email, FILTER_VALIDATE_EMAIL))
         {
             Log::warning('Message delivery skipped: Invalid email address', [
                 'delivery_id' => $this->messageDelivery->id,
                 'email' => $this->messageDelivery->contact->email,
             ]);
             $this->messageDelivery->markAsError('Invalid email address');
+
             return false;
         }
 
@@ -153,18 +159,24 @@ class SendMessageCampaignJob implements ShouldQueue
         $apiEnabled = config('humano-mailer.providers.api.enabled', false);
         $fallbackToSmtp = config('humano-mailer.fallback_to_smtp', true);
 
-        if ($apiEnabled) {
-            try {
+        if ($apiEnabled)
+        {
+            try
+            {
                 $this->sendViaApi();
+
                 return;
-            } catch (\Exception $e) {
+            } catch (\Exception $e)
+            {
                 Log::warning('API provider failed, falling back to SMTP', [
                     'delivery_id' => $this->messageDelivery->id,
                     'error' => $e->getMessage(),
                 ]);
-                
-                if ($fallbackToSmtp) {
+
+                if ($fallbackToSmtp)
+                {
                     $this->sendViaSmtp();
+
                     return;
                 }
                 throw $e;
@@ -185,17 +197,18 @@ class SendMessageCampaignJob implements ShouldQueue
 
         $apiKey = config('humano-mailer.providers.api.key');
         $apiDomain = config('humano-mailer.providers.api.domain');
-        
-        if (!$apiKey) {
+
+        if (! $apiKey)
+        {
             throw new \Exception('API key not configured');
         }
 
         // Get email content
         $htmlContent = $this->messageDelivery->getHtmlForContact();
-        
+
         // This is a generic implementation - you would adapt this for your specific API
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
+            'Authorization' => 'Bearer '.$apiKey,
             'Content-Type' => 'application/json',
         ])->post('https://api.your-email-provider.com/send', [
             'from' => config('mail.from.address'),
@@ -207,12 +220,13 @@ class SendMessageCampaignJob implements ShouldQueue
             'track_clicks' => true,
         ]);
 
-        if (!$response->successful()) {
-            throw new \Exception('API request failed: ' . $response->body());
+        if (! $response->successful())
+        {
+            throw new \Exception('API request failed: '.$response->body());
         }
 
         $result = $response->json();
-        
+
         Log::info('✅ Email sent via API', [
             'delivery_id' => $this->messageDelivery->id,
             'provider_message_id' => $result['id'] ?? null,
@@ -236,15 +250,18 @@ class SendMessageCampaignJob implements ShouldQueue
     {
         Log::info('📧 SendMessageCampaignJob: Using SMTP', [
             'delivery_id' => $this->messageDelivery->id,
+            'team_id' => $this->messageDelivery->team_id,
+            'team_name' => $this->messageDelivery->team->name ?? 'Unknown',
         ]);
 
-        // Configure mail for team if needed
-        $this->configureMailForTeam();
+        // Configure mail settings for this team (uses ConfiguresTeamMail trait)
+        $this->configureMailForTeam($this->messageDelivery->team);
 
         // Create mailable class name - this should be configurable
         $mailableClass = config('humano-mailer.mailables.message_delivery_mail', \App\Mail\MessageDeliveryMail::class);
-        
-        if (!class_exists($mailableClass)) {
+
+        if (! class_exists($mailableClass))
+        {
             throw new \Exception("Mailable class {$mailableClass} not found");
         }
 
@@ -253,6 +270,8 @@ class SendMessageCampaignJob implements ShouldQueue
 
         Log::info('✅ Email sent via SMTP', [
             'delivery_id' => $this->messageDelivery->id,
+            'from_address' => config('mail.from.address'),
+            'from_name' => config('mail.from.name'),
         ]);
 
         // Mark as sent and delivered
@@ -263,18 +282,6 @@ class SendMessageCampaignJob implements ShouldQueue
             'delivery_status' => 'delivered',
             'status_id' => 3, // delivered
         ]);
-    }
-
-    /**
-     * Configure mail settings for team
-     */
-    private function configureMailForTeam()
-    {
-        // This would use a trait or service to configure team-specific mail settings
-        // For now, we'll use the default configuration
-        if (method_exists($this->messageDelivery->team, 'configureMailSettings')) {
-            $this->messageDelivery->team->configureMailSettings();
-        }
     }
 
     /**
