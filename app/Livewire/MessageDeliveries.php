@@ -50,7 +50,7 @@ class MessageDeliveries extends Component
             });
         }
 
-        $paginated = $query->orderBy('created_at', 'desc')->paginate(13);
+        $paginated = $query->orderBy('created_at', 'desc')->paginate(25); // 25 items por página
 
         // Transform the items manually
         $transformedItems = collect($paginated->items())->map(function ($delivery)
@@ -139,9 +139,11 @@ class MessageDeliveries extends Component
 
     public function render()
     {
+        $deliveries = $this->deliveries;
+
         return view('livewire.message-deliveries', [
-            'deliveries' => $this->deliveries,
-            'hasDeliveries' => MessageDelivery::where('message_id', $this->messageId)->exists(),
+            'deliveries' => $deliveries,
+            'hasDeliveries' => $deliveries->total() > 0,
         ]);
     }
 }

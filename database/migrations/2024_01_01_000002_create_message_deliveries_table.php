@@ -28,6 +28,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['message_id', 'status_id']);
+            $table->index(['message_id', 'created_at']); // Para ORDER BY en listados
             $table->index(['contact_id']);
             $table->index(['team_id']);
             $table->index(['sent_at']);
