@@ -14,7 +14,11 @@ class MessageDeliveries extends Component
 
     public $search = '';
 
+    public $statusFilter = 'all';
+
     protected $paginationTheme = 'bootstrap';
+
+    protected $listeners = ['filterByStatus'];
 
     public function mount($messageId)
     {
@@ -23,11 +27,25 @@ class MessageDeliveries extends Component
 
     public function updating($name, $value)
     {
-        // Reset pagination when search changes
-        if ($name === 'search')
+        // Reset pagination when search or filter changes
+        if ($name === 'search' || $name === 'statusFilter')
         {
             $this->resetPage();
         }
+    }
+
+    public function filterByStatus($status)
+    {
+        // Toggle filter: if clicking the same filter, show all
+        if ($this->statusFilter === $status)
+        {
+            $this->statusFilter = 'all';
+        } else
+        {
+            $this->statusFilter = $status;
+        }
+
+        $this->resetPage();
     }
 
     public function getDeliveriesProperty()
@@ -40,6 +58,32 @@ class MessageDeliveries extends Component
         $query = MessageDelivery::where('message_id', $this->messageId)
             ->with(['contact']);
 
+        // Apply status filter
+        if ($this->statusFilter !== 'all')
+        {
+            switch ($this->statusFilter)
+            {
+                case 'sent':
+                    $query->whereNotNull('sent_at')->whereNull('delivered_at');
+                    break;
+                case 'delivered':
+                    $query->whereNotNull('delivered_at');
+                    break;
+                case 'opened':
+                    $query->whereNotNull('opened_at');
+                    break;
+                case 'clicked':
+                    $query->whereNotNull('clicked_at');
+                    break;
+                case 'failed':
+                    $query->where('status_id', 4);
+                    break;
+                case 'pending':
+                    $query->whereNull('sent_at');
+                    break;
+            }
+        }
+
         // Apply search filter
         if ($this->search)
         {
@@ -50,7 +94,7 @@ class MessageDeliveries extends Component
             });
         }
 
-        $paginated = $query->orderBy('created_at', 'desc')->paginate(25); // 25 items por página
+        $paginated = $query->orderBy('created_at', 'desc')->paginate(10);
 
         // Transform the items manually
         $transformedItems = collect($paginated->items())->map(function ($delivery)

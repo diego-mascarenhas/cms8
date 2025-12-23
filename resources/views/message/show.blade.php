@@ -49,6 +49,11 @@
 			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
 				<i class="ti ti-player-pause me-1"></i>Pausar
 			</button>
+			@if($hasDeliveriesPending)
+				<button class="btn btn-info me-2" onclick="sendPendingNow({{ $message->id }})">
+					<i class="ti ti-bolt me-1"></i>Enviar ahora
+				</button>
+			@endif
 		@else
 			<button class="btn btn-success me-2 {{ !$canSend ? 'disabled' : '' }}"
 					onclick="{{ $canSend ? 'startCampaign(' . $message->id . ')' : 'showAuthorizationError()' }}"
@@ -319,6 +324,86 @@ function pauseCampaign(messageId) {
 	});
 }
 
+function sendPendingNow(messageId) {
+	Swal.fire({
+		title: '¿Enviar pendientes ahora?',
+		text: 'Esto encolará hasta 100 correos pendientes para envío inmediato',
+		icon: 'question',
+		showCancelButton: true,
+		confirmButtonText: 'Sí, enviar',
+		cancelButtonText: 'Cancelar',
+		customClass: {
+			confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
+			cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+		},
+		buttonsStyling: false
+	}).then((result) => {
+		if (result.isConfirmed) {
+			Swal.fire({
+				title: 'Encolando...',
+				text: 'Por favor espera',
+				icon: 'info',
+				allowOutsideClick: false,
+				allowEscapeKey: false,
+				showConfirmButton: false,
+				willOpen: () => {
+					Swal.showLoading();
+				}
+			});
+
+			fetch(`/message/${messageId}/send-pending-now`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRF-TOKEN': '{{ csrf_token() }}'
+				}
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					let message = data.message;
+					if (data.remaining > 0) {
+						message += `. Quedan ${data.remaining} pendientes.`;
+					}
+					Swal.fire({
+						title: '¡Encolados!',
+						text: message,
+						icon: 'success',
+						customClass: {
+							confirmButton: 'btn btn-success waves-effect waves-light'
+						},
+						buttonsStyling: false
+					}).then(() => {
+						location.reload();
+					});
+				} else {
+					Swal.fire({
+						title: 'Error',
+						text: data.message,
+						icon: 'error',
+						customClass: {
+							confirmButton: 'btn btn-danger waves-effect waves-light'
+						},
+						buttonsStyling: false
+					});
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				Swal.fire({
+					title: 'Error',
+					text: 'Ha ocurrido un error al encolar los correos',
+					icon: 'error',
+					customClass: {
+						confirmButton: 'btn btn-danger waves-effect waves-light'
+					},
+					buttonsStyling: false
+				});
+			});
+		}
+	});
+}
+
 function startCampaign(messageId) {
 	Swal.fire({
 		title: '¿Iniciar campaña?',
@@ -482,66 +567,52 @@ function resendDelivery(deliveryId) {
 			confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
 			cancelButton: 'btn btn-label-secondary waves-effect waves-light'
 		},
-		buttonsStyling: false
-	}).then((result) => {
-		if (result.isConfirmed) {
-			Swal.fire({
-				title: 'Reenviando...',
-				text: 'Por favor espera',
-				icon: 'info',
-				allowOutsideClick: false,
-				allowEscapeKey: false,
-				showConfirmButton: false,
-				willOpen: () => {
-					Swal.showLoading();
-				}
-			});
-
-			fetch(`/message/delivery/${deliveryId}/resend`, {
+		buttonsStyling: false,
+		showLoaderOnConfirm: true,
+		preConfirm: () => {
+			return fetch(`/message/delivery/${deliveryId}/resend`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					'X-CSRF-TOKEN': '{{ csrf_token() }}'
 				}
 			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
-					Swal.fire({
-						title: '¡Reenviado!',
-						text: data.message,
-						icon: 'success',
-						customClass: {
-							confirmButton: 'btn btn-success waves-effect waves-light'
-						},
-						buttonsStyling: false
-					}).then(() => {
-						location.reload();
-					});
-				} else {
-					Swal.fire({
-						title: 'Error',
-						text: data.message,
-						icon: 'error',
-						customClass: {
-							confirmButton: 'btn btn-danger waves-effect waves-light'
-						},
-						buttonsStyling: false
-					});
+			.then(response => {
+				if (!response.ok) {
+					throw new Error(response.statusText);
 				}
+				return response.json();
 			})
 			.catch(error => {
-				console.error('Error:', error);
+				Swal.showValidationMessage(`Error: ${error}`);
+			});
+		},
+		allowOutsideClick: () => !Swal.isLoading()
+	}).then((result) => {
+		if (result.isConfirmed && result.value) {
+			if (result.value.success) {
+				Swal.fire({
+					title: '¡Reenviado!',
+					text: result.value.message,
+					icon: 'success',
+					customClass: {
+						confirmButton: 'btn btn-success waves-effect waves-light'
+					},
+					buttonsStyling: false
+				}).then(() => {
+					location.reload();
+				});
+			} else {
 				Swal.fire({
 					title: 'Error',
-					text: 'Ocurrió un error al reenviar el correo',
+					text: result.value.message,
 					icon: 'error',
 					customClass: {
 						confirmButton: 'btn btn-danger waves-effect waves-light'
 					},
 					buttonsStyling: false
 				});
-			});
+			}
 		}
 	});
 }

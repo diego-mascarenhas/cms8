@@ -15,7 +15,7 @@
             <div class="row g-3">
                 <!-- Total Subscribers -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('all')">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="window.livewire.dispatch('filterByStatus', { status: 'all' })">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-primary rounded">
                                 <i class="ti ti-users"></i>
@@ -30,7 +30,7 @@
 
                 <!-- Sent -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('sent')">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="window.livewire.dispatch('filterByStatus', { status: 'sent' })">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-success rounded">
                                 <i class="ti ti-send"></i>
@@ -45,7 +45,7 @@
 
                 <!-- Delivered -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('delivered')">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="window.livewire.dispatch('filterByStatus', { status: 'delivered' })">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-info rounded">
                                 <i class="ti ti-check"></i>
@@ -60,7 +60,7 @@
 
                 <!-- Opened -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('opened')">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="window.livewire.dispatch('filterByStatus', { status: 'opened' })">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-warning rounded">
                                 <i class="ti ti-eye"></i>
@@ -75,7 +75,7 @@
 
                 <!-- Clicks -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('clicked')">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="window.livewire.dispatch('filterByStatus', { status: 'clicked' })">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-secondary rounded">
                                 <i class="ti ti-mouse"></i>
@@ -90,7 +90,7 @@
 
                 <!-- Failed -->
                 <div class="col-md-4">
-                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="filterDeliveries('failed')">
+                    <div class="d-flex align-items-center stat-filter" style="cursor: pointer;" onclick="window.livewire.dispatch('filterByStatus', { status: 'failed' })">
                         <div class="avatar avatar-sm me-3">
                             <span class="avatar-initial bg-label-danger rounded">
                                 <i class="ti ti-x"></i>

@@ -499,6 +499,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/{id}/preview', [MessageController::class, 'preview'])->name('message.preview');
     Route::post('message/{id}/start', [MessageController::class, 'startCampaign'])->name('message.start');
     Route::post('message/{id}/pause', [MessageController::class, 'pauseCampaign'])->name('message.pause');
+    Route::post('message/{id}/send-pending-now', [MessageController::class, 'sendPendingNow'])->name('message.send-pending-now');
     Route::post('message/{id}/test', [MessageController::class, 'testSend'])->name('message.test');
     Route::post('message/delivery/{deliveryId}/resend', [MessageController::class, 'resendDelivery'])->name('message.delivery.resend');
     Route::get('message/{id}/link-details/{encodedLink}', [MessageController::class, 'getLinkDetails'])->name('message.link-details');

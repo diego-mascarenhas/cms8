@@ -3,11 +3,11 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Envíos</h5>
             <div class="d-flex align-items-center gap-2">
-                <input 
-                    type="text" 
-                    wire:model.debounce.300ms="search"
-                    class="form-control form-control-sm" 
-                    placeholder="Buscar..." 
+                <input
+                    type="text"
+                    wire:model.live.debounce.300ms="search"
+                    class="form-control form-control-sm"
+                    placeholder="Buscar..."
                     style="width: 200px;">
                 <div wire:loading.delay>
                     <span class="spinner-border spinner-border-sm text-primary" role="status">

@@ -486,6 +486,71 @@ class MessageController extends Controller
         }
     }
 
+    public function sendPendingNow(Request $request, $id)
+    {
+        try
+        {
+            $message = Message::findOrFail($id);
+
+            // Count pending deliveries for this message
+            $pendingCount = MessageDelivery::where('message_id', $id)
+                ->where('status_id', 1) // pending
+                ->whereNull('delivered_at')
+                ->where(function ($query)
+                {
+                    $query->whereNull('sent_at')
+                        ->orWhere('sent_at', '<=', now());
+                })
+                ->count();
+
+            if ($pendingCount === 0)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No pending deliveries found',
+                ], 400);
+            }
+
+            // Queue all pending deliveries immediately
+            $deliveries = MessageDelivery::where('message_id', $id)
+                ->where('status_id', 1)
+                ->whereNull('delivered_at')
+                ->where(function ($query)
+                {
+                    $query->whereNull('sent_at')
+                        ->orWhere('sent_at', '<=', now());
+                })
+                ->with(['contact', 'message', 'team'])
+                ->limit(100) // Process max 100 at a time
+                ->get();
+
+            $queued = 0;
+            foreach ($deliveries as $delivery)
+            {
+                \App\Jobs\SendMessageCampaignJob::dispatch($delivery)->onQueue('mailer');
+                $queued++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Queued {$queued} emails for immediate sending",
+                'queued' => $queued,
+                'remaining' => max(0, $pendingCount - $queued),
+            ]);
+        } catch (\Exception $e)
+        {
+            Log::error('Error sending pending deliveries', [
+                'message_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error sending pending deliveries: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Get contact details for a specific link
      */
