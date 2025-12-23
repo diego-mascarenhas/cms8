@@ -25,14 +25,11 @@
     "nyholm/psr7": "^1.8",
     "spatie/laravel-medialibrary": "^11.13",
     "spatie/laravel-permission": "^6.20",
-    "spatie/simple-excel": "^3.6",
     "symfony/http-client": "^7.3",
     "tijsverkoyen/css-to-inline-styles": "^2.3",
     "twilio/sdk": "^8.2",
-    "webklex/php-imap": "*",
     "yajra/laravel-datatables": "^12.0",
-    "yajra/laravel-datatables-oracle": "^12.0",
-    "zbateson/mail-mime-parser": "^2.4"
+    "yajra/laravel-datatables-oracle": "^12.0"
   },
   "require-dev": {
     "barryvdh/laravel-debugbar": "^3.14",
