@@ -50,7 +50,7 @@ class SendPendingMessages extends Command
             try
             {
                 // 🚀 Use the Job instead of Mailable directly
-                // Random delay pequeño (3-15 segundos) para evitar spam flags
+                // Small random delay (3-15 seconds) to avoid spam flags
                 $randomDelay = rand(3, 15);
 
                 SendMessageCampaignJob::dispatch($delivery)

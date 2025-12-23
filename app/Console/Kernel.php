@@ -64,18 +64,19 @@ class Kernel extends ConsoleKernel
 
         // ============================================
         // EMAIL CAMPAIGNS (MAILER MODULE)
+        // Configuration: ~20 emails/minute
         // ============================================
         $schedule->command('campaigns:process-active')
-            ->everyMinute()
+            ->everyFiveMinutes() // Create deliveries every 5 minutes
             ->withoutOverlapping()
             ->name('process-active-campaigns')
             ->description('Create deliveries for active campaigns');
 
         $schedule->command('campaigns:send-scheduled')
-            ->everyMinute()
+            ->everyMinute() // Check and queue every minute
             ->withoutOverlapping()
             ->name('send-scheduled-deliveries')
-            ->description('Send scheduled email deliveries');
+            ->description('Send scheduled email deliveries (~20/min)');
 
         // ============================================
         // EXCHANGE RATES

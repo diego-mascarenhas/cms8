@@ -157,7 +157,7 @@ class ProcessActiveCampaigns extends Command
                 ]);
 
                 // Create multiple deliveries per run but limit to avoid overload
-                $maxDeliveries = config('services.email.processing.deliveries_per_campaign_run', 50);
+                $maxDeliveries = config('services.email.processing.deliveries_per_campaign_run', 30); // Max 30 per campaign per run
                 if ($createdCount >= $maxDeliveries)
                 {
                     break;
