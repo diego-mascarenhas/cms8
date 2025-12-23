@@ -150,9 +150,9 @@
                     </div>
                     
                     <div class="d-flex justify-content-between">
-                        <small class="text-success">{{ $sentPercent }}% {{ __('Sent') }}</small>
-                        <small class="text-info">{{ $deliveredPercent }}% {{ __('Delivered') }}</small>
                         <small class="text-warning">{{ $openedPercent }}% {{ __('Opened') }}</small>
+                        <small class="text-info">{{ $deliveredPercent }}% {{ __('Delivered') }}</small>
+                        <small class="text-success">{{ $sentPercent }}% {{ __('Sent') }}</small>
                     </div>
                 </div>
             @endif

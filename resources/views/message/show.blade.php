@@ -39,8 +39,9 @@
 		@php
 			// Check if campaign is active and has deliveries pending or in progress
 			$totalDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)->count();
-			$sentDeliveries = \App\Models\MessageDelivery::where('message_id', $message->id)->whereNotNull('sent_at')->count();
-			$hasDeliveriesPending = $totalDeliveries > $sentDeliveries;
+			$deliveredCount = \App\Models\MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count();
+			// Show "Send Now" button if there are deliveries not yet delivered (regardless of sent_at)
+			$hasDeliveriesPending = $totalDeliveries > $deliveredCount;
 			$campaignIsActive = $message->status_id == 1;
 			$campaignCanBePaused = $campaignIsActive && ($totalDeliveries > 0 || $message->started_at);
 		@endphp
@@ -49,11 +50,11 @@
 			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
 				<i class="ti ti-player-pause me-1"></i>Pausar
 			</button>
-			@if($hasDeliveriesPending)
-				<button class="btn btn-info me-2" onclick="sendPendingNow({{ $message->id }})">
-					<i class="ti ti-bolt me-1"></i>Enviar ahora
-				</button>
-			@endif
+		@if($hasDeliveriesPending)
+			<button class="btn btn-info me-2" onclick="sendPendingNow({{ $message->id }})">
+				<i class="ti ti-refresh me-1"></i>Recalcular envíos
+			</button>
+		@endif
 		@else
 			<button class="btn btn-success me-2 {{ !$canSend ? 'disabled' : '' }}"
 					onclick="{{ $canSend ? 'startCampaign(' . $message->id . ')' : 'showAuthorizationError()' }}"
@@ -328,11 +329,11 @@ function pauseCampaign(messageId) {
 
 function sendPendingNow(messageId) {
 	Swal.fire({
-		title: '¿Enviar pendientes ahora?',
-		text: 'Esto encolará hasta 100 correos pendientes para envío inmediato',
+		title: '¿Recalcular envíos?',
+		text: 'Esto reprogramará todos los correos pendientes y encolará los primeros 100 para envío inmediato',
 		icon: 'question',
 		showCancelButton: true,
-		confirmButtonText: 'Sí, enviar',
+		confirmButtonText: 'Sí, recalcular',
 		cancelButtonText: 'Cancelar',
 		customClass: {
 			confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
