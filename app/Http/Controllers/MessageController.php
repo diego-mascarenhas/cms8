@@ -492,34 +492,24 @@ class MessageController extends Controller
         {
             $message = Message::findOrFail($id);
 
-            // Count pending deliveries for this message
+            // Count ALL pending deliveries (including future scheduled ones)
             $pendingCount = MessageDelivery::where('message_id', $id)
-                ->where('status_id', 1) // pending
-                ->whereNull('delivered_at')
-                ->where(function ($query)
-                {
-                    $query->whereNull('sent_at')
-                        ->orWhere('sent_at', '<=', now());
-                })
+                ->where('status_id', 1) // pending status
+                ->whereNull('delivered_at') // not delivered yet
                 ->count();
 
             if ($pendingCount === 0)
             {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No pending deliveries found',
+                    'message' => 'No hay deliveries pendientes. Todos los contactos ya recibieron el correo.',
                 ], 400);
             }
 
-            // Queue all pending deliveries immediately
+            // Queue pending deliveries immediately (including future scheduled)
             $deliveries = MessageDelivery::where('message_id', $id)
                 ->where('status_id', 1)
                 ->whereNull('delivered_at')
-                ->where(function ($query)
-                {
-                    $query->whereNull('sent_at')
-                        ->orWhere('sent_at', '<=', now());
-                })
                 ->with(['contact', 'message', 'team'])
                 ->limit(100) // Process max 100 at a time
                 ->get();
@@ -527,13 +517,14 @@ class MessageController extends Controller
             $queued = 0;
             foreach ($deliveries as $delivery)
             {
+                // Dispatch immediately without delay
                 \App\Jobs\SendMessageCampaignJob::dispatch($delivery)->onQueue('mailer');
                 $queued++;
             }
 
             return response()->json([
                 'success' => true,
-                'message' => "Queued {$queued} emails for immediate sending",
+                'message' => "Se encolaron {$queued} correos para envío inmediato",
                 'queued' => $queued,
                 'remaining' => max(0, $pendingCount - $queued),
             ]);
@@ -546,7 +537,7 @@ class MessageController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error sending pending deliveries: '.$e->getMessage(),
+                'message' => 'Error al encolar correos: '.$e->getMessage(),
             ], 500);
         }
     }

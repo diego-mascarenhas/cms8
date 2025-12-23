@@ -18,8 +18,6 @@ class MessageDeliveries extends Component
 
     protected $paginationTheme = 'bootstrap';
 
-    protected $listeners = ['filterByStatus'];
-
     public function mount($messageId)
     {
         $this->messageId = $messageId;
@@ -34,8 +32,15 @@ class MessageDeliveries extends Component
         }
     }
 
-    public function filterByStatus($status)
+    #[\Livewire\Attributes\On('filterByStatus')]
+    public function filterByStatus($status = 'all')
     {
+        // Accept both direct value and named parameter from event
+        if (is_array($status) && isset($status['status']))
+        {
+            $status = $status['status'];
+        }
+
         // Toggle filter: if clicking the same filter, show all
         if ($this->statusFilter === $status)
         {

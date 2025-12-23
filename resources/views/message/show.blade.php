@@ -336,70 +336,56 @@ function sendPendingNow(messageId) {
 			confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
 			cancelButton: 'btn btn-label-secondary waves-effect waves-light'
 		},
-		buttonsStyling: false
-	}).then((result) => {
-		if (result.isConfirmed) {
-			Swal.fire({
-				title: 'Encolando...',
-				text: 'Por favor espera',
-				icon: 'info',
-				allowOutsideClick: false,
-				allowEscapeKey: false,
-				showConfirmButton: false,
-				willOpen: () => {
-					Swal.showLoading();
-				}
-			});
-
-			fetch(`/message/${messageId}/send-pending-now`, {
+		buttonsStyling: false,
+		showLoaderOnConfirm: true,
+		preConfirm: () => {
+			return fetch(`/message/${messageId}/send-pending-now`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					'X-CSRF-TOKEN': '{{ csrf_token() }}'
 				}
 			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
-					let message = data.message;
-					if (data.remaining > 0) {
-						message += `. Quedan ${data.remaining} pendientes.`;
-					}
-					Swal.fire({
-						title: '¡Encolados!',
-						text: message,
-						icon: 'success',
-						customClass: {
-							confirmButton: 'btn btn-success waves-effect waves-light'
-						},
-						buttonsStyling: false
-					}).then(() => {
-						location.reload();
-					});
-				} else {
-					Swal.fire({
-						title: 'Error',
-						text: data.message,
-						icon: 'error',
-						customClass: {
-							confirmButton: 'btn btn-danger waves-effect waves-light'
-						},
-						buttonsStyling: false
-					});
+			.then(response => {
+				if (!response.ok) {
+					throw new Error(response.statusText);
 				}
+				return response.json();
 			})
 			.catch(error => {
-				console.error('Error:', error);
+				Swal.showValidationMessage(`Error: ${error}`);
+			});
+		},
+		allowOutsideClick: () => !Swal.isLoading()
+	}).then((result) => {
+		if (result.isConfirmed && result.value) {
+			if (result.value.success) {
+				let message = result.value.message;
+				if (result.value.remaining > 0) {
+					message += `. Quedan ${result.value.remaining} pendientes.`;
+				}
+				Swal.fire({
+					title: '¡Encolados!',
+					text: message,
+					icon: 'success',
+					customClass: {
+						confirmButton: 'btn btn-success waves-effect waves-light'
+					},
+					buttonsStyling: false
+				}).then(() => {
+					location.reload();
+				});
+			} else {
 				Swal.fire({
 					title: 'Error',
-					text: 'Ha ocurrido un error al encolar los correos',
+					text: result.value.message,
 					icon: 'error',
 					customClass: {
 						confirmButton: 'btn btn-danger waves-effect waves-light'
 					},
 					buttonsStyling: false
 				});
-			});
+			}
 		}
 	});
 }
